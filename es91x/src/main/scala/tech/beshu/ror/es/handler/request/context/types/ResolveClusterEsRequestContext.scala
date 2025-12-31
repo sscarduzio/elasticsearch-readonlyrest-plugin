@@ -133,4 +133,3 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
     }
   }
 }
-x

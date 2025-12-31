@@ -975,7 +975,7 @@ class CrossClusterCallsSuite
         result should have statusCode 200
         result.clusterToMatchingIndices should be(Map.empty)
       }
-      "a wildcard requested cluster name pattern doesn't match configured clusters " excludeES(allEs6x, allEs7x, allEs8xBelowEs813x, allES8xAboveEs818x) in {
+      "a wildcard requested cluster name pattern doesn't match configured clusters " excludeES(allEs6x, allEs7x, allEs8xBelowEs813x, allES8xAboveEs818x, allEs9x) in {
         val result = user6IndexManager.resolveCluster(
           "non-existing*:*" // there is no cluster matching that name
         )

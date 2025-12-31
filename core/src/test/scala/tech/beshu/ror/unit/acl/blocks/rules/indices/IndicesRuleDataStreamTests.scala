@@ -629,7 +629,8 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
@@ -653,7 +654,8 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
@@ -678,7 +680,8 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
@@ -702,7 +705,8 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
@@ -722,7 +726,8 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test1_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test10_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test3_ds", "test2_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test1_ds")
@@ -740,7 +745,8 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test_ds")
@@ -758,7 +764,8 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test_alias")
@@ -775,7 +782,8 @@ trait IndicesRuleDataStreamTests {
               allRemoteDataStreamsAndAliases = Task.now(Set(
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test_alias")
@@ -804,7 +812,8 @@ trait IndicesRuleDataStreamTests {
               fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
               fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
               fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-            ))
+            )),
+            allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
           )
         )
       }
@@ -817,7 +826,8 @@ trait IndicesRuleDataStreamTests {
             allDataStreamsAndAliases = Set.empty,
             allRemoteDataStreamsAndAliases = Task.now(Set(
               fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
-            ))
+            )),
+            allRemoteClusterNames = Set(clusterName("es_us"))
           )
         )
       }

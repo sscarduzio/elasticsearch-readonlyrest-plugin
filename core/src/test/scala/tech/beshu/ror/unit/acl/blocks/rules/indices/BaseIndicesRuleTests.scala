@@ -86,7 +86,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
         responseTransformations = List.empty,
         filteredIndices = requestIndices,
         allAllowedIndices = Set.empty,
-      allAllowedClusters = Set.empty
+        allAllowedClusters = Set.empty
       )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) {

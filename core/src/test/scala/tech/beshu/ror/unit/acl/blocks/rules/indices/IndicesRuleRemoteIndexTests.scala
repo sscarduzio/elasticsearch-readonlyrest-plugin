@@ -42,7 +42,8 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
@@ -65,7 +66,8 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
@@ -89,7 +91,8 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
@@ -112,7 +115,8 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
@@ -142,7 +146,8 @@ trait IndicesRuleRemoteIndexTests {
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-            ))
+            )),
+            allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
           )
         )
       }
