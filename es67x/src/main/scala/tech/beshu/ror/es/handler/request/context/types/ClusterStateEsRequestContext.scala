@@ -21,6 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
 import tech.beshu.ror.es.RorClusterService
@@ -42,9 +43,9 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
   }
 
   override protected def update(request: ClusterStateRequest,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     requestedIndicesFrom(request).toList match {
       case Nil if filteredIndices.exists(_.name === ClusterIndexName.Local.wildcard) =>
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong
@@ -55,13 +56,13 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
     }
   }
 
-  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     restRequest.path match {
       case CatIndicesPath(_) =>
         val randomNonExistentIndices = NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices))
-        update(actionRequest, randomNonExistentIndices, randomNonExistentIndices.map(_.name))
+        update(actionRequest, randomNonExistentIndices, randomNonExistentIndices.map(_.name), allowedClusters)
       case _ =>
-        super.modifyWhenIndexNotFound
+        super.modifyWhenIndexNotFound(allowedClusters)
     }
   }
 }
