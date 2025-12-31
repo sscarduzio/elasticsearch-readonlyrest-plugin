@@ -587,7 +587,7 @@ class CrossClusterCallsSuite
 
   "A /_resolve/cluster call" should {
     "return only clusters where requested indices are covered by the user's allowed indices patterns" when {
-      "requested indices include a missing local index and an existing remote index" in {
+      "requested indices include a missing local index and an existing remote index" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user1IndexManager.resolveCluster(
           "test1_index", // non-existing local index
           "private2:test1_index" // existing remote index
@@ -601,7 +601,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "all requested indices are missing on the local cluster but covered by allowed indices patterns there" in {
+      "all requested indices are missing on the local cluster but covered by allowed indices patterns there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user1IndexManager.resolveCluster(
           "test1_index", "test1_ds" // non-existing indices
         )
@@ -613,7 +613,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered only by allowed indices patterns on a single remote cluster (no local indices requested)" in {
+      "requested indices are covered only by allowed indices patterns on a single remote cluster (no local indices requested)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user1IndexManager.resolveCluster(
           "private2:test1_index", // existing remote index
           "private2:test1_ds" // existing remote data stream
@@ -626,7 +626,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered by allowed indices patterns on the local cluster and on a remote cluster via an alias" in {
+      "requested indices are covered by allowed indices patterns on the local cluster and on a remote cluster via an alias" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user2IndexManager.resolveCluster(
           "test2_index", // non-existing local index
           "private2:test_alias" // existing remote alias
@@ -640,7 +640,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered by a wildcard allowed indices pattern on the local cluster and by a wildcard allowed indices pattern on a remote cluster" in {
+      "requested indices are covered by a wildcard allowed indices pattern on the local cluster and by a wildcard allowed indices pattern on a remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2020-03-26", // existing local index
           "metrics_2020-03-27", // existing local index
@@ -655,7 +655,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered only by a wildcard allowed indices pattern on the local cluster" in {
+      "requested indices are covered only by a wildcard allowed indices pattern on the local cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2020-03-26", // existing local index
           "metrics_2020-03-27" // existing local index
@@ -668,7 +668,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered only by a wildcard allowed indices pattern on a remote cluster" in {
+      "requested indices are covered only by a wildcard allowed indices pattern on a remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "private1:audit_2020-03-26", // existing remote index
           "private1:audit_2020-03-27" // existing remote index
@@ -681,7 +681,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices are covered only by allowed indices patterns on a single remote cluster (xpack example)" in {
+      "requested indices are covered only by allowed indices patterns on a single remote cluster (xpack example)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user5IndexManager.resolveCluster(
           "xpack:xpack_cluster_index" // existing remote index
         )
@@ -693,7 +693,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "none of the requested indices are covered by any allowed indices patterns, but at least one index exists on a cluster that the user can access" in {
+      "none of the requested indices are covered by any allowed indices patterns, but at least one index exists on a cluster that the user can access" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "service1-logs-2020-03-27" // existing local index
         )
@@ -705,7 +705,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "requested indices on a remote cluster exist, but none of them match any allowed indices pattern for that cluster" in {
+      "requested indices on a remote cluster exist, but none of them match any allowed indices pattern for that cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "private1:service2-logs-2020-03-27" // existing remote index
         )
@@ -717,15 +717,15 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "none of the requested indices are covered by any allowed indices patterns and the user has no allowed indices patterns for the involved clusters" in {
+      "none of the requested indices are covered by any allowed indices patterns and the user has no allowed indices patterns for the involved clusters" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user5IndexManager.resolveCluster(
           "metrics_2020-03-26" // existing local index
         )
 
         result should have statusCode 404
-        result.responseJson("error")("type").str should be("no_such_remote_cluster_exception") // todo: should be no_such_local_cluster_exception
+        result.responseJson("error")("type").str should be("no_such_remote_cluster_exception")
       }
-      "requested indices are on a cluster that does exist, but no allowed indices patterns mention that cluster at all" in {
+      "requested indices are on a cluster that does exist, but no allowed indices patterns mention that cluster at all" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user1IndexManager.resolveCluster(
           "public:service3-logs" // existing remote index
         )
@@ -733,7 +733,7 @@ class CrossClusterCallsSuite
         result should have statusCode 404
         result.responseJson("error")("type").str should be("no_such_remote_cluster_exception")
       }
-      "requested indices refer to a remote cluster where the user has allowed indices patterns, but the requested index name does not exist there" in {
+      "requested indices refer to a remote cluster where the user has allowed indices patterns, but the requested index name does not exist there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "private1:non_existing_index" // non-existing remote index
         )
@@ -792,7 +792,7 @@ class CrossClusterCallsSuite
       }
     }
     "when called with * and *:* wildcards, return all clusters where at least one existing index is covered by the user's allowed indices patterns" when {
-      "allowed indices patterns cover only remote indices on a single remote cluster" in {
+      "allowed indices patterns cover only remote indices on a single remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user1IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -802,7 +802,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" in {
+      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user2IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -812,7 +812,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover indices on the local cluster and on a remote cluster" in {
+      "allowed indices patterns cover indices on the local cluster and on a remote cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -823,7 +823,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover indices only on a single remote cluster (xpack)" in {
+      "allowed indices patterns cover indices only on a single remote cluster (xpack)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user5IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -835,7 +835,7 @@ class CrossClusterCallsSuite
       }
     }
     "handle wildcard allowed indices patterns on cluster names (e.g. private*:*)" when {
-      "requested indices are on multiple clusters whose names are matched by a wildcard allowed indices pattern" in {
+      "requested indices are on multiple clusters whose names are matched by a wildcard allowed indices pattern" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user6IndexManager.resolveCluster(
           "private1:test1_index", // existing remote index
           "private2:test2_index" // existing remote index
@@ -860,7 +860,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "* and *:* wildcards are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" in {
+      "* and *:* wildcards are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user6IndexManager.resolveCluster("*", "*:*")
 
         result should have statusCode 200
@@ -873,7 +873,7 @@ class CrossClusterCallsSuite
       }
     }
     "return no clusters when requested indices target only clusters that are not configured" when {
-      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user doesn't allow it)" in {
+      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user doesn't allow it)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "nonexistingcluster:metrics_2020-03-26" // non-existing cluster
         )
@@ -881,7 +881,7 @@ class CrossClusterCallsSuite
         result should have statusCode 404
         result.responseJson("error")("type").str should be("no_such_remote_cluster_exception")
       }
-      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user does allow it)" in {
+      "requested indices refer to a remote cluster that does not exist in the remote cluster setup (user does allow it)" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user7IndexManager.resolveCluster(
           "nonexistingcluster:metrics_2020-03-26" // non-existing cluster
         )
@@ -891,7 +891,7 @@ class CrossClusterCallsSuite
       }
     }
     "handle wildcard requested index patterns (index expressions with wildcards in the index name)" when {
-      "a wildcard requested index pattern matches at least one existing and allowed index on the local cluster" in {
+      "a wildcard requested index pattern matches at least one existing and allowed index on the local cluster" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2020-03-*" // matches existing local indices: metrics_2020-03-26 and metrics_2020-03-27
         )
@@ -903,7 +903,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested index pattern is allowed on the local cluster but matches no existing indices" in {
+      "a wildcard requested index pattern is allowed on the local cluster but matches no existing indices" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "metrics_2019-*" // does not match any existing local index
         )
@@ -915,7 +915,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested index pattern is allowed on a remote cluster and matches existing indices there" in {
+      "a wildcard requested index pattern is allowed on a remote cluster and matches existing indices there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "private1:audit_2020-03-*" // matches existing remote indices: audit_2020-03-26 and audit_2020-03-27
         )
@@ -927,7 +927,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested index pattern is allowed on a remote cluster but matches no existing indices there" in {
+      "a wildcard requested index pattern is allowed on a remote cluster but matches no existing indices there" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user3IndexManager.resolveCluster(
           "private1:audit_2019-*" // does not match any existing audit_* index in the remote cluster
         )
@@ -941,7 +941,7 @@ class CrossClusterCallsSuite
       }
     }
     "handle wildcard requested cluster name patterns (cluster expressions with wildcards in the cluster name)" when {
-      "a wildcard requested cluster name pattern matches multiple configured clusters and allowed indices exist on all of them" in {
+      "a wildcard requested cluster name pattern matches multiple configured clusters and allowed indices exist on all of them" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user6IndexManager.resolveCluster(
           "private*:test1_index" // matches private1:test1_index and private2:test1_index
         )
@@ -954,7 +954,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "a wildcard requested cluster name pattern matches configured clusters, but the requested index name does not exist on any of them" in {
+      "a wildcard requested cluster name pattern matches configured clusters, but the requested index name does not exist on any of them" excludeES(allEs6x, allEs7x, allEs8xBelowEs813x) in {
         val result = user6IndexManager.resolveCluster(
           "private*:non_existing_*" // index name does not exist on private1 or private2
         )
