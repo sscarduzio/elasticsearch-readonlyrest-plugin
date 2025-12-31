@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.resolve.ResolveClusterActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.NoSuchRemoteClusterException
+import org.joor.Reflect
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName.*
@@ -54,7 +55,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
                                 allAllowedIndices: NonEmptyList[ClusterIndexName],
                                 allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (filteredIndices.toCovariantSet != requestedIndicesFrom(request)) {
-      request.indices(filteredIndices.stringify: _*)
+      setIndices(request, filteredIndices.stringify)
       Modified
     } else {
       Modified
@@ -91,8 +92,15 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
       })
       .map(_.randomNonexistentIndex())
 
-    actionRequest.indices(newRequestedNonexistentIndices.stringify: _*)
+    setIndices(actionRequest, newRequestedNonexistentIndices.stringify)
     ModificationResult.Modified
   }
 
+  private def setIndices(request: ResolveClusterActionRequest, indices: Seq[String]) = {
+    request.indices(indices: _*)
+    val containsLocalIndices = !indices.exists(_.contains(":"))
+    if(request.isLocalIndicesRequested != containsLocalIndices) {
+      Reflect.on(request).set("localIndicesRequested", containsLocalIndices)
+    }
+  }
 }

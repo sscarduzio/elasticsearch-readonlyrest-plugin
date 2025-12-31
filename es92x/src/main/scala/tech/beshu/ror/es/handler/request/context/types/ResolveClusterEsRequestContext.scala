@@ -60,7 +60,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
       if (request.clusterInfoOnly()) {
         modifyClusterOnlyRequestAndResponse(request, allowedClusters)
       } else {
-        request.indices(filteredIndices.stringify: _*)
+        setIndices(request, filteredIndices.stringify)
         Modified
       }
     } else {
@@ -100,7 +100,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
       })
       .map(_.randomNonexistentIndex())
 
-    actionRequest.indices(newRequestedNonexistentIndices.stringify: _*)
+    setIndices(actionRequest, newRequestedNonexistentIndices.stringify)
     ModificationResult.Modified
   }
 
@@ -110,7 +110,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
       case cluster if cluster == ClusterName.Full.local => "*"
       case cluster => s"${cluster.stringify}:*"
     }
-    request.indices(allowedClustersWithWildcardIndex: _*)
+    setIndices(request, allowedClustersWithWildcardIndex)
     Reflect.on(actionRequest).set("clusterInfoOnly", false)
     UpdateResponse.sync {
       case response: ResolveClusterActionResponse =>
@@ -122,6 +122,14 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
             .asJava
         )
       case response => response
+    }
+  }
+
+  private def setIndices(request: ResolveClusterActionRequest, indices: Seq[String]) = {
+    request.indices(indices: _*)
+    val containsLocalIndices = !indices.exists(_.contains(":"))
+    if(request.isLocalIndicesRequested != containsLocalIndices) {
+      Reflect.on(request).set("localIndicesRequested", containsLocalIndices)
     }
   }
 }
