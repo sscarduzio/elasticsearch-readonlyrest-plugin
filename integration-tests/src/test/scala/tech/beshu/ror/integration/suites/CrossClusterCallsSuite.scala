@@ -747,7 +747,7 @@ class CrossClusterCallsSuite
       }
     }
     "when called without requested indices, return all clusters where at least one existing index is covered by the user's allowed indices patterns" when {
-      "allowed indices patterns cover only remote indices on a single remote cluster" in {
+      "allowed indices patterns cover only remote indices on a single remote cluster" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = user1IndexManager.resolveCluster()
 
         result should have statusCode 200
@@ -758,7 +758,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" in {
+      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = user2IndexManager.resolveCluster()
 
         result should have statusCode 200
@@ -769,7 +769,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover indices on the local cluster and on a remote cluster" in {
+      "allowed indices patterns cover indices on the local cluster and on a remote cluster" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = user3IndexManager.resolveCluster()
 
         result should have statusCode 200
@@ -780,13 +780,56 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "allowed indices patterns cover indices only on a single remote cluster (xpack)" in {
+      "allowed indices patterns cover indices only on a single remote cluster (xpack)" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = user5IndexManager.resolveCluster()
 
         result should have statusCode 200
         result.clusterToMatchingIndices should be(
           Map(
             "xpack" -> MatchingIndices.NotApplicable
+          )
+        )
+      }
+    }
+    "when called with * and *:* wildcards, return all clusters where at least one existing index is covered by the user's allowed indices patterns" when {
+      "allowed indices patterns cover only remote indices on a single remote cluster" in {
+        val result = user1IndexManager.resolveCluster("*", "*:*")
+
+        result should have statusCode 200
+        result.clusterToMatchingIndices should be(
+          Map(
+            "private2" -> MatchingIndices.True
+          )
+        )
+      }
+      "allowed indices patterns cover only remote indices via an alias on a single remote cluster" in {
+        val result = user2IndexManager.resolveCluster("*", "*:*")
+
+        result should have statusCode 200
+        result.clusterToMatchingIndices should be(
+          Map(
+            "private2" -> MatchingIndices.True
+          )
+        )
+      }
+      "allowed indices patterns cover indices on the local cluster and on a remote cluster" in {
+        val result = user3IndexManager.resolveCluster("*", "*:*")
+
+        result should have statusCode 200
+        result.clusterToMatchingIndices should be(
+          Map(
+            "(local)" -> MatchingIndices.True,
+            "private1" -> MatchingIndices.True
+          )
+        )
+      }
+      "allowed indices patterns cover indices only on a single remote cluster (xpack)" in {
+        val result = user5IndexManager.resolveCluster("*", "*:*")
+
+        result should have statusCode 200
+        result.clusterToMatchingIndices should be(
+          Map(
+            "xpack" -> MatchingIndices.True
           )
         )
       }
@@ -806,7 +849,7 @@ class CrossClusterCallsSuite
           )
         )
       }
-      "no requested indices are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" in {
+      "no requested indices are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" excludeES (allEs6x, allEs7x, allEs8xBelowEs818x) in {
         val result = user6IndexManager.resolveCluster()
 
         result should have statusCode 200
@@ -814,6 +857,17 @@ class CrossClusterCallsSuite
           Map(
             "private1" -> MatchingIndices.NotApplicable,
             "private2" -> MatchingIndices.NotApplicable
+          )
+        )
+      }
+      "* and *:* wildcards are provided, so all clusters whose name matches the wildcard allowed indices pattern are returned" in {
+        val result = user6IndexManager.resolveCluster("*", "*:*")
+
+        result should have statusCode 200
+        result.clusterToMatchingIndices should be(
+          Map(
+            "private1" -> MatchingIndices.True,
+            "private2" -> MatchingIndices.True
           )
         )
       }

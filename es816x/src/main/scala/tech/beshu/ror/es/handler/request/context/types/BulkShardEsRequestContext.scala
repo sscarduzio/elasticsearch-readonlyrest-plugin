@@ -23,6 +23,7 @@ import org.elasticsearch.index.Index
 import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -47,9 +48,9 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
   }
 
   override protected def update(request: BulkShardRequest,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     tryUpdate(request, filteredIndices) match {
       case Success(_) =>
         Modified
