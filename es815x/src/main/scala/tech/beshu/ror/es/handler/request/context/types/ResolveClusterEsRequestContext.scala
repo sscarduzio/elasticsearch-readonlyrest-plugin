@@ -19,7 +19,11 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.resolve.ResolveClusterActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.NoSuchRemoteClusterException
+import org.joor.Reflect
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -36,23 +40,67 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   extends BaseIndicesEsRequestContext[ResolveClusterActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def requestedIndicesFrom(request: ResolveClusterActionRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    request
+    val indices = request
       .indices().asSafeSet
       .flatMap(RequestedIndex.fromString)
-      .orWildcardWhenEmpty
+    if (indices.nonEmpty) {
+      indices
+    } else {
+      (RequestedIndex.fromString("*") ++ RequestedIndex.fromString("*:*")).toCovariantSet
+    }
   }
 
   override protected def update(request: ResolveClusterActionRequest,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    request.indices(filteredIndices.stringify: _*)
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+    if (filteredIndices.toCovariantSet != requestedIndicesFrom(request)) {
+      setIndices(request, filteredIndices.stringify)
+      Modified
+    } else {
+      Modified
+    }
+  }
+
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+    determineRequestedFullClusterNames().diff(allowedClusters.toList) match {
+      case Nil =>
+        requestNonexistentIndices()
+      case head :: _ =>
+        ModificationResult.CustomResponse.Failure(new NoSuchRemoteClusterException(head.stringify))
+    }
+  }
+
+  private def determineRequestedFullClusterNames() = {
+    initialBlockContext
+      .indices.toList
+      .flatMap[ClusterName] { r =>
+        r.name match {
+          case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
+          case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
+          case ClusterIndexName.Remote(_, clusterName@ClusterName.Pattern(_)) => None
+        }
+      }
+  }
+
+  private def requestNonexistentIndices() = {
+    val newRequestedNonexistentIndices = initialBlockContext
+      .indices.toList
+      .distinctBy(_.name.index match {
+        case ClusterIndexName.Local(_) => ClusterName.Full.local
+        case ClusterIndexName.Remote(_, cluster) => cluster
+      })
+      .map(_.randomNonexistentIndex())
+
+    setIndices(actionRequest, newRequestedNonexistentIndices.stringify)
     ModificationResult.Modified
   }
 
-  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
-    val randomNonExistingIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
-    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
-    Modified
+  private def setIndices(request: ResolveClusterActionRequest, indices: Seq[String]) = {
+    request.indices(indices: _*)
+    val containsLocalIndices = !indices.exists(_.contains(":"))
+    if(request.isLocalIndicesRequested != containsLocalIndices) {
+      Reflect.on(request).set("localIndicesRequested", containsLocalIndices)
+    }
   }
 }
