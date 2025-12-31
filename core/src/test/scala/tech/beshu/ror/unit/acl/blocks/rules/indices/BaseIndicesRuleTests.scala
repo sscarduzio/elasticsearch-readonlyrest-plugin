@@ -85,7 +85,8 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
         responseHeaders = Set.empty,
         responseTransformations = List.empty,
         filteredIndices = requestIndices,
-        allAllowedIndices = Set.empty
+        allAllowedIndices = Set.empty,
+      allAllowedClusters = Set.empty
       )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) {
@@ -99,10 +100,11 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
             .toNonEmptyList.toList
             .collect { case a: AlreadyResolved[ClusterIndexName] => a }
             .flatMap(_.value.toList)
-            .toCovariantSet
+            .toCovariantSet,
+          allAllowedClusters = Set(ClusterName.Full.local)
         ))
       } else {
-        Rejected(Some(Cause.IndexNotFound))
+        Rejected(Some(Cause.IndexNotFound(Set(ClusterName.Full.local))))
       }
     }
   }
@@ -164,7 +166,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
           filter = None
         ))
       } else {
-        Rejected(Some(Cause.IndexNotFound))
+        Rejected(Some(Cause.IndexNotFound(Set(ClusterName.Full.local))))
       }
     }
   }

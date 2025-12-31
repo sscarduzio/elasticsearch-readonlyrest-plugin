@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
@@ -93,6 +94,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                                 override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                                 override val allTemplates: Set[Template] = Set.empty,
+                                                override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 filteredIndices: Set[RequestedIndex[ClusterIndexName]],
@@ -101,7 +103,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices
+    this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices, Set.empty
   )
 
   def withHeaders(header: Header, headers: Header*): MockGeneralIndexRequestContext = {
@@ -126,6 +128,7 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
                                                    override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                                    override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                                    override val allTemplates: Set[Template] = Set.empty,
+                                                   override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                    override val isCompositeRequest: Boolean = false,
                                                    override val isAllowedForDLS: Boolean = false,
                                                    indexPacks: List[Indices],
@@ -154,6 +157,7 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
                                                    override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                                    override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                                    override val allTemplates: Set[Template] = Set.empty,
+                                                   override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                    override val isCompositeRequest: Boolean = false,
                                                    override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
@@ -178,6 +182,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                           override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                           override val allTemplates: Set[Template] = Set.empty,
+                                          override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                           override val isCompositeRequest: Boolean = false,
                                           override val isAllowedForDLS: Boolean = true,
                                           indices: Set[RequestedIndex[ClusterIndexName]],
@@ -212,6 +217,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                                 override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                                 override val allTemplates: Set[Template] = Set.empty,
+                                                override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 repositories: Set[RepositoryName])
@@ -236,6 +242,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                              override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                              override val allTemplates: Set[Template] = Set.empty,
+                                             override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                              override val isCompositeRequest: Boolean = false,
                                              override val isAllowedForDLS: Boolean = true,
                                              snapshots: Set[SnapshotName])
@@ -260,6 +267,7 @@ final case class MockDataStreamsRequestContext(override val timestamp: Instant,
                                                override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                                override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                                override val allTemplates: Set[Template] = Set.empty,
+                                               override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                override val isCompositeRequest: Boolean = false,
                                                override val isAllowedForDLS: Boolean = true,
                                                dataStreams: Set[DataStreamName])
@@ -284,6 +292,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                                 override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                                 override val allTemplates: Set[Template] = Set.empty,
+                                                override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true)
   extends RequestContext {
@@ -316,6 +325,7 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
                                             override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                             override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                             override val allTemplates: Set[Template] = Set.empty,
+                                            override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                             override val isCompositeRequest: Boolean = false,
                                             override val isAllowedForDLS: Boolean = true,
                                             templateOperation: TemplateOperation)
@@ -340,6 +350,7 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
                                                             override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
                                                             override val allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] = Task.now(Set.empty),
                                                             override val allTemplates: Set[Template] = Set.empty,
+                                                            override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                             override val isCompositeRequest: Boolean = false,
                                                             override val isAllowedForDLS: Boolean = true)
   extends RequestContext {

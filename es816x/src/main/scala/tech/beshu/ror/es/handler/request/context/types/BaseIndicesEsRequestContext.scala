@@ -47,7 +47,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     responseTransformations = List.empty,
     filteredIndices = discoverIndices(),
     allAllowedIndices = Set(ClusterIndexName.Local.wildcard),
-    allowedClusters = Set(ClusterName.Full.local),
+    allAllowedClusters = Set(ClusterName.Full.local),
   )
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
@@ -71,7 +71,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     val result = for {
       filteredIndices <- NonEmptyList.fromList(blockContext.filteredIndices.toList)
       allAllowedIndices <- NonEmptyList.fromList(blockContext.allAllowedIndices.toList)
-    } yield update(actionRequest, filteredIndices, allAllowedIndices, blockContext.allowedClusters)
+    } yield update(actionRequest, filteredIndices, allAllowedIndices, blockContext.allAllowedClusters)
 
     result.getOrElse {
       logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")

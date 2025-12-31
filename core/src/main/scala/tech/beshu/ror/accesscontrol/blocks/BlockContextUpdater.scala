@@ -343,7 +343,7 @@ object BlockContextWithIndicesUpdater {
 
     override def withClusters(blockContext: GeneralIndexRequestBlockContext,
                               allowedClusters: Set[ClusterName.Full]): GeneralIndexRequestBlockContext =
-      blockContext.copy(allowedClusters = allowedClusters)
+      blockContext.copy(allAllowedClusters = allowedClusters)
 
   }
 

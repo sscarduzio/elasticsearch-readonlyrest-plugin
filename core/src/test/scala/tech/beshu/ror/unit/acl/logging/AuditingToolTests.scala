@@ -137,7 +137,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 Block.Audit.Enabled,
                 NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
               ),
-              GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
+              GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
               Vector.empty
             )
 
@@ -268,7 +268,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         Block.Audit.Enabled,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
       ),
-      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
+      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
       Vector.empty
     )
   }

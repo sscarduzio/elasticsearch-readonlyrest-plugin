@@ -138,7 +138,7 @@ object BlockContext {
                                                    override val responseTransformations: List[ResponseTransformation],
                                                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                                                    allAllowedIndices: Set[ClusterIndexName],
-                                                   allowedClusters: Set[ClusterName.Full])
+                                                   allAllowedClusters: Set[ClusterName.Full])
     extends BlockContext
 
   final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
