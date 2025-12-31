@@ -24,6 +24,7 @@ import org.elasticsearch.cluster.metadata.Template as EsMetadataTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, RequestedIndex, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -50,9 +51,9 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
       .toCovariantSet
 
   override protected def update(request: SimulateIndexTemplateRequest,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
     }
