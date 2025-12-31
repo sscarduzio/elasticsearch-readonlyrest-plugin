@@ -84,7 +84,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val allTemplates: Set[Template] = clusterService.allTemplates
 
-  override lazy val allClusterNames: Set[ClusterName.Full] = clusterService.allClusterNames
+  override lazy val allRemoteClusterNames: Set[ClusterName.Full] = clusterService.allClusterNames
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 
