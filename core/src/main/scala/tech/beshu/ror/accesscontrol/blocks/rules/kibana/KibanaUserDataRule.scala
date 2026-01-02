@@ -88,7 +88,7 @@ class KibanaUserDataRule(override val settings: Settings)
           case Right(resolvedKibanaIndexTemplate) =>
             Some(resolvedKibanaIndexTemplate)
           case Left(error) =>
-            logger.warn(s"Cannot resolve variable(s) used in Kibana template index name; error: ${error.show}")(context)
+            logger.warn(s"Cannot resolve variable(s) used in Kibana template index name; error: ${error.show}")()
             None
         }
       }

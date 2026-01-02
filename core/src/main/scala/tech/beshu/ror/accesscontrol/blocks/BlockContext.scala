@@ -27,9 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{Combined, NegativeGroups
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 
-sealed trait BlockContext extends HasRequestId {
-  override def requestId: RequestId = requestContext.id.toRequestId
-
+sealed trait BlockContext {
   def requestContext: RequestContext
 
   def userMetadata: UserMetadata

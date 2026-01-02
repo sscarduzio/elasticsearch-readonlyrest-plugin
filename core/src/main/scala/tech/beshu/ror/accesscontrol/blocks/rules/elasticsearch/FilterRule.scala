@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.{FilterableBlockContextWithFilterUpdater, FilterableMultiRequestBlockContextWithFilterUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -33,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.Filter
   * Document level security (DLS) rule.
   */
 class FilterRule(val settings: Settings)
-  extends RegularRule with RequestIdAwareLogging {
+  extends RegularRule {
 
   override val name: Rule.Name = FilterRule.Name.name
 

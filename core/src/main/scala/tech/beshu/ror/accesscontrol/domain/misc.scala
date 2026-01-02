@@ -18,20 +18,26 @@ package tech.beshu.ror.accesscontrol.domain
 
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.logging.ResponseContext
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
 import scala.util.{Failure, Success, Try}
 
-trait HasRequestId {
-  def requestId: RequestId
-}
+given [B <: BlockContext](using value: ResponseContext[B]): RequestId =
+  value.requestContext.id.toRequestId
 
-final case class RequestId(value: String) extends HasRequestId {
-  override def requestId: RequestId = this
-}
+given [B <: BlockContext](using value: B): RequestId =
+  value.requestContext.id.toRequestId
+
+given (using value: RequestContext.Id): RequestId =
+  value.toRequestId
+
+final case class RequestId(value: String)
 
 sealed trait CaseSensitivity
 object CaseSensitivity {

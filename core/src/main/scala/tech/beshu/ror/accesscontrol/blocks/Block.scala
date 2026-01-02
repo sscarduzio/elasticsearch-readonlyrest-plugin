@@ -36,6 +36,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.accesscontrol.domain.RequestId.*
+import scala.language.implicitConversions
 
 class Block(val name: Name,
             val policy: Policy,
@@ -73,7 +75,7 @@ class Block(val name: Name,
     val ruleResult = rule
       .check[B](blockContext)
       .recover { case e =>
-        logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)(blockContext)
+        logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
         RuleResult.Rejected[B]()
       }
     lift[B](ruleResult)

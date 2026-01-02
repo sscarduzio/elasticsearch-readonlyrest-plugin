@@ -39,7 +39,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.time.Instant
 import scala.language.implicitConversions
 
-trait RequestContext extends RequestIdAwareLogging with HasRequestId {
+trait RequestContext extends RequestIdAwareLogging {
 
   type BLOCK_CONTEXT <: BlockContext
 
@@ -89,16 +89,14 @@ trait RequestContext extends RequestIdAwareLogging with HasRequestId {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
-  override def requestId: RequestId = id.toRequestId
 }
 
 object RequestContext extends RequestIdAwareLogging {
 
   type Aux[B <: BlockContext] = RequestContext { type BLOCK_CONTEXT = B }
 
-  final case class Id private(value: String) extends HasRequestId {
+  final case class Id private(value: String) {
     def toRequestId: RequestId = RequestId(value)
-    override def requestId: RequestId = toRequestId
   }
   object Id {
     def fromString(value: String): Id = Id(value)
