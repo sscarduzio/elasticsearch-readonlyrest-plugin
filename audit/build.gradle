@@ -51,7 +51,7 @@ crossBuild {
 }
 
 dependencies {
-    implementation                 group: 'org.json',           name: 'json',                version: '20250517'
+    implementation                 group: 'org.json',           name: 'json',                version: '20251224'
     crossBuildV211Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.11.12'
     crossBuildV212Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.12.21'
     crossBuildV213Implementation   group: 'org.scala-lang',     name: 'scala-library',       version: '2.13.17'
