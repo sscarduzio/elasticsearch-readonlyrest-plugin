@@ -121,25 +121,13 @@ class RegularRequestHandler(engine: Engine,
                                                                        allowedClusters: Set[ClusterName.Full]): Unit = {
     BlockContextUpdater[B] match {
       case GeneralIndexRequestBlockContextUpdater =>
-        handleIndexNotFoundForGeneralIndexRequest(
-          request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]],
-          allowedClusters
-        )
+        handleIndexNotFoundForGeneralIndexRequest(request, allowedClusters)
       case FilterableRequestBlockContextUpdater =>
-        handleIndexNotFoundForSearchRequest(
-          request.asInstanceOf[EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]],
-          allowedClusters
-        )
+        handleIndexNotFoundForSearchRequest(request, allowedClusters)
       case FilterableMultiRequestBlockContextUpdater =>
-        handleIndexNotFoundForMultiSearchRequest(
-          request.asInstanceOf[EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext]],
-          allowedClusters
-        )
+        handleIndexNotFoundForMultiSearchRequest(request, allowedClusters)
       case AliasRequestBlockContextUpdater =>
-        handleIndexNotFoundForAliasRequest(
-          request.asInstanceOf[EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]],
-          allowedClusters
-        )
+        handleIndexNotFoundForAliasRequest(request, allowedClusters)
       case CurrentUserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
@@ -155,7 +143,7 @@ class RegularRequestHandler(engine: Engine,
   private def onAliasNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     BlockContextUpdater[B] match {
       case AliasRequestBlockContextUpdater =>
-        handleAliasNotFoundForAliasRequest(request.asInstanceOf[EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]])
+        handleAliasNotFoundForAliasRequest(request)
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
@@ -174,7 +162,7 @@ class RegularRequestHandler(engine: Engine,
   private def onTemplateNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     BlockContextUpdater[B] match {
       case TemplateRequestBlockContextUpdater =>
-        handleTemplateNotFoundForTemplateRequest(request.asInstanceOf[EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]])
+        handleTemplateNotFoundForTemplateRequest(request)
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |

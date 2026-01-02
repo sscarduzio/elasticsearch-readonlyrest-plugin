@@ -329,8 +329,8 @@ object BlockContext {
       BlockContextWithIndicesUpdater[B].withIndices(blockContext, filteredIndices, allAllowedIndices)
     }
 
-    def withClusters(allowedClusters: Set[ClusterName.Full]): B =  {
-      BlockContextWithIndicesUpdater[B].withClusters(blockContext, allowedClusters)
+    def withClusters(allAllowedClusters: Set[ClusterName.Full]): B =  {
+      BlockContextWithIndicesUpdater[B].withClusters(blockContext, allAllowedClusters)
     }
   }
 

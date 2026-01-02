@@ -318,7 +318,7 @@ abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
                   allAllowedIndices: Set[ClusterIndexName]): B
 
   def withClusters(blockContext: B,
-                   allowedClusters: Set[ClusterName.Full]): B = blockContext
+                   allAllowedClusters: Set[ClusterName.Full]): B = blockContext
 }
 
 object BlockContextWithIndicesUpdater {
@@ -342,8 +342,8 @@ object BlockContextWithIndicesUpdater {
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
 
     override def withClusters(blockContext: GeneralIndexRequestBlockContext,
-                              allowedClusters: Set[ClusterName.Full]): GeneralIndexRequestBlockContext =
-      blockContext.copy(allAllowedClusters = allowedClusters)
+                              allAllowedClusters: Set[ClusterName.Full]): GeneralIndexRequestBlockContext =
+      blockContext.copy(allAllowedClusters = allAllowedClusters)
 
   }
 

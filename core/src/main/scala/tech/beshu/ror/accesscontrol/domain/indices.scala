@@ -203,7 +203,7 @@ object ClusterIndexName {
     }
 
     def randomNonexistentIndex(prefix: String = ""): ClusterIndexName.Local = fromString {
-      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
+      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i.value}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
       if (prefix.contains("*")) s"$nonexistentIndex*"
       else nonexistentIndex
     } get
@@ -265,7 +265,7 @@ object ClusterIndexName {
     }
 
     def randomNonexistentIndex(clusterName: ClusterName, prefix: String = ""): ClusterIndexName.Remote = fromString {
-      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
+      val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i.value}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
       if (prefix.contains("*")) s"${clusterName.stringify}:$nonexistentIndex*"
       else s"${clusterName.stringify}:$nonexistentIndex"
     } get

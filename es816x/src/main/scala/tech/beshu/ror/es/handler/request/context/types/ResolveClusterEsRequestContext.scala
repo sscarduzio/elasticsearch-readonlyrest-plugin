@@ -78,7 +78,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
         r.name match {
           case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
           case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
-          case ClusterIndexName.Remote(_, clusterName@ClusterName.Pattern(_)) => None
+          case ClusterIndexName.Remote(_, ClusterName.Pattern(_)) => None
         }
       }
   }
@@ -98,7 +98,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
 
   private def setIndices(request: ResolveClusterActionRequest, indices: Seq[String]) = {
     request.indices(indices: _*)
-    val containsLocalIndices = !indices.exists(_.contains(":"))
+    val containsLocalIndices = indices.exists(i => !i.contains(":"))
     if(request.isLocalIndicesRequested != containsLocalIndices) {
       Reflect.on(request).set("localIndicesRequested", containsLocalIndices)
     }
