@@ -69,7 +69,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |     type: allow
        |     auth_key: admin:container
        |
-       |   - name: "Kibana metadata resolving test"
+       |   - name: "Kibana metadata resolving test (with jwt_auth)"
        |     type: allow
        |     users: ["user9"]
        |     jwt_auth:
@@ -80,6 +80,16 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |         a: "jwt_value_@{jwt:tech.beshu.mainGroupsString}"
        |         b: "@{jwt:user_id_list}"
        |         c: "jwt_value_transformed_@{jwt:tech.beshu.mainGroupsString}#{replace_first(\\"j\\",\\"g\\").to_uppercase}"
+       |
+       |   - name: "Kibana metadata resolving test (with jwt_authentication)"
+       |     type: allow
+       |     users: ["user9"]
+       |     jwt_authentication:
+       |       name: "jwt3"
+       |     kibana:
+       |       access: ro
+       |       metadata:
+       |         b: "@{jwt:user_id_list}"
        |
        |   - name: "Group id from header variable"
        |     type: allow
@@ -97,6 +107,12 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
        |     type: allow
        |     filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
        |     jwt_auth: "jwt3"
+       |     users: ["user5"]
+       |
+       |   - name: "Variables usage in filter - authentication"
+       |     type: allow
+       |     filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
+       |     jwt_authentication: "jwt3"
        |     users: ["user5"]
        |
        |   - name: "Group id from jwt variable (array)"
@@ -266,6 +282,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .empty
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
+                .withCurrentGroupId(GroupId("j1"))
+                .withAvailableGroups(UniqueList.of(group("j1"), group("j2")))
             )
             blockContext.filteredIndices should be(Set(requestedIndex("gjj1")))
             blockContext.responseHeaders should be(Set.empty)
@@ -293,6 +311,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
+                .withCurrentGroupId(GroupId("j0,j3"))
+                .withAvailableGroups(UniqueList.of(group("j0,j3")))
             )
             blockContext.filteredIndices should be(Set(requestedIndex("gj0")))
             blockContext.responseHeaders should be(Set.empty)
@@ -301,7 +321,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
         "JWT variable in filter query is used" in {
           val jwt = Jwt(secret, claims = List(
             "userId" := "user5",
-            "user_id_list" := List("alice", "bob")
+            "user_id_list" := List("alice", "bob"),
+            "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
           ))
 
           val request = MockRequestContext.search
@@ -320,6 +341,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user5")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
+                .withCurrentGroupId(GroupId("j0,j3"))
+                .withAvailableGroups(UniqueList.of(group("j0,j3")))
             )
             blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
@@ -354,7 +377,36 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "group_id": ["g1","g3"] }}}}""")))
           }
         }
-        "kibana.metadata has variables used" in {
+        "kibana.metadata has variables used - without groups in token" in {
+          val jwt = Jwt(secret, claims = List(
+            "userId" := "user9",
+            "user_id_list" := List("alice", "bob"),
+          ))
+
+          val request = MockRequestContext.search.withHeaders(bearerHeader(jwt))
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          inside(result.result) {
+            case RegularRequestResult.Allow(blockContext, block) =>
+              block.name should be(Block.Name("Kibana metadata resolving test (with jwt_authentication)"))
+              blockContext.userMetadata should be(
+                UserMetadata
+                  .from(request)
+                  .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
+                  .withKibanaAccess(KibanaAccess.RO)
+                  .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+                  .withKibanaMetadata(
+                    JsonTree.Object(Map(
+                      "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
+                    ))
+                  )
+                  .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
+              )
+              blockContext.responseHeaders should be(Set.empty)
+          }
+        }
+        "kibana.metadata has variables used - with groups in token" in {
           val jwt = Jwt(secret, claims = List(
             "userId" := "user9",
             "user_id_list" := List("alice", "bob"),
@@ -367,7 +419,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           inside(result.result) {
             case RegularRequestResult.Allow(blockContext, block) =>
-              block.name should be(Block.Name("Kibana metadata resolving test"))
+              block.name should be(Block.Name("Kibana metadata resolving test (with jwt_auth)"))
               blockContext.userMetadata should be(
                 UserMetadata
                   .from(request)
@@ -382,6 +434,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                     ))
                   )
                   .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
+                  .withCurrentGroupId(GroupId("j0,j3"))
+                  .withAvailableGroups(UniqueList.of(group("j0,j3")))
               )
               blockContext.responseHeaders should be(Set.empty)
           }

@@ -83,6 +83,8 @@ class RorKbnAuthenticationRuleSettingsTests
           }
         )
       }
+    }
+    "be able to be loaded from config (token-related)" when {
       "RSA family algorithm can be used in token signature" in {
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
         assertDecodingSuccess(
@@ -258,7 +260,7 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
           }
         )
       }
@@ -275,7 +277,7 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
           }
         )
       }
@@ -354,14 +356,14 @@ class RorKbnAuthenticationRuleSettingsTests
                    |      $groupsAllOfKey: ["groups1", "groups2"]
                    |  ror_kbn:
                    |
-                   |  - name: kbn2
+                   |  - name: kbn1
                    |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                    |
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ROR Kibana rule 'kbn1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `ror_kbn_authentication` rule 'kbn1'")
                 ))
               }
             )
@@ -393,6 +395,8 @@ class RorKbnAuthenticationRuleSettingsTests
           }
         )
       }
+    }
+    "not be able to be loaded from config (token-related)" when {
       "no signature key is defined for default HMAC algorithm" in {
         assertDecodingFailure(
           yaml =
@@ -418,7 +422,7 @@ class RorKbnAuthenticationRuleSettingsTests
           }
         )
       }
-      "RSA algorithm is defined but on signature key" in {
+      "RSA algorithm is defined but no signature key" in {
         assertDecodingFailure(
           yaml =
             """
