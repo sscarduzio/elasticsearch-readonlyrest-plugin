@@ -51,21 +51,24 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
                                                requestIndices: Set[RequestedIndex[ClusterIndexName]],
                                                modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
                                                modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity,
-                                               filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]]): Assertion =
-    assertRuleForIndexRequest(configured, requestIndices, isMatched = true, modifyRequestContext, modifyBlockContext, filteredRequestedIndices)
+                                               filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]],
+                                               allAllowedClusters: Set[ClusterName.Full] = Set(ClusterName.Full.local)): Assertion =
+    assertRuleForIndexRequest(configured, requestIndices, isMatched = true, modifyRequestContext, modifyBlockContext, filteredRequestedIndices, allAllowedClusters)
 
   protected def assertNotMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                   requestIndices: Set[RequestedIndex[ClusterIndexName]],
                                                   modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
-                                                  modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity): Assertion =
-    assertRuleForIndexRequest(configured, requestIndices, isMatched = false, modifyRequestContext, modifyBlockContext, Set.empty)
+                                                  modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity,
+                                                  allAllowedClusters: Set[ClusterName.Full] = Set(ClusterName.Full.local)): Assertion =
+    assertRuleForIndexRequest(configured, requestIndices, isMatched = false, modifyRequestContext, modifyBlockContext, Set.empty, allAllowedClusters)
 
   private def assertRuleForIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                         requestIndices: Set[RequestedIndex[ClusterIndexName]],
                                         isMatched: Boolean,
                                         modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext,
                                         modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext,
-                                        filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]]) = {
+                                        filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]],
+                                        allAllowedClusters: Set[ClusterName.Full]) = {
     val rule = createIndicesRule(configuredValues)
     val requestContext = modifyRequestContext apply MockRequestContext.indices
       .copy(
@@ -101,10 +104,10 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
             .collect { case a: AlreadyResolved[ClusterIndexName] => a }
             .flatMap(_.value.toList)
             .toCovariantSet,
-          allAllowedClusters = Set(ClusterName.Full.local)
+          allAllowedClusters = allAllowedClusters
         ))
       } else {
-        Rejected(Some(Cause.IndexNotFound(Set(ClusterName.Full.local))))
+        Rejected(Some(Cause.IndexNotFound(allAllowedClusters)))
       }
     }
   }
