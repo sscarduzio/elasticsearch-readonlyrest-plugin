@@ -79,6 +79,16 @@ class UnboundidLdapConnectionPoolProvider {
     pool.setConnectionPoolName(s"ROR-unboundid-connection-pool-${connectionConfig.poolName}")
     pool.setRetryFailedOperationsDueToInvalidConnections(true)
     pool.setCreateIfNecessary(true)
+    pool.setHealthCheck(new GetEntryLDAPConnectionPoolHealthCheck(
+      /* entryDN */ null,
+      /* maxResponseTime in ms */ 3000,
+      /* invokeOnCreate */ false,
+      /* invokeAfterAuthentication */ false,
+      /* invokeOnCheckout */ false,
+      /* invokeOnRelease */ false,
+      /* invokeForBackgroundChecks */ true,
+      /* invokeOnException */ true
+    ))
     pool.setHealthCheckIntervalMillis(connectionConfig.connectionHealthCheckInterval.value.toMillis)
     pool.setMaxConnectionAgeMillis(connectionConfig.connectionMaxAge.value.toMillis)
     pool
