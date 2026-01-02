@@ -149,9 +149,16 @@ class IndicesRule(override val settings: Settings,
         (indicesResult, aliasesResult) match {
           case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
             Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
-          case (_: ProcessResult.Failed, _) => Rejected()
-          case (_, ProcessResult.Failed.IndexNotFound) => Rejected(Some(Cause.AliasNotFound))
-          case (_, ProcessResult.Failed.Other) => Rejected()
+          case (ProcessResult.Failed.IndexNotFound, _) =>
+            Rejected(Some(Cause.IndexNotFound(
+              getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
+            )))
+          case (ProcessResult.Failed.Other, _) =>
+            Rejected()
+          case (_, ProcessResult.Failed.IndexNotFound) =>
+            Rejected(Some(Cause.AliasNotFound))
+          case (_, ProcessResult.Failed.Other) =>
+            Rejected()
         }
       }
     }
