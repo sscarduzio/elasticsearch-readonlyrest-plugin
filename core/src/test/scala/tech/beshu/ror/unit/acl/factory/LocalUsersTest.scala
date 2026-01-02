@@ -258,8 +258,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
               core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
-            case Left(error) =>
-              println(error)
           }
         }
         "ror_kbn_authentication rule used" in {
@@ -310,8 +308,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
               core.dependencies.localUsers should be(allUsersResolved(Set(
                 User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
               )))
-            case Left(error) =>
-              println(error)
           }
         }
       }
