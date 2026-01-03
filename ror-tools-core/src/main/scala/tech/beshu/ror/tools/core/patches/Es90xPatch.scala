@@ -21,10 +21,11 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
 import tech.beshu.ror.tools.core.utils.EsUtil.{es902, es903}
 
@@ -49,12 +50,16 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     XPackCoreJarPatchCreator(
       OpenModule,
-      ModifyAsyncSearchSecurityClass
+      ModifyAsyncSearchSecurityClass,
+      ModifySecurityContextClass,
     ),
     XPackSecurityJarPatchCreator(
       OpenModule,
+      CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,
     ),
     XPackIlmJarPatchCreator(

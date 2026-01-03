@@ -20,8 +20,9 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJarPatchCreator, OptionalXPackSecurityJarPatchCreator}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
 
@@ -31,11 +32,14 @@ private[patches] class Es67xPatch(rorPluginDirectory: RorPluginDirectory, esVers
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
     ElasticsearchJarPatchCreator(
       ModifyRepositoriesServiceClass(esVersion),
-      ModifySnapshotsServiceClass(esVersion)
+      ModifySnapshotsServiceClass(esVersion),
     ),
     OptionalXPackSecurityJarPatchCreator(
+      CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationServiceAuthenticatorClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,
       ModifySecurityServerTransportInterceptorClass,
     )

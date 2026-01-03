@@ -325,7 +325,7 @@ class EsServerBasedRorClusterService(nodeName: String,
 
   private def resolveRemoteIndicesUsing(client: Client) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*
-    threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
+    threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
     val promise = CancelablePromise[ResolveIndexAction.Response]()
     client
       .admin()

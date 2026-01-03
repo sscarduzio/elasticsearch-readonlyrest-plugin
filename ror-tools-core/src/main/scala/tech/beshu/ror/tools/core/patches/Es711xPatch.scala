@@ -21,9 +21,9 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyAuthorizationServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyApplicationPermissionClass, ModifyPolicyUtilClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
@@ -50,8 +50,11 @@ private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       ModifyApplicationPermissionClass,
     ),
     XPackSecurityJarPatchCreator(
+      CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationServiceAuthenticatorClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,
       ModifySecurityServerTransportInterceptorClass,
     )
