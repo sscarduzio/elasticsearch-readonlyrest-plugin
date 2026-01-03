@@ -23,6 +23,19 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{es71722, es800, es8150}
 
 import java.io.{File, InputStream}
 
+/**
+ * Ensures Elasticsearch’s SecurityManager does not forbid reading the main configuration file
+ * (`elasticsearch.yml`) on versions where it is treated as a “secured/forbidden” file.
+ *
+ * Depending on the Elasticsearch version, this patch applies one of two bytecode modifications:
+ *  - for ES 7.17.22+ it patches `org.elasticsearch.bootstrap.Security#createForbiddenFilePermissions`
+ *    to remove the `read` / `readlink` actions from the `elasticsearch.yml` FilePermission mask, or
+ *  - for ES 8.15.0+ it patches `org.elasticsearch.bootstrap.ESPolicy` to rebuild the `securedFiles`
+ *    map so that entries ending with `elasticsearch.yml` are granted a permission mask without read
+ *    privileges being treated as forbidden (allowing the file to be read by code that needs it).
+ *
+ * No changes are applied for ES 8.0.x–8.14.x, where this restriction is handled differently.
+ */
 private[patches] class SecurityManagerShouldAllowReadingEsConfigFile(esVersion: SemVer)
   extends BytecodeJarModifier {
 

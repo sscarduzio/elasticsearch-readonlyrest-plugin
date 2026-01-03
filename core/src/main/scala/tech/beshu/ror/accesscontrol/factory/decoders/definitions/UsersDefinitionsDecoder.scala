@@ -256,7 +256,7 @@ object UsersDefinitionsDecoder {
       val localGroup: String = "local_group"
       val externalGroups: String = "external_group_ids"
 
-      val simpleMappingRequiredKeys: Set[String] = Set(localGroup)
+      val simpleMappingRequiredKeys: Set[String] = Set(id, name)
       val advancedMappingRequiredKeys: Set[String] = Set(localGroup, externalGroups)
     }
 

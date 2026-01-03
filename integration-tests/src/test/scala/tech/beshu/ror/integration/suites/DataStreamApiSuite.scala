@@ -439,7 +439,7 @@ class DataStreamApiSuite
 
           val searchManager = new SearchManager(clients.head.basicAuthClient("user8", "pass"), esVersionUsed)
 
-          val backingIndices = adminIndexManager.resolve("data-stream-alias").aliases.flatMap(_.indices)
+          val backingIndices = adminIndexManager.resolveIndex("data-stream-alias").aliases.flatMap(_.indices)
           backingIndices should have size 2
 
           backingIndices.foreach { indexName =>

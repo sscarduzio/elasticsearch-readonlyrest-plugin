@@ -21,37 +21,48 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.{ModifyEntitlementInitializationClass, ModifyEntitlementRuntimePolicyParserClass, ModifyFilesEntitlementsValidationClass}
-import tech.beshu.ror.tools.core.utils.EsUtil.es8182
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
+import tech.beshu.ror.tools.core.utils.EsUtil.{es8182, es8190}
 
 import scala.language.postfixOps
 
 private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
+    ElasticsearchJarPatchCreator(
       OpenModule,
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      ModifyRepositoriesServiceClass(esVersion)
     ),
-    new EntitlementJarPatchCreator(
+    EntitlementJarPatchCreator(
       esVersion match {
-        case v if v >= es8182 => new ModifyFilesEntitlementsValidationClass(esVersion)
-        case _ => new ModifyEntitlementInitializationClass(esVersion)
+        case v if v >= es8182 => ModifyFilesEntitlementsValidationClass(esVersion)
+        case _ => ModifyEntitlementInitializationClass(esVersion)
       },
-      ModifyEntitlementRuntimePolicyParserClass,
+      esVersion match {
+        case v if v >= es8190 => ModifyPolicyCheckerImplClass(esVersion)
+        case _ => ModifyPolicyManagerClass(esVersion)
+      },
+      ModifyPolicyParserClass,
     ),
-    new XPackCoreJarPatchCreator(
+    XPackCoreJarPatchCreator(
       OpenModule,
-      DisabledAsyncSearchSecurity
+      ModifyAsyncSearchSecurityClass,
+      ModifySecurityContextClass,
     ),
-    new XPackSecurityJarPatchCreator(
+    XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      new DummyAuthenticationInAuthenticationChain(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+      CreateRorAuthorizationInfoProviderClass(esVersion),
+      ModifyAuthenticationChainClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
+      ModifySecurityClass,
     ),
-    new XPackIlmJarPatchCreator(
+    XPackIlmJarPatchCreator(
       OpenModule
     )
   )

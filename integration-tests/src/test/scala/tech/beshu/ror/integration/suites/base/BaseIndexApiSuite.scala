@@ -400,7 +400,7 @@ trait BaseIndexApiSuite
     "Resolve index API is used" should {
       "be allowed" when {
         "user has access to the requested index" excludeES(allEs6x, allEs7xBelowEs79x) in {
-          val result = dev7IndexManager.resolve("index7-000001")
+          val result = dev7IndexManager.resolveIndex("index7-000001")
 
           result should have statusCode 200
 
@@ -411,7 +411,7 @@ trait BaseIndexApiSuite
           result.aliases.size should be(0)
         }
         "user has access to the requested index pattern" excludeES(allEs6x, allEs7xBelowEs79x) in {
-          val result = dev7IndexManager.resolve("index7*")
+          val result = dev7IndexManager.resolveIndex("index7*")
 
           result should have statusCode 200
 
@@ -426,7 +426,7 @@ trait BaseIndexApiSuite
           result.aliases.head.indices should be(List("index7-000001"))
         }
         "user has access to the narrowed index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
-          val result = dev7IndexManager.resolve("*")
+          val result = dev7IndexManager.resolveIndex("*")
 
           result should have statusCode 200
 
@@ -443,14 +443,14 @@ trait BaseIndexApiSuite
       }
       "return empty result" when {
         "user has no access to the requested index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
-          val result = dev7IndexManager.resolve("index2*")
+          val result = dev7IndexManager.resolveIndex("index2*")
 
           result should have statusCode 200
           result.indices.size should be(0)
           result.aliases.size should be(0)
         }
         "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x, allEs8xAboveEs86x, allEs9x) in {
-          val result = dev7IndexManager.resolve("index2")
+          val result = dev7IndexManager.resolveIndex("index2")
 
           result should have statusCode 200
           result.indices.size should be(0)
@@ -459,7 +459,7 @@ trait BaseIndexApiSuite
       }
       "return 404" when {
         "user has no access to the requested index" excludeES (allEs6x, allEs7x, allEs8xBelowEs87x) in {
-          val result = dev7IndexManager.resolve("index2")
+          val result = dev7IndexManager.resolveIndex("index2")
 
           result should have statusCode 404
         }

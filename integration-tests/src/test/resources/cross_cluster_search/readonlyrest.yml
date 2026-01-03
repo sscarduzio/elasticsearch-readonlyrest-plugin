@@ -8,15 +8,15 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "test1"
+    - name: "Dev1 - some indices from local cluster and remote private2 cluster"
       indices: ["test1_index", "private2:test1_index", "test1_ds", "private2:test1_ds"]
       auth_key: dev1:test
 
-    - name: "test2"
+    - name: "Dev2 - some indices from local cluster and remote private2 and other_cluster clusters"
       indices: ["test2_index", "other_cluster:test1_index", "private2:test_alias"]
       auth_key: dev2:test
 
-    - name: "real life case"
+    - name: "Dev3 - index patterns from local cluster and remote cluster"
       indices: ["metrics*", "private1:audit_*"]
       auth_key: dev3:test
 
@@ -35,3 +35,13 @@ readonlyrest:
       type: allow
       indices: ["xpack:xpack_cluster*"]
       auth_key: dev5:test
+
+    - name: "Dev6 with access to all private* clusters"
+      type: allow
+      auth_key: dev6:test
+      indices: [ "private*:*" ]
+
+    - name: "Dev7 with access to nonexistingcluster cluster"
+      type: allow
+      auth_key: dev7:test
+      indices: [ "*", "nonexistingcluster*:*" ]

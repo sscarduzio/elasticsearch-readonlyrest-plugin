@@ -23,6 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
@@ -52,12 +53,12 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     requestFieldsUsage = requestFieldsUsage
   )
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+      val nonExistentIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
+          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         update(
           request = actionRequest,
@@ -72,7 +73,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     } else {
       update(
         request = actionRequest,
-        filteredRequestedIndices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.filteredIndices)),
+        filteredRequestedIndices = NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)),
         filter = initialBlockContext.filter,
         fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
       )

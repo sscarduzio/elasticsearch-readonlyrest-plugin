@@ -14,27 +14,27 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
+package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services
 
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.es780
+import tech.beshu.ror.tools.core.utils.EsUtil.es790
 
 import java.io.{File, InputStream}
 
 /*
-  SnapshotsService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date
-  SnapshotsService to handle snapshots. In this bytecode modifier we remove the conditional check
-  which was responsible for disabling cluster events update on SnapshotsService instance.
+  RepositoriesService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date
+  RepositoriesService to handle repositories and snapshots. In this bytecode modifier we remove the conditional check
+  which was responsible for disabling cluster events update on RepositoriesService instance.
  */
-private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion: SemVer)
+private[patches] class ModifyRepositoriesServiceClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
-      filePathString = "org/elasticsearch/snapshots/SnapshotsService.class",
+      filePathString = "org/elasticsearch/repositories/RepositoriesService.class",
       processFileContent = enableClusterEventsHandling
     )
   }
@@ -57,10 +57,10 @@ private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNo
       name match {
         case "<init>" =>
           esVersion match {
-            case v if v < es780 =>
-              new ConstructorWithAlwaysAddingLogPriorityApplier(super.visitMethod(access, name, descriptor, signature, exceptions))
+            case v if v >= es790 =>
+              new ConstructorWithAlwaysAddingHighPriorityApplier(super.visitMethod(access, name, descriptor, signature, exceptions))
             case _ =>
-              super.visitMethod(access, name, descriptor, signature, exceptions)
+              new ConstructorWithAlwaysAddingStateApplier(super.visitMethod(access, name, descriptor, signature, exceptions))
           }
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
@@ -68,16 +68,33 @@ private [patches] class SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNo
     }
   }
 
-  private class ConstructorWithAlwaysAddingLogPriorityApplier(underlying: MethodVisitor)
+  private class ConstructorWithAlwaysAddingHighPriorityApplier(underlying: MethodVisitor)
     extends MethodVisitor(Opcodes.ASM9, underlying) {
 
     override def visitInsn(opcode: Int): Unit = {
       if (opcode == Opcodes.RETURN) {
         underlying.visitVarInsn(Opcodes.ALOAD, 2)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
-        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addLowPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addHighPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
       }
       underlying.visitInsn(opcode)
     }
   }
+
+  private class ConstructorWithAlwaysAddingStateApplier(underlying: MethodVisitor)
+    extends MethodVisitor(Opcodes.ASM9, underlying) {
+
+    override def visitInsn(opcode: Int): Unit = {
+      if (opcode == Opcodes.RETURN) {
+        underlying.visitVarInsn(Opcodes.ALOAD, 2)
+        underlying.visitVarInsn(Opcodes.ALOAD, 0)
+        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addStateApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
+      }
+      underlying.visitInsn(opcode)
+    }
+  }
+}
+
+object ModifyRepositoriesServiceClass {
+  def apply(esVersion: SemVer): ModifyRepositoriesServiceClass = new ModifyRepositoriesServiceClass(esVersion)
 }

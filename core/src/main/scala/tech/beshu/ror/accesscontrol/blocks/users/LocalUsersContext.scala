@@ -61,6 +61,8 @@ object LocalUsersContext {
     implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers()
     implicit val indicesRule: LocalUsersSupport[IndicesRule] = NotAvailableLocalUsers()
     implicit val jwtAuthRule: LocalUsersSupport[JwtAuthRule] = NotAvailableLocalUsers()
+    implicit val jwtAuthenticationRule: LocalUsersSupport[JwtAuthenticationRule] = NotAvailableLocalUsers()
+    implicit val jwtAuthorizationRule: LocalUsersSupport[JwtAuthorizationRule] = NotAvailableLocalUsers()
     implicit val kibanaUserDataRule: LocalUsersSupport[KibanaUserDataRule] = NotAvailableLocalUsers()
     implicit val kibanaAccessRule: LocalUsersSupport[KibanaAccessRule] = NotAvailableLocalUsers()
     implicit val kibanaHideAppsRule: LocalUsersSupport[KibanaHideAppsRule] = NotAvailableLocalUsers()

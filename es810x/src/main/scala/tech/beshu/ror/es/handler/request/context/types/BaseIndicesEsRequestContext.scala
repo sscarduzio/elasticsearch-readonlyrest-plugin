@@ -23,8 +23,8 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
@@ -46,23 +46,24 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     filteredIndices = discoverIndices(),
-    allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
+    allAllowedIndices = Set(ClusterIndexName.Local.wildcard),
+    allAllowedClusters = Set(ClusterName.Full.local),
   )
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+      val nonExistentIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
+          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices, nonExistingIndices.map(_.name))
+        update(actionRequest, nonExistingIndices, nonExistingIndices.map(_.name), allowedClusters)
       } else {
         ShouldBeInterrupted
       }
     } else {
-      val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-      update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
+      val randomNonExistingIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
+      update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name), allowedClusters)
     }
   }
 
@@ -70,7 +71,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     val result = for {
       filteredIndices <- NonEmptyList.fromList(blockContext.filteredIndices.toList)
       allAllowedIndices <- NonEmptyList.fromList(blockContext.allAllowedIndices.toList)
-    } yield update(actionRequest, filteredIndices, allAllowedIndices)
+    } yield update(actionRequest, filteredIndices, allAllowedIndices, blockContext.allAllowedClusters)
 
     result.getOrElse {
       logger.warn(s"empty list of indices produced, so we have to interrupt the request processing")
@@ -82,7 +83,8 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   protected def update(request: R,
                        filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult
 
   private def discoverIndices() = {
     val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty

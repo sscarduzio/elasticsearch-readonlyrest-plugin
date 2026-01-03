@@ -152,7 +152,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                       chain: EsChain): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
-        threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
+        threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
         chain.continue(task, action, request, listener)
       case Some(_) if action.isInternal =>
         threadPool.getThreadContext.addSystemAuthenticationHeader(nodeName)

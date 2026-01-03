@@ -294,7 +294,7 @@ release_ror_plugin() {
     return 2
   fi
 
-  if ! $DOCKER info >/dev/null 2>&1; then
+  if ! docker info >/dev/null 2>&1; then
     echo "Docker daemon not running or not logged in"
     return 3
   fi
@@ -321,7 +321,7 @@ release_ror_plugin() {
     fi
 
     tag "$TAG"
-    $DOCKER system prune -fa
+    docker system prune -fa
   fi
 }
 
@@ -338,7 +338,7 @@ public_ror_prebuild_plugin() {
     return 2
   fi
 
-  if ! $DOCKER info >/dev/null 2>&1; then
+  if ! docker info >/dev/null 2>&1; then
     echo "Docker daemon not running or not logged in"
     return 3
   fi
@@ -351,7 +351,7 @@ public_ror_prebuild_plugin() {
     return 4
   fi
 
-  $DOCKER system prune -fa
+  docker system prune -fa
 }
 
 if [[ $ROR_TASK == "release_es9xx" ]]; then

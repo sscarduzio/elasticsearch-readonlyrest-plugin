@@ -132,17 +132,24 @@ object ruleDecoders {
       case ExternalAuthorizationRule.Name.name =>
         Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case JwtAuthRule.Name.name =>
-        Some(new JwtAuthRuleDecoder(jwtDefinitions, globalSettings))
+        val definitions = jwtDefinitions.items.collect {case definition: JwtDefForAuth => definition}
+        Some(new JwtAuthRulesDecoders.AuthRuleDecoder(jwtDefinitions.items, definitions, globalSettings))
+      case JwtAuthenticationRule.Name.name =>
+        val definitions = jwtDefinitions.items.collect {case definition: JwtDefForAuthentication => definition}
+        Some(new JwtAuthRulesDecoders.AuthenticationRuleDecoder(jwtDefinitions.items, definitions, globalSettings))
+      case JwtAuthorizationRule.Name.name =>
+        val definitions = jwtDefinitions.items.collect {case definition: JwtDefForAuthorization => definition}
+        Some(new JwtAuthRulesDecoders.AuthorizationRuleDecoder(jwtDefinitions.items, definitions))
       case LdapAuthorizationRule.Name.name =>
         Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case LdapAuthRule.Name.name =>
         Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case RorKbnAuthRule.Name.name =>
-        Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, globalSettings))
+        Some(new RorKbnRulesDecoders.AuthRuleDecoder(rorKbnDefinitions.items, rorKbnDefinitions.items, globalSettings))
       case RorKbnAuthenticationRule.Name.name =>
-        Some(new RorKbnAuthenticationRuleDecoder(rorKbnDefinitions, globalSettings))
+        Some(new RorKbnRulesDecoders.AuthenticationRuleDecoder(rorKbnDefinitions.items, rorKbnDefinitions.items, globalSettings))
       case RorKbnAuthorizationRule.Name.name =>
-        Some(new RorKbnAuthorizationRuleDecoder(rorKbnDefinitions))
+        Some(new RorKbnRulesDecoders.AuthorizationRuleDecoder(rorKbnDefinitions.items, rorKbnDefinitions.items))
       case _ =>
         authenticationRuleDecoderBy(
           name,

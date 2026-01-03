@@ -65,16 +65,19 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
               case Policy.Allow => RegularRequestResult.Allow(blockContext, block)
               case Policy.Forbid(_) => RegularRequestResult.ForbiddenBy(blockContext, block)
             }
-          case Mismatched(_) if wasRejectedDueToIndexNotFound(history) =>
-            RegularRequestResult.IndexNotFound()
           case Mismatched(_) if wasRejectedDueToAliasNotFound(history) =>
             RegularRequestResult.AliasNotFound()
           case Mismatched(_) if wasRejectedDueToTemplateNotFound(history) =>
             RegularRequestResult.TemplateNotFound()
           case Mismatched(_) =>
-            RegularRequestResult.ForbiddenByMismatched(
-              nonEmptySetOfMismatchedCausesFromHistory(history)
-            )
+            wasRejectedDueToIndexNotFound(history) match {
+              case Some(error) =>
+                RegularRequestResult.IndexNotFound(error.allowedClusters)
+              case None =>
+                RegularRequestResult.ForbiddenByMismatched(
+                  nonEmptySetOfMismatchedCausesFromHistory(history)
+                )
+            }
         }
         WithHistory[RegularRequestResult[B], B](history, res)
       }
@@ -211,7 +214,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Iterable[History[B]]): NonEmptySet[ForbiddenCause] = {
     val causes = rejectionsFrom(history).map {
-      case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound | Rejected.Cause.AliasNotFound | Rejected.Cause.TemplateNotFound)) =>
+      case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound(_) | Rejected.Cause.AliasNotFound | Rejected.Cause.TemplateNotFound)) =>
         ForbiddenCause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) =>
         ForbiddenCause.ImpersonationNotAllowed
@@ -224,9 +227,13 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       .toNes
   }
 
-  private def wasRejectedDueToIndexNotFound[B <: BlockContext](history: Vector[History[B]]) = {
+  private def wasRejectedDueToIndexNotFound[B <: BlockContext](history: Vector[History[B]]): Option[Rejected.Cause.IndexNotFound] = {
     val rejections = rejectionsFrom(history)
-    !impersonationRejectionExists(rejections) && indexNotFoundRejectionExists(rejections)
+    if (impersonationRejectionExists(rejections)) {
+      None
+    } else {
+      indexNotFoundRejectionExists(rejections)
+    }
   }
 
   private def wasRejectedDueToAliasNotFound[B <: BlockContext](history: Vector[History[B]]) = {
@@ -239,21 +246,16 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     !impersonationRejectionExists(rejections) && templateNotFoundRejectionExists(rejections)
   }
 
-  private def indexNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
-    rejections.exists {
-      case Rejected(Some(Rejected.Cause.IndexNotFound)) => true
-      case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
-      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
-      case Rejected(None) => false
-      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
-      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
+  private def indexNotFoundRejectionExists(rejections: Vector[Rejected[_]]): Option[Rejected.Cause.IndexNotFound] = {
+    rejections.collectFirst {
+      case Rejected(Some(error@Rejected.Cause.IndexNotFound(_))) => error
     }
   }
 
   private def aliasNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => true
-      case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
+      case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
       case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
       case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
@@ -264,7 +266,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   private def templateNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
-      case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
+      case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
       case Rejected(Some(Rejected.Cause.TemplateNotFound)) => true
       case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
@@ -274,7 +276,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def impersonationRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
-      case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
+      case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
       case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
       case Rejected(None) => false

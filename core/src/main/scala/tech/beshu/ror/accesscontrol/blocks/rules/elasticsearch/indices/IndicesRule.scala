@@ -36,8 +36,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.syntax.*
 
@@ -80,8 +82,14 @@ class IndicesRule(override val settings: Settings,
       val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices, blockContext.userMetadata.kibanaIndex)
         .map {
-          case ProcessResult.Ok(filteredIndices) => Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
-          case ProcessResult.Failed(cause) => Rejected(cause)
+          case ProcessResult.Ok(filteredIndices) =>
+            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
+            Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices).withClusters(allowedClusters))
+          case ProcessResult.Failed.IndexNotFound =>
+            val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
+            Rejected(Some(Cause.IndexNotFound(allowedClusters)))
+          case ProcessResult.Failed.Other =>
+            Rejected()
         }
     }
   }
@@ -96,7 +104,7 @@ class IndicesRule(override val settings: Settings,
       val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       blockContext
         .indexPacks
-        .foldLeft(Task.now(Vector.empty[Indices].asRight[Option[Cause]])) {
+        .foldLeft(Task.now(Vector.empty[Indices].asRight[Unit])) {
           case (acc, pack) => acc.flatMap {
             case Right(currentList) => pack match {
               case Indices.Found(indices) =>
@@ -107,8 +115,8 @@ class IndicesRule(override val settings: Settings,
                   blockContext.userMetadata.kibanaIndex
                 ) map {
                   case ProcessResult.Ok(narrowedIndices) => Right(currentList :+ Indices.Found(narrowedIndices))
-                  case ProcessResult.Failed(Some(Cause.IndexNotFound)) => Right(currentList :+ Indices.NotFound)
-                  case ProcessResult.Failed(cause) => Left(cause)
+                  case ProcessResult.Failed.IndexNotFound => Right(currentList :+ Indices.NotFound)
+                  case ProcessResult.Failed.Other => Left(())
                 }
               case Indices.NotFound =>
                 Task.now(Right(currentList :+ Indices.NotFound))
@@ -119,8 +127,10 @@ class IndicesRule(override val settings: Settings,
         }
         .map {
           case Right(indices) if atLeastOneFound(indices) => Fulfilled(blockContext.withIndicesPacks(indices.toList))
-          case Right(_) => Rejected(Cause.IndexNotFound)
-          case Left(cause) => Rejected(cause)
+          case Right(_) => Rejected(Cause.IndexNotFound(
+            getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
+          ))
+          case Left(_) => Rejected()
         }
     }
   }
@@ -137,9 +147,16 @@ class IndicesRule(override val settings: Settings,
         (indicesResult, aliasesResult) match {
           case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
             Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
-          case (ProcessResult.Failed(cause), _) => Rejected(cause)
-          case (_, ProcessResult.Failed(Some(Cause.IndexNotFound))) => Rejected(Some(Cause.AliasNotFound))
-          case (_, ProcessResult.Failed(cause)) => Rejected(cause)
+          case (ProcessResult.Failed.IndexNotFound, _) =>
+            Rejected(Some(Cause.IndexNotFound(
+              getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
+            )))
+          case (ProcessResult.Failed.Other, _) =>
+            Rejected()
+          case (_, ProcessResult.Failed.IndexNotFound) =>
+            Rejected(Some(Cause.AliasNotFound))
+          case (_, ProcessResult.Failed.Other) =>
+            Rejected()
         }
       }
     }
@@ -155,6 +172,22 @@ class IndicesRule(override val settings: Settings,
     if (matchAll) Task.now(Fulfilled(blockContext))
     else if (blockContext.backingIndices == BackingIndices.IndicesNotInvolved) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
+  }
+
+  private def getAllowedClusterNames(requestContext: RequestContext,
+                                     allAllowedIndices: Set[ClusterIndexName]): Set[ClusterName.Full] = {
+    def isLocalClusterAllowed: Boolean = allAllowedIndices.exists {
+      case ClusterIndexName.Local(_) => true
+      case ClusterIndexName.Remote(_, _) => false
+    }
+
+    val clusterNamesFromIndices = allAllowedIndices.flatMap {
+      case ClusterIndexName.Local(_) => None
+      case ClusterIndexName.Remote(_, cluster) => Some(cluster)
+    }
+    val matcher = PatternsMatcher.create(clusterNamesFromIndices)
+    val allowedRemoteClusters = matcher.filter(requestContext.allRemoteClusterNames)
+    allowedRemoteClusters ++ Option.when(isLocalClusterAllowed)(ClusterName.Full.local).toCovariantSet
   }
 
   private val matchAll = settings.allowedIndices.exists {
@@ -176,7 +209,11 @@ object IndicesRule {
   private[indices] sealed trait ProcessResult
   private[indices] object ProcessResult {
     final case class Ok(indices: Set[RequestedIndex[ClusterIndexName]]) extends ProcessResult
-    final case class Failed(cause: Option[Cause]) extends ProcessResult
+    sealed trait Failed extends ProcessResult
+    object Failed {
+      case object IndexNotFound extends Failed
+      case object Other extends Failed
+    }
   }
 
 }

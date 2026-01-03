@@ -25,6 +25,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
@@ -73,12 +74,12 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     }
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.indices)
+      val nonExistentIndex = initialBlockContext.randomNonexistentLocalIndex(_.indices)
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.indices.map(_.randomNonexistentIndex()).toList)
+          .fromList(initialBlockContext.indices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         updateIndices(actionRequest, nonExistingIndices)
         Modified
@@ -86,17 +87,17 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         ShouldBeInterrupted
       }
     } else {
-      updateIndices(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.indices)))
+      updateIndices(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.indices)))
       Modified
     }
   }
 
   override def modifyWhenAliasNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentAlias = initialBlockContext.randomNonexistentIndex(_.aliases)
+      val nonExistentAlias = initialBlockContext.randomNonexistentLocalIndex(_.aliases)
       if (nonExistentAlias.name.hasWildcard) {
         val nonExistingAliases = NonEmptyList
-          .fromList(initialBlockContext.aliases.map(_.randomNonexistentIndex()).toList)
+          .fromList(initialBlockContext.aliases.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentAlias))
         updateAliases(actionRequest, nonExistingAliases)
         Modified
@@ -104,7 +105,7 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         ShouldBeInterrupted
       }
     } else {
-      updateAliases(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.aliases)))
+      updateAliases(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.aliases)))
       Modified
     }
   }

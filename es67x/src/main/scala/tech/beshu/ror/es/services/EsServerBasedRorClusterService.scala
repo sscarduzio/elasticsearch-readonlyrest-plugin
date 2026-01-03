@@ -48,7 +48,6 @@ import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
@@ -65,6 +64,18 @@ class EsServerBasedRorClusterService(nodeName: String,
     with RequestIdAwareLogging {
 
   import EsServerBasedRorClusterService.*
+
+  override def allClusterNames: Set[ClusterName.Full] = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        remoteClusterService
+          .getRegisteredRemoteClusterNames.asScala
+          .flatMap(ClusterName.Full.fromString)
+          .toCovariantSet
+      case None =>
+        Set.empty
+    }
+  }
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
@@ -223,7 +234,7 @@ class EsServerBasedRorClusterService(nodeName: String,
 
   private def resolveRemoteIndicesUsing(client: Client) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*
-    threadPool.getThreadContext.addXpackSecurityAuthenticationHeader(nodeName)
+    threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
     val promise = CancelablePromise[ClusterStateResponse]()
     client
       .admin()

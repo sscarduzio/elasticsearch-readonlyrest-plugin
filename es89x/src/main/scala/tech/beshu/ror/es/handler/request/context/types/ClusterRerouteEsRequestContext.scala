@@ -22,6 +22,7 @@ import org.elasticsearch.action.admin.cluster.reroute.ClusterRerouteRequest
 import org.elasticsearch.cluster.routing.allocation.command.*
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -47,7 +48,8 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
 
   override protected def update(request: ClusterRerouteRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     val modifiedCommands = request
       .getCommands.commands().asScala.toSeq
       .map(modifiedCommand(_, filteredIndices))
@@ -77,8 +79,8 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
 
   private def setNonExistentIndexFor(command: AllocationCommand) = {
     val randomIndex = indexFrom(command)
-        .map(_.name.randomNonexistentIndex())
-        .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
+      .map(_.name.randomNonexistentLocalIndex())
+      .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
     command match {
       case c: CancelAllocationCommand =>
         new CancelAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.allowPrimary())

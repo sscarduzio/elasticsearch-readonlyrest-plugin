@@ -81,6 +81,14 @@ object TestsUtils {
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(value.getBytes)}")
     )
 
+  def bearerHeader(rawValue: String): Header =
+    bearerHeader(Header.Name.authorization.value, rawValue)
+
+  def bearerHeader(headerName: NonEmptyString, rawValue: String): Header = new Header(
+    Header.Name(headerName),
+    NonEmptyString.unsafeFrom(s"Bearer $rawValue")
+  )
+
   def bearerHeader(jwt: JwtUtils.Jwt): Header =
     bearerHeader(Header.Name.authorization.value, jwt)
 
@@ -157,6 +165,8 @@ object TestsUtils {
     )
 
   def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value).get
+
+  def clusterName(str: NonEmptyString): ClusterName.Full = ClusterName.Full.fromString(str.value).get
 
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 

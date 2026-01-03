@@ -127,7 +127,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def updateItemWithNonExistingIndex(item: MultiGetRequest.Item): Unit = {
     val originRequestIndices = requestedIndicesFrom(item).toList
-    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
+    val notExistingIndex = originRequestIndices.randomNonexistentLocalIndex()
     item.index(notExistingIndex.stringify)
   }
 

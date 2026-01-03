@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusteri
 
 import cats.kernel.Semigroup
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.ProcessResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
@@ -53,9 +52,11 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices, determinedKibanaIndex)
       case (None, None) =>
         if (requestContext.allIndicesAndAliases.nonEmpty || requestContext.allDataStreamsAndAliases.nonEmpty) {
-          Task.now(ProcessResult.Ok(allAllowedIndices.map(RequestedIndex(_, excluded = false))))
+          Task.now(ProcessResult.Ok(
+            allAllowedIndices.map(RequestedIndex(_, excluded = false))
+          ))
         } else {
-          Task.now(ProcessResult.Failed(Some(Cause.IndexNotFound)))
+          Task.now(ProcessResult.Failed.IndexNotFound)
         }
     }
   }
@@ -75,9 +76,9 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         case CanPass.Yes(narrowedIndices) =>
           ProcessResult.Ok(narrowedIndices)
         case CanPass.No(Some(Reason.IndexNotExist)) =>
-          ProcessResult.Failed(Some(Cause.IndexNotFound))
+          ProcessResult.Failed.IndexNotFound
         case CanPass.No(_) =>
-          ProcessResult.Failed(None)
+          ProcessResult.Failed.Other
       }
   }
 
@@ -96,9 +97,9 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         case CanPass.Yes(narrowedIndices) =>
           ProcessResult.Ok(narrowedIndices)
         case CanPass.No(Some(Reason.IndexNotExist)) =>
-          ProcessResult.Failed(Some(Cause.IndexNotFound))
+          ProcessResult.Failed.IndexNotFound
         case CanPass.No(_) =>
-          ProcessResult.Failed(None)
+          ProcessResult.Failed.Other
       }
   }
 
@@ -131,8 +132,8 @@ trait AllClusterIndices extends BaseIndicesProcessor {
 object AllClusterIndices {
   implicit def processResultSemigroup: Semigroup[ProcessResult] = Semigroup.instance {
     case (ProcessResult.Ok(indices1), ProcessResult.Ok(indices2)) => ProcessResult.Ok(indices1 ++ indices2)
-    case (ok@ProcessResult.Ok(_), ProcessResult.Failed(_)) => ok
-    case (ProcessResult.Failed(_), ok@ProcessResult.Ok(_)) => ok
-    case (failed@ProcessResult.Failed(_), ProcessResult.Failed(_)) => failed
+    case (ok@ProcessResult.Ok(_), _: ProcessResult.Failed) => ok
+    case (_: ProcessResult.Failed, ok@ProcessResult.Ok(_)) => ok
+    case (failed:ProcessResult.Failed, _: ProcessResult.Failed) => failed
   }
 }
