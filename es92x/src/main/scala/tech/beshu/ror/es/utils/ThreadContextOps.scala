@@ -40,10 +40,6 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
     putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createXpackUserAuthenticationHeader(nodeName))
   }
 
-  def addXpackSecurityAuthenticationHeader(nodeName: String): ThreadContext = {
-    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createXpackSecurityAuthenticationHeader(nodeName))
-  }
-
   def addSystemAuthenticationHeader(nodeName: String): ThreadContext = {
     putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
   }

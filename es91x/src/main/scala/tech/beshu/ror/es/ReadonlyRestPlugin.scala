@@ -24,7 +24,6 @@ import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
-import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.*
@@ -36,6 +35,7 @@ import org.elasticsearch.http.{HttpPreRequest, HttpServerTransport}
 import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.IgnoredFieldMapper
 import org.elasticsearch.indices.breaker.CircuitBreakerService
+import org.elasticsearch.injection.guice.Inject
 import org.elasticsearch.plugins.*
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.repositories.RepositoriesService
@@ -47,7 +47,6 @@ import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
@@ -56,12 +55,13 @@ import tech.beshu.ror.es.actions.rrauthmock.rest.RestRRAuthMockAction
 import tech.beshu.ror.es.actions.rrauthmock.{RRAuthMockActionType, TransportRRAuthMockAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
-import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, TransportRRTestSettingsAction}
 import tech.beshu.ror.es.actions.rrtestsettings.rest.RestRRTestSettingsAction
+import tech.beshu.ror.es.actions.rrtestsettings.{RRTestSettingsActionType, TransportRRTestSettingsAction}
 import tech.beshu.ror.es.actions.wrappers._cat.{RorWrappedCatActionType, TransportRorWrappedCatAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.utils.{ChannelInterceptingRestHandlerDecorator, EsEnvProvider, EsPatchVerifier, RemoteClusterServiceSupplier}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SetOnce
 import tech.beshu.ror.{SystemContext, constants}

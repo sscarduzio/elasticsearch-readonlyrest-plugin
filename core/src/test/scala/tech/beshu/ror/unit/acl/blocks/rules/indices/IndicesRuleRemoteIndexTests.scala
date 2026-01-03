@@ -42,13 +42,15 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("etl1"))
           )
         }
         "requested index name with wildcard is more general version of the configured index name with wildcard" in {
@@ -65,13 +67,15 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("etl1"))
           )
         }
         "requested index name with wildcard is more specialized version of the configured index name with wildcard" in {
@@ -89,13 +93,15 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("etl1"))
           )
         }
         "requested index name with wildcard doesn't match the configured index name with wildcard but it does match the resolved index name" in {
@@ -112,13 +118,15 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("etl1"))
           )
         }
       }
@@ -142,8 +150,10 @@ trait IndicesRuleRemoteIndexTests {
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-            ))
-          )
+            )),
+            allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
+          ),
+          allAllowedClusters = Set(clusterName("etl1"), clusterName("(local)"))
         )
       }
     }

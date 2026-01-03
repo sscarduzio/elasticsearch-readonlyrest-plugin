@@ -122,7 +122,7 @@ object RestClientAuditSinkService extends Logging {
       .setFailureListener(
         new FailureListener {
           override def onFailure(node: Node): Unit = {
-                        logger.debug(
+            logger.debug(
               s"[AUDIT] Node marked dead: ${node.getHost.getSchemeName}://${node.getHost.getHostName}:${node.getHost.getPort}. The client will attempt failover.",
             )
           }

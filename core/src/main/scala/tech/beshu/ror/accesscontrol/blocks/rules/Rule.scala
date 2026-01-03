@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.accesscontrol.utils.TaskRuleResultOps.*
 import tech.beshu.ror.syntax.*
@@ -60,7 +61,7 @@ object Rule {
       object Cause {
         case object ImpersonationNotSupported extends Cause
         case object ImpersonationNotAllowed extends Cause
-        case object IndexNotFound extends Cause
+        final case class IndexNotFound(allowedClusters: Set[ClusterName.Full]) extends Cause
         case object AliasNotFound extends Cause
         case object TemplateNotFound extends Cause
       }

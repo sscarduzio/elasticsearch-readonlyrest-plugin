@@ -523,7 +523,8 @@ class ExternalAuthorizationRuleTests
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
-      allAllowedIndices = Set.empty
+      allAllowedIndices = Set.empty,
+      allAllowedClusters = Set.empty
     )
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {

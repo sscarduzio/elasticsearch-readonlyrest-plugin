@@ -441,7 +441,8 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = requestedIndices,
-      allAllowedIndices = Set.empty
+      allAllowedIndices = Set.empty,
+      allAllowedClusters = Set.empty
     )
     assertRule(settings, blockContext, blockContextAssertion)
   }

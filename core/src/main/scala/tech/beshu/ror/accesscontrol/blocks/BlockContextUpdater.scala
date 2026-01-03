@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.syntax.*
 
 sealed trait BlockContextUpdater[B <: BlockContext] {
@@ -216,7 +217,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[GeneralIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: GeneralIndexRequestBlockContext): GeneralIndexRequestBlockContext =
-      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
     override def withUserMetadata(blockContext: GeneralIndexRequestBlockContext,
                                   userMetadata: UserMetadata): GeneralIndexRequestBlockContext =
@@ -316,6 +317,9 @@ abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
   def withIndices(blockContext: B,
                   filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                   allAllowedIndices: Set[ClusterIndexName]): B
+
+  def withClusters(blockContext: B,
+                   allAllowedClusters: Set[ClusterName.Full]): B = blockContext
 }
 
 object BlockContextWithIndicesUpdater {
@@ -337,6 +341,11 @@ object BlockContextWithIndicesUpdater {
                     filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                     allAllowedIndices: Set[ClusterIndexName]): GeneralIndexRequestBlockContext =
       blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
+
+    override def withClusters(blockContext: GeneralIndexRequestBlockContext,
+                              allAllowedClusters: Set[ClusterName.Full]): GeneralIndexRequestBlockContext =
+      blockContext.copy(allAllowedClusters = allAllowedClusters)
+
   }
 
   implicit object SnapshotRequestBlockContextWithIndicesUpdater

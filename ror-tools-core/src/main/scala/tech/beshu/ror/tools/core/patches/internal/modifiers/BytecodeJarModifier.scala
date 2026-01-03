@@ -21,13 +21,30 @@ import tech.beshu.ror.tools.core.utils.FileUtils.*
 
 import java.io.{ByteArrayInputStream, File, InputStream}
 import java.net.URI
-import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption}
+import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption, StandardOpenOption}
 import java.util.jar.JarFile
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
+import scala.util.Using
 
 private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
   extends FileModifier with AsmDebug {
+
+  protected def addNewFileToJar(jar: File,
+                                filePathString: String,
+                                content: Array[Byte]): Unit = {
+    val originalPermsAndOwner = jar.toScala.getFilePermissionsAndOwner
+    if (debugEnabled) debug(content)
+    val env = Map("create" -> "true").asJava
+    val uri = URI.create("jar:" + jar.toURI)
+
+    Using.resource(FileSystems.newFileSystem(uri, env)) { zipfs =>
+      val path = zipfs.getPath(filePathString)
+      Option(path.getParent).foreach(p => Files.createDirectories(p))
+      Files.write(path, content, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+    }
+    jar.toScala.setFilePermissionsAndOwner(originalPermsAndOwner)
+  }
 
   protected def modifyFileInJar(jar: File,
                                 filePathString: String,

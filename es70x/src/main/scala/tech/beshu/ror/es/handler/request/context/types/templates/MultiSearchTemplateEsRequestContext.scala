@@ -29,11 +29,11 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
 import tech.beshu.ror.es.RorClusterService
@@ -96,8 +96,8 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
  * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
  * solution is obviously less efficient, but at least it works.
  */
-  private def callSearchOnceAgain(filter: Option[domain.Filter],
-                                  fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
+  private def callSearchOnceAgain(filter: Option[Filter],
+                                  fieldLevelSecurity: Option[FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
     multiSearchTemplateResponse => {
       val updatedSearchRequests = multiSearchTemplateRequest
         .requests
@@ -147,7 +147,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
     }
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]) = {
     multiSearchTemplateRequest.requests.foreach(updateRequestWithNonExistingIndex)
     Modified
   }
@@ -176,7 +176,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
   }
 
   private def randomNonexistentIndex(request: ReflectionBasedSearchTemplateRequest) =
-    indicesFrom(request).toList.randomNonexistentIndex()
+    indicesFrom(request).toList.randomNonexistentLocalIndex()
 
   private def indicesFrom(request: ReflectionBasedSearchTemplateRequest) = {
     request

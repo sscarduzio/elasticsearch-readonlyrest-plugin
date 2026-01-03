@@ -49,7 +49,7 @@ class ResponseFieldsRuleTests extends AnyWordSpec {
     val resolvedFields = fields.map(field => AlreadyResolved(ResponseField(NonEmptyString.unsafeFrom(field)).nel))
     val rule = new ResponseFieldsRule(ResponseFieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), mode))
     val requestContext = MockRequestContext.indices
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
     rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
       BlockContext.GeneralIndexRequestBlockContext(
@@ -60,7 +60,8 @@ class ResponseFieldsRuleTests extends AnyWordSpec {
           UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode
         )) :: Nil,
         filteredIndices = Set.empty,
-        allAllowedIndices = Set.empty
+        allAllowedIndices = Set.empty,
+        allAllowedClusters = Set.empty
       )
     ))
   }
