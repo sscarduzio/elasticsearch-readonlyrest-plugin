@@ -318,6 +318,7 @@ abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
                   filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                   allAllowedIndices: Set[ClusterIndexName]): B
 
+  @nowarn("msg=unused explicit parameter")
   def withClusters(blockContext: B,
                    allAllowedClusters: Set[ClusterName.Full]): B = blockContext
 }
