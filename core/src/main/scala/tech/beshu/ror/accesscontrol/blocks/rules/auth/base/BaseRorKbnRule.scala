@@ -41,9 +41,10 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
                                                         rorKbnDef: RorKbnDef)
                                                        (operation: TokenData => Either[Unit, B]): RuleResult[B] = {
     val authHeaderName = Header.Name.authorization
+    implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
-        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")(blockContext)
+        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
         Rejected()
       case Some(token) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId

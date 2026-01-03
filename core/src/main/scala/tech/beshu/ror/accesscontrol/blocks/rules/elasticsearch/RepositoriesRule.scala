@@ -81,6 +81,7 @@ class RepositoriesRule(val settings: Settings)
   private def checkAllowedRepositories(allowedRepositories: Set[RepositoryName],
                                        repositoriesToCheck: Set[RepositoryName],
                                        requestContext: RequestContext) = {
+    implicit val requestContextImpl: RequestContext = requestContext
     if (allowedRepositories.contains(RepositoryName.all) || allowedRepositories.contains(RepositoryName.wildcard)) {
       Right(repositoriesToCheck)
     } else {
@@ -97,10 +98,10 @@ class RepositoriesRule(val settings: Settings)
           logger.debug(
             s"Write request with repositories cannot proceed because some of the repositories " +
               s"[${filteredOutRepositories.show}] were filtered out by ACL. The request will be rejected.."
-          )(requestContext)
+          )
           Left(())
         case CheckResult.Failed =>
-          logger.debug(s"The processed repositories do not match the allowed repositories. The request will be rejected..")(requestContext)
+          logger.debug(s"The processed repositories do not match the allowed repositories. The request will be rejected..")
           Left(())
       }
     }

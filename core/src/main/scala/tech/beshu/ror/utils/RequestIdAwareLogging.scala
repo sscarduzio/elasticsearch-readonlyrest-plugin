@@ -19,7 +19,10 @@ package tech.beshu.ror.utils
 import cats.implicits.toShow
 import org.apache.logging.log4j.scala.Logger
 import org.apache.logging.log4j.spi.ExtendedLogger
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.accesscontrol.logging.ResponseContext
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.RequestIdAwareLogging.RorLogger
 
 trait RequestIdAwareLogging {
@@ -29,6 +32,18 @@ trait RequestIdAwareLogging {
   val logger: RorLogger = new RorLogger(underlyingLogger)
 
   val noRequestIdLogger: Logger = underlyingLogger
+
+  given [B <: BlockContext](using value: ResponseContext[B]): RequestId =
+    value.requestContext.id.toRequestId
+
+  given [B <: BlockContext](using value: B): RequestId =
+    value.requestContext.id.toRequestId
+
+  given (using value: RequestContext.Id): RequestId =
+    value.toRequestId
+
+  given (using value: RequestContext): RequestId =
+    value.id.toRequestId
 
 }
 

@@ -71,12 +71,13 @@ class FieldsRule(val settings: Settings)
   }
 
   private def processFilterableBlockContext[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B): RuleResult[B] = {
+    implicit val blockContextImpl: B = blockContext
     val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.from(maybeResolvedFields) match {
       case Some(resolvedFields) =>
         processBlockContextUsingDefinedFLSMode(blockContext, resolvedFields)
       case None =>
-        logger.warn(s"Could not resolve any variable for field rule.")(blockContext)
+        logger.warn(s"Could not resolve any variable for field rule.")
         RuleResult.Rejected()
     }
   }
@@ -97,11 +98,12 @@ class FieldsRule(val settings: Settings)
 
   private def processRuleWithEsEngine[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
                                                                                                               fieldsRestrictions: FieldsRestrictions): RuleResult[B] = {
+    implicit val blockContextImpl: B = blockContext
     resolveFLSStrategyBasedOnFieldsUsage(blockContext.requestFieldsUsage, fieldsRestrictions) match {
       case basedOnBlockContext: BasedOnBlockContextOnly =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = basedOnBlockContext)
       case Strategy.FlsAtLuceneLevelApproach =>
-        logger.warn(s"Could not use fls at lucene level with ES engine. Rejected.")(blockContext)
+        logger.warn(s"Could not use fls at lucene level with ES engine. Rejected.")
         RuleResult.Rejected()
     }
   }

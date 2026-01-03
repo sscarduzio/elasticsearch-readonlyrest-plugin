@@ -69,6 +69,7 @@ class DataStreamsRule(val settings: Settings)
   private def checkAllowedDataStreams(allowedDataStreams: Set[DataStreamName],
                                       dataStreamsToCheck: Set[DataStreamName],
                                       requestContext: RequestContext) = {
+    implicit val requestContextImpl: RequestContext = requestContext
     if (allowedDataStreams.contains(DataStreamName.All) || allowedDataStreams.contains(DataStreamName.Wildcard)) {
       Right(dataStreamsToCheck)
     } else {
@@ -85,10 +86,10 @@ class DataStreamsRule(val settings: Settings)
           logger.debug(
             s"Write request with data streams cannot proceed because some of the data streams " +
               s"[${filteredOutDataStreams.show}] were filtered out by ACL. The request will be rejected.."
-          )(requestContext)
+          )
           Left(())
         case CheckResult.Failed =>
-          logger.debug(s"The processed data streams do not match the allowed data streams. The request will be rejected..")(requestContext)
+          logger.debug(s"The processed data streams do not match the allowed data streams. The request will be rejected..")
           Left(())
       }
     }

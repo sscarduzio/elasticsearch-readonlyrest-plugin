@@ -72,6 +72,7 @@ class Block(val name: Name,
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule, blockContext: B) = {
+    implicit val blockContextImpl: B = blockContext
     val ruleResult = rule
       .check[B](blockContext)
       .recover { case e =>

@@ -49,21 +49,20 @@ private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
               case false =>
                 host
                   .resolve(blockContext).toOption
-                  .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck, blockContext)))
+                  .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck)))
             }
       }
   }
 
   private def ipMatchesAddress(allowedHost: Address,
-                               address: Address,
-                               blockContext: BlockContext)
+                               address: Address)
                               (implicit requestId: RequestId)= {
     val parallelyResolved = Task.parMap2(resolveToIps(allowedHost), resolveToIps(address))(ParallellyResolvedIps.apply)
     val result = for {
       allowedHostIps <- OptionT(parallelyResolved.map(_.allowedHost))
       addressIps <- OptionT(parallelyResolved.map(_.address))
       isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
-      _ = logger.debug(s"address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=${isMatching.show}")(blockContext)
+      _ = logger.debug(s"address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=${isMatching.show}")
     } yield isMatching
     result.value.map(_.getOrElse(false))
   }

@@ -90,15 +90,16 @@ object RorSessionCookie extends RequestIdAwareLogging {
                          (implicit clock: Clock,
                           uuidProvider: UuidProvider,
                           userIdEq: Eq[User.Id]): Either[ExtractingError, Unit] = {
+    implicit val requestContextImpl: RequestContext = requestContext
     val now = Instant.now(clock)
     if (cookie.userId =!= loggedUser.id) {
-      logger.warn(s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}")(requestContext)
+      logger.warn(s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}")
       Left(Invalid)
     } else if (!signature.check(cookie)) {
-      logger.warn(s"'${signature.value}' is not valid signature for ${cookie.show}")(requestContext)
+      logger.warn(s"'${signature.value}' is not valid signature for ${cookie.show}")
       Left(Invalid)
     } else if (now.isAfter(cookie.expiryDate)) {
-      logger.info(s"cookie was present but expired. Found: ${cookie.expiryDate.show}, now it's ${now.show}")(requestContext)
+      logger.info(s"cookie was present but expired. Found: ${cookie.expiryDate.show}, now it's ${now.show}")
       Left(Expired)
     } else {
       Right({})

@@ -52,7 +52,8 @@ class HeadersAndRule(val settings: Settings)
   private def logAccessRequirementNotFulfilled(accessRequirement: AccessRequirement[Header],
                                                requestContext: RequestContext): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
-    logger.debug(s"Request headers don't fulfil given header access requirement: ${accessRequirement.show}")(requestContext)
+    implicit val requestContextImpl: RequestContext = requestContext
+    logger.debug(s"Request headers don't fulfil given header access requirement: ${accessRequirement.show}")
   }
 }
 

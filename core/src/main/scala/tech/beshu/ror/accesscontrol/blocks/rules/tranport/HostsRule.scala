@@ -53,6 +53,7 @@ class HostsRule(val settings: Settings,
   }
 
   private def checkRemoteAddress[B <: BlockContext](blockContext: B): Task[RuleResult[B]] = {
+    implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.restRequest.remoteAddress match {
       case Some(remoteAddress) =>
         checkAllowedAddresses(blockContext)(
@@ -60,7 +61,7 @@ class HostsRule(val settings: Settings,
           addressToCheck = remoteAddress
         ).map(condition => RuleResult.resultBasedOnCondition(blockContext)(condition))
       case None =>
-        logger.warn(s"Remote address is unavailable!")(blockContext)
+        logger.warn(s"Remote address is unavailable!")
         Task.now(Rejected())
     }
   }

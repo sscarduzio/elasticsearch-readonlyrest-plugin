@@ -143,6 +143,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                     allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                     availableGroups: UniqueNonEmptyList[Group],
                                                                     mode: Mode) = {
+    implicit val blockContextImpl: B = blockContext
     checkRule(auth, blockContext, allowedUserMatcher, mode)
       .map {
         case Some(newBlockContext) =>
@@ -158,7 +159,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"Authentication error", ex)(blockContext)
+        logger.debug(s"Authentication error", ex)
         None
       }
   }
@@ -169,6 +170,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                                 availableGroups: UniqueNonEmptyList[Group],
                                                                                 mode: Mode) = {
+    implicit val blockContextImpl: B = blockContext
     checkRule(auth, blockContext, allowedUserMatcher, mode)
       .map {
         case Some(newBlockContext) =>
@@ -182,7 +184,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"Authentication & Authorization error", ex)(blockContext)
+        logger.debug(s"Authentication & Authorization error", ex)
         None
       }
   }
@@ -194,6 +196,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                                 availableGroups: UniqueNonEmptyList[Group],
                                                                                 mode: Mode): Task[Option[B]] = {
+    implicit val blockContextImpl: B = blockContext
     checkRule(authnRule, blockContext, allowedUserMatcher, mode)
       .flatMap {
         case Some(newBlockContext) =>
@@ -218,7 +221,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           None
       }
       .onErrorRecover { case ex =>
-        logger.debug(s"Authentication & Authorization error", ex)(blockContext)
+        logger.debug(s"Authentication & Authorization error", ex)
         Option.empty[B]
       }
   }

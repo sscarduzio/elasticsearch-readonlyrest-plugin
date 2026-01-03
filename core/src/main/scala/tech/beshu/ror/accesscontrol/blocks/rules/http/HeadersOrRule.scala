@@ -50,7 +50,8 @@ class HeadersOrRule(val settings: Settings)
 
   private def logAccessRequirementsNotFulfilled(requestContext: RequestContext): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
-    logger.debug(s"Request headers don't fulfil any of header access requirements: ${settings.headerAccessRequirements.show}")(requestContext)
+    implicit val requestContextImpl: RequestContext = requestContext
+    logger.debug(s"Request headers don't fulfil any of header access requirements: ${settings.headerAccessRequirements.show}")
   }
 }
 

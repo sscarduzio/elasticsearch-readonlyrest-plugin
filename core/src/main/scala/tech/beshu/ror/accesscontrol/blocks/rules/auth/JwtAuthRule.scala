@@ -78,9 +78,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
       }
 
   private def authorizeUsingJwtToken[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    implicit val blockContextImpl: B = blockContext
     jwtTokenFrom(blockContext.requestContext) match {
       case None =>
-        logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")(blockContext)
+        logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
         Task.now(Rejected())
       case Some(token) =>
         process(token, blockContext)
