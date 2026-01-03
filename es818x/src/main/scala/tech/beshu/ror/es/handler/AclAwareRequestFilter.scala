@@ -38,7 +38,7 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest
-import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
+import org.elasticsearch.action.admin.indices.resolve.{ResolveClusterActionRequest, ResolveIndexAction}
 import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
@@ -228,6 +228,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ResolveIndexAction.Request =>
         regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: ResolveClusterActionRequest =>
+        regularRequestHandler.handle(new ResolveClusterEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesRequest.Replaceable =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>

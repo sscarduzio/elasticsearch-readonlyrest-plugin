@@ -23,6 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -48,7 +49,8 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
 
   override protected def update(request: ActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
@@ -107,7 +109,7 @@ object ReflectionBasedIndicesEsRequestContext extends Logging {
       .getOrElse(None)
   }
 
-  private def getIndexUsingMethod(request: ActionRequest, methodName: String) =  {
+  private def getIndexUsingMethod(request: ActionRequest, methodName: String) = {
     callMethod[String](request, methodName)
       .map(index => NonEmptyList.fromFoldable(Option(index)))
       .getOrElse(None)

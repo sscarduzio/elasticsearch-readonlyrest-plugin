@@ -385,10 +385,16 @@ trait IndicesRuleDataStreamTests {
             allDataStreamsAndAliases = Set.empty,
             allRemoteDataStreamsAndAliases = Task.now(Set(
               fullRemoteDataStreamWithAliases("es_us", "test1_ds"),
-            ))
+            )),
+            allRemoteClusterNames = Set(
+              clusterName("es_us")
+            )
           ),
           filteredRequestedIndices = Set(
             requestedIndex("es_us:.ds-test1_ds"),
+          ),
+          allAllowedClusters = Set(
+            clusterName("es_us")
           )
         )
       }
@@ -629,13 +635,15 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
               requestedIndex("es_us:c01-logs-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("es_us"), clusterName("es_uk"))
           )
         }
         "requested data stream name with wildcard is more general version of the configured data stream name with wildcard" in {
@@ -653,13 +661,15 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
               requestedIndex("es_us:c01-logs-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("es_us"), clusterName("es_uk"))
           )
         }
         "requested data stream name with wildcard is more specialized version of the configured data stream name with wildcard" in {
@@ -678,13 +688,15 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
               requestedIndex("es_us:c01-logs-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("es_us"), clusterName("es_uk"))
           )
         }
         "requested data stream name with wildcard doesn't match the configured data stream name with wildcard but it does match the resolved data stream name" in {
@@ -702,13 +714,15 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
                 fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
               requestedIndex("es_us:c01-logs-2020-03-29")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("es_us"), clusterName("es_uk"))
           )
         }
         "requested data stream alias pattern when data stream configured" in {
@@ -722,11 +736,13 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test1_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test10_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test3_ds", "test2_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test1_ds")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("es_us"))
           )
         }
         "requested data stream alias when data stream configured" in {
@@ -740,11 +756,11 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
-            filteredRequestedIndices = Set(
-              requestedIndex("es_us:test_ds")
-            )
+            filteredRequestedIndices = Set(requestedIndex("es_us:test_ds")),
+            allAllowedClusters = Set(clusterName("es_us"))
           )
         }
         "requested data stream alias when data stream alias configured" in {
@@ -758,11 +774,13 @@ trait IndicesRuleDataStreamTests {
                 fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test_alias")
-            )
+            ),
+            allAllowedClusters = Set(clusterName("es_us"))
           )
         }
         "requested data stream alias pattern when data stream alias configured" in {
@@ -775,11 +793,11 @@ trait IndicesRuleDataStreamTests {
               allRemoteDataStreamsAndAliases = Task.now(Set(
                 fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
                 fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ))
+              )),
+              allRemoteClusterNames = Set(clusterName("es_us"))
             ),
-            filteredRequestedIndices = Set(
-              requestedIndex("es_us:test_alias")
-            )
+            filteredRequestedIndices = Set(requestedIndex("es_us:test_alias")),
+            allAllowedClusters = Set(clusterName("es_us"))
           )
         }
       }
@@ -804,8 +822,10 @@ trait IndicesRuleDataStreamTests {
               fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
               fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
               fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-            ))
-          )
+            )),
+            allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
+          ),
+          allAllowedClusters = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("(local)"))
         )
       }
       "cross cluster data stream backing index is used when data stream alias configured" in {
@@ -817,8 +837,10 @@ trait IndicesRuleDataStreamTests {
             allDataStreamsAndAliases = Set.empty,
             allRemoteDataStreamsAndAliases = Task.now(Set(
               fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
-            ))
-          )
+            )),
+            allRemoteClusterNames = Set(clusterName("es_us"))
+          ),
+          allAllowedClusters = Set(clusterName("es_us"))
         )
       }
     }
