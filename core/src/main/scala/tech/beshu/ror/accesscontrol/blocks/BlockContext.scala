@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.{Combined, NegativeGroupsLogic, PositiveGroupsLogic}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -136,7 +137,8 @@ object BlockContext {
                                                    override val responseHeaders: Set[Header],
                                                    override val responseTransformations: List[ResponseTransformation],
                                                    filteredIndices: Set[RequestedIndex[ClusterIndexName]],
-                                                   allAllowedIndices: Set[ClusterIndexName])
+                                                   allAllowedIndices: Set[ClusterIndexName],
+                                                   allAllowedClusters: Set[ClusterName.Full])
     extends BlockContext
 
   final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
@@ -325,6 +327,10 @@ object BlockContext {
   implicit class BlockContextWithIndicesUpdaterOps[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B) {
     def withIndices(filteredIndices: Set[RequestedIndex[ClusterIndexName]], allAllowedIndices: Set[ClusterIndexName]): B = {
       BlockContextWithIndicesUpdater[B].withIndices(blockContext, filteredIndices, allAllowedIndices)
+    }
+
+    def withClusters(allAllowedClusters: Set[ClusterName.Full]): B =  {
+      BlockContextWithIndicesUpdater[B].withClusters(blockContext, allAllowedClusters)
     }
   }
 
@@ -517,9 +523,9 @@ object BlockContext {
 
   implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext : HasIndices](blockContext: B) {
 
-    def randomNonexistentIndex(fromIndices: B => Iterable[RequestedIndex[ClusterIndexName]]): RequestedIndex[ClusterIndexName] = {
+    def randomNonexistentLocalIndex(fromIndices: B => Iterable[RequestedIndex[ClusterIndexName]]): RequestedIndex[ClusterIndexName.Local] = {
       import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-      fromIndices(blockContext).toList.randomNonexistentIndex()
+      fromIndices(blockContext).toList.randomNonexistentLocalIndex()
     }
   }
 

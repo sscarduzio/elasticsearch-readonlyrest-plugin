@@ -26,6 +26,8 @@ import tech.beshu.ror.utils.elasticsearch.IndexManager.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
+import scala.util.{Failure, Success, Try}
+
 class IndexManager(client: RestClient,
                    esVersion: String,
                    override val additionalHeaders: Map[String, String] = Map.empty)
@@ -150,8 +152,16 @@ class IndexManager(client: RestClient,
     call(createRolloverRequest(target, None), new JsonResponse(_))
   }
 
-  def resolve(indexPattern: String, otherIndexPatterns: String*): ResolveResponse = {
-    call(createResolveRequest(indexPattern :: otherIndexPatterns.toList), new ResolveResponse(_))
+  def resolveIndex(indexPattern: String, otherIndexPatterns: String*): ResolveIndexResponse = {
+    call(createResolveIndexRequest(indexPattern :: otherIndexPatterns.toList), new ResolveIndexResponse(_))
+  }
+
+  def resolveCluster(indexPattern: String, otherIndexPatterns: String*): ResolveClusterResponse = {
+    call(createResolveClusterRequest(indexPattern :: otherIndexPatterns.toList), new ResolveClusterResponse(_))
+  }
+
+  def resolveCluster(): ResolveClusterResponse = {
+    call(createResolveClusterRequest(List.empty), new ResolveClusterResponse(_))
   }
 
   def reindex(source: ReindexSource, destIndexName: String): JsonResponse = {
@@ -250,7 +260,7 @@ class IndexManager(client: RestClient,
 
   private def createPutMappingRequest(indexName: String, propertiesJson: JSON) = {
     val request = new HttpPut(client.from(
-      if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) s"/$indexName/_mapping" else s"/$indexName/_mapping/doc"
+      if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) s"/$indexName/_mapping" else s"/$indexName/_mapping/doc"
     ))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
@@ -285,8 +295,17 @@ class IndexManager(client: RestClient,
     request
   }
 
-  private def createResolveRequest(indicesPatterns: List[String]) = {
+  private def createResolveIndexRequest(indicesPatterns: List[String]) = {
     new HttpGet(client.from(s"/_resolve/index/${indicesPatterns.mkString(",")}"))
+  }
+
+  private def createResolveClusterRequest(indicesPatterns: List[String]) = {
+    new HttpGet(client.from(
+      indicesPatterns match {
+        case Nil => s"/_resolve/cluster"
+        case patterns => s"/_resolve/cluster/${indicesPatterns.mkString(",")}"
+      }
+    ))
   }
 
   private def createShrinkRequest(sourceIndex: String, targetIndex: String, aliases: List[String]): HttpPost = {
@@ -396,7 +415,7 @@ class IndexManager(client: RestClient,
       }
   }
 
-  class ResolveResponse(response: HttpResponse) extends JsonResponse(response) {
+  class ResolveIndexResponse(response: HttpResponse) extends JsonResponse(response) {
     lazy val indices: List[IndexDescription] =
       responseJson
         .obj.toMap.get("indices")
@@ -436,6 +455,35 @@ class IndexManager(client: RestClient,
     sealed case class DataStreamDescription(name: String, backingIndices: List[String])
   }
 
+  class ResolveClusterResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val clusterToMatchingIndices: Map[String, MatchingIndices] = {
+      val result = Try {
+        responseJson
+          .obj.toMap.view
+          .mapValues { value =>
+            value.obj.get("matching_indices") match {
+              case Some(value) =>
+                if (value.bool) MatchingIndices.True
+                else MatchingIndices.False
+              case None =>
+                value.obj.get("error") match {
+                  case Some(value) =>
+                    if (value.str.startsWith("no such index [")) MatchingIndices.NoSuchIndex
+                    else throw new IllegalStateException("Not supported error case")
+                  case None =>
+                    MatchingIndices.NotApplicable
+                }
+            }
+          }
+          .toMap
+      }
+      result match {
+        case Success(map) => map
+        case Failure(ex) => throw Exception(s"Cannot extract matching cluster indices from response:\n${responseJson.render()}", ex)
+      }
+    }
+  }
+
   class StatsResponse(response: HttpResponse) extends JsonResponse(response) {
 
     lazy val indexNames: Set[String] = responseJson.obj("indices").obj.keys.toSet
@@ -457,5 +505,13 @@ object IndexManager {
   object AliasAction {
     final case class Add(index: String, alias: String, filter: Option[JSON] = None) extends AliasAction
     final case class Delete(index: String, alias: String) extends AliasAction
+  }
+
+  sealed trait MatchingIndices
+  object MatchingIndices {
+    case object True extends MatchingIndices
+    case object False extends MatchingIndices
+    case object NotApplicable extends MatchingIndices
+    case object NoSuchIndex extends MatchingIndices
   }
 }

@@ -166,6 +166,8 @@ object TestsUtils {
 
   def remoteIndexName(str: NonEmptyString): ClusterIndexName.Remote = ClusterIndexName.Remote.fromString(str.value).get
 
+  def clusterName(str: NonEmptyString): ClusterName.Full = ClusterName.Full.fromString(str.value).get
+
   def indexName(str: NonEmptyString): IndexName = IndexName.fromString(str.value).get
 
   def fullIndexName(str: NonEmptyString): IndexName.Full = IndexName.Full.fromString(str.value).get

@@ -53,7 +53,7 @@ class ImpersonationRuleDecoratorTests
     "skip impersonation" when {
       "no impersonation header is passed in request" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin1:pass"))
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -66,7 +66,7 @@ class ImpersonationRuleDecoratorTests
           val requestContext = MockRequestContext.indices.withHeaders(
             basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1")
           )
-          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -80,7 +80,7 @@ class ImpersonationRuleDecoratorTests
           val requestContext = MockRequestContext.indices.withHeaders(
             basicAuthHeader("admin3:pass"), new Header(Header.Name.impersonateAs, "user1")
           )
-          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -97,7 +97,7 @@ class ImpersonationRuleDecoratorTests
         val requestContext = MockRequestContext.indices.withHeaders(
           basicAuthHeader("regularuser:pass"), new Header(Header.Name.impersonateAs, "user1")
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -107,7 +107,7 @@ class ImpersonationRuleDecoratorTests
         val requestContext = MockRequestContext.indices.withHeaders(
           basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user1")
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -117,7 +117,7 @@ class ImpersonationRuleDecoratorTests
         val requestContext = MockRequestContext.indices.withHeaders(
           basicAuthHeader("admin1:invalid_password"), new Header(Header.Name.impersonateAs, "user1")
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -127,7 +127,7 @@ class ImpersonationRuleDecoratorTests
         val requestContext = MockRequestContext.indices.withHeaders(
           basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1")
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val rule = authRuleWithImpersonation { defs =>
           new AuthKeySha1Rule(
@@ -144,7 +144,7 @@ class ImpersonationRuleDecoratorTests
         val requestContext = MockRequestContext.indices.withHeaders(
           basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user2")
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -154,7 +154,7 @@ class ImpersonationRuleDecoratorTests
         val requestContext = MockRequestContext.indices.withHeaders(
           basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "admin2")
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
         result should be(Rejected(Cause.ImpersonationNotAllowed))

@@ -24,11 +24,11 @@ import org.elasticsearch.index.IndexMode
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
-import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -51,15 +51,15 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
 
   override protected def update(request: ResolveIndexAction.Request,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse.sync(resp => filterResponse(resp, allAllowedIndices))
   }
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
-    val randomNonExistingIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
-    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name))
-    Modified
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+    val randomNonExistingIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
+    update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name), allowedClusters)
   }
 
   private def filterResponse(response: ActionResponse, indices: NonEmptyList[ClusterIndexName]): ActionResponse = {

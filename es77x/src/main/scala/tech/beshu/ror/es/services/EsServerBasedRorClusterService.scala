@@ -49,7 +49,6 @@ import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
@@ -66,6 +65,19 @@ class EsServerBasedRorClusterService(nodeName: String,
     with Logging {
 
   import EsServerBasedRorClusterService.*
+
+  override def allClusterNames: Set[ClusterName.Full] = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) =>
+        remoteClusterService
+          .getRemoteConnectionInfos.iterator().asScala
+          .map(_.getClusterAlias)
+          .flatMap(ClusterName.Full.fromString)
+          .toCovariantSet
+      case None =>
+        Set.empty
+    }
+  }
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup

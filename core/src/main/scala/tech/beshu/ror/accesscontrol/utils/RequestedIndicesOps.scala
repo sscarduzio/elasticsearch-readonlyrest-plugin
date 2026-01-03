@@ -22,10 +22,10 @@ import scala.language.implicitConversions
 
 class RequestedIndicesOps(val indices: Iterable[RequestedIndex[ClusterIndexName]]) extends AnyVal {
 
-  def randomNonexistentIndex(): RequestedIndex[ClusterIndexName] = {
+  def randomNonexistentLocalIndex(): RequestedIndex[ClusterIndexName.Local] = {
     val foundIndex = indices.find(_.name.hasWildcard) orElse indices.headOption
     foundIndex match {
-      case Some(indexName) => indexName.randomNonexistentIndex()
+      case Some(indexName) => indexName.randomNonexistentLocalIndex()
       case None => RequestedIndex(ClusterIndexName.Local.randomNonexistentIndex(), excluded = false)
     }
   }
