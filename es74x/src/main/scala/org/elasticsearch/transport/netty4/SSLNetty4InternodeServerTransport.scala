@@ -18,7 +18,7 @@ package org.elasticsearch.transport.netty4
 
 import io.netty.channel.*
 import io.netty.handler.ssl.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -45,7 +45,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         networkService: NetworkService,
                                         ssl: InternodeSslSettings)
   extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService)
-    with Logging {
+    with RequestIdAwareLogging {
 
   private val clientSslContext = doPrivileged { SSLCertHelper.prepareClientSSLContext(ssl) }
   private val serverSslContext = doPrivileged { SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false) }
@@ -76,7 +76,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
 
     override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
       if (cause.isInstanceOf[NotSslRecordException] || (cause.getCause != null && cause.getCause.isInstanceOf[NotSslRecordException])) {
-        logger.error("Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect")
+        noRequestIdLogger.error("Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect")
         ctx.channel.close
       } else {
         super.exceptionCaught(ctx, cause)

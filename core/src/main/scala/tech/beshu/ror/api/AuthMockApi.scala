@@ -23,7 +23,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.syntax.*
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService as AuthenticationService, ExternalAuthorizationService as AuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
@@ -37,8 +36,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
 
-class AuthMockApi(rorInstance: RorInstance)
-  extends RequestIdAwareLogging {
+class AuthMockApi(rorInstance: RorInstance) {
 
   import AuthMockApi.*
   import AuthMockApi.AuthMockResponse.*
