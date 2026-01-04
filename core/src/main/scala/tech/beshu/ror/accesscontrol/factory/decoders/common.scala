@@ -267,8 +267,8 @@ object common extends RequestIdAwareLogging {
   implicit val httpClientConfigDecoder: Decoder[HttpClientsFactory.Config] =
     Decoder.instance { c =>
       for {
-        connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
-        requestTimeout <- c.downFields("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout").as[Option[PositiveFiniteDuration]]
+        connectionTimeout <- c.downFieldAlternatives("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
+        requestTimeout <- c.downFieldAlternatives("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout").as[Option[PositiveFiniteDuration]]
         connectionPoolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
         validate <- c.downField("validate").as[Option[Boolean]]
       } yield HttpClientsFactory.Config(

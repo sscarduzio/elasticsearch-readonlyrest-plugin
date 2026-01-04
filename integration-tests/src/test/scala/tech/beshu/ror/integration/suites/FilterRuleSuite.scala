@@ -94,7 +94,7 @@ class FilterRuleSuite
           val matchAllIndicesQuery = Seq(
             """{"index":"*"}""",
             """{"query" : {"match_all" : {}}}""")
-          val result = searchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
+          val result = searchManager.mSearchUnsafe(matchAllIndicesQuery*)
 
           result should have statusCode 200
           result.responses.size shouldBe 1

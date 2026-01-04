@@ -110,8 +110,7 @@ class TestSettingsApi(rorInstance: RorInstance,
       }
   }
 
-  private def provideLocalUsers(loggedUser: Option[LoggedUser])
-                               (implicit requestId: RequestId): Task[TestSettingsResponse] = {
+  private def provideLocalUsers(loggedUser: Option[LoggedUser]): Task[TestSettingsResponse] = {
     rorInstance
       .currentTestSettings()
       .map {

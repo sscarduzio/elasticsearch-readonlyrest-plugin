@@ -73,7 +73,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
       .instance { c =>
         for {
           name <- c.downField("service").as[ExternalAuthenticationService.Name]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[PositiveFiniteDuration]
+          ttl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[PositiveFiniteDuration]
         } yield (name, Option(ttl))
       }
       .mapError(RulesLevelCreationError.apply)

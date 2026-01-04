@@ -48,14 +48,14 @@ object ExternalAuthorizationServicesDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthorizationService.Name]
-          url <- c.downFields("groups_endpoint", "url").as[Url]
+          url <- c.downFieldAlternatives("groups_endpoint", "url").as[Url]
           authTokenName <- c.downField("auth_token_name").as[AuthTokenName]
           sendUsing <- c.downField("auth_token_passed_as").as[AuthTokenSendMethod]
           httpMethod <- c.downField("http_method").as[Option[SupportedHttpMethod]]
           groupsConfig <- c.as[GroupsConfig](groupsConfigDecoder(name))
           defaultQueryParams <- c.downField("default_query_parameters").as[Option[Set[QueryParam]]]
           defaultHeaders <- c.downField("default_headers").as[Option[Set[Header]]]
-          cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
+          cacheTtl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           httpClientConfig <- c.as[ValidatedHttpClientConfig].map(_.config)
         } yield {
           val httpClient = httpClientFactory.create(httpClientConfig)

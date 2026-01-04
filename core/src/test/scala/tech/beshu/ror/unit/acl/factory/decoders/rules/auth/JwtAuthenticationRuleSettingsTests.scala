@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
+import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
@@ -23,10 +24,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthent
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthenticationRule
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -533,7 +533,7 @@ class JwtAuthenticationRuleSettingsTests
   }
 
   private val mockedHttpClientsFactory: HttpClientsFactory = {
-    val httpClientMock = mock[HttpClient]
+    val httpClientMock = mock[SimpleHttpClient[Task]]
     new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)
   }
 }

@@ -1,0 +1,105 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package org.elasticsearch.transport.netty4
+
+import io.netty.channel.*
+import io.netty.handler.ssl.*
+import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.TransportVersion
+import org.elasticsearch.cluster.node.DiscoveryNode
+import org.elasticsearch.common.io.stream.NamedWriteableRegistry
+import org.elasticsearch.common.network.NetworkService
+import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.common.util.PageCacheRecycler
+import org.elasticsearch.indices.breaker.CircuitBreakerService
+import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.ConnectionProfile
+import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
+import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
+
+import java.net.{InetSocketAddress, SocketAddress}
+import javax.net.ssl.SNIHostName
+
+class SSLNetty4InternodeServerTransport(settings: Settings,
+                                        threadPool: ThreadPool,
+                                        pageCacheRecycler: PageCacheRecycler,
+                                        circuitBreakerService: CircuitBreakerService,
+                                        namedWriteableRegistry: NamedWriteableRegistry,
+                                        networkService: NetworkService,
+                                        ssl: InternodeSslSettings,
+                                        sharedGroupFactory: SharedGroupFactory)
+  extends Netty4Transport(settings, TransportVersion.current(), threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
+    with Logging {
+
+  private val clientSslContext = doPrivileged { SSLCertHelper.prepareClientSSLContext(ssl) }
+  private val serverSslContext = doPrivileged { SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false) }
+
+  override def getClientChannelInitializer(node: DiscoveryNode,
+                                           connectionProfile: ConnectionProfile): ChannelHandler = {
+    new SSLClientChannelInitializer(node)
+  }
+
+  override def getServerChannelInitializer(name: String): ChannelHandler = {
+    new SSLServerChannelInitializer(name)
+  }
+
+  // Named inner class to work around Scala 3 limitation with protected Java inner class constructors
+  private class SSLClientChannelInitializer(node: DiscoveryNode) extends ClientChannelInitializer {
+    override def initChannel(ch: Channel): Unit = {
+      super.initChannel(ch)
+
+      ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
+        override def connect(ctx: ChannelHandlerContext,
+                             remoteAddress: SocketAddress,
+                             localAddress: SocketAddress,
+                             promise: ChannelPromise): Unit = {
+          val inet = remoteAddress.asInstanceOf[InetSocketAddress]
+          val sslEngine = SSLCertHelper.prepareSSLEngine(
+            sslContext = clientSslContext,
+            hostAndPort = HostAndPort(inet.getHostString, inet.getPort),
+            channelHandlerContext = ctx,
+            serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_)),
+            enableHostnameVerification = ssl.hostnameVerificationEnabled,
+            fipsCompliant = ssl.fipsMode.isSslFipsCompliant
+          )
+          ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
+          super.connect(ctx, remoteAddress, localAddress, promise)
+        }
+      })
+    }
+
+    override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
+      if (cause.isInstanceOf[NotSslRecordException] || (cause.getCause != null && cause.getCause.isInstanceOf[NotSslRecordException])) {
+        logger.error("Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect")
+        ctx.channel.close
+      } else {
+        super.exceptionCaught(ctx, cause)
+      }
+    }
+  }
+
+  // Named inner class to work around Scala 3 limitation with protected Java inner class constructors
+  private class SSLServerChannelInitializer(name: String) extends ServerChannelInitializer(name) {
+    override def initChannel(ch: Channel): Unit = {
+      super.initChannel(ch)
+      ch.pipeline().addFirst("ror_internode_ssl_handler", serverSslContext.newHandler(ch.alloc()))
+    }
+  }
+}

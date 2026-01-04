@@ -29,8 +29,8 @@ class EsContainerWithNoSecurity private(esConfig: Elasticsearch.Config,
                                         startedClusterDependencies: StartedClusterDependencies,
                                         elasticsearch: Elasticsearch,
                                         initializer: ElasticsearchNodeDataInitializer,
-                                        additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
-                                        awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+                                        additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                        awaitingReadyStrategy: AwaitingReadyStrategy)
   extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES without any security installed container ...")

@@ -69,7 +69,7 @@ object MozillaJsCompiler
           //     - maybe the empty SecurityManager created by ES <8.0,8.18) somehow confuses Rhino permission checks and interferes with permissions we add through patching
           //     - or some combination of all those factors
           //
-          // In order to omit using ClassLoader's we need to set interpreted mod (a bit worse performance, but it concerns only reading few values from config)
+          // In order to omit using ClassLoader's we need to set interpreted mode (a bit worse performance, but it concerns only reading few values from config)
           context.setInterpretedMode(true)
           context
         }

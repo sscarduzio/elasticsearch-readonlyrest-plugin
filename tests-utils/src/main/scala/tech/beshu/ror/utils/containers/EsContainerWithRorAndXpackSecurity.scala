@@ -32,8 +32,8 @@ class EsContainerWithRorAndXpackSecurity private(esConfig: Elasticsearch.Config,
                                                  elasticsearch: Elasticsearch,
                                                  override val sslEnabled: Boolean,
                                                  initializer: ElasticsearchNodeDataInitializer,
-                                                 additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
-                                                 awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
+                                                 additionalLogConsumer: Option[Consumer[OutputFrame]],
+                                                 awaitingReadyStrategy: AwaitingReadyStrategy)
   extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with ROR and X-Pack plugin installed container ...")

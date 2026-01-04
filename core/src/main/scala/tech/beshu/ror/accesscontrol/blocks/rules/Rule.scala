@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.accesscontrol.utils.TaskRuleResultOps.*
 import tech.beshu.ror.syntax.*
 
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 
 sealed trait Rule {
   def name: Rule.Name
@@ -158,6 +158,7 @@ object Rule {
 
     protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
 
+    @nowarn("msg=unused implicit parameter")
     protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.now(Fulfilled(blockContext))
   }
@@ -183,6 +184,7 @@ object Rule {
 
     protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 
+    @nowarn("msg=unused implicit parameter")
     protected def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.now(Fulfilled(blockContext))
   }
@@ -196,6 +198,7 @@ object Rule {
         .flatMapT(postAuthAction)
     }
 
+    @nowarn("msg=unused implicit parameter")
     protected def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.now(Fulfilled(blockContext))
   }

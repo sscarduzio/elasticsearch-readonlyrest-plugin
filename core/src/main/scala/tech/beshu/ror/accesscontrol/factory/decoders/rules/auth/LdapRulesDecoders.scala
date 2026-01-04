@@ -78,7 +78,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
+          ttl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
         } yield (name, ttl)
       }
       .toSyncDecoder
@@ -110,7 +110,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
+          ttl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           groupsLogic <- GroupsLogicDecoder.simpleDecoder[LdapAuthorizationRule].apply(c)
         } yield (name, ttl, groupsLogic)
       }
@@ -150,7 +150,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
+          ttl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           groupsLogic <- GroupsLogicDecoder.simpleDecoder[LdapAuthRule].apply(c)
         } yield (name, ttl, groupsLogic)
       }

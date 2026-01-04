@@ -80,8 +80,7 @@ class AuthMockApi(rorInstance: RorInstance)
     AuthMockResponse.ProvideAuthMock.CurrentAuthMocks((ldaps ++ extAuthn ++ extAuthz).toList)
   }
 
-  private def updateAuthMock(body: String)
-                            (implicit requestId: RequestId): Task[AuthMockResponse] = {
+  private def updateAuthMock(body: String): Task[AuthMockResponse] = {
     val result = for {
       updateRequest <- decodeRequest(body)
       authServices <- readCurrentAuthServices()
@@ -99,8 +98,7 @@ class AuthMockApi(rorInstance: RorInstance)
       .toEitherT[Task]
   }
 
-  private def readCurrentAuthServices()
-                                     (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, RorDependencies.Services] = {
+  private def readCurrentAuthServices(): EitherT[Task, AuthMockResponse, RorDependencies.Services] = {
     EitherT(withRorSettingsAuthServices(
       action = identity,
       onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply,
@@ -110,8 +108,7 @@ class AuthMockApi(rorInstance: RorInstance)
 
   private def withRorSettingsAuthServices[A, B](action: RorDependencies.Services => B,
                                               onNotSet: String => A,
-                                              onInvalidated: String => A)
-                                             (implicit requestId: RequestId): Task[Either[A, B]] = {
+                                              onInvalidated: String => A): Task[Either[A, B]] = {
     rorInstance.currentTestSettings().map {
       case TestSettings.NotSet =>
         Left(onNotSet(testSettingsNotConfiguredMessage))
@@ -151,8 +148,7 @@ class AuthMockApi(rorInstance: RorInstance)
       .toEitherT[Task]
   }
 
-  private def updateAuthMocks(updateRequest: UpdateMocksRequest)
-                             (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
+  private def updateAuthMocks(updateRequest: UpdateMocksRequest): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
     rorInstance
       .updateAuthMocks(toDomain(updateRequest.services))
       .map {

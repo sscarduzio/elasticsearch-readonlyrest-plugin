@@ -100,8 +100,7 @@ class RorInstance private(boot: ReadonlyRest,
                         (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] =
     theMainSettingsEngine.forceReloadAndSave(MainRorSettings(settings))
 
-  def currentTestSettings()
-                         (implicit requestId: RequestId): Task[TestSettings] = {
+  def currentTestSettings(): Task[TestSettings] = {
     theTestSettingsEngine.currentTestSettings()
   }
 
@@ -116,8 +115,7 @@ class RorInstance private(boot: ReadonlyRest,
     theTestSettingsEngine.invalidateTestSettingsEngine()
   }
 
-  def updateAuthMocks(mocks: AuthServicesMocks)
-                     (implicit requestId: RequestId): Task[Either[IndexSettingsUpdateError, Unit]] = {
+  def updateAuthMocks(mocks: AuthServicesMocks): Task[Either[IndexSettingsUpdateError, Unit]] = {
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 

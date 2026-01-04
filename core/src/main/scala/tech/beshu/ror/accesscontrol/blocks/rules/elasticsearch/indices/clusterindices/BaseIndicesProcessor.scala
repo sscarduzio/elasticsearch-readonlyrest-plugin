@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices
 
+import scala.annotation.nowarn
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
@@ -33,6 +34,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+@nowarn("msg=unused implicit parameter")
 trait BaseIndicesProcessor {
   this: RequestIdAwareLogging =>
 

@@ -16,6 +16,13 @@
     </suppress>
     <suppress>
         <notes><![CDATA[
+False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not io.circe:circe-refined_3
+  ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.circe/circe-refined_3@.+(\?.*)?$</packageUrl>
+        <cve>CVE-2021-34364</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
    file name: elasticsearch-rest-client-7.10.2.jar - provided dependency, rest-client is used to send only predefined requests (audit)
    ]]></notes>
         <sha1>d0c857275bcec532079cdabb7913e2611c123e70</sha1>
