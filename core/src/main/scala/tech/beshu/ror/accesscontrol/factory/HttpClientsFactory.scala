@@ -118,7 +118,7 @@ class AsyncHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogg
       }
     } catch {
       case ex: Throwable =>
-        noRequestIdLogger.error("ERR: ", ex)
+        noRequestIdLogger.error(s"Failed to create AsyncHttpClient", ex)
         throw ex
     }
   }
