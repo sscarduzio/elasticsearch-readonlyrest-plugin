@@ -29,11 +29,12 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContext.Aux
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
-import tech.beshu.ror.es.{RorActionListener, AtEsLevelUpdateActionResponseListener}
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
@@ -87,7 +88,8 @@ class RegularRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx(s"ACL committing result failure", ex)(request)
+        implicit val requestContextImpl: RequestContext.Aux[B] = request
+        logger.errorEx(s"ACL committing result failure", ex)
         esContext.listener.onFailure(new Exception(ex))
     }
   }

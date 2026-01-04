@@ -87,7 +87,8 @@ class RegularRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx(s"ACL committing result failure", ex)(request)
+        implicit val requestContextImpl: RequestContext.Aux[B] = request
+        logger.errorEx(s"ACL committing result failure", ex)
         esContext.listener.onFailure(new Exception(ex))
     }
   }

@@ -155,11 +155,12 @@ class EsServerBasedRorClusterService(nodeName: String,
   override def verifyDocumentAccessibility(document: Document,
                                            filter: Filter,
                                            id: RequestContext.Id): Task[DocumentAccessibility] = {
+    implicit val idImpl: RequestContext.Id = id
     createSearchRequest(filter, document)
       .call(extractAccessibilityFrom)
       .onErrorRecover {
         case ex =>
-          logger.error(s"Could not verify get request. Blocking document", ex)(id)
+          logger.error(s"Could not verify get request. Blocking document", ex)
           Inaccessible
       }
   }
@@ -167,11 +168,12 @@ class EsServerBasedRorClusterService(nodeName: String,
   override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
                                               filter: Filter,
                                               id: RequestContext.Id): Task[DocumentsAccessibilities] = {
+    implicit val idImpl: RequestContext.Id = id
     createMultiSearchRequest(filter, documents)
       .call(extractResultsFromSearchResponse)
       .onErrorRecover {
         case ex =>
-          logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", ex)(id)
+          logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", ex)
           blockAllDocsReturned(documents)
       }
       .map(results => zip(results, documents))

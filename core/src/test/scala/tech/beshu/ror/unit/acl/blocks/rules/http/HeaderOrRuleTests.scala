@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBl
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersOrRule
-import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, RequestId, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
@@ -178,7 +178,7 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
     (() => restRequest.path).expects().returning(UriPath.from("/_cat/indices"))
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
-    (() => requestContext.requestId).expects().returning(RequestId("1")).anyNumberOfTimes()
+    (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
     val blockContext = GeneralNonIndexRequestBlockContext(
       requestContext = requestContext,
       userMetadata = UserMetadata.empty,

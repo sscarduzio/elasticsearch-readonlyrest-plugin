@@ -38,7 +38,8 @@ trait EsRequest[B <: BlockContext] extends RequestIdAwareLogging {
     Try(modifyRequest(blockContext))
       .fold(
         ex => {
-          logger.error(s"Cannot modify request with filtered data", ex)(blockContext)
+          implicit val blockContextImpl: B = blockContext
+          logger.error(s"Cannot modify request with filtered data", ex)
           ModificationResult.CannotModify
         },
         identity

@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, User}
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.syntax.*
@@ -142,7 +142,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     (() => restRequest.allHeaders).expects().returning(headers)
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)
-    (() => requestContext.requestId).expects().returning(RequestId("dummy")).anyNumberOfTimes()
+    (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext = requestContext,
       userMetadata = loggedUser match {

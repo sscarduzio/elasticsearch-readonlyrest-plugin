@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.Ca
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.IndicesCheckContinuation.{continue, stop}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.{CanPass, CheckContinuation}
 import tech.beshu.ror.accesscontrol.domain.Action.EsAction.restoreSnapshotAction
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -68,7 +68,8 @@ trait BaseIndicesProcessor {
 
   private def allKibanaRelatedIndicesMatched[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]],
                                                                                        determinedKibanaIndex: Option[KibanaIndexName])
-                                                                                      (implicit requestId: RequestContext.Id): Task[CheckContinuation[Set[RequestedIndex[T]]]] =
+                                                                                      (implicit requestId: RequestContext.Id): Task[CheckContinuation[Set[RequestedIndex[T]]]] = {
+    implicit val requestIdImpl: RequestId = requestId.toRequestId
     Task.delay {
       determinedKibanaIndex match {
         case Some(kibanaIndexName) =>
@@ -86,10 +87,12 @@ trait BaseIndicesProcessor {
           continue[Set[RequestedIndex[T]]]
       }
     }
+  }
 
   private def noneOrAllIndicesMatched[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                (implicit requestId: RequestContext.Id,
                                                                                 allowedIndicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] = {
+    implicit val requestIdImpl: RequestId = requestId.toRequestId
     Task.delay {
       logger.debug(s"Checking - none or all indices ...")
     } >>
@@ -118,6 +121,7 @@ trait BaseIndicesProcessor {
   private def allIndicesMatchedByWildcard[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                    (implicit requestId: RequestContext.Id,
                                                                                     allowedIndicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] =
+    implicit val requestIdImpl: RequestId = requestId.toRequestId
     Task.delay {
       implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
       logger.debug(s"Checking if all indices are matched ...")
@@ -143,6 +147,7 @@ trait BaseIndicesProcessor {
   private def indicesAliasesDataStreams[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                                  (implicit requestId: RequestContext.Id,
                                                                                   allowedIndicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] = {
+    implicit val requestIdImpl: RequestId = requestId.toRequestId
     Task
       .delay {
         logger.debug(s"Checking - indices & aliases & data streams...")
@@ -375,6 +380,7 @@ trait BaseIndicesProcessor {
   private def generalWriteRequest[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
                                                                            (implicit requestId: RequestContext.Id,
                                                                             allowedIndicesManager: IndicesManager[T]): Task[CheckContinuation[Set[RequestedIndex[T]]]] = {
+    implicit val requestIdImpl: RequestId = requestId.toRequestId
     Task.delay {
       logger.debug(s"Checking - write request ...")
       // Write requests

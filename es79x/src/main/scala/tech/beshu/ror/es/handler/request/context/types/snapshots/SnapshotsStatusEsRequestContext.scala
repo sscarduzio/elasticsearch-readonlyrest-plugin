@@ -23,7 +23,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusR
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestId, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -92,6 +92,7 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
 
   private def modifySnapshotStatusRequest(request: SnapshotsStatusRequest,
                                           blockContext: SnapshotRequestBlockContext) = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val updateResult = for {
       repository <- repositoryFrom(blockContext)
       snapshots <- snapshotsFrom(blockContext)
@@ -106,6 +107,7 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
   }
 
   private def repositoryFrom(implicit blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val repositories = blockContext.repositories
     if (allRepositoriesRequested(repositories)) {
       Right(RepositoryName.All)

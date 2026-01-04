@@ -69,7 +69,8 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx(s"ACL committing result failure", ex)(request)
+        implicit val requestContextImpl: RequestContext = request
+        logger.errorEx(s"ACL committing result failure", ex)
         esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }

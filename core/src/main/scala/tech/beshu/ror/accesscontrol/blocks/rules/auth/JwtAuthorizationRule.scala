@@ -56,6 +56,7 @@ final class JwtAuthorizationRule(val settings: Settings)
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                  payload: Jwt.Payload,
                                                                  groupsLogic: GroupsLogic): RuleResult[B] = {
+    implicit val blockContextImpl: B = blockContext
     val groupsConfig = settings.jwt.groupsConfig
     val result = payload.claims.groupsClaim(groupsConfig.idsClaim, groupsConfig.namesClaim)
     logClaimSearchResults(blockContext, result)
@@ -76,12 +77,12 @@ final class JwtAuthorizationRule(val settings: Settings)
 
   private def logClaimSearchResults[B <: BlockContext](blockContext: B,
                                                        groups: ClaimSearchResult[UniqueList[Group]]): Unit = {
-    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+    implicit val blockContextImpl: B = blockContext
     val claimsDescription = settings.jwt.groupsConfig.namesClaim match {
       case Some(namesClaim) => s"claims (id:'${settings.jwt.groupsConfig.idsClaim.name.show}',name:'${namesClaim.name.show}')"
       case None => s"claim '${settings.jwt.groupsConfig.idsClaim.name.show}'"
     }
-    logger.debug(s"[${requestId.show}] JWT resolved groups for ${claimsDescription.show}: ${groups.show}")
+    logger.debug(s"JWT resolved groups for ${claimsDescription.show}: ${groups.show}")
   }
 
 }
