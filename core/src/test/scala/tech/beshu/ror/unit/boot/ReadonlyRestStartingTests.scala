@@ -431,7 +431,7 @@ class ReadonlyRestStartingTests
         }) { rorInstance =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
         }
         "there is some settings stored in index" should {
           "load test engine as active" when {
@@ -468,7 +468,7 @@ class ReadonlyRestStartingTests
             }) { case (rorInstance, expirationTimestamp) =>
               rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-              rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+              rorInstance.currentTestSettings().runSyncUnsafe() should be(
                 TestSettings.Present(
                   dependencies = RorDependencies.noOp,
                   rawSettings = testSettings1,
@@ -532,7 +532,7 @@ class ReadonlyRestStartingTests
             }) { rorInstance =>
               rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-              rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+              rorInstance.currentTestSettings().runSyncUnsafe() should be(
                 TestSettings.Invalidated(
                   recent = testSettings1,
                   configuredTtl = (100 seconds).toRefinedPositiveUnsafe
@@ -561,7 +561,7 @@ class ReadonlyRestStartingTests
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
           }
         }
         "settings structure is not valid" should {
@@ -595,7 +595,7 @@ class ReadonlyRestStartingTests
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
           }
         }
         "settings structure is valid, rule is malformed and cannot start engine" should {
@@ -628,7 +628,7 @@ class ReadonlyRestStartingTests
             )
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(
               TestSettings.Invalidated(
                 recent = testSettingsMalformed,
                 configuredTtl = (100 seconds).toRefinedPositiveUnsafe
@@ -659,7 +659,7 @@ class ReadonlyRestStartingTests
         }) { case (rorInstance, mockedIndexDocumentManager) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
           (mockedIndexDocumentManager.saveDocumentJson _)
             .expects(
@@ -683,7 +683,7 @@ class ReadonlyRestStartingTests
           testEngineReloadResult.value shouldBe a[TestSettings.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+          val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
           testSettingsEngine shouldBe a[TestSettings.Present]
           Option(testSettingsEngine.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
             (testSettings1, 1 minute).some
@@ -710,7 +710,7 @@ class ReadonlyRestStartingTests
             )
           }) { case (rorInstance, mockedIndexDocumentManager) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
             (mockedIndexDocumentManager.saveDocumentJson _)
               .expects(
@@ -734,7 +734,7 @@ class ReadonlyRestStartingTests
             testEngineReloadResult1stAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngine shouldBe a[TestSettings.Present]
             Option(testSettingsEngine.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
               (testSettings1, 1 minute).some
@@ -749,7 +749,7 @@ class ReadonlyRestStartingTests
             testEngineReloadResult2ndAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngineAfterReload = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngineAfterReload = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngineAfterReload shouldBe a[TestSettings.Present]
             Option(testSettingsEngineAfterReload.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
               (testSettings1, 1 minute).some
@@ -779,7 +779,7 @@ class ReadonlyRestStartingTests
             )
           }) { case (rorInstance, mockedIndexDocumentManager) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
             (mockedIndexDocumentManager.saveDocumentJson _)
               .expects(
@@ -803,7 +803,7 @@ class ReadonlyRestStartingTests
             testEngineReloadResult1stAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngine shouldBe a[TestSettings.Present]
             Option(testSettingsEngine.asInstanceOf[TestSettings.Present])
               .map(i => (i.rawSettings, i.configuredTtl.value)) should be((testSettings1, 10 minute).some)
@@ -832,7 +832,7 @@ class ReadonlyRestStartingTests
             testEngineReloadResult2ndAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngineAfterReload = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngineAfterReload = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngineAfterReload shouldBe a[TestSettings.Present]
             Option(testSettingsEngineAfterReload.asInstanceOf[TestSettings.Present])
               .map(i => (i.rawSettings, i.configuredTtl.value)) should be((testSettings1, 5 minute).some)
@@ -863,7 +863,7 @@ class ReadonlyRestStartingTests
           )
         }) { case (rorInstance, mockedIndexDocumentManager) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
           (mockedIndexDocumentManager.saveDocumentJson _)
             .expects(
@@ -887,7 +887,7 @@ class ReadonlyRestStartingTests
           testEngineReloadResult1stAttempt.value shouldBe a[TestSettings.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+          val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
           testSettingsEngine shouldBe a[TestSettings.Present]
           Option(testSettingsEngine.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
             (testSettings1, 1 minute).some
@@ -917,7 +917,7 @@ class ReadonlyRestStartingTests
           testEngineReloadResult2ndAttempt.value shouldBe a[TestSettings.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          val testSettingsEngineAfterReload = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+          val testSettingsEngineAfterReload = rorInstance.currentTestSettings().runSyncUnsafe()
           testSettingsEngineAfterReload shouldBe a[TestSettings.Present]
           Option(testSettingsEngineAfterReload.asInstanceOf[TestSettings.Present])
             .map(i => (i.rawSettings, i.configuredTtl.value)) should be((testSettings2, 2 minutes).some)
@@ -962,13 +962,13 @@ class ReadonlyRestStartingTests
             ))))
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
           Task.sleep(5 seconds).runSyncUnsafe()
 
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1006,7 +1006,7 @@ class ReadonlyRestStartingTests
             (mockedIndexDocumentManager, expirationTimestamp)
           )
         }) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1032,7 +1032,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1072,7 +1072,7 @@ class ReadonlyRestStartingTests
           )
         }) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1098,7 +1098,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1138,7 +1138,7 @@ class ReadonlyRestStartingTests
           )
         }) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1164,7 +1164,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Invalidated(
               recent = testSettings2,
               configuredTtl = (200 seconds).toRefinedPositiveUnsafe
@@ -1194,7 +1194,7 @@ class ReadonlyRestStartingTests
         }) { case (rorInstance, mockedIndexDocumentManager) =>
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
           (mockedIndexDocumentManager.saveDocumentJson _)
             .expects(
@@ -1221,7 +1221,7 @@ class ReadonlyRestStartingTests
           Task.sleep(5 seconds).runSyncUnsafe()
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Invalidated(testSettings1, (3 seconds).toRefinedPositiveUnsafe)
           )
         }
@@ -1245,7 +1245,7 @@ class ReadonlyRestStartingTests
           mockedIndexDocumentManager)
       }) { case (rorInstance, mockedIndexDocumentManager) =>
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-        rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+        rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
         (mockedIndexDocumentManager.saveDocumentJson _)
           .expects(
@@ -1268,7 +1268,7 @@ class ReadonlyRestStartingTests
 
         testEngineReloadResult.value shouldBe a[TestSettings.Present]
         rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
-        rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() shouldBe a[TestSettings.Present]
+        rorInstance.currentTestSettings().runSyncUnsafe() shouldBe a[TestSettings.Present]
 
         (mockedIndexDocumentManager.saveDocumentJson _)
           .expects(
@@ -1288,7 +1288,7 @@ class ReadonlyRestStartingTests
         rorInstance.invalidateTestSettingsEngine()(newRequestId()).runSyncUnsafe() should be(Right(()))
 
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-        rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+        rorInstance.currentTestSettings().runSyncUnsafe() should be(
           TestSettings.Invalidated(recent = testSettings1, configuredTtl = (1 minute).toRefinedPositiveUnsafe)
         )
       }
@@ -1328,7 +1328,7 @@ class ReadonlyRestStartingTests
           }
         ) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1356,7 +1356,7 @@ class ReadonlyRestStartingTests
           )
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Invalidated(testSettings1, (100 seconds).toRefinedPositiveUnsafe)
           )
         }
@@ -1400,7 +1400,7 @@ class ReadonlyRestStartingTests
         )
 
         val dataStreamService1 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = NotAcknowledged)
-        val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = Acknowledged, componentTemplateResult = NotAcknowledged)
+        val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, componentTemplateResult = NotAcknowledged)
 
         val auditSinkServiceCreator = mock[DataStreamAndIndexBasedAuditSinkServiceCreator]
 
@@ -1761,12 +1761,12 @@ class ReadonlyRestStartingTests
   // anonymous class instead of mock due to final defs and protected methods in DataStreamService
   private def mockedDataSteamService(dataStreamExists: Boolean,
                                      ilmExists: Boolean = false,
-                                     ilmCreationResult: CreationResult = CreationResult.Acknowledged,
+                                     ilmCreationResult: CreationResult = Acknowledged,
                                      componentTemplateExists: Boolean = false,
-                                     componentTemplateResult: CreationResult = CreationResult.Acknowledged,
+                                     componentTemplateResult: CreationResult = Acknowledged,
                                      indexTemplateExists: Boolean = false,
-                                     indexTemplateResult: CreationResult = CreationResult.Acknowledged,
-                                     dataStreamResult: CreationResult = CreationResult.Acknowledged) = new DataStreamService {
+                                     indexTemplateResult: CreationResult = Acknowledged,
+                                     dataStreamResult: CreationResult = Acknowledged) = new DataStreamService {
     override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = Task.now(dataStreamExists)
 
     override protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = Task.pure(ilmExists)

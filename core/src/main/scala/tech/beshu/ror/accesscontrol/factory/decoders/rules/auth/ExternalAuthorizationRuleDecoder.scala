@@ -61,7 +61,7 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
         for {
           name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
           users <- c.downField("users").as[Option[UniqueNonEmptyList[User.Id]]]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
+          ttl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           groupsLogic <- GroupsLogicDecoder.simpleDecoder[ExternalAuthorizationRule].apply(c)
         } yield (name, ttl, users, groupsLogic)
       }

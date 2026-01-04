@@ -64,11 +64,11 @@ object ExternalAuthenticationServicesDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthenticationService.Name]
-          url <- c.downFields("authentication_endpoint", "url").as[Url]
+          url <- c.downFieldAlternatives("authentication_endpoint", "url").as[Url]
           httpSuccessCode <- c.downField("success_status_code").as[Option[Int]]
-          cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
+          cacheTtl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           validate <- c.downField("validate").as[Option[Boolean]]
-          httpClientConfig <- c.downFields("http_connection_settings").as[Option[HttpClientsFactory.Config]]
+          httpClientConfig <- c.downField("http_connection_settings").as[Option[HttpClientsFactory.Config]]
         } yield (name, url, httpSuccessCode, cacheTtl, validate, httpClientConfig)
       }
       .emapE { case (name, url, httpSuccessCode, cacheTtl, validateOpt, httpClientConfigOpt) =>

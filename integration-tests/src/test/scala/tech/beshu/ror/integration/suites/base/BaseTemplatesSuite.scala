@@ -32,7 +32,7 @@ trait BaseTemplatesSuite
     with BeforeAndAfterEach
     with BeforeAndAfterAll
     with LazyLogging {
-  this: Suite with EsClusterProvider with ESVersionSupport =>
+  this: Suite & EsClusterProvider & ESVersionSupport =>
 
   private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, esVersionUsed)
   private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)

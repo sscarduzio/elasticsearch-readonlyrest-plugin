@@ -143,7 +143,7 @@ private[auth] class GroupsLogicRepresentationDecoder[
   private def decodeAsOption[REPRESENTATION: Decoder](c: ACursor)(ruleName: RuleName[_], ruleNames: RuleName[_]*) = {
     val field = ruleName.name.value
     val fields = ruleNames.map(_.name.value)
-    val (cursor, key) = c.downFieldsWithKey(field, fields: _*)
+    val (cursor, key) = c.downFieldsAlternativesWithKey(field, fields: _*)
     cursor match {
       case _: FailedCursor => Right(None)
       case _ => cursor.as[Option[REPRESENTATION]].map(_.map((_, key)))

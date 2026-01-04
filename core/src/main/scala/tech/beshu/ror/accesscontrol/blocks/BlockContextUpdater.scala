@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import scala.annotation.nowarn
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -317,6 +318,7 @@ abstract class BlockContextWithIndicesUpdater[B <: BlockContext : HasIndices] {
                   filteredIndices: Set[RequestedIndex[ClusterIndexName]],
                   allAllowedIndices: Set[ClusterIndexName]): B
 
+  @nowarn("msg=unused explicit parameter")
   def withClusters(blockContext: B,
                    allAllowedClusters: Set[ClusterName.Full]): B = blockContext
 }
@@ -369,6 +371,7 @@ object BlockContextWithIndicesUpdater {
   }
 }
 
+@nowarn("msg=unused implicit parameter")
 abstract class BlockContextWithIndexPacksUpdater[B <: BlockContext : HasIndexPacks] {
 
   def withIndexPacks(blockContext: B, indexPacks: List[Indices]): B
@@ -394,6 +397,7 @@ object BlockContextWithIndexPacksUpdater {
   }
 }
 
+@nowarn("msg=unused implicit parameter")
 abstract class BlockContextWithFilterUpdater[B <: BlockContext : HasFilter] {
 
   def withFilter(blockContext: B, filter: Filter): B
@@ -419,6 +423,7 @@ object BlockContextWithFilterUpdater {
   }
 }
 
+@nowarn("msg=unused implicit parameter")
 abstract class BlockContextWithFLSUpdater[B <: BlockContext : HasFieldLevelSecurity] {
 
   def withFieldLevelSecurity(blockContext: B, fieldLevelSecurity: FieldLevelSecurity): B

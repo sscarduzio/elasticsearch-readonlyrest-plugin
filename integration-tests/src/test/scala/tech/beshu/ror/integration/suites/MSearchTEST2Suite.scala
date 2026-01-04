@@ -57,7 +57,7 @@ class MSearchTEST2Suite
   "test274_2" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
-    val response = searchManager.mSearchUnsafe(msearchBodyNoMatch: _*)
+    val response = searchManager.mSearchUnsafe(msearchBodyNoMatch*)
 
     response should have statusCode 200
     response.responses.size shouldBe 1
@@ -67,7 +67,7 @@ class MSearchTEST2Suite
   "test274_2_broken" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
-    val response = searchManager.mSearchUnsafe(msearchBroken: _*)
+    val response = searchManager.mSearchUnsafe(msearchBroken*)
 
     response should have statusCode 200
     response.responses.size shouldBe 1
@@ -77,7 +77,7 @@ class MSearchTEST2Suite
   "test274_2_empty_index" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
-    val response = searchManager.mSearchUnsafe(msearchBodyEmptyIndex: _*)
+    val response = searchManager.mSearchUnsafe(msearchBodyEmptyIndex*)
 
     response should have statusCode 200
     response.responses.size shouldBe 1
@@ -87,7 +87,7 @@ class MSearchTEST2Suite
   "test274_2_combo" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"), esVersionUsed)
 
-    val response = searchManager.mSearchUnsafe(msearchBodyCombo: _*)
+    val response = searchManager.mSearchUnsafe(msearchBodyCombo*)
 
     response should have statusCode 200
     response.responses.size shouldBe 3

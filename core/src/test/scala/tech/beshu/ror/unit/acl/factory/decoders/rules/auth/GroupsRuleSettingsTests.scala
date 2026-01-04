@@ -1583,7 +1583,7 @@ class GroupsRuleSettingsTests
     }
   }
 
-  forAll(extendedSyntaxTestParams) { (extendedSyntaxName, creator) =>
+  forAll(extendedSyntaxTestParams) { (extendedSyntaxName, _) =>
     s"A GroupsRule settings test for $extendedSyntaxName extended syntax" should {
       "correctly parse and use extended syntax" in {
         assertDecodingSuccess(

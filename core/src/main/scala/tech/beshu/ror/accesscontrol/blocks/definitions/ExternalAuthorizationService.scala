@@ -23,12 +23,8 @@ import io.lemonlabs.uri.Url
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableAction
@@ -74,8 +70,8 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
   private def createRequest(userId: User.Id) = {
     val uriWithParams = config.url.addParams(queryParams(userId))
     val method = config.method match {
-      case SupportedHttpMethod.Get => HttpClient.Method.Get
-      case SupportedHttpMethod.Post => HttpClient.Method.Post
+      case HttpExternalAuthorizationService.Config.SupportedHttpMethod.Get => HttpClient.Method.Get
+      case HttpExternalAuthorizationService.Config.SupportedHttpMethod.Post => HttpClient.Method.Post
     }
     HttpClient.Request(
       method = method,
@@ -87,16 +83,16 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
   private def queryParams(userId: User.Id): Map[String, String] = {
     config.defaultQueryParams.map(p => (autoUnwrap(p.name), autoUnwrap(p.value))).toMap ++
       (config.authTokenSendMethod match {
-        case UsingQueryParam => Map(config.tokenName.value.value -> userId.value.value)
-        case UsingHeader => Map.empty[String, String]
+        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingQueryParam => Map(config.tokenName.value.value -> userId.value.value)
+        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingHeader => Map.empty[String, String]
       })
   }
 
   private def headersMap(userId: User.Id): Map[String, String] = {
     config.defaultHeaders.map(h => (h.name.value.value, h.value.value)).toMap ++
       (config.authTokenSendMethod match {
-        case UsingHeader => Map(config.tokenName.value.value -> userId.value.value)
-        case UsingQueryParam => Map.empty
+        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingHeader => Map(config.tokenName.value.value -> userId.value.value)
+        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingQueryParam => Map.empty
       })
   }
 
@@ -150,7 +146,7 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
     }
   }
 
-  private def groupNamesFrom(body: String, namesConfig: GroupsConfig.GroupNamesConfig): Try[List[String]] = {
+  private def groupNamesFrom(body: String, namesConfig: HttpExternalAuthorizationService.Config.GroupsConfig.GroupNamesConfig): Try[List[String]] = {
     namesConfig.jsonPath.read[java.util.List[String]](body)
       .map {
         _.asScala.toList
@@ -175,16 +171,6 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
 
 object HttpExternalAuthorizationService {
 
-  import Config.*
-
-  final case class Config(url: Url,
-                          method: SupportedHttpMethod,
-                          tokenName: AuthTokenName,
-                          groupsConfig: GroupsConfig,
-                          authTokenSendMethod: AuthTokenSendMethod,
-                          defaultHeaders: Set[Header],
-                          defaultQueryParams: Set[QueryParam])
-
   object Config {
     sealed trait SupportedHttpMethod
     object SupportedHttpMethod {
@@ -208,6 +194,14 @@ object HttpExternalAuthorizationService {
       case object UsingQueryParam extends AuthTokenSendMethod
     }
   }
+
+  final case class Config(url: Url,
+                          method: Config.SupportedHttpMethod,
+                          tokenName: Config.AuthTokenName,
+                          groupsConfig: Config.GroupsConfig,
+                          authTokenSendMethod: Config.AuthTokenSendMethod,
+                          defaultHeaders: Set[Header],
+                          defaultQueryParams: Set[Config.QueryParam])
 
   final case class InvalidResponse(message: String) extends Exception(message)
 }

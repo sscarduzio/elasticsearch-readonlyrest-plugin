@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils
 
+import scala.annotation.nowarn
 import cats.Functor
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
@@ -51,6 +52,7 @@ object ScalaOps {
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
   }
 
+  @nowarn("msg=unused implicit parameter")
   implicit class JavaMapOps[K : ClassTag, V : ClassTag](map: java.util.Map[K, V]) {
     def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
 
@@ -63,11 +65,11 @@ object ScalaOps {
     def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
   }
 
-  implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {
+  implicit class JavaListOps[T](val list: java.util.List[T]) {
     def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
   }
 
-  implicit class JavaSetOps[T : ClassTag](set: java.lang.Iterable[T]) {
+  implicit class JavaSetOps[T](set: java.lang.Iterable[T]) {
     def asSafeSet: Set[T] = Option(set).map(_.asScala.toCovariantSet).getOrElse(Set.empty)
   }
 

@@ -121,7 +121,7 @@ class SearchManager(client: RestClient,
     request
   }
 
-  private def createSearchRequest(indexNames: List[String] = Nil,
+  private def createSearchRequest(indexNames: List[String],
                                   customSize: Option[Int] = None,
                                   scroll: Option[FiniteDuration] = None) = {
     val queryParams = Map(
