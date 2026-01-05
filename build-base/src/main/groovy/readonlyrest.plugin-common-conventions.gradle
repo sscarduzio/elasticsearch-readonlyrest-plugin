@@ -109,8 +109,9 @@ tasks.register('toJar', Jar) {
 tasks.register('prepareMultiplatformBuilder') {
     group = 'docker'
     doLast {
+        def execOps = project.services.get(ExecOperations)
         def output = new ByteArrayOutputStream()
-        exec {
+        execOps.exec {
             executable = 'docker'
             args = ['buildx', 'inspect']
             standardOutput = output
@@ -120,21 +121,21 @@ tasks.register('prepareMultiplatformBuilder') {
 
         if (supportedPlatforms == null || !(supportedPlatforms.contains('linux/amd64') && supportedPlatforms.contains('linux/arm64'))) {
             try {
-                exec {
+                execOps.exec {
                     executable = 'docker'
                     args = ['buildx', 'inspect', 'ror_kbn_builder']
-                    errorOutput = new ByteArrayOutputStream() 
+                    errorOutput = new ByteArrayOutputStream()
                 }
             } catch (Exception e) {
                 if (e.getMessage().contains("non-zero exit")) {
-                    exec {
+                    execOps.exec {
                         executable = 'docker'
                         args = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', '--name=ror_kbn_builder']
                     }
                 }
             }
 
-            exec {
+            execOps.exec {
                 executable = 'docker'
                 args = ['buildx', 'use', 'ror_kbn_builder']
             }
