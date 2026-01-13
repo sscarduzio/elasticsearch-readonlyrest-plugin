@@ -250,6 +250,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   }
 
   def basicAuth: Option[BasicAuth] = {
+    implicit val requestId: RequestId = requestContext.id.toRequestId
     requestContext
       .restRequest
       .allHeaders
