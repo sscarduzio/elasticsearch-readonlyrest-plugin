@@ -78,7 +78,8 @@ class AuthMockApi(rorInstance: RorInstance) {
     AuthMockResponse.ProvideAuthMock.CurrentAuthMocks((ldaps ++ extAuthn ++ extAuthz).toList)
   }
 
-  private def updateAuthMock(body: String): Task[AuthMockResponse] = {
+  private def updateAuthMock(body: String)
+                            (implicit requestId: RequestId): Task[AuthMockResponse] = {
     val result = for {
       updateRequest <- decodeRequest(body)
       authServices <- readCurrentAuthServices()
@@ -146,7 +147,8 @@ class AuthMockApi(rorInstance: RorInstance) {
       .toEitherT[Task]
   }
 
-  private def updateAuthMocks(updateRequest: UpdateMocksRequest): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
+  private def updateAuthMocks(updateRequest: UpdateMocksRequest)
+                             (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
     rorInstance
       .updateAuthMocks(toDomain(updateRequest.services))
       .map {

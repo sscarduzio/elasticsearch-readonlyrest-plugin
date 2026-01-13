@@ -86,7 +86,8 @@ class MainSettingsApi(rorInstance: RorInstance,
     result.value.map(_.merge)
   }
 
-  private def provideRorFileSettings(): Task[MainSettingsResponse] = {
+  private def provideRorFileSettings()
+                                    (implicit requestId: RequestId): Task[MainSettingsResponse] = {
     mainSettingsFileSource
       .load()
       .map {
@@ -95,7 +96,8 @@ class MainSettingsApi(rorInstance: RorInstance,
       }
   }
 
-  private def provideRorIndexSettings(): Task[MainSettingsResponse] = {
+  private def provideRorIndexSettings()
+                                     (implicit requestId: RequestId): Task[MainSettingsResponse] = {
     mainSettingsIndexSource
       .load()
       .map {

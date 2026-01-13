@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils
 
 import cats.implicits.toShow
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logger
 import org.apache.logging.log4j.spi.ExtendedLogger
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -104,6 +105,22 @@ object RequestIdAwareLogging {
         log.warn(buildMsg(msg, rid), t)
       else
         log.warn(buildMsg(s"$msg; ${t.getMessage}", rid))
+
+    def dInfo(msg: String)(implicit rid: RequestId): Task[Unit] = {
+      Task.delay(info(msg))
+    }
+
+    def dWarn(msg: String)(implicit rid: RequestId): Task[Unit] = {
+      Task.delay(warn(msg))
+    }
+
+    def dDebug(msg: String)(implicit rid: RequestId): Task[Unit] = {
+      Task.delay(debug(msg))
+    }
+
+    def dError(msg: String)(implicit rid: RequestId): Task[Unit] = {
+      Task.delay(error(msg))
+    }
 
     private def buildMsg(msg: String, rid: RequestId): String = {
       import tech.beshu.ror.implicits.requestIdShow

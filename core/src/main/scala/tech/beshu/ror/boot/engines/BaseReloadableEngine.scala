@@ -253,7 +253,8 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   }
 
   private def reloadWith(rorSettings: RawRorSettings,
-                         expiration: Option[UpdatedExpiration]): EitherT[Task, RawSettingsReloadError, EngineWithSettings] = {
+                         expiration: Option[UpdatedExpiration])
+                        (implicit requestId: RequestId): EitherT[Task, RawSettingsReloadError, EngineWithSettings] = {
     EitherT(boot.loadRorEngine(rorSettings, esConfigBasedRorSettings.settingsSource.settingsIndex))
       .map { engine =>
         EngineWithSettings(

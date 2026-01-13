@@ -17,6 +17,7 @@
 package tech.beshu.ror.settings.ror.loader
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
@@ -28,7 +29,8 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
                                                                   testSettingsIndexSource: TestSettingsIndexSource)
   extends StartingRorSettingsLoader with RequestIdAwareLogging {
 
-  override def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
+  override def load()
+                   (implicit requestId: RequestId): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = for {
       mainSettings <- mainSettingsIndexLoadingRetryStrategy
         .withRetryT(
@@ -43,21 +45,24 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
     result.value
   }
 
-  private def loadMainSettingsFromIndex() = {
+  private def loadMainSettingsFromIndex()
+                                       (implicit requestId: RequestId)= {
     loadSettingsFromSource(
       source = mainSettingsIndexSource,
       settingsDescription = s"main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
     )
   }
 
-  private def loadMainSettingsFromFile() = {
+  private def loadMainSettingsFromFile()
+                                      (implicit requestId: RequestId)= {
     loadSettingsFromSource(
       source = mainSettingsFileSource,
       settingsDescription = s"main settings from file '${mainSettingsFileSource.settingsFile.show}''"
     )
   }
 
-  private def loadTestSettingsFromIndex() = {
+  private def loadTestSettingsFromIndex()
+                                       (implicit requestId: RequestId)= {
     loadSettingsFromSource(
       source = testSettingsIndexSource,
       settingsDescription = s"test settings from index '${testSettingsIndexSource.settingsIndex.show}'"

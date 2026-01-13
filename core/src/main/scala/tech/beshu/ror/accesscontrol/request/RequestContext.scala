@@ -41,7 +41,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.time.Instant
 import scala.language.implicitConversions
 
-trait RequestContext extends RequestIdAwareLogging {
+trait RequestContext {
 
   type BLOCK_CONTEXT <: BlockContext
 

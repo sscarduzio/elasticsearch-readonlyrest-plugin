@@ -147,7 +147,8 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  def saveServicesMocks(mocks: AuthServicesMocks): Task[Either[IndexSettingsUpdateError, Unit]] = {
+  def saveServicesMocks(mocks: AuthServicesMocks)
+                       (implicit requestId: RequestId): Task[Either[IndexSettingsUpdateError, Unit]] = {
     reloadInProgress.withPermit {
       value {
         for {
@@ -189,7 +190,8 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
   }
 
   private def saveSettingsInIndex[A](newSettings: TestRorSettings,
-                                     onFailure: SettingsSavingError[SavingError] => A): EitherT[Task, A, Unit] = {
+                                     onFailure: SettingsSavingError[SavingError] => A)
+                                    (implicit requestId: RequestId): EitherT[Task, A, Unit] = {
     EitherT(testSettingsSource.save(newSettings))
       .leftMap(onFailure)
   }
@@ -214,7 +216,8 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  private def loadTestSettings(): EitherT[Task, IndexSettingsReloadError, Option[TestRorSettings]] = {
+  private def loadTestSettings()
+                              (implicit requestId: RequestId): EitherT[Task, IndexSettingsReloadError, Option[TestRorSettings]] = {
     EitherT(testSettingsSource.load())
       .map(Some(_))
       .leftFlatMap {

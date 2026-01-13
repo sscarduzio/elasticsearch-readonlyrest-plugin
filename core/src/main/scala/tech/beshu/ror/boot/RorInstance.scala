@@ -115,7 +115,8 @@ class RorInstance private(boot: ReadonlyRest,
     theTestSettingsEngine.invalidateTestSettingsEngine()
   }
 
-  def updateAuthMocks(mocks: AuthServicesMocks): Task[Either[IndexSettingsUpdateError, Unit]] = {
+  def updateAuthMocks(mocks: AuthServicesMocks)
+                     (implicit requestId: RequestId): Task[Either[IndexSettingsUpdateError, Unit]] = {
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 

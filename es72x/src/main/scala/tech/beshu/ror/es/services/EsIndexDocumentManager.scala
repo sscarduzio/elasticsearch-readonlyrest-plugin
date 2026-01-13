@@ -27,7 +27,7 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.index.IndexNotFoundException
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexDocumentManager
 import tech.beshu.ror.es.IndexDocumentManager.*
@@ -45,7 +45,8 @@ class EsIndexDocumentManager(client: NodeClient,
     this(client, ())
   }
 
-  override def documentAsJson(index: IndexName.Full, id: String): Task[Either[ReadError, Json]] = {
+  override def documentAsJson(index: IndexName.Full, id: String)
+                             (implicit requestId: RequestId): Task[Either[ReadError, Json]] = {
     Task {
       client
         .get(
@@ -61,17 +62,17 @@ class EsIndexDocumentManager(client: NodeClient,
         if (response.isExists) {
           Option(response.getSourceAsString) match {
             case Some(source) =>
-              noRequestIdLogger.debug(s"Document [${index.show} ID=$id] _source: $source")
+              logger.debug(s"Document [${index.show} ID=$id] _source: $source")
               parse(source) match {
                 case Right(value) => Right(value)
                 case Left(failure) => throw new IllegalStateException(s"Cannot parse document source to JSON: ${failure.toString}")
               }
             case None =>
-              noRequestIdLogger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
+              logger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
               Right(Json.Null)
           }
         } else {
-          noRequestIdLogger.debug(s"Document [${index.show} ID=$id] not exist")
+          logger.debug(s"Document [${index.show} ID=$id] not exist")
           Left(DocumentNotFound)
         }
       }
@@ -80,12 +81,13 @@ class EsIndexDocumentManager(client: NodeClient,
         case _: IndexNotFoundException => Left(IndexNotFound)
         case _: ResourceNotFoundException => Left(DocumentNotFound)
         case ex =>
-          noRequestIdLogger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
+          logger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
           Left(DocumentUnreachable)
       }
   }
 
-  override def saveDocumentJson(index: IndexName.Full, id: String, document: Json): Task[Either[WriteError, Unit]] = {
+   override def saveDocumentJson(index: IndexName.Full, id: String, document: Json)
+                               (implicit requestId: RequestId): Task[Either[WriteError, Unit]] = {
     Task {
       client
         .index(
@@ -104,14 +106,14 @@ class EsIndexDocumentManager(client: NodeClient,
           case status if status / 100 == 2 =>
             Right(())
           case status =>
-            noRequestIdLogger.error(s"Cannot write to document [${index.show} ID=$id]. Unexpected response: HTTP $status, response: ${response.toString}")
+            logger.error(s"Cannot write to document [${index.show} ID=$id]. Unexpected response: HTTP $status, response: ${response.toString}")
             Left(CannotWriteToIndex)
         }
       }
       .executeOn(RorSchedulers.blockingScheduler)
       .onErrorRecover {
         case ex =>
-          noRequestIdLogger.error(s"Cannot write to document [${index.show} ID=$id]", ex)
+          logger.error(s"Cannot write to document [${index.show} ID=$id]", ex)
           Left(CannotWriteToIndex)
       }
   }
