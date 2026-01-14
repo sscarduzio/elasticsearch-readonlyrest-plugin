@@ -63,6 +63,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.RorActionRequest
@@ -293,6 +294,11 @@ object AclAwareRequestFilter {
         case Some(_) | None => Right(engines.mainEngine)
       }
     }
+
+    def toRequestContextId: RequestContext.Id = RequestContext.Id.from(
+      sessionCorrelationId = correlationId.value,
+      requestId = s"${channel.restRequest.hashCode()}#${task.getId}"
+    )
   }
   object EsContext {
 

@@ -25,6 +25,7 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestId, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -184,6 +185,7 @@ object SnapshotsStatusEsRequestContext {
              esContext: EsContext,
              clusterService: RorClusterService,
              threadPool: ThreadPool): Task[SnapshotsStatusEsRequestContext] = {
+    implicit val id: RequestContext.Id = esContext.toRequestContextId
     clusterService.allSnapshots
       .map { case (repository, getSnapshots) => getSnapshots.map((repository, _)) }
       .toList.sequence

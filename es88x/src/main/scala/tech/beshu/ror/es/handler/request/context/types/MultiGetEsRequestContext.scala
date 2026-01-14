@@ -154,7 +154,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
     NonEmptyList.fromList(identifyDocumentsToVerifyUsing(originalResponses)) match {
       case Some(existingDocumentsToVerify) =>
-        clusterService.verifyDocumentsAccessibilities(existingDocumentsToVerify, definedFilter, id)
+        clusterService.verifyDocumentsAccessibilities(existingDocumentsToVerify, definedFilter)
           .map { results =>
             prepareNewResponse(originalResponses, results)
           }

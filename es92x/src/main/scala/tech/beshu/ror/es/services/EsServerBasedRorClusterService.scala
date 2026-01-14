@@ -91,7 +91,7 @@ class EsServerBasedRorClusterService(nodeName: String,
     projectsMetadata.flatMap(extractIndicesAndAliasesFrom).toCovariantSet
   }
 
-  override def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] = {
+  override def allRemoteIndicesAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         provideAllRemoteIndices(remoteClusterService)
@@ -105,7 +105,7 @@ class EsServerBasedRorClusterService(nodeName: String,
     projectsMetadata.flatMap(extractDataStreamsAndAliases).toCovariantSet
   }
 
-  override def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]] =
+  override def allRemoteDataStreamsAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteDataStreamWithAliases]] =
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         provideAllRemoteDataStreams(remoteClusterService)
@@ -117,12 +117,13 @@ class EsServerBasedRorClusterService(nodeName: String,
     legacyTemplates() ++ indexTemplates() ++ componentTemplates()
   }
 
-  override def allSnapshots: Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
+  override def allSnapshots(implicit id: RequestContext.Id): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
     determineAllSnapshots().view.mapValues(_.map(_.map(_.name))).toMap
   }
 
   override def snapshotIndices(repositoryName: RepositoryName.Full,
-                               snapshotName: SnapshotName.Full): Task[Set[ClusterIndexName]] = {
+                               snapshotName: SnapshotName.Full)
+                              (implicit id: RequestContext.Id): Task[Set[ClusterIndexName]] = {
     determineAllSnapshots().get(repositoryName) match {
       case Some(getSnapshots) =>
         val snapshotNameMatcher = PatternsMatcher.create((snapshotName: SnapshotName) :: Nil)
@@ -143,7 +144,7 @@ class EsServerBasedRorClusterService(nodeName: String,
     }
   }
 
-  private def determineAllSnapshots(): Map[RepositoryName.Full, Task[Set[Snapshot]]] = {
+  private def determineAllSnapshots()(implicit requestId: RequestId): Map[RepositoryName.Full, Task[Set[Snapshot]]] = {
     val projectsMetadata = clusterService.state.metadata.projects().values().asScala
     projectsMetadata
       .flatMap(pm => Option(RepositoriesMetadata.get(pm)))
@@ -165,9 +166,8 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   override def verifyDocumentAccessibility(document: Document,
-                                           filter: Filter,
-                                           id: RequestContext.Id): Task[DocumentAccessibility] = {
-    implicit val idImpl: RequestContext.Id = id
+                                           filter: Filter)
+                                          (implicit id: RequestContext.Id): Task[DocumentAccessibility] = {
     createSearchRequest(filter, document)
       .call(extractAccessibilityFrom)
       .onErrorRecover {
@@ -178,9 +178,8 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
-                                              filter: Filter,
-                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
-    implicit val idImpl: RequestContext.Id = id
+                                              filter: Filter)
+                                             (implicit id: RequestContext.Id): Task[DocumentsAccessibilities] = {
     createMultiSearchRequest(filter, documents)
       .call(extractResultsFromSearchResponse)
       .onErrorRecover {
@@ -277,7 +276,8 @@ class EsServerBasedRorClusterService(nodeName: String,
       .toMap
   }
 
-  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService) = {
+  private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService)
+                                         (implicit requestId: RequestId) = {
     val remoteClusterFullNames =
       remoteClusterService
         .getRegisteredRemoteClusterNames.asSafeSet
@@ -291,10 +291,11 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   private def resolveAllRemoteDataStreams(remoteClusterName: ClusterName.Full,
-                                          remoteClusterService: RemoteClusterService): Task[List[FullRemoteDataStreamWithAliases]] = {
+                                          remoteClusterService: RemoteClusterService)
+                                         (implicit requestId: RequestId): Task[List[FullRemoteDataStreamWithAliases]] = {
     getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
       case Failure(_) =>
-        noRequestIdLogger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
         Task.now(List.empty)
       case Success(client) =>
         resolveRemoteIndicesUsing(client)
@@ -333,7 +334,8 @@ class EsServerBasedRorClusterService(nodeName: String,
       }
   }
 
-  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService) = {
+  private def provideAllRemoteIndices(remoteClusterService: RemoteClusterService)
+                                     (implicit requestId: RequestId) = {
     val remoteClusterFullNames =
       remoteClusterService
         .getRegisteredRemoteClusterNames.asSafeSet
@@ -347,10 +349,11 @@ class EsServerBasedRorClusterService(nodeName: String,
   }
 
   private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,
-                                      remoteClusterService: RemoteClusterService) = {
+                                      remoteClusterService: RemoteClusterService)
+                                     (implicit requestId: RequestId) = {
     getRemoteClusterClient(remoteClusterService, remoteClusterName) match {
       case Failure(_) =>
-        noRequestIdLogger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
+        logger.error(s"Cannot get remote cluster client for remote cluster with name: ${remoteClusterName.show}")
         Task.now(List.empty)
       case Success(client) =>
         resolveRemoteIndicesUsing(client)
@@ -428,7 +431,8 @@ class EsServerBasedRorClusterService(nodeName: String,
     }
   }
 
-  private def allSnapshotsFrom(repository: RepositoryName.Full): Task[Set[Snapshot]] = {
+  private def allSnapshotsFrom(repository: RepositoryName.Full)
+                              (implicit requestId: RequestId): Task[Set[Snapshot]] = {
     repositoriesServiceSupplier.get() match {
       case Some(repositoriesService) =>
         repositoriesService
@@ -441,7 +445,7 @@ class EsServerBasedRorClusterService(nodeName: String,
             }
           }
       case None =>
-        noRequestIdLogger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
+        logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
         Task.now(Set.empty[Snapshot])
     }
   }

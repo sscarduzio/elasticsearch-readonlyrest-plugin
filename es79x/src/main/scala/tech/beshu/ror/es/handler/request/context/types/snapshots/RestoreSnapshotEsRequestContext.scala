@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockCont
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -116,6 +117,7 @@ object RestoreSnapshotEsRequestContext {
              esContext: EsContext,
              clusterService: RorClusterService,
              threadPool: ThreadPool): Task[RestoreSnapshotEsRequestContext] = {
+    implicit val id: RequestContext.Id = esContext.toRequestContextId
     for {
       requestedRepository <- Task(repositoryFrom(actionRequest))
       requestedSnapshot <- Task(snapshotFrom(actionRequest))
@@ -156,7 +158,8 @@ object RestoreSnapshotEsRequestContext {
   private def requestedIndicesFrom(request: RestoreSnapshotRequest,
                                    repository: RepositoryName.Full,
                                    snapshot: SnapshotName.Full,
-                                   clusterService: RorClusterService) = {
+                                   clusterService: RorClusterService)
+                                  (implicit rid: RequestContext.Id) = {
     clusterService
       .snapshotIndices(repository, snapshot)
       .map(_.filterBy(indicesFrom(request)))
