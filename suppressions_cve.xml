@@ -104,4 +104,17 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2020-26939</cve>
         <cve>CVE-2023-33202</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: log4j-api-2.22.1.jar
+   CVE-2025-68161 affects log4j-core's Socket Appender (TLS hostname verification), not log4j-api.
+   The plugin does not bundle log4j-core - it is provided by Elasticsearch at runtime.
+   log4j-api:2.22.1 is a transitive dependency from log4j-api-scala_3:13.1.0.
+   The actual vulnerability exists in Elasticsearch's log4j-core (version 2.19.0), which the plugin cannot fix.
+   Upgrading log4j-api to 2.25.3 without matching log4j-core causes runtime compatibility issues.
+   This must be fixed by Elasticsearch upgrading to log4j-core:2.25.3+.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-api@2\.22\.1.*$</packageUrl>
+        <cve>CVE-2025-68161</cve>
+    </suppress>
 </suppressions>
