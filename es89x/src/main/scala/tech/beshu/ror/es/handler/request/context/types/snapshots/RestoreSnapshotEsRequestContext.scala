@@ -116,8 +116,8 @@ object RestoreSnapshotEsRequestContext {
   def create(actionRequest: RestoreSnapshotRequest,
              esContext: EsContext,
              clusterService: RorClusterService,
-             threadPool: ThreadPool): Task[RestoreSnapshotEsRequestContext] = {
-    implicit val id: RequestContext.Id = esContext.toRequestContextId
+             threadPool: ThreadPool)
+            (implicit id: RequestContext.Id): Task[RestoreSnapshotEsRequestContext] = {
     for {
       requestedRepository <- Task(repositoryFrom(actionRequest))
       requestedSnapshot <- Task(snapshotFrom(actionRequest))

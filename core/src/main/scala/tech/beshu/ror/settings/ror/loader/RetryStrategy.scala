@@ -20,15 +20,18 @@ import cats.Show
 import cats.data.EitherT
 import cats.implicits.toShow
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 trait RetryStrategy {
   def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]],
-                                     operationDescription: String): Task[Either[ERROR, RESULT]]
+                                     operationDescription: String)
+                                    (implicit requestId: RequestId): Task[Either[ERROR, RESULT]]
   def withRetryT[ERROR: Show, RESULT](operation: EitherT[Task, ERROR, RESULT],
-                                      operationDescription: String): EitherT[Task, ERROR, RESULT] =
+                                      operationDescription: String)
+                                     (implicit requestId: RequestId): EitherT[Task, ERROR, RESULT] =
     EitherT(withRetry(operation.value, operationDescription))
 }
 
@@ -36,13 +39,15 @@ class ConfigurableRetryStrategy(config: LoadingRetryStrategySettings)
   extends RetryStrategy with RequestIdAwareLogging {
 
   override def withRetry[ERROR: Show, RESULT](operation: Task[Either[ERROR, RESULT]],
-                                              operationDescription: String): Task[Either[ERROR, RESULT]] =
+                                              operationDescription: String)
+                                             (implicit requestId: RequestId): Task[Either[ERROR, RESULT]] =
     attemptWithRetry(operation, currentAttempt = 1, config.attemptsCount.value.value, operationDescription)
 
   private def attemptWithRetry[ERROR : Show, A](operation: Task[Either[ERROR, A]],
                                                 currentAttempt: Int,
                                                 maxAttempts: Int,
-                                                operationDescription: String): Task[Either[ERROR, A]] = {
+                                                operationDescription: String)
+                                               (implicit requestId: RequestId): Task[Either[ERROR, A]] = {
     val delay = if (currentAttempt == 1) config.delay.value.value else config.attemptsInterval.value.value
     for {
       _ <- Task.sleep(delay)
@@ -51,10 +56,10 @@ class ConfigurableRetryStrategy(config: LoadingRetryStrategySettings)
         case Right(value) =>
           Task.now(Right(value))
         case Left(error) if shouldRetry(currentAttempt, maxAttempts) =>
-          noRequestIdLogger.debug(s"$operationDescription - retry attempt $currentAttempt/$maxAttempts failed. Retrying in ${config.attemptsInterval.show}...")
+          logger.debug(s"$operationDescription - retry attempt $currentAttempt/$maxAttempts failed. Retrying in ${config.attemptsInterval.show}...")
           attemptWithRetry(operation, currentAttempt + 1, maxAttempts, operationDescription)
         case Left(error) =>
-          noRequestIdLogger.debug(s"$operationDescription - failed permanently after $currentAttempt attempts: ${error.show}")
+          logger.debug(s"$operationDescription - failed permanently after $currentAttempt attempts: ${error.show}")
           Task.now(Left(error))
       }
     } yield finalResult

@@ -184,8 +184,8 @@ object SnapshotsStatusEsRequestContext {
   def create(actionRequest: SnapshotsStatusRequest,
              esContext: EsContext,
              clusterService: RorClusterService,
-             threadPool: ThreadPool): Task[SnapshotsStatusEsRequestContext] = {
-    implicit val id: RequestContext.Id = esContext.toRequestContextId
+             threadPool: ThreadPool)
+            (implicit id: RequestContext.Id): Task[SnapshotsStatusEsRequestContext] = {
     clusterService.allSnapshots
       .map { case (repository, getSnapshots) => getSnapshots.map((repository, _)) }
       .toList.sequence

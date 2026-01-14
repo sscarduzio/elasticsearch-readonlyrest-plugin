@@ -113,6 +113,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
   private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext) = {
+    implicit val id: RequestContext.Id = esContext.toRequestContextId
     esContext.actionRequest match {
       case request: RRAuditEventRequest =>
         regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
@@ -243,7 +244,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
-            noRequestIdLogger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.show}")
+            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.show}")
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
         }
       // rest
