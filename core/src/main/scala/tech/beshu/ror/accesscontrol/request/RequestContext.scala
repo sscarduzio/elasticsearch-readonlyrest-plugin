@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import cats.Show
+import cats.{Eval, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.Level
@@ -40,6 +40,12 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.Instant
 import scala.language.implicitConversions
+
+trait BaseEsContext {
+  def correlationId: Eval[CorrelationId]
+  def esTaskId: Long
+  def restRequest: RestRequest
+}
 
 trait RequestContext {
 
@@ -105,8 +111,9 @@ object RequestContext extends RequestIdAwareLogging {
   object Id {
     def fromString(value: String): Id = Id(value)
 
-    def from(sessionCorrelationId: CorrelationId, requestId: String): Id =
-      new Id(s"${sessionCorrelationId.value.value}-$requestId")
+    def from(esContext: BaseEsContext): Id = {
+      new Id(s"${esContext.correlationId.value.value.value}-${esContext.restRequest.hashCode()}#${esContext.esTaskId}")
+    }
   }
 
   def show[B <: BlockContext](userMetadata: UserMetadata,

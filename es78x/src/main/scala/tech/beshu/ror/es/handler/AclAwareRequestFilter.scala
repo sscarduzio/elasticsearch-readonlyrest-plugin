@@ -61,7 +61,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.RorActionRequest
@@ -110,7 +110,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
   private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext) = {
-    implicit val id: RequestContext.Id = esContext.toRequestContextId
+    implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
     esContext.actionRequest match {
       case request: RRAuditEventRequest =>
         regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
@@ -255,7 +255,11 @@ object AclAwareRequestFilter {
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val threadContextResponseHeaders: Set[(String, String)]) {
+                        val threadContextResponseHeaders: Set[(String, String)]) extends BaseEsContext {
+
+    override val esTaskId: Long = task.getId
+
+    override val restRequest: RestRequest = channel.restRequest
 
     val timestamp: Instant = Instant.now()
 
@@ -272,11 +276,6 @@ object AclAwareRequestFilter {
         case Some(_) | None => Right(engines.mainEngine)
       }
     }
-
-    def toRequestContextId: RequestContext.Id = RequestContext.Id.from(
-      sessionCorrelationId = correlationId.value,
-      requestId = s"${channel.restRequest.hashCode()}#${task.getId}"
-    )
   }
   object EsContext {
 
