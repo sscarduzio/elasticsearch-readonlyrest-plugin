@@ -281,7 +281,11 @@ object AclAwareRequestFilter {
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
                         val threadContextResponseHeaders: Set[(String, String)],
-                        val esVersion: EsVersion) {
+                        val esVersion: EsVersion) extends BaseEsContext {
+
+    override val esTaskId: Long = task.getId
+
+    override val restRequest: RestRequest = channel.restRequest
 
     val timestamp: Instant = Instant.now()
 
