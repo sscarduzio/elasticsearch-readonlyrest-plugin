@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices
 import cats.data.NonEmptySet
 import cats.implicits.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.{indexPacksFromFilterableMultiBlockContext, indexPacksFromMultiIndexBlockContext}
@@ -48,8 +47,7 @@ class IndicesRule(override val settings: Settings,
                   override val identifierGenerator: UniqueIdentifierGenerator)
   extends RegularRule
     with AllClusterIndices
-    with AllTemplateIndices
-    with Logging {
+    with AllTemplateIndices {
 
   import IndicesRule.*
 

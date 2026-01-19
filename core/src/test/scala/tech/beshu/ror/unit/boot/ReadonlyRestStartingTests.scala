@@ -84,6 +84,8 @@ class ReadonlyRestStartingTests
 
   private implicit val testClock: Clock = Clock.systemUTC()
 
+  private implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
+
   "A ReadonlyREST core" should {
     "support the main engine" should {
       "be loaded from file" when {
@@ -661,10 +663,11 @@ class ReadonlyRestStartingTests
 
           rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -712,10 +715,11 @@ class ReadonlyRestStartingTests
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-            (mockedIndexDocumentManager.saveDocumentJson _)
+            ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+              mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
               .expects(
                 where {
-                  (index: IndexName.Full, id: String, document: Json) =>
+                  (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
                       document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -781,10 +785,11 @@ class ReadonlyRestStartingTests
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
             rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-            (mockedIndexDocumentManager.saveDocumentJson _)
+            ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+              mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
               .expects(
                 where {
-                  (index: IndexName.Full, id: String, document: Json) =>
+                  (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
                       document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -810,10 +815,11 @@ class ReadonlyRestStartingTests
 
             val testEngine1Expiration = testSettingsEngine.asInstanceOf[TestSettings.Present].validTo
 
-            (mockedIndexDocumentManager.saveDocumentJson _)
+            ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+              mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
               .expects(
                 where {
-                  (index: IndexName.Full, id: String, document: Json) =>
+                  (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
                       document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -865,10 +871,11 @@ class ReadonlyRestStartingTests
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
           rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -895,10 +902,11 @@ class ReadonlyRestStartingTests
 
           val testEngine1Expiration = testSettingsEngine.asInstanceOf[TestSettings.Present].validTo
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings2.rawYaml) &&
@@ -949,8 +957,10 @@ class ReadonlyRestStartingTests
         }) { case (rorInstance, mockedIndexDocumentManager) =>
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
@@ -1016,8 +1026,10 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().plusSeconds(200)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
@@ -1082,8 +1094,10 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().plusSeconds(100)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
@@ -1148,8 +1162,10 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().minusSeconds(1)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+          
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.delay(Right(circeJsonFrom(
               s"""{
@@ -1196,10 +1212,11 @@ class ReadonlyRestStartingTests
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
           rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1247,10 +1264,11 @@ class ReadonlyRestStartingTests
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
         rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-        (mockedIndexDocumentManager.saveDocumentJson _)
+        ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+          mockedIndexDocumentManager.saveDocumentJson(index, id, document))
           .expects(
             where {
-              (index: IndexName.Full, id: String, document: Json) =>
+              (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                 index == fullIndexName(".readonlyrest") &&
                   id == "2" &&
                   document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1270,10 +1288,11 @@ class ReadonlyRestStartingTests
         rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
         rorInstance.currentTestSettings().runSyncUnsafe() shouldBe a[TestSettings.Present]
 
-        (mockedIndexDocumentManager.saveDocumentJson _)
+        ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+          mockedIndexDocumentManager.saveDocumentJson(index, id, document))
           .expects(
             where {
-              (index: IndexName.Full, id: String, document: Json) =>
+              (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                 index == fullIndexName(".readonlyrest") &&
                   id == "2" &&
                   document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1337,10 +1356,11 @@ class ReadonlyRestStartingTests
             )
           )
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1724,12 +1744,15 @@ class ReadonlyRestStartingTests
 
   private def mockSavingMainSettings(mockedManager: IndexDocumentManager,
                                      resourceFileName: String,
-                                     saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
-    (mockedManager.saveDocumentJson _)
+                                     saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(())))
+                                    (implicit requestId: RequestId) = {
+    ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+      mockedManager.saveDocumentJson(index, id, document)(requestId))
       .expects(
         fullIndexName(".readonlyrest"),
         "1",
-        circeJsonFrom(s"""{ "settings": "${escapeJava(getResourceContent(resourceFileName))}"}""")
+        circeJsonFrom(s"""{ "settings": "${escapeJava(getResourceContent(resourceFileName))}"}"""),
+        *
       )
       .once()
       .returns(saveResult)
@@ -1741,8 +1764,10 @@ class ReadonlyRestStartingTests
                                   expectedDocument: String,
                                   returnsResponse: Task[Either[ReadError, Json]],
                                   attemptCount: AttemptCount) = {
-    val handler = (mockedManager.documentAsJson _)
-      .expects(fullIndexName(expectedIndex), expectedDocument)
+    val handler =
+      ((index: IndexName.Full, id: String, requestId: RequestId) =>
+        mockedManager.documentAsJson(index, id)(requestId))
+        .expects(fullIndexName(expectedIndex), expectedDocument, *)
     val handlerWithRepetitions = attemptCount match {
       case AttemptCount.AnyNumberOfTimes => handler.anyNumberOfTimes()
       case AttemptCount.Exact(count) => handler.repeated(count)

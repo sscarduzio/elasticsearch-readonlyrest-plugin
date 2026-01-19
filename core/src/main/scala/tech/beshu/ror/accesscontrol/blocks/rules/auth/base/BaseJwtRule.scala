@@ -20,7 +20,6 @@ import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.{Ec, Hmac, NoCheck, Rsa}
@@ -30,10 +29,11 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.util.Try
 
-trait BaseJwtRule extends Logging {
+trait BaseJwtRule extends RequestIdAwareLogging {
 
   protected def doPostAuthAction[
     B <: BlockContext, JWT_DEF <: JwtDef
@@ -69,11 +69,12 @@ trait BaseJwtRule extends Logging {
   private def jwtTokenFrom[
     B <: BlockContext, JWT_DEF <: JwtDef
   ](blockContext: B, jwt: JWT_DEF): RuleResult[Jwt.Token] = {
+    implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.authorizationToken(jwt.authorizationTokenDef) match {
       case Some(t) =>
         RuleResult.Fulfilled(Jwt.Token(t.value))
       case None =>
-        logger.debug(s"[${blockContext.requestContext.id.show}] Authorization header '${jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
+        logger.debug(s"Authorization header '${jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
         RuleResult.Rejected()
     }
   }

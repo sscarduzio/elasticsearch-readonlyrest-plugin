@@ -50,7 +50,7 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
       case Some(repositories) =>
         update(actionRequest, repositories)
       case None =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request, because of empty repositories list.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request, because of empty repositories list.")
         ShouldBeInterrupted
     }
   }

@@ -20,13 +20,13 @@ import cats.Show
 import cats.implicits.toShow
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError, ScheduledReloadError}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.atomic.AtomicReference
 
@@ -39,12 +39,12 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
                                      instance: RorInstance)
                                     (implicit systemContext: SystemContext,
                                      scheduler: Scheduler)
-  extends RorSettingsAutoReloader with Logging {
+  extends RorSettingsAutoReloader with RequestIdAwareLogging {
 
   private val reloadTaskState: AtomicReference[ReloadTaskState] = new AtomicReference(ReloadTaskState.NotInitiated)
 
   override def start(): Unit = {
-    logger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings enabled")
+    noRequestIdLogger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings enabled")
     scheduleEnginesReload(reloadInterval)
   }
 
@@ -144,19 +144,19 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
   }
 
   private final class CancelableWithRequestId(cancelable: Cancelable, requestId: RequestId)
-    extends Logging {
+    extends RequestIdAwareLogging {
 
     def cancel(): Unit = {
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check cancelled!")
+      logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check cancelled!")(requestId)
       cancelable.cancel()
     }
   }
 }
 
-object DisabledRorSettingsAutoReloader extends RorSettingsAutoReloader with Logging {
+object DisabledRorSettingsAutoReloader extends RorSettingsAutoReloader with RequestIdAwareLogging {
 
   override def start(): Unit = {
-    logger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings disabled")
+    noRequestIdLogger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings disabled")
   }
 
   override def stop(): Task[Unit] = Task.unit

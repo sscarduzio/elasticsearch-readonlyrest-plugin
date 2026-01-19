@@ -51,7 +51,7 @@ abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest
 
   private def discoverDataStreams() = {
     val dataStreams = dataStreamsFrom(actionRequest).orWildcardWhenEmpty
-    logger.debug(s"[${id.show}] Discovered data streams: ${dataStreams.show}")
+    logger.debug(s"Discovered data streams: ${dataStreams.show}")
     dataStreams
   }
 
@@ -59,7 +59,7 @@ abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest
     val backingIndices = backingIndicesFrom(actionRequest)
     backingIndices match {
       case BackingIndices.IndicesInvolved(filteredIndices, _) =>
-        logger.debug(s"[${id.show}] Discovered indices: ${filteredIndices.show}")
+        logger.debug(s"Discovered indices: ${filteredIndices.show}")
       case BackingIndices.IndicesNotInvolved =>
     }
     backingIndices

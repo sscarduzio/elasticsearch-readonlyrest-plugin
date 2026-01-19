@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import cats.Show
+import cats.{Eval, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.json.JSONObject
 import squants.information.Bytes
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -41,7 +41,13 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.time.Instant
 import scala.language.implicitConversions
 
-trait RequestContext extends Logging {
+trait BaseEsContext {
+  def correlationId: Eval[CorrelationId]
+  def esTaskId: Long
+  def restRequest: RestRequest
+}
+
+trait RequestContext {
 
   type BLOCK_CONTEXT <: BlockContext
 
@@ -95,7 +101,7 @@ trait RequestContext extends Logging {
 
 }
 
-object RequestContext extends Logging {
+object RequestContext extends RequestIdAwareLogging {
 
   type Aux[B <: BlockContext] = RequestContext {type BLOCK_CONTEXT = B}
 
@@ -105,8 +111,9 @@ object RequestContext extends Logging {
   object Id {
     def fromString(value: String): Id = Id(value)
 
-    def from(sessionCorrelationId: CorrelationId, requestId: String): Id =
-      new Id(s"${sessionCorrelationId.value.value}-$requestId")
+    def from(esContext: BaseEsContext): Id = {
+      new Id(s"${esContext.correlationId.value.value.value}-${esContext.restRequest.hashCode()}#${esContext.esTaskId}")
+    }
   }
 
   def show[B <: BlockContext](userMetadata: UserMetadata,
@@ -250,6 +257,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   }
 
   def basicAuth: Option[BasicAuth] = {
+    implicit val requestId: RequestId = requestContext.id.toRequestId
     requestContext
       .restRequest
       .allHeaders

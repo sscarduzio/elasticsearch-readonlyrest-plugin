@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
 import cats.data.NonEmptyList
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
@@ -27,19 +27,19 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
 private[indices] trait ComponentTemplateIndices
-  extends Logging {
+  extends RequestIdAwareLogging {
   this: AllTemplateIndices =>
 
   protected def gettingComponentTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                          (implicit blockContext: TemplateRequestBlockContext,
                                           allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
-      s"""[${blockContext.requestContext.id.show}] * getting Component Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
+      s"""* getting Component Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
     val existingTemplates = findTemplatesBy(templateNamePatterns.toList.toSet, in = blockContext)
     if (existingTemplates.isEmpty) {
       logger.debug(
-        s"""[${blockContext.requestContext.id.show}] * no Component Templates for name patterns [${templateNamePatterns.show}] found ..."""
+        s"""* no Component Templates for name patterns [${templateNamePatterns.show}] found ..."""
       )
       RuleResult.fulfilled(blockContext)
     } else {
@@ -57,13 +57,13 @@ private[indices] trait ComponentTemplateIndices
                                        (implicit blockContext: TemplateRequestBlockContext,
                                         allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
-      s"""[${blockContext.requestContext.id.show}] * adding Component Template [${newTemplateName.show}] with aliases
+      s"""* adding Component Template [${newTemplateName.show}] with aliases
          | [${aliases.show}] ...""".oneLiner
     )
     findTemplateBy(name = newTemplateName, in = blockContext) match {
       case Some(existingTemplate) =>
         logger.debug(
-          s"""[${blockContext.requestContext.id.show}] * Component Template with name [${existingTemplate.name.show}] exits ...""".oneLiner
+          s"""* Component Template with name [${existingTemplate.name.show}] exits ...""".oneLiner
         )
         resultBasedOnCondition(blockContext) {
           canModifyExistingComponentTemplate(existingTemplate) &&
@@ -80,7 +80,7 @@ private[indices] trait ComponentTemplateIndices
                                           (implicit blockContext: TemplateRequestBlockContext,
                                            allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
-      s"""[${blockContext.requestContext.id.show}] * deleting Component Templates with name patterns [${templateNamePatterns.show}] ..."""
+      s"""* deleting Component Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
     val result = templateNamePatterns.foldLeft(List.empty[TemplateNamePattern].asRight[Unit]) {
       case (Right(acc), templateNamePattern) =>
@@ -111,12 +111,12 @@ private[indices] trait ComponentTemplateIndices
     val foundTemplates = findTemplatesBy(namePattern = templateNamePattern, in = blockContext)
     if (foundTemplates.isEmpty) {
       logger.debug(
-        s"""[${blockContext.requestContext.id.show}] * no Component Templates for name pattern [${templateNamePattern.show}] found ..."""
+        s"""* no Component Templates for name pattern [${templateNamePattern.show}] found ..."""
       )
       Result.NotFound(templateNamePattern)
     } else {
       logger.debug(
-        s"""[${blockContext.requestContext.id.show}] * checking if Component Templates with names [${foundTemplates.map(_.name).show}] can be removed ..."""
+        s"""* checking if Component Templates with names [${foundTemplates.map(_.name).show}] can be removed ..."""
       )
       if (foundTemplates.forall(canModifyExistingComponentTemplate)) Result.Allowed(templateNamePattern)
       else Result.Forbidden(templateNamePattern)
@@ -128,7 +128,7 @@ private[indices] trait ComponentTemplateIndices
                                         (implicit blockContext: TemplateRequestBlockContext,
                                          allowedIndices: AllowedIndices) = {
     logger.debug(
-      s"""[${blockContext.requestContext.id.show}] * checking if Component Template [${newTemplateName.show}] can be added ..."""
+      s"""* checking if Component Template [${newTemplateName.show}] can be added ..."""
     )
     lazy val allAliasesAllowed =
       if (newTemplateAliases.isEmpty) true
@@ -136,7 +136,7 @@ private[indices] trait ComponentTemplateIndices
         newTemplateAliases.forall { alias =>
           val allowed = isAliasAllowed(alias.name)
           if (!allowed) logger.debug(
-            s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
+            s"""STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner
           )
           allowed
@@ -149,7 +149,7 @@ private[indices] trait ComponentTemplateIndices
                                                 (implicit blockContext: TemplateRequestBlockContext,
                                                  allowedIndices: AllowedIndices) = {
     logger.debug(
-      s"[${blockContext.requestContext.id.show}] * checking if Component Template [${existingTemplate.name.show}] can be modified by the user ..."
+      s"* checking if Component Template [${existingTemplate.name.show}] can be modified by the user ..."
     )
     lazy val allAliasesAllowed =
       if (existingTemplate.aliases.isEmpty) true
@@ -157,7 +157,7 @@ private[indices] trait ComponentTemplateIndices
         existingTemplate.aliases.forall { alias =>
           val allowed = isAliasAllowed(alias)
           if (!allowed) logger.debug(
-            s"""[${blockContext.requestContext.id.show}] STOP: cannot allow to modify existing Component Template
+            s"""STOP: cannot allow to modify existing Component Template
                | [${existingTemplate.name.show}], because its alias [${alias.show}] is not allowed by rule
                | (it means that user has no access to it)""".oneLiner
           )

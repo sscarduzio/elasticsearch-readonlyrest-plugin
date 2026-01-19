@@ -23,7 +23,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.syntax.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService as AuthenticationService, ExternalAuthorizationService as AuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
@@ -37,8 +36,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
 
-class AuthMockApi(rorInstance: RorInstance)
-  extends Logging {
+class AuthMockApi(rorInstance: RorInstance) {
 
   import AuthMockApi.*
   import AuthMockApi.AuthMockResponse.*
@@ -80,7 +78,8 @@ class AuthMockApi(rorInstance: RorInstance)
     AuthMockResponse.ProvideAuthMock.CurrentAuthMocks((ldaps ++ extAuthn ++ extAuthz).toList)
   }
 
-  private def updateAuthMock(body: String): Task[AuthMockResponse] = {
+  private def updateAuthMock(body: String)
+                            (implicit requestId: RequestId): Task[AuthMockResponse] = {
     val result = for {
       updateRequest <- decodeRequest(body)
       authServices <- readCurrentAuthServices()
@@ -148,7 +147,8 @@ class AuthMockApi(rorInstance: RorInstance)
       .toEitherT[Task]
   }
 
-  private def updateAuthMocks(updateRequest: UpdateMocksRequest): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
+  private def updateAuthMocks(updateRequest: UpdateMocksRequest)
+                             (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, AuthMockResponse] = EitherT {
     rorInstance
       .updateAuthMocks(toDomain(updateRequest.services))
       .map {

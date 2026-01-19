@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockCont
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -63,7 +64,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -75,7 +76,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
+          logger.warn(s"Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
         }
         Right(snapshot)
     }
@@ -88,7 +89,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+          logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
         }
         Right(repository)
     }
@@ -115,7 +116,8 @@ object RestoreSnapshotEsRequestContext {
   def create(actionRequest: RestoreSnapshotRequest,
              esContext: EsContext,
              clusterService: RorClusterService,
-             threadPool: ThreadPool): Task[RestoreSnapshotEsRequestContext] = {
+             threadPool: ThreadPool)
+            (implicit id: RequestContext.Id): Task[RestoreSnapshotEsRequestContext] = {
     for {
       requestedRepository <- Task(repositoryFrom(actionRequest))
       requestedSnapshot <- Task(snapshotFrom(actionRequest))
@@ -156,7 +158,8 @@ object RestoreSnapshotEsRequestContext {
   private def requestedIndicesFrom(request: RestoreSnapshotRequest,
                                    repository: RepositoryName.Full,
                                    snapshot: SnapshotName.Full,
-                                   clusterService: RorClusterService) = {
+                                   clusterService: RorClusterService)
+                                  (implicit rid: RequestContext.Id) = {
     clusterService
       .snapshotIndices(repository, snapshot)
       .map(_.filterBy(indicesFrom(request)))

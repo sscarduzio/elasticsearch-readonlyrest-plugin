@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es
 
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel, RestRequest as EsRestRequest, RestResponse as EsRestResponse}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
@@ -39,7 +39,7 @@ object RorRestChannel {
 final class RorRestChannel private(underlying: EsRestChannel, val restRequest: RorRestRequest)
   extends AbstractRestChannel(underlying.request(), true)
     with ResponseFieldsFiltering
-    with Logging {
+    with RequestIdAwareLogging {
 
   override def sendResponse(response: EsRestResponse): Unit = {
     ThreadRepo.removeRestChannel(this)

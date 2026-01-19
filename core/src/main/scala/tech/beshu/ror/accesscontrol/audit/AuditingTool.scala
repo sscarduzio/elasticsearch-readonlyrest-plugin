@@ -20,7 +20,7 @@ import cats.Show
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.implicits.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
@@ -150,7 +150,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
 
 }
 
-object AuditingTool extends Logging {
+object AuditingTool extends RequestIdAwareLogging {
 
   final case class AuditSettings(auditSinks: NonEmptyList[AuditSettings.AuditSink],
                                  esNodeSettings: EsNodeSettings)
@@ -216,10 +216,10 @@ object AuditingTool extends Logging {
       _.map {
           case Some(auditSinks) =>
             implicit val auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(settings.esNodeSettings)
-            logger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
+            noRequestIdLogger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
             Some(new AuditingTool(auditSinks))
           case None =>
-            logger.info("The audit is disabled because no output is enabled")
+            noRequestIdLogger.info("The audit is disabled because no output is enabled")
             None
         }
         .toEither

@@ -23,8 +23,9 @@ import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusR
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestId, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -92,6 +93,7 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
 
   private def modifySnapshotStatusRequest(request: SnapshotsStatusRequest,
                                           blockContext: SnapshotRequestBlockContext) = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val updateResult = for {
       repository <- repositoryFrom(blockContext)
       snapshots <- snapshotsFrom(blockContext)
@@ -100,12 +102,13 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
 
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
+  private def repositoryFrom(implicit blockContext: SnapshotRequestBlockContext): Either[Unit, RepositoryName] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val repositories = blockContext.repositories
     if (allRepositoriesRequested(repositories)) {
       Right(RepositoryName.All)
@@ -115,7 +118,7 @@ class SnapshotsStatusEsRequestContext private(actionRequest: SnapshotsStatusRequ
           Left(())
         case repository :: rest =>
           if (rest.nonEmpty) {
-            logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+            logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
           }
           Right(repository)
       }
@@ -181,7 +184,8 @@ object SnapshotsStatusEsRequestContext {
   def create(actionRequest: SnapshotsStatusRequest,
              esContext: EsContext,
              clusterService: RorClusterService,
-             threadPool: ThreadPool): Task[SnapshotsStatusEsRequestContext] = {
+             threadPool: ThreadPool)
+            (implicit id: RequestContext.Id): Task[SnapshotsStatusEsRequestContext] = {
     clusterService.allSnapshots
       .map { case (repository, getSnapshots) => getSnapshots.map((repository, _)) }
       .toList.sequence

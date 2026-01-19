@@ -20,14 +20,14 @@ import cats.implicits.*
 import io.circe.Json
 import io.circe.parser.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.ResourceNotFoundException
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.xcontent.XContentType
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexDocumentManager
 import tech.beshu.ror.es.IndexDocumentManager.*
@@ -38,14 +38,15 @@ import scala.annotation.unused
 class EsIndexDocumentManager(client: NodeClient,
                              @unused constructorDiscriminator: Unit)
   extends IndexDocumentManager
-    with Logging {
+    with RequestIdAwareLogging {
 
   @Inject
   def this(client: NodeClient) = {
     this(client, ())
   }
 
-  override def documentAsJson(index: IndexName.Full, id: String): Task[Either[ReadError, Json]] = {
+  override def documentAsJson(index: IndexName.Full, id: String)
+                             (implicit requestId: RequestId): Task[Either[ReadError, Json]] = {
     Task {
       client
         .get(
@@ -85,7 +86,8 @@ class EsIndexDocumentManager(client: NodeClient,
       }
   }
 
-  override def saveDocumentJson(index: IndexName.Full, id: String, document: Json): Task[Either[WriteError, Unit]] = {
+  override def saveDocumentJson(index: IndexName.Full, id: String, document: Json)
+                               (implicit requestId: RequestId): Task[Either[WriteError, Unit]] = {
     Task {
       client
         .index(

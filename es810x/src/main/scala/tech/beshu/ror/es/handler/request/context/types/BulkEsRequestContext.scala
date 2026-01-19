@@ -62,7 +62,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
           case (_, _) => ShouldBeInterrupted
         }
     } else {
-      logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different " +
+      logger.error(s"Cannot alter MultiGetRequest request, because origin request contained different " +
         s"number of requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
     }
@@ -90,18 +90,18 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
             updateRequestWithIndices(request, nel)
             Modified
           case None =>
-            logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because empty list of indices was found")
+            logger.error(s"Cannot alter MultiGetRequest request, because empty list of indices was found")
             ShouldBeInterrupted
         }
       case Indices.NotFound =>
-        logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because no allowed indices were found")
+        logger.error(s"Cannot alter MultiGetRequest request, because no allowed indices were found")
         ShouldBeInterrupted
     }
   }
 
   private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
     }
     request.index(indices.head.stringify)
   }

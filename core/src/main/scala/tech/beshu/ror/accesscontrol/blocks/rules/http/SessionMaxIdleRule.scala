@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
@@ -36,7 +36,7 @@ final class SessionMaxIdleRule(val settings: Settings,
                                implicit val caseSensitivity: CaseSensitivity)
                               (implicit clock: Clock,
                                uuidProvider: UuidProvider)
-  extends RegularRule with Logging {
+  extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = SessionMaxIdleRule.Name.name
 
@@ -46,7 +46,7 @@ final class SessionMaxIdleRule(val settings: Settings,
         checkCookieFor(user, blockContext)
       case None =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-        logger.warn(s"[${requestId.show}] Cannot state the logged in user, put the authentication rule on top of the block!")
+        logger.warn(s"Cannot state the logged in user, put the authentication rule on top of the block!")
         Rejected()
     }
   }

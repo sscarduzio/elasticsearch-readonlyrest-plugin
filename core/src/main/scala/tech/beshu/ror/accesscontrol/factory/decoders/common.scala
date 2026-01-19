@@ -22,7 +22,7 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import io.lemonlabs.uri.Uri
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
@@ -50,7 +50,7 @@ import java.net.URI
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-object common extends Logging {
+object common extends RequestIdAwareLogging {
 
   implicit val nonEmptyStringDecoder: Decoder[NonEmptyString] =
     Decoder
@@ -287,7 +287,7 @@ object common extends Logging {
           .toEither
           .left
           .map { ex =>
-            logger.errorEx("JSON path compilation failed", ex)
+            noRequestIdLogger.errorEx("JSON path compilation failed", ex)
             DefinitionsLevelCreationError(Message(s"Cannot compile '${jsonPathStr.show}' to JSON path"))
           }
       }

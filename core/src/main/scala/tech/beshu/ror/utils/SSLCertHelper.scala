@@ -22,7 +22,6 @@ import io.netty.buffer.ByteBufAllocator
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.ssl.{ClientAuth, SslContext, SslContextBuilder}
-import org.apache.logging.log4j.scala.Logging
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
 import org.bouncycastle.openssl.PEMParser
@@ -42,7 +41,7 @@ import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.Try
 
-object SSLCertHelper extends Logging {
+object SSLCertHelper extends RequestIdAwareLogging {
 
   def prepareSSLEngine(sslContext: SslContext,
                        hostAndPort: HostAndPort,
@@ -87,7 +86,7 @@ object SSLCertHelper extends Logging {
       }
       getFipsCompliantKeyManagerFactory(keystoreBasedSettings)
         .map { keyManagerFactory =>
-          logger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
+          noRequestIdLogger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
           builder.keyManager(keyManagerFactory)
         }
     } else {
@@ -97,7 +96,7 @@ object SSLCertHelper extends Logging {
         case keystoreBasedSettings: KeystoreBasedSettings =>
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedSettings)
       }).map { case (privateKey, certificateChain) =>
-        logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
+        noRequestIdLogger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
         builder.keyManager(privateKey, certificateChain.toList.asJava)
       }
     }
@@ -175,7 +174,7 @@ object SSLCertHelper extends Logging {
     trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, sslSettings)
       .fold(
         ex => {
-          logger.error(s"ROR SSL: cannot validate SSL protocols and ciphers! ${ex.getClass.getSimpleName.show} : ${ex.getMessage.show}", ex)
+          noRequestIdLogger.error(s"ROR SSL: cannot validate SSL protocols and ciphers! ${ex.getClass.getSimpleName.show} : ${ex.getMessage.show}", ex)
           false
         },
         _ => true
@@ -203,10 +202,10 @@ object SSLCertHelper extends Logging {
       .use { keystoreFile =>
         IO {
           val keystore = if (fipsCompliant) {
-            logger.info("Trying to load data in FIPS compliant BCFKS format...")
+            noRequestIdLogger.info("Trying to load data in FIPS compliant BCFKS format...")
             java.security.KeyStore.getInstance("BCFKS", "BCFIPS")
           } else {
-            logger.info("Trying to load data in JKS or PKCS#12 format...")
+            noRequestIdLogger.info("Trying to load data in JKS or PKCS#12 format...")
             java.security.KeyStore.getInstance("JKS")
           }
           keystore.load(keystoreFile, password)
@@ -217,14 +216,14 @@ object SSLCertHelper extends Logging {
 
   private def loadKeystore(keystoreBasedSettings: KeystoreBasedSettings, fipsCompliant: Boolean): IO[KeyStore] = {
     for {
-      _ <- IO(logger.info("Preparing keystore..."))
+      _ <- IO(noRequestIdLogger.info("Preparing keystore..."))
       keystore <- loadKeystoreFromFile(keystoreBasedSettings.keystoreFile.value, keystoreBasedSettings.keystorePassword, fipsCompliant)
     } yield keystore
   }
 
   private def loadTruststore(truststoreBasedSettings: TruststoreBasedSettings, fipsCompliant: Boolean): IO[KeyStore] = {
     for {
-      _ <- IO(logger.info("Preparing truststore..."))
+      _ <- IO(noRequestIdLogger.info("Preparing truststore..."))
       truststore <- loadKeystoreFromFile(truststoreBasedSettings.truststoreFile.value, truststoreBasedSettings.truststorePassword, fipsCompliant)
     } yield truststore
   }
@@ -233,7 +232,7 @@ object SSLCertHelper extends Logging {
     settings.keyAlias match {
       case None if keystore.aliases().hasMoreElements =>
         val firstAlias = keystore.aliases().nextElement()
-        logger.info(s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: ${firstAlias.show}")
+        noRequestIdLogger.info(s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: ${firstAlias.show}")
         firstAlias
       case None =>
         throw MalformedSslSettings("Key not found in provided keystore!")
@@ -250,7 +249,7 @@ object SSLCertHelper extends Logging {
     loadKeystore(keystoreBasedSettings, fipsCompliant = true)
       .map { keystore =>
         if (keystoreBasedSettings.keyPass.isDefined) {
-          logger.warn("ROR settings parameter key_pass is declared however it won't be used in this mode. In this case password for specific key MUST be the same as keystore password")
+          noRequestIdLogger.warn("ROR settings parameter key_pass is declared however it won't be used in this mode. In this case password for specific key MUST be the same as keystore password")
         }
         removeAllAliasesFromKeystoreBesidesOne(keystore, prepareAlias(keystore, keystoreBasedSettings))
         val kmf = getKeyManagerFactoryInstance(fipsCompliant = true)
@@ -312,15 +311,15 @@ object SSLCertHelper extends Logging {
   private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder,
                                                        sslSettings: SslSettings) = Try {
     val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
-    logger.info(s"ROR SSL: Available ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
+    noRequestIdLogger.info(s"ROR SSL: Available ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
     if (sslSettings.allowedCiphers.nonEmpty) {
       sslEngine.setEnabledCipherSuites(sslSettings.allowedCiphers.map(_.value).toArray)
-      logger.info(s"ROR SSL: Restricting to ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
+      noRequestIdLogger.info(s"ROR SSL: Restricting to ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
     }
-    logger.info(s"ROR SSL: Available SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
+    noRequestIdLogger.info(s"ROR SSL: Available SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
     if (sslSettings.allowedProtocols.nonEmpty) {
       sslEngine.setEnabledProtocols(sslSettings.allowedProtocols.map(_.value).toArray)
-      logger.info(s"ROR SSL: Restricting to SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
+      noRequestIdLogger.info(s"ROR SSL: Restricting to SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
     }
   }
 
@@ -332,7 +331,7 @@ object SSLCertHelper extends Logging {
       }
       getFipsCompliantKeyManagerFactory(keystoreBasedSettings)
         .map { keyManagerFactory =>
-          logger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
+          noRequestIdLogger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
           SslContextBuilder.forServer(keyManagerFactory)
         }
     } else {
@@ -342,7 +341,7 @@ object SSLCertHelper extends Logging {
         case keystoreBasedSettings: KeystoreBasedSettings =>
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedSettings)
       }).map { case (privateKey, certificateChain) =>
-        logger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
+        noRequestIdLogger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
         SslContextBuilder.forServer(privateKey, certificateChain.toList.asJava)
       }
     }

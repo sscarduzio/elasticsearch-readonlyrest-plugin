@@ -49,7 +49,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
                                 allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     request.getRequests.removeIf { request => removeOrAlter(request, filteredIndices.toCovariantSet) }
     if (request.getRequests.asScala.isEmpty) {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. All indices were filtered out.")
+      logger.error(s"Cannot update ${actionRequest.getClass.show} request. All indices were filtered out.")
       ShouldBeInterrupted
     } else {
       Modified
@@ -65,7 +65,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
         true
       case index :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${remaining.show}]")
+          logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${remaining.show}]")
         }
         request.index(index.stringify)
         false

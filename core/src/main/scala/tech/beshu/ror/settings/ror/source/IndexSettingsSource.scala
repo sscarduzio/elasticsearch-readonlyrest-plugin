@@ -19,7 +19,7 @@ package tech.beshu.ror.settings.ror.source
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.es.IndexDocumentManager
 import tech.beshu.ror.es.IndexDocumentManager.CannotWriteToIndex
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{DocumentNotFound, IndexNotFound}
@@ -33,7 +33,8 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: Ind
                                                        documentId: String)
   extends ReadWriteSettingsSource[SETTINGS, LoadingError, SavingError] {
 
-  override def load(): Task[Either[IndexSettingsLoadingError, SETTINGS]] = {
+  override def load()
+                   (implicit requestId: RequestId): Task[Either[IndexSettingsLoadingError, SETTINGS]] = {
     indexDocumentManager
       .documentAsJson(settingsIndex, documentId)
       .map {
@@ -49,7 +50,8 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: Ind
       }
   }
 
-  override def save(settings: SETTINGS): Task[Either[IndexSettingsSavingError, Unit]] = {
+  override def save(settings: SETTINGS)
+                   (implicit requestId: RequestId): Task[Either[IndexSettingsSavingError, Unit]] = {
     indexDocumentManager
       .saveDocumentJson(settingsIndex, documentId, settings.asJson)
       .map {

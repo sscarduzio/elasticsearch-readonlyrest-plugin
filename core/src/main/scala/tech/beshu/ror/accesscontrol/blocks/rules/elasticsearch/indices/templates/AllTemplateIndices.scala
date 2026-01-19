@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.template
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.Settings
@@ -35,7 +35,7 @@ private[indices] trait AllTemplateIndices
   extends IndexTemplateIndices
     with ComponentTemplateIndices
     with LegacyTemplatesIndices
-    with Logging {
+    with RequestIdAwareLogging {
 
   protected def settings: Settings
 
@@ -43,11 +43,11 @@ private[indices] trait AllTemplateIndices
 
   protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): Task[RuleResult[TemplateRequestBlockContext]] = Task.now {
     implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
+    implicit val _blockContext = blockContext
     logger.debug(
-      s"""[${blockContext.requestContext.id.show}] Checking - indices and aliases in Template related request.
+      s"""Checking - indices and aliases in Template related request.
          | Allowed indices by the rule: [${allowedIndices.resolved.show}]:""".oneLiner
     )
-    implicit val _blockContext = blockContext
     val result = blockContext.templateOperation match {
       case GettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates) =>
         gettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates)

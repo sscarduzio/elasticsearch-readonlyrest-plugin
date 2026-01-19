@@ -69,7 +69,8 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
+    implicit val requestContextImpl: RequestContext = requestContext
+    logger.debug(s"Checking local indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
     canPass[ClusterIndexName.Local](requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
@@ -89,7 +90,8 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
+    implicit val requestContextImpl: RequestContext = requestContext
+    logger.debug(s"Checking remote indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
     canPass(requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>

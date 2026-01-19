@@ -109,7 +109,7 @@ class SimulateExistingTemplateRequestEsRequestContext(existingTemplateName: Temp
           case Some(_) =>
             updateResponse(namePatterns.toList, blockContext.allAllowedIndices.toList)
           case None =>
-            logger.info(s"[${id.show}] User has no access to template ${existingTemplateName.show}")
+            logger.info(s"User has no access to template ${existingTemplateName.show}")
             ModificationResult.ShouldBeInterrupted
         }
       case other =>

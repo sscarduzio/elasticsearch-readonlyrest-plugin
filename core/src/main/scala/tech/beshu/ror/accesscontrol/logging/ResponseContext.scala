@@ -20,7 +20,10 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-sealed trait ResponseContext[B <: BlockContext]
+sealed trait ResponseContext[B <: BlockContext] {
+  def requestContext: RequestContext.Aux[B]
+}
+
 object ResponseContext {
 
   final case class AllowedBy[B <: BlockContext](requestContext: RequestContext.Aux[B],

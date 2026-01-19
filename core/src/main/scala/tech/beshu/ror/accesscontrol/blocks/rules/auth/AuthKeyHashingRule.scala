@@ -20,7 +20,7 @@ import cats.Eq
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -38,7 +38,7 @@ sealed abstract class AuthKeyHashingRule(override val settings: BasicAuthenticat
                                          implicit override val userIdCaseSensitivity: CaseSensitivity,
                                          hasher: Hasher)
   extends BasicAuthenticationRule(settings)
-    with Logging {
+    with RequestIdAwareLogging {
 
   override protected def compare(configuredCredentials: HashedCredentials,
                                  credentials: Credentials): Task[Boolean] = Task {

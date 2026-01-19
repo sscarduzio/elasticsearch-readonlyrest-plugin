@@ -19,7 +19,7 @@ package tech.beshu.ror.es.dlsfls
 import cats.data.StateT
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.apache.lucene.index.DirectoryReader
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.index.IndexService
@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
 
 import scala.util.{Failure, Success, Try}
 
-class RoleIndexSearcherWrapper(indexService: IndexService) extends IndexSearcherWrapper with Logging {
+class RoleIndexSearcherWrapper(indexService: IndexService) extends IndexSearcherWrapper with RequestIdAwareLogging {
 
   override def wrap(reader: DirectoryReader): DirectoryReader = {
     val threadContext: ThreadContext = indexService.getThreadPool.getThreadContext
@@ -59,13 +59,13 @@ class RoleIndexSearcherWrapper(indexService: IndexService) extends IndexSearcher
       nel <- NonEmptyString.from(value) match {
         case Right(nel) => Success(nel)
         case Left(_) =>
-          logger.debug("FLS: empty header value")
+          noRequestIdLogger.debug("FLS: empty header value")
           failure
       }
       fields <- transientFieldsFromHeaderValue.fromRawValue(nel) match {
         case result@Success(_) => result
         case Failure(ex) =>
-          logger.debug(s"FLS: Cannot decode fields from ${constants.FIELDS_TRANSIENT} header value", ex)
+          noRequestIdLogger.debug(s"FLS: Cannot decode fields from ${constants.FIELDS_TRANSIENT} header value", ex)
           failure
       }
     } yield fields

@@ -34,26 +34,27 @@ trait RorClusterService {
 
   def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
 
-  def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
+  def allRemoteIndicesAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteIndexWithAliases]]
 
   def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases]
 
-  def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
+  def allRemoteDataStreamsAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteDataStreamWithAliases]]
 
   def allTemplates: Set[Template]
 
-  def allSnapshots: Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]
+  def allSnapshots(implicit id: RequestContext.Id): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]
 
   def snapshotIndices(repositoryName: RepositoryName.Full,
-                      snapshotName: SnapshotName.Full): Task[Set[ClusterIndexName]]
+                      snapshotName: SnapshotName.Full)
+                     (implicit id: RequestContext.Id): Task[Set[ClusterIndexName]]
 
   def verifyDocumentAccessibility(document: Document,
-                                  filter: Filter,
-                                  id: RequestContext.Id): Task[DocumentAccessibility]
+                                  filter: Filter)
+                                 (implicit id: RequestContext.Id): Task[DocumentAccessibility]
 
   def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
-                                     filter: Filter,
-                                     id: RequestContext.Id): Task[DocumentsAccessibilities]
+                                     filter: Filter)
+                                    (implicit id: RequestContext.Id): Task[DocumentsAccessibilities]
 
   def expandLocalIndices(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
     val all: Set[ClusterIndexName] = allIndicesAndAliases.flatMap(_.all)

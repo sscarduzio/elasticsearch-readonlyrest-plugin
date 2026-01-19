@@ -218,16 +218,18 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
   private def mockInIndexMainSettingsLoading(indexDocumentManager: IndexDocumentManager,
                                              indexName: NonEmptyString) = {
-    (indexDocumentManager.documentAsJson _)
-      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId)
+    ((index: IndexName.Full, id: String, requestId: RequestId) =>
+      indexDocumentManager.documentAsJson(index, id)(requestId))
+      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, *)
       .once()
       .returns(Task.now(Right(circeJsonFrom(s"""{ "settings": "${escapeJava(indexRorSettings.rawYaml)}" }"""))))
   }
 
   private def mockInIndexTestSettingsLoading(indexDocumentManager: IndexDocumentManager,
                                              indexName: NonEmptyString) = {
-    (indexDocumentManager.documentAsJson _)
-      .expects(fullIndexName(indexName), testInIndexRorSettingsDocumentId)
+    ((index: IndexName.Full, id: String, requestId: RequestId) =>
+      indexDocumentManager.documentAsJson(index, id)(requestId))
+      .expects(fullIndexName(indexName), testInIndexRorSettingsDocumentId, *)
       .once()
       .returns(Task.now(Left(IndexDocumentManager.DocumentNotFound)))
   }
@@ -235,8 +237,9 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
   private def mockInIndexMainSettingsSaving(indexDocumentManager: IndexDocumentManager,
                                             indexName: NonEmptyString,
                                             rawRorSettings: RawRorSettings) = {
-    (indexDocumentManager.saveDocumentJson _)
-      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, circeJsonFrom(s"""{ "settings": "${escapeJava(rawRorSettings.rawYaml)}"}"""))
+    ((index: IndexName.Full, id: String, document: Json, requestId: RequestId) =>
+      indexDocumentManager.saveDocumentJson(index, id, document)(requestId))
+      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, circeJsonFrom(s"""{ "settings": "${escapeJava(rawRorSettings.rawYaml)}"}"""), *)
       .once()
       .returns(Task.now(Right(())))
   }
@@ -244,10 +247,11 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
   private def mockInIndexTestSettingsSaving(indexDocumentManager: IndexDocumentManager,
                                             indexName: NonEmptyString,
                                             rawRorSettings: RawRorSettings) = {
-    (indexDocumentManager.saveDocumentJson _)
+    ((index: IndexName.Full, id: String, document: Json, requestId: RequestId) =>
+      indexDocumentManager.saveDocumentJson(index, id, document)(requestId))
       .expects(
         where {
-          (index: IndexName.Full, id: String, document: Json) =>
+          (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
             index == fullIndexName(indexName) &&
               id == testInIndexRorSettingsDocumentId &&
               document.hcursor.get[String]("settings").toOption.contains(rawRorSettings.rawYaml) &&

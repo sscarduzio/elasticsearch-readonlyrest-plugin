@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context
 
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
@@ -27,10 +26,11 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.Set
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.util.Try
 
-trait EsRequest[B <: BlockContext] extends Logging {
+trait EsRequest[B <: BlockContext] extends RequestIdAwareLogging {
   implicit def threadPool: ThreadPool
 
   final def modifyUsing(blockContext: B): ModificationResult = {
@@ -38,7 +38,8 @@ trait EsRequest[B <: BlockContext] extends Logging {
     Try(modifyRequest(blockContext))
       .fold(
         ex => {
-          logger.error(s"[${blockContext.requestContext.id.show}] Cannot modify request with filtered data", ex)
+          implicit val blockContextImpl: B = blockContext
+          logger.error(s"Cannot modify request with filtered data", ex)
           ModificationResult.CannotModify
         },
         identity

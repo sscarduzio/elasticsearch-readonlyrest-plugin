@@ -20,7 +20,7 @@ import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
@@ -63,6 +63,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.actions.RorActionRequest
@@ -75,7 +76,7 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -87,7 +88,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {
@@ -112,6 +113,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
   private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext) = {
+    implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
     esContext.actionRequest match {
       case request: RRAuditEventRequest =>
         regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
@@ -278,7 +280,11 @@ object AclAwareRequestFilter {
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val threadContextResponseHeaders: Set[(String, String)]) {
+                        val threadContextResponseHeaders: Set[(String, String)]) extends BaseEsContext {
+
+    override val esTaskId: Long = task.getId
+
+    override val restRequest: RestRequest = channel.restRequest
 
     val timestamp: Instant = Instant.now()
 

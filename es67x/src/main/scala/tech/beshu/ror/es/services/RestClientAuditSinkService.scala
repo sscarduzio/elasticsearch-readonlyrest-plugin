@@ -22,7 +22,7 @@ import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.ClusterMode
@@ -36,7 +36,7 @@ import scala.collection.parallel.CollectionConverters.*
 
 final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient])
   extends IndexBasedAuditSinkService
-    with Logging {
+    with RequestIdAwareLogging {
 
   override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
                      (implicit requestId: RequestId): Unit = {
@@ -72,19 +72,19 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
       override def onSuccess(response: Response): Unit = {
         response.getStatusLine.getStatusCode / 100 match {
           case 2 => // 2xx
-            logger.debug(s"[${requestId.show}] Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
+            logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
           case _ =>
-            logger.error(s"[${requestId.show}] Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
+            logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
         }
       }
 
       override def onFailure(ex: Exception): Unit = {
-        logger.error(s"[${requestId.show}] Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
+        logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId]", ex)
       }
     }
 }
 
-object RestClientAuditSinkService extends Logging {
+object RestClientAuditSinkService extends RequestIdAwareLogging {
 
   def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditSinkService = {
     remoteCluster.mode match {
@@ -115,7 +115,7 @@ object RestClientAuditSinkService extends Logging {
       .setFailureListener(
         new FailureListener {
           override def onFailure(node: Node): Unit = {
-            logger.debug(
+            noRequestIdLogger.debug(
               s"[AUDIT] Node marked dead: ${node.getHost.getSchemeName}://${node.getHost.getHostName}:${node.getHost.getPort}. The client will attempt failover.",
             )
           }

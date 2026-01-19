@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -38,6 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLog
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 // Common decoder for JWT rules and ROR KBN rules. They are very similar, and their decoding logic is mostly the same.
@@ -50,7 +50,7 @@ trait JwtLikeRulesDecoders[
   AUTHZ_RULE <: AuthorizationRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
   AUTH_RULE <: AuthRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
 ] {
-  this: Logging =>
+  this: RequestIdAwareLogging =>
 
   protected def ruleTypePrefix: String
 
@@ -126,7 +126,7 @@ trait JwtLikeRulesDecoders[
               val rule = createAuthRule(authentication, authorization)
               Right(RuleDefinition.create(rule))
             case (Right(definition), None) =>
-              logger.warn(
+              noRequestIdLogger.warn(
                 s"""Missing groups logic settings in ${RuleName[AUTH_RULE].name.show} rule.
                    |For old configs, ROR treats this as `groups_any_of: ["*"]`.
                    |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),

@@ -21,7 +21,7 @@ import cats.syntax.either.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
@@ -50,7 +50,7 @@ class RorInstance private(boot: ReadonlyRest,
                           testReloadInProgress: Semaphore[Task])
                          (implicit systemContext: SystemContext,
                           scheduler: Scheduler)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   import RorInstance.*
   import creators.*
@@ -80,7 +80,7 @@ class RorInstance private(boot: ReadonlyRest,
   settingsAutoReloader.start()
 
   val id: String = UUID.randomUUID().toString
-  logger.info(s"[$id] ReadonlyREST was loaded!")
+  noRequestIdLogger.info(s"[$id] ReadonlyREST was loaded!")
 
   def engines: Option[Engines] = theMainSettingsEngine.engine.map(Engines(_, theTestSettingsEngine.engine))
 
@@ -115,7 +115,8 @@ class RorInstance private(boot: ReadonlyRest,
     theTestSettingsEngine.invalidateTestSettingsEngine()
   }
 
-  def updateAuthMocks(mocks: AuthServicesMocks): Task[Either[IndexSettingsUpdateError, Unit]] = {
+  def updateAuthMocks(mocks: AuthServicesMocks)
+                     (implicit requestId: RequestId): Task[Either[IndexSettingsUpdateError, Unit]] = {
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 

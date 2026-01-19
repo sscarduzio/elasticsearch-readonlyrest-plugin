@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
 import org.elasticsearch.cluster.metadata.{AliasMetaData, IndexTemplateMetaData}
 import org.elasticsearch.common.collect.ImmutableOpenMap
@@ -100,7 +100,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
 
 }
 
-private[templates] object GetTemplatesEsRequestContext extends Logging {
+private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLogging {
 
   def filter(templates: Iterable[IndexTemplateMetaData],
              usingTemplate: Set[Template] => Set[Template])

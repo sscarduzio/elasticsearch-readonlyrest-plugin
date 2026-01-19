@@ -20,7 +20,7 @@ import cats.Show
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.*
@@ -32,7 +32,7 @@ import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.{Success, Try}
 
-class ClaimsOps(val claims: Claims) extends Logging {
+class ClaimsOps(val claims: Claims) extends RequestIdAwareLogging {
 
   def headerNameClaim(name: Header.Name): ClaimSearchResult[Header] = {
     Option(claims.get(name.value.value, classOf[String]))
@@ -78,7 +78,8 @@ class ClaimsOps(val claims: Claims) extends Logging {
   }
 
   def groupsClaim(groupIdsClaimName: Jwt.ClaimName,
-                  groupNamesClaimName: Option[Jwt.ClaimName]): ClaimSearchResult[UniqueList[Group]] = {
+                  groupNamesClaimName: Option[Jwt.ClaimName])
+                 (implicit requestId: RequestId): ClaimSearchResult[UniqueList[Group]] = {
 
     (for {
       groupIds <- readGroupIds(groupIdsClaimName)
@@ -142,7 +143,8 @@ class ClaimsOps(val claims: Claims) extends Logging {
       .map(Group.from)
   }
 
-  private def createGroupsFrom(idsWithNames: Iterable[(Any, Any)]): UniqueList[Group] = UniqueList.from {
+  private def createGroupsFrom(idsWithNames: Iterable[(Any, Any)])
+                              (implicit requestId: RequestId): UniqueList[Group] = UniqueList.from {
     idsWithNames
       .flatMap { case (id, name) =>
         nonEmptyStringFrom(id)
@@ -154,7 +156,8 @@ class ClaimsOps(val claims: Claims) extends Logging {
       }
   }
 
-  private def groupNameFrom(name: Any, groupId: GroupId) = {
+  private def groupNameFrom(name: Any, groupId: GroupId)
+                           (implicit requestId: RequestId) = {
     nonEmptyStringFrom(name)
       .map(GroupName.apply)
       .getOrElse {
