@@ -21,6 +21,7 @@ import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.CursorOp.DownField
+import io.circe.Json.Folder
 import io.circe.parser.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -424,4 +425,6 @@ object CirceOps {
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
   }
+
+
 }

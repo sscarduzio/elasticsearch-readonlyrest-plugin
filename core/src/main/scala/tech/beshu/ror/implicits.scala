@@ -202,6 +202,10 @@ trait LogsShowInstances
   implicit val httpResponseShow: Show[HttpClient.Response] = Show.show(_.toString)
   implicit val functionNameShow: Show[FunctionName] = Show.show(_.name.value)
   implicit val functionDefinitionShow: Show[FunctionDefinition] = Show.show(_.functionName.show)
+  implicit val requestGroupShow: Show[RequestGroup] = Show.show {
+    case RequestGroup.AGroup(groupId) => groupId.show
+    case RequestGroup.`N/A` => "N/A"
+  }
 
   implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
 

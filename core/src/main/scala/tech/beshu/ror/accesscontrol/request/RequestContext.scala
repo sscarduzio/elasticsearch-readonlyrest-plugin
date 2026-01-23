@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import cats.{Eval, Show}
+import cats.Eval
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.json.JSONObject
@@ -249,12 +249,6 @@ object RequestContextOps {
   object RequestGroup {
     final case class AGroup(userGroup: GroupId) extends RequestGroup
     case object `N/A` extends RequestGroup
-
-    // todo: move?
-    implicit val show: Show[RequestGroup] = Show.show {
-      case AGroup(group) => group.value.value
-      case `N/A` => "N/A"
-    }
 
     implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
       def toOption: Option[GroupId] = requestGroup match {

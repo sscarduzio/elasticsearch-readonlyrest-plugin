@@ -16,37 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
-import io.circe.Json.Folder
 import io.circe.syntax.*
-import io.circe.{Encoder, Json, JsonNumber, JsonObject}
+import io.circe.{Encoder, Json}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 
-import scala.jdk.CollectionConverters.*
-
 object MetadataResponse {
-
-  def jsonToJava(json: Json): Any = json.foldWith(JsonToJavaFolder)
-
-  private object JsonToJavaFolder extends Folder[Any] {
-    override def onNull: Any = null
-
-    override def onBoolean(value: Boolean): Any = Boolean.box(value)
-
-    override def onNumber(value: JsonNumber): Any =
-      value.toLong.map(Long.box).getOrElse(Double.box(value.toDouble))
-
-    override def onString(value: String): Any = value
-
-    override def onArray(value: Vector[Json]): Any =
-      value.map(_.foldWith(this)).toArray
-
-    override def onObject(value: JsonObject): Any =
-      value.toMap.view.mapValues(_.foldWith(this)).toMap.asJava
-  }
 
   def from(userMetadata: UserMetadata,
            currentGroupId: Option[GroupId],
@@ -55,6 +33,7 @@ object MetadataResponse {
   }
 }
 
+// todo: can we do it better?
 private object CurrentUserMetadataValue {
 
   def from(userMetadata: UserMetadata,

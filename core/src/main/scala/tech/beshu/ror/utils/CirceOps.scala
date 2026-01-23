@@ -17,10 +17,12 @@
 package tech.beshu.ror.utils
 
 import io.circe.*
+import io.circe.Json.Folder
 import io.circe.generic.semiauto.*
 import io.circe.syntax.EncoderOps
 import tech.beshu.ror.implicits.*
 
+import scala.jdk.CollectionConverters.IterableHasAsJava
 import scala.language.implicitConversions
 
 object CirceOps {
@@ -58,4 +60,24 @@ object CirceOps {
     )
   }
 
+  extension (json: Json) {
+    def toJava(): Any = json.foldWith(JsonToJavaFolder)
+  }
+
+  private object JsonToJavaFolder extends Folder[Any] {
+    override def onNull: Any = null
+
+    override def onBoolean(value: Boolean): Any = Boolean.box(value)
+
+    override def onNumber(value: JsonNumber): Any =
+      value.toLong.map(Long.box).getOrElse(Double.box(value.toDouble))
+
+    override def onString(value: String): Any = value
+
+    override def onArray(value: Vector[Json]): Any =
+      value.map(_.foldWith(this)).toArray
+
+    override def onObject(value: JsonObject): Any =
+      value.toMap.view.mapValues(_.foldWith(this)).toMap.asJava
+  }
 }
