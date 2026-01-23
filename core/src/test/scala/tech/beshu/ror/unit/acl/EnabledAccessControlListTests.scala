@@ -16,100 +16,115 @@
  */
 package tech.beshu.ror.unit.acl
 
-import cats.data.NonEmptyList
-import eu.timepit.refined.types.string.NonEmptyString
+import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allow, ForbiddenBy}
+import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
+import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allow, ForbiddenBy, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.Block.Policy
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
+import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
-  "An AccessControlList" when {
-    "metadata request is called" should {
+  import MockedBlockResult.*
+
+  "An AccessControlList (old)" when {
+    "metadata request is called (with current group ID)" should {
       "allow request" which {
         "response will contain collected metadata from matched blocks" in {
-          val acl = createAcl(NonEmptyList.of(
-            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-          ))
+          val acl = createAcl(
+            block("b1", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            block("b3", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            block("b5", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            block("b6", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+            block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
+          )
 
           val userMetadataRequestResult = acl
-            .handleMetadataRequest(mockMetadataRequestContext("admins"))
+            .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = Some(group("admins"))))
             .runSyncUnsafe()
             .result
 
           inside(userMetadataRequestResult) {
-            case Allow(userMetadata, _) =>
-              userMetadata.availableGroups.toList should contain theSameElementsAs {
-                group("logserver") :: group("ext-onlio") :: group("admins") :: group("ext-odp") ::
-                  group("ext-enex") :: group("dohled-nd-pce") :: group("helpdesk") :: Nil
+            case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+              userMetadata.groupMetadata.keys.toList should contain theSameElementsAs {
+                GroupId("logserver") :: GroupId("ext-onlio") :: GroupId("admins") :: GroupId("ext-odp") ::
+                  GroupId("ext-enex") :: GroupId("dohled-nd-pce") :: GroupId("helpdesk") :: Nil
               }
-              userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
           }
         }
         "FORBID policy block is matched and its position in ACL is after some ALLOW-policy matched blocks" in {
-          val acl = createAcl(NonEmptyList.of(
-            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
-            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
-            mockForbidPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
-            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
-            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
-            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
-            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
-          ))
+          val acl = createAcl(
+            block("b1", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g1"), group("admins")))),
+            block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g2"), group("admins")))),
+            block("b3", Policy.Forbid(), result = Matched(userId("sulc1"), UniqueList.of(group("g3"), group("admins")))),
+            block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g4"), group("admins")))),
+            block("b5", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g5"), group("admins")))),
+            block("b6", Policy.Forbid(), result = Matched(userId("sulc1"), UniqueList.of(group("g6"), group("admins")))),
+            block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g7"), group("admins")))),
+          )
 
           val userMetadataRequestResult = acl
-            .handleMetadataRequest(mockMetadataRequestContext("admins"))
+            .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = Some(group("admins"))))
             .runSyncUnsafe()
             .result
 
           inside(userMetadataRequestResult) {
-            case Allow(userMetadata, _) =>
-              userMetadata.availableGroups.toList should contain theSameElementsAs {
-                group("g1") :: group("g2") :: group("admins") :: Nil
-              }
-              userMetadata.currentGroupId shouldBe Some(GroupId("admins"))
+            case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+              val result = userMetadata
+                .groupMetadata.values
+                .map(metadata => (metadata.group, metadata.block.name.value, metadata.block.policy))
+                .toList
+              result should be (List(
+                (group("g1"), "b1", Policy.Allow),
+                (group("admins"), "b1", Policy.Allow),
+                (group("g2"), "b2", Policy.Allow),
+                (group("g3"), "b3", Policy.Forbid()),
+                (group("g4"), "b4", Policy.Allow),
+                (group("g5"), "b5", Policy.Allow),
+                (group("g6"), "b6", Policy.Forbid()),
+                (group("g7"), "b7", Policy.Allow),
+              ))
           }
         }
       }
       "forbid request" when {
         "FORBID policy block is matched and its position in ACL is before any other ALLOW-policy matched block" in {
-          val acl = createAcl(NonEmptyList.of(
-            mockForbidPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
-            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
-            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
-            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
-            mockAllowedPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
-            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
-            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
-          ))
+          val acl = createAcl(
+            block("b1", Policy.Forbid(), result = Matched(userId("sulc1"), UniqueList.of(group("g1"), group("admins")))),
+            block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g2"), group("admins")))),
+            block("b3", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g3"), group("admins")))),
+            block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g4"), group("admins")))),
+            block("b5", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g5"), group("admins")))),
+            block("b6", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g6"), group("admins")))),
+            block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g7"), group("admins")))),
+          )
 
           val userMetadataRequestResult = acl
-            .handleMetadataRequest(mockMetadataRequestContext("admins"))
+            .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = Some(group("admins"))))
             .runSyncUnsafe()
             .result
 
@@ -119,38 +134,38 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block.policy should be(Block.Policy.Forbid(None))
           }
         }
-        "FORBID policy is matched and no other block is matched" in {
-          val acl = createAcl(NonEmptyList.of(
-            mockAllowedPolicyBlock("b1", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g2"), group("admins")))),
-            mockAllowedPolicyBlock("b2", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g3"), group("admins")))),
-            mockAllowedPolicyBlock("b3", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g4"), group("admins")))),
-            mockAllowedPolicyBlock("b4", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g5"), group("admins")))),
-            mockForbidPolicyBlock("b5", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("users")).withAvailableGroups(UniqueList.of(group("g1"), group("admins")))),
-            mockAllowedPolicyBlock("b6", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g6"), group("admins")))),
-            mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
-          ))
+        "none block is matched because of non-existing current group" in {
+          val acl = createAcl(
+            block("b1", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g2"), group("admins")))),
+            block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g3"), group("admins")))),
+            block("b3", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g4"), group("admins")))),
+            block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g5"), group("admins")))),
+            block("b5", Policy.Forbid(), result = Matched(userId("sulc2"), UniqueList.of(group("g1"), group("admins")))),
+            block("b6", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g6"), group("admins")))),
+            block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g7"), group("admins")))),
+          )
 
           val userMetadataRequestResult = acl
-            .handleMetadataRequest(mockMetadataRequestContext("users"))
+            .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = Some(group("users"))))
             .runSyncUnsafe()
             .result
 
           inside(userMetadataRequestResult) {
-            case ForbiddenBy(blockContext, block) =>
-              block.name should be(Block.Name("b5"))
-              block.policy should be(Block.Policy.Forbid(None))
+            case ForbiddenByMismatched(causes) =>
+              causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
       }
     }
   }
 
-  private def createAcl(blocks: NonEmptyList[Block]) = {
+  private def createAcl(blocks: Block*) = {
+    val blocksNel = NonEmptyList.fromListUnsafe(blocks.toList)
     new EnabledAccessControlList(
-      blocks,
+      blocksNel,
       new AccessControlListStaticContext(
-        blocks,
-        GlobalSettings(
+        blocks = blocksNel,
+        globalSettings = GlobalSettings(
           showBasicAuthPrompt = true,
           forbiddenRequestMessage = "Forbidden",
           flsEngine = FlsEngine.default,
@@ -158,46 +173,64 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
           userIdCaseSensitivity = CaseSensitivity.Enabled,
           usersDefinitionDuplicateUsernamesValidationEnabled = true
         ),
-        Set.empty
+        obfuscatedHeaders = Set.empty
       )
     )
   }
 
-  private def mockAllowedPolicyBlock(name: String, userMetadata: UserMetadata) = {
-    mockBlock(name, Block.Policy.Allow, userMetadata)
+  private sealed trait MockedBlockResult
+  private object MockedBlockResult {
+    final case class Matched(userId: User.Id, groups: UniqueList[Group]) extends MockedBlockResult
+    case object Mismatched extends MockedBlockResult
   }
 
-  private def mockForbidPolicyBlock(name: String, userMetadata: UserMetadata) = {
-    mockBlock(name, Block.Policy.Forbid(), userMetadata)
-  }
-
-  private def mockBlock(name: String, policy: Block.Policy, userMetadata: UserMetadata) = {
+  private def block(name: String, policy: Block.Policy, result: MockedBlockResult) = {
     new Block(
-      Block.Name(name),
-      policy,
-      Block.Verbosity.Info,
-      Block.Audit.Enabled,
-      NonEmptyList.of(
-        new RegularRule {
-          override val name: Rule.Name = Rule.Name("auth")
-
-          override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
-            Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
-          }
-        }
-      )
+      name = Block.Name(name),
+      policy = policy,
+      verbosity = Block.Verbosity.Info,
+      audit = Block.Audit.Enabled,
+      rules = NonEmptyList.of(result match {
+        case MockedBlockResult.Matched(userId, groups) => matchedRule(userId, groups)
+        case MockedBlockResult.Mismatched => mismatchedRule
+      })
     )
   }
 
-  private def user(userName: NonEmptyString) =
-    LoggedUser.DirectlyLoggedUser(User.Id(userName))
+  private def matchedRule(userId: User.Id, groups: UniqueList[Group]): Rule = new RegularRule {
+    override val name: Rule.Name = Rule.Name("auth")
 
-  private def mockMetadataRequestContext(preferredGroupId: NonEmptyString) = {
-    val userMetadata = UserMetadata.empty.withCurrentGroupId(GroupId(preferredGroupId))
-    val rc = mock[MetadataRequestContext]
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+      Task.now(RuleResult.Fulfilled(
+        blockContext.withBlockMetadata(_
+          .withLoggedUser(DirectlyLoggedUser(userId))
+          .withAvailableGroups(groups)
+        )
+      ))
+    }
+  }
+
+  private def mismatchedRule: Rule = new RegularRule {
+    override val name: Rule.Name = Rule.Name("auth")
+
+    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      Task.now(RuleResult.Rejected())
+  }
+
+  private def mockUserMetadataRequestContext(currentGroup: Option[Group]) = {
+    val rc = mock[MockUserMetadataRequestContext]
     (() => rc.initialBlockContext)
       .expects()
-      .returning(CurrentUserMetadataRequestBlockContext(rc, userMetadata, Set.empty, List.empty))
+      .returning(UserMetadataRequestBlockContext(rc, BlockMetadata.empty, Set.empty, List.empty))
+      .anyNumberOfTimes()
+    val rr = mock[RestRequest]
+    (() => rc.restRequest)
+      .expects()
+      .returning(rr)
+      .anyNumberOfTimes()
+    (() => rc.currentGroupId)
+      .expects()
+      .returning(currentGroup.map(_.id))
       .anyNumberOfTimes()
     (() => rc.action)
       .expects()
@@ -206,7 +239,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     rc
   }
 
-  private trait MetadataRequestContext extends RequestContext {
-    override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
+  private trait MockUserMetadataRequestContext extends UserMetadataRequestContext {
+    override type BLOCK_CONTEXT = UserMetadataRequestBlockContext
   }
 }

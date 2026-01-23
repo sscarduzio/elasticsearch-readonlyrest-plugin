@@ -60,18 +60,13 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComp
     }
   }
 
-  implicit class TransportDeleteComponentTemplateActionRequestOps(request: TransportDeleteComponentTemplateAction.Request) {
-
-    def getNames: List[TemplateNamePattern] = {
-      on(request)
-        .call("names")
-        .get[Array[String]]
-        .asSafeList
-        .flatMap(TemplateNamePattern.fromString)
+  extension (request: TransportDeleteComponentTemplateAction.Request)
+    private def getNames: List[TemplateNamePattern] = {
+      val names: Array[String] = on(request).call("names").get[Array[String]]
+      names.asSafeList.flatMap(TemplateNamePattern.fromString)
     }
 
-    def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
+    private def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
       on(request).set("names", names.toList.map(_.value.value).toArray)
     }
-  }
 }

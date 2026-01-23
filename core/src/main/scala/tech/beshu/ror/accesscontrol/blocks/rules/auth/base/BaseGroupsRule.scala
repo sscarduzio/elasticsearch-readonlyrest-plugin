@@ -22,7 +22,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -71,7 +71,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                            permittedGroupsLogic: GroupsLogic): Task[RuleResult[B]] = {
-    blockContext.userMetadata.loggedUser match {
+    blockContext.blockMetadata.loggedUser match {
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
@@ -148,9 +148,9 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       .map {
         case Some(newBlockContext) =>
           newBlockContext
-            .userMetadata.loggedUser
+            .blockMetadata.loggedUser
             .map { loggedUser =>
-              blockContext.withUserMetadata(_
+              blockContext.withBlockMetadata(_
                 .withLoggedUser(loggedUser)
                 .withAvailableGroups(UniqueList.from(availableGroups))
               )
@@ -230,25 +230,25 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                                                         destinationBlockContext: B,
                                                                                                         potentiallyAvailableGroups: UniqueNonEmptyList[Group],
                                                                                                         groupMappings: GroupMappings) = {
-    val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
+    val externalAvailableGroups = sourceBlockContext.blockMetadata.availableGroups
     for {
       externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
       availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
-      loggedUser <- sourceBlockContext.userMetadata.loggedUser
+      loggedUser <- sourceBlockContext.blockMetadata.loggedUser
     } yield {
-      def requiredAuthenticationData: UserMetadata => UserMetadata = { metadata =>
+      def requiredAuthenticationData: BlockMetadata => BlockMetadata = { metadata =>
         metadata.withLoggedUser(loggedUser)
           .withAvailableGroups(UniqueList.from(availableLocalGroups))
       }
-      def optionalUserOrigin: UserMetadata => UserMetadata = { metadata =>
-        sourceBlockContext.userMetadata.userOrigin.map(metadata.withUserOrigin).getOrElse(metadata)
+      def optionalUserOrigin: BlockMetadata => BlockMetadata = { metadata =>
+        sourceBlockContext.blockMetadata.userOrigin.map(metadata.withUserOrigin).getOrElse(metadata)
       }
-      def optionalJwtToken: UserMetadata => UserMetadata = { metadata =>
-        sourceBlockContext.userMetadata.jwtToken.map(metadata.withJwtToken).getOrElse(metadata)
+      def optionalJwtToken: BlockMetadata => BlockMetadata = { metadata =>
+        sourceBlockContext.blockMetadata.jwtToken.map(metadata.withJwtToken).getOrElse(metadata)
       }
 
       destinationBlockContext
-        .withUserMetadata { metadata =>
+        .withBlockMetadata { metadata =>
           (requiredAuthenticationData :: optionalUserOrigin :: optionalJwtToken :: Nil)
             .foldLeft(metadata) { case (acc, func) => func(acc) }
         }
@@ -266,7 +266,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                  allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                  mode: Mode) = {
     val initialBlockContext = mode match {
-      case Mode.WithGroupsMapping(_, _) => blockContext.withUserMetadata(_.clearCurrentGroup)
+      case Mode.WithGroupsMapping(_, _) => blockContext.withBlockMetadata(_.clearCurrentGroup)
       case Mode.WithoutGroupsMapping(_, _) => blockContext
     }
     rule
@@ -276,7 +276,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           None
         case fulfilled: RuleResult.Fulfilled[B] =>
           val newBlockContext = fulfilled.blockContext
-          newBlockContext.userMetadata.loggedUser match {
+          newBlockContext.blockMetadata.loggedUser match {
             case Some(loggedUser) if allowedUserMatcher.`match`(loggedUser.id) => Some(newBlockContext)
             case Some(_) => None
             case None => None

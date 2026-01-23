@@ -31,7 +31,7 @@ object constants {
   val AUDIT_SINK_MAX_RETRIES = 3
   val MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES: Integer = 5 * 1000
 
-  val CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user/"
+  val CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user"
   val AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/"
   val FORCE_RELOAD_SETTINGS_PATH = "/_readonlyrest/admin/refreshconfig/"
   val UPDATE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config/"

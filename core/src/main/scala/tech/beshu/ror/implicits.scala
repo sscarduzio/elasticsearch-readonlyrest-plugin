@@ -23,7 +23,7 @@ import cats.implicits.*
 import eu.timepit.refined.api.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
-import squants.information.Information
+import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -50,13 +50,17 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.logging.ResponseContext
+import tech.beshu.ror.accesscontrol.logging.ResponseContext.{Allowed, AllowedBy, Errored, Forbidden, ForbiddenBy, RequestedIndexNotExist}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
@@ -118,7 +122,10 @@ trait LogsShowInstances
   implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
   implicit val userIdPatternShow: Show[UserIdPattern] = Show.show(_.value.show)
   implicit val userIdPatternsShow: Show[UserIdPatterns] = Show.show(_.patterns.show)
-  implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
+  implicit val loggedUserShow: Show[LoggedUser] = Show.show {
+    case DirectlyLoggedUser(user) => s"${user.show}"
+    case ImpersonatedUser(user, impersonatedBy) => s"${impersonatedBy.show} (as ${user.show})"
+  }
   implicit val typeShow: Show[Type] = Show.show(_.value)
   implicit val actionShow: Show[Action] = Show.show(_.value)
   implicit val addressShow: Show[Address] = Show.show {
@@ -198,13 +205,94 @@ trait LogsShowInstances
 
   implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
 
+  def responseContextShow[B <: BlockContext](debugEnabled: Boolean)
+                                            (implicit headerShow: Show[Header]): Show[ResponseContext[B]] = {
+    Show.show[ResponseContext[B]] {
+      case allowedBy: AllowedBy[B] =>
+        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(
+          allowedBy.blockContext.blockMetadata.loggedUser.toList, allowedBy.history, debugEnabled
+        )
+        s"""${constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${constants.ANSI_RESET}"""
+      case allow: Allowed[B] =>
+        val (users, blocks) = allow.userMetadata match {
+          case UserMetadata.WithoutGroups(user, _, _, block) =>
+            (user :: Nil, block :: Nil)
+          case UserMetadata.WithGroups(groupMetadata) =>
+            groupMetadata.values.map(m => (m.loggedUser, m.block)).toList.unzip
+        }
+        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(users, allow.history, debugEnabled)
+        s"""${constants.ANSI_CYAN}ALLOWED by ${blocks.show} req=${allow.requestContext.show}${constants.ANSI_RESET}"""
+      case forbiddenBy: ForbiddenBy[B] =>
+        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, forbiddenBy.history, debugEnabled)
+        s"""${constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.block.show} req=${forbiddenBy.requestContext.show}${constants.ANSI_RESET}"""
+      case forbidden: Forbidden[B] =>
+        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, forbidden.history, debugEnabled)
+        s"""${constants.ANSI_PURPLE}FORBIDDEN by default req=${forbidden.requestContext.show}${constants.ANSI_RESET}"""
+      case requestedIndexNotExist: RequestedIndexNotExist[B] =>
+        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, requestedIndexNotExist.history, debugEnabled)
+        s"""${constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestedIndexNotExist.requestContext.show}${constants.ANSI_RESET}"""
+      case errored: Errored[B] =>
+        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, Vector.empty, debugEnabled)
+        s"""${constants.ANSI_YELLOW}ERRORED by error req=${errored.requestContext.show}${constants.ANSI_RESET}"""
+    }
+  }
+
+  def requestContextShow[B <: BlockContext](loggedUsers: Iterable[LoggedUser],
+                                            history: Vector[Block.History[B]],
+                                            debugEnabled: Boolean)
+                                           (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] = Show.show { r =>
+    def stringifyUsers = {
+      if (loggedUsers.isEmpty) {
+        r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
+      } else {
+        loggedUsers.show
+      }
+    }
+
+    def stringifyContentLength = {
+      if (r.restRequest.contentLength == Bytes(0)) "<N/A>"
+      else if (debugEnabled) r.restRequest.content
+      else s"<OMITTED, LENGTH=${r.restRequest.contentLength}> "
+    }
+
+    def stringifyIndices = {
+      val idx = r.initialBlockContext.indices.toList.map(_.show)
+      if (idx.isEmpty) "<N/A>"
+      else idx.mkString(",")
+    }
+
+    def stringifyUserGroup = {
+      r.currentGroupId match {
+        case Some(groupId) => groupId.show
+        case None => "<N/A>"
+      }
+    }
+    s"""{
+       | ID:${r.id.show},
+       | TYP:${r.`type`.show},
+       | CGR:${stringifyUserGroup.show},
+       | USR:${stringifyUsers.show},
+       | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
+       | ACT:${r.action.show},
+       | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
+       | XFF:${r.restRequest.allHeaders.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null").show},
+       | DA:${r.restRequest.localAddress.show},
+       | IDX:${stringifyIndices.show},
+       | MET:${r.restRequest.method.show},
+       | PTH:${r.restRequest.path.show},
+       | CNT:${stringifyContentLength.show},
+       | HDR:${r.restRequest.allHeaders.show},
+       | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ").show},
+       | }""".oneLiner
+  }
+
   implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
     Show.show { bc =>
-      (showOption("user", bc.userMetadata.loggedUser) ::
-        showOption("group", bc.userMetadata.currentGroupId) ::
-        showNamedIterable("av_groups", bc.userMetadata.availableGroups.toList.map(_.id)) ::
+      (showOption("user", bc.blockMetadata.loggedUser.map(_.id)) ::
+        showOption("group", bc.blockMetadata.currentGroupId) ::
+        showNamedIterable("av_groups", bc.blockMetadata.availableGroups.toList.map(_.id)) ::
         showNamedIterable("indices", bc.indices) :: // todo: for sure it's ok?
-        showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
+        showOption("kibana_idx", bc.blockMetadata.kibanaMetadata.flatMap(_.index)) ::
         showOption("fls", bc.fieldLevelSecurity) ::
         showNamedIterable("response_hdr", bc.responseHeaders) ::
         showNamedIterable("repositories", bc.repositories) ::
@@ -222,27 +310,6 @@ trait LogsShowInstances
       }
       val commaSeparatedFields = fields.map(fieldPrefix + _.value.value).toList.mkString(",")
       s"fields=[${commaSeparatedFields.show}]"
-  }
-
-  private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
-    case KibanaAccess.RO => "ro"
-    case KibanaAccess.ROStrict => "ro_strict"
-    case KibanaAccess.RW => "rw"
-    case KibanaAccess.Admin => "admin"
-    case KibanaAccess.ApiOnly => "api_only"
-    case KibanaAccess.Unrestricted => "unrestricted"
-  }
-  private implicit val userOriginShow: Show[UserOrigin] = Show.show(_.value.value)
-  implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
-    (showOption("user", u.loggedUser) ::
-      showOption("curr_group", u.currentGroupId) ::
-      showNamedIterable("av_groups", u.availableGroups.toList.map(_.id)) ::
-      showOption("kibana_idx", u.kibanaIndex) ::
-      showNamedIterable("hidden_apps", u.hiddenKibanaApps) ::
-      showNamedIterable("allowed_api_paths", u.allowedKibanaApiPaths) ::
-      showOption("kibana_access", u.kibanaAccess) ::
-      showOption("user_origin", u.userOrigin) ::
-      Nil flatten) mkString ";"
   }
 
   implicit val flsStrategyShow: Show[FieldLevelSecurity] = Show.show[FieldLevelSecurity] { fls =>
@@ -308,8 +375,9 @@ trait LogsShowInstances
     case Forbid(_) => "FORBID"
   }
   implicit val blockShow: Show[Block] = Show.show { b =>
-    s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}]"
+    s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}] }"
   }
+
   implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
     case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
       "Cannot use multi value variable in non-array context"

@@ -20,19 +20,22 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 
 trait AccessControlList {
   def description: String
+
   def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]]
-  def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]]
+
+  def handleMetadataRequest(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, UserMetadataRequestBlockContext]]
+
   def staticContext: AccessControlStaticContext
 }
 
@@ -66,8 +69,8 @@ object AccessControlList {
 
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
-    final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
-    final case class ForbiddenBy(blockContext: CurrentUserMetadataRequestBlockContext, block: Block) extends UserMetadataRequestResult
+    final case class Allow(userMetadata: UserMetadata) extends UserMetadataRequestResult
+    final case class ForbiddenBy(blockContext: UserMetadataRequestBlockContext, block: Block) extends UserMetadataRequestResult
     final case class ForbiddenByMismatched(causes: NonEmptySet[ForbiddenCause]) extends UserMetadataRequestResult
     case object PassedThrough extends UserMetadataRequestResult
   }
@@ -81,8 +84,11 @@ object AccessControlList {
 
   trait AccessControlStaticContext {
     def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine]
+
     def doesRequirePassword: Boolean
+
     def forbiddenRequestMessage: String
+
     def obfuscatedHeaders: Set[Header.Name]
   }
 }

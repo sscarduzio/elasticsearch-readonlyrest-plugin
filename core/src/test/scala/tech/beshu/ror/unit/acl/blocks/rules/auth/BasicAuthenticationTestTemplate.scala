@@ -22,7 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
@@ -70,11 +70,11 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-          val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+          val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
           ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
             GeneralNonIndexRequestBlockContext(
               requestContext = requestContext,
-              userMetadata = UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("logstash"))),
+              blockMetadata = BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("logstash"))),
               responseHeaders = Set.empty,
               responseTransformations = List.empty
             )
@@ -88,7 +88,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-          val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+          val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
           ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
         }
         "basic auth header is absent" in {
@@ -97,7 +97,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-          val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+          val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
           ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
         }
       }
@@ -115,11 +115,11 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
               ruleWithImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
                 GeneralNonIndexRequestBlockContext(
                   requestContext = requestContext,
-                  userMetadata = UserMetadata.empty.withLoggedUser(ImpersonatedUser(Id("logstash"), Id("admin"))),
+                  blockMetadata = BlockMetadata.empty.withLoggedUser(ImpersonatedUser(Id("logstash"), Id("admin"))),
                   responseHeaders = Set.empty,
                   responseTransformations = List.empty
                 )
@@ -136,7 +136,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
               ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
             }
             "there is no such impersonator" in {
@@ -148,7 +148,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
               ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
             }
             "impersonator cannot impersonate the given user" in {
@@ -160,7 +160,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+              val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
               ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
             }
           }
@@ -176,7 +176,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
         val requestContext = mock[RequestContext]
         (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
         (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
         ruleWithImpersonation.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(Cause.ImpersonationNotSupported))
       }
     }

@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
@@ -253,15 +254,12 @@ object TestsUtils {
     def assertBlockContext(expected: BlockContext,
                            current: BlockContext): Unit = {
       assertBlockContext(
-        loggedUser = expected.userMetadata.loggedUser,
-        currentGroup = expected.userMetadata.currentGroupId,
-        availableGroups = expected.userMetadata.availableGroups,
-        kibanaIndex = expected.userMetadata.kibanaIndex,
-        kibanaTemplateIndex = expected.userMetadata.kibanaTemplateIndex,
-        hiddenKibanaApps = expected.userMetadata.hiddenKibanaApps,
-        kibanaAccess = expected.userMetadata.kibanaAccess,
-        userOrigin = expected.userMetadata.userOrigin,
-        jwt = expected.userMetadata.jwtToken,
+        loggedUser = expected.blockMetadata.loggedUser,
+        currentGroup = expected.blockMetadata.currentGroupId,
+        availableGroups = expected.blockMetadata.availableGroups,
+        kibanaMetadata = expected.blockMetadata.kibanaMetadata,
+        userOrigin = expected.blockMetadata.userOrigin,
+        jwt = expected.blockMetadata.jwtToken,
         responseHeaders = expected.responseHeaders,
         indices = expected.indices,
         repositories = expected.repositories,
@@ -273,10 +271,7 @@ object TestsUtils {
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
                            currentGroup: Option[GroupId] = None,
                            availableGroups: UniqueList[Group] = UniqueList.empty,
-                           kibanaIndex: Option[KibanaIndexName] = None,
-                           kibanaTemplateIndex: Option[KibanaIndexName] = None,
-                           hiddenKibanaApps: Set[KibanaApp] = Set.empty,
-                           kibanaAccess: Option[KibanaAccess] = None,
+                           kibanaMetadata: Option[KibanaMetadata] = None,
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
@@ -287,18 +282,15 @@ object TestsUtils {
                            dataStreams: Set[DataStreamName] = Set.empty,
                            templates: Set[TemplateOperation] = Set.empty)
                           (blockContext: BlockContext): Unit = {
-      blockContext.userMetadata.loggedUser should be(loggedUser)
-      blockContext.userMetadata.availableGroups should contain allElementsOf availableGroups
-      blockContext.userMetadata.currentGroupId should be(currentGroup)
-      blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
-      blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
-      blockContext.userMetadata.hiddenKibanaApps should be(hiddenKibanaApps)
-      blockContext.userMetadata.kibanaAccess should be(kibanaAccess)
-      blockContext.userMetadata.userOrigin should be(userOrigin)
-      blockContext.userMetadata.jwtToken should be(jwt)
+      blockContext.blockMetadata.loggedUser should be(loggedUser)
+      blockContext.blockMetadata.availableGroups should contain allElementsOf availableGroups
+      blockContext.blockMetadata.currentGroupId should be(currentGroup)
+      blockContext.blockMetadata.kibanaMetadata should be (kibanaMetadata)
+      blockContext.blockMetadata.userOrigin should be(userOrigin)
+      blockContext.blockMetadata.jwtToken should be(jwt)
       blockContext.responseHeaders should be(responseHeaders)
       blockContext match {
-        case _: CurrentUserMetadataRequestBlockContext =>
+        case _: UserMetadataRequestBlockContext =>
         case _: RorApiRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
         case bc: DataStreamRequestBlockContext =>

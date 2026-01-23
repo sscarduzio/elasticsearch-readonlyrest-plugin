@@ -20,8 +20,8 @@ import cats.data.NonEmptySet
 import cats.implicits.*
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.ToBeResolved
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
@@ -49,7 +49,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
           assertion = rule => {
             val resolvedPatten = rule.settings
               .uriPatterns.head
-              .resolve(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty, List.empty))
+              .resolve(UserMetadataRequestBlockContext(mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
               .map(_.head.pattern())
 
             resolvedPatten shouldBe Right("^/secret-idx/.*")
@@ -72,7 +72,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
             val patternsAsStrings = rule
               .settings.uriPatterns
               .map(_
-                .resolve(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty, List.empty))
+                .resolve(UserMetadataRequestBlockContext(mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
                 .map(_.head.pattern)
                 .toOption.get
               )

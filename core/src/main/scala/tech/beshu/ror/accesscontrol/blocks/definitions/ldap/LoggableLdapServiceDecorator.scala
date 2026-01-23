@@ -18,8 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
 import monix.eval.Task
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, RequestId, User}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TaskOps.*
@@ -31,7 +30,7 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
   extends LdapAuthenticationService
     with RequestIdAwareLogging {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
     logger.debug(s"Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying
       .authenticate(user, secret)

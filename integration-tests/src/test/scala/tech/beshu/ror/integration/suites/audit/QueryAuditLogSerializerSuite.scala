@@ -58,8 +58,8 @@ class QueryAuditLogSerializerSuite
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
         val firstEntry = auditEntries(0)
-        firstEntry("user").str should be("user2")
         firstEntry("final_state").str shouldBe "FORBIDDEN"
+        firstEntry("user").str should be("user2")
         firstEntry("block").str should include("""deny all indices""")
         firstEntry("content").str shouldBe ""
       }
@@ -80,8 +80,8 @@ class QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditIndexManager.getEntries.jsons(0)
-        firstEntry("user").str should be("user1-proxy-id")
         firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("user").str should be("user1-proxy-id")
         firstEntry("block").str should include("""name: 'Allowed only for group1'""")
         firstEntry("content").str shouldBe ""
       }
@@ -94,8 +94,8 @@ class QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditEntries(0)
-        firstEntry("user").str should be("user")
         firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("user").str should be("user")
         firstEntry("block").str should include("name: 'Rule 1'")
         firstEntry("content").str shouldBe ""
       }

@@ -52,7 +52,7 @@ final class ProxyAuthRule(val settings: Settings,
       case None =>
         Rejected()
       case Some(loggedUser) if shouldAuthenticate(loggedUser.id) =>
-        Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
+        Fulfilled(blockContext.withBlockMetadata(_.withLoggedUser(loggedUser)))
       case Some(_) =>
         Rejected()
     }

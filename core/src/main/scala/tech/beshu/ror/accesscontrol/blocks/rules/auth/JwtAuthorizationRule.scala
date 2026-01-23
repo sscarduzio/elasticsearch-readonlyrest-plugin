@@ -68,10 +68,10 @@ final class JwtAuthorizationRule(val settings: Settings)
           nonEmptyGroups <- RuleResult.fromOption(UniqueNonEmptyList.from(groups))
           matchedGroups <- RuleResult.fromOption(groupsLogic.availableGroupsFrom(nonEmptyGroups))
           if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-          contextWithUserMetadata = blockContext.withUserMetadata(
+          contextWithBlockMetadata = blockContext.withBlockMetadata(
             _.addAvailableGroups(matchedGroups).withJwtToken(payload)
           )
-        } yield contextWithUserMetadata
+        } yield contextWithBlockMetadata
     }
   }
 

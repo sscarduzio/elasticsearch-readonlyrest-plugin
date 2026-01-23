@@ -58,6 +58,7 @@ object Header {
     val currentGroup = Name(nes("x-ror-current-group"))
     val impersonateAs = Name(nes("x-ror-impersonating"))
     val correlationId = Name(nes("x-ror-correlation-id"))
+    val rorKbnLicenseType = Name(nes("x-ror-kbn-license-type"))
 
     implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
   }

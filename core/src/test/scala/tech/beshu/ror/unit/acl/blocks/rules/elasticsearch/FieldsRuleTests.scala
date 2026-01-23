@@ -25,7 +25,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
@@ -235,7 +235,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
 
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(
           requestContext = requestContext,
-          userMetadata = UserMetadata.empty,
+          blockMetadata = BlockMetadata.empty,
           responseHeaders = Set.empty,
           responseTransformations = List.empty
         )
@@ -282,7 +282,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                              (requestContext: RequestContext) = {
     FilterableRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
@@ -297,7 +297,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                                               (requestContext: RequestContext) = {
     FilterableMultiRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       indexPacks = List.empty,

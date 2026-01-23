@@ -59,7 +59,7 @@ class KibanaUserDataRuleSettingsTests
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
-            rule.settings.metadata should be(None)
+            rule.settings.genericMetadata should be(None)
             rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
           }
         )
@@ -88,7 +88,7 @@ class KibanaUserDataRuleSettingsTests
             rule.settings.allowedApiPaths should be(
               Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("""^/api/spaces/.*$""").get))
             )
-            rule.settings.metadata should be(None)
+            rule.settings.genericMetadata should be(None)
             rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
           }
         )
@@ -112,7 +112,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -135,7 +135,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -158,7 +158,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -181,7 +181,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -203,7 +203,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -227,7 +227,7 @@ class KibanaUserDataRuleSettingsTests
                 rule.settings.kibanaTemplateIndex should be(None)
                 rule.settings.appsToHide should be(Set.empty)
                 rule.settings.allowedApiPaths should be(Set.empty)
-                rule.settings.metadata should be(None)
+                rule.settings.genericMetadata should be(None)
                 rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
               }
             )
@@ -251,7 +251,7 @@ class KibanaUserDataRuleSettingsTests
                 rule.settings.kibanaTemplateIndex should be(None)
                 rule.settings.appsToHide should be(Set.empty)
                 rule.settings.allowedApiPaths should be(Set.empty)
-                rule.settings.metadata should be(None)
+                rule.settings.genericMetadata should be(None)
                 rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
               }
             )
@@ -278,7 +278,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set(FullNameKibanaApp("app1")))
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -305,7 +305,7 @@ class KibanaUserDataRuleSettingsTests
                 kibanaAppRegex("/^(?!(Analytics\\|Management).*$).*$/")
               ))
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -329,7 +329,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -357,7 +357,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.allowedApiPaths should be(
                 Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("""^/api/spaces/.*$""").get))
               )
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -386,7 +386,7 @@ class KibanaUserDataRuleSettingsTests
                   JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get
                 ))
               )
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -417,7 +417,7 @@ class KibanaUserDataRuleSettingsTests
                   JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get
                 ))
               )
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -453,7 +453,7 @@ class KibanaUserDataRuleSettingsTests
                   JavaRegex.compile("""^/api/spaces\?test\=12\.2$""").get
                 )
               ))
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -477,7 +477,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(None)
+              rule.settings.genericMetadata should be(None)
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -504,7 +504,7 @@ class KibanaUserDataRuleSettingsTests
             rule.settings.kibanaTemplateIndex should be(None)
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
-            rule.settings.metadata should be(None)
+            rule.settings.genericMetadata should be(None)
             rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
           }
         )
@@ -530,7 +530,7 @@ class KibanaUserDataRuleSettingsTests
             rule.settings.kibanaTemplateIndex.value shouldBe a[ToBeResolved[_]]
             rule.settings.appsToHide should be(Set.empty)
             rule.settings.allowedApiPaths should be(Set.empty)
-            rule.settings.metadata should be(None)
+            rule.settings.genericMetadata should be(None)
             rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
           }
         )
@@ -578,7 +578,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(Some(resolvableMetadataJsonRepresentation))
+              rule.settings.genericMetadata should be(Some(resolvableMetadataJsonRepresentation))
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )
@@ -602,7 +602,7 @@ class KibanaUserDataRuleSettingsTests
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
               rule.settings.allowedApiPaths should be(Set.empty)
-              rule.settings.metadata should be(Some(JsonTree.Value(AlreadyResolved(NullValue))))
+              rule.settings.genericMetadata should be(Some(JsonTree.Value(AlreadyResolved(NullValue))))
               rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
             }
           )

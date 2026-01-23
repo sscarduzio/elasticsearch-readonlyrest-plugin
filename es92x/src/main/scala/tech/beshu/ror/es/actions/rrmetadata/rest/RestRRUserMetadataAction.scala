@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.actions.rrmetadata.rest
 
-import java.util
-
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
@@ -27,18 +25,23 @@ import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRe
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
+import java.util
 import scala.jdk.CollectionConverters.*
 
 class RestRRUserMetadataAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(GET, constants.CURRENT_USER_METADATA_PATH)
+    new Route(GET, constants.CURRENT_USER_METADATA_PATH),
   ).asJava
 
   override val getName: String = "ror-user-metadata-handler"
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    client.execute(new RRUserMetadataActionType, new RRUserMetadataRequest, new RestToXContentListener[RRUserMetadataResponse](channel))
+    client.execute(
+      new RRUserMetadataActionType,
+      new RRUserMetadataRequest(),
+      new RestToXContentListener[RRUserMetadataResponse](channel)
+    )
   }
 }

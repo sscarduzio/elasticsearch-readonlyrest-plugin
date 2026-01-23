@@ -26,7 +26,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Succeeded}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
@@ -84,7 +84,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
       )
     val blockContext = modifyBlockContext apply GeneralIndexRequestBlockContext(
         requestContext = requestContext,
-        userMetadata = UserMetadata.from(requestContext),
+        blockMetadata = BlockMetadata.from(requestContext),
         responseHeaders = Set.empty,
         responseTransformations = List.empty,
         filteredIndices = requestIndices,
@@ -95,7 +95,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
       if (isMatched) {
         Fulfilled(GeneralIndexRequestBlockContext(
           requestContext = requestContext,
-          userMetadata = blockContext.userMetadata,
+          blockMetadata = blockContext.blockMetadata,
           responseHeaders = Set.empty,
           responseTransformations = List.empty,
           filteredIndices = filteredRequestedIndices,
@@ -152,7 +152,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
       )
     val blockContext = modifyBlockContext apply FilterableMultiRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       indexPacks = indexPacks,
@@ -162,7 +162,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
       if (isMatched) {
         Fulfilled(FilterableMultiRequestBlockContext(
           requestContext = requestContext,
-          userMetadata = blockContext.userMetadata,
+          blockMetadata = blockContext.blockMetadata,
           responseHeaders = Set.empty,
           responseTransformations = List.empty,
           indexPacks = allowed,
@@ -184,7 +184,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
     ruleResult should matchPattern {
       case Fulfilled(blockContext@TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _, allowedIndices))
         if rc == requestContext
-          && metadata == requestContext.initialBlockContext.userMetadata
+          && metadata == requestContext.initialBlockContext.blockMetadata
           && headers.isEmpty
           && operation == templateOperationAfterProcessing
           && allowedIndices == allAllowedIndices
