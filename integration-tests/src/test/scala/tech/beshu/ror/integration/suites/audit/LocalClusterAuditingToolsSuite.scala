@@ -256,7 +256,7 @@ class LocalClusterAuditingToolsSuite
               entry("labels")("ror_involved_indices").arrOpt.isDefined &&
               entry("labels")("ror_acl_history").str == "[CONTAINER ADMIN-> RULES:[auth_key->false] RESOLVED:[indices=twitter]], [Rule 1-> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]" &&
               entry("labels")("ror_final_state").str == "ALLOWED" &&
-              entry("labels")("ror_detailed_reason").str == "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices]"
+              entry("labels")("ror_detailed_reason").str == "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }"
           } shouldBe true
         }
         updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
