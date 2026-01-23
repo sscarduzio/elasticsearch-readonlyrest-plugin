@@ -23,17 +23,139 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
+
+import scala.jdk.CollectionConverters.*
 
 object MetadataResponse {
 
-  def from(userMetadata: UserMetadata,
+  def from(version: UserMetadataApiVersion,
+           userMetadata: UserMetadata,
            currentGroupId: Option[GroupId],
            correlationId: CorrelationId): Json = {
     CurrentUserMetadataValue.from(userMetadata, correlationId, currentGroupId)
+    version match {
+      case UserMetadataApiVersion.V1 => CurrentUserMetadataValue.from(userMetadata, correlationId, currentGroupId)
+      case UserMetadataApiVersion.V2(_) => UserMetadataValue.from(userMetadata, correlationId)
+    }
   }
 }
 
+private object UserMetadataValue {
+
+  def from(userMetadata: UserMetadata,
+           correlationId: CorrelationId): Json = {
+    userMetadata match {
+      case UserMetadata.WithoutGroups(loggedUser, userOrigin, metadata, _) =>
+        Json.obj(
+          List(
+            Some("type" -> Json.fromString("USER_WITHOUT_GROUPS")),
+            Some("correlation_id" -> Json.fromString(correlationId.value.value)),
+            Some("username" -> Json.fromString(loggedUser.id.value.value)),
+            userOrigin.map(origin => "ror_origin" -> Json.fromString(origin.value.value)),
+            metadata.map(m => "kibana" -> buildKibanaJson(m))
+          ).flatten *
+        )
+      case UserMetadata.WithGroups(groupMetadata) =>
+        Json.obj(
+          "type" -> Json.fromString("USER_WITH_GROUPS"),
+          "correlation_id" -> Json.fromString(correlationId.value.value),
+          "groups" -> Json.arr(
+            groupMetadata.values.map(buildGroupEntry).toSeq *
+          )
+        )
+    }
+  }
+
+  private def buildGroupEntry(groupMetatadata: UserMetadata.WithGroups.GroupMetadata): Json = {
+    Json.obj(
+      List(
+        Some("group" -> groupMetatadata.group.asJson),
+        Some("username" -> Json.fromString(groupMetatadata.loggedUser.id.value.value)),
+        groupMetatadata.userOrigin.map(origin => "ror_origin" -> Json.fromString(origin.value.value)),
+        groupMetatadata.kibanaMetadata.map(m => "kibana" -> buildKibanaJson(m))
+      ).flatten *
+    )
+  }
+}
+
+  private def buildKibanaJson(metadata: KibanaMetadata): Json = {
+    Json.obj(
+      List(
+        Some("access" -> metadata.access.asJson),
+        metadata.index.map(idx => "index" -> Json.fromString(idx.stringify)),
+        metadata.templateIndex.map(idx => "template_index" -> Json.fromString(idx.stringify)),
+        Option.when(metadata.hiddenApps.nonEmpty)(
+          "hidden_apps" -> Json.arr(
+            metadata.hiddenApps.toList.map {
+              case KibanaApp.FullNameKibanaApp(name) => Json.fromString(name.value)
+              case KibanaApp.KibanaAppRegex(regex) => Json.fromString(regex.value.value)
+            } *
+          )
+        ),
+        Option.when(metadata.allowedApiPaths.nonEmpty)(
+          "allowed_api_paths" -> Json.arr(
+            metadata.allowedApiPaths.toList.map(_.asJson) *
+          )
+        ),
+        metadata.genericMetadata.map(json => "metadata" -> jsonRepresentationToCirceJson(json))
+      ).flatten *
+    )
+  }
+
 // todo: can we do it better?
+  private def jsonRepresentationToCirceJson(json: JsonRepresentation): Json = {
+    json match {
+      case JsonTree.Object(fields) =>
+        Json.obj(fields.view.mapValues(jsonRepresentationToCirceJson).toSeq *)
+      case JsonTree.Array(elements) =>
+        Json.arr(elements.map(jsonRepresentationToCirceJson) *)
+      case JsonTree.Value(value) =>
+        value match {
+          case JsonValue.StringValue(v) => Json.fromString(v)
+          case JsonValue.NumValue(v) => Json.fromBigDecimal(v)
+          case JsonValue.BooleanValue(v) => Json.fromBoolean(v)
+          case JsonValue.NullValue => Json.Null
+        }
+    }
+  }
+
+  private implicit val kibanaAccessEncoder: Encoder[KibanaAccess] = Encoder.encodeString.contramap {
+    case KibanaAccess.RO => "ro"
+    case KibanaAccess.ROStrict => "ro_strict"
+    case KibanaAccess.RW => "rw"
+    case KibanaAccess.Admin => "admin"
+    case KibanaAccess.ApiOnly => "api_only"
+    case KibanaAccess.Unrestricted => "unrestricted"
+  }
+
+  private implicit val allowedHttpMethodEncoder: Encoder[AllowedHttpMethod] = Encoder.encodeString.contramap {
+    case AllowedHttpMethod.Any => "ANY"
+    case AllowedHttpMethod.Specific(httpMethod) =>
+      httpMethod match {
+        case HttpMethod.Get => "GET"
+        case HttpMethod.Post => "POST"
+        case HttpMethod.Put => "PUT"
+        case HttpMethod.Delete => "DELETE"
+      }
+  }
+
+  private implicit val kibanaAllowedApiPathEncoder: Encoder[KibanaAllowedApiPath] = Encoder.instance { path =>
+    Json.obj(
+      "http_method" -> path.httpMethod.asJson,
+      "path_regex" -> Json.fromString(path.pathRegex.pattern.pattern())
+    )
+  }
+
+  private implicit val groupEncoder: Encoder[Group] = Encoder.instance { group =>
+    Json.obj(
+      "id" -> Json.fromString(group.id.value.value),
+      "name" -> Json.fromString(group.name.value.value)
+    )
+  }
+}
+
+// To be removed in RORDEV-1924
 private object CurrentUserMetadataValue {
 
   def from(userMetadata: UserMetadata,

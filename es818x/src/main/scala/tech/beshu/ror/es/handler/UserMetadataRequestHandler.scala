@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataResponse, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
@@ -78,7 +79,7 @@ class UserMetadataRequestHandler(engine: Engine,
                       userMetadata: UserMetadata): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onResponse(
-      new RRMetadataResponse(userMetadata, requestContext.currentGroupId, esContext.correlationId.value)
+      new RRMetadataResponse(requestContext.apiVersion, userMetadata, requestContext.currentGroupId, esContext.correlationId.value)
     )
   }
 
@@ -100,16 +101,15 @@ class UserMetadataRequestHandler(engine: Engine,
 
 }
 
-private class RRMetadataResponse(userMetadata: UserMetadata,
+private class RRMetadataResponse(apiVersion: UserMetadataApiVersion,
+                                 userMetadata: UserMetadata,
                                  currentGroupId: Option[GroupId],
                                  correlationId: CorrelationId)
   extends ActionResponse with ToXContentObject {
 
-  import tech.beshu.ror.utils.CirceOps.toJava
-
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val json = MetadataResponse.from(userMetadata, currentGroupId, correlationId)
-    val javaMap = json.toJava().asInstanceOf[java.util.Map[String, _]]
+    val json = MetadataResponse.from(apiVersion, userMetadata, currentGroupId, correlationId)
+    val javaMap = MetadataResponse.jsonToJava(json).asInstanceOf[java.util.Map[String, _]]
     builder.map(javaMap)
     builder
   }

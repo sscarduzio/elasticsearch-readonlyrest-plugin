@@ -44,5 +44,7 @@ class UserMetadataEsRequestContext(@unused actionRequest: RRUserMetadataRequest,
     responseTransformations = List.empty
   )
 
+  override def apiVersion: UserMetadataRequestContext.UserMetadataApiVersion = actionRequest.apiVersion
+
   override protected def modifyRequest(blockContext: UserMetadataRequestBlockContext): ModificationResult = Modified
 }

@@ -40,6 +40,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -48,6 +49,113 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
   import MockedBlockResult.*
+
+  // todo: uncomment and finish
+  //  "The EnabledAccessControlList" when {
+  //    "user metadata request is called" when {
+  //      "a current group ID is NOT present" should {
+  //        "return 'allow' with all available groups in collecting order" in {
+  //          val acl = createAcl(
+  //            block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
+  //            block("b2", Policy.Allow, result = Mismatched),
+  //            block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
+  //          )
+  //
+  //          val userMetadataRequestResult = acl
+  //            .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = None))
+  //            .runSyncUnsafe()
+  //            .result
+  //
+  //          inside(userMetadataRequestResult) {
+  //            case Allow(userMetadata@UserMetadata.WithGroups(groupMetadata)) =>
+  //              groupMetadata.keys.toList should be(group("g1") :: group("g3") :: group("g2") :: Nil)
+  //              groupMetadata.values.map(_.loggedUser.id).toList.distinct should be(userId("u1") :: Nil)
+  //              groupMetadata.values.map(_.block.name.value).toList.distinct should be("b1" :: "b3" :: Nil)
+  //          }
+  //        }
+  //        "return 'allow' skipping forbid type blocks" in {
+  //          val acl = createAcl(
+  //            block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
+  //            block("b2", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
+  //            block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g3"), group("g4")))),
+  //          )
+  //
+  //          val userMetadataRequestResult = acl
+  //            .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = None))
+  //            .runSyncUnsafe()
+  //            .result
+  //
+  //          inside(userMetadataRequestResult) {
+  //            case Allow(userMetadata@UserMetadata.WithGroups(groupMetadata)) =>
+  //              groupMetadata.keys.toList should be(group("g1") :: group("g2") :: group("g4") :: Nil)
+  //              groupMetadata.values.map(_.loggedUser.id).toList.distinct should be(userId("u1") :: Nil)
+  //              groupMetadata.values.map(_.block.name.value).toList.distinct should be("b1" :: "b3" :: Nil)
+  //          }
+  //        }
+  //      }
+  //      "a current group is is present" when {
+  //        "the current group is in the available groups list" should {
+  //          "return 'allow' with all available groups in collecting order" in {
+  //            val acl = createAcl(
+  //              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
+  //              block("b2", Policy.Allow, result = Mismatched),
+  //              block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
+  //            )
+  //
+  //            val userMetadataRequestResult = acl
+  //              .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = Some(group("g2"))))
+  //              .runSyncUnsafe()
+  //              .result
+  //
+  //            inside(userMetadataRequestResult) {
+  //              case Allow(userMetadata@UserMetadata.WithGroups(groupMetadata)) =>
+  //                groupMetadata.keys.toList should be(group("g1") :: group("g3") :: group("g2") :: Nil)
+  //                groupMetadata.values.map(_.loggedUser.id).toList.distinct should be(userId("u1") :: Nil)
+  //                groupMetadata.values.map(_.block.name.value).toList.distinct should be("b1" :: "b3" :: Nil)
+  //            }
+  //          }
+  //          "return 'allow' skipping forbid type blocks" in {
+  //            val acl = createAcl(
+  //              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
+  //              block("b2", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
+  //              block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g3"), group("g4")))),
+  //            )
+  //
+  //            val userMetadataRequestResult = acl
+  //              .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = Some(group("g2"))))
+  //              .runSyncUnsafe()
+  //              .result
+  //
+  //            inside(userMetadataRequestResult) {
+  //              case Allow(userMetadata@UserMetadata.WithGroups(groupMetadata)) =>
+  //                groupMetadata.keys.toList should be(group("g1") :: group("g2") :: group("g4") :: Nil)
+  //                groupMetadata.values.map(_.loggedUser.id).toList.distinct should be(userId("u1") :: Nil)
+  //                groupMetadata.values.map(_.block.name.value).toList.distinct should be("b1" :: "b3" :: Nil)
+  //            }
+  //          }
+  //        }
+  //        "the current group is NOT in the available groups list but the forbid-type matched block contains is" should {
+  //          "return 'ForbiddenBy'" in {
+  //            val acl = createAcl(
+  //              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
+  //              block("b2", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
+  //              block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g3"), group("g4")))),
+  //            )
+  //
+  //            val userMetadataRequestResult = acl
+  //              .handleMetadataRequest(mockUserMetadataRequestContext(currentGroup = Some(group("g3"))))
+  //              .runSyncUnsafe()
+  //              .result
+  //
+  //            inside(userMetadataRequestResult) {
+  //              case ForbiddenBy(_, block) =>
+  //                block.name.value should be ("b2")
+  //            }
+  //          }
+  //        }
+  //      }
+  //    }
+  //  }
 
   "An AccessControlList (old)" when {
     "metadata request is called (with current group ID)" should {
@@ -160,7 +268,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
   }
 
   private def createAcl(blocks: Block*) = {
-    val blocksNel = NonEmptyList.fromListUnsafe(blocks.toList)
+    val blocksNel = NonEmptyList.fromListUnsafe(blocks.toSeq.toList)
     new EnabledAccessControlList(
       blocksNel,
       new AccessControlListStaticContext(
@@ -222,6 +330,10 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     (() => rc.initialBlockContext)
       .expects()
       .returning(UserMetadataRequestBlockContext(rc, BlockMetadata.empty, Set.empty, List.empty))
+      .anyNumberOfTimes()
+    (() => rc.apiVersion)
+      .expects()
+      .returning(UserMetadataApiVersion.V1)
       .anyNumberOfTimes()
     val rr = mock[RestRequest]
     (() => rc.restRequest)

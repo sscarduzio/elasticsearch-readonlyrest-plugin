@@ -71,3 +71,20 @@ object KibanaAccess {
 
   implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
 }
+
+sealed trait RorKbnLicenseType
+object RorKbnLicenseType {
+  case object Free extends RorKbnLicenseType
+  case object Pro extends RorKbnLicenseType
+  final case class Enterprise(multiTenancyEnabled: Boolean) extends RorKbnLicenseType
+
+  def from(value: String): Option[RorKbnLicenseType] = {
+    value.toLowerCase match {
+      case "free" => Some(RorKbnLicenseType.Free)
+      case "pro" => Some(RorKbnLicenseType.Pro)
+      case "ent" => Some(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true))
+      case "ent-disabled-multitenancy" => Some(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false))
+      case _ => None
+    }
+  }
+}
