@@ -61,7 +61,7 @@ object CirceOps {
   }
 
   extension (json: Json) {
-    def toJava(): Any = json.foldWith(JsonToJavaFolder)
+    def toJava: Any = json.foldWith(JsonToJavaFolder)
   }
 
   private object JsonToJavaFolder extends Folder[Any] {
