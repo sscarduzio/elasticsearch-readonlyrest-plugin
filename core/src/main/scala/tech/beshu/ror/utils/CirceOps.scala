@@ -22,7 +22,7 @@ import io.circe.generic.semiauto.*
 import io.circe.syntax.EncoderOps
 import tech.beshu.ror.implicits.*
 
-import scala.jdk.CollectionConverters.IterableHasAsJava
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
 object CirceOps {
@@ -61,7 +61,7 @@ object CirceOps {
   }
 
   extension (json: Json) {
-    def toJava(): Any = json.foldWith(JsonToJavaFolder)
+    def toJava: Any = json.foldWith(JsonToJavaFolder)
   }
 
   private object JsonToJavaFolder extends Folder[Any] {
