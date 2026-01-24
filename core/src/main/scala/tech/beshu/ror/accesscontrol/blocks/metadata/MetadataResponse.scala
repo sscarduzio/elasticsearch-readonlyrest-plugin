@@ -33,7 +33,6 @@ object MetadataResponse {
   }
 }
 
-// todo: can we do it better?
 private object CurrentUserMetadataValue {
 
   def from(userMetadata: UserMetadata,
@@ -42,40 +41,44 @@ private object CurrentUserMetadataValue {
     Json.obj(
       List(
         Some("x-ror-correlation-id" -> Json.fromString(correlationId.value.value)),
-        Some("x-ror-username" -> Json.fromString(loggedUser(userMetadata).id.value.value)),
-        availableGroups(userMetadata),
-        currentGroup(userMetadata, currentGroupId),
-        kibanaAccess(userMetadata, currentGroupId),
-        kibanaIndex(userMetadata, currentGroupId),
-        kibanaTemplateIndex(userMetadata, currentGroupId),
-        hiddenKibanaApps(userMetadata, currentGroupId),
-        kibanaApiAllowedPaths(userMetadata, currentGroupId),
-        kibanaGenericMetadata(userMetadata, currentGroupId),
-        userOrigin(userMetadata)
+        loggedUser("x-ror-username", userMetadata),
+        availableGroups("x-ror-available-groups", userMetadata),
+        currentGroup("x-ror-current-group", userMetadata, currentGroupId),
+        kibanaAccess("x-ror-kibana_access", userMetadata, currentGroupId),
+        kibanaIndex("x-ror-kibana_index", userMetadata, currentGroupId),
+        kibanaTemplateIndex("x-ror-kibana_template_index", userMetadata, currentGroupId),
+        hiddenKibanaApps("x-ror-kibana-hidden-apps", userMetadata, currentGroupId),
+        kibanaApiAllowedPaths("x-ror-kibana-allowed-api-paths", userMetadata, currentGroupId),
+        kibanaGenericMetadata("x-ror-kibana-metadata", userMetadata, currentGroupId),
+        userOrigin("x-ror-origin", userMetadata)
       ).flatten *
     )
   }
 
-  private def userOrigin(userMetadata: UserMetadata): Option[(String, Json)] = {
+  private def userOrigin(fieldName: String, userMetadata: UserMetadata): Option[(String, Json)] = {
     val origin = userMetadata match {
       case UserMetadata.WithoutGroups(_, userOrigin, _, _) => userOrigin
       case UserMetadata.WithGroups(groupMetadata) => groupMetadata.values.head.userOrigin
     }
-    origin.map(uo => "x-ror-origin" -> Json.fromString(uo.value.value))
+    origin.map(uo => fieldName -> Json.fromString(uo.value.value))
   }
 
-  private def kibanaAccess(userMetadata: UserMetadata, currentGroupId: Option[GroupId]): Option[(String, Json)] = {
+  private def kibanaAccess(fieldName: String,
+                           userMetadata: UserMetadata,
+                           currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     userMetadata
       .kibanaRelatedMetadata(currentGroupId)
-      .map { kibanaMetadata => "x-ror-kibana_access" -> kibanaMetadata.access.asJson }
+      .map { kibanaMetadata => fieldName -> kibanaMetadata.access.asJson }
   }
 
-  private def hiddenKibanaApps(userMetadata: UserMetadata, currentGroupId: Option[GroupId]): Option[(String, Json)] = {
+  private def hiddenKibanaApps(fieldName: String,
+                               userMetadata: UserMetadata,
+                               currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     userMetadata
       .kibanaRelatedMetadata(currentGroupId)
       .flatMap { kibanaMetadata =>
         Option.when(kibanaMetadata.hiddenApps.nonEmpty) {
-          "x-ror-kibana-hidden-apps" -> Json.arr(
+          fieldName -> Json.arr(
             kibanaMetadata.hiddenApps.toList.map {
               case KibanaApp.FullNameKibanaApp(name) => Json.fromString(name.value)
               case KibanaApp.KibanaAppRegex(regex) => Json.fromString(regex.value.value)
@@ -85,23 +88,25 @@ private object CurrentUserMetadataValue {
       }
   }
 
-  private def kibanaApiAllowedPaths(userMetadata: UserMetadata, currentGroupId: Option[GroupId]): Option[(String, Json)] = {
+  private def kibanaApiAllowedPaths(fieldName: String,
+                                    userMetadata: UserMetadata,
+                                    currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     userMetadata
       .kibanaRelatedMetadata(currentGroupId)
       .flatMap { kibanaMetadata =>
         Option.when(kibanaMetadata.allowedApiPaths.nonEmpty) {
-          "x-ror-kibana-allowed-api-paths" -> Json.arr(
-            kibanaMetadata.allowedApiPaths.toList.map(_.asJson) *
-          )
+          fieldName -> Json.arr(kibanaMetadata.allowedApiPaths.toList.map(_.asJson) *)
         }
       }
   }
 
-  private def kibanaGenericMetadata(userMetadata: UserMetadata, currentGroupId: Option[GroupId]): Option[(String, Json)] = {
+  private def kibanaGenericMetadata(fieldName: String,
+                                    userMetadata: UserMetadata,
+                                    currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     userMetadata
       .kibanaRelatedMetadata(currentGroupId)
       .flatMap(_.genericMetadata)
-      .map { genericMetadata => "x-ror-kibana-metadata" -> jsonRepresentationToCirceJson(genericMetadata) }
+      .map { genericMetadata => fieldName -> jsonRepresentationToCirceJson(genericMetadata) }
   }
 
   private def jsonRepresentationToCirceJson(json: JsonRepresentation): Json = {
@@ -120,51 +125,56 @@ private object CurrentUserMetadataValue {
     }
   }
 
-  private def availableGroups(userMetadata: UserMetadata): Option[(String, Json)] = {
+  private def loggedUser(fieldName: String, userMetadata: UserMetadata) = {
+    val user = userMetadata match {
+      case UserMetadata.WithoutGroups(loggedUser, _, _, _) => loggedUser
+      case UserMetadata.WithGroups(groupMetadata) => groupMetadata.values.head.loggedUser
+    }
+    Some(fieldName -> Json.fromString(user.id.value.value))
+  }
+
+  private def availableGroups(fieldName: String, userMetadata: UserMetadata): Option[(String, Json)] = {
     userMetadata match {
       case UserMetadata.WithoutGroups(_, _, _, _) =>
         None
       case UserMetadata.WithGroups(groupMetadata) =>
         Option.when(groupMetadata.nonEmpty) {
-          "x-ror-available-groups" -> Json.arr(
-            groupMetadata.values.map(_.group).map(_.asJson).toSeq *
-          )
+          fieldName -> Json.arr(groupMetadata.values.map(_.group).map(_.asJson).toSeq *)
         }
     }
   }
 
-  private def kibanaIndex(userMetadata: UserMetadata, currentGroupId: Option[GroupId]): Option[(String, Json)] = {
+  private def kibanaIndex(fieldName: String,
+                          userMetadata: UserMetadata,
+                          currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     userMetadata
       .kibanaRelatedMetadata(currentGroupId)
       .flatMap(_.index)
-      .map { index => "x-ror-kibana_index" -> Json.fromString(index.stringify) }
+      .map { index => fieldName -> Json.fromString(index.stringify) }
   }
 
-  private def kibanaTemplateIndex(userMetadata: UserMetadata, currentGroupId: Option[GroupId]): Option[(String, Json)] = {
+  private def kibanaTemplateIndex(fieldName: String,
+                                  userMetadata: UserMetadata,
+                                  currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     userMetadata
       .kibanaRelatedMetadata(currentGroupId)
       .flatMap(_.templateIndex)
-      .map { index => "x-ror-kibana_template_index" -> Json.fromString(index.stringify) }
+      .map { index => fieldName -> Json.fromString(index.stringify) }
   }
 
-  private def currentGroup(userMetadata: UserMetadata, currentGroupId: Option[GroupId]): Option[(String, Json)] = {
+  private def currentGroup(fieldName: String,
+                           userMetadata: UserMetadata,
+                           currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     (userMetadata, currentGroupId) match {
       case (UserMetadata.WithGroups(groupMetadata), Some(groupId)) =>
         groupMetadata.get(groupId).map { groupMetadata =>
-          "x-ror-current-group" -> groupMetadata.group.asJson
+          fieldName -> groupMetadata.group.asJson
         }
       case (UserMetadata.WithGroups(groupMetadata), None) =>
         groupMetadata.values.headOption.map { groupMetadata =>
-          "x-ror-current-group" -> groupMetadata.group.asJson
+          fieldName -> groupMetadata.group.asJson
         }
       case _ => None
-    }
-  }
-
-  private def loggedUser(userMetadata: UserMetadata): LoggedUser = {
-    userMetadata match {
-      case UserMetadata.WithoutGroups(loggedUser, _, _, _) => loggedUser
-      case UserMetadata.WithGroups(groupMetadata) => groupMetadata.values.head.loggedUser
     }
   }
 
@@ -202,8 +212,8 @@ private object CurrentUserMetadataValue {
     )
   }
 
-  private implicit class UserMetadataOps(val userMetadata: UserMetadata) extends AnyVal {
-    def kibanaRelatedMetadata(currentGroupId: Option[GroupId]): Option[KibanaMetadata] = {
+  extension (userMetadata: UserMetadata) {
+    private def kibanaRelatedMetadata(currentGroupId: Option[GroupId]): Option[KibanaMetadata] = {
       userMetadata match {
         case UserMetadata.WithoutGroups(_, _, metadata, _) => metadata
         case UserMetadata.WithGroups(groupMetadata) =>
