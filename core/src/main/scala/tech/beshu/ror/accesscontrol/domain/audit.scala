@@ -26,6 +26,7 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.ToKibanaIndexPatternDateTimeFormatter
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.format.DateTimeFormatter
@@ -34,10 +35,15 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
+                                          kibanaIndexPatternFormatter: ToKibanaIndexPatternDateTimeFormatter,
                                           rawPattern: String) {
 
   def indexName(instant: Instant): IndexName.Full = {
     IndexName.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
+  }
+
+  def rawKibanaIndexPattern: String = {
+    kibanaIndexPatternFormatter.kibanaIndexPattern
   }
 
   def conforms(index: IndexName): Boolean = {
@@ -62,7 +68,9 @@ object RorAuditIndexTemplate {
 
   def from(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
     Try(DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.of("UTC"))) match {
-      case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", "")))
+      case Success(formatter) =>
+        val kibanaIndexPatternFormatter = new ToKibanaIndexPatternDateTimeFormatter(pattern)
+        Right(new RorAuditIndexTemplate(formatter, kibanaIndexPatternFormatter, pattern.replaceAll("'", "")))
       case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
     }
   }

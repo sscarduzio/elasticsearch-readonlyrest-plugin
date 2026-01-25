@@ -31,6 +31,7 @@ class RestRRAdminAction(settings: Settings, controller: RestController)
 
   register("POST", constants.FORCE_RELOAD_SETTINGS_PATH)
   register("GET", constants.PROVIDE_INDEX_SETTINGS_PATH)
+  register("GET", constants.PROVIDE_AUDIT_SETTINGS_PATH)
   register("POST", constants.UPDATE_INDEX_SETTINGS_PATH)
   register("GET", constants.PROVIDE_FILE_SETTINGS_PATH)
 

@@ -44,6 +44,8 @@ object RRAdminRequest {
         MainSettingsApi.MainSettingsRequest.Type.ProvideFileSettings
       case (constants.PROVIDE_INDEX_SETTINGS_PATH, GET) =>
         MainSettingsApi.MainSettingsRequest.Type.ProvideIndexSettings
+      case (constants.PROVIDE_AUDIT_SETTINGS_PATH, GET) =>
+        MainSettingsApi.MainSettingsRequest.Type.ProvideAuditSettings
       case (constants.UPDATE_INDEX_SETTINGS_PATH, POST) =>
         MainSettingsApi.MainSettingsRequest.Type.UpdateIndexSettings
       case (unknownUri, unknownMethod) =>

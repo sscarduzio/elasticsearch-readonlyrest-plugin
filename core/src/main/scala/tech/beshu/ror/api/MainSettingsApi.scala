@@ -21,10 +21,15 @@ import cats.data.EitherT
 import cats.implicits.*
 import io.circe.Decoder
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.DefaultRorSchemaAuditLogSerializer
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId}
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.{LocalAuditIndex, OtherAuditOutput}
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -49,12 +54,57 @@ class MainSettingsApi(rorInstance: RorInstance,
           (implicit requestId: RequestId): Task[MainSettingsResponse] = {
     val settingsResponse = request.aType match {
       case Type.ForceReload => forceReloadRor()
+      case Type.ProvideAuditSettings => provideAuditIndexSettings()
       case Type.ProvideIndexSettings => provideRorIndexSettings()
       case Type.ProvideFileSettings => provideRorFileSettings()
       case Type.UpdateIndexSettings => updateRorIndexSettings(request.body)
     }
     settingsResponse
       .executeOn(RorSchedulers.restApiScheduler)
+  }
+
+  private def provideAuditIndexSettings(): Task[ProvideAuditSettings] = Task.delay {
+    (for {
+      engines <- rorInstance.engines.toRight("Not ready")
+      auditingSettings <- engines.mainEngine.core.auditingSettings.toRight("Audit not configured")
+      sinks = auditingSettings.auditSinks
+      auditOutputs = sinks.toList.flatMap {
+        case AuditSink.Enabled(config) => config match {
+          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
+            logSerializer match {
+              case serializer: EcsV1AuditLogSerializer =>
+                Some(LocalAuditIndex(rorAuditIndexTemplate.rawKibanaIndexPattern, "ecsV1"))
+              case withDefaultSchema: DefaultRorSchemaAuditLogSerializer =>
+                Some(LocalAuditIndex(rorAuditIndexTemplate.rawKibanaIndexPattern, "rorDefault"))
+              case other =>
+                Some(LocalAuditIndex(rorAuditIndexTemplate.rawKibanaIndexPattern, "custom"))
+            }
+          case Config.EsIndexBasedSink(_, _, _) =>
+            Some(OtherAuditOutput("Remote audit cluster"))
+          case Config.EsDataStreamBasedSink(_, ds, _) =>
+            Some(OtherAuditOutput(s"Data stream with name [${ds.dataStream.value.value}]"))
+          case Config.LogBasedSink(_, loggerName) =>
+            Some(OtherAuditOutput(s"Logger with name [${loggerName.value.value}]"))
+        }
+        case AuditSink.Disabled => None
+      }
+      otherAuditOutputs = sinks.toList.flatMap {
+        case AuditSink.Enabled(config) => config match {
+          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, _: AuditCluster.RemoteAuditCluster) =>
+            Some("Remote audit cluster")
+          case Config.EsIndexBasedSink(_, _, _) =>
+            None
+          case Config.EsDataStreamBasedSink(_, _, _) =>
+            Some("Remote audit cluster")
+          case Config.LogBasedSink(_, _) =>
+            None
+        }
+        case AuditSink.Disabled => None
+      }
+    } yield auditOutputs) match {
+      case Left(error) => ProvideAuditSettings.Failure(error)
+      case Right(auditOutputs) => ProvideAuditSettings.AuditSettings(auditOutputs)
+    }
   }
 
   private def forceReloadRor()
@@ -158,6 +208,7 @@ object MainSettingsApi {
       case object ProvideIndexSettings extends Type
       case object ProvideFileSettings extends Type
       case object UpdateIndexSettings extends Type
+      case object ProvideAuditSettings extends Type
     }
   }
 
@@ -174,6 +225,18 @@ object MainSettingsApi {
       final case class MainSettings(rawSettings: String) extends ProvideIndexMainSettings
       final case class MainSettingsNotFound(message: String) extends ProvideIndexMainSettings
       final case class Failure(message: String) extends ProvideIndexMainSettings
+    }
+
+    sealed trait ProvideAuditSettings extends MainSettingsResponse
+
+    object ProvideAuditSettings {
+      final case class AuditSettings(auditOutputs: List[AuditOutput]) extends ProvideAuditSettings
+      sealed trait AuditOutput
+      object AuditOutput {
+        final case class LocalAuditIndex(indexPattern: String, schema: String) extends AuditOutput
+        final case class OtherAuditOutput(description: String) extends AuditOutput
+      }
+      final case class Failure(message: String) extends ProvideAuditSettings
     }
 
     sealed trait ProvideFileMainSettings extends MainSettingsResponse
@@ -200,6 +263,8 @@ object MainSettingsApi {
       case _: ForceReloadMainSettings.Failure => "ko"
       case _: ProvideIndexMainSettings.MainSettings => "ok"
       case _: ProvideIndexMainSettings.MainSettingsNotFound => "empty"
+      case _: ProvideAuditSettings.AuditSettings => "ok"
+      case _: ProvideAuditSettings.Failure => "ko"
       case _: ProvideIndexMainSettings.Failure => "ko"
       case _: ProvideFileMainSettings.MainSettings => "ok"
       case _: ProvideFileMainSettings.Failure => "ko"

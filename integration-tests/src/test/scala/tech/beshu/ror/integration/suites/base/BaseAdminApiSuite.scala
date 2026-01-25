@@ -971,7 +971,7 @@ trait BaseAdminApiSuite
           }
         }
         "return index settings" when {
-          "only main settings in the index" in {
+          "only main settings in the index, audit is configured" in {
             def forceReloadMainSettings(mainSettingsYaml: String) = {
               updateRorMainSettings(rorClients.head, mainSettingsYaml)
               assertSettingsInIndex(expectedSettings = mainSettingsYaml)
@@ -987,8 +987,10 @@ trait BaseAdminApiSuite
             val settings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
             forceReloadMainSettings(settings)
 
+            Thread.sleep(2000)
             rorClients.foreach { rorApiManager =>
               assertInIndexSettingsPresent(rorApiManager, settings)
+              assertAuditConfig(rorApiManager)
               assertTestSettingsNotConfigured(rorApiManager)
             }
           }
@@ -1128,6 +1130,25 @@ trait BaseAdminApiSuite
     result should have statusCode 200
     result.responseJson("status").str should be("ok")
     result.responseJson("message").str should be(settings)
+  }
+
+  private def assertAuditConfig(rorApiManager: RorApiManager) = {
+    val getIndexConfigResult = rorApiManager.getRorAuditIndexSettings
+    getIndexConfigResult should have statusCode 200
+    getIndexConfigResult.responseJson should be(ujson.read(
+      """
+        |{
+        |  "status":"ok",
+        |  "localAuditIndexes": [
+        |    {"indexPattern": "custom_template_*", "schema":"rorDefault"},
+        |    {"indexPattern": "readonlyrest_audit-*", "schema":"ecsV1"}
+        |  ],
+        |  "otherAuditOutputs": [
+        |    {"description": "Logger with name [readonlyrest_audit]"}
+        |  ]
+        |}
+        |""".stripMargin
+    ))
   }
 
   private def assertTestSettingsNotConfigured(rorApiManager: RorApiManager) = {

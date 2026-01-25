@@ -24,6 +24,7 @@ import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.api.MainSettingsApi
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.api.MainSettingsApi.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput
 
 class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
   extends ActionResponse with StatusToXContentObject {
@@ -43,6 +44,10 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
         case ProvideFileMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
         case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
       }
+      case provideAuditSettings: MainSettingsResponse.ProvideAuditSettings => provideAuditSettings match {
+        case ProvideAuditSettings.AuditSettings(auditOutputs) => addResponseJson(builder, response.status, auditOutputs)
+        case ProvideAuditSettings.Failure(message) => addResponseJson(builder, response.status, message)
+      }
       case updateIndexSettings: MainSettingsResponse.UpdateIndexMainSettings => updateIndexSettings match {
         case UpdateIndexMainSettings.Success(message) => addResponseJson(builder, response.status, message)
         case UpdateIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
@@ -61,6 +66,7 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
       case _: ForceReloadMainSettings => RestStatus.OK
       case _: ProvideIndexMainSettings => RestStatus.OK
       case _: ProvideFileMainSettings => RestStatus.OK
+      case _: ProvideAuditSettings => RestStatus.OK
       case _: UpdateIndexMainSettings => RestStatus.OK
       case failure: Failure => failure match {
         case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
@@ -72,6 +78,29 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
     builder.startObject
     builder.field("status", status)
     builder.field("message", message)
+    builder.endObject
+  }
+
+  private def addResponseJson(builder: XContentBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
+    val localAuditIndexes = auditOutputs.collect { case index: AuditOutput.LocalAuditIndex => index }
+    val otherAuditOutputs = auditOutputs.collect { case output: AuditOutput.OtherAuditOutput => output }
+    builder.startObject
+    builder.field("status", status)
+    builder.startArray("localAuditIndexes")
+    for (auditIndex <- localAuditIndexes) {
+      builder.startObject
+      builder.field("indexPattern", auditIndex.indexPattern)
+      builder.field("schema", auditIndex.schema)
+      builder.endObject
+    }
+    builder.endArray()
+    builder.startArray("otherAuditOutputs")
+    for (output <- otherAuditOutputs) {
+      builder.startObject
+      builder.field("description", output.description)
+      builder.endObject
+    }
+    builder.endArray()
     builder.endObject
   }
 }
