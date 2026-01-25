@@ -987,11 +987,12 @@ trait BaseAdminApiSuite
             val settings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
             forceReloadMainSettings(settings)
 
-            Thread.sleep(2000)
-            rorClients.foreach { rorApiManager =>
-              assertInIndexSettingsPresent(rorApiManager, settings)
-              assertAuditConfig(rorApiManager)
-              assertTestSettingsNotConfigured(rorApiManager)
+            eventually {
+              rorClients.foreach { rorApiManager =>
+                assertInIndexSettingsPresent(rorApiManager, settings)
+                assertAuditConfig(rorApiManager)
+                assertTestSettingsNotConfigured(rorApiManager)
+              }
             }
           }
           "main and test settings in the index" in {
