@@ -20,7 +20,6 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentBuilder}
 import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.api.MainSettingsApi
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.es.utils.EsJsonBuilder
 
@@ -33,16 +32,6 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
     builder
   }
 
-  override def status(): RestStatus = {
-    response match {
-      case _: ForceReloadMainSettings => RestStatus.OK
-      case _: ProvideIndexMainSettings => RestStatus.OK
-      case _: ProvideFileMainSettings => RestStatus.OK
-      case _: ProvideAuditSettings => RestStatus.OK
-      case _: UpdateIndexMainSettings => RestStatus.OK
-      case failure: Failure => failure match {
-        case Failure.BadRequest(_) => RestStatus.BAD_REQUEST
-      }
-    }
-  }
+  override def status(): RestStatus = RestStatus.fromCode(httpStatus(response).code())
+
 }

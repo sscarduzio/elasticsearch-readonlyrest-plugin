@@ -20,6 +20,7 @@ import cats.Show
 import cats.data.EitherT
 import cats.implicits.*
 import io.circe.Decoder
+import io.netty.handler.codec.http.HttpResponseStatus
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
@@ -287,7 +288,45 @@ object MainSettingsApi {
   }
 
   def buildResponse(builder: BaseEsJsonBuilder, response: MainSettingsApi.MainSettingsResponse): Unit = {
-    buildResponse(new EsJsonBuilder(xBuilder), response)
+    response match {
+      case forceReloadSettings: MainSettingsResponse.ForceReloadMainSettings => forceReloadSettings match {
+        case ForceReloadMainSettings.Success(message) => addResponseJson(builder, response.status, message)
+        case ForceReloadMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case provideIndexSettings: MainSettingsResponse.ProvideIndexMainSettings => provideIndexSettings match {
+        case ProvideIndexMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
+        case ProvideIndexMainSettings.MainSettingsNotFound(message) => addResponseJson(builder, response.status, message)
+        case ProvideIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case provideFileSettings: MainSettingsResponse.ProvideFileMainSettings => provideFileSettings match {
+        case ProvideFileMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
+        case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case provideAuditSettings: MainSettingsResponse.ProvideAuditSettings => provideAuditSettings match {
+        case ProvideAuditSettings.AuditSettings(auditOutputs) => addResponseJson(builder, response.status, auditOutputs)
+        case ProvideAuditSettings.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case updateIndexSettings: MainSettingsResponse.UpdateIndexMainSettings => updateIndexSettings match {
+        case UpdateIndexMainSettings.Success(message) => addResponseJson(builder, response.status, message)
+        case UpdateIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+      }
+      case failure: MainSettingsResponse.Failure => failure match {
+        case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
+      }
+    }
+  }
+
+  def httpStatus(response: MainSettingsApi.MainSettingsResponse): HttpResponseStatus = {
+    response match {
+      case _: ForceReloadMainSettings => HttpResponseStatus.OK
+      case _: ProvideIndexMainSettings => HttpResponseStatus.OK
+      case _: ProvideFileMainSettings => HttpResponseStatus.OK
+      case _: ProvideAuditSettings => HttpResponseStatus.OK
+      case _: UpdateIndexMainSettings => HttpResponseStatus.OK
+      case failure: Failure => failure match {
+        case Failure.BadRequest(_) => HttpResponseStatus.BAD_REQUEST
+      }
+    }
   }
 
   private def addResponseJson(builder: BaseEsJsonBuilder, status: String, message: String): Unit = {
