@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -31,10 +32,11 @@ object UserMetadata {
   final case class WithoutGroups(loggedUser: LoggedUser,
                                  userOrigin: Option[UserOrigin],
                                  kibanaMetadata: Option[KibanaMetadata],
-                                 block: Block)
+                                 block: Block,
+                                 blockContext: UserMetadataRequestBlockContext)
     extends UserMetadata
 
-  final case class WithGroups private(groupMetadata: ListMap[GroupId, GroupMetadata])
+  final case class WithGroups private(groupsMetadata: ListMap[GroupId, GroupMetadata])
     extends UserMetadata
   object WithGroups {
     def apply(groupsMetadata: NonEmptyList[GroupMetadata]): WithGroups = WithGroups {
@@ -49,5 +51,19 @@ object UserMetadata {
                                    kibanaMetadata: Option[KibanaMetadata],
                                    block: Block,
                                    blockContext: UserMetadataRequestBlockContext)
+
+    extension (withGroups: WithGroups) {
+      def excludeOtherThanAllowTypeGroups(): Option[WithGroups] = {
+        NonEmptyList
+          .fromList {
+            withGroups
+              .groupsMetadata.values
+              .filter(_.block.policy == Policy.Allow)
+              .toList
+          }
+          .map(WithGroups.apply)
+
+      }
+    }
   }
 }

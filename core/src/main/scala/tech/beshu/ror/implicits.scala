@@ -219,10 +219,10 @@ trait LogsShowInstances
         s"""${constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${constants.ANSI_RESET}"""
       case allow: Allowed[B] =>
         val (users, blocks) = allow.userMetadata match {
-          case UserMetadata.WithoutGroups(user, _, _, block) =>
+          case UserMetadata.WithoutGroups(user, _, _, block, _) =>
             (user :: Nil, block :: Nil)
-          case UserMetadata.WithGroups(groupMetadata) =>
-            groupMetadata.values.map(m => (m.loggedUser, m.block)).toList.unzip
+          case UserMetadata.WithGroups(groupsMetadata) =>
+            groupsMetadata.values.map(m => (m.loggedUser, m.block)).toList.unzip
         }
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(users, allow.history, debugEnabled)
         s"""${constants.ANSI_CYAN}ALLOWED by ${blocks.show} req=${allow.requestContext.show}${constants.ANSI_RESET}"""

@@ -60,7 +60,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     "current user metadata request is called" when {
       "no current group is passed" when {
         "all matched blocks have groups" should {
-          "return allow with mix of allowed and forbidden groups (case 1)" in {
+          "return allow with only allowed groups (case 1)" in {
             val acl = createAcl(
               block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
               block("b2", Policy.Allow, result = Mismatched),
@@ -75,16 +75,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: GroupId("g4") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Forbid())
-                groupMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
+                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
             }
           }
-          "return allow with mix of allowed and forbidden groups (case 2)" in {
+          "return allow with only allowed groups (case 2)" in {
             val acl = createAcl(
               block("b1", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
               block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
@@ -99,14 +98,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Forbid())
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Forbid())
-                groupMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
-                groupMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
-                groupMetadata should contain(group("g5"), userId("u1"), "b4", Policy.Allow)
+                groupsMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
+                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
+                groupsMetadata should contain(group("g5"), userId("u1"), "b4", Policy.Allow)
             }
           }
           "return forbidden when all matched groups are forbidden" in {
@@ -145,7 +142,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -189,12 +186,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
+                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
             }
           }
           "return forbidden when forbid block with groups matches before any block without groups" in {
@@ -232,7 +229,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -262,7 +259,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       }
       "current group is passed" when {
         "all matched blocks have groups" should {
-          "return allow with mix of allowed and forbidden groups because allow block is matched by the current group" in {
+          "return allow with only allowed groups because allow block is matched by the current group" in {
             val acl = createAcl(
               block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
               block("b2", Policy.Allow, result = Mismatched),
@@ -277,13 +274,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: GroupId("g4") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Forbid())
-                groupMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
+                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
             }
           }
           "return forbidden because the forbid block is matched by the current group" in {
@@ -364,12 +360,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
+                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
             }
           }
           "return forbidden when forbid block with groups matches before any block without groups when a forbid block is matched by the current group" in {
@@ -421,119 +417,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             )
 
             val userMetadataRequestResult = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g1"))))
+              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g3"))))
               .runSyncUnsafe()
               .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenByMismatched(causes) =>
-                causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
-            }
-          }
-        }
-      }
-      "to removed ???" when { // todo:
-        "allow request" which {
-          "response will contain collected metadata from matched blocks" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-              block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-              block("b3", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-              block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-              block("b5", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-              block("b6", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-              block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
-            )
-
-            val userMetadataRequestResult = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("admins"))))
-              .runSyncUnsafe()
-              .result
-
-            inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be {
-                  GroupId("logserver") :: GroupId("ext-onlio") :: GroupId("admins") :: GroupId("ext-odp") ::
-                    GroupId("ext-enex") :: GroupId("dohled-nd-pce") :: GroupId("helpdesk") :: Nil
-                }
-            }
-          }
-          "FORBID policy block is matched and its position in ACL is after some ALLOW-policy matched blocks" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g1"), group("admins")))),
-              block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g2"), group("admins")))),
-              block("b3", Policy.Forbid(), result = Matched(userId("sulc1"), UniqueList.of(group("g3"), group("admins")))),
-              block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g4"), group("admins")))),
-              block("b5", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g5"), group("admins")))),
-              block("b6", Policy.Forbid(), result = Matched(userId("sulc1"), UniqueList.of(group("g6"), group("admins")))),
-              block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g7"), group("admins")))),
-            )
-
-            val userMetadataRequestResult = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("admins"))))
-              .runSyncUnsafe()
-              .result
-
-            inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                val result = groupMetadata.values
-                  .map(metadata => (metadata.group, metadata.block.name.value, metadata.block.policy))
-                  .toList
-                result should be(List(
-                  (group("g1"), "b1", Policy.Allow),
-                  (group("admins"), "b1", Policy.Allow),
-                  (group("g2"), "b2", Policy.Allow),
-                  (group("g3"), "b3", Policy.Forbid()),
-                  (group("g4"), "b4", Policy.Allow),
-                  (group("g5"), "b5", Policy.Allow),
-                  (group("g6"), "b6", Policy.Forbid()),
-                  (group("g7"), "b7", Policy.Allow),
-                ))
-            }
-          }
-        }
-        "forbid request" when {
-          "FORBID policy block is matched and its position in ACL is before any other ALLOW-policy matched block" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(), result = Matched(userId("sulc1"), UniqueList.of(group("g1"), group("admins")))),
-              block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g2"), group("admins")))),
-              block("b3", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g3"), group("admins")))),
-              block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g4"), group("admins")))),
-              block("b5", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g5"), group("admins")))),
-              block("b6", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g6"), group("admins")))),
-              block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g7"), group("admins")))),
-            )
-
-            val userMetadataRequestResult = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("admins"))))
-              .runSyncUnsafe()
-              .result
-
-            inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext, block) =>
+              case ForbiddenBy(_, block) =>
                 block.name should be(Block.Name("b1"))
-                block.policy should be(Block.Policy.Forbid(None))
-            }
-          }
-          "none block is matched because of non-existing current group" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g2"), group("admins")))),
-              block("b2", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g3"), group("admins")))),
-              block("b3", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g4"), group("admins")))),
-              block("b4", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g5"), group("admins")))),
-              block("b5", Policy.Forbid(), result = Matched(userId("sulc2"), UniqueList.of(group("g1"), group("admins")))),
-              block("b6", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g6"), group("admins")))),
-              block("b7", Policy.Allow, result = Matched(userId("sulc1"), UniqueList.of(group("g7"), group("admins")))),
-            )
-
-            val userMetadataRequestResult = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("users"))))
-              .runSyncUnsafe()
-              .result
-
-            inside(userMetadataRequestResult) {
-              case ForbiddenByMismatched(causes) =>
-                causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -542,7 +433,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     "user metadata request is called" when {
       "ROR KBN license is enterprise" when {
         "all matched blocks have groups" should {
-          "return allow with mix of allowed and forbidden groups (case 1)" in {
+          "return allow with only allowed groups (case 1)" in {
             val acl = createAcl(
               block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
               block("b2", Policy.Allow, result = Mismatched),
@@ -557,16 +448,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: GroupId("g4") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Forbid())
-                groupMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
+                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
             }
           }
-          "return allow with mix of allowed and forbidden groups (case 2)" in {
+          "return allow with only allowed groups (case 2)" in {
             val acl = createAcl(
               block("b1", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
               block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
@@ -581,14 +471,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Forbid())
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Forbid())
-                groupMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
-                groupMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
-                groupMetadata should contain(group("g5"), userId("u1"), "b4", Policy.Allow)
+                groupsMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
+                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
+                groupsMetadata should contain(group("g5"), userId("u1"), "b4", Policy.Allow)
             }
           }
           "return forbidden when all matched groups are forbidden" in {
@@ -627,7 +515,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -671,12 +559,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupMetadata)) =>
-                groupMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
+              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
-                groupMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
+                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
+                groupsMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
             }
           }
           "return forbidden when forbid block with groups matches before any block without groups" in {
@@ -714,7 +602,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -760,7 +648,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -803,7 +691,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be(userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -847,7 +735,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -868,7 +756,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
                 loggedUser.id should be(userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)

@@ -274,15 +274,15 @@ class CurrentUserMetadataAccessControlTests
       "allow to proceed" when {
         "several blocks are matched" in {
           def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-            metadata.groupMetadata.keys.toList should be(GroupId("group3") :: GroupId("group1") :: Nil)
+            metadata.groupsMetadata.keys.toList should be(GroupId("group3") :: GroupId("group1") :: Nil)
 
-            val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+            val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
             group3Metadata.block.name should be(Block.Name("User 1 - index1"))
             group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
             group3Metadata.userOrigin should be(None)
             group3Metadata.kibanaMetadata should be(None)
 
-            val group1Metadata = metadata.groupMetadata(GroupId("group1"))
+            val group1Metadata = metadata.groupsMetadata(GroupId("group1"))
             group1Metadata.block.name should be(Block.Name("User 1 - index2"))
             group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
             group1Metadata.userOrigin should be(None)
@@ -297,9 +297,9 @@ class CurrentUserMetadataAccessControlTests
         }
         "several blocks are matched and current group is set" in {
           def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-            metadata.groupMetadata.keys.toList should be(GroupId("group5") :: GroupId("group6") :: Nil)
+            metadata.groupsMetadata.keys.toList should be(GroupId("group5") :: GroupId("group6") :: Nil)
 
-            val group5Metadata = metadata.groupMetadata(GroupId("group5"))
+            val group5Metadata = metadata.groupsMetadata(GroupId("group5"))
             group5Metadata.block.name should be(Block.Name("User 4 - index1"))
             group5Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
             group5Metadata.userOrigin should be(None)
@@ -312,7 +312,7 @@ class CurrentUserMetadataAccessControlTests
               genericMetadata = None
             )))
 
-            val group6Metadata = metadata.groupMetadata(GroupId("group6"))
+            val group6Metadata = metadata.groupsMetadata(GroupId("group6"))
             group6Metadata.block.name should be(Block.Name("User 4 - index2"))
             group6Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
             group6Metadata.userOrigin should be(None)
@@ -344,9 +344,9 @@ class CurrentUserMetadataAccessControlTests
         }
         "at least one block is matched" in {
           def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-            metadata.groupMetadata.keys.toList should be(GroupId("group2") :: Nil)
+            metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: Nil)
 
-            val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+            val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
             group2Metadata.block.name should be(Block.Name("User 2"))
             group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
             group2Metadata.userOrigin should be(None)
@@ -386,28 +386,28 @@ class CurrentUserMetadataAccessControlTests
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user3:pass"))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Allow(userMetadata@UserMetadata.WithoutGroups(_, _, _, _)) =>
+          inside(result.result) { case Allow(userMetadata:UserMetadata.WithoutGroups) =>
             assertAllowUserMetadataWithoutGroupsResponse(userMetadata)
           }
         }
         "available groups are collected from all blocks with external services" when {
           "the service is some HTTP service" in {
             def assertUser5Response(metadata: UserMetadata.WithGroups) = {
-              metadata.groupMetadata.keys.toList should be(GroupId("service1_group1") :: GroupId("service1_group2") :: Nil)
+              metadata.groupsMetadata.keys.toList should be(GroupId("service1_group1") :: GroupId("service1_group2") :: Nil)
 
-              val group1Metadata = metadata.groupMetadata(GroupId("service1_group1"))
+              val group1Metadata = metadata.groupsMetadata(GroupId("service1_group1"))
               group1Metadata.block.name should be(Block.Name("SERVICE1 user5 (1)"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
 
-              val group2Metadata = metadata.groupMetadata(GroupId("service1_group2"))
+              val group2Metadata = metadata.groupsMetadata(GroupId("service1_group2"))
               group2Metadata.block.name should be(Block.Name("SERVICE1 user5 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
             }
 
             def assertUser7Response(metadata: UserMetadata.WithGroups) = {
-              metadata.groupMetadata.keys.toList should be(GroupId("service3_group1") :: Nil)
+              metadata.groupsMetadata.keys.toList should be(GroupId("service3_group1") :: Nil)
 
-              val group1Metadata = metadata.groupMetadata(GroupId("service3_group1"))
+              val group1Metadata = metadata.groupsMetadata(GroupId("service3_group1"))
               group1Metadata.block.name should be(Block.Name("SERVICE3 user7"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
             }
@@ -439,13 +439,13 @@ class CurrentUserMetadataAccessControlTests
           }
           "the service is LDAP" in {
             def assertUser6Response(metadata: UserMetadata.WithGroups) = {
-              metadata.groupMetadata.keys.toList should be(GroupId("ldap2_group1") :: GroupId("ldap2_group2") :: Nil)
+              metadata.groupsMetadata.keys.toList should be(GroupId("ldap2_group1") :: GroupId("ldap2_group2") :: Nil)
 
-              val group1Metadata = metadata.groupMetadata(GroupId("ldap2_group1"))
+              val group1Metadata = metadata.groupsMetadata(GroupId("ldap2_group1"))
               group1Metadata.block.name should be(Block.Name("LDAP2 user6 (1)"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
 
-              val group2Metadata = metadata.groupMetadata(GroupId("ldap2_group2"))
+              val group2Metadata = metadata.groupsMetadata(GroupId("ldap2_group2"))
               group2Metadata.block.name should be(Block.Name("LDAP2 user6 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
             }
@@ -469,9 +469,9 @@ class CurrentUserMetadataAccessControlTests
         }
         "we allow RW access to multiple tenants and RW access to its indices" in {
           def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-            metadata.groupMetadata.keys.toList should be(GroupId("tracy_tenant1") :: GroupId("tracy_tenant2") :: Nil)
+            metadata.groupsMetadata.keys.toList should be(GroupId("tracy_tenant1") :: GroupId("tracy_tenant2") :: Nil)
 
-            val tenant1Metadata = metadata.groupMetadata(GroupId("tracy_tenant1"))
+            val tenant1Metadata = metadata.groupsMetadata(GroupId("tracy_tenant1"))
             tenant1Metadata.block.name should be(Block.Name("Allow RW access to tenant1 Kibana"))
             tenant1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user9")))
             tenant1Metadata.userOrigin should be(None)
@@ -484,7 +484,7 @@ class CurrentUserMetadataAccessControlTests
               genericMetadata = None
             )))
 
-            val tenant2Metadata = metadata.groupMetadata(GroupId("tracy_tenant2"))
+            val tenant2Metadata = metadata.groupsMetadata(GroupId("tracy_tenant2"))
             tenant2Metadata.block.name should be(Block.Name("Allow RW access to tenant2 Kibana"))
             tenant2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user9")))
             tenant2Metadata.userOrigin should be(None)

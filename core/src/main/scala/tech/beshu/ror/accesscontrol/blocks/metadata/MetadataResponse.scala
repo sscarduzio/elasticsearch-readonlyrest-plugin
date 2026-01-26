@@ -90,7 +90,7 @@ private object UserMetadataValue {
   }
 
   private def groups(fieldName: String, userMetadata: UserMetadata.WithGroups): (String, Json) = {
-    fieldName -> Json.arr(userMetadata.groupMetadata.values.map(groupEntry).toSeq *)
+    fieldName -> Json.arr(userMetadata.groupsMetadata.values.map(groupEntry).toSeq *)
   }
 
   private def groupEntry(groupMetadata: UserMetadata.WithGroups.GroupMetadata): Json = {
@@ -242,8 +242,8 @@ private object CurrentUserMetadataValue {
 
   private def userOrigin(fieldName: String, userMetadata: UserMetadata): Option[(String, Json)] = {
     val origin = userMetadata match {
-      case UserMetadata.WithoutGroups(_, userOrigin, _, _) => userOrigin
-      case UserMetadata.WithGroups(groupMetadata) => groupMetadata.values.head.userOrigin
+      case UserMetadata.WithoutGroups(_, userOrigin, _, _, _) => userOrigin
+      case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.userOrigin
     }
     origin.map(uo => fieldName -> Json.fromString(uo.value.value))
   }
@@ -312,19 +312,19 @@ private object CurrentUserMetadataValue {
 
   private def loggedUser(fieldName: String, userMetadata: UserMetadata) = {
     val user = userMetadata match {
-      case UserMetadata.WithoutGroups(loggedUser, _, _, _) => loggedUser
-      case UserMetadata.WithGroups(groupMetadata) => groupMetadata.values.head.loggedUser
+      case UserMetadata.WithoutGroups(loggedUser, _, _, _, _) => loggedUser
+      case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.loggedUser
     }
     Some(fieldName -> Json.fromString(user.id.value.value))
   }
 
   private def availableGroups(fieldName: String, userMetadata: UserMetadata): Option[(String, Json)] = {
     userMetadata match {
-      case UserMetadata.WithoutGroups(_, _, _, _) =>
+      case UserMetadata.WithoutGroups(_, _, _, _, _) =>
         None
-      case UserMetadata.WithGroups(groupMetadata) =>
-        Option.when(groupMetadata.nonEmpty) {
-          fieldName -> Json.arr(groupMetadata.values.map(_.group).map(_.asJson).toSeq *)
+      case UserMetadata.WithGroups(groupsMetadata) =>
+        Option.when(groupsMetadata.nonEmpty) {
+          fieldName -> Json.arr(groupsMetadata.values.map(_.group).map(_.asJson).toSeq *)
         }
     }
   }
@@ -351,12 +351,12 @@ private object CurrentUserMetadataValue {
                            userMetadata: UserMetadata,
                            currentGroupId: Option[GroupId]): Option[(String, Json)] = {
     (userMetadata, currentGroupId) match {
-      case (UserMetadata.WithGroups(groupMetadata), Some(groupId)) =>
-        groupMetadata.get(groupId).map { groupMetadata =>
+      case (UserMetadata.WithGroups(groupsMetadata), Some(groupId)) =>
+        groupsMetadata.get(groupId).map { groupMetadata =>
           fieldName -> groupMetadata.group.asJson
         }
-      case (UserMetadata.WithGroups(groupMetadata), None) =>
-        groupMetadata.values.headOption.map { groupMetadata =>
+      case (UserMetadata.WithGroups(groupsMetadata), None) =>
+        groupsMetadata.values.headOption.map { groupMetadata =>
           fieldName -> groupMetadata.group.asJson
         }
       case _ => None
@@ -400,11 +400,11 @@ private object CurrentUserMetadataValue {
   extension (userMetadata: UserMetadata) {
     private def kibanaRelatedMetadata(currentGroupId: Option[GroupId]): Option[KibanaMetadata] = {
       userMetadata match {
-        case UserMetadata.WithoutGroups(_, _, metadata, _) => metadata
-        case UserMetadata.WithGroups(groupMetadata) =>
+        case UserMetadata.WithoutGroups(_, _, metadata, _, _) => metadata
+        case UserMetadata.WithGroups(groupsMetadata) =>
           currentGroupId match {
-            case Some(id) => groupMetadata.get(id).flatMap(_.kibanaMetadata)
-            case None => groupMetadata.values.head.kibanaMetadata
+            case Some(id) => groupsMetadata.get(id).flatMap(_.kibanaMetadata)
+            case None => groupsMetadata.values.head.kibanaMetadata
           }
       }
     }
