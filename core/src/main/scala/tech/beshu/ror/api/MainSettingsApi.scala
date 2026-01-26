@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId}
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.{LocalAuditIndex, OtherAuditOutput}
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
@@ -283,5 +284,39 @@ object MainSettingsApi {
       implicit val updateSettingsRequestDecoder: Decoder[UpdateSettingsRequest] =
         Decoder.forProduct1("settings")(UpdateSettingsRequest.apply)
     }
+  }
+
+  def buildResponse(builder: BaseEsJsonBuilder, response: MainSettingsApi.MainSettingsResponse): Unit = {
+    buildResponse(new EsJsonBuilder(xBuilder), response)
+  }
+
+  private def addResponseJson(builder: BaseEsJsonBuilder, status: String, message: String): Unit = {
+    builder.startObject()
+    builder.field("status", status)
+    builder.field("message", message)
+    builder.endObject()
+  }
+
+  private def addResponseJson(builder: BaseEsJsonBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
+    val localAuditIndexes = auditOutputs.collect { case index: AuditOutput.LocalAuditIndex => index }
+    val otherAuditOutputs = auditOutputs.collect { case output: AuditOutput.OtherAuditOutput => output }
+    builder.startObject()
+    builder.field("status", status)
+    builder.startArray("localAuditIndexes")
+    for (auditIndex <- localAuditIndexes) {
+      builder.startObject()
+      builder.field("indexPattern", auditIndex.indexPattern)
+      builder.field("schema", auditIndex.schema)
+      builder.endObject()
+    }
+    builder.endArray()
+    builder.startArray("otherAuditOutputs")
+    for (output <- otherAuditOutputs) {
+      builder.startObject()
+      builder.field("description", output.description)
+      builder.endObject()
+    }
+    builder.endArray()
+    builder.endObject()
   }
 }
