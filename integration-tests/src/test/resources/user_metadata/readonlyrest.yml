@@ -20,7 +20,6 @@ readonlyrest:
     - name: "User 2"
       users: ["user2"]
       groups: [group2, group3]
-      uri_re: "^/_readonlyrest/metadata/current_user/?$"
       kibana:
         access: ro
         index: "user2_kibana_index"

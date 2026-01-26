@@ -608,7 +608,7 @@ class ImpersonationSuite
       configureSomeMocksForAllExternalServices()
 
       impersonatingRorApiManagers("admin1", "pass", impersonatedUser = "dev1").foreach { apiManger =>
-        val result = apiManger.fetchMetadata()
+        val result = apiManger.fetchUserMetadata("ent")
 
         result should have statusCode 200
       }
@@ -618,7 +618,7 @@ class ImpersonationSuite
       configureSomeMocksForAllExternalServices()
 
       impersonatingRorApiManagers("admin1", "wrong_password", impersonatedUser = "dev1").foreach { apiManger =>
-        val result = apiManger.fetchMetadata()
+        val result = apiManger.fetchUserMetadata("ent")
 
         result should have statusCode 403
         result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
@@ -629,7 +629,7 @@ class ImpersonationSuite
       configureSomeMocksForAllExternalServices()
 
       impersonatingRorApiManagers("admin2", "pass", impersonatedUser = "dev1").foreach { apiManger =>
-        val result = apiManger.fetchMetadata()
+        val result = apiManger.fetchUserMetadata("ent")
 
         result should have statusCode 403
         result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_ALLOWED"))
@@ -640,7 +640,7 @@ class ImpersonationSuite
       configureSomeMocksForAllExternalServices()
 
       impersonatingRorApiManagers("admin1", "pass", impersonatedUser = "dev3").foreach { apiManger =>
-        val result = apiManger.fetchMetadata()
+        val result = apiManger.fetchUserMetadata("ent")
 
         result should have statusCode 403
         result.responseJson("error")("due_to").arr.map(_.str).toSet should be(Set("OPERATION_NOT_ALLOWED", "IMPERSONATION_NOT_SUPPORTED"))

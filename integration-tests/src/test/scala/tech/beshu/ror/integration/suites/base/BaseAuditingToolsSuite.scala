@@ -171,7 +171,7 @@ trait BaseAuditingToolsSuite
         }
         "two requests were sent and the first one is user metadata request" in {
           val userMetadataManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
-          val userMetadataResponse = userMetadataManager.fetchMetadata()
+          val userMetadataResponse = userMetadataManager.fetchUserMetadata("ent")
 
           userMetadataResponse should have statusCode 200
           val correlationId = userMetadataResponse.responseJson("x-ror-correlation-id").str
@@ -203,7 +203,7 @@ trait BaseAuditingToolsSuite
               client = basicAuthClient("username", "dev"),
               esVersion = esVersionUsed
             )
-            userMetadataManager.fetchMetadata(correlationId = correlationId)
+            userMetadataManager.fetchUserMetadata("ent", correlationId = correlationId)
           }
 
           val correlationId = UUID.randomUUID().toString

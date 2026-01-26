@@ -25,14 +25,14 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.util.UUID
 
-class CurrentUserMetadataSuite
+class UserMetadataSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
-  override implicit val rorSettingsFileName: String = "/current_user_metadata/readonlyrest.yml"
+  override implicit val rorSettingsFileName: String = "/user_metadata/readonlyrest.yml"
 
   "An ACL" when {
     "handling current user metadata kibana plugin request (without ROR metadata)" should {
@@ -41,7 +41,7 @@ class CurrentUserMetadataSuite
           val userMetadataManager = new RorApiManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
           val correlationId = UUID.randomUUID().toString
-          val result = userMetadataManager.fetchMetadata(correlationId = Some(correlationId))
+          val result = userMetadataManager.fetchCurrentUserMetadata(correlationId = Some(correlationId))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -64,7 +64,7 @@ class CurrentUserMetadataSuite
           val userMetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
           val correlationId = UUID.randomUUID().toString
-          val result = userMetadataManager.fetchMetadata(
+          val result = userMetadataManager.fetchCurrentUserMetadata(
             preferredGroupId = Some("group6"),
             correlationId = Some(correlationId)
           )
@@ -97,7 +97,7 @@ class CurrentUserMetadataSuite
           val userMetadataManager = new RorApiManager(basicAuthClient("user2", "pass"), esVersionUsed)
 
           val correlationId = UUID.randomUUID().toString
-          val result = userMetadataManager.fetchMetadata(correlationId = Some(correlationId))
+          val result = userMetadataManager.fetchCurrentUserMetadata(correlationId = Some(correlationId))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -143,7 +143,7 @@ class CurrentUserMetadataSuite
           val userMetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
           val correlationId = UUID.randomUUID().toString
-          val result = userMetadataManager.fetchMetadata(correlationId = Some(correlationId))
+          val result = userMetadataManager.fetchCurrentUserMetadata(correlationId = Some(correlationId))
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -160,21 +160,21 @@ class CurrentUserMetadataSuite
         "no block is matched" in {
           val unknownUserMetadataManager = new RorApiManager(basicAuthClient("userXXX", "pass"), esVersionUsed)
 
-          val result = unknownUserMetadataManager.fetchMetadata()
+          val result = unknownUserMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 403
         }
         "current group is set but it doesn't exist on available groups list" in {
           val userMetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
 
-          val result = userMetadataManager.fetchMetadata(preferredGroupId = Some("group7"))
+          val result = userMetadataManager.fetchCurrentUserMetadata(preferredGroupId = Some("group7"))
 
           result should have statusCode 403
         }
         "block with no available groups collected is matched and current group is set" in {
           val userMetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
-          val result = userMetadataManager.fetchMetadata(preferredGroupId = Some("group7"))
+          val result = userMetadataManager.fetchCurrentUserMetadata(preferredGroupId = Some("group7"))
 
           result should have statusCode 403
         }
@@ -187,7 +187,7 @@ class CurrentUserMetadataSuite
           esVersionUsed
         )
 
-        val result = unknownUserMetadataManager.fetchMetadata()
+        val result = unknownUserMetadataManager.fetchCurrentUserMetadata()
 
         result should have statusCode 403
       }
@@ -200,7 +200,7 @@ class CurrentUserMetadataSuite
             esVersionUsed
           )
 
-          val result = userMetadataManager.fetchMetadata()
+          val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -226,7 +226,7 @@ class CurrentUserMetadataSuite
             esVersionUsed
           )
 
-          val result = userMetadataManager.fetchMetadata()
+          val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -259,7 +259,7 @@ class CurrentUserMetadataSuite
             esVersionUsed
           )
 
-          val result = userMetadataManager.fetchMetadata()
+          val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -308,7 +308,7 @@ class CurrentUserMetadataSuite
             esVersionUsed
           )
 
-          val result = userMetadataManager.fetchMetadata()
+          val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 200
           result.responseJson should be(ujson.read(
@@ -328,7 +328,7 @@ class CurrentUserMetadataSuite
             esVersionUsed
           )
 
-          val result = userMetadataManager.fetchMetadata()
+          val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 403
         }
@@ -338,7 +338,7 @@ class CurrentUserMetadataSuite
             esVersionUsed
           )
 
-          val result = userMetadataManager.fetchMetadata()
+          val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 403
         }
@@ -350,7 +350,7 @@ class CurrentUserMetadataSuite
             esVersionUsed
           )
 
-          val result = userMetadataManager.fetchMetadata()
+          val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 400
           result.responseJson should be (ujson.read(
@@ -369,6 +369,272 @@ class CurrentUserMetadataSuite
               |  "status":400
               |}
               |""".stripMargin))
+        }
+      }
+    }
+    "handling user metadata kibana plugin request (without ROR metadata)" should {
+      "allow to proceed" when {
+        "several blocks are matched (case 1)" in {
+          val userMetadataManager = new RorApiManager(basicAuthClient("user1", "pass"), esVersionUsed)
+
+          val correlationId = UUID.randomUUID().toString
+          val result = userMetadataManager.fetchUserMetadata("ent", correlationId = Some(correlationId))
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITH_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "groups":[
+               |    {
+               |      "group":{
+               |        "id":"group1",
+               |        "name":"group1"
+               |        },
+               |      "username":"user1"
+               |    }
+               |  ]
+               |}
+               |""".stripMargin))
+        }
+        "several blocks are matched (case 2)" in {
+          val userMetadataManager = new RorApiManager(basicAuthClient("user4", "pass"), esVersionUsed)
+
+          val correlationId = UUID.randomUUID().toString
+          val result = userMetadataManager.fetchUserMetadata("ent",
+            correlationId = Some(correlationId)
+          )
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITH_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "groups":[
+               |    {
+               |      "group":{"id":"group5","name":"Group 5"},
+               |      "username":"user4",
+               |      "kibana":{
+               |        "access":"unrestricted",
+               |        "index":"user4_group5_kibana_index"
+               |      }
+               |    },
+               |    {
+               |      "group":{"id":"group6","name":"Group 6"},
+               |      "username":"user4",
+               |      "kibana":{
+               |        "access":"unrestricted",
+               |        "index":"user4_group6_kibana_index",
+               |        "template_index":"user4_group6_kibana_template_index"
+               |      }
+               |    }
+               |  ]
+               |}
+               |""".stripMargin))
+        }
+        "at least one block is matched" in {
+          val userMetadataManager = new RorApiManager(basicAuthClient("user2", "pass"), esVersionUsed)
+
+          val correlationId = UUID.randomUUID().toString
+          val result = userMetadataManager.fetchUserMetadata("ent", correlationId = Some(correlationId))
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITH_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "groups":[
+               |    {
+               |      "group":{"id":"group2","name":"group2"},
+               |      "username":"user2",
+               |      "kibana":{
+               |        "access":"ro",
+               |        "index":"user2_kibana_index",
+               |        "hidden_apps":["user2_app1","user2_app2","/^Analytics\\\\|(?!(Maps)$$).*$$/"],
+               |        "allowed_api_paths":[
+               |          {"http_method":"ANY","path_regex":"^/api/spaces/.*$$"},
+               |          {"http_method":"GET","path_regex":"^/api/spaces\\\\?test\\\\=12\\\\.2$$"}
+               |        ],
+               |        "metadata":{"e":{"f":1},"a":1,"b":true,"g":null,"c":"text","d":["a","b"]}
+               |      }
+               |    }
+               |  ]
+               |}
+               |""".stripMargin))
+        }
+        "block with no available groups collected is matched" in {
+          val userMetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
+
+          val correlationId = UUID.randomUUID().toString
+          val result = userMetadataManager.fetchUserMetadata("ent", correlationId = Some(correlationId))
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITHOUT_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "username":"user3",
+               |  "kibana":{
+               |    "access":"unrestricted",
+               |    "index":"user3_kibana_index",
+               |    "hidden_apps":["user3_app1","user3_app2"]
+               |  }
+               |}
+               |""".stripMargin))
+        }
+      }
+      "return forbidden" when {
+        "no block is matched" in {
+          val unknownUserMetadataManager = new RorApiManager(basicAuthClient("userXXX", "pass"), esVersionUsed)
+
+          val result = unknownUserMetadataManager.fetchUserMetadata("ent")
+
+            result should have statusCode 403
+        }
+      }
+    }
+    "handling user metadata kibana plugin request (with ROR metadata)" should {
+      "allow to proceed" when {
+        "several blocks are matched (case 1)" in {
+          val correlationId = UUID.randomUUID().toString
+
+          val userMetadataManager = new RorApiManager(
+            basicAuthClientWithRorMetadataAttached("user1", "pass", ("x-ror-correlation-id", correlationId), ("x-ror-kbn-license-type", "ent")),
+            esVersionUsed
+          )
+
+          val result = userMetadataManager.fetchUserMetadata()
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITH_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "groups":[
+               |    {
+               |      "group":{
+               |        "id":"group1",
+               |        "name":"group1"
+               |        },
+               |      "username":"user1"
+               |    }
+               |  ]
+               |}
+               |""".stripMargin))
+        }
+        "several blocks are matched (case 2)" in {
+          val correlationId = UUID.randomUUID().toString
+          val userMetadataManager = new RorApiManager(
+            basicAuthClientWithRorMetadataAttached("user1", "pass", ("x-ror-correlation-id", correlationId), ("x-ror-kbn-license-type", "ent")),
+            esVersionUsed
+          )
+
+          val result = userMetadataManager.fetchUserMetadata()
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITH_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "groups":[
+               |    {
+               |      "group":{"id":"group5","name":"Group 5"},
+               |      "username":"user4",
+               |      "kibana":{
+               |        "access":"unrestricted",
+               |        "index":"user4_group5_kibana_index"
+               |      }
+               |    },
+               |    {
+               |      "group":{"id":"group6","name":"Group 6"},
+               |      "username":"user4",
+               |      "kibana":{
+               |        "access":"unrestricted",
+               |        "index":"user4_group6_kibana_index",
+               |        "template_index":"user4_group6_kibana_template_index"
+               |      }
+               |    }
+               |  ]
+               |}
+               |""".stripMargin))
+        }
+        "at least one block is matched" in {
+          val correlationId = UUID.randomUUID().toString
+
+          val userMetadataManager = new RorApiManager(
+            basicAuthClientWithRorMetadataAttached("user2", "pass", ("x-ror-correlation-id", correlationId), ("x-ror-kbn-license-type", "ent")),
+            esVersionUsed
+          )
+
+          val result = userMetadataManager.fetchUserMetadata()
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITH_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "groups":[
+               |    {
+               |      "group":{"id":"group2","name":"group2"},
+               |      "username":"user2",
+               |      "kibana":{
+               |        "access":"ro",
+               |        "index":"user2_kibana_index",
+               |        "hidden_apps":["user2_app1","user2_app2","/^Analytics\\\\|(?!(Maps)$$).*$$/"],
+               |        "allowed_api_paths":[
+               |          {"http_method":"ANY","path_regex":"^/api/spaces/.*$$"},
+               |          {"http_method":"GET","path_regex":"^/api/spaces\\\\?test\\\\=12\\\\.2$$"}
+               |        ],
+               |        "metadata":{"e":{"f":1},"a":1,"b":true,"g":null,"c":"text","d":["a","b"]}
+               |      }
+               |    }
+               |  ]
+               |}
+               |""".stripMargin))
+        }
+        "block with no available groups collected is matched" in {
+          val correlationId = UUID.randomUUID().toString
+          val userMetadataManager = new RorApiManager(
+            basicAuthClientWithRorMetadataAttached("user3", "pass", ("x-ror-correlation-id", correlationId), ("x-ror-kbn-license-type", "ent")),
+            esVersionUsed
+          )
+
+          val result = userMetadataManager.fetchUserMetadata()
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITHOUT_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "username":"user3",
+               |  "kibana":{
+               |    "access":"unrestricted",
+               |    "index":"user3_kibana_index",
+               |    "hidden_apps":["user3_app1","user3_app2"]
+               |  }
+               |}
+               |""".stripMargin))
+        }
+      }
+      "return forbidden" when {
+        "no block is matched" in {
+          val correlationId = UUID.randomUUID().toString
+          val userMetadataManager = new RorApiManager(
+            basicAuthClientWithRorMetadataAttached("userXXX", "pass", ("x-ror-correlation-id", correlationId), ("x-ror-kbn-license-type", "ent")),
+            esVersionUsed
+          )
+
+          val result = userMetadataManager.fetchUserMetadata()
+
+          result should have statusCode 403
         }
       }
     }
