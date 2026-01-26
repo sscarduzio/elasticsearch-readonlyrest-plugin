@@ -127,15 +127,15 @@ class CurrentGroupHandlingAccessControlTests
     "handle properly login request and change tenancy request" when {
       "groups rule with auth_key is used" in {
         def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-          metadata.groupMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
-          val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
           group2Metadata.block.name should be(Block.Name("User 1 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
           group2Metadata.userOrigin should be(None)
           group2Metadata.kibanaMetadata should be(None)
 
-          val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
           group3Metadata.block.name should be(Block.Name("User 1 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
           group3Metadata.userOrigin should be(None)
@@ -158,15 +158,15 @@ class CurrentGroupHandlingAccessControlTests
       }
       "groups rule with ror_kbn_auth is used (with local groups mapping)" in {
         def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-          metadata.groupMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
-          val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
           group2Metadata.block.name should be(Block.Name("User 2 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
           group2Metadata.userOrigin should be(None)
           group2Metadata.kibanaMetadata should be(None)
 
-          val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
           group3Metadata.block.name should be(Block.Name("User 2 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
           group3Metadata.userOrigin should be(None)
@@ -194,15 +194,15 @@ class CurrentGroupHandlingAccessControlTests
       }
       "groups rule with ror_kbn_auth is used (without local groups mapping)" in {
         def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-          metadata.groupMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
-          val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
           group2Metadata.block.name should be(Block.Name("User 3 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
           group2Metadata.userOrigin should be(None)
           group2Metadata.kibanaMetadata should be(None)
 
-          val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
           group3Metadata.block.name should be(Block.Name("User 3 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
           group3Metadata.userOrigin should be(None)
@@ -230,15 +230,15 @@ class CurrentGroupHandlingAccessControlTests
       }
       "ror_kbn_auth is used" in {
         def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-          metadata.groupMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
-          val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
           group2Metadata.block.name should be(Block.Name("User 4 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
           group2Metadata.userOrigin should be(None)
           group2Metadata.kibanaMetadata should be(None)
 
-          val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
           group3Metadata.block.name should be(Block.Name("User 4 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
           group3Metadata.userOrigin should be(None)
@@ -266,15 +266,15 @@ class CurrentGroupHandlingAccessControlTests
       }
       "groups rule with jwt_auth is used (with local groups mapping)" in {
         def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-          metadata.groupMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
-          val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
           group2Metadata.block.name should be(Block.Name("User 5 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
           group2Metadata.userOrigin should be(None)
           group2Metadata.kibanaMetadata should be(None)
 
-          val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
           group3Metadata.block.name should be(Block.Name("User 5 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
           group3Metadata.userOrigin should be(None)
@@ -302,15 +302,15 @@ class CurrentGroupHandlingAccessControlTests
       }
       "groups rule with jwt_auth is used (without local groups mapping)" in {
         def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-          metadata.groupMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
-          val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
           group2Metadata.block.name should be(Block.Name("User 6 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
           group2Metadata.userOrigin should be(None)
           group2Metadata.kibanaMetadata should be(None)
 
-          val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
           group3Metadata.block.name should be(Block.Name("User 6 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
           group3Metadata.userOrigin should be(None)
@@ -338,15 +338,15 @@ class CurrentGroupHandlingAccessControlTests
       }
       "jwt_auth is used" in {
         def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
-          metadata.groupMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
-          val group2Metadata = metadata.groupMetadata(GroupId("group2"))
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
           group2Metadata.block.name should be(Block.Name("User 7 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
           group2Metadata.userOrigin should be(None)
           group2Metadata.kibanaMetadata should be(None)
 
-          val group3Metadata = metadata.groupMetadata(GroupId("group3"))
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
           group3Metadata.block.name should be(Block.Name("User 7 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
           group3Metadata.userOrigin should be(None)

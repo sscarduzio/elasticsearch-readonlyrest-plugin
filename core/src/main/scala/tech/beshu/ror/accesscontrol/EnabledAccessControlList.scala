@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Misma
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
@@ -105,21 +106,50 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                            optPreferredGroupId: Option[GroupId],
                                            history: Iterable[History[UserMetadataRequestBlockContext]]): UserMetadataRequestResult = {
     val result = determineUserMetadataBasedOn(matched, history)
-    (optPreferredGroupId, result) match {
-      case (Some(currentGroupId), Allow(UserMetadata.WithoutGroups(_, _, _, _))) =>
+    (result, optPreferredGroupId) match {
+      case (Allow(_: UserMetadata.WithoutGroups), Some(currentGroupId)) =>
         createForbiddenByMismatchedResult(history)
-      case (Some(currentGroupId), allow@Allow(UserMetadata.WithGroups(groupMetadata))) =>
-        groupMetadata.get(currentGroupId) match {
-          case Some(groupMetadata) =>
-            groupMetadata.block.policy match {
-              case Policy.Allow => allow
-              case Policy.Forbid(_) => createForbiddenBy(groupMetadata)
-            }
-          case None =>
-            createForbiddenByMismatchedResult(history)
+      case (Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)), Some(currentGroupId)) =>
+        determineUserMetadataForCurrentGroup(withGroups, currentGroupId, history)
+      case (allow@Allow(UserMetadata.WithoutGroups(_, _, _, block, blockContext)), None) =>
+        block.policy match {
+          case Policy.Allow => allow
+          case Policy.Forbid(_) => ForbiddenBy(blockContext, block)
         }
+      case (Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)), None) =>
+        determineUserMetadataForFirstAllowedGroup(withGroups, history)
       case _ =>
         result
+    }
+  }
+
+  private def determineUserMetadataForCurrentGroup(userMetadata: WithGroups,
+                                                   currentGroupId: GroupId,
+                                                   history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    userMetadata.groupsMetadata.get(currentGroupId) match {
+      case Some(groupMetadata) =>
+        groupMetadata.block.policy match {
+          case Policy.Allow =>
+            userMetadata
+              .excludeOtherThanAllowTypeGroups().map(Allow.apply)
+              .getOrElse(createForbiddenByMismatchedResult(history))
+          case Policy.Forbid(_) =>
+            createForbiddenBy(groupMetadata)
+        }
+      case None =>
+        createForbiddenByMismatchedResult(history)
+    }
+  }
+
+  private def determineUserMetadataForFirstAllowedGroup(userMetadata: WithGroups,
+                                          history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    userMetadata.groupsMetadata.values.find(_.block.policy == Policy.Allow) match {
+      case Some(groupMetadata) =>
+        userMetadata
+          .excludeOtherThanAllowTypeGroups().map(Allow.apply)
+          .getOrElse(createForbiddenByMismatchedResult(history))
+      case None =>
+        createForbiddenBy(userMetadata.groupsMetadata.values.head)
     }
   }
 
@@ -232,7 +262,8 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         matchedBlockMetadata.loggedUser.get, // we are sure there is a user defined at this place
         matchedBlockMetadata.userOrigin,
         matchedBlockMetadata.kibanaMetadata,
-        matchedBlock.block
+        matchedBlock.block,
+        matchedBlock.blockContext
       )
     }
   }

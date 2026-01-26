@@ -314,11 +314,11 @@ class GroupsRuleAccessControlTests
 
         inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1@UserMetadata.WithGroups(_)) =>
           inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2@UserMetadata.WithGroups(_)) =>
-            userMetadata1.groupMetadata.keys should be(userMetadata2.groupMetadata.keys)
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
 
             val group1 = GroupId("example_group_ror_kbn_auth")
-            val metadata1 = userMetadata1.groupMetadata(group1)
-            val metadata2 = userMetadata2.groupMetadata(group1)
+            val metadata1 = userMetadata1.groupsMetadata(group1)
+            val metadata2 = userMetadata2.groupsMetadata(group1)
 
             metadata1.block.name should be(Block.Name("ror_kbn_auth in root of ACL"))
             metadata2.block.name should be(Block.Name("local groups-based ror_kbn_auth"))
@@ -345,11 +345,11 @@ class GroupsRuleAccessControlTests
 
         inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1@UserMetadata.WithGroups(_)) =>
           inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2@UserMetadata.WithGroups(_)) =>
-            userMetadata1.groupMetadata.keys should be(userMetadata2.groupMetadata.keys)
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
 
             val group1 = GroupId("example_group_jwt_auth")
-            val metadata1 = userMetadata1.groupMetadata(group1)
-            val metadata2 = userMetadata2.groupMetadata(group1)
+            val metadata1 = userMetadata1.groupsMetadata(group1)
+            val metadata2 = userMetadata2.groupsMetadata(group1)
 
             metadata1.block.name should be(Block.Name("jwt_auth in root of ACL"))
             metadata2.block.name should be(Block.Name("local groups-based jwt_auth"))
@@ -373,11 +373,11 @@ class GroupsRuleAccessControlTests
 
         inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1@UserMetadata.WithGroups(_)) =>
           inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2@UserMetadata.WithGroups(_)) =>
-            userMetadata1.groupMetadata.keys should be(userMetadata2.groupMetadata.keys)
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
 
             val group1 = GroupId("europe")
-            val metadata1 = userMetadata1.groupMetadata(group1)
-            val metadata2 = userMetadata2.groupMetadata(group1)
+            val metadata1 = userMetadata1.groupsMetadata(group1)
+            val metadata2 = userMetadata2.groupsMetadata(group1)
 
             metadata1.block.name should be(Block.Name("ldap_auth in root of ACL"))
             metadata2.block.name should be(Block.Name("local groups-based ldap_auth"))

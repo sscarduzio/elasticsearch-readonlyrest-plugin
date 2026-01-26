@@ -232,9 +232,9 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
         val loginResult = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
 
         inside(loginResult.result) { case UserMetadataRequestResult.Allow(metadata@UserMetadata.WithGroups(_)) =>
-          metadata.groupMetadata.keys.toList should be(GroupId("Administrators") :: GroupId("Infosec") :: Nil)
+          metadata.groupsMetadata.keys.toList should be(GroupId("Administrators") :: GroupId("Infosec") :: Nil)
 
-          val adminMetadata = metadata.groupMetadata(GroupId("Administrators"))
+          val adminMetadata = metadata.groupsMetadata(GroupId("Administrators"))
           adminMetadata.block.name should be(Block.Name("ADMIN_GRP"))
           adminMetadata.loggedUser should be(DirectlyLoggedUser(User.Id("admin")))
           adminMetadata.userOrigin should be(None)
@@ -251,7 +251,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             genericMetadata = None
           )))
 
-          val infosecMetadata = metadata.groupMetadata(GroupId("Infosec"))
+          val infosecMetadata = metadata.groupsMetadata(GroupId("Infosec"))
           infosecMetadata.block.name should be(Block.Name("Infosec"))
           infosecMetadata.loggedUser should be(DirectlyLoggedUser(User.Id("admin")))
           infosecMetadata.userOrigin should be(None)

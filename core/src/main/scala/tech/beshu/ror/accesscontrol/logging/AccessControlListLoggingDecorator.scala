@@ -130,9 +130,9 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
       case AllowedBy(_, block, _, _) => Some(block.audit)
       case Allowed(_, userMetadata, _) =>
         userMetadata match {
-          case UserMetadata.WithoutGroups(_, _, _, block) => Some(block.audit)
-          case UserMetadata.WithGroups(groupMetadata) =>
-            val auditsFromGroupMetadataBlocks = groupMetadata.values.map(_.block.audit)
+          case UserMetadata.WithoutGroups(_, _, _, block, _) => Some(block.audit)
+          case UserMetadata.WithGroups(groupsMetadata) =>
+            val auditsFromGroupMetadataBlocks = groupsMetadata.values.map(_.block.audit)
             Some {
               if (auditsFromGroupMetadataBlocks.exists(_ == Block.Audit.Enabled)) Block.Audit.Enabled
               else Block.Audit.Disabled
