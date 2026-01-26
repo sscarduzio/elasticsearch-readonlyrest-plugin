@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.audit
 import org.json.JSONObject
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-class DefaultRorSchemaAuditLogSerializer(underlying: AuditLogSerializer) extends AuditLogSerializer {
+class DefaultRorSchemaAuditLogSerializer(val underlying: AuditLogSerializer) extends AuditLogSerializer {
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     underlying.onResponse(responseContext)
 }

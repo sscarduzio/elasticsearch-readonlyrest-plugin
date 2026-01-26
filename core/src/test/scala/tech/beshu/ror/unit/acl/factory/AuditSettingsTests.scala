@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
-import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, AuditFieldUtils}
+import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, AuditFieldUtils, DefaultRorSchemaAuditLogSerializer}
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorSettingsIndex}
@@ -169,7 +169,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
             sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
-            sink1Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink1Config.logSerializer.underlying shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
             val sink2 = auditingSettings.auditSinks.toList(1)
@@ -178,7 +178,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             enabledSink2 shouldBe a[Config.LogBasedSink]
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
-            sink2Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink2Config.logSerializer.underlying shouldBe a[BlockVerbosityAwareAuditLogSerializer]
 
             val sink3 = auditingSettings.auditSinks.toList(2)
             sink3 shouldBe a[AuditSink.Enabled]
@@ -186,7 +186,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             enabledSink3 shouldBe a[Config.EsDataStreamBasedSink]
             val sink3Config = enabledSink3.asInstanceOf[Config.EsDataStreamBasedSink]
             sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
-            sink3Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink3Config.logSerializer.underlying shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
           }
         }
@@ -1222,7 +1222,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
             sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
-            sink1Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink1Config.logSerializer.underlying shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
             val sink2 = auditingSettings.auditSinks.toList(1)
@@ -1231,7 +1231,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             enabledSink2 shouldBe a[Config.LogBasedSink]
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
-            sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
+            sink2Config.logSerializer.underlying shouldBe a[QueryAuditLogSerializer]
 
             val sink3 = auditingSettings.auditSinks.toList(2)
             sink3 shouldBe a[AuditSink.Enabled]
@@ -1239,7 +1239,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             enabledSink3 shouldBe a[Config.EsDataStreamBasedSink]
             val sink3Config = enabledSink3.asInstanceOf[Config.EsDataStreamBasedSink]
             sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
-            sink3Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
+            sink3Config.logSerializer.underlying shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink3Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
           }
         }
@@ -1278,7 +1278,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             enabledSink2 shouldBe a[Config.LogBasedSink]
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
-            sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
+            sink2Config.logSerializer.underlying shouldBe a[QueryAuditLogSerializer]
           }
         }
         "not be able to be loaded from settings" when {
@@ -2097,7 +2097,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
       val sinkConfig = headSinkConfig.asInstanceOf[Config.EsIndexBasedSink]
       sinkConfig.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName(expectedIndexName))
-      sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
+      sinkConfig.logSerializer.underlying shouldBe a[EXPECTED_SERIALIZER]
       sinkConfig.auditCluster shouldBe expectedAuditCluster
     }
   }
@@ -2126,7 +2126,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
       val sinkConfig = headSinkConfig.asInstanceOf[Config.EsDataStreamBasedSink]
       sinkConfig.rorAuditDataStream.dataStream should be(fullDataStreamName(expectedDataStreamName))
-      sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
+      sinkConfig.logSerializer.underlying shouldBe a[EXPECTED_SERIALIZER]
       sinkConfig.auditCluster shouldBe expectedAuditCluster
     }
   }
@@ -2175,7 +2175,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
       val sinkConfig = headSinkConfig.asInstanceOf[Config.LogBasedSink]
       sinkConfig.loggerName should be(RorAuditLoggerName(expectedLoggerName))
-      sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
+      sinkConfig.logSerializer.underlying shouldBe a[EXPECTED_SERIALIZER]
     }
   }
 
@@ -2212,6 +2212,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       parser.parse(jsonObject.toString(0)).left.map(_.getMessage)
   }
 
+  extension (auditLogSerializer: AuditLogSerializer) {
+    private def underlying: AuditLogSerializer = {
+      auditLogSerializer match {
+        case serializer: DefaultRorSchemaAuditLogSerializer => serializer.underlying
+        case other => other
+      }
+    }
+  }
 
 }
 
