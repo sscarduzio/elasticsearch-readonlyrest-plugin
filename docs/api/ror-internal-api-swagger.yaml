@@ -593,7 +593,7 @@ components:
 
     XRorKbnLicenseType:
       type: string
-      description: "The ROR Kibana plugin license type"
+      description: "The ROR Kibana plugin license type and configuration. Possible values are: 'free' for free license, 'pro' for pro license, 'ent' for enterprise license (multitenancy enabled by default), and 'ent-disabled-multitenancy' for enterprise license with multitenancy feature disabled."
       enum:
         - free
         - pro
