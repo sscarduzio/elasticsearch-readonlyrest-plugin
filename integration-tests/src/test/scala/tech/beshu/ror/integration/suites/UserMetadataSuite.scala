@@ -181,16 +181,6 @@ class UserMetadataSuite
       }
     }
     "handling current user metadata kibana plugin request (with ROR metadata)" should {
-      "no block is matched" in {
-        val unknownUserMetadataManager = new RorApiManager(
-          basicAuthClientWithRorMetadataAttached("userXXX", "pass"),
-          esVersionUsed
-        )
-
-        val result = unknownUserMetadataManager.fetchCurrentUserMetadata()
-
-        result should have statusCode 403
-      }
       "allow to proceed" when {
         "several blocks are matched" in {
           val correlationId = UUID.randomUUID().toString
@@ -322,6 +312,16 @@ class UserMetadataSuite
         }
       }
       "return forbidden" when {
+        "no block is matched" in {
+          val unknownUserMetadataManager = new RorApiManager(
+            basicAuthClientWithRorMetadataAttached("userXXX", "pass"),
+            esVersionUsed
+          )
+
+          val result = unknownUserMetadataManager.fetchCurrentUserMetadata()
+
+          result should have statusCode 403
+        }
         "current group is set but it doesn't exist on available groups list" in {
           val userMetadataManager = new RorApiManager(
             basicAuthClientWithRorMetadataAttached("user3", "pass", ("x-ror-current-group", "group7")),
@@ -353,7 +353,7 @@ class UserMetadataSuite
           val result = userMetadataManager.fetchCurrentUserMetadata()
 
           result should have statusCode 400
-          result.responseJson should be (ujson.read(
+          result.responseJson should be(ujson.read(
             """
               |{
               |  "error":{
@@ -493,7 +493,52 @@ class UserMetadataSuite
 
           val result = unknownUserMetadataManager.fetchUserMetadata("ent")
 
-            result should have statusCode 403
+          result should have statusCode 403
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "error":{
+               |    "root_cause":[
+               |      {
+               |        "type":"forbidden_response",
+               |        "reason":"Forbidden by ReadonlyREST",
+               |        "due_to":"OPERATION_NOT_ALLOWED"
+               |      }
+               |    ],
+               |    "type":"forbidden_response",
+               |    "reason":"Forbidden by ReadonlyREST",
+               |    "due_to":"OPERATION_NOT_ALLOWED"
+               |  },
+               |  "status":403
+               |}
+               |""".stripMargin
+          ))
+        }
+        "forbid block is matched" in {
+          val userMetadataManager = new RorApiManager(basicAuthClient("user5", "pass"), esVersionUsed)
+
+          val result = userMetadataManager.fetchUserMetadata("ent")
+
+          result should have statusCode 403
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "error":{
+               |    "root_cause":[
+               |      {
+               |        "type":"forbidden_response",
+               |        "reason":"you are unauthorized to access this resource",
+               |        "due_to":"FORBIDDEN_BY_BLOCK"
+               |      }
+               |    ],
+               |    "type":"forbidden_response",
+               |    "reason":"you are unauthorized to access this resource",
+               |    "due_to":"FORBIDDEN_BY_BLOCK"
+               |  },
+               |  "status":403
+               |}
+               |""".stripMargin
+          ))
         }
       }
     }
@@ -530,7 +575,7 @@ class UserMetadataSuite
         "several blocks are matched (case 2)" in {
           val correlationId = UUID.randomUUID().toString
           val userMetadataManager = new RorApiManager(
-            basicAuthClientWithRorMetadataAttached("user1", "pass", ("x-ror-correlation-id", correlationId), ("x-ror-kbn-license-type", "ent")),
+            basicAuthClientWithRorMetadataAttached("user4", "pass", ("x-ror-correlation-id", correlationId), ("x-ror-kbn-license-type", "ent")),
             esVersionUsed
           )
 
@@ -635,6 +680,35 @@ class UserMetadataSuite
           val result = userMetadataManager.fetchUserMetadata()
 
           result should have statusCode 403
+        }
+        "forbid block is matched" in {
+          val userMetadataManager = new RorApiManager(
+            basicAuthClientWithRorMetadataAttached("user5", "pass", ("x-ror-kbn-license-type", "ent")),
+            esVersionUsed
+          )
+
+          val result = userMetadataManager.fetchUserMetadata("ent")
+
+          result should have statusCode 403
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "error":{
+               |    "root_cause":[
+               |      {
+               |        "type":"forbidden_response",
+               |        "reason":"you are unauthorized to access this resource",
+               |        "due_to":"FORBIDDEN_BY_BLOCK"
+               |      }
+               |    ],
+               |    "type":"forbidden_response",
+               |    "reason":"you are unauthorized to access this resource",
+               |    "due_to":"FORBIDDEN_BY_BLOCK"
+               |  },
+               |  "status":403
+               |}
+               |""".stripMargin
+          ))
         }
       }
     }

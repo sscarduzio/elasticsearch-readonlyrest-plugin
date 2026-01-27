@@ -32,6 +32,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.net.InetSocketAddress
 import java.util.{Locale, UUID}
 import scala.util.Try
+import scala.jdk.CollectionConverters.*
 
 final case class CorrelationId(value: NonEmptyString)
 object CorrelationId {
@@ -70,7 +71,11 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def fromRawHeaders(headers: Map[String, List[String]]): Either[AuthorizationValueError, Set[Header]] = {
+  def fromRawHeaders(headers: java.util.Map[String, java.util.List[String]]): Either[AuthorizationValueError, Set[Header]] = {
+    fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
+  }
+
+  def fromRawHeaders(headers: collection.Map[String, Iterable[String]]): Either[AuthorizationValueError, Set[Header]] = {
     val (authorizationHeaders, nonAuthorizationHeaders) =
       headers
         .map { case (name, values) => (name, values.toCovariantSet) }

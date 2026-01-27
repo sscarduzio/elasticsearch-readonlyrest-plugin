@@ -52,6 +52,10 @@ class RestRRUserMetadataAction
   private def isNewApiPath(request: RestRequest) =
     request.path().startsWith(constants.USER_METADATA_PATH)
 
-  private def rorKbnLicenseTypeHeaderValue(request: RestRequest) =
-    Option(request.header(Header.Name.rorKbnLicenseType.value.value))
+  private def rorKbnLicenseTypeHeaderValue(request: RestRequest) = {
+    for {
+      headers <- Header.fromRawHeaders(request.getHeaders).toOption
+      licenseHeader <- headers.find(_.name == Header.Name.rorKbnLicenseType)
+    } yield licenseHeader.value.value
+  }
 }

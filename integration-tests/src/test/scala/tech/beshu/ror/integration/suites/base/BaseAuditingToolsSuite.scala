@@ -174,7 +174,7 @@ trait BaseAuditingToolsSuite
           val userMetadataResponse = userMetadataManager.fetchUserMetadata("ent")
 
           userMetadataResponse should have statusCode 200
-          val correlationId = userMetadataResponse.responseJson("x-ror-correlation-id").str
+          val correlationId = userMetadataResponse.responseJson("correlation_id").str
 
           val indexManager = new IndexManager(
             basicAuthClient("username", "dev"),
@@ -209,11 +209,11 @@ trait BaseAuditingToolsSuite
           val correlationId = UUID.randomUUID().toString
           val response1 = fetchMetadata(correlationId = Some(correlationId))
           response1 should have statusCode 200
-          val loggingId1 = response1.responseJson("x-ror-correlation-id").str
+          val loggingId1 = response1.responseJson("correlation_id").str
 
           val response2 = fetchMetadata(correlationId = Some(correlationId))
           response2 should have statusCode 200
-          val loggingId2 = response2.responseJson("x-ror-correlation-id").str
+          val loggingId2 = response2.responseJson("correlation_id").str
 
           loggingId1 should be(loggingId2)
 
