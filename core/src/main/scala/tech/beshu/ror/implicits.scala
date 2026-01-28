@@ -20,7 +20,7 @@ import better.files.File
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
-import eu.timepit.refined.api.*
+import eu.timepit.refined.api.{Result => _, *}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import squants.information.Information
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
@@ -284,8 +284,8 @@ trait LogsShowInstances
   implicit def ruleHistoryItemShow[B <: BlockContext]: Show[RuleHistoryItem[B]] = Show.show { hi =>
     s"${hi.rule.show}->${
       hi.result match {
-        case RuleResult.Fulfilled(_) => "true"
-        case RuleResult.Rejected(_) => "false"
+        case Result.Fulfilled(_) => "true"
+        case Result.Rejected(_) => "false"
       }
     }"
   }

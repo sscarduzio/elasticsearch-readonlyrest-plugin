@@ -19,14 +19,13 @@ package tech.beshu.ror.accesscontrol.blocks
 import cats.data.{NonEmptyList, Validated, WriterT}
 import cats.{Eq, Show}
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.Result
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
@@ -36,7 +35,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.accesscontrol.domain.RequestId.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
+
 import scala.language.implicitConversions
 
 class Block(val name: Name,
@@ -77,14 +77,19 @@ class Block(val name: Name,
       .check[B](blockContext)
       .recover { case e =>
         logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
-        RuleResult.Rejected[B]()
+        val cause = rule match {
+          case rule: Rule.AuthenticationRule => Cause.AuthenticationFailed
+          case rule: Rule.AuthorizationRule => Cause.GroupsAuthorizationFailed
+          case rule: Rule.RegularRule => Cause.NotAuthorized
+        }
+        Result.Rejected[B](cause)
       }
     lift[B](ruleResult)
       .flatMap {
-        case result: RuleResult.Fulfilled[B] =>
-          matched[B](result.blockContext)
+        case result: Result.Fulfilled[B] =>
+          matched[B](result.context)
             .tell(Vector(RuleHistoryItem(rule.name, result)))
-        case result: RuleResult.Rejected[B] =>
+        case result: Result.Rejected[B] =>
           mismatched[B](blockContext)
             .tell(Vector(RuleHistoryItem(rule.name, result)))
       }
@@ -139,7 +144,7 @@ object Block {
   sealed trait HistoryItem[B <: BlockContext]
   object HistoryItem {
     final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
-                                                        result: RuleResult[B])
+                                                        result: Result[B])
       extends HistoryItem[B]
   }
 

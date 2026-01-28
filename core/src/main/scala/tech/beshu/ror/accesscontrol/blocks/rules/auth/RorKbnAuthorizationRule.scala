@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName}
@@ -39,11 +40,11 @@ final class RorKbnAuthorizationRule(val settings: Settings)
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task.delay {
     settings.groupsLogic match {
       case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-        processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
+        processUsingJwtToken(blockContext, settings.rorKbn, Cause.GroupsAuthorizationFailed) { tokenData =>
           authorize(blockContext, tokenData.groups, settings.groupsLogic)
         }
       case _ =>
-        Result.Rejected()
+        Result.Rejected(Cause.GroupsAuthorizationFailed)
     }
   }
 

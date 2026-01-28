@@ -18,10 +18,10 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
+import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
 
 class RepositoriesRule(val settings: Settings)
   extends RegularRule
@@ -62,7 +62,7 @@ class RepositoriesRule(val settings: Settings)
       blockContext.requestContext
     ) match {
       case Right(filteredRepositories) => Fulfilled(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Rejected()
+      case Left(_) => Rejected(Cause.NotAuthorized)
     }
   }
 
@@ -74,7 +74,7 @@ class RepositoriesRule(val settings: Settings)
       blockContext.requestContext
     ) match {
       case Right(filteredRepositories) => Fulfilled(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Rejected()
+      case Left(_) => Rejected(Cause.NotAuthorized)
     }
   }
 

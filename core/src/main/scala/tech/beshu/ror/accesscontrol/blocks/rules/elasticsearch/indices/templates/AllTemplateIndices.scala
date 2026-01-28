@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.template
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Result
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.Settings
@@ -29,6 +28,7 @@ import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierG
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 private[indices] trait AllTemplateIndices
@@ -43,7 +43,7 @@ private[indices] trait AllTemplateIndices
 
   protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): Task[Result[TemplateRequestBlockContext]] = Task.now {
     implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
-    implicit val _blockContext = blockContext
+    implicit val _blockContext: TemplateRequestBlockContext = blockContext
     logger.debug(
       s"""Checking - indices and aliases in Template related request.
          | Allowed indices by the rule: [${allowedIndices.resolved.show}]:""".oneLiner
@@ -96,7 +96,7 @@ private[indices] trait AllTemplateIndices
             .withResponseTemplateTransformation(t2)
         }
       case (Left(cause), Left(_)) =>
-        Result.rejected(Some(cause))
+        Result.rejected(cause)
     }
   }
 
@@ -116,12 +116,5 @@ private[indices] trait AllTemplateIndices
   private[indices] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                         val blockContext: TemplateRequestBlockContext) {
     val resolved: Set[ClusterIndexName] = resolveAll(allowedIndices.toNonEmptyList, blockContext).toCovariantSet
-  }
-
-  private[indices] sealed trait PartialResult[T]
-  private[indices] object Result {
-    sealed case class Allowed[T](value: T) extends PartialResult[T]
-    sealed case class NotFound[T](value: T) extends PartialResult[T]
-    sealed case class Forbidden[T](value: T) extends PartialResult[T]
   }
 }

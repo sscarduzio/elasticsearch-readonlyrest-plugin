@@ -26,49 +26,60 @@ import scala.annotation.tailrec
 sealed trait Result[B]
 
 object Result {
-  final case class Fulfilled[B](blockContext: B)
+  final case class Fulfilled[B](context: B)
     extends Result[B]
 
-  final case class Rejected[B](specialCause: Option[Cause] = None)
+  final case class Rejected[B](cause: Cause)
     extends Result[B]
   object Rejected {
-    def apply[B <: BlockContext](specialCause: Cause): Rejected[B] = new Rejected(Some(specialCause))
 
     sealed trait Cause
     object Cause {
-      final case class AuthenticationFailed(details: String) extends Cause
-      final case class AuthenticationNotPossible(details: String) extends Cause
-      final case class GroupsAuthorizationFailed(details: String) extends Cause
-      final case class GroupsAuthorizationNotPossible(details: String) extends Cause
-      case object ImpersonationNotSupported extends Cause
-      case object ImpersonationNotAllowed extends Cause
-      final case class IndexNotFound(allowedClusters: Set[ClusterName.Full]) extends Cause
-      case object AliasNotFound extends Cause
-      case object TemplateNotFound extends Cause
+      sealed trait AuthenticationFailure extends Cause
+      case object AuthenticationFailed extends AuthenticationFailure
+      case object AuthenticationNotPossible extends AuthenticationFailure
+
+      sealed trait AuthorizationFailure extends Cause
+      case object GroupsAuthorizationFailed extends AuthorizationFailure
+      case object GroupsAuthorizationNotPossible extends AuthorizationFailure
+      case object NotAuthorized extends AuthorizationFailure
+
+      sealed trait OtherFailure extends Cause
+      case object ImpersonationNotSupported extends OtherFailure
+      case object ImpersonationNotAllowed extends OtherFailure
+      final case class IndexNotFound(allowedClusters: Set[ClusterName.Full]) extends OtherFailure
+      case object AliasNotFound extends OtherFailure
+      case object TemplateNotFound extends OtherFailure
     }
   }
 
-  private [blocks] def resultBasedOnCondition[B <: BlockContext](blockContext: B)(condition: => Boolean): Result[B] = {
+  private[blocks] def resultBasedOnCondition[B <: BlockContext](blockContext: B)(condition: => Boolean): Result[B] = {
     if (condition) Fulfilled[B](blockContext)
-    else Rejected[B]()
+    else Rejected[B](Cause.NotAuthorized)
   }
 
-  private [blocks] def fulfilled[B <: BlockContext](blockContext: B): Result[B] = Result.Fulfilled(blockContext)
+  private[blocks] def fulfilled[B <: BlockContext](blockContext: B): Result[B] = Result.Fulfilled(blockContext)
 
-  private [blocks] def rejected[B <: BlockContext](specialCause: Option[Cause] = None): Result[B] = Result.Rejected(specialCause)
+  private[blocks] def rejected[B <: BlockContext](cause: Cause): Result[B] = Result.Rejected(cause)
 
-  def fromOption[A](opt: Option[A], ifEmpty: => Rejected[A] = Rejected[A]()): Result[A] =
+  def fromOption[A](opt: Option[A], ifEmptyCause: => Cause): Result[A] =
     opt match {
       case Some(value) => Fulfilled(value)
-      case None => ifEmpty
+      case None => Rejected(ifEmptyCause)
     }
 
-  extension [B](result: Result[B]) {
-    def withFilter(p: B => Boolean): Result[B] =
+  extension [A](result: Result[A]) {
+    def map[B](f: A => B): Result[B] = {
       result match {
-        case Result.Fulfilled(a) if p(a) => result
-        case _ => Result.Rejected(None)
+        case Result.Fulfilled(a) => Fulfilled(f(a))
+        case Result.Rejected(cause) => Result.Rejected(cause)
       }
+    }
+
+    def toEither: Either[Rejected[A], Fulfilled[A]] = result match {
+      case fulfilled: Fulfilled[A] => Right(fulfilled)
+      case rejected: Result.Rejected[A] => Left(Rejected(rejected.cause))
+    }
   }
 
   implicit val resultMonad: Monad[Result] = new Monad[Result] {

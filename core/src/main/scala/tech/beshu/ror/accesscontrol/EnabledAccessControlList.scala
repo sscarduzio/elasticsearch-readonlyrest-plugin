@@ -219,20 +219,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Iterable[History[B]]): NonEmptySet[ForbiddenCause] = {
     val causes = rejectionsFrom(history).map {
-      case Rejected(None) =>
-        ForbiddenCause.OperationNotAllowed
-      case Rejected(Some(Rejected.Cause.IndexNotFound(_) |
-                         Rejected.Cause.AliasNotFound |
-                         Rejected.Cause.TemplateNotFound |
-                         Rejected.Cause.AuthenticationFailed(_) |
-                         Rejected.Cause.AuthenticationNotPossible(_) |
-                         Rejected.Cause.GroupsAuthorizationFailed(_) |
-                         Rejected.Cause.GroupsAuthorizationNotPossible(_))) =>
-        ForbiddenCause.OperationNotAllowed
-      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) =>
+      case Rejected(Rejected.Cause.ImpersonationNotAllowed) =>
         ForbiddenCause.ImpersonationNotAllowed
-      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) =>
+      case Rejected(Rejected.Cause.ImpersonationNotSupported) =>
         ForbiddenCause.ImpersonationNotSupported
+      case Rejected(_: Rejected.Cause.OtherFailure |
+                    _: Rejected.Cause.AuthenticationFailure |
+                    _: Rejected.Cause.AuthorizationFailure) =>
+        ForbiddenCause.OperationNotAllowed
     }
     NonEmptyList
       .fromList(causes.toList)
@@ -261,52 +255,35 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def indexNotFoundRejectionExists(rejections: Vector[Rejected[_]]): Option[Rejected.Cause.IndexNotFound] = {
     rejections.collectFirst {
-      case Rejected(Some(error@Rejected.Cause.IndexNotFound(_))) => error
+      case Rejected(error@Rejected.Cause.IndexNotFound(_)) => error
     }
   }
 
   private def aliasNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
-      case Rejected(None) => false
-      case Rejected(Some(Rejected.Cause.AuthenticationFailed(_))) => false
-      case Rejected(Some(Rejected.Cause.AuthenticationNotPossible(_))) => false
-      case Rejected(Some(Rejected.Cause.GroupsAuthorizationFailed(_))) => false
-      case Rejected(Some(Rejected.Cause.GroupsAuthorizationNotPossible(_))) => false
-      case Rejected(Some(Rejected.Cause.AliasNotFound)) => true
-      case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
-      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
-      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
-      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
+      case Rejected(Rejected.Cause.AliasNotFound) => true
+      case Rejected(_: Rejected.Cause.OtherFailure) => false
+      case Rejected(_: Rejected.Cause.AuthenticationFailure) => false
+      case Rejected(_: Rejected.Cause.AuthorizationFailure) => false
     }
   }
 
   private def templateNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
-      case Rejected(None) => false
-      case Rejected(Some(Rejected.Cause.AuthenticationFailed(_))) => false
-      case Rejected(Some(Rejected.Cause.AuthenticationNotPossible(_))) => false
-      case Rejected(Some(Rejected.Cause.GroupsAuthorizationFailed(_))) => false
-      case Rejected(Some(Rejected.Cause.GroupsAuthorizationNotPossible(_))) => false
-      case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
-      case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
-      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => true
-      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
-      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
+      case Rejected(Rejected.Cause.TemplateNotFound) => true
+      case Rejected(_: Rejected.Cause.OtherFailure) => false
+      case Rejected(_: Rejected.Cause.AuthenticationFailure) => false
+      case Rejected(_: Rejected.Cause.AuthorizationFailure) => false
     }
   }
 
   private def impersonationRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
-      case Rejected(None) => false
-      case Rejected(Some(Rejected.Cause.AuthenticationFailed(_))) => false
-      case Rejected(Some(Rejected.Cause.AuthenticationNotPossible(_))) => false
-      case Rejected(Some(Rejected.Cause.GroupsAuthorizationFailed(_))) => false
-      case Rejected(Some(Rejected.Cause.GroupsAuthorizationNotPossible(_))) => false
-      case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
-      case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
-      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
-      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => true
-      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => true
+      case Rejected(Rejected.Cause.ImpersonationNotAllowed) => true
+      case Rejected(Rejected.Cause.ImpersonationNotSupported) => true
+      case Rejected(_: Rejected.Cause.OtherFailure) => false
+      case Rejected(_: Rejected.Cause.AuthenticationFailure) => false
+      case Rejected(_: Rejected.Cause.AuthorizationFailure) => false
     }
   }
 

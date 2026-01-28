@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
@@ -46,7 +47,7 @@ final class SessionMaxIdleRule(val settings: Settings,
       case None =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         logger.warn(s"Cannot state the logged in user, put the authentication rule on top of the block!")
-        Rejected()
+        Rejected(Cause.NotAuthorized)
     }
   }
 
@@ -57,7 +58,7 @@ final class SessionMaxIdleRule(val settings: Settings,
         val newCookie = RorSessionCookie(user.id, newExpiryDate)
         Fulfilled(blockContext.withAddedResponseHeader(toSessionHeader(newCookie)))
       case Left(ExtractingError.Invalid) | Left(ExtractingError.Expired) =>
-        Rejected()
+        Rejected(Cause.NotAuthorized)
     }
   }
 

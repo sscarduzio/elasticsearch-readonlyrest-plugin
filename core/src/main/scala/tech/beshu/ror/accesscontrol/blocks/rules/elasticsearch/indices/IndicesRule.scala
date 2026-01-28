@@ -71,7 +71,7 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): Task[Result[B]] = Task.now {
-    if (settings.mustInvolveIndices) Rejected()
+    if (settings.mustInvolveIndices) reject()
     else Fulfilled(blockContext)
   }
 
@@ -87,9 +87,9 @@ class IndicesRule(override val settings: Settings,
             Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices).withClusters(allowedClusters))
           case ProcessResult.Failed.IndexNotFound =>
             val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
-            Rejected(Some(Cause.IndexNotFound(allowedClusters)))
+            Rejected(Cause.IndexNotFound(allowedClusters))
           case ProcessResult.Failed.Other =>
-            Rejected()
+            reject()
         }
     }
   }
@@ -130,7 +130,7 @@ class IndicesRule(override val settings: Settings,
           case Right(_) => Rejected(Cause.IndexNotFound(
             getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
           ))
-          case Left(_) => Rejected()
+          case Left(_) => reject()
         }
     }
   }
@@ -148,15 +148,15 @@ class IndicesRule(override val settings: Settings,
           case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
             Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
           case (ProcessResult.Failed.IndexNotFound, _) =>
-            Rejected(Some(Cause.IndexNotFound(
+            Rejected(Cause.IndexNotFound(
               getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
-            )))
+            ))
           case (ProcessResult.Failed.Other, _) =>
-            Rejected()
+            reject()
           case (_, ProcessResult.Failed.IndexNotFound) =>
-            Rejected(Some(Cause.AliasNotFound))
+            Rejected(Cause.AliasNotFound)
           case (_, ProcessResult.Failed.Other) =>
-            Rejected()
+            reject()
         }
       }
     }
@@ -195,6 +195,7 @@ class IndicesRule(override val settings: Settings,
     case _ => false
   }
 
+  private def reject[T]() = Result.Rejected[T](Cause.NotAuthorized)
 }
 
 object IndicesRule {

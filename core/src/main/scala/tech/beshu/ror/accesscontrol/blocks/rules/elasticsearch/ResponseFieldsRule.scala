@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule.Settings
@@ -37,7 +38,7 @@ class ResponseFieldsRule(val settings: Settings)
       case Some(resolvedFields) =>
         Result.Fulfilled(blockContext.withAddedResponseTransformation(FilteredResponseFields(ResponseFieldsRestrictions(resolvedFields, settings.accessMode))))
       case None =>
-        Result.Rejected()
+        Result.Rejected(Cause.NotAuthorized)
     }
   }
 }

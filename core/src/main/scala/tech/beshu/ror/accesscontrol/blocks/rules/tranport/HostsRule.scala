@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Result.Rejected
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule.Settings
@@ -61,7 +62,7 @@ class HostsRule(val settings: Settings,
         ).map(condition => Result.resultBasedOnCondition(blockContext)(condition))
       case None =>
         logger.warn(s"Remote address is unavailable!")
-        Task.now(Rejected())
+        Task.now(Rejected(Cause.NotAuthorized))
     }
   }
 }

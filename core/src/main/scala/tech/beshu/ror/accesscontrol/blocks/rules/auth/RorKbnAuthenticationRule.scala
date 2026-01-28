@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -41,7 +42,7 @@ final class RorKbnAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task.delay {
-    processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
+    processUsingJwtToken(blockContext, settings.rorKbn, Cause.AuthenticationFailed) { tokenData =>
       authenticate(blockContext, tokenData.userId, tokenData.userOrigin, tokenData.payload)
     }
   }

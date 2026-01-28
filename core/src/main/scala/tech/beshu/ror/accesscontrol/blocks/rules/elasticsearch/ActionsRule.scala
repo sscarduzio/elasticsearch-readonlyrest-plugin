@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
@@ -41,7 +42,7 @@ class ActionsRule(val settings: Settings)
     } else {
       implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
       logger.debug(s"This request uses the action '${requestContext.action.show}' and none of them is on the list.")
-      Result.Rejected()
+      Result.Rejected(Cause.NotAuthorized)
     }
   }
 }

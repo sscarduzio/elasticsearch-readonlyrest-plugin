@@ -54,7 +54,7 @@ private[auth] trait BaseAuthorizationRule
     (blockContext.userMetadata.loggedUser, impersonation) match {
       case (Some(user@ImpersonatedUser(_, _)), Impersonation.Enabled(ImpersonationSettings(_, mocksProvider))) =>
         loggedUserPreconditionCheck(user) match {
-          case Left(_) => Task.now(Rejected())
+          case Left(_) => Task.now(reject())
           case Right(_) => authorizeImpersonatedUser(blockContext, user, mocksProvider)
         }
       case (Some(ImpersonatedUser(_, _)), Impersonation.Disabled) =>
@@ -62,11 +62,11 @@ private[auth] trait BaseAuthorizationRule
       case (Some(user@DirectlyLoggedUser(_)), _) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         loggedUserPreconditionCheck(user) match {
-          case Left(_) => Task.now(Rejected())
+          case Left(_) => Task.now(reject())
           case Right(_) => doAuthorizeLoggedUser(blockContext, user)
         }
       case (None, _) =>
-        Task.now(Rejected())
+        Task.now(reject())
     }
   }
 
@@ -110,13 +110,13 @@ private[auth] trait BaseAuthorizationRule
                   _.addAvailableGroups(availableGroups)
                 ))
               case None =>
-                Result.Rejected()
+                reject()
             }
           case None | Some(_) =>
-            Result.Rejected()
+            reject()
         }
     } else {
-      Task.now(Result.Rejected())
+      Task.now(reject())
     }
   }
 
@@ -124,4 +124,5 @@ private[auth] trait BaseAuthorizationRule
     groupsLogic.availableGroupsFrom(usersGroups)
   }
 
+  private def reject[T]() = Result.Rejected[T](Cause.GroupsAuthorizationFailed)
 }

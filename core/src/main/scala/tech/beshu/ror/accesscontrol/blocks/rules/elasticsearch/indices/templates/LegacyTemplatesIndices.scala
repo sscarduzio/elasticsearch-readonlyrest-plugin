@@ -17,16 +17,17 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.Result
 import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.Result.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -45,7 +46,7 @@ private[indices] trait LegacyTemplatesIndices
             .withResponseTemplateTransformation(transformation)
         )
       case Left(cause) =>
-        Result.rejected(Some(cause))
+        Result.rejected(cause)
     }
   }
 
@@ -109,20 +110,20 @@ private[indices] trait LegacyTemplatesIndices
     val result = templateNamePatterns.foldLeft(List.empty[TemplateNamePattern].asRight[Unit]) {
       case (Right(acc), templateNamePattern) =>
         deletingLegacyTemplate(templateNamePattern) match {
-          case Result.Allowed(t) =>
+          case PartialResult.Allowed(t) =>
             Right(t :: acc)
-          case Result.NotFound(t) =>
-            implicit val _generator = identifierGenerator
+          case PartialResult.NotFound(t) =>
+            implicit val _generator: UniqueIdentifierGenerator = identifierGenerator
             val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(t)
             Right(nonExistentTemplateNamePattern :: acc)
-          case Result.Forbidden(_) =>
+          case PartialResult.Forbidden(_) =>
             Left(())
         }
       case (rejected@Left(_), _) => rejected
     }
     result match {
       case Left(_) | Right(Nil) =>
-        Result.rejected()
+        Result.rejected(Cause.NotAuthorized)
       case Right(nonEmptyPatternsList) =>
         val modifiedOperation = TemplateOperation.DeletingLegacyTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
         Result.fulfilled(blockContext.withTemplateOperation(modifiedOperation))
@@ -137,13 +138,13 @@ private[indices] trait LegacyTemplatesIndices
       logger.debug(
         s"""* no Templates for name pattern [${templateNamePattern.show}] found ..."""
       )
-      Result.NotFound(templateNamePattern)
+      PartialResult.NotFound(templateNamePattern)
     } else {
       logger.debug(
         s"""* checking if Templates with names [${foundTemplates.map(_.name).show}] can be removed ..."""
       )
-      if (foundTemplates.forall(canModifyExistingTemplate)) Result.Allowed(templateNamePattern)
-      else Result.Forbidden(templateNamePattern)
+      if (foundTemplates.forall(canModifyExistingTemplate)) PartialResult.Allowed(templateNamePattern)
+      else PartialResult.Forbidden(templateNamePattern)
     }
   }
 

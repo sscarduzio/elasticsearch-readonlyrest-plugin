@@ -107,7 +107,7 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
   }
 
   private def authenticateImpersonator[B <: BlockContext : BlockContextUpdater](impersonatorDef: ImpersonatorDef,
-                                                                                blockContext: B) = EitherT {
+                                                                                blockContext: B): EitherT[Task, Rejected[B], LoggedUser] = EitherT {
     impersonatorDef
       .authenticationRule
       .check(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
@@ -124,11 +124,11 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
 
   private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                  mocksProvider: MocksProvider)
-                                                                (implicit requestId: RequestId) = EitherT {
+                                                                (implicit requestId: RequestId): EitherT[Task, Rejected[B], Unit] = EitherT {
     exists(theImpersonatedUserId, mocksProvider)
       .map {
         case Exists => Right(())
-        case NotExist => Left(Rejected[B]())
+        case NotExist => Left(Rejected[B](Cause.ImpersonationNotAllowed))
         case CannotCheck => Left(Rejected[B](Cause.ImpersonationNotSupported))
       }
   }

@@ -14,19 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.utils
+package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates
 
-import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.Result
-
-// todo: think about it
-object TaskResultOps {
-  extension [B](result: Task[Result[B]]) {
-    def flatMapT[C <: BlockContext](f: B => Task[Result[C]]): Task[Result[C]] =
-      result.flatMap {
-        case Result.Fulfilled(b) => f(b)
-        case Result.Rejected(cause) => Task.pure(Result.Rejected(cause))
-      }
-  }
+private[templates] sealed trait PartialResult[T]
+private[templates] object PartialResult {
+  sealed case class Allowed[T](value: T) extends PartialResult[T]
+  sealed case class NotFound[T](value: T) extends PartialResult[T]
+  sealed case class Forbidden[T](value: T) extends PartialResult[T]
 }

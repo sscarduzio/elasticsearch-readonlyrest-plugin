@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule.Settings
@@ -41,7 +42,7 @@ class XForwardedForRule(val settings: Settings,
           addressToCheck = xForwardedForAddress
         ).map(condition => Result.resultBasedOnCondition(blockContext)(condition))
       case None =>
-        Task.now(Result.Rejected())
+        Task.now(Result.Rejected(Cause.NotAuthorized))
     }
   }
 

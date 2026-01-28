@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Result.Rejected
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
@@ -36,8 +37,8 @@ class UsersRule(val settings: Settings,
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     blockContext.userMetadata.loggedUser match {
-      case None => Rejected()
       case Some(user) => matchUser(user, blockContext)
+      case None => Rejected(Cause.NotAuthorized)
     }
   }
 

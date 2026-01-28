@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDefForAuthorization
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName}
@@ -40,16 +41,16 @@ final class JwtAuthorizationRule(val settings: Settings)
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
     settings.groupsLogic match {
       case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-        processUsingJwtToken(blockContext, settings.jwt) { payload =>
+        processUsingJwtToken(blockContext, settings.jwt, Cause.GroupsAuthorizationFailed) { payload =>
           authorize(blockContext, payload, groupsLogic)
         }
       case _ =>
-        Task.now(Result.Rejected())
+        Task.now(Result.Rejected(Cause.GroupsAuthorizationFailed))
     }
   }
 
   override protected[rules] def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
-    doPostAuthAction(blockContext, settings.jwt)
+    doPostAuthAction(blockContext, settings.jwt, Cause.GroupsAuthorizationFailed)
   }
 
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
@@ -61,16 +62,19 @@ final class JwtAuthorizationRule(val settings: Settings)
     logClaimSearchResults(blockContext, result)
     result match {
       case NotFound =>
-        Result.Rejected()
+        Result.Rejected(Cause.GroupsAuthorizationFailed)
       case Found(groups) =>
         for {
-          nonEmptyGroups <- Result.fromOption(UniqueNonEmptyList.from(groups))
-          matchedGroups <- Result.fromOption(groupsLogic.availableGroupsFrom(nonEmptyGroups))
-          if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-          contextWithUserMetadata = blockContext.withUserMetadata(
-            _.addAvailableGroups(matchedGroups).withJwtToken(payload)
-          )
-        } yield contextWithUserMetadata
+          nonEmptyGroups <- Result.fromOption(UniqueNonEmptyList.from(groups), ifEmptyCause = Cause.GroupsAuthorizationFailed)
+          matchedGroups <- Result.fromOption(groupsLogic.availableGroupsFrom(nonEmptyGroups), ifEmptyCause = Cause.GroupsAuthorizationFailed)
+          _ <- if (blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))) {
+            Result.Fulfilled(blockContext)
+          } else {
+            Result.Rejected(Cause.GroupsAuthorizationFailed)
+          }
+        } yield blockContext.withUserMetadata(
+          _.addAvailableGroups(matchedGroups).withJwtToken(payload)
+        )
     }
   }
 

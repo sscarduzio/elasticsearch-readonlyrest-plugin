@@ -19,8 +19,9 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.{FilterableBlockContextWithFilterUpdater, FilterableMultiRequestBlockContextWithFilterUpdater}
+import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
@@ -38,12 +39,12 @@ class FilterRule(val settings: Settings)
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     blockContext.requestContext match {
-      case r if !r.isAllowedForDLS => Rejected()
-      case r if r.action.isRorAction => Rejected()
+      case r if !r.isAllowedForDLS => reject()
+      case r if r.action.isRorAction => reject()
       case _ =>
         settings.filter.resolve(blockContext) match {
           case Left(_: Unresolvable) =>
-            Rejected()
+            reject()
           case Right(filter) =>
             BlockContextUpdater[B] match {
               case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
@@ -67,6 +68,8 @@ class FilterRule(val settings: Settings)
                                                                            filter: Filter) = {
     Fulfilled(blockContext.withFilter(filter))
   }
+
+  private def reject[T]() = Result.Rejected[T](Cause.NotAuthorized)
 }
 
 object FilterRule {

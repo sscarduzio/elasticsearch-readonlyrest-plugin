@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -40,7 +41,7 @@ class KibanaUserDataRule(override val settings: Settings)
     if (shouldMatch(blockContext.requestContext, resolveKibanaIndex(blockContext)))
       matched(blockContext)
     else
-      Rejected[B]()
+      Rejected[B](Cause.NotAuthorized)
   }
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Fulfilled[B] = {
@@ -52,9 +53,9 @@ class KibanaUserDataRule(override val settings: Settings)
   }
 
   private def updateUserMetadata(context: BlockContext) = {
-    applyToUserMetadata(Some(settings.access))(
+    applyToUserMetadata(Some(settings.access)) {
       _.withKibanaAccess(_)
-    ) andThen {
+    } andThen {
       applyToUserMetadata(Some(resolveKibanaIndex(context)))(
         _.withKibanaIndex(_)
       )

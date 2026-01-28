@@ -17,7 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -30,7 +31,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
   protected def authenticateUsing(credentials: Credentials)
                                  (implicit requestId: RequestId): Task[Boolean]
 
-  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
     Task
       .unit
       .flatMap { _ =>
@@ -41,12 +42,15 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
             authenticateUsing(credentials)
               .map {
                 case true => Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))
-                case false => Rejected()
+                case false => reject()
               }
           case None =>
-            Task.now(Rejected())
+            Task.now(reject())
         }
       }
+  }
+
+  private def reject[T]() = Result.Rejected[T](Cause.AuthenticationFailed)
 }
 
 abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDENTIALS])

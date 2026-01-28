@@ -37,24 +37,25 @@ import scala.util.Try
 trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
-                                                        rorKbnDef: RorKbnDef)
+                                                        rorKbnDef: RorKbnDef,
+                                                        rejectionCause: => Rejected.Cause)
                                                        (operation: TokenData => Either[Unit, B]): Result[B] = {
     val authHeaderName = Header.Name.authorization
     implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Rejected()
+        Rejected(rejectionCause)
       case Some(token) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         jwtTokenData(token, rorKbnDef) match {
           case Left(_) =>
-            Rejected()
+            Rejected(rejectionCause)
           case Right(tokenData) =>
             val claimProcessingResult = operation(tokenData)
             claimProcessingResult match {
               case Left(_) =>
-                Rejected()
+                Rejected(rejectionCause)
               case Right(modifiedBlockContext) =>
                 Fulfilled(modifiedBlockContext)
             }

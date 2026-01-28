@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -50,11 +51,11 @@ final class ProxyAuthRule(val settings: Settings,
   override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     getLoggedUser(blockContext.requestContext) match {
       case None =>
-        Rejected()
+        Rejected(Cause.AuthenticationFailed)
       case Some(loggedUser) if shouldAuthenticate(loggedUser.id) =>
         Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
       case Some(_) =>
-        Rejected()
+        Rejected(Cause.AuthenticationFailed)
     }
   }
 

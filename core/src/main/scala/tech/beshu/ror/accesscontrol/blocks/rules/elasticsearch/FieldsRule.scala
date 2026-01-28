@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFLSUpdater.{FilterableBlockContextWithFieldsUpdater, FilterableMultiRequestBlockContextWithFieldsUpdater}
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule.Settings
@@ -49,7 +50,7 @@ class FieldsRule(val settings: Settings)
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     blockContext.requestContext match {
       case r if r.isReadOnlyRequest && !r.action.isRorAction => handleReadOnlyRequest(blockContext)
-      case _ => Result.Rejected()
+      case _ => reject()
     }
   }
 
@@ -78,7 +79,7 @@ class FieldsRule(val settings: Settings)
         processBlockContextUsingDefinedFLSMode(blockContext, resolvedFields)
       case None =>
         logger.warn(s"Could not resolve any variable for field rule.")
-        Result.Rejected()
+        reject()
     }
   }
 
@@ -104,7 +105,7 @@ class FieldsRule(val settings: Settings)
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = basedOnBlockContext)
       case Strategy.FlsAtLuceneLevelApproach =>
         logger.warn(s"Could not use fls at lucene level with ES engine. Rejected.")
-        Result.Rejected()
+        reject()
     }
   }
 
@@ -157,6 +158,8 @@ class FieldsRule(val settings: Settings)
       .filterNot(field => fieldsPolicy.canKeep(field.value))
       .toNel
   }
+
+  private def reject[T]() = Result.Rejected[T](Cause.NotAuthorized)
 }
 
 object FieldsRule {

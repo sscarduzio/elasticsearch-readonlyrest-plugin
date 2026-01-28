@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
@@ -35,7 +36,7 @@ class KibanaAccessRule(override val settings: Settings)
     if (shouldMatch(blockContext.requestContext, kibanaIndex))
       matched(blockContext, kibanaIndex)
     else
-      Rejected[B]()
+      Rejected[B](Cause.NotAuthorized)
   }
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B,

@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.toShow
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDefForAuthentication
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -44,13 +45,13 @@ final class JwtAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
-    processUsingJwtToken(blockContext, settings.jwt) { payload =>
+    processUsingJwtToken(blockContext, settings.jwt, Cause.AuthenticationFailed) { payload =>
       authenticate(blockContext, payload)
     }
   }
 
   override protected[rules] def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
-    doPostAuthAction(blockContext, settings.jwt)
+    doPostAuthAction(blockContext, settings.jwt, Cause.AuthenticationFailed)
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
@@ -64,7 +65,7 @@ final class JwtAuthenticationRule(val settings: Settings,
             .withJwtToken(payload)
         ))
       case NotFound =>
-        Result.Rejected()
+        Result.Rejected(Cause.AuthenticationFailed)
     }
   }
 
