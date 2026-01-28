@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Result
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}

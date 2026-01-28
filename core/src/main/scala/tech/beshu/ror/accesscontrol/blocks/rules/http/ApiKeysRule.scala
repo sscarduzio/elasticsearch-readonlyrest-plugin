@@ -20,9 +20,9 @@ import cats.data.NonEmptySet
 import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.domain.Header.Name.*
 
@@ -31,8 +31,8 @@ class ApiKeysRule(val settings: Settings)
 
   override val name: Rule.Name = ApiKeysRule.Name.name
 
-  def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    RuleResult.resultBasedOnCondition(blockContext) {
+  def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
+    Result.resultBasedOnCondition(blockContext) {
       blockContext
         .requestContext
         .restRequest

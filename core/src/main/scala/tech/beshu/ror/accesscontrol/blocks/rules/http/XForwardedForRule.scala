@@ -19,12 +19,11 @@ package tech.beshu.ror.accesscontrol.blocks.rules.http
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{BaseHostsRule, HostnameResolver}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
@@ -34,15 +33,15 @@ class XForwardedForRule(val settings: Settings,
 
   override val name: Rule.Name = XForwardedForRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
     blockContext.requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedForAddress) =>
         checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedAddresses,
           addressToCheck = xForwardedForAddress
-        ).map(condition => RuleResult.resultBasedOnCondition(blockContext)(condition))
+        ).map(condition => Result.resultBasedOnCondition(blockContext)(condition))
       case None =>
-        Task.now(Rejected())
+        Task.now(Result.Rejected())
     }
   }
 

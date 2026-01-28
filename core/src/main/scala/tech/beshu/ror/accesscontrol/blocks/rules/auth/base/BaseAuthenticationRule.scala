@@ -17,18 +17,18 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 
 private [auth] trait BaseAuthenticationRule
   extends AuthenticationRule
     with SimpleAuthenticationImpersonationSupport {
 
-  protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
+  protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]]
 
-  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
     tryToImpersonateUser(blockContext)
       .flatMap {
         case ImpersonationResult.NotImpersonationRequest() => tryToAuthenticateUser(blockContext)

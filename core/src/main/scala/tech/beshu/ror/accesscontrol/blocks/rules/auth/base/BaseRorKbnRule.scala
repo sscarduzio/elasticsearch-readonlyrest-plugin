@@ -19,17 +19,16 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
-import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Result}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -39,7 +38,7 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
                                                         rorKbnDef: RorKbnDef)
-                                                       (operation: TokenData => Either[Unit, B]): RuleResult[B] = {
+                                                       (operation: TokenData => Either[Unit, B]): Result[B] = {
     val authHeaderName = Header.Name.authorization
     implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {

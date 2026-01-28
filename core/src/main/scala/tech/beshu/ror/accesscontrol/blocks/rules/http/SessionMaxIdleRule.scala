@@ -17,18 +17,17 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, RequestId}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.{Clock, Instant}
 
@@ -40,7 +39,7 @@ final class SessionMaxIdleRule(val settings: Settings,
 
   override val name: Rule.Name = SessionMaxIdleRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
         checkCookieFor(user, blockContext)
@@ -52,7 +51,7 @@ final class SessionMaxIdleRule(val settings: Settings,
   }
 
   private def checkCookieFor[B <: BlockContext : BlockContextUpdater](user: LoggedUser,
-                                                                      blockContext: B): RuleResult[B] = {
+                                                                      blockContext: B): Result[B] = {
     RorSessionCookie.extractFrom(blockContext.requestContext, user) match {
       case Right(_) | Left(ExtractingError.Absent) =>
         val newCookie = RorSessionCookie(user.id, newExpiryDate)

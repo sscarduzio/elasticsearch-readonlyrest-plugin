@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{DataStreamRequestBlockC
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*

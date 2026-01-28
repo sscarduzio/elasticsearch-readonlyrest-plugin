@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser

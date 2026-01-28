@@ -20,10 +20,10 @@ import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.Result
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation.Enabled
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult.Handled
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
@@ -35,9 +35,9 @@ import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
-private [rules] trait AuthenticationImpersonationSupport extends ImpersonationSupport
+private[rules] trait AuthenticationImpersonationSupport extends ImpersonationSupport
 
-private [rules]trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
+private[rules] trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
   this: AuthenticationRule =>
 
   protected def impersonation: Impersonation
@@ -141,7 +141,7 @@ private [rules]trait SimpleAuthenticationImpersonationSupport extends Authentica
       left = Rejected[B](Cause.ImpersonationNotAllowed),
     )
 
-  private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]): Task[RuleResult[B]] = {
+  private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]): Task[Result[B]] = {
     result
       .value
       .map {
@@ -159,7 +159,7 @@ object SimpleAuthenticationImpersonationSupport {
   sealed trait ImpersonationResult[B <: BlockContext]
   object ImpersonationResult {
     final case class NotImpersonationRequest[B <: BlockContext]() extends ImpersonationResult[B]
-    final case class Handled[B <: BlockContext](result: Rule.RuleResult[B]) extends ImpersonationResult[B]
+    final case class Handled[B <: BlockContext](result: Result[B]) extends ImpersonationResult[B]
   }
 
   sealed trait UserExistence

@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.Result
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.*
@@ -41,7 +41,7 @@ private[indices] trait AllTemplateIndices
 
   protected def identifierGenerator: UniqueIdentifierGenerator
 
-  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): Task[RuleResult[TemplateRequestBlockContext]] = Task.now {
+  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): Task[Result[TemplateRequestBlockContext]] = Task.now {
     implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
     implicit val _blockContext = blockContext
     logger.debug(
@@ -64,39 +64,39 @@ private[indices] trait AllTemplateIndices
       case DeletingComponentTemplates(namePatterns) => deletingComponentTemplates(namePatterns)
     }
     result match {
-      case RuleResult.Fulfilled(b) => RuleResult.fulfilled(b.withAllAllowedIndices(allowedIndices.resolved))
-      case rejected@RuleResult.Rejected(_) => rejected
+      case Result.Fulfilled(b) => Result.fulfilled(b.withAllAllowedIndices(allowedIndices.resolved))
+      case rejected@Result.Rejected(_) => rejected
     }
   }
 
   private def gettingLegacyAndIndexTemplates(gettingLegacyTemplates: GettingLegacyTemplates, gettingIndexTemplates: GettingIndexTemplates)
                                             (implicit blockContext: TemplateRequestBlockContext,
-                                             allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+                                             allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
     val gettingLegacyTemplatesResult = processGettingLegacyTemplates(gettingLegacyTemplates.namePatterns)
     val gettingIndexTemplatesResult = processGettingIndexTemplates(gettingIndexTemplates.namePatterns)
 
     (gettingLegacyTemplatesResult, gettingIndexTemplatesResult) match {
       case (Right((o1, t1)), Right((o2, t2))) =>
         val finalOperation = GettingLegacyAndIndexTemplates(o1, o2)
-        RuleResult.fulfilled {
+        Result.fulfilled {
           blockContext
             .withTemplateOperation(finalOperation)
             .withResponseTemplateTransformation(t1 andThen t2)
         }
       case (Right((o1, t1)), _) =>
-        RuleResult.fulfilled {
+        Result.fulfilled {
           blockContext
             .withTemplateOperation(o1)
             .withResponseTemplateTransformation(t1)
         }
       case (_, Right((o2, t2))) =>
-        RuleResult.fulfilled {
+        Result.fulfilled {
           blockContext
             .withTemplateOperation(o2)
             .withResponseTemplateTransformation(t2)
         }
       case (Left(cause), Left(_)) =>
-        RuleResult.rejected(Some(cause))
+        Result.rejected(Some(cause))
     }
   }
 

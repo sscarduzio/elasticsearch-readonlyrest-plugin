@@ -21,11 +21,11 @@ import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeMatchFilterScalaAdapter}
@@ -39,7 +39,7 @@ class SnapshotsRule(val settings: Settings)
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater =>
         Fulfilled(blockContext)
@@ -55,7 +55,7 @@ class SnapshotsRule(val settings: Settings)
 
   private def checkAllowedSnapshots[B <: BlockContext](allowedSnapshots: Set[SnapshotName],
                                                        blockContext: SnapshotRequestBlockContext)
-                                                      (implicit ev: SnapshotRequestBlockContext <:< B): RuleResult[B] = {
+                                                      (implicit ev: SnapshotRequestBlockContext <:< B): Result[B] = {
     if (allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)) {
       Fulfilled(blockContext)
     } else {

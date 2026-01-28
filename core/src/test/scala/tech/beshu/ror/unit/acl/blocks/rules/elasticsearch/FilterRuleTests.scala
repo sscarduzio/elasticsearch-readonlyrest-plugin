@@ -22,8 +22,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Result
+import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}

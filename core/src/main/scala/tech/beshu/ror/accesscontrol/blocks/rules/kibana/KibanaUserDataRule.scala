@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.implicits.*
@@ -36,7 +36,7 @@ class KibanaUserDataRule(override val settings: Settings)
 
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     if (shouldMatch(blockContext.requestContext, resolveKibanaIndex(blockContext)))
       matched(blockContext)
     else
@@ -44,7 +44,7 @@ class KibanaUserDataRule(override val settings: Settings)
   }
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Fulfilled[B] = {
-    RuleResult.Fulfilled[B] {
+    Result.Fulfilled[B] {
       blockContext.withUserMetadata {
         updateUserMetadata(blockContext)
       }

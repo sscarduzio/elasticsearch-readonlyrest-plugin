@@ -17,14 +17,12 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Credentials, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
-import tech.beshu.ror.implicits.*
 
 private [auth] abstract class BaseBasicAuthAuthenticationRule
   extends BaseAuthenticationRule {
@@ -32,7 +30,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
   protected def authenticateUsing(credentials: Credentials)
                                  (implicit requestId: RequestId): Task[Boolean]
 
-  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
     Task
       .unit
       .flatMap { _ =>

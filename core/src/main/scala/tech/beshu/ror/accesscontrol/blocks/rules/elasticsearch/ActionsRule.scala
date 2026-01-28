@@ -20,9 +20,9 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.{Action, RequestId}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.implicits.*
@@ -34,14 +34,14 @@ class ActionsRule(val settings: Settings)
 
   private val matcher: PatternsMatcher[Action] = PatternsMatcher.create(settings.actions.toSortedSet)
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     val requestContext = blockContext.requestContext
     if (matcher.`match`(requestContext.action)) {
-      RuleResult.Fulfilled(blockContext)
+      Result.Fulfilled(blockContext)
     } else {
       implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
       logger.debug(s"This request uses the action '${requestContext.action.show}' and none of them is on the list.")
-      RuleResult.Rejected()
+      Result.Rejected()
     }
   }
 }

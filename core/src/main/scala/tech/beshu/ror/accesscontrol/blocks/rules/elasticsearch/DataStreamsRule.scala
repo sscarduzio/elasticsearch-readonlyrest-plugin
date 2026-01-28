@@ -21,11 +21,11 @@ import monix.eval.Task
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeDataStreamsFilterScalaAdapter}
@@ -45,7 +45,7 @@ class DataStreamsRule(val settings: Settings)
     new ZeroKnowledgeIndexFilter(true)
   )
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.DataStreamRequestBlockContextUpdater =>
         checkDataStreams(blockContext)
@@ -55,7 +55,7 @@ class DataStreamsRule(val settings: Settings)
   }
 
   private def checkDataStreams[B <: BlockContext](blockContext: DataStreamRequestBlockContext)
-                                                 (implicit ev: DataStreamRequestBlockContext <:< B): RuleResult[B] = {
+                                                 (implicit ev: DataStreamRequestBlockContext <:< B): Result[B] = {
     checkAllowedDataStreams(
       resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.dataStreams,

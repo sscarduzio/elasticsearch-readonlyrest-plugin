@@ -21,11 +21,11 @@ import monix.eval.Task
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRepositoryFilterScalaAdapter}
@@ -43,7 +43,7 @@ class RepositoriesRule(val settings: Settings)
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.RepositoryRequestBlockContextUpdater =>
         checkRepositories(blockContext)
@@ -55,7 +55,7 @@ class RepositoriesRule(val settings: Settings)
   }
 
   private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)
-                                                  (implicit ev: RepositoryRequestBlockContext <:< B): RuleResult[B] = {
+                                                  (implicit ev: RepositoryRequestBlockContext <:< B): Result[B] = {
     checkAllowedRepositories(
       resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
@@ -67,7 +67,7 @@ class RepositoriesRule(val settings: Settings)
   }
 
   private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)
-                                                          (implicit ev: SnapshotRequestBlockContext <:< B): RuleResult[B] = {
+                                                          (implicit ev: SnapshotRequestBlockContext <:< B): Result[B] = {
     checkAllowedRepositories(
       resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,

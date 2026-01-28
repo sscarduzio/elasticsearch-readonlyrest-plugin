@@ -17,11 +17,11 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.*
 
 @deprecated("[ROR] This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
@@ -30,7 +30,7 @@ class KibanaAccessRule(override val settings: Settings)
 
   override val name: Rule.Name = KibanaAccessRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     val kibanaIndex = kibanaIndexFrom(blockContext)
     if (shouldMatch(blockContext.requestContext, kibanaIndex))
       matched(blockContext, kibanaIndex)
@@ -40,7 +40,7 @@ class KibanaAccessRule(override val settings: Settings)
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                kibanaIndex: KibanaIndexName): Fulfilled[B] = {
-    RuleResult.Fulfilled[B] {
+    Result.Fulfilled[B] {
       blockContext.withUserMetadata { metadata =>
         metadata
           .withKibanaAccess(settings.access)

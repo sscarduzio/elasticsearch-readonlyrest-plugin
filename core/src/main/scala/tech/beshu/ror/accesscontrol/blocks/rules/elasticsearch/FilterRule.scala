@@ -20,12 +20,12 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.{FilterableBlockContextWithFilterUpdater, FilterableMultiRequestBlockContextWithFilterUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.Filter
 
 /**
@@ -36,7 +36,7 @@ class FilterRule(val settings: Settings)
 
   override val name: Rule.Name = FilterRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     blockContext.requestContext match {
       case r if !r.isAllowedForDLS => Rejected()
       case r if r.action.isRorAction => Rejected()
@@ -57,7 +57,7 @@ class FilterRule(val settings: Settings)
               case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
               case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
               case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
-              case RorApiRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+              case RorApiRequestBlockContextUpdater => Result.Fulfilled(blockContext)
             }
         }
     }

@@ -18,16 +18,16 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, RequestId, User}
@@ -47,7 +47,7 @@ final class ProxyAuthRule(val settings: Settings,
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 
-  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
     getLoggedUser(blockContext.requestContext) match {
       case None =>
         Rejected()

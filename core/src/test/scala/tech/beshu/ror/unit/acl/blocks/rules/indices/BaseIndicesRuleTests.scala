@@ -27,8 +27,8 @@ import org.scalatest.{Assertion, Succeeded}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible

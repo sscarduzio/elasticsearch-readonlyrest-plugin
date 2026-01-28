@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Misma
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
@@ -116,7 +116,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
           }
         matchingPreferredGroupResults
           .find { case (matched, preferredGroup) => matched.blockContext.userMetadata.kibanaIndex.isDefined }
-          .orElse { matchingPreferredGroupResults.headOption }
+          .orElse {
+            matchingPreferredGroupResults.headOption
+          }
           .map { case (result, preferredGroup) =>
             val userMetadata =
               updateUserMetadataGroups(result.blockContext, Some(preferredGroup), allAvailableGroupsFrom(matchedResults))
@@ -125,14 +127,17 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       case None =>
         Some {
           val Matched(block, bc) = matchedResults.toList
-            .find { _.blockContext.userMetadata.kibanaIndex.isDefined }
-            .getOrElse { matchedResults.head }
+            .find {
+              _.blockContext.userMetadata.kibanaIndex.isDefined
+            }
+            .getOrElse {
+              matchedResults.head
+            }
           val userMetadata = updateUserMetadataGroups(bc, None, allAvailableGroupsFrom(matchedResults))
           (userMetadata, block)
         }
     }
   }
-
 
   private def createForbiddenResult(blockResults: List[Block.ExecutionResult[CurrentUserMetadataRequestBlockContext]],
                                     history: List[History[CurrentUserMetadataRequestBlockContext]]) = {
@@ -214,7 +219,15 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Iterable[History[B]]): NonEmptySet[ForbiddenCause] = {
     val causes = rejectionsFrom(history).map {
-      case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound(_) | Rejected.Cause.AliasNotFound | Rejected.Cause.TemplateNotFound)) =>
+      case Rejected(None) =>
+        ForbiddenCause.OperationNotAllowed
+      case Rejected(Some(Rejected.Cause.IndexNotFound(_) |
+                         Rejected.Cause.AliasNotFound |
+                         Rejected.Cause.TemplateNotFound |
+                         Rejected.Cause.AuthenticationFailed(_) |
+                         Rejected.Cause.AuthenticationNotPossible(_) |
+                         Rejected.Cause.GroupsAuthorizationFailed(_) |
+                         Rejected.Cause.GroupsAuthorizationNotPossible(_))) =>
         ForbiddenCause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) =>
         ForbiddenCause.ImpersonationNotAllowed
@@ -254,10 +267,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def aliasNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
+      case Rejected(None) => false
+      case Rejected(Some(Rejected.Cause.AuthenticationFailed(_))) => false
+      case Rejected(Some(Rejected.Cause.AuthenticationNotPossible(_))) => false
+      case Rejected(Some(Rejected.Cause.GroupsAuthorizationFailed(_))) => false
+      case Rejected(Some(Rejected.Cause.GroupsAuthorizationNotPossible(_))) => false
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => true
       case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
       case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
-      case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
     }
@@ -265,10 +282,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def templateNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
+      case Rejected(None) => false
+      case Rejected(Some(Rejected.Cause.AuthenticationFailed(_))) => false
+      case Rejected(Some(Rejected.Cause.AuthenticationNotPossible(_))) => false
+      case Rejected(Some(Rejected.Cause.GroupsAuthorizationFailed(_))) => false
+      case Rejected(Some(Rejected.Cause.GroupsAuthorizationNotPossible(_))) => false
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
       case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
       case Rejected(Some(Rejected.Cause.TemplateNotFound)) => true
-      case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
     }
@@ -276,10 +297,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def impersonationRejectionExists(rejections: Vector[Rejected[_]]) = {
     rejections.exists {
+      case Rejected(None) => false
+      case Rejected(Some(Rejected.Cause.AuthenticationFailed(_))) => false
+      case Rejected(Some(Rejected.Cause.AuthenticationNotPossible(_))) => false
+      case Rejected(Some(Rejected.Cause.GroupsAuthorizationFailed(_))) => false
+      case Rejected(Some(Rejected.Cause.GroupsAuthorizationNotPossible(_))) => false
       case Rejected(Some(Rejected.Cause.IndexNotFound(_))) => false
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
       case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
-      case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => true
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => true
     }

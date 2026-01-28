@@ -19,8 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.template
 import cats.data.NonEmptyList
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
+import tech.beshu.ror.accesscontrol.blocks.Result
+import tech.beshu.ror.accesscontrol.blocks.Result.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -32,7 +32,7 @@ private[indices] trait ComponentTemplateIndices
 
   protected def gettingComponentTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                          (implicit blockContext: TemplateRequestBlockContext,
-                                          allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+                                          allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* getting Component Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
@@ -41,10 +41,10 @@ private[indices] trait ComponentTemplateIndices
       logger.debug(
         s"""* no Component Templates for name patterns [${templateNamePatterns.show}] found ..."""
       )
-      RuleResult.fulfilled(blockContext)
+      Result.fulfilled(blockContext)
     } else {
       val operation = TemplateOperation.GettingComponentTemplates(templateNamePatterns)
-      RuleResult.fulfilled(
+      Result.fulfilled(
         blockContext
           .withTemplateOperation(operation)
           .withResponseTemplateTransformation(filterTemplatesNotAllowedAliases)
@@ -55,7 +55,7 @@ private[indices] trait ComponentTemplateIndices
   protected def addingComponentTemplate(newTemplateName: TemplateName,
                                         aliases: Set[RequestedIndex[ClusterIndexName]])
                                        (implicit blockContext: TemplateRequestBlockContext,
-                                        allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+                                        allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* adding Component Template [${newTemplateName.show}] with aliases
          | [${aliases.show}] ...""".oneLiner
@@ -78,7 +78,7 @@ private[indices] trait ComponentTemplateIndices
 
   protected def deletingComponentTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                           (implicit blockContext: TemplateRequestBlockContext,
-                                           allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+                                           allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* deleting Component Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
@@ -98,10 +98,10 @@ private[indices] trait ComponentTemplateIndices
     }
     result match {
       case Left(_) | Right(Nil) =>
-        RuleResult.rejected()
+        Result.rejected()
       case Right(nonEmptyPatternsList) =>
         val modifiedOperation = TemplateOperation.DeletingComponentTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
-        RuleResult.fulfilled(blockContext.withTemplateOperation(modifiedOperation))
+        Result.fulfilled(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
 

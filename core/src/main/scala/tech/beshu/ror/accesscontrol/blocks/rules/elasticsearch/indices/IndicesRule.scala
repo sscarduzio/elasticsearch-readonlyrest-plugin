@@ -26,16 +26,16 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndexPacksUpdater.{FilterableMultiRequestBlockContextWithIndexPacksUpdater, MultiIndexRequestBlockContextWithIndexPacksUpdater}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndicesUpdater.{FilterableRequestBlockContextWithIndicesUpdater, GeneralIndexRequestBlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.AllClusterIndices
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates.AllTemplateIndices
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
@@ -53,7 +53,7 @@ class IndicesRule(override val settings: Settings,
 
   override val name: Rule.Name = IndicesRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
     BlockContextUpdater[B] match {
       case CurrentUserMetadataRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
       case GeneralNonIndexRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
@@ -70,12 +70,12 @@ class IndicesRule(override val settings: Settings,
     }
   }
 
-  private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): Task[RuleResult[B]] = Task.now {
+  private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): Task[Result[B]] = Task.now {
     if (settings.mustInvolveIndices) Rejected()
     else Fulfilled(blockContext)
   }
 
-  private def processIndicesRequest[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B): Task[RuleResult[B]] = {
+  private def processIndicesRequest[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B): Task[Result[B]] = {
     if (matchAll) {
       Task.now(Fulfilled(blockContext))
     } else {
@@ -94,7 +94,7 @@ class IndicesRule(override val settings: Settings,
     }
   }
 
-  private def processIndicesPacks[B <: BlockContext : BlockContextWithIndexPacksUpdater : HasIndexPacks](blockContext: B): Task[RuleResult[B]] = {
+  private def processIndicesPacks[B <: BlockContext : BlockContextWithIndexPacksUpdater : HasIndexPacks](blockContext: B): Task[Result[B]] = {
     if (matchAll) {
       Task.now(Fulfilled(blockContext))
     } else {
@@ -135,7 +135,7 @@ class IndicesRule(override val settings: Settings,
     }
   }
 
-  private def processAliasRequest(blockContext: AliasRequestBlockContext): Task[RuleResult[AliasRequestBlockContext]] = {
+  private def processAliasRequest(blockContext: AliasRequestBlockContext): Task[Result[AliasRequestBlockContext]] = {
     if (matchAll) {
       Task.now(Fulfilled(blockContext))
     } else {
@@ -162,13 +162,13 @@ class IndicesRule(override val settings: Settings,
     }
   }
 
-  private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): Task[RuleResult[SnapshotRequestBlockContext]] = {
+  private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): Task[Result[SnapshotRequestBlockContext]] = {
     if (matchAll) Task.now(Fulfilled(blockContext))
     else if (blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
   }
 
-  private def processDataStreamRequest(blockContext: DataStreamRequestBlockContext): Task[RuleResult[DataStreamRequestBlockContext]] = {
+  private def processDataStreamRequest(blockContext: DataStreamRequestBlockContext): Task[Result[DataStreamRequestBlockContext]] = {
     if (matchAll) Task.now(Fulfilled(blockContext))
     else if (blockContext.backingIndices == BackingIndices.IndicesNotInvolved) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
