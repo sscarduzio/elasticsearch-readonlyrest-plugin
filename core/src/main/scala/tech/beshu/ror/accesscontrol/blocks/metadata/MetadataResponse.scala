@@ -31,10 +31,9 @@ object MetadataResponse {
            userMetadata: UserMetadata,
            currentGroupId: Option[GroupId],
            correlationId: CorrelationId): Json = {
-    CurrentUserMetadataValue.from(userMetadata, correlationId, currentGroupId)
     version match {
       case UserMetadataApiVersion.V1 => CurrentUserMetadataValue.from(userMetadata, correlationId, currentGroupId)
-      case UserMetadataApiVersion.V2(_) => UserMetadataValue.from(userMetadata, correlationId)
+      case UserMetadataApiVersion.V2(licenseType) => UserMetadataValue.from(userMetadata, correlationId, licenseType)
     }
   }
 }
@@ -42,7 +41,8 @@ object MetadataResponse {
 private object UserMetadataValue {
 
   def from(userMetadata: UserMetadata,
-           correlationId: CorrelationId): Json = {
+           correlationId: CorrelationId,
+           licenseType: RorKbnLicenseType): Json = {
     userMetadata match {
       case withoutGroups: UserMetadata.WithoutGroups =>
         Json.obj(
@@ -51,7 +51,7 @@ private object UserMetadataValue {
             Some(correlationIdField("correlation_id", correlationId)),
             Some(username("username", withoutGroups)),
             userOrigin("ror_origin", withoutGroups),
-            kibana("kibana", withoutGroups)
+            kibana("kibana", withoutGroups, licenseType)
           ).flatten *
         )
       case withGroups: UserMetadata.WithGroups =>
@@ -59,7 +59,7 @@ private object UserMetadataValue {
           List(
             userType("type", withGroups),
             Some(correlationIdField("correlation_id", correlationId)),
-            Some(groups("groups", withGroups))
+            Some(groups("groups", withGroups, licenseType))
           ).flatten *
         )
     }
@@ -85,21 +85,21 @@ private object UserMetadataValue {
     userMetadata.userOrigin.map(origin => fieldName -> Json.fromString(origin.value.value))
   }
 
-  private def kibana(fieldName: String, userMetadata: UserMetadata.WithoutGroups): Option[(String, Json)] = {
-    userMetadata.kibanaMetadata.map(m => fieldName -> kibanaJson(m))
+  private def kibana(fieldName: String, userMetadata: UserMetadata.WithoutGroups, licenseType: RorKbnLicenseType): Option[(String, Json)] = {
+    userMetadata.kibanaMetadata.map(m => fieldName -> kibanaJson(m, licenseType))
   }
 
-  private def groups(fieldName: String, userMetadata: UserMetadata.WithGroups): (String, Json) = {
-    fieldName -> Json.arr(userMetadata.groupsMetadata.values.map(groupEntry).toSeq *)
+  private def groups(fieldName: String, userMetadata: UserMetadata.WithGroups, licenseType: RorKbnLicenseType): (String, Json) = {
+    fieldName -> Json.arr(userMetadata.groupsMetadata.values.map(groupEntry(_, licenseType)).toSeq *)
   }
 
-  private def groupEntry(groupMetadata: UserMetadata.WithGroups.GroupMetadata): Json = {
+  private def groupEntry(groupMetadata: UserMetadata.WithGroups.GroupMetadata, licenseType: RorKbnLicenseType): Json = {
     Json.obj(
       List(
         Some(group("group", groupMetadata)),
         Some(groupUsername("username", groupMetadata)),
         groupUserOrigin("ror_origin", groupMetadata),
-        groupKibana("kibana", groupMetadata)
+        groupKibana("kibana", groupMetadata, licenseType)
       ).flatten *
     )
   }
@@ -116,19 +116,28 @@ private object UserMetadataValue {
     groupMetadata.userOrigin.map(origin => fieldName -> Json.fromString(origin.value.value))
   }
 
-  private def groupKibana(fieldName: String, groupMetadata: UserMetadata.WithGroups.GroupMetadata): Option[(String, Json)] = {
-    groupMetadata.kibanaMetadata.map(m => fieldName -> kibanaJson(m))
+  private def groupKibana(fieldName: String, groupMetadata: UserMetadata.WithGroups.GroupMetadata, licenseType: RorKbnLicenseType): Option[(String, Json)] = {
+    groupMetadata.kibanaMetadata.map(m => fieldName -> kibanaJson(m, licenseType))
   }
 
-  private def kibanaJson(metadata: KibanaMetadata): Json = {
+  private def kibanaJson(metadata: KibanaMetadata, licenseType: RorKbnLicenseType): Json = {
+    val isEnterprise = licenseType match {
+      case RorKbnLicenseType.Enterprise(_) => true
+      case _ => false
+    }
+    val isProOrEnterprise = licenseType match {
+      case RorKbnLicenseType.Pro | RorKbnLicenseType.Enterprise(_) => true
+      case _ => false
+    }
+
     Json.obj(
       List(
         Some(kibanaAccess("access", metadata)),
         kibanaIndex("index", metadata),
-        kibanaTemplateIndex("template_index", metadata),
-        hiddenKibanaApps("hidden_apps", metadata),
+        if (isEnterprise) kibanaTemplateIndex("template_index", metadata) else None,
+        if (isProOrEnterprise) hiddenKibanaApps("hidden_apps", metadata) else None,
         kibanaApiAllowedPaths("allowed_api_paths", metadata),
-        kibanaGenericMetadata("metadata", metadata)
+        if (isEnterprise) kibanaGenericMetadata("metadata", metadata) else None
       ).flatten *
     )
   }
