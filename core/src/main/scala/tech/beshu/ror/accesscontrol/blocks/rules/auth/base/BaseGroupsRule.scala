@@ -101,7 +101,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       }
       .map {
         case Some(newBlockContext) => Fulfilled(newBlockContext)
-        case None => Rejected(???)
+        case None => Rejected(???) // todo: fixme
       }
   }
 

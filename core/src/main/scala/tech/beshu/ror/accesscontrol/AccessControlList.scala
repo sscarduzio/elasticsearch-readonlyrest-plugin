@@ -16,18 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import cats.data.NonEmptySet
+import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
-import tech.beshu.ror.accesscontrol.blocks.Block.History
+import tech.beshu.ror.accesscontrol.blocks.Block.BlockExecutionResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Result.Rejected
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
+
+import scala.collection.immutable.ListMap
 
 trait AccessControlList {
   def description: String
@@ -38,7 +42,7 @@ trait AccessControlList {
 
 object AccessControlList {
 
-  final case class WithHistory[RESULT, B <: BlockContext](history: Vector[History[B]], result: RESULT)
+  final case class WithHistory[RESULT, B <: BlockContext](history: Vector[BlockExecutionResult[B]], result: RESULT)
   object WithHistory {
     def withNoHistory[RESULT, B <: BlockContext](handlingResult: RESULT): WithHistory[RESULT, B] =
       WithHistory(Vector.empty, handlingResult)
@@ -50,8 +54,11 @@ object AccessControlList {
       extends RegularRequestResult[B]
     final case class ForbiddenBy[B <: BlockContext](blockContext: B, block: Block)
       extends RegularRequestResult[B]
-    final case class ForbiddenByMismatched[B <: BlockContext](causes: NonEmptySet[ForbiddenCause])
-      extends RegularRequestResult[B]
+    final case class ForbiddenByMismatched[B <: BlockContext](detailedCauses: ListMap[Block.Name, Rejected.Cause])
+      extends RegularRequestResult[B] {
+
+      lazy val causes: NonEmptySet[ForbiddenCause] = detailedToGenericCauses(detailedCauses.values)
+    }
     final case class IndexNotFound[B <: BlockContext](allowedClusters: Set[ClusterName.Full])
       extends RegularRequestResult[B]
     final case class AliasNotFound[B <: BlockContext]()
@@ -66,10 +73,19 @@ object AccessControlList {
 
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
-    final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
-    final case class ForbiddenBy(blockContext: CurrentUserMetadataRequestBlockContext, block: Block) extends UserMetadataRequestResult
-    final case class ForbiddenByMismatched(causes: NonEmptySet[ForbiddenCause]) extends UserMetadataRequestResult
-    case object PassedThrough extends UserMetadataRequestResult
+    final case class Allow(userMetadata: UserMetadata,
+                           block: Block)
+      extends UserMetadataRequestResult
+    final case class ForbiddenBy(blockContext: CurrentUserMetadataRequestBlockContext,
+                                 block: Block)
+      extends UserMetadataRequestResult
+    final case class ForbiddenByMismatched(detailedCauses: ListMap[Block.Name, Rejected.Cause])
+      extends UserMetadataRequestResult {
+
+      lazy val causes: NonEmptySet[ForbiddenCause] = detailedToGenericCauses(detailedCauses.values)
+    }
+    case object PassedThrough
+      extends UserMetadataRequestResult
   }
 
   sealed trait ForbiddenCause
@@ -84,5 +100,22 @@ object AccessControlList {
     def doesRequirePassword: Boolean
     def forbiddenRequestMessage: String
     def obfuscatedHeaders: Set[Header.Name]
+  }
+
+  private def detailedToGenericCauses(detailedCauses: Iterable[Rejected.Cause]): NonEmptySet[ForbiddenCause] = {
+    val causes = detailedCauses.map {
+      case Rejected.Cause.ImpersonationNotAllowed =>
+        ForbiddenCause.ImpersonationNotAllowed
+      case Rejected.Cause.ImpersonationNotSupported =>
+        ForbiddenCause.ImpersonationNotSupported
+      case _: Rejected.Cause.OtherFailure |
+           _: Rejected.Cause.AuthenticationFailure |
+           _: Rejected.Cause.AuthorizationFailure =>
+        ForbiddenCause.OperationNotAllowed
+    }
+    NonEmptyList
+      .fromList(causes.toList)
+      .getOrElse(NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+      .toNes
   }
 }

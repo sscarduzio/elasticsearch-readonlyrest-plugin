@@ -58,9 +58,9 @@ object Result {
     else Rejected[B](Cause.NotAuthorized)
   }
 
-  private[blocks] def fulfilled[B <: BlockContext](blockContext: B): Result[B] = Result.Fulfilled(blockContext)
+  def fulfilled[B](blockContext: B): Result[B] = Result.Fulfilled(blockContext)
 
-  private[blocks] def rejected[B <: BlockContext](cause: Cause): Result[B] = Result.Rejected(cause)
+  def rejected[B](cause: Cause): Result[B] = Result.Rejected(cause)
 
   def fromOption[A](opt: Option[A], ifEmptyCause: => Cause): Result[A] =
     opt match {
