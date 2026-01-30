@@ -53,9 +53,9 @@ class RegularRequestHandler(engine: Engine,
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.core.accessControl
       .handleRegularRequest(request)
-      .map { r =>
+      .map { case (result, _) =>
         threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          commitResult(r.result, request)
+          commitResult(result, request)
         }
       }
   }

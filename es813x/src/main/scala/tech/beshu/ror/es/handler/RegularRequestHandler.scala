@@ -56,9 +56,9 @@ class RegularRequestHandler(engine: Engine,
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.core.accessControl
       .handleRegularRequest(request)
-      .map { r =>
+      .map { case (result, _) =>
         threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          commitResult(r.result, request)
+          commitResult(result, request)
         }
       }
   }
@@ -71,8 +71,8 @@ class RegularRequestHandler(engine: Engine,
           onAllow(request, allow.blockContext)
         case RegularRequestResult.ForbiddenBy(_, block) =>
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
+        case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>
           onIndexNotFound(request, allowedClusters)
         case RegularRequestResult.AliasNotFound() =>

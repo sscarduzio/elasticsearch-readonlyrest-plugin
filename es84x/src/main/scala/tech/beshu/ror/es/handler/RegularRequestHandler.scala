@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
@@ -33,15 +32,16 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
-import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.Set
 import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.{Duration, Instant}
@@ -56,9 +56,9 @@ class RegularRequestHandler(engine: Engine,
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.core.accessControl
       .handleRegularRequest(request)
-      .map { r =>
+      .map { case (result, _) =>
         threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          commitResult(r.result, request)
+          commitResult(result, request)
         }
       }
   }
@@ -71,8 +71,8 @@ class RegularRequestHandler(engine: Engine,
           onAllow(request, allow.blockContext)
         case RegularRequestResult.ForbiddenBy(_, block) =>
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
+        case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>
           onIndexNotFound(request, allowedClusters)
         case RegularRequestResult.AliasNotFound() =>
