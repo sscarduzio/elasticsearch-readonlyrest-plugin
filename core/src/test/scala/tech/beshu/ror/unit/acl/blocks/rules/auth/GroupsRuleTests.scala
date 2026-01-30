@@ -25,6 +25,8 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.SingleRule
@@ -33,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRulesSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
@@ -41,7 +43,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -129,27 +131,29 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
   def assertNotMatchRule(settings: GroupsRulesSettings[GL],
                          loggedUser: Option[User.Id],
                          preferredGroupId: Option[GroupId],
-                         caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled): Unit =
-    assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity)
+                         caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled,
+                         rejectionCause: Cause = Cause.GroupsAuthorizationFailed): Unit =
+    assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity, rejectionCause)
 
   def assertRule(settings: GroupsRulesSettings[GL],
                  loggedUser: Option[User.Id],
                  preferredGroupId: Option[GroupId],
                  blockContextAssertion: Option[BlockContext => Unit],
-                 caseSensitivity: CaseSensitivity): Unit = {
+                 caseSensitivity: CaseSensitivity,
+                 rejectionCause: Cause = Cause.GroupsAuthorizationFailed): Unit = {
     val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(
       allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
       path = UriPath.auditEventPath
     ))
     val blockContext = CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      loggedUser match {
+      requestContext = requestContext,
+      userMetadata = loggedUser match {
         case Some(user) => UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
         case None => UserMetadata.from(requestContext)
       },
-      Set.empty,
-      List.empty
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
     )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
@@ -158,7 +162,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied())
+        result should be(Denied(rejectionCause))
     }
   }
 
@@ -188,7 +192,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
     }
 
@@ -197,8 +201,8 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
-        Task.now(Denied())
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(Denied(AuthenticationFailed))
     }
 
     val throwing: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
@@ -206,7 +210,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.raiseError(new Exception("Sth went wrong"))
     }
   }
@@ -216,7 +220,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
     def matching(groups: NonEmptyList[Group]): AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
         Task.now(Permitted(blockContext.withUserMetadata(
           _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
@@ -226,8 +230,8 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
     val rejecting: AuthorizationRule = new AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-        Task.now(Denied())
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(Denied(GroupsAuthorizationFailed))
     }
   }
 
@@ -239,12 +243,12 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Permitted(blockContext.withUserMetadata(
           _.withLoggedUser(DirectlyLoggedUser(user))
         )))
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Permitted(blockContext.withUserMetadata(
           _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
@@ -256,11 +260,11 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
-        Task.now(Denied())
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(Denied(AuthenticationFailed))
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-        Task.now(Denied())
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(Denied(GroupsAuthorizationFailed))
     }
   }
 }

@@ -25,8 +25,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -270,7 +271,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
     val rule = createRule(config)
     val incomingRequest = requestContext(incomingBlockContext)
 
-    rule.check(incomingRequest.initialBlockContext).runSyncStep shouldBe Right(Denied())
+    rule.check(incomingRequest.initialBlockContext).runSyncStep shouldBe Right(Denied(NotAuthorized))
   }
 
   private def createRule(configuredFLS: Configuration) = {

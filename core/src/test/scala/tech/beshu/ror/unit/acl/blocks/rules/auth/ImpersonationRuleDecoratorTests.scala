@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
+
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -27,7 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
@@ -57,7 +59,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Denied())
+        result should be(Denied(AuthenticationFailed))
       }
     }
     "allow to impersonate user" when {
@@ -148,7 +150,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Denied())
+        result should be(Denied(AuthenticationFailed))
       }
       "the impersonator tries to impersonate himself" in {
         val requestContext = MockRequestContext.indices.withHeaders(

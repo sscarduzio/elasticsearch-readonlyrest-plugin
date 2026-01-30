@@ -21,8 +21,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -82,7 +83,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied())
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(NotAuthorized))
       }
       "ror cookie is expired" in {
         implicit val _clock: Clock = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
@@ -164,7 +165,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           List.empty
         ))
       } else {
-        Denied()
+        Denied(NotAuthorized)
       }
     }
   }

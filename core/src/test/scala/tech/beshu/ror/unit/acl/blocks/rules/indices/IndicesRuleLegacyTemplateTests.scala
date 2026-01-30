@@ -149,7 +149,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
                 requestContext = MockRequestContext
                   .template(gettingTemplateOperation)
                   .addExistingTemplates(existingTemplate1, existingTemplate2),
-                specialCause = Some(Cause.TemplateNotFound)
+                specialCause = Cause.TemplateNotFound
               )
             }
           }

@@ -68,9 +68,9 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
               )
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
-          inside(result.result) { case Allow(blockContext, _) =>
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 1
+          inside(result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
             blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }
@@ -86,9 +86,9 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
               )
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
-          inside(result.result) { case Allow(blockContext, _) =>
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 1
+          inside(result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id"))))
             blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }

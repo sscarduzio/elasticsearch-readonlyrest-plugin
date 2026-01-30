@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
@@ -38,9 +37,7 @@ import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.Set
-import tech.beshu.ror.utils.LoggerOps.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 

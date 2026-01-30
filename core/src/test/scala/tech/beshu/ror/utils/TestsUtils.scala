@@ -329,7 +329,7 @@ object TestsUtils {
   sealed trait AssertionType
   object AssertionType {
     final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
-    final case class RuleRejected(cause: Option[Cause]) extends AssertionType
+    final case class RuleRejected(cause: Cause) extends AssertionType
     final case class RuleThrownException(exception: Throwable) extends AssertionType
   }
 

@@ -86,11 +86,10 @@ class Block(val name: Name,
         }
         Decision.Denied[B](cause)
       }
-    // todo: do it better
-    for {
-      r <- lift[B](ruleDecision)
-      l <- lift[B](ruleDecision).tell(Vector(RuleHistory(rule.name, r)))
-    } yield l
+    lift[B](ruleDecision)
+      .flatTap { decision =>
+        WriterT.tell(Vector(RuleHistory(rule.name, decision)))
+      }
   }
 
   private def matched[B <: BlockContext](result: Decision.Permitted[B]): WriterT[Task, Vector[RuleHistory[B]], Decision[B]] =

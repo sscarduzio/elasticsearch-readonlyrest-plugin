@@ -17,10 +17,8 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
@@ -33,15 +31,14 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
-import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.syntax.Set
-import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.{Duration, Instant}

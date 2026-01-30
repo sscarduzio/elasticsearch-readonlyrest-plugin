@@ -25,10 +25,12 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
@@ -457,7 +459,8 @@ class JwtAuthRuleTests
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          rejectionCause = AuthenticationFailed
         )
       }
       "group IDs claim name is defined but groups aren't passed in JWT token claim" in {
@@ -570,14 +573,16 @@ class JwtAuthRuleTests
   private def assertNotMatchRule(configuredJwtDef: AuthJwtDef,
                                  configuredGroups: Option[GroupsLogic] = None,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None)
+                                 preferredGroupId: Option[GroupId] = None,
+                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None, rejectionCause)
 
   private def assertRule(configuredJwtDef: AuthJwtDef,
                          configuredGroups: Option[GroupsLogic],
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
+                         blockContextAssertion: Option[BlockContext => Unit],
+                         rejectionCause: Cause = GroupsAuthorizationFailed) = {
     val groupsLogic = configuredGroups.getOrElse(
       GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdPattern.fromNes(nes("*")))))
     )
@@ -611,7 +616,7 @@ class JwtAuthRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied())
+        result should be(Denied(rejectionCause))
     }
   }
 }

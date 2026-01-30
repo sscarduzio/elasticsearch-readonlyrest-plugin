@@ -83,10 +83,10 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+          history.blocks should have size 2
+          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
@@ -106,10 +106,10 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
             currentGroupHeader("mapped_viewer_group")
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+          history.blocks should have size 2
+          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),

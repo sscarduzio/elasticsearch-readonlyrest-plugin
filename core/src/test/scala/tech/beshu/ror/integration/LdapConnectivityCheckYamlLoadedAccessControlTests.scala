@@ -107,9 +107,9 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
       "one server is unreachable, but is configured to ignore connectivity problems" when {
         "HA is enabled and one of LDAP hosts is unavailable" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 1
+          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("LDAP1"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
               blockContext
@@ -118,9 +118,9 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
         }
         "ROR is configured to ignore connectivity problems, but connection is possible" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("kyle:user2"))
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 2
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 2
+          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("LDAP2"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("kyle")))) {
               blockContext
@@ -132,10 +132,10 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     "not be successful" when {
       "person from unreachable ldap is authenticated" in {
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("unreachableldapperson:somepass"))
-        val result = acl.handleRegularRequest(request).runSyncUnsafe()
-        result.history should have size 3
-        inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          causes.toSortedSet should contain(ForbiddenCause.OperationNotAllowed)
+        val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+        history.blocks should have size 3
+        inside(result) { case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+          r.causes.toSortedSet should contain(ForbiddenCause.OperationNotAllowed)
         }
       }
     }

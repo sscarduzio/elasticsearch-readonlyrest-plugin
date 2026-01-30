@@ -34,6 +34,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ResponseFieldsRuleTests extends AnyWordSpec {
+
   "A ResponseFields rule" should {
     "add appropriate response transformation to block context" when {
       "whitelist mode is used" in {

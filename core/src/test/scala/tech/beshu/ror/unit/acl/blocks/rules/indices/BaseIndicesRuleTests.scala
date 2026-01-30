@@ -28,7 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -107,7 +108,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
           allAllowedClusters = allAllowedClusters
         ))
       } else {
-        Denied(Some(Cause.IndexNotFound(allAllowedClusters)))
+        Denied(Cause.IndexNotFound(allAllowedClusters))
       }
     }
   }
@@ -169,7 +170,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
           filter = None
         ))
       } else {
-        Denied(Some(Cause.IndexNotFound(Set(ClusterName.Full.local))))
+        Denied(Cause.IndexNotFound(Set(ClusterName.Full.local)))
       }
     }
   }
@@ -194,7 +195,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
 
   protected def assertNotMatchRuleForTemplateRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                      requestContext: MockTemplateRequestContext,
-                                                     specialCause: Option[Cause] = None): Assertion = {
+                                                     specialCause: Cause = NotAuthorized): Assertion = {
     val rule = createIndicesRule(configured)
     val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.toOption.get
     ruleResult shouldBe Denied(specialCause)

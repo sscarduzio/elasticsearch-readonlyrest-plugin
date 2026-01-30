@@ -53,9 +53,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         for {
           prevBlocksExecutionResult <- currentResult
           newCurrentResult <- prevBlocksExecutionResult match {
-            case Decision.Permitted(_) =>
-              checkBlock(block, context)
             case Decision.Denied(_) =>
+              checkBlock(block, context)
+            case Decision.Permitted(_) =>
               lift(prevBlocksExecutionResult)
           }
         } yield newCurrentResult

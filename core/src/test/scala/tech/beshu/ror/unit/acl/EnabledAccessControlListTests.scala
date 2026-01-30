@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
@@ -57,10 +57,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("logserver"), group("ext-onlio"), group("admins"), group("ext-odp"), group("ext-enex"), group("dohled-nd-pce"), group("helpdesk")))),
           ))
 
-          val userMetadataRequestResult = acl
+          val (userMetadataRequestResult, _) = acl
             .handleMetadataRequest(mockMetadataRequestContext("admins"))
             .runSyncUnsafe()
-            .result
 
           inside(userMetadataRequestResult) {
             case Allow(userMetadata, _) =>
@@ -82,10 +81,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
           ))
 
-          val userMetadataRequestResult = acl
+          val (userMetadataRequestResult, _) = acl
             .handleMetadataRequest(mockMetadataRequestContext("admins"))
             .runSyncUnsafe()
-            .result
 
           inside(userMetadataRequestResult) {
             case Allow(userMetadata, _) =>
@@ -108,10 +106,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
           ))
 
-          val userMetadataRequestResult = acl
+          val (userMetadataRequestResult, _) = acl
             .handleMetadataRequest(mockMetadataRequestContext("admins"))
             .runSyncUnsafe()
-            .result
 
           inside(userMetadataRequestResult) {
             case ForbiddenBy(blockContext, block) =>
@@ -130,10 +127,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             mockAllowedPolicyBlock("b7", UserMetadata.empty.withLoggedUser(user("sulc1")).withCurrentGroupId(GroupId("admins")).withAvailableGroups(UniqueList.of(group("g7"), group("admins")))),
           ))
 
-          val userMetadataRequestResult = acl
+          val (userMetadataRequestResult, _) = acl
             .handleMetadataRequest(mockMetadataRequestContext("users"))
             .runSyncUnsafe()
-            .result
 
           inside(userMetadataRequestResult) {
             case ForbiddenBy(blockContext, block) =>
@@ -181,8 +177,8 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")
 
-          override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
-            Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
+          override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+            Task.now(Decision.Permitted(blockContext.withUserMetadata(_ => userMetadata)))
           }
         }
       )

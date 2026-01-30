@@ -27,12 +27,14 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
@@ -69,6 +71,8 @@ class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRul
     Some(LoggedUser.DirectlyLoggedUser(User.Id(user)))
 
   override protected def expectedCurrentGroup: Option[GroupId] = None
+
+  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed
 }
 
 class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule, AuthorizationJwtDef] {
@@ -87,6 +91,8 @@ class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule,
   override protected def expectedLoggedUser(user: NonEmptyString): Option[LoggedUser] = None
 
   override protected def expectedCurrentGroup: Option[GroupId] = Some(GroupId(nes("group1")))
+
+  override protected def expectedTokenIssueRelatedCause: Cause = GroupsAuthorizationFailed
 }
 
 class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
@@ -110,6 +116,8 @@ class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
 
   override protected def expectedCurrentGroup: Option[GroupId] =
     Some(GroupId(nes("group1")))
+
+  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed
 }
 
 trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
@@ -128,6 +136,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
   protected def expectedLoggedUser(user: NonEmptyString): Option[LoggedUser]
 
   protected def expectedCurrentGroup: Option[GroupId]
+
+  protected def expectedTokenIssueRelatedCause: Cause
 
   s"A $ruleName rule using jwt token" should {
     "match" when {
@@ -219,7 +229,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
 
         def checkInvalidToken(): Unit = assertNotMatchRule(
           configuredJwtDef = jwtDef,
-          tokenHeader = bearerHeader(invalidJwt)
+          tokenHeader = bearerHeader(invalidJwt),
+          rejectionCause = expectedTokenIssueRelatedCause
         )
 
         checkValidToken()
@@ -292,7 +303,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
-          tokenHeader = bearerHeader(jwt2)
+          tokenHeader = bearerHeader(jwt2),
+          rejectionCause = expectedTokenIssueRelatedCause
         )
       }
       "token has invalid RS256 signature" in {
@@ -307,7 +319,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          rejectionCause = expectedTokenIssueRelatedCause
         )
       }
       "token has no signature but external auth service returns false" in {
@@ -320,7 +333,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          rejectionCause = expectedTokenIssueRelatedCause
         )
       }
       "token is invalid and cannot be parsed" in {
@@ -333,7 +347,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
-          tokenHeader = bearerHeader("INVALID_JWT_TOKEN")
+          tokenHeader = bearerHeader("INVALID_JWT_TOKEN"),
+          rejectionCause = expectedTokenIssueRelatedCause
         )
       }
     }
@@ -347,13 +362,15 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
 
   private def assertNotMatchRule(configuredJwtDef: DEF,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, blockContextAssertion = None)
+                                 preferredGroupId: Option[GroupId] = None,
+                                 rejectionCause: Cause): Unit =
+    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, blockContextAssertion = None, rejectionCause)
 
   private def assertRule(configuredJwtDef: DEF,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
+                         blockContextAssertion: Option[BlockContext => Unit],
+                         rejectionCause: Cause = GroupsAuthorizationFailed) = {
     val rule = createRule(configuredJwtDef)
 
     val requestContext = MockRequestContext.indices.withHeaders(
@@ -375,7 +392,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied())
+        result should be(Denied(rejectionCause))
     }
   }
 

@@ -26,12 +26,12 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.ImpersonationNotSupported
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Settings.{NegativeGroupsLogicSettings, PositiveGroupsLogicSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
@@ -472,7 +472,7 @@ class LdapAuthorizationRuleTests
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = Some(ImpersonationNotSupported)
+              rejectionCause = ImpersonationNotSupported
             )
           }
         }
@@ -488,7 +488,7 @@ class LdapAuthorizationRuleTests
               impersonation = Impersonation.Disabled,
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = Some(ImpersonationNotSupported)
+              rejectionCause = ImpersonationNotSupported
             )
           }
         }
@@ -515,7 +515,7 @@ class LdapAuthorizationRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 rejectionCause: Option[Cause] = None): Unit =
+                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
     assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(rejectionCause))
 
   private def assertRuleThrown(settings: LdapAuthorizationRule.Settings,

@@ -22,8 +22,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
@@ -223,7 +224,7 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Permitted(blockContext)
-      else Denied()
+      else Denied(NotAuthorized)
     }
   }
 }

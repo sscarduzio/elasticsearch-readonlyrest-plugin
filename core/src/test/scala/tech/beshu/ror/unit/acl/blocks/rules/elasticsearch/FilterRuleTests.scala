@@ -15,15 +15,16 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
+
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Decision
-import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
@@ -109,7 +110,7 @@ class FilterRuleTests extends AnyWordSpec {
         val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
         val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(NotAuthorized))
       }
       "request is not allowed for DLS" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
@@ -117,7 +118,7 @@ class FilterRuleTests extends AnyWordSpec {
         val requestContext = MockRequestContext.indices.copy(isAllowedForDLS = false)
         val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(NotAuthorized))
       }
       "request is ROR admin request" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
@@ -125,7 +126,7 @@ class FilterRuleTests extends AnyWordSpec {
         val requestContext = MockRequestContext.indices.copy(action = MockRequestContext.adminAction)
         val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(NotAuthorized))
       }
     }
   }

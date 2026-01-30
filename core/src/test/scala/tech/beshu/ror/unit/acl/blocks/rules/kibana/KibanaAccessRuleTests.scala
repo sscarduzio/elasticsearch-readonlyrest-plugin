@@ -21,7 +21,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaAccessRuleTests
   extends BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {

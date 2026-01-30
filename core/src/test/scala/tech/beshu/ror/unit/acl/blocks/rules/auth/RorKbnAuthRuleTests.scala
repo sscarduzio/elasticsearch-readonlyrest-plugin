@@ -23,10 +23,12 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -276,7 +278,8 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt2)
+          tokenHeader = bearerHeader(jwt2),
+          rejectionCause = AuthenticationFailed
         )
       }
       "token has invalid RS256 signature" in {
@@ -292,7 +295,8 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Rsa(pub)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          rejectionCause = AuthenticationFailed
         )
       }
       "userId isn't passed in JWT token claim" in {
@@ -307,7 +311,8 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          rejectionCause = AuthenticationFailed
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
@@ -416,14 +421,16 @@ class RorKbnAuthRuleTests
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  groupsLogic: GroupsLogic,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, blockContextAssertion = None)
+                                 preferredGroupId: Option[GroupId] = None,
+                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
+    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, blockContextAssertion = None, rejectionCause)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          groupsLogic: GroupsLogic,
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
+                         blockContextAssertion: Option[BlockContext => Unit],
+                         rejectionCause: Cause = GroupsAuthorizationFailed) = {
     val rule = new RorKbnAuthRule(
       authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled),
       authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic)),
@@ -447,7 +454,7 @@ class RorKbnAuthRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied())
+        result should be(Denied(rejectionCause))
     }
   }
 }

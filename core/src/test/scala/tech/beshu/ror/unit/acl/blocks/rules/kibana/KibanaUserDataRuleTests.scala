@@ -20,8 +20,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
@@ -206,9 +207,9 @@ class KibanaUserDataRuleTests
     )
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     result match {
-      case Success(RuleResult.Fulfilled(blockContext)) =>
+      case Success(Permitted(blockContext)) =>
         blockContext
-      case Success(r@RuleResult.Rejected(_)) =>
+      case Success(r@Denied(_)) =>
         fail(s"Rule was not matched. Result: $r")
       case Failure(exception) =>
         fail(s"Rule was not matched. Exception thrown", exception)
@@ -245,6 +246,6 @@ class KibanaUserDataRuleTests
       )
     }
 
-  private val variableCreator: RuntimeResolvableVariableCreator =
+  private lazy val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }

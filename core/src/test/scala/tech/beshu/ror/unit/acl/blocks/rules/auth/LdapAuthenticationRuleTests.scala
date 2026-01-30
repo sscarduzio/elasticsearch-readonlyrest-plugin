@@ -23,11 +23,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported, AuthenticationFailed}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Decision
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -56,7 +56,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
+        rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
           CurrentUserMetadataRequestBlockContext(
             requestContext,
             UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(Id("admin"))),
@@ -89,7 +89,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
                 ))
               ))
             )
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
+            rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
               CurrentUserMetadataRequestBlockContext(
                 requestContext,
                 UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
@@ -115,7 +115,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
       }
       "there is no basic auth header" in {
         val requestContext = MockRequestContext.indices
@@ -127,7 +127,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
       }
       "LDAP service fails" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:pass"))
@@ -170,7 +170,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(ImpersonationNotAllowed))
           }
           "admin cannot impersonate the given user" in {
             val requestContext = MockRequestContext.indices.withHeaders(
@@ -194,7 +194,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(ImpersonationNotAllowed))
           }
           "mocks provider doesn't have the given user" in {
             val requestContext = MockRequestContext.indices.withHeaders(
@@ -219,7 +219,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
           }
           "mocks provider is unavailable" in {
             val requestContext = MockRequestContext.indices.withHeaders(
@@ -242,7 +242,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotSupported))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(ImpersonationNotSupported))
           }
         }
         "impersonation is disabled" when {
@@ -261,7 +261,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               CaseSensitivity.Enabled,
               Impersonation.Disabled
             )
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
           }
         }
       }

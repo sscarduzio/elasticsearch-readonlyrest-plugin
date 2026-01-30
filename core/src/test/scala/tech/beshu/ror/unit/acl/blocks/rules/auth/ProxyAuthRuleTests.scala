@@ -23,11 +23,11 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.ImpersonationNotAllowed
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -125,7 +125,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = Some(ImpersonationNotAllowed)
+              rejectionCause = ImpersonationNotAllowed
             )
           }
           "admin cannot impersonate the given user" in {
@@ -140,7 +140,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = Some(ImpersonationNotAllowed)
+              rejectionCause = ImpersonationNotAllowed
             )
           }
           "rule doesn't accept given impersonated user" in {
@@ -171,7 +171,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
   private def assertNotMatchRule(settings: ProxyAuthRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  headers: Set[Header],
-                                 rejectionCause: Option[Cause] = None): Unit =
+                                 rejectionCause: Cause = AuthenticationFailed): Unit =
     assertRule(settings, impersonation, headers, AssertionType.RuleRejected(rejectionCause))
 
   private def assertRule(settings: ProxyAuthRule.Settings,

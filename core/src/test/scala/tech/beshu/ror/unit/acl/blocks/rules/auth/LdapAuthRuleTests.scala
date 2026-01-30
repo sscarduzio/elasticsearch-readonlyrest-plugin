@@ -25,11 +25,12 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Settings.{NegativeGroupsLogicSettings, PositiveGroupsLogicSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
@@ -250,7 +251,8 @@ class LdapAuthRuleTests
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
-          basicHeader = None
+          basicHeader = None,
+          rejectionCause = AuthenticationFailed
         )
       }
       "user cannot be authenticated" in {
@@ -264,7 +266,8 @@ class LdapAuthRuleTests
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             ))
           ),
-          basicHeader = Some(basicAuthHeader("user1:pass"))
+          basicHeader = Some(basicAuthHeader("user1:pass")),
+          rejectionCause = AuthenticationFailed
         )
       }
       "user doesn't have any permitted group" in {
@@ -418,7 +421,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Some(Cause.ImpersonationNotAllowed)
+              rejectionCause = Cause.ImpersonationNotAllowed
             )
           }
           "admin cannot impersonate the given user" in {
@@ -442,7 +445,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Some(Cause.ImpersonationNotAllowed)
+              rejectionCause = Cause.ImpersonationNotAllowed
             )
           }
           "mocks provider doesn't have the given user" in {
@@ -466,7 +469,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Some(Cause.ImpersonationNotAllowed)
+              rejectionCause = Cause.ImpersonationNotAllowed
             )
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
@@ -490,7 +493,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Some(Cause.ImpersonationNotAllowed)
+              rejectionCause = Cause.ImpersonationNotAllowed
             )
           }
           "mocks provider is unavailable" in {
@@ -512,7 +515,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Some(Cause.ImpersonationNotAllowed)
+              rejectionCause = Cause.ImpersonationNotAllowed
             )
           }
         }
@@ -530,7 +533,8 @@ class LdapAuthRuleTests
               ),
               impersonation = Impersonation.Disabled,
               basicHeader = Some(basicAuthHeader("admin:pass")),
-              impersonateAsHeader = Some(impersonationHeader("user1"))
+              impersonateAsHeader = Some(impersonationHeader("user1")),
+              rejectionCause = AuthenticationFailed
             )
           }
         }
@@ -565,7 +569,7 @@ class LdapAuthRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  basicHeader: Option[Header],
                                  impersonateAsHeader: Option[Header] = None,
-                                 rejectionCause: Option[Cause] = None): Unit =
+                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
     assertRule(
       authenticationSettings,
       authorizationSettings,

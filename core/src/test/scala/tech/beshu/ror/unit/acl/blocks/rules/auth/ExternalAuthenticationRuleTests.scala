@@ -25,11 +25,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralNonIndexRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed, ImpersonationNotSupported}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Decision
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
@@ -62,7 +62,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
+        rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
           GeneralNonIndexRequestBlockContext(
             requestContext,
             UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("user"))),
@@ -98,7 +98,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
                 ))
               ))
             )
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
+            rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
               GeneralNonIndexRequestBlockContext(
                 requestContext,
                 UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
@@ -124,7 +124,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           CaseSensitivity.Enabled,
           Impersonation.Disabled,
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
       }
       "user is being impersonated" when {
         "impersonation is enabled" when {
@@ -149,7 +149,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(ImpersonationNotAllowed))
           }
           "admin cannot impersonate the given user" in {
             val requestContext = MockRequestContext.indices.withHeaders(
@@ -172,7 +172,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotAllowed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(ImpersonationNotAllowed))
           }
           "mocks provider doesn't have the given user" in {
             val externalAuthenticationService = mockExternalAuthService(
@@ -200,7 +200,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
           }
           "mocks provider is unavailable" in {
             val externalAuthenticationService = mockExternalAuthService(
@@ -226,7 +226,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected(ImpersonationNotSupported))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(ImpersonationNotSupported))
           }
         }
         "impersonation is disabled" when {
@@ -247,7 +247,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               Impersonation.Disabled
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
           }
         }
       }

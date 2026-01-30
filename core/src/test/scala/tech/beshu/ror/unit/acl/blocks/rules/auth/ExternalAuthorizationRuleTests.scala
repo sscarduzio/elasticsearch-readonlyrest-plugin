@@ -30,8 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationServ
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.ImpersonationNotSupported
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -466,7 +466,7 @@ class ExternalAuthorizationRuleTests
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = Some(ImpersonationNotSupported)
+              rejectionCause = ImpersonationNotSupported
             )
           }
         }
@@ -483,7 +483,7 @@ class ExternalAuthorizationRuleTests
               impersonation = Impersonation.Disabled,
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = Some(ImpersonationNotSupported)
+              rejectionCause = ImpersonationNotSupported
             )
           }
         }
@@ -502,7 +502,7 @@ class ExternalAuthorizationRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 rejectionCause: Option[Cause] = None): Unit =
+                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
     assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(rejectionCause))
 
   private def assertRule(settings: ExternalAuthorizationRule.Settings,

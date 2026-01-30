@@ -23,15 +23,15 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Inside, TestSuite}
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
-import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
+import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
@@ -67,15 +67,12 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
-          case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
-            historyItems should have size 3
-            historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
-            historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
-            historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Denied()))
-
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user1")))) {
-              blockContext
-            }
+          case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
+            block.name should be (blockName)
+            rulesHistory should have size 3
+            rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
+            rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
+            rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Denied(NotAuthorized)))
         }
       }
       "one of rules throws exception" in {
@@ -93,15 +90,12 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
-          case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
-            historyItems should have size 3
-            historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
-            historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Permitted(requestContext.initialBlockContext)))
-            historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Denied()))
-
-            blockContext.userMetadata should be(UserMetadata.empty)
-            blockContext.filteredIndices should be(Set.empty)
-            blockContext.responseHeaders should be(Set.empty)
+          case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
+            block.name should be (blockName)
+            rulesHistory should have size 3
+            rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
+            rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(requestContext.initialBlockContext)))
+            rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Denied(NotAuthorized)))
         }
       }
     }
@@ -120,11 +114,12 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
-        case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
-          historyItems should have size 3
-          historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
-          historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Permitted(requestContext.initialBlockContext)))
-          historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Permitted(requestContext.initialBlockContext)))
+        case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
+          block.name should be (blockName)
+          rulesHistory should have size 3
+          rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
+          rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(requestContext.initialBlockContext)))
+          rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Permitted(requestContext.initialBlockContext)))
 
           blockContext.userMetadata should be(UserMetadata.empty)
           blockContext.filteredIndices should be(Set.empty)
@@ -155,11 +150,12 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
-        case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
-          historyItems should have size 3
-          historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
-          historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
-          historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Permitted(withLoggedUser(withIndices(requestContext.initialBlockContext)))))
+        case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
+          block.name should be (blockName)
+          rulesHistory should have size 3
+          rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
+          rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
+          rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Permitted(withLoggedUser(withIndices(requestContext.initialBlockContext)))))
 
           blockContext.userMetadata should be(
             UserMetadata
@@ -193,10 +189,11 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
-        case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
-          historyItems should have size 2
-          historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Permitted(withLoggedUser1(requestContext.initialBlockContext))))
-          historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Permitted(withLoggedUser2(requestContext.initialBlockContext))))
+        case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
+          block.name should be (blockName)
+          rulesHistory should have size 2
+          rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(withLoggedUser1(requestContext.initialBlockContext))))
+          rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(withLoggedUser2(requestContext.initialBlockContext))))
 
           blockContext.userMetadata should be(
             UserMetadata
@@ -218,7 +215,7 @@ trait BlockTestsMockFactory extends MockFactory { this: TestSuite =>
     new RegularRule {
       override val name: Rule.Name = Rule.Name(ruleName)
 
-      override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         BlockContextUpdater[B] match {
           case GeneralIndexRequestBlockContextUpdater => Task.now(Permitted(modifyBlockContext(blockContext)))
           case _ => throw new IllegalStateException("Assuming that only GeneralIndexRequestBlockContext can be used in this test")
@@ -228,14 +225,14 @@ trait BlockTestsMockFactory extends MockFactory { this: TestSuite =>
   protected def notPassingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-      Task.now(Denied())
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      Task.now(Denied(NotAuthorized))
   }
 
   protected def throwingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
 

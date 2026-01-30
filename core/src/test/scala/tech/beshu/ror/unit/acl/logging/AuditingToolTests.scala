@@ -25,6 +25,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
@@ -129,16 +130,16 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = ForbiddenBy(
-              requestContext,
-              new Block(
+              requestContext = requestContext,
+              block = new Block(
                 Block.Name("mock-block"),
                 Block.Policy.Forbid(),
                 Block.Verbosity.Info,
                 Block.Audit.Enabled,
                 NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
               ),
-              GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
-              Vector.empty
+              blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
+              history = History.empty
             )
 
             auditingTool.audit(responseContext).runSyncUnsafe()
@@ -162,7 +163,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             ).runSyncUnsafe().toOption.flatten.get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
-            val responseContext = Forbidden(requestContext, Vector.empty)
+            val responseContext = Forbidden(requestContext, History.empty)
 
             auditingTool.audit(responseContext).runSyncUnsafe()
           }
@@ -260,16 +261,16 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private def createAllowedResponseContext(policy: Block.Policy, verbosity: Block.Verbosity) = {
     val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
     AllowedBy(
-      requestContext,
-      new Block(
+      requestContext = requestContext,
+      block = new Block(
         Block.Name("mock-block"),
         policy,
         verbosity,
         Block.Audit.Enabled,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
       ),
-      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
-      Vector.empty
+      blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
+      history = History.empty
     )
   }
 

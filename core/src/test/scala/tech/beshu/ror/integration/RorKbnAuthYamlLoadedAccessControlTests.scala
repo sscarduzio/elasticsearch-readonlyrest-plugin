@@ -90,10 +90,10 @@ class RorKbnAuthYamlLoadedAccessControlTests
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+          history.blocks should have size 2
+          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
@@ -112,10 +112,10 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val preferredGroup = group("group_in_jwt_token")
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+          history.blocks should have size 2
+          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
@@ -140,10 +140,10 @@ class RorKbnAuthYamlLoadedAccessControlTests
               filteredIndices = Set(requestedIndex("index2")),
             )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 4
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+          history.blocks should have size 4
+          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present with a third key + role"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
@@ -165,12 +165,12 @@ class RorKbnAuthYamlLoadedAccessControlTests
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 4
-          inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>
-            causes.toNonEmptyList should have size 1
-            causes.head should be(ForbiddenCause.OperationNotAllowed)
+          history.blocks should have size 4
+          inside(result) { case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+            r.causes.toNonEmptyList should have size 1
+            r.causes.head should be(ForbiddenCause.OperationNotAllowed)
           }
         }
         "JWT token with some arbitrary group is defined, preferred group is used and does not match group in JWT" in {
@@ -181,12 +181,12 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val preferredGroup = group("mapped_viewer_group")
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt), preferredGroup.id.toCurrentGroupHeader)
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 4
-          inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>
-            causes.toNonEmptyList should have size 1
-            causes.head should be(ForbiddenCause.OperationNotAllowed)
+          history.blocks should have size 4
+          inside(result) { case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+            r.causes.toNonEmptyList should have size 1
+            r.causes.head should be(ForbiddenCause.OperationNotAllowed)
           }
         }
       }

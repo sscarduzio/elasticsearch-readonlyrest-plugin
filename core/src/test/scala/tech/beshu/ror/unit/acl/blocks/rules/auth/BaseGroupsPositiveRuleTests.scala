@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import org.scalatest.matchers.should.Matchers.*
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
@@ -78,7 +78,8 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = Some(User.Id("user2")),
-            preferredGroupId = None
+            preferredGroupId = None,
+            rejectionCause = AuthenticationFailed
           )
         }
         "there is no matching auth rule for given user" in {

@@ -38,11 +38,9 @@ object Decision {
     object Cause {
       sealed trait AuthenticationFailure extends Cause
       case object AuthenticationFailed extends AuthenticationFailure
-      case object AuthenticationNotPossible extends AuthenticationFailure
 
       sealed trait AuthorizationFailure extends Cause
       case object GroupsAuthorizationFailed extends AuthorizationFailure
-      case object GroupsAuthorizationNotPossible extends AuthorizationFailure
       case object NotAuthorized extends AuthorizationFailure
 
       sealed trait OtherFailure extends Cause

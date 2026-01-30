@@ -303,7 +303,7 @@ trait LogsShowInstances
         }
         case BlockHistory.Denied(_, _, _) => ""
       }
-      s"""[${r.block.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
+      s"""[${r.block.name.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
     }
 
   implicit val policyShow: Show[Policy] = Show.show {

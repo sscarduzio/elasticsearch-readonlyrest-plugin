@@ -19,7 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 import cats.data.{NonEmptyList, OptionT}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
@@ -72,7 +73,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                            permittedGroupsLogic: GroupsLogic): Task[Decision[B]] = {
-    blockContext.userMetadata.loggedUser match { // todo: already authenticated user? is it possible
+    blockContext.userMetadata.loggedUser match {
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
@@ -101,7 +102,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       }
       .map {
         case Some(newBlockContext) => Permitted(newBlockContext)
-        case None => Denied(???) // todo: fixme
+        case None => Denied(GroupsAuthorizationFailed)
       }
   }
 

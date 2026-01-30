@@ -154,7 +154,7 @@ private [indices] trait IndicesRuleIndexTemplateTests {
               requestContext = MockRequestContext
                 .template(gettingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              specialCause = Some(Cause.TemplateNotFound)
+              specialCause = Cause.TemplateNotFound
             )
           }
         }
