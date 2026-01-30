@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain

@@ -49,7 +49,7 @@ class Block(val name: Name,
 
   import Lifter.*
 
-  def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
+  def evaluate[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[BlockEvaluationResult[B]] = {
     val initBlockContext = requestContext.initialBlockContext
     rules
       .foldLeft(matched[B](initBlockContext)) {
@@ -68,7 +68,12 @@ class Block(val name: Name,
         (History(name, history, result.blockContext), result)
       }
       .run
-      .map(_.swap)
+      .map { case (history, result) =>
+        result match {
+          case r@Decision.Permitted(context) => BlockEvaluationResult.Matched(r, this, history)
+          case r@Decision.Denied(_) => BlockEvaluationResult.Mismatched(r, this, history)
+        }
+      }
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule, blockContext: B) = {
@@ -138,15 +143,23 @@ object Block {
     )
 
   final case class Name(value: String) extends AnyVal
-  final case class History[B <: BlockContext](block: Block.Name,
-                                              items: Vector[HistoryItem[B]],
-                                              blockContext: B)
-  sealed trait HistoryItem[B <: BlockContext]
-  object HistoryItem {
-    final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
-                                                        result: Result[B])
-      extends HistoryItem[B]
+  sealed trait BlockEvaluationResult[B <: BlockContext] {
+    def block: Block
+    def history: Vector[HistoryItem[B]]
   }
+  object BlockEvaluationResult {
+    final case class Matched[B <: BlockContext](decision: Decision.Permitted[B],
+                                                override val block: Block,
+                                                override val history: Vector[HistoryItem[B]])
+      extends BlockEvaluationResult[B]
+
+    final case class Mismatched[B <: BlockContext](decision: Decision.Denied[B],
+                                                   override val block: Block,
+                                                   override val history: Vector[HistoryItem[B]])
+      extends BlockEvaluationResult[B]
+  }
+
+  final case class HistoryItem[B <: BlockContext](rule: Rule.Name, result: Decision[B])
 
   final case class RuleDefinition[T <: Rule](rule: T,
                                              variableUsage: VariableUsage[T],
