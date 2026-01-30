@@ -252,7 +252,7 @@ class LdapAuthRuleTests
             ))
           ),
           basicHeader = None,
-          rejectionCause = AuthenticationFailed
+          denialCause = AuthenticationFailed
         )
       }
       "user cannot be authenticated" in {
@@ -267,7 +267,7 @@ class LdapAuthRuleTests
             ))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass")),
-          rejectionCause = AuthenticationFailed
+          denialCause = AuthenticationFailed
         )
       }
       "user doesn't have any permitted group" in {
@@ -421,7 +421,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Cause.ImpersonationNotAllowed
+              denialCause = Cause.ImpersonationNotAllowed
             )
           }
           "admin cannot impersonate the given user" in {
@@ -445,7 +445,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Cause.ImpersonationNotAllowed
+              denialCause = Cause.ImpersonationNotAllowed
             )
           }
           "mocks provider doesn't have the given user" in {
@@ -469,7 +469,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Cause.ImpersonationNotAllowed
+              denialCause = Cause.ImpersonationNotAllowed
             )
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
@@ -493,7 +493,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Cause.ImpersonationNotAllowed
+              denialCause = Cause.ImpersonationNotAllowed
             )
           }
           "mocks provider is unavailable" in {
@@ -515,7 +515,7 @@ class LdapAuthRuleTests
               )),
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = Cause.ImpersonationNotAllowed
+              denialCause = Cause.ImpersonationNotAllowed
             )
           }
         }
@@ -534,7 +534,7 @@ class LdapAuthRuleTests
               impersonation = Impersonation.Disabled,
               basicHeader = Some(basicAuthHeader("admin:pass")),
               impersonateAsHeader = Some(impersonationHeader("user1")),
-              rejectionCause = AuthenticationFailed
+              denialCause = AuthenticationFailed
             )
           }
         }
@@ -569,13 +569,13 @@ class LdapAuthRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  basicHeader: Option[Header],
                                  impersonateAsHeader: Option[Header] = None,
-                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
+                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
     assertRule(
       authenticationSettings,
       authorizationSettings,
       impersonation,
       impersonateAsHeader.toCovariantSet ++ basicHeader.toSet,
-      AssertionType.RuleRejected(rejectionCause)
+      AssertionType.RuleRejected(denialCause)
     )
 
   private def assertRuleThrown(authenticationSettings: LdapAuthenticationRule.Settings,

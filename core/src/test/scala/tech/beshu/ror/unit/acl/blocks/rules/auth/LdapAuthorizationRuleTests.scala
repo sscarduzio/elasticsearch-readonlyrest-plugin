@@ -472,7 +472,7 @@ class LdapAuthorizationRuleTests
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = ImpersonationNotSupported
+              denialCause = ImpersonationNotSupported
             )
           }
         }
@@ -488,7 +488,7 @@ class LdapAuthorizationRuleTests
               impersonation = Impersonation.Disabled,
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = ImpersonationNotSupported
+              denialCause = ImpersonationNotSupported
             )
           }
         }
@@ -515,8 +515,8 @@ class LdapAuthorizationRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(rejectionCause))
+                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(denialCause))
 
   private def assertRuleThrown(settings: LdapAuthorizationRule.Settings,
                                impersonation: Impersonation = Impersonation.Disabled,

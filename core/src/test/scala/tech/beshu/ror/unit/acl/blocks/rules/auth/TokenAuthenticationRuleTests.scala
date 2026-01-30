@@ -156,7 +156,7 @@ class TokenAuthenticationRuleTests
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = ImpersonationNotAllowed
+              denialCause = ImpersonationNotAllowed
             )
           }
           "admin cannot impersonate the given user" in {
@@ -175,7 +175,7 @@ class TokenAuthenticationRuleTests
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = ImpersonationNotAllowed
+              denialCause = ImpersonationNotAllowed
             )
           }
           "rule doesn't accept given impersonated user" in {
@@ -211,8 +211,8 @@ class TokenAuthenticationRuleTests
   private def assertNotMatchRule(settings: TokenAuthenticationRule.Settings,
                                  impersonation: Impersonation,
                                  headers: Set[Header],
-                                 rejectionCause: Cause = AuthenticationFailed): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(rejectionCause))
+                                 denialCause: Cause = AuthenticationFailed): Unit =
+    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(denialCause))
 
   private def assertRule(settings: TokenAuthenticationRule.Settings,
                          impersonation: Impersonation,

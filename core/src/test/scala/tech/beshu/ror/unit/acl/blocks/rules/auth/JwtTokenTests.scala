@@ -230,7 +230,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         def checkInvalidToken(): Unit = assertNotMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = bearerHeader(invalidJwt),
-          rejectionCause = expectedTokenIssueRelatedCause
+          denialCause = expectedTokenIssueRelatedCause
         )
 
         checkValidToken()
@@ -304,7 +304,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt2),
-          rejectionCause = expectedTokenIssueRelatedCause
+          denialCause = expectedTokenIssueRelatedCause
         )
       }
       "token has invalid RS256 signature" in {
@@ -320,7 +320,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt),
-          rejectionCause = expectedTokenIssueRelatedCause
+          denialCause = expectedTokenIssueRelatedCause
         )
       }
       "token has no signature but external auth service returns false" in {
@@ -334,7 +334,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt),
-          rejectionCause = expectedTokenIssueRelatedCause
+          denialCause = expectedTokenIssueRelatedCause
         )
       }
       "token is invalid and cannot be parsed" in {
@@ -348,7 +348,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader("INVALID_JWT_TOKEN"),
-          rejectionCause = expectedTokenIssueRelatedCause
+          denialCause = expectedTokenIssueRelatedCause
         )
       }
     }
@@ -363,14 +363,14 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
   private def assertNotMatchRule(configuredJwtDef: DEF,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None,
-                                 rejectionCause: Cause): Unit =
-    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, blockContextAssertion = None, rejectionCause)
+                                 denialCause: Cause): Unit =
+    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, blockContextAssertion = None, denialCause)
 
   private def assertRule(configuredJwtDef: DEF,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit],
-                         rejectionCause: Cause = GroupsAuthorizationFailed) = {
+                         denialCause: Cause = GroupsAuthorizationFailed) = {
     val rule = createRule(configuredJwtDef)
 
     val requestContext = MockRequestContext.indices.withHeaders(
@@ -392,7 +392,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(rejectionCause))
+        result should be(Denied(denialCause))
     }
   }
 

@@ -125,7 +125,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = ImpersonationNotAllowed
+              denialCause = ImpersonationNotAllowed
             )
           }
           "admin cannot impersonate the given user" in {
@@ -140,7 +140,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = ImpersonationNotAllowed
+              denialCause = ImpersonationNotAllowed
             )
           }
           "rule doesn't accept given impersonated user" in {
@@ -171,8 +171,8 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
   private def assertNotMatchRule(settings: ProxyAuthRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  headers: Set[Header],
-                                 rejectionCause: Cause = AuthenticationFailed): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(rejectionCause))
+                                 denialCause: Cause = AuthenticationFailed): Unit =
+    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(denialCause))
 
   private def assertRule(settings: ProxyAuthRule.Settings,
                          impersonation: Impersonation,

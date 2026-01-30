@@ -68,16 +68,16 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
               case Policy.Allow => RegularRequestResult.Allow(blockContext, block)
               case Policy.Forbid(_) => RegularRequestResult.ForbiddenBy(blockContext, block)
             }
-          case Decision.Denied(_) if wasRejectedDueToAliasNotFound(blocksHistory) =>
+          case Decision.Denied(_) if wasDeniedDueToAliasNotFound(blocksHistory) =>
             RegularRequestResult.AliasNotFound()
-          case Decision.Denied(_) if wasRejectedDueToTemplateNotFound(blocksHistory) =>
+          case Decision.Denied(_) if wasDeniedDueToTemplateNotFound(blocksHistory) =>
             RegularRequestResult.TemplateNotFound()
           case Decision.Denied(_) =>
-            wasRejectedDueToIndexNotFound(blocksHistory) match {
+            wasDeniedDueToIndexNotFound(blocksHistory) match {
               case Some(error) =>
                 RegularRequestResult.IndexNotFound(error.allowedClusters)
               case None =>
-                RegularRequestResult.ForbiddenByMismatched(rejectionCausesPerBlockFrom(blocksHistory))
+                RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
             }
         }
         handlingResult -> History(blocksHistory)
@@ -161,7 +161,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
     matchedForbidBlock match {
       case Some(BlockHistory.Permitted(block, decision, _)) => UserMetadataRequestResult.ForbiddenBy(decision.context, block)
-      case None => UserMetadataRequestResult.ForbiddenByMismatched(rejectionCausesPerBlockFrom(blockResults))
+      case None => UserMetadataRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blockResults))
     }
   }
 
@@ -215,7 +215,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     WriterT.value[Task, Vector[BlockHistory[B]], AclProcessingResult[B]](result)
   }
 
-  private def rejectionCausesPerBlockFrom(history: Iterable[BlockHistory[_]]): ListMap[Block.Name, Denied.Cause] = {
+  private def denyCausesPerBlockFrom(history: Iterable[BlockHistory[_]]): ListMap[Block.Name, Denied.Cause] = {
     ListMap.from {
       history.flatMap {
         case BlockHistory.Permitted(_, _, _) => None
@@ -224,32 +224,32 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def wasRejectedDueToIndexNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]): Option[Denied.Cause.IndexNotFound] = {
-    val causes = deniedCausesFrom(history)
-    if (impersonationRejectionExists(causes)) {
+  private def wasDeniedDueToIndexNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]): Option[Denied.Cause.IndexNotFound] = {
+    val causes = denialCausesFrom(history)
+    if (impersonationRelatedCauseExists(causes)) {
       None
     } else {
-      indexNotFoundRejectionExists(causes)
+      indexNotFoundCauseExists(causes)
     }
   }
 
-  private def wasRejectedDueToAliasNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
-    val causes = deniedCausesFrom(history)
-    !impersonationRejectionExists(causes) && aliasNotFoundRejectionExists(causes)
+  private def wasDeniedDueToAliasNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
+    val causes = denialCausesFrom(history)
+    !impersonationRelatedCauseExists(causes) && aliasNotFoundCauseExists(causes)
   }
 
-  private def wasRejectedDueToTemplateNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
-    val causes = deniedCausesFrom(history)
-    !impersonationRejectionExists(causes) && templateNotFoundRejectionExists(causes)
+  private def wasDeniedDueToTemplateNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
+    val causes = denialCausesFrom(history)
+    !impersonationRelatedCauseExists(causes) && templateNotFoundCauseExists(causes)
   }
 
-  private def indexNotFoundRejectionExists(causes: Set[Denied.Cause]): Option[Denied.Cause.IndexNotFound] = {
+  private def indexNotFoundCauseExists(causes: Set[Denied.Cause]): Option[Denied.Cause.IndexNotFound] = {
     causes.collectFirst {
       case cause@Denied.Cause.IndexNotFound(_) => cause
     }
   }
 
-  private def aliasNotFoundRejectionExists(causes: Set[Denied.Cause]) = {
+  private def aliasNotFoundCauseExists(causes: Set[Denied.Cause]) = {
     causes.exists {
       case Denied.Cause.AliasNotFound => true
       case _: Denied.Cause.OtherFailure => false
@@ -258,7 +258,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def templateNotFoundRejectionExists(causes: Set[Denied.Cause]) = {
+  private def templateNotFoundCauseExists(causes: Set[Denied.Cause]) = {
     causes.exists {
       case Denied.Cause.TemplateNotFound => true
       case _: Denied.Cause.OtherFailure => false
@@ -267,7 +267,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def impersonationRejectionExists(causes: Set[Denied.Cause]) = {
+  private def impersonationRelatedCauseExists(causes: Set[Denied.Cause]) = {
     causes.exists {
       case Denied.Cause.ImpersonationNotAllowed => true
       case Denied.Cause.ImpersonationNotSupported => true
@@ -277,7 +277,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def deniedCausesFrom[B <: BlockContext](history: Iterable[BlockHistory[B]]): Set[Denied.Cause] = {
+  private def denialCausesFrom[B <: BlockContext](history: Iterable[BlockHistory[B]]): Set[Denied.Cause] = {
     history
       .flatMap {
         case BlockHistory.Permitted(_, _, _) =>

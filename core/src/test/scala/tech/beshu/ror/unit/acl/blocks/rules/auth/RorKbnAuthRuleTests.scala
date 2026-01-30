@@ -279,7 +279,7 @@ class RorKbnAuthRuleTests
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt2),
-          rejectionCause = AuthenticationFailed
+          denialCause = AuthenticationFailed
         )
       }
       "token has invalid RS256 signature" in {
@@ -296,7 +296,7 @@ class RorKbnAuthRuleTests
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt),
-          rejectionCause = AuthenticationFailed
+          denialCause = AuthenticationFailed
         )
       }
       "userId isn't passed in JWT token claim" in {
@@ -312,7 +312,7 @@ class RorKbnAuthRuleTests
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt),
-          rejectionCause = AuthenticationFailed
+          denialCause = AuthenticationFailed
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
@@ -422,15 +422,15 @@ class RorKbnAuthRuleTests
                                  groupsLogic: GroupsLogic,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None,
-                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
-    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, blockContextAssertion = None, rejectionCause)
+                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, blockContextAssertion = None, denialCause)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          groupsLogic: GroupsLogic,
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit],
-                         rejectionCause: Cause = GroupsAuthorizationFailed) = {
+                         denialCause: Cause = GroupsAuthorizationFailed) = {
     val rule = new RorKbnAuthRule(
       authentication = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled),
       authorization = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic)),
@@ -454,7 +454,7 @@ class RorKbnAuthRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(rejectionCause))
+        result should be(Denied(denialCause))
     }
   }
 }

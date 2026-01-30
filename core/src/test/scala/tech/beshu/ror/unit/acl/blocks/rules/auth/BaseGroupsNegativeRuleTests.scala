@@ -77,7 +77,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user2")),
             preferredGroupId = None,
-            rejectionCause = AuthenticationFailed
+            denialCause = AuthenticationFailed
           )
         }
         "there is no matching auth rule for given user" in {

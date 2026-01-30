@@ -466,7 +466,7 @@ class ExternalAuthorizationRuleTests
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = ImpersonationNotSupported
+              denialCause = ImpersonationNotSupported
             )
           }
         }
@@ -483,7 +483,7 @@ class ExternalAuthorizationRuleTests
               impersonation = Impersonation.Disabled,
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = ImpersonationNotSupported
+              denialCause = ImpersonationNotSupported
             )
           }
         }
@@ -502,8 +502,8 @@ class ExternalAuthorizationRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(rejectionCause))
+                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(denialCause))
 
   private def assertRule(settings: ExternalAuthorizationRule.Settings,
                          impersonation: Impersonation,

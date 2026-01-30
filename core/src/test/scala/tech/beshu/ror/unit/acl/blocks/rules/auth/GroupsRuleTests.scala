@@ -132,15 +132,15 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
                          loggedUser: Option[User.Id],
                          preferredGroupId: Option[GroupId],
                          caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled,
-                         rejectionCause: Cause = Cause.GroupsAuthorizationFailed): Unit =
-    assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity, rejectionCause)
+                         denialCause: Cause = Cause.GroupsAuthorizationFailed): Unit =
+    assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity, denialCause)
 
   def assertRule(settings: GroupsRulesSettings[GL],
                  loggedUser: Option[User.Id],
                  preferredGroupId: Option[GroupId],
                  blockContextAssertion: Option[BlockContext => Unit],
                  caseSensitivity: CaseSensitivity,
-                 rejectionCause: Cause = Cause.GroupsAuthorizationFailed): Unit = {
+                 denialCause: Cause = Cause.GroupsAuthorizationFailed): Unit = {
     val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(
       allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
@@ -162,7 +162,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(rejectionCause))
+        result should be(Denied(denialCause))
     }
   }
 

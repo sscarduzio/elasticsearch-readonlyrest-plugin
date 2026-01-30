@@ -38,24 +38,24 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
                                                         rorKbnDef: RorKbnDef,
-                                                        rejectionCause: => Denied.Cause)
+                                                        denialCause: => Denied.Cause)
                                                        (operation: TokenData => Either[Unit, B]): Decision[B] = {
     val authHeaderName = Header.Name.authorization
     implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Denied(rejectionCause)
+        Denied(denialCause)
       case Some(token) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         jwtTokenData(token, rorKbnDef) match {
           case Left(_) =>
-            Denied(rejectionCause)
+            Denied(denialCause)
           case Right(tokenData) =>
             val claimProcessingResult = operation(tokenData)
             claimProcessingResult match {
               case Left(_) =>
-                Denied(rejectionCause)
+                Denied(denialCause)
               case Right(modifiedBlockContext) =>
                 Permitted(modifiedBlockContext)
             }

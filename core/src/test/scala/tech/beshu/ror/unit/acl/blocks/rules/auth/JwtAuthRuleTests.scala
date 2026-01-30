@@ -460,7 +460,7 @@ class JwtAuthRuleTests
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           tokenHeader = bearerHeader(jwt),
-          rejectionCause = AuthenticationFailed
+          denialCause = AuthenticationFailed
         )
       }
       "group IDs claim name is defined but groups aren't passed in JWT token claim" in {
@@ -574,15 +574,15 @@ class JwtAuthRuleTests
                                  configuredGroups: Option[GroupsLogic] = None,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None,
-                                 rejectionCause: Cause = GroupsAuthorizationFailed): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None, rejectionCause)
+                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None, denialCause)
 
   private def assertRule(configuredJwtDef: AuthJwtDef,
                          configuredGroups: Option[GroupsLogic],
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit],
-                         rejectionCause: Cause = GroupsAuthorizationFailed) = {
+                         denialCause: Cause = GroupsAuthorizationFailed) = {
     val groupsLogic = configuredGroups.getOrElse(
       GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdPattern.fromNes(nes("*")))))
     )
@@ -616,7 +616,7 @@ class JwtAuthRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(rejectionCause))
+        result should be(Denied(denialCause))
     }
   }
 }

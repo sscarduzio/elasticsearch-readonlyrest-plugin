@@ -33,7 +33,7 @@ final class JwtAuthRule(val authentication: JwtAuthenticationRule,
   ) with BaseJwtRule {
 
   override protected[rules] def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    doPostAuthAction(blockContext, authorization.settings.jwt, Cause.GroupsAuthorizationFailed)
+    doPostAuthAction(blockContext, authorization.settings.jwt, Cause.AuthenticationFailed)
   }
 
   override val name: Rule.Name = JwtAuthRule.Name.name
