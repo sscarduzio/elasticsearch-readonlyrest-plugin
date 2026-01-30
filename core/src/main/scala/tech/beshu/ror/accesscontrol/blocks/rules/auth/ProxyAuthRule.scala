@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, RequestId, User}
@@ -48,14 +48,14 @@ final class ProxyAuthRule(val settings: Settings,
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 
-  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     getLoggedUser(blockContext.requestContext) match {
       case None =>
-        Rejected(Cause.AuthenticationFailed)
+        Denied(Cause.AuthenticationFailed)
       case Some(loggedUser) if shouldAuthenticate(loggedUser.id) =>
-        Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
+        Permitted(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
       case Some(_) =>
-        Rejected(Cause.AuthenticationFailed)
+        Denied(Cause.AuthenticationFailed)
     }
   }
 

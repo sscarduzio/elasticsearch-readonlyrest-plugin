@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequ
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Result
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
+import tech.beshu.ror.accesscontrol.blocks.Decision
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}

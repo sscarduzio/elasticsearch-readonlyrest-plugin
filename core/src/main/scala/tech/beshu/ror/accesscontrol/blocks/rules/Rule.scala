@@ -20,9 +20,9 @@ import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
-import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.accesscontrol.utils.TaskResultOps.*
 import tech.beshu.ror.syntax.*
@@ -32,7 +32,7 @@ import scala.annotation.nowarn
 sealed trait Rule {
   def name: Rule.Name
 
-  def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]]
+  def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]]
 }
 
 object Rule {
@@ -53,21 +53,21 @@ object Rule {
 
     def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B]
 
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
-      process(blockContext).map(Result.Fulfilled.apply)
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      process(blockContext).map(Decision.Permitted.apply)
   }
 
   trait RegularRule extends Rule {
-    override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+    override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
       BlockContextUpdater[B] match {
         case GeneralNonIndexRequestBlockContextUpdater if isAuditEventRequest(blockContext) =>
-          Task.now(Result.fulfilled(blockContext))
+          Task.now(Decision.permit(blockContext))
         case _ =>
           regularCheck(blockContext)
       }
     }
 
-    protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]]
+    protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]]
 
     private def isAuditEventRequest(blockContext: GeneralNonIndexRequestBlockContext): Boolean = {
       blockContext.requestContext.restRequest.path.isAuditEventPath
@@ -81,20 +81,20 @@ object Rule {
     def eligibleUsers: AuthenticationRule.EligibleUsersSupport
     implicit def userIdCaseSensitivity: CaseSensitivity
 
-    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
       authenticate(blockContext)
         .flatMapT(postAuthenticateAction)
     }
 
-    private[rules] final def doAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+    private[rules] final def doAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
       authenticate(blockContext)
     }
 
-    protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]]
+    protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]]
 
     @nowarn("msg=unused implicit parameter")
-    protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
-      Task.now(Fulfilled(blockContext))
+    protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      Task.now(Permitted(blockContext))
   }
   object AuthenticationRule {
     sealed trait EligibleUsersSupport
@@ -107,34 +107,34 @@ object Rule {
   trait AuthorizationRule extends Rule {
     this: AuthorizationImpersonationSupport =>
 
-    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
       authorize(blockContext)
         .flatMapT(postAuthorizationAction)
     }
 
-    private[rules] def doAuthorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+    private[rules] def doAuthorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
       authorize(blockContext)
     }
 
-    protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]]
+    protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]]
 
     @nowarn("msg=unused implicit parameter")
-    protected def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
-      Task.now(Fulfilled(blockContext))
+    protected def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      Task.now(Permitted(blockContext))
   }
 
   trait AuthRule extends AuthenticationRule with AuthorizationRule {
     this: AuthenticationImpersonationSupport with AuthorizationImpersonationSupport =>
 
-    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
       authenticate(blockContext)
         .flatMapT(authorize)
         .flatMapT(postAuthAction)
     }
 
     @nowarn("msg=unused implicit parameter")
-    protected def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
-      Task.now(Fulfilled(blockContext))
+    protected def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      Task.now(Permitted(blockContext))
   }
 
 }

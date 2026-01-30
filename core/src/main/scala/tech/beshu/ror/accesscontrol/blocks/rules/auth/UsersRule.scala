@@ -18,13 +18,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
@@ -35,16 +35,16 @@ class UsersRule(val settings: Settings,
 
   override val name: Rule.Name = UsersRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.userMetadata.loggedUser match {
       case Some(user) => matchUser(user, blockContext)
-      case None => Rejected(Cause.NotAuthorized)
+      case None => Denied(Cause.NotAuthorized)
     }
   }
 
-  private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): Result[B] = {
+  private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): Decision[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
-    Result.resultBasedOnCondition(blockContext) {
+    Decision.permit(`with` = blockContext) {
       PatternsMatcher.create(resolvedIds).`match`(user.id)
     }
   }

@@ -19,13 +19,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeDataStreamsFilterScalaAdapter}
@@ -45,24 +45,24 @@ class DataStreamsRule(val settings: Settings)
     new ZeroKnowledgeIndexFilter(true)
   )
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.DataStreamRequestBlockContextUpdater =>
         checkDataStreams(blockContext)
       case _ =>
-        Fulfilled(blockContext)
+        Permitted(blockContext)
     }
   }
 
   private def checkDataStreams[B <: BlockContext](blockContext: DataStreamRequestBlockContext)
-                                                 (implicit ev: DataStreamRequestBlockContext <:< B): Result[B] = {
+                                                 (implicit ev: DataStreamRequestBlockContext <:< B): Decision[B] = {
     checkAllowedDataStreams(
       resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.dataStreams,
       blockContext.requestContext
     ) match {
-      case Right(filteredDataStreams) => Fulfilled(blockContext.withDataStreams(filteredDataStreams))
-      case Left(()) => Rejected(Cause.NotAuthorized)
+      case Right(filteredDataStreams) => Permitted(blockContext.withDataStreams(filteredDataStreams))
+      case Left(()) => Denied(Cause.NotAuthorized)
     }
   }
 

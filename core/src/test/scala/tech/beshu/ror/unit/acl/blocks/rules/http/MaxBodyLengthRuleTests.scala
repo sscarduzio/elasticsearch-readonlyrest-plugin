@@ -23,7 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Information, Kilobytes}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
@@ -80,8 +80,8 @@ class MaxBodyLengthRuleTests extends AnyWordSpec with MockFactory {
       responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right{
-      if (isMatched) Fulfilled(blockContext)
-      else Rejected()
+      if (isMatched) Permitted(blockContext)
+      else Denied()
     }
   }
 }

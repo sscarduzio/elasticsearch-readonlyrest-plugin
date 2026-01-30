@@ -17,21 +17,22 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import cats.Monad
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.syntax.*
 
 import scala.annotation.tailrec
 
-sealed trait Result[B]
+sealed trait Decision[CONTEXT]
 
-object Result {
-  final case class Fulfilled[B](context: B)
-    extends Result[B]
+object Decision {
+  final case class Permitted[CONTEXT](context: CONTEXT)
+    extends Decision[CONTEXT]
 
-  final case class Rejected[B](cause: Cause)
-    extends Result[B]
-  object Rejected {
+  // todo: maybe extends Decision[Nothing]?
+  final case class Denied[CONTEXT](cause: Cause)
+    extends Decision[CONTEXT]
+  object Denied {
 
     sealed trait Cause
     object Cause {
@@ -53,51 +54,51 @@ object Result {
     }
   }
 
-  private[blocks] def resultBasedOnCondition[B <: BlockContext](blockContext: B)(condition: => Boolean): Result[B] = {
-    if (condition) Fulfilled[B](blockContext)
-    else Rejected[B](Cause.NotAuthorized)
+  def permit[CONTEXT](`with`: CONTEXT)(when: => Boolean): Decision[CONTEXT] = {
+    if (when) Permitted[CONTEXT](`with`)
+    else Denied[CONTEXT](Cause.NotAuthorized)
   }
 
-  def fulfilled[B](blockContext: B): Result[B] = Result.Fulfilled(blockContext)
+  def permit[CONTEXT](blockContext: CONTEXT): Decision[CONTEXT] = Decision.Permitted(blockContext)
 
-  def rejected[B](cause: Cause): Result[B] = Result.Rejected(cause)
+  def deny[CONTEXT](cause: Cause): Decision[CONTEXT] = Decision.Denied(cause)
 
-  def fromOption[A](opt: Option[A], ifEmptyCause: => Cause): Result[A] =
+  def fromOption[CONTEXT](opt: Option[CONTEXT], ifEmptyCause: => Cause): Decision[CONTEXT] =
     opt match {
-      case Some(value) => Fulfilled(value)
-      case None => Rejected(ifEmptyCause)
+      case Some(value) => Permitted(value)
+      case None => Denied(ifEmptyCause)
     }
 
-  extension [A](result: Result[A]) {
-    def map[B](f: A => B): Result[B] = {
+  extension [A](result: Decision[A]) {
+    def map[B](f: A => B): Decision[B] = {
       result match {
-        case Result.Fulfilled(a) => Fulfilled(f(a))
-        case Result.Rejected(cause) => Result.Rejected(cause)
+        case Decision.Permitted(a) => Permitted(f(a))
+        case Decision.Denied(cause) => Decision.Denied(cause)
       }
     }
 
-    def toEither: Either[Rejected[A], Fulfilled[A]] = result match {
-      case fulfilled: Fulfilled[A] => Right(fulfilled)
-      case rejected: Result.Rejected[A] => Left(Rejected(rejected.cause))
+    def toEither: Either[Denied[A], Permitted[A]] = result match {
+      case fulfilled: Permitted[A] => Right(fulfilled)
+      case rejected: Decision.Denied[A] => Left(Denied(rejected.cause))
     }
   }
 
-  implicit val resultMonad: Monad[Result] = new Monad[Result] {
-    override def pure[A](a: A): Result[A] =
-      Result.Fulfilled(a)
+  implicit val resultMonad: Monad[Decision] = new Monad[Decision] {
+    override def pure[A](a: A): Decision[A] =
+      Decision.Permitted(a)
 
-    override def flatMap[A, B](fa: Result[A])(f: A => Result[B]): Result[B] =
+    override def flatMap[A, B](fa: Decision[A])(f: A => Decision[B]): Decision[B] =
       fa match {
-        case Result.Fulfilled(value) => f(value)
-        case Result.Rejected(cause) => Result.Rejected(cause)
+        case Decision.Permitted(value) => f(value)
+        case Decision.Denied(cause) => Decision.Denied(cause)
       }
 
     @tailrec
-    override def tailRecM[A, B](a: A)(f: A => Result[Either[A, B]]): Result[B] =
+    override def tailRecM[A, B](a: A)(f: A => Decision[Either[A, B]]): Decision[B] =
       f(a) match {
-        case Result.Fulfilled(Left(next)) => tailRecM(next)(f)
-        case Result.Fulfilled(Right(b)) => Result.Fulfilled(b)
-        case Result.Rejected(cause) => Result.Rejected(cause)
+        case Decision.Permitted(Left(next)) => tailRecM(next)(f)
+        case Decision.Permitted(Right(b)) => Decision.Permitted(b)
+        case Decision.Denied(cause) => Decision.Denied(cause)
       }
   }
 }

@@ -19,7 +19,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaTemplateIndexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
@@ -39,7 +39,7 @@ class KibanaTemplateIndexRuleTests
         val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index")))
         val requestContext = MockRequestContext.indices
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+        rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
           CurrentUserMetadataRequestBlockContext(
             requestContext,
             UserMetadata.empty.withKibanaTemplateIndex(kibanaIndexName("kibana_template_index")),
@@ -52,7 +52,7 @@ class KibanaTemplateIndexRuleTests
         val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index_of_@{user}")))
         val requestContext = MockRequestContext.indices
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+        rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
           CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         ))
       }

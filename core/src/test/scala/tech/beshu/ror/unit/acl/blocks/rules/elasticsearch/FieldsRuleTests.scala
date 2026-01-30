@@ -26,7 +26,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -240,7 +240,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
           responseTransformations = List.empty
         )
         inside(rule.check(incomingBlockContext).runSyncStep) {
-          case Right(Fulfilled(outBlockContext)) =>
+          case Right(Permitted(outBlockContext)) =>
             outBlockContext shouldBe incomingBlockContext
         }
       }
@@ -257,7 +257,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
     val incomingRequest = requestContext(incomingBlockContext)
 
     inside(rule.check(incomingRequest.initialBlockContext).runSyncStep) {
-      case Right(Fulfilled(outBlockContext)) =>
+      case Right(Permitted(outBlockContext)) =>
         outBlockContext.fieldLevelSecurity.isDefined shouldBe true
         outBlockContext.fieldLevelSecurity.get.strategy shouldBe expectedStrategy
     }
@@ -270,7 +270,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
     val rule = createRule(config)
     val incomingRequest = requestContext(incomingBlockContext)
 
-    rule.check(incomingRequest.initialBlockContext).runSyncStep shouldBe Right(Rejected())
+    rule.check(incomingRequest.initialBlockContext).runSyncStep shouldBe Right(Denied())
   }
 
   private def createRule(configuredFLS: Configuration) = {

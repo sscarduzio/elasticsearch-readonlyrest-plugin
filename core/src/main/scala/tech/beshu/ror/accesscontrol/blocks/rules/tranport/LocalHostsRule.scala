@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.LocalHostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Address
 
 class LocalHostsRule(val settings: Settings,
@@ -31,11 +31,11 @@ class LocalHostsRule(val settings: Settings,
 
   override val name: Rule.Name = LocalHostsRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     checkAllowedAddresses(blockContext)(
       allowedAddresses = settings.allowedAddresses,
       addressToCheck = blockContext.requestContext.restRequest.localAddress
-    ).map(condition => Result.resultBasedOnCondition(blockContext)(condition))
+    ).map(condition => Decision.permit(`with` = blockContext)(when = condition))
   }
 
 }

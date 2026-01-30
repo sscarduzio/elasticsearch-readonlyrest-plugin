@@ -27,8 +27,8 @@ import org.scalatest.{Assertion, Succeeded}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -93,7 +93,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
       )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) {
-        Fulfilled(GeneralIndexRequestBlockContext(
+        Permitted(GeneralIndexRequestBlockContext(
           requestContext = requestContext,
           userMetadata = blockContext.userMetadata,
           responseHeaders = Set.empty,
@@ -107,7 +107,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
           allAllowedClusters = allAllowedClusters
         ))
       } else {
-        Rejected(Some(Cause.IndexNotFound(allAllowedClusters)))
+        Denied(Some(Cause.IndexNotFound(allAllowedClusters)))
       }
     }
   }
@@ -160,7 +160,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
     )
     rule.check(blockContext).runSyncUnsafe() shouldBe {
       if (isMatched) {
-        Fulfilled(FilterableMultiRequestBlockContext(
+        Permitted(FilterableMultiRequestBlockContext(
           requestContext = requestContext,
           userMetadata = blockContext.userMetadata,
           responseHeaders = Set.empty,
@@ -169,7 +169,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
           filter = None
         ))
       } else {
-        Rejected(Some(Cause.IndexNotFound(Set(ClusterName.Full.local))))
+        Denied(Some(Cause.IndexNotFound(Set(ClusterName.Full.local))))
       }
     }
   }
@@ -182,7 +182,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
     val rule = createIndicesRule(configured)
     val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.toOption.get
     ruleResult should matchPattern {
-      case Fulfilled(blockContext@TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _, allowedIndices))
+      case Permitted(blockContext@TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _, allowedIndices))
         if rc == requestContext
           && metadata == requestContext.initialBlockContext.userMetadata
           && headers.isEmpty
@@ -197,7 +197,7 @@ abstract class BaseIndicesRuleTests extends AnyWordSpec with Matchers {
                                                      specialCause: Option[Cause] = None): Assertion = {
     val rule = createIndicesRule(configured)
     val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.toOption.get
-    ruleResult shouldBe Rejected(specialCause)
+    ruleResult shouldBe Denied(specialCause)
   }
 
   private def createIndicesRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]) = {

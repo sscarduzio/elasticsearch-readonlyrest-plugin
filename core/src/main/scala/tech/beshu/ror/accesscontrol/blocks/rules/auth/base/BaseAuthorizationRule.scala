@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause.ImpersonationNotSupported
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.ImpersonationNotSupported
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings, SimpleAuthorizationImpersonationSupport}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -46,11 +46,11 @@ private[auth] trait BaseAuthorizationRule
   @nowarn("msg=unused explicit parameter")
   protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     authorize(blockContext)
   }
 
-  override protected[base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override protected[base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     (blockContext.userMetadata.loggedUser, impersonation) match {
       case (Some(user@ImpersonatedUser(_, _)), Impersonation.Enabled(ImpersonationSettings(_, mocksProvider))) =>
         loggedUserPreconditionCheck(user) match {
@@ -58,7 +58,7 @@ private[auth] trait BaseAuthorizationRule
           case Right(_) => authorizeImpersonatedUser(blockContext, user, mocksProvider)
         }
       case (Some(ImpersonatedUser(_, _)), Impersonation.Disabled) =>
-        Task.now(Rejected(ImpersonationNotSupported))
+        Task.now(Denied(ImpersonationNotSupported))
       case (Some(user@DirectlyLoggedUser(_)), _) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         loggedUserPreconditionCheck(user) match {
@@ -72,7 +72,7 @@ private[auth] trait BaseAuthorizationRule
 
   private def authorizeImpersonatedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                  user: LoggedUser.ImpersonatedUser,
-                                                                                 mocksProvider: MocksProvider): Task[Result[B]] = {
+                                                                                 mocksProvider: MocksProvider): Task[Decision[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     mockedGroupsOf(user.id, mocksProvider) match {
       case Groups.Present(mockedGroups) =>
@@ -82,13 +82,13 @@ private[auth] trait BaseAuthorizationRule
           userGroupsProvider = (_, _) => Task.now(mockedGroups)
         )
       case Groups.CannotCheck =>
-        Task.now(Rejected(Cause.ImpersonationNotSupported))
+        Task.now(Denied(Cause.ImpersonationNotSupported))
     }
   }
 
   private def doAuthorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                              user: LoggedUser)
-                                                                            (implicit requestId: RequestId): Task[Result[B]] = {
+                                                                            (implicit requestId: RequestId): Task[Decision[B]] = {
     authorizeLoggedUser(
       blockContext,
       user,
@@ -98,7 +98,7 @@ private[auth] trait BaseAuthorizationRule
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
-                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[Result[B]] = {
+                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[Decision[B]] = {
     if (blockContext.isCurrentGroupPotentiallyEligible(groupsLogic)) {
       userGroupsProvider(blockContext, user)
         .map(uniqueList => UniqueNonEmptyList.from(uniqueList.toSet))
@@ -106,7 +106,7 @@ private[auth] trait BaseAuthorizationRule
           case Some(fetchedUserGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(fetchedUserGroups)) =>
             calculateAllowedGroupsForUser(fetchedUserGroups) match {
               case Some(availableGroups) =>
-                Fulfilled(blockContext.withUserMetadata(
+                Permitted(blockContext.withUserMetadata(
                   _.addAvailableGroups(availableGroups)
                 ))
               case None =>
@@ -124,5 +124,5 @@ private[auth] trait BaseAuthorizationRule
     groupsLogic.availableGroupsFrom(usersGroups)
   }
 
-  private def reject[T]() = Result.Rejected[T](Cause.GroupsAuthorizationFailed)
+  private def reject[T]() = Decision.Denied[T](Cause.GroupsAuthorizationFailed)
 }

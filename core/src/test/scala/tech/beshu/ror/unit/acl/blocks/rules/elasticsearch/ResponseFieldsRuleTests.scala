@@ -23,7 +23,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, FilteredResponseFields}
@@ -51,7 +51,7 @@ class ResponseFieldsRuleTests extends AnyWordSpec {
     val requestContext = MockRequestContext.indices
     val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
-    rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+    rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
       BlockContext.GeneralIndexRequestBlockContext(
         requestContext = requestContext,
         userMetadata = UserMetadata.empty,

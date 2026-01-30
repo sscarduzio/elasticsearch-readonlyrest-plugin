@@ -20,8 +20,8 @@ import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Result}
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.{Ec, Hmac, NoCheck, Rsa}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -36,30 +36,30 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
   protected def doPostAuthAction[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF, rejectionCause: => Rejected.Cause): Task[Result[B]] = {
+  ](blockContext: B, jwt: JWT_DEF, rejectionCause: => Denied.Cause): Task[Decision[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     jwt.checkMethod match {
       case NoCheck(service) =>
         jwtTokenFrom(blockContext, jwt, rejectionCause) match {
-          case Rejected(cause) =>
-            Task.now(Rejected(cause))
-          case Fulfilled(token) =>
+          case Denied(cause) =>
+            Task.now(Denied(cause))
+          case Permitted(token) =>
             service
               .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
               .map {
-                case true => Fulfilled(blockContext)
-                case false => Rejected(rejectionCause)
+                case true => Permitted(blockContext)
+                case false => Denied(rejectionCause)
               }
         }
       case _ =>
-        Task.now(Fulfilled(blockContext))
+        Task.now(Permitted(blockContext))
     }
   }
 
   protected def processUsingJwtToken[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF, rejectionCause: => Rejected.Cause)
-   (operation: Jwt.Payload => Result[B]): Task[Result[B]] = Task.delay {
+  ](blockContext: B, jwt: JWT_DEF, rejectionCause: => Denied.Cause)
+   (operation: Jwt.Payload => Decision[B]): Task[Decision[B]] = Task.delay {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     for {
       token <- jwtTokenFrom(blockContext, jwt, rejectionCause)
@@ -70,14 +70,14 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
   private def jwtTokenFrom[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF, rejectionCause: => Rejected.Cause): Result[Jwt.Token] = {
+  ](blockContext: B, jwt: JWT_DEF, rejectionCause: => Denied.Cause): Decision[Jwt.Token] = {
     implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.authorizationToken(jwt.authorizationTokenDef) match {
       case Some(t) =>
-        Result.Fulfilled(Jwt.Token(t.value))
+        Decision.Permitted(Jwt.Token(t.value))
       case None =>
         logger.debug(s"Authorization header '${jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-        Result.Rejected(rejectionCause)
+        Decision.Denied(rejectionCause)
     }
   }
 
@@ -94,8 +94,8 @@ trait BaseJwtRule extends RequestIdAwareLogging {
     logger.debug(s"[${requestId.show}] JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
   }
 
-  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, rejectionCause: => Rejected.Cause)
-                                           (implicit requestId: RequestId): Result[Jwt.Payload] = {
+  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, rejectionCause: => Denied.Cause)
+                                           (implicit requestId: RequestId): Decision[Jwt.Payload] = {
     val parser = jwt.checkMethod match {
       case NoCheck(_) => Jwts.parser().unsecured().build()
       case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
@@ -103,9 +103,9 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
     }
 
-    def rejected(ex: Throwable): Result[Jwt.Payload] = {
+    def rejected(ex: Throwable): Decision[Jwt.Payload] = {
       logBadToken(ex, token)
-      Result.Rejected(rejectionCause)
+      Decision.Denied(rejectionCause)
     }
 
     jwt.checkMethod match {
@@ -114,15 +114,15 @@ trait BaseJwtRule extends RequestIdAwareLogging {
           case fst :: snd :: _ =>
             Try(parser.parseUnsecuredClaims(s"$fst.$snd.").getPayload)
               .toEither
-              .fold(rejected, claims => Result.Fulfilled(Jwt.Payload(claims)))
+              .fold(rejected, claims => Decision.Permitted(Jwt.Payload(claims)))
           case _ =>
-            Result.Rejected(rejectionCause)
+            Decision.Denied(rejectionCause)
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
         Try(parser.parseSignedClaims(token.value.value).getPayload)
           .toEither
           .map(Jwt.Payload.apply)
-          .fold(rejected, Result.Fulfilled(_))
+          .fold(rejected, Decision.Permitted(_))
     }
   }
 

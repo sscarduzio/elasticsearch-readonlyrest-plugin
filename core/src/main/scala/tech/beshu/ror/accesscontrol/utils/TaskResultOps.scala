@@ -18,14 +18,14 @@ package tech.beshu.ror.accesscontrol.utils
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.Result
+import tech.beshu.ror.accesscontrol.blocks.Decision
 
 object TaskResultOps {
-  extension [B](result: Task[Result[B]]) {
-    def flatMapT[C <: BlockContext](f: B => Task[Result[C]]): Task[Result[C]] =
+  extension [B](result: Task[Decision[B]]) {
+    def flatMapT[C <: BlockContext](f: B => Task[Decision[C]]): Task[Decision[C]] =
       result.flatMap {
-        case Result.Fulfilled(b) => f(b)
-        case Result.Rejected(cause) => Task.pure(Result.Rejected(cause))
+        case Decision.Permitted(b) => f(b)
+        case Decision.Denied(cause) => Task.pure(Decision.Denied(cause))
       }
   }
 }

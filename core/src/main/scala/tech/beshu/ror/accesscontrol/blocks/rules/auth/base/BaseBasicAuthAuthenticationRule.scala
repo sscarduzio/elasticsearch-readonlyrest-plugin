@@ -17,10 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Credentials, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
@@ -31,7 +31,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
   protected def authenticateUsing(credentials: Credentials)
                                  (implicit requestId: RequestId): Task[Boolean]
 
-  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     Task
       .unit
       .flatMap { _ =>
@@ -41,7 +41,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
           case Some(credentials) =>
             authenticateUsing(credentials)
               .map {
-                case true => Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))
+                case true => Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))
                 case false => reject()
               }
           case None =>
@@ -50,7 +50,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
       }
   }
 
-  private def reject[T]() = Result.Rejected[T](Cause.AuthenticationFailed)
+  private def reject[T]() = Decision.Denied[T](Cause.AuthenticationFailed)
 }
 
 abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDENTIALS])

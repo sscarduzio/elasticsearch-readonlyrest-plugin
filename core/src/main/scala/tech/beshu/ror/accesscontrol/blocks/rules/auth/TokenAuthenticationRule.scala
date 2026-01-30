@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Se
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -49,15 +49,15 @@ final class TokenAuthenticationRule(val settings: Settings,
     else UserExistence.NotExist
   }
 
-  override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
+  override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
     Task
       .unit
       .map { _ =>
         val requestContext = blockContext.requestContext
         if (verifyTokenFromHeader(requestContext)) {
-          Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
+          Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
         } else {
-          Rejected(Cause.AuthenticationFailed)
+          Denied(Cause.AuthenticationFailed)
         }
       }
 

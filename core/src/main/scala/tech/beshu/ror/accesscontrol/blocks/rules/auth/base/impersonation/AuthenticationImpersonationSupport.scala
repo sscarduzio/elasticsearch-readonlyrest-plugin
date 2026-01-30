@@ -20,9 +20,9 @@ import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Result
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation.Enabled
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult.Handled
@@ -102,34 +102,34 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
           if (userMatcher.`match`(theImpersonatedUserId)) Some(impersonatorDef)
           else None
         },
-      ifNone = Rejected[B](Cause.ImpersonationNotAllowed)
+      ifNone = Denied[B](Cause.ImpersonationNotAllowed)
     )
   }
 
   private def authenticateImpersonator[B <: BlockContext : BlockContextUpdater](impersonatorDef: ImpersonatorDef,
-                                                                                blockContext: B): EitherT[Task, Rejected[B], LoggedUser] = EitherT {
+                                                                                blockContext: B): EitherT[Task, Denied[B], LoggedUser] = EitherT {
     impersonatorDef
       .authenticationRule
       .check(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
       .map {
-        case Fulfilled(bc) =>
+        case Permitted(bc) =>
           bc.userMetadata.loggedUser match {
             case Some(loggedUser) => Right(loggedUser)
             case None => throw new IllegalStateException("Impersonator should be logged")
           }
-        case Rejected(_) =>
-          Left(Rejected[B](Cause.ImpersonationNotAllowed))
+        case Denied(_) =>
+          Left(Denied[B](Cause.ImpersonationNotAllowed))
       }
   }
 
   private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                  mocksProvider: MocksProvider)
-                                                                (implicit requestId: RequestId): EitherT[Task, Rejected[B], Unit] = EitherT {
+                                                                (implicit requestId: RequestId): EitherT[Task, Denied[B], Unit] = EitherT {
     exists(theImpersonatedUserId, mocksProvider)
       .map {
         case Exists => Right(())
-        case NotExist => Left(Rejected[B](Cause.ImpersonationNotAllowed))
-        case CannotCheck => Left(Rejected[B](Cause.ImpersonationNotSupported))
+        case NotExist => Left(Denied[B](Cause.ImpersonationNotAllowed))
+        case CannotCheck => Left(Denied[B](Cause.ImpersonationNotSupported))
       }
   }
 
@@ -138,14 +138,14 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
     EitherT.cond[Task](
       test = loggedImpersonator.id != theImpersonatedUserId,
       right = (),
-      left = Rejected[B](Cause.ImpersonationNotAllowed),
+      left = Denied[B](Cause.ImpersonationNotAllowed),
     )
 
-  private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]): Task[Result[B]] = {
+  private def toRuleResult[B <: BlockContext](result: EitherT[Task, Denied[B], B]): Task[Decision[B]] = {
     result
       .value
       .map {
-        case Right(newBlockContext) => Fulfilled[B](newBlockContext)
+        case Right(newBlockContext) => Permitted[B](newBlockContext)
         case Left(rejected) => rejected
       }
   }
@@ -159,7 +159,7 @@ object SimpleAuthenticationImpersonationSupport {
   sealed trait ImpersonationResult[B <: BlockContext]
   object ImpersonationResult {
     final case class NotImpersonationRequest[B <: BlockContext]() extends ImpersonationResult[B]
-    final case class Handled[B <: BlockContext](result: Result[B]) extends ImpersonationResult[B]
+    final case class Handled[B <: BlockContext](result: Decision[B]) extends ImpersonationResult[B]
   }
 
   sealed trait UserExistence

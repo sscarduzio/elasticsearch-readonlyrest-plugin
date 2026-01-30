@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
@@ -37,14 +37,14 @@ final class RorKbnAuthorizationRule(val settings: Settings)
 
   override val name: Rule.Name = RorKbnAuthorizationRule.Name.name
 
-  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task.delay {
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
     settings.groupsLogic match {
       case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
         processUsingJwtToken(blockContext, settings.rorKbn, Cause.GroupsAuthorizationFailed) { tokenData =>
           authorize(blockContext, tokenData.groups, settings.groupsLogic)
         }
       case _ =>
-        Result.Rejected(Cause.GroupsAuthorizationFailed)
+        Decision.Denied(Cause.GroupsAuthorizationFailed)
     }
   }
 

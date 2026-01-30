@@ -22,8 +22,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Result
-import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Decision
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
@@ -45,7 +45,7 @@ class FilterRuleTests extends AnyWordSpec {
           val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
           val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
-          rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+          rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
             BlockContext.FilterableRequestBlockContext(
               requestContext = requestContext,
               userMetadata = UserMetadata.empty,
@@ -63,7 +63,7 @@ class FilterRuleTests extends AnyWordSpec {
           val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
           val blockContext = FilterableMultiRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, List.empty, None)
 
-          rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+          rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
             BlockContext.FilterableMultiRequestBlockContext(
               requestContext = requestContext,
               userMetadata = UserMetadata.empty,
@@ -89,7 +89,7 @@ class FilterRuleTests extends AnyWordSpec {
           filter = None
         )
 
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+        rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
           FilterableRequestBlockContext(
             requestContext = requestContext,
             userMetadata = UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),

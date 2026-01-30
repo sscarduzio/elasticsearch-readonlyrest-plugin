@@ -19,9 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.template
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.blocks.Result
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.resultBasedOnCondition
+import tech.beshu.ror.accesscontrol.blocks.Decision
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
@@ -37,16 +36,16 @@ private[indices] trait LegacyTemplatesIndices
 
   protected def gettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                       (implicit blockContext: TemplateRequestBlockContext,
-                                       allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
+                                       allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
     processGettingLegacyTemplates(templateNamePatterns) match {
       case Right((operation, transformation)) =>
-        Result.fulfilled(
+        Decision.permit(
           blockContext
             .withTemplateOperation(operation)
             .withResponseTemplateTransformation(transformation)
         )
       case Left(cause) =>
-        Result.rejected(cause)
+        Decision.deny(cause)
     }
   }
 
@@ -79,7 +78,7 @@ private[indices] trait LegacyTemplatesIndices
                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
                                      aliases: Set[RequestedIndex[ClusterIndexName]])
                                     (implicit blockContext: TemplateRequestBlockContext,
-                                     allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
+                                     allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* adding Template [${newTemplateName.show}] with index
          | patterns [${newTemplateIndicesPatterns.show}] and aliases [${aliases.show}] ...""".oneLiner
@@ -90,12 +89,12 @@ private[indices] trait LegacyTemplatesIndices
           s"""* Template with name [${existingTemplate.name.show}]
              | (indices patterns [${existingTemplate.patterns.show}]) exits ...""".oneLiner
         )
-        resultBasedOnCondition(blockContext) {
+        Decision.permit(`with` = blockContext) {
           canModifyExistingTemplate(existingTemplate) &&
             canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
         }
       case None =>
-        resultBasedOnCondition(blockContext) {
+        Decision.permit(`with` = blockContext) {
           canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
         }
     }
@@ -103,7 +102,7 @@ private[indices] trait LegacyTemplatesIndices
 
   protected def deletingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                        (implicit blockContext: TemplateRequestBlockContext,
-                                        allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
+                                        allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* deleting Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
@@ -123,10 +122,10 @@ private[indices] trait LegacyTemplatesIndices
     }
     result match {
       case Left(_) | Right(Nil) =>
-        Result.rejected(Cause.NotAuthorized)
+        Decision.deny(Cause.NotAuthorized)
       case Right(nonEmptyPatternsList) =>
         val modifiedOperation = TemplateOperation.DeletingLegacyTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
-        Result.fulfilled(blockContext.withTemplateOperation(modifiedOperation))
+        Decision.permit(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
 

@@ -19,9 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.template
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.blocks.Result
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.resultBasedOnCondition
+import tech.beshu.ror.accesscontrol.blocks.Decision
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
@@ -37,16 +36,16 @@ private[indices] trait IndexTemplateIndices
 
   protected def gettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                      (implicit blockContext: TemplateRequestBlockContext,
-                                      allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
+                                      allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
     processGettingIndexTemplates(templateNamePatterns) match {
       case Right((operation, transformation)) =>
-        Result.fulfilled(
+        Decision.permit(
           blockContext
             .withTemplateOperation(operation)
             .withResponseTemplateTransformation(transformation)
         )
       case Left(cause) =>
-        Result.rejected(cause)
+        Decision.deny(cause)
     }
   }
 
@@ -88,8 +87,8 @@ private[indices] trait IndexTemplateIndices
                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
                                     aliases: Set[RequestedIndex[ClusterIndexName]])
                                    (implicit blockContext: TemplateRequestBlockContext,
-                                    allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
-    resultBasedOnCondition(blockContext) {
+                                    allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+    Decision.permit(`with` = blockContext) {
       processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
     }
   }
@@ -99,14 +98,14 @@ private[indices] trait IndexTemplateIndices
                                                      aliases: Set[RequestedIndex[ClusterIndexName]],
                                                      requestedTemplateNames: List[TemplateNamePattern])
                                                     (implicit blockContext: TemplateRequestBlockContext,
-                                                     allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
+                                                     allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
     processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases) match {
       case true =>
         val (filteredAllowedTemplates, transformation) = NonEmptyList.fromList(requestedTemplateNames) match {
           case Some(nonEmptyAllowedTemplateNames) => getAllowedExistingIndexTemplates(nonEmptyAllowedTemplateNames)
           case None => (List.empty, ignoreAnyTemplate)
         }
-        Result.fulfilled {
+        Decision.permit {
           blockContext
             .withTemplateOperation(
               AddingIndexTemplateAndGetAllowedOnes(newTemplateName, newTemplateIndicesPatterns, aliases, filteredAllowedTemplates)
@@ -114,7 +113,7 @@ private[indices] trait IndexTemplateIndices
             .withResponseTemplateTransformation(transformation)
         }
       case false =>
-        Result.rejected(Cause.NotAuthorized)
+        Decision.deny(Cause.NotAuthorized)
     }
   }
 
@@ -142,7 +141,7 @@ private[indices] trait IndexTemplateIndices
 
   protected def deletingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                       (implicit blockContext: TemplateRequestBlockContext,
-                                       allowedIndices: AllowedIndices): Result[TemplateRequestBlockContext] = {
+                                       allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* deleting Index Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
@@ -162,10 +161,10 @@ private[indices] trait IndexTemplateIndices
     }
     result match {
       case Left(_) | Right(Nil) =>
-        Result.rejected(Cause.NotAuthorized)
+        Decision.deny(Cause.NotAuthorized)
       case Right(nonEmptyPatternsList) =>
         val modifiedOperation = TemplateOperation.DeletingIndexTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
-        Result.fulfilled(blockContext.withTemplateOperation(modifiedOperation))
+        Decision.permit(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
 

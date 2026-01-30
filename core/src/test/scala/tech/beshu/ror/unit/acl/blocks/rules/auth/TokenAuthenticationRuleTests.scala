@@ -25,9 +25,9 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause.ImpersonationNotAllowed
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.ImpersonationNotAllowed
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -229,11 +229,11 @@ class TokenAuthenticationRuleTests
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {
       case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Fulfilled(outBlockContext)) =>
+        inside(result) { case Success(Permitted(outBlockContext)) =>
           blockContextAssertion(outBlockContext)
         }
       case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Rejected(cause)))
+        result should be(Success(Denied(cause)))
       case AssertionType.RuleThrownException(ex) =>
         result should be(Failure(ex))
     }

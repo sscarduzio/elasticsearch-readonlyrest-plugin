@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.Impersona
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
@@ -57,7 +57,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Rejected())
+        result should be(Denied())
       }
     }
     "allow to impersonate user" when {
@@ -70,7 +70,7 @@ class ImpersonationRuleDecoratorTests
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
-          inside(result) { case Fulfilled(newBlockContext: GeneralIndexRequestBlockContext) =>
+          inside(result) { case Permitted(newBlockContext: GeneralIndexRequestBlockContext) =>
             newBlockContext.userMetadata should be(
               UserMetadata.empty.withLoggedUser(ImpersonatedUser(User.Id("user1"), User.Id("admin1")))
             )
@@ -84,7 +84,7 @@ class ImpersonationRuleDecoratorTests
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
-          inside(result) { case Fulfilled(newBlockContext: GeneralIndexRequestBlockContext) =>
+          inside(result) { case Permitted(newBlockContext: GeneralIndexRequestBlockContext) =>
             newBlockContext.userMetadata should be(
               UserMetadata.empty.withLoggedUser(ImpersonatedUser(User.Id("user1"), User.Id("admin3")))
             )
@@ -101,7 +101,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Rejected(Cause.ImpersonationNotAllowed))
+        result should be(Denied(Cause.ImpersonationNotAllowed))
       }
       "impersonator has no rights to impersonate given user" in {
         val requestContext = MockRequestContext.indices.withHeaders(
@@ -111,7 +111,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Rejected(Cause.ImpersonationNotAllowed))
+        result should be(Denied(Cause.ImpersonationNotAllowed))
       }
       "impersonator authentication failed" in {
         val requestContext = MockRequestContext.indices.withHeaders(
@@ -121,7 +121,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Rejected(Cause.ImpersonationNotAllowed))
+        result should be(Denied(Cause.ImpersonationNotAllowed))
       }
       "impersonation is not supported by underlying rule" in {
         val requestContext = MockRequestContext.indices.withHeaders(
@@ -138,7 +138,7 @@ class ImpersonationRuleDecoratorTests
         }
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Rejected(Cause.ImpersonationNotSupported))
+        result should be(Denied(Cause.ImpersonationNotSupported))
       }
       "underlying rule returns info that given user doesn't exist" in {
         val requestContext = MockRequestContext.indices.withHeaders(
@@ -148,7 +148,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Rejected())
+        result should be(Denied())
       }
       "the impersonator tries to impersonate himself" in {
         val requestContext = MockRequestContext.indices.withHeaders(
@@ -157,7 +157,7 @@ class ImpersonationRuleDecoratorTests
         val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
-        result should be(Rejected(Cause.ImpersonationNotAllowed))
+        result should be(Denied(Cause.ImpersonationNotAllowed))
       }
     }
   }

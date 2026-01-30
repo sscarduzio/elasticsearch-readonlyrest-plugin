@@ -22,7 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
@@ -50,14 +50,14 @@ class Block(val name: Name,
   def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[BlockExecutionResult[B]] = {
     val initBlockContext = requestContext.initialBlockContext
     rules
-      .foldLeft(matched[B](Result.Fulfilled(initBlockContext))) {
+      .foldLeft(matched[B](Decision.Permitted(initBlockContext))) {
         case (currentResult, rule) =>
           for {
             previousRulesResult <- currentResult
             resultAfterRulesCheck <- previousRulesResult match {
-              case Result.Fulfilled(blockContext) =>
+              case Decision.Permitted(blockContext) =>
                 checkRule(rule, blockContext)
-              case r@Result.Rejected(_) =>
+              case r@Decision.Denied(_) =>
                 mismatched(r)
             }
           } yield resultAfterRulesCheck
@@ -65,8 +65,8 @@ class Block(val name: Name,
       .run
       .map { case (history, result) =>
         result match {
-          case r@Result.Fulfilled(context) => BlockExecutionResult.Matched(r, this, history)
-          case r@Result.Rejected(_) => BlockExecutionResult.Mismatched(r, this, history)
+          case r@Decision.Permitted(context) => BlockExecutionResult.Matched(r, this, history)
+          case r@Decision.Denied(_) => BlockExecutionResult.Mismatched(r, this, history)
         }
       }
   }
@@ -82,23 +82,23 @@ class Block(val name: Name,
           case rule: Rule.AuthorizationRule => Cause.GroupsAuthorizationFailed
           case rule: Rule.RegularRule => Cause.NotAuthorized
         }
-        Result.Rejected[B](cause)
+        Decision.Denied[B](cause)
       }
     lift[B](ruleResult)
       .flatMap {
-        case result: Result.Fulfilled[B] =>
+        case result: Decision.Permitted[B] =>
           matched[B](result)
             .tell(Vector(HistoryItem(rule.name, result)))
-        case result: Result.Rejected[B] =>
+        case result: Decision.Denied[B] =>
           mismatched[B](result)
             .tell(Vector(HistoryItem(rule.name, result)))
       }
   }
 
-  private def matched[B <: BlockContext](result: Result.Fulfilled[B]): WriterT[Task, Vector[HistoryItem[B]], Result[B]] =
+  private def matched[B <: BlockContext](result: Decision.Permitted[B]): WriterT[Task, Vector[HistoryItem[B]], Decision[B]] =
     lift[B](Task.now(result))
 
-  private def mismatched[B <: BlockContext](result: Result.Rejected[B]): WriterT[Task, Vector[HistoryItem[B]], Result[B]] =
+  private def mismatched[B <: BlockContext](result: Decision.Denied[B]): WriterT[Task, Vector[HistoryItem[B]], Decision[B]] =
     lift[B](Task.now(result))
 
 }
@@ -141,18 +141,18 @@ object Block {
     def rulesResultHistory: Vector[HistoryItem[B]]
   }
   object BlockExecutionResult {
-    final case class Matched[B <: BlockContext](result: Result.Fulfilled[B],
+    final case class Matched[B <: BlockContext](result: Decision.Permitted[B],
                                                 override val block: Block,
                                                 override val rulesResultHistory: Vector[HistoryItem[B]])
       extends BlockExecutionResult[B]
 
-    final case class Mismatched[B <: BlockContext](result: Result.Rejected[B],
+    final case class Mismatched[B <: BlockContext](result: Decision.Denied[B],
                                                    override val block: Block,
                                                    override val rulesResultHistory: Vector[HistoryItem[B]])
       extends BlockExecutionResult[B]
   }
 
-  final case class HistoryItem[B <: BlockContext](rule: Rule.Name, result: Result[B])
+  final case class HistoryItem[B <: BlockContext](rule: Rule.Name, result: Decision[B])
 
   final case class RuleDefinition[T <: Rule](rule: T,
                                              variableUsage: VariableUsage[T],

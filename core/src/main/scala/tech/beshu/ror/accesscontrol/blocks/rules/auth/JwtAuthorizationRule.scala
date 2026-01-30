@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDefForAuthorization
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseJwtRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, toClaimsOps}
@@ -38,39 +38,39 @@ final class JwtAuthorizationRule(val settings: Settings)
 
   override val name: Rule.Name = JwtAuthorizationRule.Name.name
 
-  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     settings.groupsLogic match {
       case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
         processUsingJwtToken(blockContext, settings.jwt, Cause.GroupsAuthorizationFailed) { payload =>
           authorize(blockContext, payload, groupsLogic)
         }
       case _ =>
-        Task.now(Result.Rejected(Cause.GroupsAuthorizationFailed))
+        Task.now(Decision.Denied(Cause.GroupsAuthorizationFailed))
     }
   }
 
-  override protected[rules] def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override protected[rules] def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     doPostAuthAction(blockContext, settings.jwt, Cause.GroupsAuthorizationFailed)
   }
 
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                  payload: Jwt.Payload,
-                                                                 groupsLogic: GroupsLogic): Result[B] = {
+                                                                 groupsLogic: GroupsLogic): Decision[B] = {
     implicit val blockContextImpl: B = blockContext
     val groupsConfig = settings.jwt.groupsConfig
     val result = payload.claims.groupsClaim(groupsConfig.idsClaim, groupsConfig.namesClaim)
     logClaimSearchResults(blockContext, result)
     result match {
       case NotFound =>
-        Result.Rejected(Cause.GroupsAuthorizationFailed)
+        Decision.Denied(Cause.GroupsAuthorizationFailed)
       case Found(groups) =>
         for {
-          nonEmptyGroups <- Result.fromOption(UniqueNonEmptyList.from(groups), ifEmptyCause = Cause.GroupsAuthorizationFailed)
-          matchedGroups <- Result.fromOption(groupsLogic.availableGroupsFrom(nonEmptyGroups), ifEmptyCause = Cause.GroupsAuthorizationFailed)
+          nonEmptyGroups <- Decision.fromOption(UniqueNonEmptyList.from(groups), ifEmptyCause = Cause.GroupsAuthorizationFailed)
+          matchedGroups <- Decision.fromOption(groupsLogic.availableGroupsFrom(nonEmptyGroups), ifEmptyCause = Cause.GroupsAuthorizationFailed)
           _ <- if (blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))) {
-            Result.Fulfilled(blockContext)
+            Decision.Permitted(blockContext)
           } else {
-            Result.Rejected(Cause.GroupsAuthorizationFailed)
+            Decision.Denied(Cause.GroupsAuthorizationFailed)
           }
         } yield blockContext.withUserMetadata(
           _.addAvailableGroups(matchedGroups).withJwtToken(payload)

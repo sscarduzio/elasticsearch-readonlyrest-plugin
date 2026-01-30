@@ -20,7 +20,7 @@ import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -54,7 +54,7 @@ object AccessControlList {
       extends RegularRequestResult[B]
     final case class ForbiddenBy[B <: BlockContext](blockContext: B, block: Block)
       extends RegularRequestResult[B]
-    final case class ForbiddenByMismatched[B <: BlockContext](detailedCauses: ListMap[Block.Name, Rejected.Cause])
+    final case class ForbiddenByMismatched[B <: BlockContext](detailedCauses: ListMap[Block.Name, Denied.Cause])
       extends RegularRequestResult[B] {
 
       lazy val causes: NonEmptySet[ForbiddenCause] = detailedToGenericCauses(detailedCauses.values)
@@ -79,7 +79,7 @@ object AccessControlList {
     final case class ForbiddenBy(blockContext: CurrentUserMetadataRequestBlockContext,
                                  block: Block)
       extends UserMetadataRequestResult
-    final case class ForbiddenByMismatched(detailedCauses: ListMap[Block.Name, Rejected.Cause])
+    final case class ForbiddenByMismatched(detailedCauses: ListMap[Block.Name, Denied.Cause])
       extends UserMetadataRequestResult {
 
       lazy val causes: NonEmptySet[ForbiddenCause] = detailedToGenericCauses(detailedCauses.values)
@@ -102,15 +102,15 @@ object AccessControlList {
     def obfuscatedHeaders: Set[Header.Name]
   }
 
-  private def detailedToGenericCauses(detailedCauses: Iterable[Rejected.Cause]): NonEmptySet[ForbiddenCause] = {
+  private def detailedToGenericCauses(detailedCauses: Iterable[Denied.Cause]): NonEmptySet[ForbiddenCause] = {
     val causes = detailedCauses.map {
-      case Rejected.Cause.ImpersonationNotAllowed =>
+      case Denied.Cause.ImpersonationNotAllowed =>
         ForbiddenCause.ImpersonationNotAllowed
-      case Rejected.Cause.ImpersonationNotSupported =>
+      case Denied.Cause.ImpersonationNotSupported =>
         ForbiddenCause.ImpersonationNotSupported
-      case _: Rejected.Cause.OtherFailure |
-           _: Rejected.Cause.AuthenticationFailure |
-           _: Rejected.Cause.AuthorizationFailure =>
+      case _: Denied.Cause.OtherFailure |
+           _: Denied.Cause.AuthenticationFailure |
+           _: Denied.Cause.AuthorizationFailure =>
         ForbiddenCause.OperationNotAllowed
     }
     NonEmptyList

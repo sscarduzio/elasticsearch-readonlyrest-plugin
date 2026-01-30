@@ -22,12 +22,12 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFLSUpdater.{FilterableBlockContextWithFieldsUpdater, FilterableMultiRequestBlockContextWithFieldsUpdater}
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
@@ -47,31 +47,31 @@ class FieldsRule(val settings: Settings)
 
   override val name: Rule.Name = FieldsRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.requestContext match {
       case r if r.isReadOnlyRequest && !r.action.isRorAction => handleReadOnlyRequest(blockContext)
       case _ => reject()
     }
   }
 
-  private def handleReadOnlyRequest[B <: BlockContext : BlockContextUpdater](blockContext: B): Result[B] = {
+  private def handleReadOnlyRequest[B <: BlockContext : BlockContextUpdater](blockContext: B): Decision[B] = {
     BlockContextUpdater[B] match {
-      case CurrentUserMetadataRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case GeneralNonIndexRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case RepositoryRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case SnapshotRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case DataStreamRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case TemplateRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case GeneralIndexRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case MultiIndexRequestBlockContextUpdater => Result.Fulfilled(blockContext)
-      case AliasRequestBlockContextUpdater => Result.Fulfilled(blockContext)
+      case CurrentUserMetadataRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case GeneralNonIndexRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case RepositoryRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case SnapshotRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case DataStreamRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case TemplateRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case GeneralIndexRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case MultiIndexRequestBlockContextUpdater => Decision.Permitted(blockContext)
+      case AliasRequestBlockContextUpdater => Decision.Permitted(blockContext)
       case FilterableRequestBlockContextUpdater => processFilterableBlockContext(blockContext)
       case FilterableMultiRequestBlockContextUpdater => processFilterableBlockContext(blockContext)
-      case RorApiRequestBlockContextUpdater => Result.Fulfilled(blockContext)
+      case RorApiRequestBlockContextUpdater => Decision.Permitted(blockContext)
     }
   }
 
-  private def processFilterableBlockContext[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B): Result[B] = {
+  private def processFilterableBlockContext[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B): Decision[B] = {
     implicit val blockContextImpl: B = blockContext
     val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.from(maybeResolvedFields) match {
@@ -84,7 +84,7 @@ class FieldsRule(val settings: Settings)
   }
 
   private def processBlockContextUsingDefinedFLSMode[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
-                                                                                                                             resolvedFields: UniqueNonEmptyList[DocumentField]): Result[B] = {
+                                                                                                                             resolvedFields: UniqueNonEmptyList[DocumentField]): Decision[B] = {
     val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
     settings.flsEngine match {
       case FlsEngine.Lucene =>
@@ -98,7 +98,7 @@ class FieldsRule(val settings: Settings)
   }
 
   private def processRuleWithEsEngine[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
-                                                                                                              fieldsRestrictions: FieldsRestrictions): Result[B] = {
+                                                                                                              fieldsRestrictions: FieldsRestrictions): Decision[B] = {
     implicit val blockContextImpl: B = blockContext
     resolveFLSStrategyBasedOnFieldsUsage(blockContext.requestFieldsUsage, fieldsRestrictions) match {
       case basedOnBlockContext: BasedOnBlockContextOnly =>
@@ -111,10 +111,10 @@ class FieldsRule(val settings: Settings)
 
   private def fulfillRuleWithResolvedStrategy[B <: BlockContext : BlockContextWithFLSUpdater](blockContext: B,
                                                                                               fieldsRestrictions: FieldsRestrictions,
-                                                                                              resolvedStrategy: Strategy): Result[B] = {
+                                                                                              resolvedStrategy: Strategy): Decision[B] = {
     val fieldLevelSecurity = FieldLevelSecurity(fieldsRestrictions, resolvedStrategy)
     val updatedBlockContext = blockContext.withFields(fieldLevelSecurity)
-    Result.Fulfilled(updatedBlockContext)
+    Decision.Permitted(updatedBlockContext)
   }
 
   private def resolveFLSStrategyBasedOnFieldsUsage(fieldsUsage: RequestFieldsUsage,
@@ -159,7 +159,7 @@ class FieldsRule(val settings: Settings)
       .toNel
   }
 
-  private def reject[T]() = Result.Rejected[T](Cause.NotAuthorized)
+  private def reject[T]() = Decision.Denied[T](Cause.NotAuthorized)
 }
 
 object FieldsRule {

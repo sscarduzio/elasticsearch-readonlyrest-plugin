@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
@@ -32,7 +32,7 @@ final class JwtAuthRule(val authentication: JwtAuthenticationRule,
     authorizationRule = authorization
   ) with BaseJwtRule {
 
-  override protected[rules] def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override protected[rules] def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     doPostAuthAction(blockContext, authorization.settings.jwt, Cause.GroupsAuthorizationFailed)
   }
 

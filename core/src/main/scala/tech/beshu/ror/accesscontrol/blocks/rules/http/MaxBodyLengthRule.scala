@@ -21,15 +21,15 @@ import squants.information.Information
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 
 class MaxBodyLengthRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = MaxBodyLengthRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = Task {
-    Result.resultBasedOnCondition(blockContext) {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+    Decision.permit(`with` = blockContext) {
       blockContext.requestContext.restRequest.contentLength <= settings.maxContentLength
     }
   }

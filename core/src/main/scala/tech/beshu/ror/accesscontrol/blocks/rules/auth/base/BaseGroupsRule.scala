@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import cats.data.{NonEmptyList, OptionT}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.Eligibl
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableGroupsLogic
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
@@ -52,31 +52,31 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     .map { userDef => userDef -> new GenericPatternMatcher(userDef.usernames.patterns.toList) }
     .toMap
 
-  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] = {
+  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     Task
       .unit
       .flatMap { _ =>
         resolveGroupsLogic(blockContext) match {
           case None =>
-            Task.now(Rejected(Cause.GroupsAuthorizationFailed))
+            Task.now(Denied(Cause.GroupsAuthorizationFailed))
           case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
             continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)
           case Some(_) =>
-            Task.now(Rejected(Cause.GroupsAuthorizationFailed))
+            Task.now(Denied(Cause.GroupsAuthorizationFailed))
         }
       }
   }
 
-  override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Result[B]] =
-    Task.now(Result.Fulfilled(blockContext))
+  override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    Task.now(Decision.Permitted(blockContext))
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                                           permittedGroupsLogic: GroupsLogic): Task[Result[B]] = {
+                                                                                           permittedGroupsLogic: GroupsLogic): Task[Decision[B]] = {
     blockContext.userMetadata.loggedUser match { // todo: already authenticated user? is it possible
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
-            Task.now(Rejected(Cause.AuthenticationFailed))
+            Task.now(Denied(Cause.AuthenticationFailed))
           case Some(filteredUserDefinitions) =>
             tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, blockContext, permittedGroupsLogic)
         }
@@ -91,7 +91,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
 
   private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptyList[UserDef],
                                                                                           blockContext: B,
-                                                                                          permittedGroupsLogic: GroupsLogic): Task[Result[B]] = {
+                                                                                          permittedGroupsLogic: GroupsLogic): Task[Decision[B]] = {
     userDefs
       .reduceLeftTo(authorizeAndAuthenticate(blockContext, permittedGroupsLogic)) {
         case (lastUserDefResult: Task[Option[B]], nextUserDef) =>
@@ -100,8 +100,8 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
             .value
       }
       .map {
-        case Some(newBlockContext) => Fulfilled(newBlockContext)
-        case None => Rejected(???) // todo: fixme
+        case Some(newBlockContext) => Permitted(newBlockContext)
+        case None => Denied(???) // todo: fixme
       }
   }
 
@@ -204,8 +204,8 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
           authzRule
             .check(newBlockContext)
             .map {
-              case _: Result.Fulfilled[B] => Some(newBlockContext)
-              case Result.Rejected(_) => None
+              case _: Decision.Permitted[B] => Some(newBlockContext)
+              case Decision.Denied(_) => None
             }
         case None =>
           Task.now(Option.empty[B])
@@ -273,9 +273,9 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     rule
       .check(initialBlockContext)
       .map {
-        case Result.Rejected(_) =>
+        case Decision.Denied(_) =>
           None
-        case fulfilled: Result.Fulfilled[B] =>
+        case fulfilled: Decision.Permitted[B] =>
           val newBlockContext = fulfilled.context
           newBlockContext.userMetadata.loggedUser match {
             case Some(loggedUser) if allowedUserMatcher.`match`(loggedUser.id) => Some(newBlockContext)

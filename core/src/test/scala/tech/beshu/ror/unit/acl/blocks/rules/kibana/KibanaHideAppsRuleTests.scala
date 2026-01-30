@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Result.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -46,7 +46,7 @@ class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
           responseHeaders = Set.empty,
           responseTransformations = List.empty
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+        rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
           CurrentUserMetadataRequestBlockContext(
             requestContext = requestContext,
             userMetadata = UserMetadata

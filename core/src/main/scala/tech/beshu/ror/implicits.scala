@@ -284,8 +284,8 @@ trait LogsShowInstances
   implicit def ruleHistoryItemShow[B <: BlockContext]: Show[HistoryItem[B]] = Show.show { hi =>
     s"${hi.rule.show}->${
       hi.result match {
-        case Result.Fulfilled(_) => "true"
-        case Result.Rejected(_) => "false"
+        case Decision.Permitted(_) => "true"
+        case Decision.Denied(_) => "false"
       }
     }"
   }

@@ -19,11 +19,11 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
-import tech.beshu.ror.accesscontrol.blocks.Result.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Result}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
@@ -38,26 +38,26 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
                                                         rorKbnDef: RorKbnDef,
-                                                        rejectionCause: => Rejected.Cause)
-                                                       (operation: TokenData => Either[Unit, B]): Result[B] = {
+                                                        rejectionCause: => Denied.Cause)
+                                                       (operation: TokenData => Either[Unit, B]): Decision[B] = {
     val authHeaderName = Header.Name.authorization
     implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Rejected(rejectionCause)
+        Denied(rejectionCause)
       case Some(token) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         jwtTokenData(token, rorKbnDef) match {
           case Left(_) =>
-            Rejected(rejectionCause)
+            Denied(rejectionCause)
           case Right(tokenData) =>
             val claimProcessingResult = operation(tokenData)
             claimProcessingResult match {
               case Left(_) =>
-                Rejected(rejectionCause)
+                Denied(rejectionCause)
               case Right(modifiedBlockContext) =>
-                Fulfilled(modifiedBlockContext)
+                Permitted(modifiedBlockContext)
             }
         }
     }
