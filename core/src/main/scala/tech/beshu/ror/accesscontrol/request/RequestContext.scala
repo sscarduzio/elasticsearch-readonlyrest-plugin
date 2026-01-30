@@ -20,22 +20,23 @@ import cats.{Eval, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.Level
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.json.JSONObject
 import squants.information.Bytes
+import tech.beshu.ror.accesscontrol.History
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.Instant
@@ -117,7 +118,7 @@ object RequestContext extends RequestIdAwareLogging {
   }
 
   def show[B <: BlockContext](userMetadata: UserMetadata,
-                              history: Vector[Block.History[B]])
+                              history: History[B])
                              (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
     Show.show { r =>
       def stringifyUser = {
@@ -163,7 +164,7 @@ object RequestContext extends RequestIdAwareLogging {
          | PTH:${r.restRequest.path.show},
          | CNT:${stringifyContentLength.show},
          | HDR:${r.restRequest.allHeaders.show},
-         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ").show},
+         | HIS:${history.map(h => blockExecutionResultShow(headerShow).show(h)).mkString(", ").show},
          | }""".oneLiner
     }
 

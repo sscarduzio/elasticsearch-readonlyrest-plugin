@@ -20,14 +20,14 @@ import better.files.File
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
-import eu.timepit.refined.api.{Result => _, *}
+import eu.timepit.refined.api.{Result as _, *}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import squants.information.Information
 import tech.beshu.ror.accesscontrol.blocks.*
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
+import tech.beshu.ror.accesscontrol.blocks.Block.BlockExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy}
+import tech.beshu.ror.accesscontrol.blocks.Block.{BlockExecutionResult, HistoryItem, Name, Policy}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
@@ -281,7 +281,7 @@ trait LogsShowInstances
   implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
   implicit val blockNameShow: Show[Name] = Show.show(_.value)
 
-  implicit def ruleHistoryItemShow[B <: BlockContext]: Show[RuleHistoryItem[B]] = Show.show { hi =>
+  implicit def ruleHistoryItemShow[B <: BlockContext]: Show[HistoryItem[B]] = Show.show { hi =>
     s"${hi.rule.show}->${
       hi.result match {
         case Result.Fulfilled(_) => "true"
@@ -290,17 +290,20 @@ trait LogsShowInstances
     }"
   }
 
-  implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
-    Show.show[History[B]] { h =>
-      val rulesHistoryItemsStr = h.items
-        .collect { case hi: RuleHistoryItem[B] => hi }
+  implicit def blockExecutionResultShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[BlockExecutionResult[B]] =
+    Show.show[BlockExecutionResult[B]] { r =>
+      val rulesHistoryItemsStr = r
+        .rulesResultHistory
         .map(_.show)
         .mkStringOrEmptyString(" RULES:[", ", ", "]")
-      val resolvedPart = h.blockContext.show match {
-        case "" => ""
-        case nonEmpty => s" RESOLVED:[$nonEmpty]"
+      val resolvedPart = r match {
+        case Matched(r, _, _) => r.context.show match {
+          case "" => ""
+          case nonEmpty => s" RESOLVED:[$nonEmpty]"
+        }
+        case Mismatched(_, _, _) => ""
       }
-      s"""[${h.block.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
+      s"""[${r.block.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
     }
 
   implicit val policyShow: Show[Policy] = Show.show {

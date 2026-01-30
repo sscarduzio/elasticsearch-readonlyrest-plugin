@@ -50,20 +50,20 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
-        case Success(resultWithHistory) =>
-          resultWithHistory.result match {
+        case Success(result) =>
+          result.result match {
             case allow: RegularRequestResult.Allow[B] =>
-              log(AllowedBy(requestContext, allow.block, allow.blockContext, resultWithHistory.history))
+              log(AllowedBy(requestContext, allow.block, allow.blockContext, result.history))
             case forbiddenBy: RegularRequestResult.ForbiddenBy[B] =>
-              log(ForbiddenBy(requestContext, forbiddenBy.block, forbiddenBy.blockContext, resultWithHistory.history))
+              log(ForbiddenBy(requestContext, forbiddenBy.block, forbiddenBy.blockContext, result.history))
             case RegularRequestResult.ForbiddenByMismatched(_) =>
-              log(Forbidden(requestContext, resultWithHistory.history))
+              log(Forbidden(requestContext, result.history))
             case RegularRequestResult.IndexNotFound(_) =>
-              log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
+              log(RequestedIndexNotExist(requestContext, result.history))
             case RegularRequestResult.AliasNotFound() =>
-              log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
+              log(RequestedIndexNotExist(requestContext, result.history))
             case RegularRequestResult.TemplateNotFound() =>
-              log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
+              log(RequestedIndexNotExist(requestContext, result.history))
             case RegularRequestResult.Failed(ex) =>
               log(Errored(requestContext, ex))
             case RegularRequestResult.PassedThrough() =>
@@ -81,14 +81,14 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
     underlying
       .handleMetadataRequest(requestContext)
       .andThen {
-        case Success(resultWithHistory) =>
-          resultWithHistory.result match {
+        case Success(result) =>
+          result.result match {
             case UserMetadataRequestResult.Allow(userMetadata, block) =>
-              log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
+              log(Allow(requestContext, userMetadata, block, result.history))
             case forbiddenBy: UserMetadataRequestResult.ForbiddenBy =>
-              log(ForbiddenBy(requestContext, forbiddenBy.block, forbiddenBy.blockContext, resultWithHistory.history))
+              log(ForbiddenBy(requestContext, forbiddenBy.block, forbiddenBy.blockContext, result.history))
             case UserMetadataRequestResult.ForbiddenByMismatched(_) =>
-              log(Forbidden(requestContext, resultWithHistory.history))
+              log(Forbidden(requestContext, result.history))
             case UserMetadataRequestResult.PassedThrough =>
             // ignore
           }

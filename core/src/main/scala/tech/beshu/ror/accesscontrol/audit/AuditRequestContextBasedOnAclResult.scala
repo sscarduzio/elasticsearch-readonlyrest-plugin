@@ -18,23 +18,22 @@ package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
+import tech.beshu.ror.accesscontrol.{History, domain}
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
 import java.time.Instant
-import scala.collection.immutable.{Set => ScalaSet}
+import scala.collection.immutable.Set as ScalaSet
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                                             userMetadata: Option[UserMetadata],
-                                                                            historyEntries: Vector[History[B]],
+                                                                            aclProcessingHistory: History[B],
                                                                             loggingContext: LoggingContext,
                                                                             override val auditEnvironmentContext: AuditEnvironmentContext,
                                                                             override val generalAuditEvents: JSONObject,
@@ -64,7 +63,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
       }
   )
   override val uriPath: String = requestContext.restRequest.path.value.value
-  override val history: String = historyEntries.map(h => historyShow(showHeader).show(h)).mkString(", ")
+  override val history: String = aclProcessingHistory.map(h => blockExecutionResultShow(showHeader).show(h)).mkString(", ")
   override val content: String = requestContext.restRequest.content
   override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
   override val remoteAddress: String = requestContext.restRequest.remoteAddress match {

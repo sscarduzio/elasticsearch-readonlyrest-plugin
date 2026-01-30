@@ -21,7 +21,6 @@ import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.Result.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -66,8 +65,8 @@ class Block(val name: Name,
       .run
       .map { case (history, result) =>
         result match {
-          case r@Result.Fulfilled(context) => BlockExecutionResult.Matched(this, r, history)
-          case r@Result.Rejected(_) => BlockExecutionResult.Mismatched(this, r, history)
+          case r@Result.Fulfilled(context) => BlockExecutionResult.Matched(r, this, history)
+          case r@Result.Rejected(_) => BlockExecutionResult.Mismatched(r, this, history)
         }
       }
   }
@@ -89,10 +88,10 @@ class Block(val name: Name,
       .flatMap {
         case result: Result.Fulfilled[B] =>
           matched[B](result)
-            .tell(Vector(RuleHistoryItem(rule.name, result)))
+            .tell(Vector(HistoryItem(rule.name, result)))
         case result: Result.Rejected[B] =>
           mismatched[B](result)
-            .tell(Vector(RuleHistoryItem(rule.name, result)))
+            .tell(Vector(HistoryItem(rule.name, result)))
       }
   }
 
@@ -137,25 +136,23 @@ object Block {
     )
 
   final case class Name(value: String) extends AnyVal
-  sealed trait BlockExecutionResult[B <: BlockContext]
+  sealed trait BlockExecutionResult[B <: BlockContext] {
+    def block: Block
+    def rulesResultHistory: Vector[HistoryItem[B]]
+  }
   object BlockExecutionResult {
-    final case class Matched[B <: BlockContext](block: Block,
-                                                result: Result.Fulfilled[B],
-                                                rulesResultHistory: Vector[HistoryItem[B]])
+    final case class Matched[B <: BlockContext](result: Result.Fulfilled[B],
+                                                override val block: Block,
+                                                override val rulesResultHistory: Vector[HistoryItem[B]])
       extends BlockExecutionResult[B]
 
-    final case class Mismatched[B <: BlockContext](block: Block,
-                                                   result: Result.Rejected[B],
-                                                   rulesResultHistory: Vector[HistoryItem[B]])
+    final case class Mismatched[B <: BlockContext](result: Result.Rejected[B],
+                                                   override val block: Block,
+                                                   override val rulesResultHistory: Vector[HistoryItem[B]])
       extends BlockExecutionResult[B]
   }
 
-  sealed trait HistoryItem[B <: BlockContext]
-  object HistoryItem {
-    final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
-                                                        result: Result[B])
-      extends HistoryItem[B]
-  }
+  final case class HistoryItem[B <: BlockContext](rule: Rule.Name, result: Result[B])
 
   final case class RuleDefinition[T <: Rule](rule: T,
                                              variableUsage: VariableUsage[T],
@@ -171,24 +168,6 @@ object Block {
       )
     }
   }
-
-  // todo: to remove
-  //  sealed trait ExecutionResult[B <: BlockContext] {
-  //    def blockContext: B
-  //  }
-  //  object ExecutionResult {
-  //    final case class Matched[B <: BlockContext](block: Block,
-  //                                                override val blockContext: B)
-  //      extends ExecutionResult[B]
-  //    final case class Mismatched[B <: BlockContext](override val blockContext: B)
-  //      extends ExecutionResult[B]
-  //
-  //    def matched[B <: BlockContext](block: Block, blockContext: B): ExecutionResult[B] =
-  //      Matched[B](block, blockContext)
-  //
-  //    def mismatched[B <: BlockContext](blockContext: B): ExecutionResult[B] =
-  //      Mismatched[B](blockContext)
-  //  }
 
   sealed trait Policy
   object Policy {

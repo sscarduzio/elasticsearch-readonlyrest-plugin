@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol
 import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
-import tech.beshu.ror.accesscontrol.blocks.Block.BlockExecutionResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Result.Rejected
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -42,10 +41,11 @@ trait AccessControlList {
 
 object AccessControlList {
 
-  final case class WithHistory[RESULT, B <: BlockContext](history: Vector[BlockExecutionResult[B]], result: RESULT)
+  final case class WithHistory[RESULT, B <: BlockContext](history: History[B], result: RESULT)
   object WithHistory {
-    def withNoHistory[RESULT, B <: BlockContext](handlingResult: RESULT): WithHistory[RESULT, B] =
-      WithHistory(Vector.empty, handlingResult)
+    def withNoHistory[RESULT, B <: BlockContext](handlingResult: RESULT): WithHistory[RESULT, B] = {
+      WithHistory(History.empty, handlingResult)
+    }
   }
 
   sealed trait RegularRequestResult[B <: BlockContext]

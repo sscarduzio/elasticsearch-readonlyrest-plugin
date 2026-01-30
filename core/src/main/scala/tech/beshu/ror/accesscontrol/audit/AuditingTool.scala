@@ -20,21 +20,22 @@ import cats.Show
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.audit.sink.*
-import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.EsNodeSettings
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 
@@ -65,7 +66,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(allowedBy.blockContext),
             userMetadata = Some(allowedBy.blockContext.userMetadata),
-            historyEntries = allowedBy.history,
+            history = allowedBy.history,
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents
           ),
           verbosity = toAuditVerbosity(allowedBy.block.verbosity),
@@ -78,7 +79,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             userMetadata = Some(allow.userMetadata),
-            historyEntries = allow.history,
+            history = allow.history,
             generalAuditEvents = allow.requestContext.generalAuditEvents
           ),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
@@ -91,7 +92,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
             userMetadata = Some(forbiddenBy.blockContext.userMetadata),
-            historyEntries = forbiddenBy.history),
+            history = forbiddenBy.history),
           verbosity = toAuditVerbosity(forbiddenBy.block.verbosity),
           reason = forbiddenBy.block.show
         )
@@ -101,7 +102,8 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
           auditEnvironmentContext = auditEnvironmentContext,
           blockContext = None,
           userMetadata = None,
-          historyEntries = forbidden.history))
+          history = forbidden.history
+        ))
       case requestedIndexNotExist: ResponseContext.RequestedIndexNotExist[B] =>
         AuditResponseContext.RequestedIndexNotExist(
           toAuditRequestContext(
@@ -109,7 +111,8 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             userMetadata = None,
-            historyEntries = requestedIndexNotExist.history)
+            history = requestedIndexNotExist.history
+          )
         )
       case errored: ResponseContext.Errored[B] =>
         AuditResponseContext.Errored(
@@ -118,7 +121,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             userMetadata = None,
-            historyEntries = Vector.empty),
+            history = History.empty),
           cause = errored.cause)
     }
   }
@@ -132,12 +135,12 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
                                                        auditEnvironmentContext: AuditEnvironmentContext,
                                                        blockContext: Option[B],
                                                        userMetadata: Option[UserMetadata],
-                                                       historyEntries: Vector[History[B]],
+                                                       history: History[B],
                                                        generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
     new AuditRequestContextBasedOnAclResult(
       requestContext,
       userMetadata,
-      historyEntries,
+      history,
       loggingContext,
       auditEnvironmentContext,
       generalAuditEvents,
