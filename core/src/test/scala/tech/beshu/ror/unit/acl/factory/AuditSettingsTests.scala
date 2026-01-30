@@ -609,6 +609,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
                   |    "ror_detailed_reason" : "default",
                   |    "ror_involved_indices" : [],
+                  |    "presented_identity" : "basic auth user",
                   |    "ror_final_state" : "FORBIDDEN"
                   |  }
                   |}""".stripMargin
@@ -686,6 +687,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
                   |    "ror_detailed_reason" : "default",
                   |    "ror_involved_indices" : [],
+                  |    "presented_identity" : "basic auth user",
                   |    "ror_final_state" : "FORBIDDEN"
                   |  }
                   |}""".stripMargin
@@ -762,6 +764,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
                   |    "ror_detailed_reason" : "default",
                   |    "ror_involved_indices" : [],
+                  |    "presented_identity" : "basic auth user",
                   |    "ror_final_state" : "FORBIDDEN"
                   |  }
                   |}""".stripMargin
