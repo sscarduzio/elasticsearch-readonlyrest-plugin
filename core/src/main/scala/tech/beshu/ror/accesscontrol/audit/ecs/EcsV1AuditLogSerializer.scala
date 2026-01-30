@@ -86,6 +86,7 @@ object EcsV1AuditLogSerializer {
       AuditFieldPath("ror_acl_history") -> AuditFieldValueDescriptor.AclHistory,
       AuditFieldPath("ror_final_state") -> AuditFieldValueDescriptor.FinalState,
       AuditFieldPath("ror_detailed_reason") -> AuditFieldValueDescriptor.Reason,
+      AuditFieldPath("presented_identity") -> AuditFieldValueDescriptor.PresentedIdentity,
     ),
   )
 }
