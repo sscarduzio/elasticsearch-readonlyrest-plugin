@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks
 import cats.data.{NonEmptyList, Validated, WriterT}
 import cats.{Eq, Show}
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
@@ -47,7 +48,7 @@ class Block(val name: Name,
 
   import Lifter.*
 
-  def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[BlockExecutionResult[B]] = {
+  def evaluate[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(Decision[B], BlockHistory[B])] = {
     val initBlockContext = requestContext.initialBlockContext
     rules
       .foldLeft(matched[B](Decision.Permitted(initBlockContext))) {
@@ -64,16 +65,17 @@ class Block(val name: Name,
       }
       .run
       .map { case (history, result) =>
-        result match {
-          case r@Decision.Permitted(context) => BlockExecutionResult.Matched(r, this, history)
-          case r@Decision.Denied(_) => BlockExecutionResult.Mismatched(r, this, history)
+        val blockHistory = result match {
+          case d@Decision.Permitted(_) => BlockHistory.Permitted(this, d, history)
+          case d@Decision.Denied(_) => BlockHistory.Denied(this, d, history)
         }
+        result -> blockHistory
       }
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule, blockContext: B) = {
     implicit val blockContextImpl: B = blockContext
-    val ruleResult = rule
+    val ruleDecision = rule
       .check[B](blockContext)
       .recover { case e =>
         logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
@@ -84,21 +86,17 @@ class Block(val name: Name,
         }
         Decision.Denied[B](cause)
       }
-    lift[B](ruleResult)
-      .flatMap {
-        case result: Decision.Permitted[B] =>
-          matched[B](result)
-            .tell(Vector(HistoryItem(rule.name, result)))
-        case result: Decision.Denied[B] =>
-          mismatched[B](result)
-            .tell(Vector(HistoryItem(rule.name, result)))
-      }
+    // todo: do it better
+    for {
+      r <- lift[B](ruleDecision)
+      l <- lift[B](ruleDecision).tell(Vector(RuleHistory(rule.name, r)))
+    } yield l
   }
 
-  private def matched[B <: BlockContext](result: Decision.Permitted[B]): WriterT[Task, Vector[HistoryItem[B]], Decision[B]] =
+  private def matched[B <: BlockContext](result: Decision.Permitted[B]): WriterT[Task, Vector[RuleHistory[B]], Decision[B]] =
     lift[B](Task.now(result))
 
-  private def mismatched[B <: BlockContext](result: Decision.Denied[B]): WriterT[Task, Vector[HistoryItem[B]], Decision[B]] =
+  private def mismatched[B <: BlockContext](result: Decision.Denied[B]): WriterT[Task, Vector[RuleHistory[B]], Decision[B]] =
     lift[B](Task.now(result))
 
 }
@@ -136,23 +134,6 @@ object Block {
     )
 
   final case class Name(value: String) extends AnyVal
-  sealed trait BlockExecutionResult[B <: BlockContext] {
-    def block: Block
-    def rulesResultHistory: Vector[HistoryItem[B]]
-  }
-  object BlockExecutionResult {
-    final case class Matched[B <: BlockContext](result: Decision.Permitted[B],
-                                                override val block: Block,
-                                                override val rulesResultHistory: Vector[HistoryItem[B]])
-      extends BlockExecutionResult[B]
-
-    final case class Mismatched[B <: BlockContext](result: Decision.Denied[B],
-                                                   override val block: Block,
-                                                   override val rulesResultHistory: Vector[HistoryItem[B]])
-      extends BlockExecutionResult[B]
-  }
-
-  final case class HistoryItem[B <: BlockContext](rule: Rule.Name, result: Decision[B])
 
   final case class RuleDefinition[T <: Rule](rule: T,
                                              variableUsage: VariableUsage[T],
@@ -196,8 +177,8 @@ object Block {
   }
 
   private class Lifter[B <: BlockContext] {
-    def apply[A](task: Task[A]): WriterT[Task, Vector[HistoryItem[B]], A] =
-      WriterT.liftF[Task, Vector[HistoryItem[B]], A](task)
+    def apply[A](task: Task[A]): WriterT[Task, Vector[RuleHistory[B]], A] =
+      WriterT.liftF[Task, Vector[RuleHistory[B]], A](task)
   }
   private object Lifter {
     def lift[B <: BlockContext]: Lifter[B] = new Lifter[B]()

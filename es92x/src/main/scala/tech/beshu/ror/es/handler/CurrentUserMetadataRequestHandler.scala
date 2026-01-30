@@ -49,7 +49,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine.core.accessControl
       .handleMetadataRequest(request)
-      .map { r => commitResult(r.result, request) }
+      .map { case (result, _) => commitResult(result, request) }
   }
 
   private def commitResult(result: UserMetadataRequestResult,

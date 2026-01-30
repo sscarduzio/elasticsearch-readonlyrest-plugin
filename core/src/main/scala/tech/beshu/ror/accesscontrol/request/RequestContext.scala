@@ -164,7 +164,7 @@ object RequestContext extends RequestIdAwareLogging {
          | PTH:${r.restRequest.path.show},
          | CNT:${stringifyContentLength.show},
          | HDR:${r.restRequest.allHeaders.show},
-         | HIS:${history.map(h => blockExecutionResultShow(headerShow).show(h)).mkString(", ").show},
+         | HIS:${history.blocks.map(b => blockHistoryShow(headerShow).show(b)).mkString(", ").show},
          | }""".oneLiner
     }
 

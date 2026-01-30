@@ -64,7 +64,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           )
         )
         val requestContext = MockRequestContext.indices
-        val result = block.execute(requestContext).runSyncUnsafe(1 second)
+        val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
           case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
@@ -90,7 +90,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           )
         )
         val requestContext = MockRequestContext.indices
-        val result = block.execute(requestContext).runSyncUnsafe(1 second)
+        val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
           case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
@@ -117,7 +117,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.execute(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
@@ -152,7 +152,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.execute(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
@@ -190,7 +190,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.execute(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>

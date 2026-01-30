@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol
 
 import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -34,19 +34,12 @@ import scala.collection.immutable.ListMap
 
 trait AccessControlList {
   def description: String
-  def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]]
-  def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]]
+  def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])]
+  def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[CurrentUserMetadataRequestBlockContext])]
   def staticContext: AccessControlStaticContext
 }
 
 object AccessControlList {
-
-  final case class WithHistory[RESULT, B <: BlockContext](history: History[B], result: RESULT)
-  object WithHistory {
-    def withNoHistory[RESULT, B <: BlockContext](handlingResult: RESULT): WithHistory[RESULT, B] = {
-      WithHistory(History.empty, handlingResult)
-    }
-  }
 
   sealed trait RegularRequestResult[B <: BlockContext]
   object RegularRequestResult {

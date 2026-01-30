@@ -50,7 +50,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine.core.accessControl
       .handleMetadataRequest(request)
-      .map { r => commitResult(r.result, request) }
+      .map { case (result, _) => commitResult(result, request) }
   }
 
   private def commitResult(result: UserMetadataRequestResult,
@@ -61,8 +61,8 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
           onAllow(request, userMetadata)
         case UserMetadataRequestResult.ForbiddenBy(_, block) =>
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case UserMetadataRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
+        case r@UserMetadataRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
       }

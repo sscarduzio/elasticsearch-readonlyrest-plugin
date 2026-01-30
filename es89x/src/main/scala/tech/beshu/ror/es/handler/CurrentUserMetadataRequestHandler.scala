@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
@@ -37,7 +36,7 @@ import tech.beshu.ror.es.handler.request.context.EsRequest
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.{Duration, Instant}
 import scala.jdk.CollectionConverters.*
@@ -50,7 +49,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine.core.accessControl
       .handleMetadataRequest(request)
-      .map { r => commitResult(r.result, request) }
+      .map { case (result, _) => commitResult(result, request) }
   }
 
   private def commitResult(result: UserMetadataRequestResult,
@@ -61,8 +60,8 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
           onAllow(request, userMetadata)
         case UserMetadataRequestResult.ForbiddenBy(_, block) =>
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case UserMetadataRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
+        case r@UserMetadataRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
       }

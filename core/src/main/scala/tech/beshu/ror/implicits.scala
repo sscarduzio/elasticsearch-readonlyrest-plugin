@@ -24,10 +24,10 @@ import eu.timepit.refined.api.{Result as _, *}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import squants.information.Information
+import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.*
-import tech.beshu.ror.accesscontrol.blocks.Block.BlockExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.accesscontrol.blocks.Block.{BlockExecutionResult, HistoryItem, Name, Policy}
+import tech.beshu.ror.accesscontrol.blocks.Block.{Name, Policy}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
@@ -281,27 +281,27 @@ trait LogsShowInstances
   implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
   implicit val blockNameShow: Show[Name] = Show.show(_.value)
 
-  implicit def ruleHistoryItemShow[B <: BlockContext]: Show[HistoryItem[B]] = Show.show { hi =>
-    s"${hi.rule.show}->${
-      hi.result match {
+  implicit def ruleHistoryShow[B <: BlockContext]: Show[RuleHistory[B]] = Show.show { h =>
+    s"${h.rule.show}->${
+      h.decision match {
         case Decision.Permitted(_) => "true"
         case Decision.Denied(_) => "false"
       }
     }"
   }
 
-  implicit def blockExecutionResultShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[BlockExecutionResult[B]] =
-    Show.show[BlockExecutionResult[B]] { r =>
+  implicit def blockHistoryShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[BlockHistory[B]] =
+    Show.show[BlockHistory[B]] { r =>
       val rulesHistoryItemsStr = r
-        .rulesResultHistory
+        .history
         .map(_.show)
         .mkStringOrEmptyString(" RULES:[", ", ", "]")
       val resolvedPart = r match {
-        case Matched(r, _, _) => r.context.show match {
+        case BlockHistory.Permitted(_, decision, _) => decision.context.show match {
           case "" => ""
           case nonEmpty => s" RESOLVED:[$nonEmpty]"
         }
-        case Mismatched(_, _, _) => ""
+        case BlockHistory.Denied(_, _, _) => ""
       }
       s"""[${r.block.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
     }

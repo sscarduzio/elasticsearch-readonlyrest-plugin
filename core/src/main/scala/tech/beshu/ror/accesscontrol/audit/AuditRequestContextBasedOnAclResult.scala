@@ -63,7 +63,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
       }
   )
   override val uriPath: String = requestContext.restRequest.path.value.value
-  override val history: String = aclProcessingHistory.map(h => blockExecutionResultShow(showHeader).show(h)).mkString(", ")
+  override val history: String = aclProcessingHistory.blocks.map(b => blockHistoryShow(showHeader).show(b)).mkString(", ")
   override val content: String = requestContext.restRequest.content
   override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
   override val remoteAddress: String = requestContext.restRequest.remoteAddress match {

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -29,11 +29,11 @@ object DisabledAccessControlList extends AccessControlList {
 
   override val description: String = "Disabled ROR ACL"
 
-  override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] =
-    Task.now(WithHistory.withNoHistory(RegularRequestResult.PassedThrough()))
+  override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: Aux[B]): Task[(RegularRequestResult[B], History[B])] =
+    Task.now(RegularRequestResult.PassedThrough[B]() -> History.empty[B])
 
-  override def handleMetadataRequest(requestContext: Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] =
-    Task.now(WithHistory.withNoHistory(UserMetadataRequestResult.PassedThrough))
+  override def handleMetadataRequest(requestContext: Aux[CurrentUserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[CurrentUserMetadataRequestBlockContext])] =
+    Task.now(UserMetadataRequestResult.PassedThrough -> History.empty)
 
   override val staticContext: AccessControlList.AccessControlStaticContext = new AccessControlStaticContext {
     override val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = None
