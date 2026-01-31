@@ -16,10 +16,7 @@
  */
 package tech.beshu.ror.api
 
-trait BaseEsJsonBuilder {
-  def startObject(): Unit
-  def endObject(): Unit
-  def startArray(name: String): Unit
-  def endArray(): Unit
-  def field(name: String, value: String): Unit
+@FunctionalInterface
+trait EsJsonFromMapBuilder {
+  def build(map: java.util.Map[String, Any]): Unit
 }

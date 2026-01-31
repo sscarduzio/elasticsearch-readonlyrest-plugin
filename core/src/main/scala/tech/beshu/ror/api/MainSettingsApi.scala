@@ -19,7 +19,8 @@ package tech.beshu.ror.api
 import cats.Show
 import cats.data.EitherT
 import cats.implicits.*
-import io.circe.Decoder
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Json}
 import io.netty.handler.codec.http.HttpResponseStatus
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
@@ -40,7 +41,7 @@ import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.Index
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
 import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
-import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
+import tech.beshu.ror.utils.CirceOps.{toCirceErrorOps, toJava}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 class MainSettingsApi(rorInstance: RorInstance,
@@ -87,19 +88,6 @@ class MainSettingsApi(rorInstance: RorInstance,
             Some(OtherAuditOutput(s"Data stream with name [${ds.dataStream.value.value}]"))
           case Config.LogBasedSink(_, loggerName) =>
             Some(OtherAuditOutput(s"Logger with name [${loggerName.value.value}]"))
-        }
-        case AuditSink.Disabled => None
-      }
-      otherAuditOutputs = sinks.toList.flatMap {
-        case AuditSink.Enabled(config) => config match {
-          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, _: AuditCluster.RemoteAuditCluster) =>
-            Some("Remote audit cluster")
-          case Config.EsIndexBasedSink(_, _, _) =>
-            None
-          case Config.EsDataStreamBasedSink(_, _, _) =>
-            Some("Remote audit cluster")
-          case Config.LogBasedSink(_, _) =>
-            None
         }
         case AuditSink.Disabled => None
       }
@@ -287,7 +275,7 @@ object MainSettingsApi {
     }
   }
 
-  def buildResponse(builder: BaseEsJsonBuilder, response: MainSettingsApi.MainSettingsResponse): Unit = {
+  def buildResponse(builder: EsJsonFromMapBuilder, response: MainSettingsApi.MainSettingsResponse): Unit = {
     response match {
       case forceReloadSettings: MainSettingsResponse.ForceReloadMainSettings => forceReloadSettings match {
         case ForceReloadMainSettings.Success(message) => addResponseJson(builder, response.status, message)
@@ -329,33 +317,33 @@ object MainSettingsApi {
     }
   }
 
-  private def addResponseJson(builder: BaseEsJsonBuilder, status: String, message: String): Unit = {
-    builder.startObject()
-    builder.field("status", status)
-    builder.field("message", message)
-    builder.endObject()
+  private def addResponseJson(builder: EsJsonFromMapBuilder, status: String, message: String): Unit = {
+    builder.build(
+      Json.obj(
+        "status" -> status.asJson,
+        "message" -> message.asJson,
+      ).toJava.asInstanceOf[java.util.Map[String, Any]]
+    )
   }
 
-  private def addResponseJson(builder: BaseEsJsonBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
+  private def addResponseJson(builder: EsJsonFromMapBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
     val localAuditIndexes = auditOutputs.collect { case index: AuditOutput.LocalAuditIndex => index }
     val otherAuditOutputs = auditOutputs.collect { case output: AuditOutput.OtherAuditOutput => output }
-    builder.startObject()
-    builder.field("status", status)
-    builder.startArray("localAuditIndexes")
-    for (auditIndex <- localAuditIndexes) {
-      builder.startObject()
-      builder.field("indexPattern", auditIndex.indexPattern)
-      builder.field("schema", auditIndex.schema)
-      builder.endObject()
-    }
-    builder.endArray()
-    builder.startArray("otherAuditOutputs")
-    for (output <- otherAuditOutputs) {
-      builder.startObject()
-      builder.field("description", output.description)
-      builder.endObject()
-    }
-    builder.endArray()
-    builder.endObject()
+    builder.build(
+      Json.obj(
+        "status" -> status.asJson,
+        "localAuditIndexes" -> localAuditIndexes.map{ index =>
+          Json.obj(
+            "indexPattern" -> index.indexPattern.asJson,
+            "schema" -> index.schema.asJson,
+          )
+        }.asJson,
+        "otherAuditOutputs" -> otherAuditOutputs.map{ output =>
+          Json.obj(
+            "description" -> output.description.asJson,
+          )
+        }.asJson,
+      ).toJava.asInstanceOf[java.util.Map[String, Any]]
+    )
   }
 }

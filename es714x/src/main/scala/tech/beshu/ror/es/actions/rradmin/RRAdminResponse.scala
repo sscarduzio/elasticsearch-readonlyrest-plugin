@@ -22,14 +22,12 @@ import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XC
 import org.elasticsearch.rest.RestStatus
 import tech.beshu.ror.api.MainSettingsApi
 import tech.beshu.ror.api.MainSettingsApi.*
-import tech.beshu.ror.es.utils.EsJsonBuilder
 
 class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
   extends ActionResponse with StatusToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val esJsonBuilder = new EsJsonBuilder(builder)
-    buildResponse(esJsonBuilder, response)
+    buildResponse(builder.map, response)
     builder
   }
 
