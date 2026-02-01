@@ -65,7 +65,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   private def isUserMetadataRequest = ProcessingContext.create { (r, _) =>
     implicit val requestContextImpl: RequestContext = r
     val result = r.restRequest.path.isCurrentUserMetadataPath || r.restRequest.path.isCurrentUserMetadataPath
-    logger.debug(s"Is is a current user metadata request? ${result.show}")
+    logger.debug(s"Is is a ReadonlyREST's user metadata request? ${result.show}")
     result
   }
 
