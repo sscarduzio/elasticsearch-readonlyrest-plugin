@@ -27,8 +27,6 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.syntax.*
 
-import scala.annotation.unused
-
 class UserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
                                    esContext: EsContext,
                                    clusterService: RorClusterService,
