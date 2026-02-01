@@ -296,7 +296,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val apiVersion: UserMetadataApiVersion = UserMetadataApiVersion.V1) // todo: default
+                                                override val apiVersion: UserMetadataApiVersion = UserMetadataApiVersion.V1)
   extends UserMetadataRequestContext {
 
   override type BLOCK_CONTEXT = UserMetadataRequestBlockContext

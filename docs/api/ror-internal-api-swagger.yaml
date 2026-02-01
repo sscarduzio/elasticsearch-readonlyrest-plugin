@@ -60,7 +60,7 @@ paths:
   /_readonlyrest/metadata/current_user:
     get:
       summary: Getting logged user metadata from ES ROR
-      description: Then endpoint is used by ROR Kibana to figure out if user can be authenticated and authorized. In response metadata of the user are sent back to Kibana.
+      description: The endpoint is used by ROR Kibana to figure out if user can be authenticated and authorized. In response metadata of the user are sent back to Kibana.
       deprecated: true
       tags:
         - ROR Kibana logging in

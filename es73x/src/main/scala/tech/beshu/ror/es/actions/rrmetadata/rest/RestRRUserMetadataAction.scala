@@ -16,13 +16,15 @@
  */
 package tech.beshu.ror.es.actions.rrmetadata.rest
 
+import eu.timepit.refined.types.all.NonEmptyString
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestHandler, RestRequest}
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.Header.findHeader
+import tech.beshu.ror.accesscontrol.domain.{Header, UriPath}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
@@ -38,7 +40,7 @@ class RestRRUserMetadataAction(settings: Settings, controller: RestController)
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
     client.execute(
       new RRUserMetadataActionType,
-      new RRUserMetadataRequest(isNewApiPath(request), rorKbnLicenseTypeHeaderValue(request)),
+      new RRUserMetadataRequest(uriPathFrom(request), rorKbnLicenseTypeHeaderFrom(request)),
       new RestToXContentListener[RRUserMetadataResponse](channel)
     )
   }
@@ -46,13 +48,11 @@ class RestRRUserMetadataAction(settings: Settings, controller: RestController)
   private def register(method: String, path: String): Unit =
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 
-  private def isNewApiPath(request: RestRequest) =
-    request.path().startsWith(constants.USER_METADATA_PATH)
+  private def uriPathFrom(request: RestRequest) = {
+    UriPath.from(NonEmptyString.unsafeFrom(request.path()))
+  }
 
-  private def rorKbnLicenseTypeHeaderValue(request: RestRequest) = {
-    for {
-      headers <- Header.fromRawHeaders(request.getHeaders).toOption
-      licenseHeader <- headers.find(_.name == Header.Name.rorKbnLicenseType)
-    } yield licenseHeader.value.value
+  private def rorKbnLicenseTypeHeaderFrom(request: RestRequest) = {
+    findHeader(Header.Name.rorKbnLicenseType, in = request.getHeaders)
   }
 }

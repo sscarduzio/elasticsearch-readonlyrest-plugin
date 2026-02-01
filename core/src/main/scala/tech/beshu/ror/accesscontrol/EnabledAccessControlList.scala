@@ -140,7 +140,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   private def determineUserMetadataForApiV2WithTenancyHandling(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
                                                                history: Iterable[History[UserMetadataRequestBlockContext]]) = {
-    determineUserMetadata(matched, history, false) match {
+    determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
       case allow@Allow(UserMetadata.WithoutGroups(_, _, _, block, blockContext)) =>
         block.policy match {
           case Policy.Allow => allow

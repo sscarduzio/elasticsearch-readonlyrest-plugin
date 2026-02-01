@@ -78,13 +78,15 @@ object RorKbnLicenseType {
   case object Pro extends RorKbnLicenseType
   final case class Enterprise(multiTenancyEnabled: Boolean) extends RorKbnLicenseType
 
-  def from(value: String): Option[RorKbnLicenseType] = {
+  type CreationError = Unit
+
+  def from(value: String): Either[CreationError, RorKbnLicenseType] = {
     value.toLowerCase match {
-      case "free" => Some(RorKbnLicenseType.Free)
-      case "pro" => Some(RorKbnLicenseType.Pro)
-      case "ent" => Some(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true))
-      case "ent-disabled-multitenancy" => Some(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false))
-      case _ => None
+      case "free" => Right(RorKbnLicenseType.Free)
+      case "pro" => Right(RorKbnLicenseType.Pro)
+      case "ent" => Right(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true))
+      case "ent-disabled-multitenancy" => Right(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false))
+      case _ => Left(())
     }
   }
 }

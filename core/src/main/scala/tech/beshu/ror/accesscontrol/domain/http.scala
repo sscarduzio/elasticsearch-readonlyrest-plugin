@@ -75,6 +75,13 @@ object Header {
     fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
   }
 
+  def findHeader(header: Header.Name, in: java.util.Map[String, java.util.List[String]]) = {
+    for {
+      headers <- fromRawHeaders(in).toOption
+      header <- headers.find(_.name == header)
+    } yield header
+  }
+
   def fromRawHeaders(headers: collection.Map[String, Iterable[String]]): Either[AuthorizationValueError, Set[Header]] = {
     val (authorizationHeaders, nonAuthorizationHeaders) =
       headers
@@ -207,6 +214,9 @@ final case class UriPath private(value: NonEmptyString) {
   def isCurrentUserMetadataPath: Boolean =
     this != UriPath.slashPath && UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
 
+  def isUserMetadataPath: Boolean =
+    this != UriPath.slashPath && UriPath.userMetadataPath.value.value.startsWith(value.value)
+
   def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
 
   def isTemplatePath: Boolean = value.value.startsWith("/_template")
@@ -227,6 +237,7 @@ final case class UriPath private(value: NonEmptyString) {
 }
 object UriPath {
   val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.CURRENT_USER_METADATA_PATH))
+  val userMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.USER_METADATA_PATH))
   val auditEventPath = UriPath(NonEmptyString.unsafeFrom(constants.AUDIT_EVENT_COLLECTOR_PATH))
   val slashPath = UriPath(nes("/"))
 

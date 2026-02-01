@@ -18,38 +18,29 @@ package tech.beshu.ror.es.actions.rrmetadata
 
 import cats.implicits.*
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
-import tech.beshu.ror.accesscontrol.domain.{Header, RorKbnLicenseType}
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
+import tech.beshu.ror.accesscontrol.domain.{Header, UriPath}
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.{UserMetadataApiVersion, UserMetadataApiVersionCreationError}
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.implicits.*
 
-class RRUserMetadataRequest(isNewApiPath: Boolean,
-                            licenseTypeHeaderValue: Option[String])
+class RRUserMetadataRequest(apiPath: UriPath,
+                            licenseTypeHeader: Option[Header])
   extends ActionRequest with RorActionRequest {
 
-  lazy val apiVersion: UserMetadataApiVersion =
-    if (isNewApiPath) {
-      val apiVersion = for {
-        value <- licenseTypeHeaderValue
-        licenseType <- RorKbnLicenseType.from(value)
-      } yield UserMetadataApiVersion.V2(licenseType)
-      apiVersion.getOrElse(throw new IllegalStateException("Cannot prepare Api Version object. Should be already validated!"))
-    } else {
-      UserMetadataApiVersion.V1
-    }
+  lazy val apiVersion: UserMetadataApiVersion = {
+    UserMetadataApiVersion
+      .from(apiPath, licenseTypeHeader)
+      .getOrElse(throw ShouldAlreadyBeValidatedIllegalState)
+  }
 
   override def validate(): ActionRequestValidationException = {
-    if (isNewApiPath) {
-      licenseTypeHeaderValue match {
-        case None => wrongRorLicenseHeaderValidationException(cause = "missing")
-        case Some(value) =>
-          RorKbnLicenseType.from(value) match {
-            case None => wrongRorLicenseHeaderValidationException(cause = "invalid")
-            case Some(_) => null
-          }
-      }
-    } else {
-      null
+    UserMetadataApiVersion.from(apiPath, licenseTypeHeader) match {
+      case Left(UserMetadataApiVersionCreationError.NoRequestedHeaderValue) =>
+        wrongRorLicenseHeaderValidationException(cause = "missing")
+      case Left(UserMetadataApiVersionCreationError.RorKbnLicenseTypeInvalidValue) =>
+        wrongRorLicenseHeaderValidationException(cause = "invalid")
+      case Right(_) =>
+        null
     }
   }
 
@@ -59,4 +50,7 @@ class RRUserMetadataRequest(isNewApiPath: Boolean,
     e
   }
 
+  private object ShouldAlreadyBeValidatedIllegalState extends IllegalStateException(
+    "Cannot prepare Api Version object. It's invalid state. Should be already validated in the RRUserMetadataRequest#validate() method!"
+  )
 }
