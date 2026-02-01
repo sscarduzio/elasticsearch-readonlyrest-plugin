@@ -33,7 +33,7 @@ object constants {
 
   val CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user"
   val USER_METADATA_PATH = "/_readonlyrest/metadata/user"
-  val AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/"
+  val AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event"
   val FORCE_RELOAD_SETTINGS_PATH = "/_readonlyrest/admin/refreshconfig/"
   val UPDATE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config/"
   val PROVIDE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test/"
