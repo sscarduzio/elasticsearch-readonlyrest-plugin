@@ -128,7 +128,7 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
     exists(theImpersonatedUserId, mocksProvider)
       .map {
         case Exists => Right(())
-        case NotExist => Left(Denied[B](Cause.AuthenticationFailed))
+        case NotExist => Left(Denied[B](Cause.AuthenticationFailed("Cannot find impersonator user"))) // todo: fixme
         case CannotCheck => Left(Denied[B](Cause.ImpersonationNotSupported))
       }
   }

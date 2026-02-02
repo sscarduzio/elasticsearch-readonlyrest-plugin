@@ -33,7 +33,7 @@ class CacheableLdapAuthenticationServiceDecorator(val underlying: LdapAuthentica
   extends LdapAuthenticationService {
 
   private val cacheableAuthentication =
-    new CacheableActionWithKeyMapping[(User.Id, domain.PlainTextSecret), HashedUserCredentials, Boolean](
+    new CacheableActionWithKeyMapping[(User.Id, domain.PlainTextSecret), HashedUserCredentials, AuthenticationResult](
       ttl = ttl,
       action = {
         case ((userId, secret), requestId) => authenticateAction((userId, secret))(requestId)
@@ -46,7 +46,8 @@ class CacheableLdapAuthenticationServiceDecorator(val underlying: LdapAuthentica
     ttl = Option.when(cacheLdapUserServiceAsWell)(ttl)
   )
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)
+                           (implicit requestId: RequestId): Task[AuthenticationResult] =
     cacheableAuthentication.call((user, secret), serviceTimeout)
 
   private def hashCredential(value: (User.Id, domain.PlainTextSecret)) = {
@@ -54,7 +55,8 @@ class CacheableLdapAuthenticationServiceDecorator(val underlying: LdapAuthentica
     HashedUserCredentials(user, Hashing.sha256.hashString(secret.value.value, Charset.defaultCharset).toString)
   }
 
-  private def authenticateAction(value: (User.Id, domain.PlainTextSecret))(implicit requestId: RequestId) = {
+  private def authenticateAction(value: (User.Id, domain.PlainTextSecret))
+                                (implicit requestId: RequestId) = {
     val (userId, secret) = value
     underlying.authenticate(userId, secret)
   }

@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName}
@@ -40,7 +41,7 @@ final class RorKbnAuthorizationRule(val settings: Settings)
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
     settings.groupsLogic match {
       case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-        processUsingJwtToken(blockContext, settings.rorKbn, Cause.GroupsAuthorizationFailed) { tokenData =>
+        processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
           authorize(blockContext, tokenData.groups, settings.groupsLogic)
         }
       case _ =>
@@ -53,13 +54,14 @@ final class RorKbnAuthorizationRule(val settings: Settings)
                                                                  groupsLogic: GroupsLogic) = {
     result match {
       case NotFound =>
-        Left(())
+        Left(GroupsAuthorizationFailed)
       case Found(groups) =>
-        (for {
+        val result = for {
           nonEmptyGroups <- UniqueNonEmptyList.from(groups)
           matchedGroups <- groupsLogic.availableGroupsFrom(nonEmptyGroups)
           if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-        } yield blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))).toRight(())
+        } yield blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))
+        result.toRight(GroupsAuthorizationFailed)
     }
   }
 

@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -36,8 +37,11 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
   override val name: Rule.Name = AuthKeyRule.Name.name
 
   override protected def compare(configuredCredentials: Credentials,
-                                 credentials: Credentials): Task[Boolean] = Task.now {
-    configuredCredentials === credentials
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, Unit]] = Task.now {
+    for {
+      _ <- Either.cond(configuredCredentials.user == credentials.user, (), AuthenticationFailed("user mismatch")) // todo: fixme
+      _ <- Either.cond(configuredCredentials.secret == credentials.secret, (), AuthenticationFailed("password mismatch")) // todo: fixme
+    } yield ()
   }
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)

@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -39,7 +40,7 @@ final class LdapAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Boolean] =
+                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, Unit]] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)

@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, No
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, toClaimsOps}
 import tech.beshu.ror.implicits.*
 
-
 final class JwtAuthenticationRule(val settings: Settings,
                                   override val userIdCaseSensitivity: CaseSensitivity)
   extends AuthenticationRule
@@ -45,27 +44,27 @@ final class JwtAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    processUsingJwtToken(blockContext, settings.jwt, Cause.AuthenticationFailed) { payload =>
+    processUsingJwtToken(blockContext, settings.jwt) { payload =>
       authenticate(blockContext, payload)
     }
   }
 
   override protected[rules] def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    doPostAuthAction(blockContext, settings.jwt, Cause.AuthenticationFailed)
+    doPostAuthAction(blockContext, settings.jwt)
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                    payload: Jwt.Payload): Decision[B] = {
+                                                                    payload: Jwt.Payload) = {
     val result = payload.claims.userIdClaim(settings.jwt.userClaim)
     logClaimSearchResults(blockContext, result)
     result match {
       case Found(userId) =>
-        Decision.Permitted(blockContext.withUserMetadata(
+        Right(blockContext.withUserMetadata(
           _.withLoggedUser(DirectlyLoggedUser(userId))
             .withJwtToken(payload)
         ))
       case NotFound =>
-        Decision.Denied(Cause.AuthenticationFailed)
+        Left(Cause.AuthenticationFailed("???")) // todo:
     }
   }
 

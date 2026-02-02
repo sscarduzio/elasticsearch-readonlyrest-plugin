@@ -77,7 +77,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
-            Task.now(Denied(Cause.AuthenticationFailed))
+            Task.now(Denied(Cause.AuthenticationFailed(s"Given user '${user.id.show}' not allowed"))) // todo: fixme
           case Some(filteredUserDefinitions) =>
             tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, blockContext, permittedGroupsLogic)
         }

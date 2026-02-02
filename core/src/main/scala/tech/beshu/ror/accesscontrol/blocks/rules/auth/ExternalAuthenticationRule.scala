@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -38,8 +39,13 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Boolean] =
-    settings.service.authenticate(credentials)
+                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, Unit]] =
+    settings.service
+      .authenticate(credentials)
+      .map {
+        case true => Right(())
+        case false => Left(AuthenticationFailed())
+      }
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
                                       (implicit requestId: RequestId): Task[UserExistence] = Task.delay {

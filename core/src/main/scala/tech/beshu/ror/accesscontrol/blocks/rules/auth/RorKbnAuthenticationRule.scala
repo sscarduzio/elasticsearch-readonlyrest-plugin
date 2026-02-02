@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -42,7 +43,7 @@ final class RorKbnAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
-    processUsingJwtToken(blockContext, settings.rorKbn, Cause.AuthenticationFailed) { tokenData =>
+    processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
       authenticate(blockContext, tokenData.userId, tokenData.userOrigin, tokenData.payload)
     }
   }
@@ -50,7 +51,7 @@ final class RorKbnAuthenticationRule(val settings: Settings,
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                     userId: ClaimSearchResult[User.Id],
                                                                     userOrigin: ClaimSearchResult[Header],
-                                                                    tokenPayload: Jwt.Payload): Either[Unit, B] = {
+                                                                    tokenPayload: Jwt.Payload): Either[Cause, B] = {
     userId match {
       case Found(userId) =>
         val withUserMetadata = userOrigin match {
@@ -70,7 +71,7 @@ final class RorKbnAuthenticationRule(val settings: Settings,
         }
         Right(withUserMetadata)
       case NotFound =>
-        Left(())
+        Left(AuthenticationFailed("???")) // todo: fixme
     }
   }
 

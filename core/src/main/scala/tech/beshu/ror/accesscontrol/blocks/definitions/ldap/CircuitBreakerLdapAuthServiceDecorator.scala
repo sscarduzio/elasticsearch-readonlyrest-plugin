@@ -32,7 +32,8 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(val underlying: LdapAuthe
   extends LdapAuthenticationService
     with LdapCircuitBreaker {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)
+                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
     protect(
       underlying.authenticate(user, secret)
     )

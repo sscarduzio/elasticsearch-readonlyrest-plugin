@@ -20,6 +20,7 @@ import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -41,9 +42,11 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
   override val name: Rule.Name = AuthKeyUnixRule.Name.name
 
   override protected def compare(configuredCredentials: UnixHashedCredentials,
-                                 credentials: Credentials): Task[Boolean] = Task {
-    configuredCredentials.userId === credentials.user &&
-      configuredCredentials.from(credentials).contains(configuredCredentials)
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, Unit]] = Task {
+    for {
+      _ <- Either.cond(configuredCredentials.userId == credentials.user, (), AuthenticationFailed("user mismatch")) // todo: fixme
+      _ <- Either.cond(configuredCredentials.from(credentials).contains(configuredCredentials), (), AuthenticationFailed("password mismatch")) // todo: fixme
+    } yield ()
   }
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)

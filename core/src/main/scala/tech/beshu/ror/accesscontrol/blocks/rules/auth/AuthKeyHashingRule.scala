@@ -20,6 +20,7 @@ import cats.Eq
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -41,12 +42,15 @@ sealed abstract class AuthKeyHashingRule(override val settings: BasicAuthenticat
     with RequestIdAwareLogging {
 
   override protected def compare(configuredCredentials: HashedCredentials,
-                                 credentials: Credentials): Task[Boolean] = Task {
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, Unit]] = Task {
     configuredCredentials match {
       case secret: HashedUserAndPassword =>
-        secret === HashedUserAndPassword.from(credentials, hasher)
+        Either.cond(secret == HashedUserAndPassword.from(credentials, hasher), (), AuthenticationFailed("credentials mismatch")) // todo: fixme
       case secret: HashedOnlyPassword =>
-        secret === HashedOnlyPassword.from(credentials, hasher)
+        for {
+          _ <- Either.cond(secret.userId == credentials.user, (), AuthenticationFailed("user mismatch")) // todo: fixme
+          _ <- Either.cond(secret == HashedOnlyPassword.from(credentials, hasher), (), AuthenticationFailed("password mismatch")) // todo: fixme
+        } yield ()
     }
   }
 

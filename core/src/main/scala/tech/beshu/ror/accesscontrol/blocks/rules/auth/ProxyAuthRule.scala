@@ -19,7 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -49,13 +50,15 @@ final class ProxyAuthRule(val settings: Settings,
   override val name: Rule.Name = ProxyAuthRule.Name.name
 
   override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    getLoggedUser(blockContext.requestContext) match {
-      case None =>
-        Denied(Cause.AuthenticationFailed)
-      case Some(loggedUser) if shouldAuthenticate(loggedUser.id) =>
-        Permitted(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
-      case Some(_) =>
-        Denied(Cause.AuthenticationFailed)
+    val result = for {
+      loggedUser <- getLoggedUser(blockContext.requestContext)
+      _ <- Either.cond(shouldAuthenticate(loggedUser.id), (), left = Cause.AuthenticationFailed(s"Given user '${loggedUser.id.show}' not allowed")) // todo: fixme
+    } yield {
+      blockContext.withUserMetadata(_.withLoggedUser(loggedUser))
+    }
+    result match {
+      case Right(blockContext) => Permitted(blockContext)
+      case Left(authFailed) => Denied(authFailed)
     }
   }
 
@@ -65,11 +68,12 @@ final class ProxyAuthRule(val settings: Settings,
     else UserExistence.NotExist
   }
 
-  private def getLoggedUser(context: RequestContext) = {
+  private def getLoggedUser(context: RequestContext): Either[AuthenticationFailed, DirectlyLoggedUser] = {
     context
       .restRequest.allHeaders
       .find(_.name === settings.userHeaderName)
       .map(h => DirectlyLoggedUser(Id(h.value)))
+      .toRight(AuthenticationFailed("No user header found")) // todo: fixme
   }
 
   private def shouldAuthenticate(userId: User.Id) = {

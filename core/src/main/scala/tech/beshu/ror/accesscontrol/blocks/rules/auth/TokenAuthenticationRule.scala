@@ -57,7 +57,7 @@ final class TokenAuthenticationRule(val settings: Settings,
         if (verifyTokenFromHeader(requestContext)) {
           Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
         } else {
-          Denied(Cause.AuthenticationFailed)
+          Denied(Cause.AuthenticationFailed("???")) // todo: fixme
         }
       }
 

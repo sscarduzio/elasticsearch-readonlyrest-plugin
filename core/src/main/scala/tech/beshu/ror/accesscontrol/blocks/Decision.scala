@@ -29,7 +29,6 @@ object Decision {
   final case class Permitted[CONTEXT](context: CONTEXT)
     extends Decision[CONTEXT]
 
-  // todo: maybe extends Decision[Nothing]?
   final case class Denied[CONTEXT](cause: Cause)
     extends Decision[CONTEXT]
   object Denied {
@@ -37,7 +36,11 @@ object Decision {
     sealed trait Cause
     object Cause {
       sealed trait AuthenticationFailure extends Cause
-      case object AuthenticationFailed extends AuthenticationFailure
+      final case class AuthenticationFailed private(details: Option[String]) extends AuthenticationFailure
+      object AuthenticationFailed {
+        def apply(details: String): AuthenticationFailed = new AuthenticationFailed(Some(details))
+        def apply(): AuthenticationFailed = new AuthenticationFailed(None)
+      }
 
       sealed trait AuthorizationFailure extends Cause
       case object GroupsAuthorizationFailed extends AuthorizationFailure
