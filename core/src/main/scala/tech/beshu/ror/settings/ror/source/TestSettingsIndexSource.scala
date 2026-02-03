@@ -19,7 +19,7 @@ package tech.beshu.ror.settings.ror.source
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Codec, Decoder, Encoder}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
@@ -156,9 +156,9 @@ object TestSettingsIndexSource {
         _.value.value
       )
 
-    implicit val externalAuthorizationKeyCodec: KeyCodec[ExternalAuthorizationService.Name] =
-      KeyCodec.from[ExternalAuthorizationService.Name](
-        NonEmptyString.unapply(_).map(ExternalAuthorizationService.Name.apply),
+    implicit val externalAuthorizationKeyCodec: KeyCodec[ExternalGroupsProviderService.Name] =
+      KeyCodec.from[ExternalGroupsProviderService.Name](
+        NonEmptyString.unapply(_).map(ExternalGroupsProviderService.Name.apply),
         _.value.value
       )
 

@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
-import cats.data.{NonEmptyList, OptionT}
+import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
@@ -59,11 +59,11 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       .flatMap { _ =>
         resolveGroupsLogic(blockContext) match {
           case None =>
-            Task.now(Denied(Cause.GroupsAuthorizationFailed))
+            Task.now(Denied(Cause.GroupsAuthorizationFailed("????")))
           case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
             continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)
           case Some(_) =>
-            Task.now(Denied(Cause.GroupsAuthorizationFailed))
+            Task.now(Denied(Cause.GroupsAuthorizationFailed("????")))
         }
       }
   }
@@ -93,31 +93,48 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
   private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptyList[UserDef],
                                                                                           blockContext: B,
                                                                                           permittedGroupsLogic: GroupsLogic): Task[Decision[B]] = {
-    userDefs
-      .reduceLeftTo(authorizeAndAuthenticate(blockContext, permittedGroupsLogic)) {
-        case (lastUserDefResult: Task[Option[B]], nextUserDef) =>
-          OptionT(lastUserDefResult)
-            .orElse(OptionT(authorizeAndAuthenticate(blockContext, permittedGroupsLogic)(nextUserDef)))
-            .value
+    def loop(remaining: List[UserDef],
+             failedCauses: Vector[(UserDef, Cause)]): Task[Either[NonEmptyList[(UserDef, Cause)], B]] = {
+      remaining match {
+        case Nil =>
+          Task.now(Left(NonEmptyList.fromListUnsafe(failedCauses.toList)))
+        case userDef :: tail =>
+          authorizeAndAuthenticate(blockContext, permittedGroupsLogic)(userDef).flatMap {
+            case Right(successContext) =>
+              Task.now(Right(successContext))
+            case Left(cause) =>
+              loop(tail, failedCauses :+ (userDef -> cause))
+          }
       }
-      .map {
-        case Some(newBlockContext) => Permitted(newBlockContext)
-        case None => Denied(GroupsAuthorizationFailed)
-      }
+    }
+
+    loop(userDefs.toList, Vector.empty).map {
+      case Right(newBlockContext) =>
+        Permitted(newBlockContext)
+      case Left(causes) =>
+        val details = causes.toList.map { case (userDef, cause) => s"${userDef.usernames.show}:${cause.show}"}.mkString(",")
+        Denied(GroupsAuthorizationFailed(details))
+    }
   }
 
   private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                 permittedGroupsLogic: GroupsLogic)
-                                                                               (userDef: UserDef): Task[Option[B]] = {
+                                                                               (userDef: UserDef): Task[Either[Cause, B]] = {
     permittedGroupsLogic.availableGroupsFrom(userDef.localGroups) match {
       case Some(availableGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(availableGroups)) =>
         val allowedUserMatcher = matchers(userDef)
         userDef.mode match {
           case Mode.WithoutGroupsMapping(auth, _) =>
-            authenticate(auth, blockContext, allowedUserMatcher, availableGroups, userDef.mode)
+            authenticate(
+              authnRule = auth,
+              blockContext,
+              allowedUserMatcher,
+              availableGroups,
+              userDef.mode
+            )
           case Mode.WithGroupsMapping(Auth.SingleRule(auth), groupMappings) =>
             authenticateAndAuthorize(
-              auth,
+              authRule = auth,
               groupMappings,
               blockContext,
               allowedUserMatcher,
@@ -136,58 +153,60 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
             )
         }
       case None | Some(_) =>
-        Task.now(None)
+        Task.now(Left(GroupsAuthorizationFailed("???")))
     }
   }
 
-  private def authenticate[B <: BlockContext : BlockContextUpdater](auth: AuthenticationRule,
+  private def authenticate[B <: BlockContext : BlockContextUpdater](authnRule: AuthenticationRule,
                                                                     blockContext: B,
                                                                     allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                     availableGroups: UniqueNonEmptyList[Group],
-                                                                    mode: Mode) = {
+                                                                    mode: Mode): Task[Either[Cause, B]] = {
     implicit val blockContextImpl: B = blockContext
-    checkRule(auth, blockContext, allowedUserMatcher, mode)
-      .map {
-        case Some(newBlockContext) =>
-          newBlockContext
-            .userMetadata.loggedUser
-            .map { loggedUser =>
-              blockContext.withUserMetadata(_
-                .withLoggedUser(loggedUser)
-                .withAvailableGroups(UniqueList.from(availableGroups))
-              )
-            }
-        case None =>
-          None
-      }
+    val result = for {
+      newBlockContext <- checkRule(authnRule, blockContext, allowedUserMatcher, mode)
+      fullyUpdatedBlockContext <- updateBlockContextWithLoggedUser(
+        sourceBlockContext = newBlockContext,
+        destinationBlockContext = blockContext,
+        allowedUserMatcher = allowedUserMatcher
+      )
+    } yield {
+      fullyUpdatedBlockContext.withUserMetadata(_
+        .withAvailableGroups(UniqueList.from(availableGroups))
+      )
+    }
+    result.value
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication error", ex)
-        None
+        Left(AuthenticationFailed("???"))
       }
   }
 
-  private def authenticateAndAuthorize[B <: BlockContext : BlockContextUpdater](auth: AuthRule,
+  private def authenticateAndAuthorize[B <: BlockContext : BlockContextUpdater](authRule: AuthRule,
                                                                                 groupMappings: GroupMappings,
                                                                                 blockContext: B,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                                 availableGroups: UniqueNonEmptyList[Group],
-                                                                                mode: Mode) = {
+                                                                                mode: Mode): Task[Either[Cause, B]] = {
     implicit val blockContextImpl: B = blockContext
-    checkRule(auth, blockContext, allowedUserMatcher, mode)
-      .map {
-        case Some(newBlockContext) =>
-          updateBlockContextWithLoggedUserAndAllowedGroups(
-            sourceBlockContext = newBlockContext,
-            destinationBlockContext = blockContext,
-            potentiallyAvailableGroups = availableGroups,
-            groupMappings = groupMappings
-          )
-        case None =>
-          None
-      }
+    val result = for {
+      newBlockContext <- checkRule(authRule, blockContext, allowedUserMatcher, mode)
+      updatedBlockContextWithAuthnData <- updateBlockContextWithLoggedUser(
+        sourceBlockContext = newBlockContext,
+        destinationBlockContext = blockContext,
+        allowedUserMatcher = allowedUserMatcher
+      )
+      fullyUpdatedBlockContext <- updateBlockContextWithAllowedGroups(
+        sourceBlockContext = newBlockContext,
+        destinationBlockContext = updatedBlockContextWithAuthnData,
+        potentiallyAvailableGroups = availableGroups,
+        groupMappings = groupMappings
+      )
+    } yield fullyUpdatedBlockContext
+    result.value
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication & Authorization error", ex)
-        None
+        Left(GroupsAuthorizationFailed("????"))
       }
   }
 
@@ -197,70 +216,76 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                                 blockContext: B,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
                                                                                 availableGroups: UniqueNonEmptyList[Group],
-                                                                                mode: Mode): Task[Option[B]] = {
+                                                                                mode: Mode): Task[Either[Cause, B]] = {
     implicit val blockContextImpl: B = blockContext
-    checkRule(authnRule, blockContext, allowedUserMatcher, mode)
-      .flatMap {
-        case Some(newBlockContext) =>
-          authzRule
-            .check(newBlockContext)
-            .map {
-              case _: Decision.Permitted[B] => Some(newBlockContext)
-              case Decision.Denied(_) => None
-            }
-        case None =>
-          Task.now(Option.empty[B])
-      }
-      .map {
-        case Some(newBlockContext) =>
-          updateBlockContextWithLoggedUserAndAllowedGroups(
-            sourceBlockContext = newBlockContext,
-            destinationBlockContext = blockContext,
-            potentiallyAvailableGroups = availableGroups,
-            groupMappings = groupMappings
-          )
-        case None =>
-          None
-      }
+    val result = for {
+      blockContextAfterAuthn <- checkRule(authnRule, blockContext, allowedUserMatcher, mode)
+      updatedBlockContextAfterAuthn <- updateBlockContextWithLoggedUser(blockContextAfterAuthn, blockContext, allowedUserMatcher)
+      blockContextAfterAuthz <- EitherT(authzRule.check(updatedBlockContextAfterAuthn).map {
+        case Decision.Permitted(bc) => Right(bc)
+        case Decision.Denied(_) => Left(GroupsAuthorizationFailed("???"))
+      })
+      updatedBlockContextAfterAuthz <- updateBlockContextWithAllowedGroups(blockContextAfterAuthz, updatedBlockContextAfterAuthn, availableGroups, groupMappings)
+    } yield updatedBlockContextAfterAuthz
+    result.value
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication & Authorization error", ex)
-        Option.empty[B]
+        Left(GroupsAuthorizationFailed("???"))
       }
   }
 
-  private def updateBlockContextWithLoggedUserAndAllowedGroups[B <: BlockContext : BlockContextUpdater](sourceBlockContext: B,
-                                                                                                        destinationBlockContext: B,
-                                                                                                        potentiallyAvailableGroups: UniqueNonEmptyList[Group],
-                                                                                                        groupMappings: GroupMappings) = {
-    val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
-    for {
-      externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
-      availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
-      loggedUser <- sourceBlockContext.userMetadata.loggedUser
-    } yield {
-      def requiredAuthenticationData: UserMetadata => UserMetadata = { metadata =>
-        metadata.withLoggedUser(loggedUser)
-          .withAvailableGroups(UniqueList.from(availableLocalGroups))
+  private def updateBlockContextWithLoggedUser[B <: BlockContext : BlockContextUpdater](sourceBlockContext: B,
+                                                                                        destinationBlockContext: B,
+                                                                                        allowedUserMatcher: GenericPatternMatcher[User.Id]): EitherT[Task, Cause, B] = {
+    EitherT.fromEither[Task] {
+      sourceBlockContext.userMetadata.loggedUser match {
+        case Some(user) if allowedUserMatcher.`match`(user.id) =>
+          Right(destinationBlockContext.withUserMetadata(_.withLoggedUser(user)))
+        case Some(_) =>
+          Left(AuthenticationFailed("????"))
+        case None =>
+          Left(AuthenticationFailed("????"))
       }
-      def optionalUserOrigin: UserMetadata => UserMetadata = { metadata =>
-        sourceBlockContext.userMetadata.userOrigin.map(metadata.withUserOrigin).getOrElse(metadata)
-      }
-      def optionalJwtToken: UserMetadata => UserMetadata = { metadata =>
-        sourceBlockContext.userMetadata.jwtToken.map(metadata.withJwtToken).getOrElse(metadata)
-      }
+    }
+  }
 
-      destinationBlockContext
-        .withUserMetadata { metadata =>
-          (requiredAuthenticationData :: optionalUserOrigin :: optionalJwtToken :: Nil)
-            .foldLeft(metadata) { case (acc, func) => func(acc) }
+  private def updateBlockContextWithAllowedGroups[B <: BlockContext : BlockContextUpdater](sourceBlockContext: B,
+                                                                                           destinationBlockContext: B,
+                                                                                           potentiallyAvailableGroups: UniqueNonEmptyList[Group],
+                                                                                           groupMappings: GroupMappings): EitherT[Task, Cause, B] = {
+    EitherT.fromEither[Task] {
+      val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
+      for {
+        externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
+        availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
+      } yield {
+        def requiredData: UserMetadata => UserMetadata = { metadata =>
+          metadata.withAvailableGroups(UniqueList.from(availableLocalGroups))
         }
+
+        def optionalUserOrigin: UserMetadata => UserMetadata = { metadata =>
+          sourceBlockContext.userMetadata.userOrigin.map(metadata.withUserOrigin).getOrElse(metadata)
+        }
+
+        def optionalJwtToken: UserMetadata => UserMetadata = { metadata =>
+          sourceBlockContext.userMetadata.jwtToken.map(metadata.withJwtToken).getOrElse(metadata)
+        }
+
+        destinationBlockContext
+          .withUserMetadata { metadata =>
+            (requiredData :: optionalUserOrigin :: optionalJwtToken :: Nil)
+              .foldLeft(metadata) { case (acc, func) => func(acc) }
+          }
+      }
     }
   }
 
   private def availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups: UniqueNonEmptyList[GroupIdLike],
                                                                         potentiallyAvailableGroups: UniqueNonEmptyList[Group]) = {
     val potentiallyPermitted = GroupIds(externalGroupsMappedToLocalGroups)
-    UniqueNonEmptyList.from(potentiallyPermitted.filterOnlyPermitted(potentiallyAvailableGroups))
+    UniqueNonEmptyList
+      .from(potentiallyPermitted.filterOnlyPermitted(potentiallyAvailableGroups))
+      .toRight(GroupsAuthorizationFailed("???"))
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,
@@ -271,36 +296,47 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       case Mode.WithGroupsMapping(_, _) => blockContext.withUserMetadata(_.clearCurrentGroup)
       case Mode.WithoutGroupsMapping(_, _) => blockContext
     }
-    rule
-      .check(initialBlockContext)
-      .map {
-        case Decision.Denied(_) =>
-          None
-        case fulfilled: Decision.Permitted[B] =>
-          val newBlockContext = fulfilled.context
-          newBlockContext.userMetadata.loggedUser match {
-            case Some(loggedUser) if allowedUserMatcher.`match`(loggedUser.id) => Some(newBlockContext)
-            case Some(_) => None
-            case None => None
-          }
-      }
+    EitherT {
+      rule
+        .check(initialBlockContext)
+        .map {
+          case Decision.Denied(cause) =>
+            Left(cause)
+          case fulfilled: Decision.Permitted[B] =>
+            val newBlockContext = fulfilled.context
+            newBlockContext.userMetadata.loggedUser match {
+              case Some(user) if allowedUserMatcher.`match`(user.id) =>
+                Right(blockContext.withUserMetadata(_.withLoggedUser(user)))
+              case Some(_) =>
+                Left(AuthenticationFailed("????"))
+              case None =>
+                Left(AuthenticationFailed("????"))
+            }
+        }
+    }
   }
 
   private def mapExternalGroupsToLocalGroups(groupMappings: GroupMappings,
                                              externalGroup: UniqueList[Group]) = {
     groupMappings match {
-      case GroupMappings.Simple(localGroups) => UniqueNonEmptyList.from(localGroups.map(_.id))
-      case GroupMappings.Advanced(mappings) => UniqueNonEmptyList.from {
-        externalGroup
-          .toList
-          .flatMap { externalGroup =>
-            mappings
+      case GroupMappings.Simple(localGroups) =>
+        UniqueNonEmptyList
+          .from(localGroups.map(_.id))
+          .toRight(GroupsAuthorizationFailed("???"))
+      case GroupMappings.Advanced(mappings) =>
+        UniqueNonEmptyList
+          .from {
+            externalGroup
               .toList
-              .filter(m => m.externalGroupIdPatternsMatcher.`match`(externalGroup.id))
-              .map(_.local)
+              .flatMap { externalGroup =>
+                mappings
+                  .toList
+                  .filter(m => m.externalGroupIdPatternsMatcher.`match`(externalGroup.id))
+                  .map(_.local)
+              }
+              .map(_.id)
           }
-          .map(_.id)
-      }
+          .toRight(GroupsAuthorizationFailed("???"))
     }
   }
 

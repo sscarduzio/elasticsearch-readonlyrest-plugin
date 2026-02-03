@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.Impersona
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
@@ -208,7 +208,7 @@ object TestsUtils {
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                    (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
     }
   }
@@ -225,19 +225,19 @@ object TestsUtils {
           .map(users => ExternalAuthenticationServiceMock(users.map(ExternalAuthenticationUserMock.apply)))
       }
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                    (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                    (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
         map
           .get(id)

@@ -21,7 +21,7 @@ import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 
@@ -63,7 +63,7 @@ class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
     getMockProviderByContext(context).externalAuthenticationServiceWith(id)
   }
 
-  override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+  override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
     getMockProviderByContext(context).externalAuthorizationServiceWith(id)
   }

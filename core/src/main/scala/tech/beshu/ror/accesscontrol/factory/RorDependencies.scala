@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory
 
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.domain.{LocalUsers, RequestId}
 import tech.beshu.ror.accesscontrol.factory.RorDependencies.ImpersonationWarningsReader
 
@@ -32,7 +32,7 @@ object RorDependencies {
   def noOp: RorDependencies = RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader)
 
   final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
-                            authorizationServices: Seq[ExternalAuthorizationService#Id],
+                            authorizationServices: Seq[ExternalGroupsProviderService#Id],
                             ldaps: Seq[LdapService#Id])
   object Services {
     def empty: Services = Services(Seq.empty, Seq.empty, Seq.empty)

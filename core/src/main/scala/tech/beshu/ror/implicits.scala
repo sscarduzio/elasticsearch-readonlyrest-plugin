@@ -190,7 +190,7 @@ trait LogsShowInstances
   implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
   implicit val ldapHostShow: Show[LdapHost] = Show.show(_.url.toString())
   implicit val ldapServiceNameShow: Show[LdapService.Name] = Show.show(_.value.value)
-  implicit val externalAuthorizationServiceNameShow: Show[ExternalAuthorizationService.Name] = Show.show(_.value.value)
+  implicit val externalAuthorizationServiceNameShow: Show[ExternalGroupsProviderService.Name] = Show.show(_.value.value)
   implicit val jwtDefNameShow: Show[JwtDef.Name] = Show.show(_.value.value)
   implicit val rorKbnDefNameShow: Show[RorKbnDef.Name] = Show.show(_.value.value)
   implicit val httpRequestShow: Show[HttpClient.Request] = Show.show(_.toString)
@@ -320,8 +320,8 @@ trait LogsShowInstances
     s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}]"
   }
   implicit val deniedCauseShow: Show[Denied.Cause] = Show.show {
-    case Cause.AuthenticationFailed(details) => s"AUTHENTICATION FAILED${details.map(d => s" - $d").getOrElse("")}"
-    case Cause.GroupsAuthorizationFailed => "AUTHORIZATION FAILED"
+    case Cause.AuthenticationFailed(details) => s"AUTHENTICATION FAILED - $details"
+    case Cause.GroupsAuthorizationFailed(details) => s"GROUPS AUTHORIZATION FAILED - $details"
     case Cause.NotAuthorized => "AUTHORIZATION FAILED"
     case Cause.ImpersonationNotSupported => "IMPERSONATION NOT SUPPORTED"
     case Cause.ImpersonationNotAllowed => "IMPERSONATION NOT ALLOWED"

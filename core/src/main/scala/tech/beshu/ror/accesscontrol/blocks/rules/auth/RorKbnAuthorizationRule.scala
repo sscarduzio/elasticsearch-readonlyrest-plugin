@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Authori
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 final class RorKbnAuthorizationRule(val settings: Settings)
@@ -39,29 +38,32 @@ final class RorKbnAuthorizationRule(val settings: Settings)
   override val name: Rule.Name = RorKbnAuthorizationRule.Name.name
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
-    settings.groupsLogic match {
-      case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-        processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
-          authorize(blockContext, tokenData.groups, settings.groupsLogic)
-        }
-      case _ =>
-        Decision.Denied(Cause.GroupsAuthorizationFailed)
+    if (isCurrentGroupPotentiallyEligible(blockContext)) {
+      processUsingJwtToken(blockContext, settings.rorKbn) { tokenData =>
+        authorize(blockContext, tokenData.groups)
+      }
+    } else {
+      Decision.Denied(Cause.GroupsAuthorizationFailed("???"))
     }
   }
 
+  private def isCurrentGroupPotentiallyEligible(blockContext: BlockContext) = {
+    blockContext.isCurrentGroupPotentiallyEligible(settings.groupsLogic)
+  }
+
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                 result: ClaimSearchResult[UniqueList[Group]],
-                                                                 groupsLogic: GroupsLogic) = {
-    result match {
-      case NotFound =>
-        Left(GroupsAuthorizationFailed)
-      case Found(groups) =>
-        val result = for {
-          nonEmptyGroups <- UniqueNonEmptyList.from(groups)
-          matchedGroups <- groupsLogic.availableGroupsFrom(nonEmptyGroups)
-          if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-        } yield blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))
-        result.toRight(GroupsAuthorizationFailed)
+                                                                 groupsFromToken: ClaimSearchResult[UniqueList[Group]]) = {
+    for {
+      groups <- groupsFromToken.toEither.left.map { case () => GroupsAuthorizationFailed("???")}
+      nonEmptyGroups <- UniqueNonEmptyList.from(groups).toRight(GroupsAuthorizationFailed("???"))
+      matchedGroups <- settings.groupsLogic.availableGroupsFrom(nonEmptyGroups).toRight(GroupsAuthorizationFailed("???"))
+      _ <- Either.cond(
+        blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)),
+        (),
+        GroupsAuthorizationFailed("???")
+      )
+    } yield {
+      blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))
     }
   }
 

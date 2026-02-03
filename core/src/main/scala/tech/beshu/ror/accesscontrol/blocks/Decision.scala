@@ -36,14 +36,10 @@ object Decision {
     sealed trait Cause
     object Cause {
       sealed trait AuthenticationFailure extends Cause
-      final case class AuthenticationFailed private(details: Option[String]) extends AuthenticationFailure
-      object AuthenticationFailed {
-        def apply(details: String): AuthenticationFailed = new AuthenticationFailed(Some(details))
-        def apply(): AuthenticationFailed = new AuthenticationFailed(None)
-      }
+      final case class AuthenticationFailed(details: String) extends AuthenticationFailure
 
       sealed trait AuthorizationFailure extends Cause
-      case object GroupsAuthorizationFailed extends AuthorizationFailure
+      final case class GroupsAuthorizationFailed(details: String) extends AuthorizationFailure
       case object NotAuthorized extends AuthorizationFailure
 
       sealed trait OtherFailure extends Cause

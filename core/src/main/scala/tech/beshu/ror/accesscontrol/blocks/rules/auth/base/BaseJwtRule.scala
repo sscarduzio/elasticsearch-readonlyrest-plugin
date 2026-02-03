@@ -78,12 +78,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
   private def checkAuthenticationTokenValidity(service: ExternalAuthenticationService, token: Jwt.Token)
                                               (implicit requestId: RequestId) = EitherT {
-    service
-      .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
-      .map {
-        case true => Right(())
-        case false => Left(AuthenticationFailed("???")) // todo: fixme
-      }
+    service.authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
   }
 
   private def extractJwtTokenFromHeader[JWT_DEF <: JwtDef](blockContext: BlockContext, jwt: JWT_DEF) = {

@@ -40,12 +40,7 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
 
   override protected def authenticateUsing(credentials: Credentials)
                                           (implicit requestId: RequestId): Task[Either[AuthenticationFailed, Unit]] =
-    settings.service
-      .authenticate(credentials)
-      .map {
-        case true => Right(())
-        case false => Left(AuthenticationFailed())
-      }
+    settings.service.authenticate(credentials)
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
                                       (implicit requestId: RequestId): Task[UserExistence] = Task.delay {

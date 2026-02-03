@@ -170,7 +170,7 @@ object AccessControlListLoggingDecorator {
         s"""${constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.block.show} req=${forbiddenBy.requestContext.show}${constants.ANSI_RESET}"""
       case forbidden: Forbidden[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(UserMetadata.empty, forbidden.history)
-        s"""${constants.ANSI_PURPLE}FORBIDDEN by default req=${forbidden.requestContext.show}${constants.ANSI_RESET}"""
+        s"""${constants.ANSI_PURPLE}FORBIDDEN by mismatch req=${forbidden.requestContext.show}${constants.ANSI_RESET}"""
       case requestedIndexNotExist: RequestedIndexNotExist[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(UserMetadata.empty, requestedIndexNotExist.history)
         s"""${constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestedIndexNotExist.requestContext.show}${constants.ANSI_RESET}"""

@@ -22,7 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Url
 import monix.eval.Task
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService.Name
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
@@ -36,16 +36,16 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-trait ExternalAuthorizationService extends Item {
+trait ExternalGroupsProviderService extends Item {
   override type Id = Name
 
-  def grantsFor(userId: User.Id)
+  def groupsFor(userId: User.Id)
                (implicit requestId: RequestId): Task[UniqueList[Group]]
   def serviceTimeout: PositiveFiniteDuration
 
   override val idShow: Show[Name] = Show.show(_.value.value)
 }
-object ExternalAuthorizationService {
+object ExternalGroupsProviderService {
 
   final case class Name(value: NonEmptyString)
   object Name {
@@ -53,14 +53,14 @@ object ExternalAuthorizationService {
   }
 }
 
-final class HttpExternalAuthorizationService(override val id: ExternalAuthorizationService#Id,
-                                             override val serviceTimeout: PositiveFiniteDuration,
-                                             val config: HttpExternalAuthorizationService.Config,
-                                             httpClient: HttpClient)
-  extends ExternalAuthorizationService
+final class HttpExternalGroupsProviderService(override val id: ExternalGroupsProviderService#Id,
+                                              override val serviceTimeout: PositiveFiniteDuration,
+                                              val config: HttpExternalGroupsProviderService.Config,
+                                              httpClient: HttpClient)
+  extends ExternalGroupsProviderService
     with RequestIdAwareLogging {
 
-  override def grantsFor(userId: User.Id)
+  override def groupsFor(userId: User.Id)
                         (implicit requestId: RequestId): Task[UniqueList[Group]] = {
     httpClient
       .send(createRequest(userId))
@@ -70,8 +70,8 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
   private def createRequest(userId: User.Id) = {
     val uriWithParams = config.url.addParams(queryParams(userId))
     val method = config.method match {
-      case HttpExternalAuthorizationService.Config.SupportedHttpMethod.Get => HttpClient.Method.Get
-      case HttpExternalAuthorizationService.Config.SupportedHttpMethod.Post => HttpClient.Method.Post
+      case HttpExternalGroupsProviderService.Config.SupportedHttpMethod.Get => HttpClient.Method.Get
+      case HttpExternalGroupsProviderService.Config.SupportedHttpMethod.Post => HttpClient.Method.Post
     }
     HttpClient.Request(
       method = method,
@@ -83,16 +83,16 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
   private def queryParams(userId: User.Id): Map[String, String] = {
     config.defaultQueryParams.map(p => (autoUnwrap(p.name), autoUnwrap(p.value))).toMap ++
       (config.authTokenSendMethod match {
-        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingQueryParam => Map(config.tokenName.value.value -> userId.value.value)
-        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingHeader => Map.empty[String, String]
+        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingQueryParam => Map(config.tokenName.value.value -> userId.value.value)
+        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingHeader => Map.empty[String, String]
       })
   }
 
   private def headersMap(userId: User.Id): Map[String, String] = {
     config.defaultHeaders.map(h => (h.name.value.value, h.value.value)).toMap ++
       (config.authTokenSendMethod match {
-        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingHeader => Map(config.tokenName.value.value -> userId.value.value)
-        case HttpExternalAuthorizationService.Config.AuthTokenSendMethod.UsingQueryParam => Map.empty
+        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingHeader => Map(config.tokenName.value.value -> userId.value.value)
+        case HttpExternalGroupsProviderService.Config.AuthTokenSendMethod.UsingQueryParam => Map.empty
       })
   }
 
@@ -146,7 +146,7 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
     }
   }
 
-  private def groupNamesFrom(body: String, namesConfig: HttpExternalAuthorizationService.Config.GroupsConfig.GroupNamesConfig): Try[List[String]] = {
+  private def groupNamesFrom(body: String, namesConfig: HttpExternalGroupsProviderService.Config.GroupsConfig.GroupNamesConfig): Try[List[String]] = {
     namesConfig.jsonPath.read[java.util.List[String]](body)
       .map {
         _.asScala.toList
@@ -169,7 +169,7 @@ final class HttpExternalAuthorizationService(override val id: ExternalAuthorizat
       .getOrElse(fallback)
 }
 
-object HttpExternalAuthorizationService {
+object HttpExternalGroupsProviderService {
 
   object Config {
     sealed trait SupportedHttpMethod
@@ -206,16 +206,16 @@ object HttpExternalAuthorizationService {
   final case class InvalidResponse(message: String) extends Exception(message)
 }
 
-final class CacheableExternalAuthorizationServiceDecorator(val underlying: ExternalAuthorizationService,
-                                                           val ttl: PositiveFiniteDuration)
-  extends ExternalAuthorizationService {
+final class CacheableExternalGroupsProviderServiceDecorator(val underlying: ExternalGroupsProviderService,
+                                                            val ttl: PositiveFiniteDuration)
+  extends ExternalGroupsProviderService {
 
   private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl,
-    (userId, requestId) => underlying.grantsFor(userId)(requestId))
+    (userId, requestId) => underlying.groupsFor(userId)(requestId))
 
-  override val id: ExternalAuthorizationService#Id = underlying.id
+  override val id: ExternalGroupsProviderService#Id = underlying.id
 
-  override def grantsFor(userId: User.Id)
+  override def groupsFor(userId: User.Id)
                         (implicit requestId: RequestId): Task[UniqueList[Group]] =
     cacheableGrantsFor.call(userId, serviceTimeout)
 

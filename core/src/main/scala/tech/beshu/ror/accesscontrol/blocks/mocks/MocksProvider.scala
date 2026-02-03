@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
@@ -33,7 +33,7 @@ trait MocksProvider {
   def externalAuthenticationServiceWith(id: ExternalAuthenticationService#Id)
                                        (implicit context: RequestId): Option[ExternalAuthenticationServiceMock]
 
-  def externalAuthorizationServiceWith(id: ExternalAuthorizationService#Id)
+  def externalAuthorizationServiceWith(id: ExternalGroupsProviderService#Id)
                                       (implicit context: RequestId): Option[ExternalAuthorizationServiceMock]
 }
 object MocksProvider {
@@ -61,6 +61,6 @@ object NoOpMocksProvider extends MocksProvider {
   override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                 (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-  override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+  override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
 }
