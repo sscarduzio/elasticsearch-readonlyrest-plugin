@@ -59,11 +59,11 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       .flatMap { _ =>
         resolveGroupsLogic(blockContext) match {
           case None =>
-            Task.now(Denied(Cause.GroupsAuthorizationFailed("????")))
+            Task.now(Denied(Cause.GroupsAuthorizationFailed("Cannot resolve groups logic from variables")))
           case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
             continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)
           case Some(_) =>
-            Task.now(Denied(Cause.GroupsAuthorizationFailed("????")))
+            Task.now(Denied(Cause.GroupsAuthorizationFailed("Current group is not potentially eligible")))
         }
       }
   }
@@ -77,7 +77,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
-            Task.now(Denied(Cause.AuthenticationFailed(s"Given user '${user.id.show}' not allowed"))) // todo: fixme
+            Task.now(Denied(Cause.GroupsAuthorizationFailed(s"User '${user.id.show}' not in allowed users list")))
           case Some(filteredUserDefinitions) =>
             tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, blockContext, permittedGroupsLogic)
         }
@@ -153,7 +153,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
             )
         }
       case None | Some(_) =>
-        Task.now(Left(GroupsAuthorizationFailed("???")))
+        Task.now(Left(GroupsAuthorizationFailed("No eligible local groups for user")))
     }
   }
 
@@ -178,7 +178,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     result.value
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication error", ex)
-        Left(AuthenticationFailed("???"))
+        Left(AuthenticationFailed(s"Authentication error: ${ex.getMessage}"))
       }
   }
 
@@ -206,7 +206,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     result.value
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication & Authorization error", ex)
-        Left(GroupsAuthorizationFailed("????"))
+        Left(GroupsAuthorizationFailed(s"Auth error: ${ex.getMessage}"))
       }
   }
 
@@ -223,14 +223,14 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       updatedBlockContextAfterAuthn <- updateBlockContextWithLoggedUser(blockContextAfterAuthn, blockContext, allowedUserMatcher)
       blockContextAfterAuthz <- EitherT(authzRule.check(updatedBlockContextAfterAuthn).map {
         case Decision.Permitted(bc) => Right(bc)
-        case Decision.Denied(_) => Left(GroupsAuthorizationFailed("???"))
+        case Decision.Denied(_) => Left(GroupsAuthorizationFailed("Authorization rule denied access"))
       })
       updatedBlockContextAfterAuthz <- updateBlockContextWithAllowedGroups(blockContextAfterAuthz, updatedBlockContextAfterAuthn, availableGroups, groupMappings)
     } yield updatedBlockContextAfterAuthz
     result.value
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication & Authorization error", ex)
-        Left(GroupsAuthorizationFailed("???"))
+        Left(GroupsAuthorizationFailed(s"Auth error: ${ex.getMessage}"))
       }
   }
 
@@ -241,10 +241,10 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       sourceBlockContext.userMetadata.loggedUser match {
         case Some(user) if allowedUserMatcher.`match`(user.id) =>
           Right(destinationBlockContext.withUserMetadata(_.withLoggedUser(user)))
-        case Some(_) =>
-          Left(AuthenticationFailed("????"))
+        case Some(user) =>
+          Left(AuthenticationFailed(s"User '${user.id.show}' doesn't match allowed patterns"))
         case None =>
-          Left(AuthenticationFailed("????"))
+          Left(AuthenticationFailed("No logged user found after authentication"))
       }
     }
   }
@@ -285,7 +285,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     val potentiallyPermitted = GroupIds(externalGroupsMappedToLocalGroups)
     UniqueNonEmptyList
       .from(potentiallyPermitted.filterOnlyPermitted(potentiallyAvailableGroups))
-      .toRight(GroupsAuthorizationFailed("???"))
+      .toRight(GroupsAuthorizationFailed("No matching local groups after mapping"))
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,
@@ -307,10 +307,10 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
             newBlockContext.userMetadata.loggedUser match {
               case Some(user) if allowedUserMatcher.`match`(user.id) =>
                 Right(blockContext.withUserMetadata(_.withLoggedUser(user)))
-              case Some(_) =>
-                Left(AuthenticationFailed("????"))
+              case Some(user) =>
+                Left(AuthenticationFailed(s"User '${user.id.show}' doesn't match allowed patterns"))
               case None =>
-                Left(AuthenticationFailed("????"))
+                Left(AuthenticationFailed("No logged user found after rule check"))
             }
         }
     }
@@ -322,7 +322,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       case GroupMappings.Simple(localGroups) =>
         UniqueNonEmptyList
           .from(localGroups.map(_.id))
-          .toRight(GroupsAuthorizationFailed("???"))
+          .toRight(GroupsAuthorizationFailed("Empty local groups in simple mapping"))
       case GroupMappings.Advanced(mappings) =>
         UniqueNonEmptyList
           .from {
@@ -336,7 +336,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
               }
               .map(_.id)
           }
-          .toRight(GroupsAuthorizationFailed("???"))
+          .toRight(GroupsAuthorizationFailed("No external groups matched any mapping pattern"))
     }
   }
 

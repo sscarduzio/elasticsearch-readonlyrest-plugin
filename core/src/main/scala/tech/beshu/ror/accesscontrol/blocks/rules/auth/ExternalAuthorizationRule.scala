@@ -45,7 +45,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[GroupsAuthorizationFailed, Unit] = {
     Either.cond(
       userMatcher.`match`(user.id),
-      (), GroupsAuthorizationFailed("???")
+      (), GroupsAuthorizationFailed(s"User '${user.id.show}' not in allowed users list")
     )
   }
 

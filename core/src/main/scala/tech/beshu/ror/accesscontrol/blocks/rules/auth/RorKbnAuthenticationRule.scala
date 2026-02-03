@@ -53,7 +53,7 @@ final class RorKbnAuthenticationRule(val settings: Settings,
                                                                     userOriginFromToken: ClaimSearchResult[Header],
                                                                     tokenPayload: Jwt.Payload): Either[Cause, B] = {
     for {
-      userId <- userIdFromToken.toEither.left.map { case () => AuthenticationFailed("???") }
+      userId <- userIdFromToken.toEither.left.map { case () => AuthenticationFailed("User claim not found in ROR Kibana token") }
       updatedBlockContext = userOriginFromToken match {
         case Found(header) =>
           blockContext.withUserMetadata(

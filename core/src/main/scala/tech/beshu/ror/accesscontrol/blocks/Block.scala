@@ -80,9 +80,9 @@ class Block(val name: Name,
       .recover { case e =>
         logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
         val cause = rule match {
-          case rule: Rule.AuthenticationRule => Cause.AuthenticationFailed("due to internal error") // todo: fix
-          case rule: Rule.AuthorizationRule => Cause.GroupsAuthorizationFailed("due to internal error") // todo: fix
-          case rule: Rule.RegularRule => Cause.NotAuthorized
+          case _: Rule.AuthenticationRule => Cause.AuthenticationFailed(s"Internal error: ${e.getMessage}")
+          case _: Rule.AuthorizationRule => Cause.GroupsAuthorizationFailed(s"Internal error: ${e.getMessage}")
+          case _: Rule.RegularRule => Cause.NotAuthorized
         }
         Decision.Denied[B](cause)
       }

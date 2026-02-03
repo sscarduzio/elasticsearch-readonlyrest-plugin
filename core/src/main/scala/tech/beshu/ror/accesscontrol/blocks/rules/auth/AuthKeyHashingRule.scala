@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Hasher
 
@@ -42,15 +43,24 @@ sealed abstract class AuthKeyHashingRule(override val settings: BasicAuthenticat
     with RequestIdAwareLogging {
 
   override protected def compare(configuredCredentials: HashedCredentials,
-                                 credentials: Credentials): Task[Either[AuthenticationFailed, Unit]] = Task {
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task {
     configuredCredentials match {
       case secret: HashedUserAndPassword =>
-        Either.cond(secret == HashedUserAndPassword.from(credentials, hasher), (), AuthenticationFailed("credentials mismatch")) // todo: fixme
+        Either.cond(
+          secret == HashedUserAndPassword.from(credentials, hasher),
+          DirectlyLoggedUser(credentials.user), AuthenticationFailed("Invalid username or/and password")
+        )
       case secret: HashedOnlyPassword =>
         for {
-          _ <- Either.cond(secret.userId == credentials.user, (), AuthenticationFailed("user mismatch")) // todo: fixme
-          _ <- Either.cond(secret == HashedOnlyPassword.from(credentials, hasher), (), AuthenticationFailed("password mismatch")) // todo: fixme
-        } yield ()
+          _ <- Either.cond(
+            secret.userId == credentials.user,
+            (), AuthenticationFailed("Username mismatch")
+          )
+          _ <- Either.cond(
+            secret == HashedOnlyPassword.from(credentials, hasher),
+            (), AuthenticationFailed("Invalid password")
+          )
+        } yield DirectlyLoggedUser(credentials.user)
     }
   }
 

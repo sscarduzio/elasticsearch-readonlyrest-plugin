@@ -18,9 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -35,6 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, RequestId, User}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -49,23 +48,22 @@ final class ProxyAuthRule(val settings: Settings,
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 
-  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
     val result = for {
       loggedUser <- getLoggedUser(blockContext.requestContext)
-      _ <- Either.cond(shouldAuthenticate(loggedUser.id), (), left = Cause.AuthenticationFailed(s"Given user '${loggedUser.id.show}' not allowed")) // todo: fixme
+      _ <- shouldAuthenticate(loggedUser.id)
     } yield {
       blockContext.withUserMetadata(_.withLoggedUser(loggedUser))
     }
-    result match {
-      case Right(blockContext) => Permitted(blockContext)
-      case Left(authFailed) => Denied(authFailed)
-    }
+    result.toDecision
   }
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
                                       (implicit requestId: RequestId): Task[UserExistence] = Task.delay {
-    if (shouldAuthenticate(user)) UserExistence.Exists
-    else UserExistence.NotExist
+    shouldAuthenticate(user) match {
+      case Right(()) => UserExistence.Exists
+      case Left(_: AuthenticationFailed) => UserExistence.NotExist
+    }
   }
 
   private def getLoggedUser(context: RequestContext): Either[AuthenticationFailed, DirectlyLoggedUser] = {
@@ -73,11 +71,14 @@ final class ProxyAuthRule(val settings: Settings,
       .restRequest.allHeaders
       .find(_.name === settings.userHeaderName)
       .map(h => DirectlyLoggedUser(Id(h.value)))
-      .toRight(AuthenticationFailed("No user header found")) // todo: fixme
+      .toRight(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
   }
 
   private def shouldAuthenticate(userId: User.Id) = {
-    userMatcher.`match`(userId)
+    Either.cond(
+      userMatcher.`match`(userId),
+      (), AuthenticationFailed(s"User '${userId.show}' not in allowed users list")
+    )
   }
 }
 

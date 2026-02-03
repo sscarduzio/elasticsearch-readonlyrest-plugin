@@ -17,6 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import cats.Monad
+import cats.data.EitherT
+import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.syntax.*
@@ -78,6 +80,20 @@ object Decision {
       case fulfilled: Permitted[A] => Right(fulfilled)
       case rejected: Decision.Denied[A] => Left(Denied(rejected.cause))
     }
+  }
+
+  extension [C <: Cause, R](result: Either[C, R]) {
+    def toDecision: Decision[R] = {
+      result match {
+        case Right(r) => Decision.permit[R](r)
+        case Left(cause) => Decision.deny[R](cause)
+      }
+    }
+  }
+
+  extension[C <: Cause, R] (result: EitherT[Task, C, R]) {
+    def toDecision: Task[Decision[R]] =
+      result.value.map(_.toDecision)
   }
 
   implicit val resultMonad: Monad[Decision] = new Monad[Decision] {

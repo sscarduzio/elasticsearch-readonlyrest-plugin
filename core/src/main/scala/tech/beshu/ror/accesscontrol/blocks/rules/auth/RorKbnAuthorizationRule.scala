@@ -43,7 +43,7 @@ final class RorKbnAuthorizationRule(val settings: Settings)
         authorize(blockContext, tokenData.groups)
       }
     } else {
-      Decision.Denied(Cause.GroupsAuthorizationFailed("???"))
+      Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not potentially eligible"))
     }
   }
 
@@ -54,13 +54,13 @@ final class RorKbnAuthorizationRule(val settings: Settings)
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                  groupsFromToken: ClaimSearchResult[UniqueList[Group]]) = {
     for {
-      groups <- groupsFromToken.toEither.left.map { case () => GroupsAuthorizationFailed("???")}
-      nonEmptyGroups <- UniqueNonEmptyList.from(groups).toRight(GroupsAuthorizationFailed("???"))
-      matchedGroups <- settings.groupsLogic.availableGroupsFrom(nonEmptyGroups).toRight(GroupsAuthorizationFailed("???"))
+      groups <- groupsFromToken.toEither.left.map { case () => GroupsAuthorizationFailed("Groups claim not found in ROR Kibana token")}
+      nonEmptyGroups <- UniqueNonEmptyList.from(groups).toRight(GroupsAuthorizationFailed("No groups found in ROR Kibana token"))
+      matchedGroups <- settings.groupsLogic.availableGroupsFrom(nonEmptyGroups).toRight(GroupsAuthorizationFailed("No matching groups from groups logic"))
       _ <- Either.cond(
         blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)),
         (),
-        GroupsAuthorizationFailed("???")
+        GroupsAuthorizationFailed("Current group is not in matched groups")
       )
     } yield {
       blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))

@@ -22,6 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -46,7 +47,7 @@ trait LdapUsersService extends LdapService {
 }
 
 trait LdapAuthenticationService extends LdapService {
-  type AuthenticationResult = Either[AuthenticationFailed, Unit]
+  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
 
   def ldapUsersService: LdapUsersService
 

@@ -90,7 +90,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       .requestContext
       .bearerToken
       .map(h => Jwt.Token(h.value))
-      .toRight(AuthenticationFailed("???")) // todo: fixme
+      .toRight(AuthenticationFailed("No bearer token found"))
   }
 
   private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF)
@@ -104,7 +104,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
     def causeFrom(ex: Throwable): Cause = {
       logBadToken(ex, token)
-      AuthenticationFailed("???") // todo: fixme
+      AuthenticationFailed(s"JWT token validation failed: ${ex.getMessage}")
     }
 
     jwt.checkMethod match {
@@ -115,7 +115,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
               .toEither
               .fold(ex => Left(causeFrom(ex)), claims => Right(Jwt.Payload(claims)))
           case _ =>
-            Left(AuthenticationFailed("???")) // todo: fixme
+            Left(AuthenticationFailed("Malformed JWT token structure"))
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
         Try(parser.parseSignedClaims(token.value.value).getPayload)

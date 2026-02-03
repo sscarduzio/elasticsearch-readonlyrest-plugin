@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseBasicAuthAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
 
 final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings,
@@ -39,7 +40,7 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, Unit]] =
+                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
     settings.service.authenticate(credentials)
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)

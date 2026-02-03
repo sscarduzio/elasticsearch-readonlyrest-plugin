@@ -109,14 +109,9 @@ private[auth] trait BaseAuthorizationRule
           _.addAvailableGroups(allowedGroups)
         )
       }
-      result
-        .bimap(
-          cause => Decision.deny[B](cause),
-          updatedBlockContext => Decision.permit[B](updatedBlockContext)
-        )
-        .merge
+      result.toDecision
     } else {
-      rejectWithGroupsAuthorizationFailure("???")
+      rejectWithGroupsAuthorizationFailure("Current group is not potentially eligible")
     }
   }
 
@@ -126,7 +121,7 @@ private[auth] trait BaseAuthorizationRule
       .subflatMap { groups =>
         UniqueNonEmptyList
           .from(groups)
-          .toRight(GroupsAuthorizationFailed("???"))
+          .toRight(GroupsAuthorizationFailed("User has no groups"))
       }
   }
 
@@ -135,7 +130,7 @@ private[auth] trait BaseAuthorizationRule
     EitherT.cond[Task](
       blockContext.isCurrentGroupEligible(GroupIds.from(userGroups)),
       (),
-      GroupsAuthorizationFailed("???")
+      GroupsAuthorizationFailed("Current group is not in user's groups")
     )
   }
 
@@ -143,7 +138,7 @@ private[auth] trait BaseAuthorizationRule
     EitherT.fromEither[Task] {
       groupsLogic
         .availableGroupsFrom(usersGroups)
-        .toRight(GroupsAuthorizationFailed("???"))
+        .toRight(GroupsAuthorizationFailed("No matching groups from groups logic"))
     }
   }
 

@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
 import tech.beshu.ror.syntax.*
 
@@ -37,11 +38,17 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
   override val name: Rule.Name = AuthKeyRule.Name.name
 
   override protected def compare(configuredCredentials: Credentials,
-                                 credentials: Credentials): Task[Either[AuthenticationFailed, Unit]] = Task.now {
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task.delay {
     for {
-      _ <- Either.cond(configuredCredentials.user == credentials.user, (), AuthenticationFailed("user mismatch")) // todo: fixme
-      _ <- Either.cond(configuredCredentials.secret == credentials.secret, (), AuthenticationFailed("password mismatch")) // todo: fixme
-    } yield ()
+      _ <- Either.cond(
+        configuredCredentials.user == credentials.user,
+        (), AuthenticationFailed("Username mismatch")
+      )
+      _ <- Either.cond(
+        configuredCredentials.secret == credentials.secret,
+        (), AuthenticationFailed("Invalid password")
+      )
+    } yield DirectlyLoggedUser(credentials.user)
   }
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)

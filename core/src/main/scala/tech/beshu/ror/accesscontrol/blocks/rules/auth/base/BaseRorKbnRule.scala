@@ -59,7 +59,7 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
       .requestContext
       .bearerToken
       .map(h => Jwt.Token(h.value))
-      .toRight(AuthenticationFailed("???")) // todo: fixme
+      .toRight(AuthenticationFailed("No bearer token found"))
   }
 
   private def jwtTokenDataFrom(token: Jwt.Token, rorKbn: RorKbnDef)
@@ -73,7 +73,7 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
           tokenPayload.claims.headerNameClaim(Header.Name.xUserOrigin)
         )
       }
-      .left.map { case () => AuthenticationFailed("???") }  // todo: fixme
+      .left.map { case () => AuthenticationFailed("Invalid or expired ROR Kibana token") }
   }
 
   private def claimsFrom(token: Jwt.Token, rorKbn: RorKbnDef)

@@ -16,53 +16,52 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
+import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
-import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Credentials, RequestId}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
 private[auth] abstract class BaseBasicAuthAuthenticationRule
   extends BaseAuthenticationRule {
 
   protected def authenticateUsing(credentials: Credentials)
-                                 (implicit requestId: RequestId): Task[Either[AuthenticationFailed, Unit]]
+                                 (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
 
   override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     Task
       .unit
       .flatMap { _ =>
-        val requestContext = blockContext.requestContext
-        implicit val requestId: RequestId = requestContext.id.toRequestId
-        requestContext.basicAuth.map(_.credentials) match {
-          case Some(credentials) =>
-            authenticateUsing(credentials).map {
-              case Right(()) =>
-                Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))
-              case Left(authFailed) =>
-                Decision.Denied[B](authFailed)
-            }
-          case None =>
-            reject("No basic auth credentials found") // todo: fixme?
-        }
+        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+        val result = for {
+          credentials <- basicAuthCredentialsFrom(blockContext.requestContext)
+          loggedUser <- EitherT(authenticateUsing(credentials))
+        } yield blockContext.withUserMetadata(_.withLoggedUser(loggedUser))
+        result.toDecision
       }
   }
 
-  private def reject[T](details: String) =
-    Task.now(Decision.Denied[T](AuthenticationFailed(details)))
+  private def basicAuthCredentialsFrom(requestContext: RequestContext) = {
+    EitherT.fromEither[Task] {
+      requestContext
+        .basicAuth.map(_.credentials)
+        .toRight(AuthenticationFailed("No basic auth credentials provided"))
+    }
+  }
 }
 
 abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDENTIALS])
   extends BaseBasicAuthAuthenticationRule {
 
   override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, Unit]] =
+                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
     compare(settings.credentials, credentials)
 
-  protected def compare(configuredCredentials: CREDENTIALS, credentials: Credentials): Task[Either[AuthenticationFailed, Unit]]
+  protected def compare(configuredCredentials: CREDENTIALS, credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
 }
 
 object BasicAuthenticationRule {

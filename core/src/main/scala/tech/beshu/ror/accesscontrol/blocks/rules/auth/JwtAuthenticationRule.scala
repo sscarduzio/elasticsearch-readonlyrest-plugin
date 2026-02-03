@@ -64,7 +64,7 @@ final class JwtAuthenticationRule(val settings: Settings,
             .withJwtToken(payload)
         ))
       case NotFound =>
-        Left(Cause.AuthenticationFailed("???")) // todo:
+        Left(Cause.AuthenticationFailed(s"User claim '${settings.jwt.userClaim.name.rawPath}' not found in JWT"))
     }
   }
 

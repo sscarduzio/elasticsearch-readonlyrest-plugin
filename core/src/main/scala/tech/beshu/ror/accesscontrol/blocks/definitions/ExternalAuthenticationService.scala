@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationF
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
@@ -37,7 +38,7 @@ import java.nio.charset.Charset
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
 
-  type AuthenticationResult = Either[AuthenticationFailed, Unit]
+  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
 
   def authenticate(credentials: Credentials)
                   (implicit requestId: RequestId): Task[AuthenticationResult]
@@ -74,7 +75,7 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
       .map { response =>
         Either.cond(
           response.status == successStatusCode,
-          (),
+          DirectlyLoggedUser(credentials.user),
           AuthenticationFailed(s"Service ${id.show} returned ${response.status.show} instead of ${successStatusCode.show}")
         )
       }
@@ -101,7 +102,7 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
       .map { response =>
         Either.cond(
           response.status == successStatusCode,
-          (),
+          DirectlyLoggedUser(credentials.user),
           AuthenticationFailed(s"JWT validation service returned ${response.status.show} instead of ${successStatusCode.show}")
         )
       }

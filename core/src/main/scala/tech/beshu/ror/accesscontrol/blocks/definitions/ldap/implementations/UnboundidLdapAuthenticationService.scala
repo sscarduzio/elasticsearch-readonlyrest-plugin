@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationF
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService, LdapUser, LdapUsersService}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, RequestId, User}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -54,7 +55,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
         case Some(ldapUser) =>
           ldapAuthenticate(ldapUser, secret)
         case None =>
-          Task.now(Left(AuthenticationFailed("no such user"))) // todo: fixme
+          Task.now(Left(AuthenticationFailed("User not found in LDAP")))
       }
   }
 
@@ -65,8 +66,8 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
       .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))
       .map(_.getResultCode == ResultCode.SUCCESS)
       .map {
-        case true => Right(())
-        case false => Left(AuthenticationFailed("???")) // todo: fixme
+        case true => Right(DirectlyLoggedUser(user.id))
+        case false => Left(AuthenticationFailed("LDAP bind failed"))
       }
       .onError { case ex =>
         Task(logger.error(s"LDAP authenticate operation failed - cause [${ex.getMessage.show}]", ex))
