@@ -66,7 +66,7 @@ private[auth] trait BaseAuthorizationRule
           case Right(_) => doAuthorizeLoggedUser(blockContext, user)
         }
       case (None, _) =>
-        rejectWithGroupsAuthorizationFailure("no logged user")
+        rejectWithGroupsAuthorizationFailure("No logged user")
     }
   }
 
@@ -111,7 +111,7 @@ private[auth] trait BaseAuthorizationRule
       }
       result.toDecision
     } else {
-      rejectWithGroupsAuthorizationFailure("Current group is not potentially eligible")
+      rejectWithGroupsAuthorizationFailure("Current group is not eligible")
     }
   }
 
@@ -138,7 +138,7 @@ private[auth] trait BaseAuthorizationRule
     EitherT.fromEither[Task] {
       groupsLogic
         .availableGroupsFrom(usersGroups)
-        .toRight(GroupsAuthorizationFailed("No matching groups from groups logic"))
+        .toRight(GroupsAuthorizationFailed("None of the user's groups match the configured groups"))
     }
   }
 

@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, D
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
 final class TokenAuthenticationRule(val settings: Settings,
@@ -57,7 +58,7 @@ final class TokenAuthenticationRule(val settings: Settings,
         if (verifyTokenFromHeader(requestContext)) {
           Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
         } else {
-          Denied(Cause.AuthenticationFailed("Token header missing or invalid"))
+          Denied(Cause.AuthenticationFailed(s"Token header '${settings.tokenHeaderName.show}' missing or invalid"))
         }
       }
 

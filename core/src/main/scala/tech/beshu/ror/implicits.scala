@@ -320,14 +320,29 @@ trait LogsShowInstances
     s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}]"
   }
   implicit val deniedCauseShow: Show[Denied.Cause] = Show.show {
-    case Cause.AuthenticationFailed(details) => s"AUTHENTICATION FAILED - $details"
-    case Cause.GroupsAuthorizationFailed(details) => s"GROUPS AUTHORIZATION FAILED - $details"
-    case Cause.NotAuthorized => "AUTHORIZATION FAILED"
-    case Cause.ImpersonationNotSupported => "IMPERSONATION NOT SUPPORTED"
-    case Cause.ImpersonationNotAllowed => "IMPERSONATION NOT ALLOWED"
-    case Cause.IndexNotFound(_) => "???" // todo: fixme
-    case Cause.AliasNotFound => "???" // todo: fixme
-    case Cause.TemplateNotFound => "???" // todo: fixme
+    case Cause.AuthenticationFailed(details) => s"AUTH_FAIL($details)"
+    case Cause.GroupsAuthorizationFailed(details) => s"GROUPS_AUTH_FAIL($details)"
+    case Cause.NotAuthorized => "AUTHZ_FAIL"
+    case Cause.ImpersonationNotSupported => "IMPERSONATION_NOT_SUPPORTED"
+    case Cause.ImpersonationNotAllowed => "IMPERSONATION_NOT_ALLOWED"
+    case Cause.IndexNotFound(_) => "IDX_NOT_FOUND"
+    case Cause.AliasNotFound => "ALIAS_NOT_FOUND"
+    case Cause.TemplateNotFound => "TPL_NOT_FOUND"
+  }
+
+  object CauseFormatting {
+
+    def formatGroupedCauses[T : Show](causes: Iterable[(T, Cause)]): String = {
+      val grouped = causes
+        .groupBy { case (_, cause) => cause.show }
+        .toList
+        .map { case (causeStr, entries) =>
+          val keys = entries.map { case (key, _) => key.show }
+          val keysStr = if (keys.size > 1) s"{${keys.mkString(",")}}" else keys.head
+          s"$keysStr:$causeStr"
+        }
+      grouped.mkString("; ")
+    }
   }
   implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
     case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
