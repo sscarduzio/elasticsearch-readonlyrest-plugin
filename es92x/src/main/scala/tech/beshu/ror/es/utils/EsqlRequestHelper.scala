@@ -23,8 +23,10 @@ import org.joor.Reflect.*
 import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
+import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification, IndexTable}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -33,7 +35,7 @@ import java.util.List as JList
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-object EsqlRequestHelper {
+class EsqlRequestHelper(esVersion: EsVersion) {
 
   def modifyIndicesOf(request: CompositeIndicesRequest,
                       requestTables: NonEmptyList[IndexTable],
@@ -117,13 +119,34 @@ object EsqlRequestHelper {
     }
 
     private def indicesFrom(statement: Any) = {
-      val preAnalyze =  doPreAnalyze(newPreAnalyzer, statement)
-      val indexPattern = indexPatternFrom(preAnalyze)
+      val plan = esVersion match {
+        case v if v >= EsVersion(9, 3, 0) => on(statement).call("plan").get[Any]()
+        case _ => statement
+      }
+      val preAnalysis = doPreAnalyze(newPreAnalyzer, plan)
+      esVersion match {
+        case v if v >= EsVersion(9, 3, 0) => indicesFromPreAnalysisForEsEqualOrAbove930(preAnalysis)
+        case _ => indicesFromPreAnalysisForEsBelow930(preAnalysis)
+      }
+    }
+
+    private def indicesFromPreAnalysisForEsBelow930(preAnalysis: Any) = {
+      val indexPattern = indexPatternFrom(preAnalysis)
       val indexPatternString = indexPatternStringFrom(indexPattern)
       NonEmptyList
         .fromList(splitIntoIndices(indexPatternString))
         .map(IndexTable(indexPatternString, _))
         .toList
+    }
+
+    private def indicesFromPreAnalysisForEsEqualOrAbove930(preAnalysis: Any) = {
+      val indexesMap = on(preAnalysis).get[java.util.Map[Any, Any]]("indexes")
+      indexesMap.keySet().asScala.toList.flatMap { indexPattern =>
+        val indexPatternString = on(indexPattern).call("indexPattern").get[String]()
+        NonEmptyList
+          .fromList(splitIntoIndices(indexPatternString))
+          .map(IndexTable(indexPatternString, _))
+      }
     }
 
     private def splitIntoIndices(tableString: String) = {
@@ -243,6 +266,9 @@ object EsqlRequestHelper {
       }
     }
   }
+}
+
+object EsqlRequestHelper {
 
   final case class IndexTable(tableStringInQuery: String, indices: NonEmptyList[String])
 
