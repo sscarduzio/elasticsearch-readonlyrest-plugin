@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.{TransportVersion, TransportVersions}
+import org.elasticsearch.TransportVersion
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.io.stream.BytesStreamOutput
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -43,10 +43,13 @@ object XPackSecurityAuthenticationHeader {
     val currentVersion = TransportVersion.current()
     output.setTransportVersion(currentVersion)
     TransportVersion.writeVersion(currentVersion, output)
+    // Internal user flag
     output.writeBoolean(isInternal)
-    if(isInternal) {
+    if (isInternal) {
+      // Internal users only need their name
       output.writeString(userName)
     } else {
+      // Regular User.writeUser format: name, roles, metadata, fullName, email, enabled, runAs
       output.writeString(userName)
       output.writeStringArray(Array("superuser"))
       output.writeGenericMap(Map.empty[String, AnyRef].asJava)
@@ -55,21 +58,18 @@ object XPackSecurityAuthenticationHeader {
       output.writeBoolean(true)
       output.writeBoolean(false)
     }
+    // Authenticating realm: nodeName as realm reference, "__attach" as realm type and name
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")
-    if(output.getTransportVersion.onOrAfter(TransportVersions.V_8_2_0)) {
-      output.writeBoolean(false)
-    }
+    // Realm domain flag (ES 8.2.0+)
     output.writeBoolean(false)
-    if (output.getTransportVersion.onOrAfter(TransportVersions.V_7_0_0)) {
-      output.writeVInt(4) // Internal
-      if(output.getTransportVersion.onOrAfter(TransportVersions.V_8_8_0)) {
-        output.writeVInt(0)
-      } else {
-        output.writeGenericMap(Map.empty[String, Object].asJava)
-      }
-    }
+    // Lookup realm present flag
+    output.writeBoolean(false)
+    // Authentication type: INTERNAL = 4 (ES 7.0.0+)
+    output.writeVInt(4)
+    // Metadata: empty, represented as VInt(0) since ES 8.8.0
+    output.writeVInt(0)
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
     }
