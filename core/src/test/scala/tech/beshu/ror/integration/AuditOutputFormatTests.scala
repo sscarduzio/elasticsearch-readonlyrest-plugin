@@ -75,7 +75,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         def expectedJson(jsonString: String) = ujson.read(
           s"""{
              |  "headers":["x-forwarded-for", "custom-one"],
-             |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
+             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]]",
              |  "origin":"localhost",
              |  "match":false,
              |  "final_state":"FORBIDDEN",
@@ -91,7 +91,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"indices:admin/get",
-             |  "block":"default",
+             |  "block":"mismatched",
              |  "id":"mock",
              |  "content_len":0,
              |  "es_cluster_name": "testEsCluster",
@@ -120,7 +120,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         def expectedJson(jsonString: String) = ujson.read(
           s"""{
              |  "headers":["X-Forwarded-For", "Custom-One"],
-             |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
+             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]]",
              |  "origin":"localhost",
              |  "match":false,
              |  "final_state":"FORBIDDEN",
@@ -136,7 +136,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"indices:admin/get",
-             |  "block":"default",
+             |  "block":"mismatched",
              |  "id":"mock",
              |  "content_len":0,
              |  "es_cluster_name": "testEsCluster",

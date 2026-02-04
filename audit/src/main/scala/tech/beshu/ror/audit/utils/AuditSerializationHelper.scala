@@ -381,8 +381,7 @@ private[ror] object AuditSerializationHelper {
     AuditFieldPath("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
     AuditFieldPath("action") -> AuditFieldValueDescriptor.Action,
     AuditFieldPath("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
-    AuditFieldPath("acl_history") -> AuditFieldValueDescriptor.AclHistory,
-    AuditFieldPath("blocks_history") -> AuditFieldValueDescriptor.BlocksHistory
+    AuditFieldPath("acl_history") -> AuditFieldValueDescriptor.AclHistory
   )
 
   private val esEnvironmentFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(

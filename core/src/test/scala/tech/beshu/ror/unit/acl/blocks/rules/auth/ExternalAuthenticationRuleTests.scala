@@ -201,7 +201,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("Impersonated user does not exist")))
           }
           "mocks provider is unavailable" in {
             val externalAuthenticationService = mockExternalAuthService(

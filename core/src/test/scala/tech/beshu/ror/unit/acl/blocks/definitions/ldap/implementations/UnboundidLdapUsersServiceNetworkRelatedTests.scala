@@ -126,7 +126,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
       val userId = User.Id("morgan")
       authenticationService
         .authenticate(userId, PlainTextSecret("user1"))
-        .runSyncUnsafe() should be(DirectlyLoggedUser(userId))
+        .runSyncUnsafe() should be(Right(DirectlyLoggedUser(userId)))
     }
 
     def assertFailedAuthentication[T: ClassTag, S: ClassTag]: Assertion = {

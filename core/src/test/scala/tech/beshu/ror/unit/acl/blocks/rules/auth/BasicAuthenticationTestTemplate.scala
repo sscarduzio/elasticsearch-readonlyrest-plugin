@@ -91,7 +91,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
           val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-          ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+          ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("Invalid password")))
         }
         "basic auth header is absent" in {
           val restRequest = mock[RestRequest]
@@ -100,7 +100,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
           val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-          ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+          ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("No basic auth credentials provided")))
         }
       }
     }
@@ -139,7 +139,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
               val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-              ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+              ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("Username mismatch")))
             }
             "there is no such impersonator" in {
               val restRequest = mock[RestRequest]
@@ -151,7 +151,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
               val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-              ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+              ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("Username mismatch")))
             }
             "impersonator cannot impersonate the given user" in {
               val restRequest = mock[RestRequest]
@@ -163,7 +163,7 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
               val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-              ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+              ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("Username mismatch")))
             }
           }
         }

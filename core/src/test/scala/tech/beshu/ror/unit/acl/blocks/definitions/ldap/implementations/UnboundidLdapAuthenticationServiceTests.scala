@@ -82,12 +82,12 @@ abstract class UnboundidLdapAuthenticationServiceTests
         "user doesn't exist in LDAP" in {
           createSimpleAuthenticationService()
             .authenticate(User.Id("unknown"), PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(Left(AuthenticationFailed("todo")))
+            .runSyncUnsafe() should be(Left(AuthenticationFailed("User not found in LDAP")))
         }
         "user has invalid credentials" in {
           createSimpleAuthenticationService()
             .authenticate(morganUserId, PlainTextSecret("invalid_secret"))
-            .runSyncUnsafe() should be(Left(AuthenticationFailed("todo")))
+            .runSyncUnsafe() should be(Left(AuthenticationFailed("Invalid credentials")))
         }
       }
     }
