@@ -66,7 +66,7 @@ object XPackSecurityAuthenticationHeader {
     output.writeBoolean(false)
     // Lookup realm present flag
     output.writeBoolean(false)
-    // Authentication type: INTERNAL = 4 (ES 7.0.0+)
+    // Authentication type: INTERNAL = 4
     output.writeVInt(4)
     // Metadata: empty map
     output.writeGenericMap(Map.empty[String, Object].asJava)

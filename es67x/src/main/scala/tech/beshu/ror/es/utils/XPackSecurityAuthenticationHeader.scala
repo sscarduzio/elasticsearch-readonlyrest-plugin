@@ -64,7 +64,7 @@ object XPackSecurityAuthenticationHeader {
     output.writeString("__attach")
     // Lookup realm present flag
     output.writeBoolean(false)
-    // Authentication type: INTERNAL = 4 (ES 6.7.0+)
+    // Authentication type: INTERNAL = 4
     output.writeVInt(4)
     // Metadata: empty map
     output.writeMap(Map[String, Object]().asJava)

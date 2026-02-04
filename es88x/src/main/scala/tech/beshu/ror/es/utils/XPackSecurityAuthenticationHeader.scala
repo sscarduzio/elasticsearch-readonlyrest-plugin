@@ -66,9 +66,9 @@ object XPackSecurityAuthenticationHeader {
     output.writeBoolean(false)
     // Lookup realm present flag
     output.writeBoolean(false)
-    // Authentication type: INTERNAL = 4 (ES 7.0.0+)
+    // Authentication type: INTERNAL = 4
     output.writeVInt(4)
-    // Metadata: empty, represented as VInt(0) since ES 8.8.0
+    // Metadata: empty map
     output.writeVInt(0)
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
