@@ -211,7 +211,7 @@ class TokenAuthenticationRuleTests
   private def assertNotMatchRule(settings: TokenAuthenticationRule.Settings,
                                  impersonation: Impersonation,
                                  headers: Set[Header],
-                                 denialCause: Cause = AuthenticationFailed): Unit =
+                                 denialCause: Cause = AuthenticationFailed("todo")): Unit =
     assertRule(settings, impersonation, headers, AssertionType.RuleRejected(denialCause))
 
   private def assertRule(settings: TokenAuthenticationRule.Settings,

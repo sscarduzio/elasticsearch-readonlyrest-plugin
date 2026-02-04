@@ -31,11 +31,12 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthenticationService, LdapService}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
-import tech.beshu.ror.utils.containers.{OpenLdapContainer, LdapContainer, ToxiproxyContainer}
+import tech.beshu.ror.utils.containers.{LdapContainer, OpenLdapContainer, ToxiproxyContainer}
 import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
@@ -98,9 +99,10 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
         "Round robin HA method is configured when" - {
           "one of servers goes down" in {
             def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
+              val userId = User.Id("morgan")
               service
-                .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-                .runSyncUnsafe() should be(true)
+                .authenticate(userId, PlainTextSecret("user1"))
+                .runSyncUnsafe() should be(DirectlyLoggedUser(userId))
             }
 
             val service = createHaAuthenticationService()
@@ -121,9 +123,10 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
 
   implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
     def assertSuccessfulAuthentication: Assertion = {
+      val userId = User.Id("morgan")
       authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe() should be(true)
+        .authenticate(userId, PlainTextSecret("user1"))
+        .runSyncUnsafe() should be(DirectlyLoggedUser(userId))
     }
 
     def assertFailedAuthentication[T: ClassTag, S: ClassTag]: Assertion = {

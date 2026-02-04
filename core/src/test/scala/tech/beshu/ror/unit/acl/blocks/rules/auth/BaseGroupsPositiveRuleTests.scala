@@ -79,7 +79,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user2")),
             preferredGroupId = None,
-            denialCause = AuthenticationFailed
+            denialCause = AuthenticationFailed("todo")
           )
         }
         "there is no matching auth rule for given user" in {

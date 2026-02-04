@@ -124,7 +124,7 @@ class JwtAuthenticationRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(AuthenticationFailed))
+        result should be(Denied(AuthenticationFailed("todo222")))
     }
   }
 }

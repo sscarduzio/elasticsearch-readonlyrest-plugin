@@ -132,7 +132,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
                          loggedUser: Option[User.Id],
                          preferredGroupId: Option[GroupId],
                          caseSensitivity: CaseSensitivity = CaseSensitivity.Enabled,
-                         denialCause: Cause = Cause.GroupsAuthorizationFailed): Unit =
+                         denialCause: Cause = Cause.GroupsAuthorizationFailed("todo")): Unit =
     assertRule(settings, loggedUser, preferredGroupId, blockContextAssertion = None, caseSensitivity, denialCause)
 
   def assertRule(settings: GroupsRulesSettings[GL],
@@ -140,7 +140,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
                  preferredGroupId: Option[GroupId],
                  blockContextAssertion: Option[BlockContext => Unit],
                  caseSensitivity: CaseSensitivity,
-                 denialCause: Cause = Cause.GroupsAuthorizationFailed): Unit = {
+                 denialCause: Cause = Cause.GroupsAuthorizationFailed("todo")): Unit = {
     val rule = createRule(settings, caseSensitivity)
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(
       allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
@@ -202,7 +202,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Denied(AuthenticationFailed))
+        Task.now(Denied(AuthenticationFailed("todo1")))
     }
 
     val throwing: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
@@ -231,7 +231,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Denied(GroupsAuthorizationFailed))
+        Task.now(Denied(GroupsAuthorizationFailed("todo2")))
     }
   }
 
@@ -261,10 +261,10 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Denied(AuthenticationFailed))
+        Task.now(Denied(AuthenticationFailed("todo3")))
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Denied(GroupsAuthorizationFailed))
+        Task.now(Denied(GroupsAuthorizationFailed("todo4")))
     }
   }
 }

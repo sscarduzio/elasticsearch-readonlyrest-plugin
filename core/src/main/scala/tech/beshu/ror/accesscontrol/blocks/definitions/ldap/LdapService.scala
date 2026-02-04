@@ -20,6 +20,7 @@ import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -47,13 +48,14 @@ trait LdapUsersService extends LdapService {
 }
 
 trait LdapAuthenticationService extends LdapService {
-  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
-
   def ldapUsersService: LdapUsersService
 
   def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[AuthenticationResult]
 
   def serviceTimeout: PositiveFiniteDuration
+}
+object LdapAuthenticationService {
+  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
 }
 
 sealed trait LdapAuthorizationService extends LdapService {

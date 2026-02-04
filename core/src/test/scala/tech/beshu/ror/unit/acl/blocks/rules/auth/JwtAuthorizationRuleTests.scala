@@ -300,7 +300,7 @@ class JwtAuthorizationRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(GroupsAuthorizationFailed))
+        result should be(Denied(GroupsAuthorizationFailed("todo3221321")))
     }
   }
 }

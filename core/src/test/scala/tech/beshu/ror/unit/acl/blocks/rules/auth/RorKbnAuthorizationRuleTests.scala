@@ -412,7 +412,7 @@ class RorKbnAuthorizationRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(GroupsAuthorizationFailed))
+        result should be(Denied(GroupsAuthorizationFailed("todo23132121")))
     }
   }
 }

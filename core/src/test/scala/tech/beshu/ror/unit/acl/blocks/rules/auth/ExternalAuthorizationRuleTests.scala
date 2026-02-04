@@ -502,7 +502,7 @@ class ExternalAuthorizationRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+                                 denialCause: Cause = GroupsAuthorizationFailed("todo")): Unit =
     assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(denialCause))
 
   private def assertRule(settings: ExternalAuthorizationRule.Settings,

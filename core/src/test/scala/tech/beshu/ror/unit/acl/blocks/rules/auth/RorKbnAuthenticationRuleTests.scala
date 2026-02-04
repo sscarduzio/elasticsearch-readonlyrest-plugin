@@ -213,7 +213,7 @@ class RorKbnAuthenticationRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Denied(AuthenticationFailed))
+        result should be(Denied(AuthenticationFailed("todo12312321")))
     }
   }
 }

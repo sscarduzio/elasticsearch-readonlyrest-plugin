@@ -124,7 +124,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           CaseSensitivity.Enabled,
           Impersonation.Disabled,
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
       }
       "user is being impersonated" when {
         "impersonation is enabled" when {
@@ -200,7 +200,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
           }
           "mocks provider is unavailable" in {
             val externalAuthenticationService = mockExternalAuthService(
@@ -247,7 +247,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               Impersonation.Disabled
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
           }
         }
       }

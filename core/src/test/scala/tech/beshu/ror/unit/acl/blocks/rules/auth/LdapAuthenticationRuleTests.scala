@@ -47,9 +47,10 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
+        val userId = User.Id("admin")
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
-          .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-          .returning(Task.now(true))
+          .expects(userId, PlainTextSecret("pass"), *)
+          .returning(Task.now(Right(DirectlyLoggedUser(userId))))
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
@@ -108,14 +109,14 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
         val service = mock[LdapAuthenticationService]
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
           .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-          .returning(Task.now(false))
+          .returning(Task.now(Left(AuthenticationFailed("ddsads"))))
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
       }
       "there is no basic auth header" in {
         val requestContext = MockRequestContext.indices
@@ -127,7 +128,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
       }
       "LDAP service fails" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:pass"))
@@ -219,7 +220,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
           }
           "mocks provider is unavailable" in {
             val requestContext = MockRequestContext.indices.withHeaders(
@@ -254,14 +255,14 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val service = mock[LdapAuthenticationService]
             (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
               .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-              .returning(Task.now(false))
+              .returning(Task.now(Left(AuthenticationFailed("todox33"))))
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
               CaseSensitivity.Enabled,
               Impersonation.Disabled
             )
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo13221321")))
           }
         }
       }

@@ -171,7 +171,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
   private def assertNotMatchRule(settings: ProxyAuthRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  headers: Set[Header],
-                                 denialCause: Cause = AuthenticationFailed): Unit =
+                                 denialCause: Cause = AuthenticationFailed("todo")): Unit =
     assertRule(settings, impersonation, headers, AssertionType.RuleRejected(denialCause))
 
   private def assertRule(settings: ProxyAuthRule.Settings,

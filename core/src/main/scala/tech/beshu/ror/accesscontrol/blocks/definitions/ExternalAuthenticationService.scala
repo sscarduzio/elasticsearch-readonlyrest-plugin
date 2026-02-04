@@ -24,7 +24,7 @@ import io.lemonlabs.uri.Url
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.{AuthenticationResult, Name}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
@@ -38,8 +38,6 @@ import java.nio.charset.Charset
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
 
-  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
-
   def authenticate(credentials: Credentials)
                   (implicit requestId: RequestId): Task[AuthenticationResult]
   def serviceTimeout: PositiveFiniteDuration
@@ -47,6 +45,8 @@ trait ExternalAuthenticationService extends Item {
   override val idShow: Show[Name] = Show.show(_.value.value)
 }
 object ExternalAuthenticationService {
+
+  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
 
   final case class Name(value: NonEmptyString)
   object Name {

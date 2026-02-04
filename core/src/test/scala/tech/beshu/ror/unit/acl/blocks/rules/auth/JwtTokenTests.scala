@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.{AuthenticationResult, Name}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -39,6 +39,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthentic
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -72,7 +73,7 @@ class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRul
 
   override protected def expectedCurrentGroup: Option[GroupId] = None
 
-  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed
+  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed("todo")
 }
 
 class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule, AuthorizationJwtDef] {
@@ -92,7 +93,7 @@ class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule,
 
   override protected def expectedCurrentGroup: Option[GroupId] = Some(GroupId(nes("group1")))
 
-  override protected def expectedTokenIssueRelatedCause: Cause = GroupsAuthorizationFailed
+  override protected def expectedTokenIssueRelatedCause: Cause = GroupsAuthorizationFailed("todo3")
 }
 
 class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
@@ -117,7 +118,7 @@ class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
   override protected def expectedCurrentGroup: Option[GroupId] =
     Some(GroupId(nes("group1")))
 
-  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed
+  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed("todo2")
 }
 
 trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
@@ -189,7 +190,10 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = true)),
+            SignatureCheckMethod.NoCheck(authService(
+              rawToken = jwt.stringify(),
+              authenticated = Right(DirectlyLoggedUser(User.Id("user")))
+            )),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
@@ -329,7 +333,10 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = false)),
+            SignatureCheckMethod.NoCheck(authService(
+              rawToken = jwt.stringify(),
+              authenticated = Left(AuthenticationFailed("todo112"))
+            )),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
@@ -370,7 +377,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
                          blockContextAssertion: Option[BlockContext => Unit],
-                         denialCause: Cause = GroupsAuthorizationFailed) = {
+                         denialCause: Cause = GroupsAuthorizationFailed("todo1223")) = {
     val rule = createRule(configuredJwtDef)
 
     val requestContext = MockRequestContext.indices.withHeaders(
@@ -396,7 +403,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
     }
   }
 
-  private def authService(rawToken: String, authenticated: Boolean) = {
+  private def authService(rawToken: String, authenticated: AuthenticationResult) = {
     val service = mock[ExternalAuthenticationService]
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(rawToken)) })
@@ -408,11 +415,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
     val service = mock[ExternalAuthenticationService]
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(authenticatedToken)) })
-      .returning(Task.now(true))
+      .returning(Task.now(Right(DirectlyLoggedUser(User.Id("testuser")))))
       .once()
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
-      .returning(Task.now(false))
+      .returning(Task.now(Left(AuthenticationFailed("todo21321"))))
       .once()
     (() => service.id)
       .expects()
