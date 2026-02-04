@@ -17,13 +17,13 @@
 package tech.beshu.ror.audit.utils
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext._
+import tech.beshu.ror.audit.AuditResponseContext.*
 import tech.beshu.ror.audit.{AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters.*
 
 private[ror] object AuditSerializationHelper {
 
@@ -49,23 +49,73 @@ private[ror] object AuditSerializationHelper {
                 allowedEventMode: AllowedEventMode): Option[JSONObject] = {
     responseContext match {
       case Allowed(requestContext, verbosity, reason) =>
-        allowedEvent(
-          allowedEventMode,
-          verbosity,
-          createEntry(fields, EventData(matched = true, FinalState.Allowed, reason, responseContext.duration, requestContext, None))
+        createAllowedEvent(
+          allowedEventMode = allowedEventMode,
+          verbosity = verbosity,
+          entry = createEntry(
+            fields,
+            EventData(
+              matched = true,
+              finalState = FinalState.Allowed,
+              reason = reason,
+              duration = responseContext.duration,
+              requestContext = requestContext,
+              error = None
+            )
+          )
         )
       case ForbiddenBy(requestContext, _, reason) =>
-        Some(createEntry(fields, EventData(matched = true, FinalState.Forbidden, reason, responseContext.duration, requestContext, None)))
+        Some(createEntry(
+          fields = fields,
+          eventData = EventData(
+            matched = true,
+            finalState = FinalState.Forbidden,
+            reason = reason,
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = None
+          )
+        ))
       case Forbidden(requestContext) =>
-        Some(createEntry(fields, EventData(matched = false, FinalState.Forbidden, "default", responseContext.duration, requestContext, None)))
+        Some(createEntry(
+          fields,
+          EventData(
+            matched = false,
+            finalState = FinalState.Forbidden,
+            reason = "mismatched",
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = None
+          )
+        ))
       case RequestedIndexNotExist(requestContext) =>
-        Some(createEntry(fields, EventData(matched = false, FinalState.IndexNotExist, "Requested index doesn't exist", responseContext.duration, requestContext, None)))
+        Some(createEntry(
+          fields,
+          EventData(
+            matched = false,
+            finalState = FinalState.IndexNotExist,
+            reason = "Requested index doesn't exist",
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = None
+          )
+        ))
       case Errored(requestContext, cause) =>
-        Some(createEntry(fields, EventData(matched = false, FinalState.Errored, "error", responseContext.duration, requestContext, Some(cause))))
+        Some(createEntry(
+          fields,
+          EventData(
+            matched = false,
+            finalState = FinalState.Errored,
+            reason = "error",
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = Some(cause)
+          )
+        ))
     }
   }
 
-  private def allowedEvent(allowedEventMode: AllowedEventMode, verbosity: Verbosity, entry: JSONObject) = {
+  private def createAllowedEvent(allowedEventMode: AllowedEventMode, verbosity: Verbosity, entry: JSONObject) = {
     allowedEventMode match {
       case AllowedEventMode.IncludeAll =>
         Some(entry)
@@ -83,9 +133,11 @@ private[ror] object AuditSerializationHelper {
       Map(AuditFieldPath("@timestamp") -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
         fields.map { case (name, valueDescriptor) => name -> resolveAuditFieldValue(valueDescriptor) }
 
-    resolvedFields.foldLeft(new JSONObject()) { case (soFar, (path, value)) =>
-      putNested(soFar, path.path.toList, value)
-    }.mergeWith(eventData.requestContext.generalAuditEvents)
+    resolvedFields
+      .foldLeft(new JSONObject()) { case (soFar, (path, value)) =>
+        putNested(soFar, path.path, value)
+      }
+      .mergeWith(eventData.requestContext.generalAuditEvents)
   }
 
   private def putNested(json: JSONObject, path: List[String], value: Any): JSONObject = {
@@ -126,6 +178,7 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.Action => requestContext.action
       case AuditFieldValueDescriptor.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
       case AuditFieldValueDescriptor.AclHistory => requestContext.history
+      case AuditFieldValueDescriptor.BlocksHistory => requestContext.blocksHistory
       case AuditFieldValueDescriptor.ProcessingDurationMillis => eventData.duration.toMillis
       case AuditFieldValueDescriptor.ProcessingDurationNanos => eventData.duration.toNanos
       case AuditFieldValueDescriptor.Timestamp => timestampFormatter.format(requestContext.timestamp)
@@ -233,6 +286,8 @@ private[ror] object AuditSerializationHelper {
 
     case object AclHistory extends AuditFieldValueDescriptor
 
+    case object BlocksHistory extends AuditFieldValueDescriptor
+
     case object ProcessingDurationMillis extends AuditFieldValueDescriptor
 
     case object ProcessingDurationNanos extends AuditFieldValueDescriptor
@@ -326,7 +381,8 @@ private[ror] object AuditSerializationHelper {
     AuditFieldPath("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
     AuditFieldPath("action") -> AuditFieldValueDescriptor.Action,
     AuditFieldPath("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
-    AuditFieldPath("acl_history") -> AuditFieldValueDescriptor.AclHistory
+    AuditFieldPath("acl_history") -> AuditFieldValueDescriptor.AclHistory,
+    AuditFieldPath("blocks_history") -> AuditFieldValueDescriptor.BlocksHistory
   )
 
   private val esEnvironmentFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(

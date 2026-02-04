@@ -607,7 +607,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
                   |    "ror_final_state" : "FORBIDDEN"
                   |  }
@@ -684,7 +684,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
                   |    "ror_final_state" : "FORBIDDEN"
                   |  }
@@ -760,7 +760,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
                   |    "ror_final_state" : "FORBIDDEN"
                   |  }

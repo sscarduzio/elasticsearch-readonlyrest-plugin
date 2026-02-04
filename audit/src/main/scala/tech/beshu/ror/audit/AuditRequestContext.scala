@@ -31,6 +31,7 @@ trait AuditRequestContext {
   def requestHeaders: Headers
   def uriPath: String
   def history: String
+  def blocksHistory: Map[String, (Boolean, String)] = Map.empty // block name -> (matched, cause)
   def content: String
   def contentLength: Integer
   def remoteAddress: String
