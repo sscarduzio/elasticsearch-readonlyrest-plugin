@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser

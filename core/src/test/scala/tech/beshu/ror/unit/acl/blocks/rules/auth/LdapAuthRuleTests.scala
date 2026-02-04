@@ -623,7 +623,7 @@ class LdapAuthRuleTests
     }
   }
 
-  private def mockLdapAuthenticationService(user: User.Id, secret: PlainTextSecret, result: Task[Boolean]) = {
+  private def mockLdapAuthenticationService(user: User.Id, secret: PlainTextSecret, result: Task[Boolean]): LdapAuthenticationService = {
     val service = mock[LdapAuthenticationService]
     (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
       .expects(user, secret, *)
@@ -634,17 +634,17 @@ class LdapAuthRuleTests
     service
   }
 
-  private def mockLdapAuthenticationService(user: User.Id, secret: PlainTextSecret, result: Boolean) = {
+  private def mockLdapAuthenticationService(user: User.Id, secret: PlainTextSecret, result: Boolean): LdapAuthenticationService = {
     mockLdapAuthenticationService(user, secret, Task.now(result))
   }
 
-  private def mockLdapAuthenticationService(ldapId: LdapService#Id) = {
+  private def mockLdapAuthenticationService(ldapId: LdapService#Id): LdapAuthenticationService = {
     val service = mock[LdapAuthenticationService]
     (() => service.id).expects().returning(ldapId)
     service
   }
 
-  private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[Group]]) = {
+  private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[Group]]): LdapAuthorizationService.WithoutGroupsFiltering = {
     val service = mock[LdapAuthorizationService.WithoutGroupsFiltering]
     (service.groupsOf(_: User.Id)(_: RequestId))
       .expects(user, *)
@@ -652,7 +652,7 @@ class LdapAuthRuleTests
     service
   }
 
-  private def mockLdapAuthorizationService(ldapId: LdapService#Id) = {
+  private def mockLdapAuthorizationService(ldapId: LdapService#Id): LdapAuthorizationService.WithoutGroupsFiltering = {
     val service = mock[LdapAuthorizationService.WithoutGroupsFiltering]
     (() => service.id).expects().returning(ldapId)
     service
