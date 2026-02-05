@@ -75,7 +75,7 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
+import tech.beshu.ror.es.{EsVersion, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -278,7 +278,8 @@ object AclAwareRequestFilter {
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val threadContextResponseHeaders: Set[(String, String)]) {
+                        val threadContextResponseHeaders: Set[(String, String)],
+                        val esVersion: EsVersion) {
 
     val timestamp: Instant = Instant.now()
 
