@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
-import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.TestsUtils.{RuleCheckAssertion, *}
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}

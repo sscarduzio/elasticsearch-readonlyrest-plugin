@@ -60,6 +60,11 @@ abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDE
   override protected def authenticateUsing(credentials: Credentials)
                                           (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
     compare(settings.credentials, credentials)
+      .map {
+        case true => Right(DirectlyLoggedUser(credentials.user))
+        case false => Left(AuthenticationFailed)
+      }
+  }
 
   protected def compare(configuredCredentials: CREDENTIALS, credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
 }

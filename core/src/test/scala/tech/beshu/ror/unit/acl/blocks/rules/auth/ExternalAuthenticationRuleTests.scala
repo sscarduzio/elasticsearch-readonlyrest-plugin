@@ -125,7 +125,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           CaseSensitivity.Enabled,
           Impersonation.Disabled,
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("mock - auth failed")))
       }
       "user is being impersonated" when {
         "impersonation is enabled" when {
@@ -248,7 +248,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               Impersonation.Disabled
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("mock - auth failed")))
           }
         }
       }
@@ -262,7 +262,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
       override def authenticate(aCredentials: Credentials)
                                (implicit requestId: RequestId): Task[AuthenticationResult] = Task.delay {
         if(credentials == aCredentials) Right(DirectlyLoggedUser(credentials.user))
-        else Left(AuthenticationFailed("todo"))
+        else Left(AuthenticationFailed("mock - auth failed"))
       }
 
       override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(5 second)

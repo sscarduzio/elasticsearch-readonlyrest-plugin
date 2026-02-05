@@ -214,7 +214,7 @@ class TokenAuthenticationRuleTests
   private def assertRule(settings: TokenAuthenticationRule.Settings,
                          impersonation: Impersonation,
                          headers: Set[Header],
-                         assertionType: RuleCheckAssertion): Unit = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new TokenAuthenticationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
@@ -223,7 +223,7 @@ class TokenAuthenticationRuleTests
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
-    rule.checkAndAssert(blockContext, assertionType)
+    rule.checkAndAssert(blockContext, assertion)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id): BlockContext => Unit =

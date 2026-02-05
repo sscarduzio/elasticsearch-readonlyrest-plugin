@@ -92,10 +92,10 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             )
             rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
               CurrentUserMetadataRequestBlockContext(
-                requestContext,
-                UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
-                Set.empty,
-                List.empty)
+                requestContext = requestContext,
+                userMetadata = UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
+                responseHeaders = Set.empty,
+                responseTransformations = List.empty)
             ))
           }
         }

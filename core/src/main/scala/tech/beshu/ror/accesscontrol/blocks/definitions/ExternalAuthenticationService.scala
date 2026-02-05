@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import cats.implicits.*
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
