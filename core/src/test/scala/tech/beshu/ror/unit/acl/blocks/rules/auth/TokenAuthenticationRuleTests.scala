@@ -17,15 +17,11 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
@@ -36,12 +32,10 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
-import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
 class TokenAuthenticationRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+  extends AnyWordSpec with BlockContextAssertion {
 
   "A TokenAuthenticationRule" should {
     "match" when {
@@ -124,7 +118,8 @@ class TokenAuthenticationRuleTests
             tokenHeaderName = headerNameFrom("custom-user-auth-header")
           ),
           impersonation = Impersonation.Disabled,
-          headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123"))
+          headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123")),
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' missing or invalid")
         )
       }
       "token is passed in different header than the configured one" in {
@@ -135,7 +130,8 @@ class TokenAuthenticationRuleTests
             tokenHeaderName = headerNameFrom("custom-user-auth-header")
           ),
           impersonation = Impersonation.Disabled,
-          headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ"))
+          headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ")),
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' missing or invalid")
         )
       }
       "user is being impersonated" when {
@@ -194,6 +190,7 @@ class TokenAuthenticationRuleTests
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
+              denialCause = AuthenticationFailed("Impersonated user does not exist")
             )
           }
         }
@@ -206,18 +203,18 @@ class TokenAuthenticationRuleTests
                               impersonation: Impersonation = Impersonation.Disabled,
                               headers: Set[Header])
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(settings, impersonation, headers, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(settings: TokenAuthenticationRule.Settings,
                                  impersonation: Impersonation,
                                  headers: Set[Header],
-                                 denialCause: Cause = AuthenticationFailed("todo")): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(denialCause))
+                                 denialCause: Cause): Unit =
+    assertRule(settings, impersonation, headers, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(settings: TokenAuthenticationRule.Settings,
                          impersonation: Impersonation,
                          headers: Set[Header],
-                         assertionType: AssertionType): Unit = {
+                         assertionType: RuleCheckAssertion): Unit = {
     val rule = new TokenAuthenticationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
@@ -226,17 +223,7 @@ class TokenAuthenticationRuleTests
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Permitted(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Denied(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertionType)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id): BlockContext => Unit =

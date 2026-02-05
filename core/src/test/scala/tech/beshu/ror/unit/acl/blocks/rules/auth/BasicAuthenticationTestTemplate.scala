@@ -39,7 +39,8 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, impersonationHeader, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
+abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
+                                               isUsernameMaskedByRule: Boolean)
   extends AnyWordSpec with MockFactory {
 
   protected def ruleName: String
@@ -91,7 +92,10 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean)
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
           val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-          ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("Invalid password")))
+          ruleWithoutImpersonation.check(blockContext).runSyncStep shouldBe Right(Denied{
+            if (isUsernameMaskedByRule) AuthenticationFailed("Invalid username or/and password")
+            else AuthenticationFailed("Invalid password")
+          })
         }
         "basic auth header is absent" in {
           val restRequest = mock[RestRequest]

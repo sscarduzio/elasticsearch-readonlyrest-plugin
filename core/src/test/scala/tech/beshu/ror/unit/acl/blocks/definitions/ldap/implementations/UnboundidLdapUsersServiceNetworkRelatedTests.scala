@@ -102,7 +102,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
               val userId = User.Id("morgan")
               service
                 .authenticate(userId, PlainTextSecret("user1"))
-                .runSyncUnsafe() should be(DirectlyLoggedUser(userId))
+                .runSyncUnsafe() should be(Right(DirectlyLoggedUser(userId)))
             }
 
             val service = createHaAuthenticationService()

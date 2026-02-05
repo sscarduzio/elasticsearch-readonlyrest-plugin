@@ -20,16 +20,13 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.{AuthenticationResult, Name}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
@@ -56,6 +53,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRule, AuthenticationJwtDef] {
+
   override protected def ruleName: String = "jwt_authentication"
 
   override protected def createJwtDef(id: JwtDef.Name,
@@ -73,7 +71,7 @@ class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRul
 
   override protected def expectedCurrentGroup: Option[GroupId] = None
 
-  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed("todo")
+  override protected def badJwtRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
 }
 
 class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule, AuthorizationJwtDef] {
@@ -93,7 +91,7 @@ class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule,
 
   override protected def expectedCurrentGroup: Option[GroupId] = Some(GroupId(nes("group1")))
 
-  override protected def expectedTokenIssueRelatedCause: Cause = GroupsAuthorizationFailed("todo3")
+  override protected def badJwtRelatedDeniedCauseCreator: String => Cause = GroupsAuthorizationFailed.apply
 }
 
 class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
@@ -118,7 +116,7 @@ class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
   override protected def expectedCurrentGroup: Option[GroupId] =
     Some(GroupId(nes("group1")))
 
-  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed("todo2")
+  override protected def badJwtRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
 }
 
 trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
@@ -138,7 +136,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
 
   protected def expectedCurrentGroup: Option[GroupId]
 
-  protected def expectedTokenIssueRelatedCause: Cause
+  protected def badJwtRelatedDeniedCauseCreator: String => Cause
 
   s"A $ruleName rule using jwt token" should {
     "match" when {
@@ -234,7 +232,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         def checkInvalidToken(): Unit = assertNotMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = bearerHeader(invalidJwt),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("mocked - auth failed")
         )
 
         checkValidToken()
@@ -308,7 +306,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt2),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("Invalid JWT token")
         )
       }
       "token has invalid RS256 signature" in {
@@ -324,7 +322,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("Invalid JWT token")
         )
       }
       "token has no signature but external auth service returns false" in {
@@ -335,13 +333,13 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.NoCheck(authService(
               rawToken = jwt.stringify(),
-              authenticated = Left(AuthenticationFailed("todo112"))
+              authenticated = Left(AuthenticationFailed("mocked - JWT verification failed"))
             )),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("mocked - JWT verification failed")
         )
       }
       "token is invalid and cannot be parsed" in {
@@ -355,7 +353,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader("INVALID_JWT_TOKEN"),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("Invalid JWT token")
         )
       }
     }
@@ -365,19 +363,18 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredJwtDef: DEF,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None,
                                  denialCause: Cause): Unit =
-    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, blockContextAssertion = None, denialCause)
+    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredJwtDef: DEF,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit],
-                         denialCause: Cause = GroupsAuthorizationFailed("todo1223")) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = createRule(configuredJwtDef)
 
     val requestContext = MockRequestContext.indices.withHeaders(
@@ -392,15 +389,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Permitted(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Denied(denialCause))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
   private def authService(rawToken: String, authenticated: AuthenticationResult) = {
@@ -419,7 +408,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
       .once()
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
-      .returning(Task.now(Left(AuthenticationFailed("todo21321"))))
+      .returning(Task.now(Left(AuthenticationFailed("mocked - auth failed"))))
       .once()
     (() => service.id)
       .expects()

@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.NotAllOfGroupsRule.*
@@ -47,7 +48,7 @@ class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("g1", "g2")
             )
           ))
@@ -57,7 +58,8 @@ class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           settings = ruleSettings,
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
         )
       }
     }
@@ -72,7 +74,7 @@ class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("g1")
             )
           ))
@@ -100,7 +102,7 @@ class GroupsNotAllOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("h1", "h2")
             )
           ))

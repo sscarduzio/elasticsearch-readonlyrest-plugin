@@ -22,7 +22,6 @@ import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.{Ec, Hmac, NoCheck, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
@@ -37,16 +36,15 @@ import scala.util.Try
 
 trait BaseJwtRule extends RequestIdAwareLogging {
 
-  // todo: in authz rule only we shouldn't have authentication failure cause, right?
   protected def doPostAuthAction[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF): Task[Decision[B]] = {
+  ](blockContext: B, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause): Task[Decision[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     jwt.checkMethod match {
       case NoCheck(service) =>
         val result = for {
-          token <- EitherT.fromEither[Task](extractJwtTokenFromHeader(blockContext, jwt))
-          _ <- checkAuthenticationTokenValidity(service, token)
+          token <- EitherT.fromEither[Task](extractJwtTokenFromHeader(blockContext, jwt, failedJwtCauseCreator))
+          _ <- checkAuthenticationTokenValidity(service, token, failedJwtCauseCreator)
         } yield blockContext
         result
           .value
@@ -59,15 +57,14 @@ trait BaseJwtRule extends RequestIdAwareLogging {
     }
   }
 
-  // todo: in authz rule only we shouldn't have authentication failure cause, right?
   protected def processUsingJwtToken[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF)
+  ](blockContext: B, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)
    (operation: Jwt.Payload => Either[Cause, B]): Task[Decision[B]] = Task.delay {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val result = for {
-      token <- extractJwtTokenFromHeader(blockContext, jwt)
-      jwtPayload <- claimsFrom(token, jwt)
+      token <- extractJwtTokenFromHeader(blockContext, jwt, failedJwtCauseCreator)
+      jwtPayload <- claimsFrom(token, jwt, failedJwtCauseCreator)
       claimProcessingResult <- operation(jwtPayload)
     } yield claimProcessingResult
     result match {
@@ -76,20 +73,26 @@ trait BaseJwtRule extends RequestIdAwareLogging {
     }
   }
 
-  private def checkAuthenticationTokenValidity(service: ExternalAuthenticationService, token: Jwt.Token)
+  private def checkAuthenticationTokenValidity(service: ExternalAuthenticationService,
+                                               token: Jwt.Token,
+                                               failedJwtCauseCreator: String => Cause)
                                               (implicit requestId: RequestId) = EitherT {
-    service.authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
+    service
+      .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
+      .map(_.left.map(c => failedJwtCauseCreator(c.details)))
   }
 
-  private def extractJwtTokenFromHeader[JWT_DEF <: JwtDef](blockContext: BlockContext, jwt: JWT_DEF) = {
+  private def extractJwtTokenFromHeader[JWT_DEF <: JwtDef](blockContext: BlockContext,
+                                                           jwt: JWT_DEF,
+                                                           failedJwtCauseCreator: String => Cause) = {
     blockContext
       .requestContext
       .authorizationToken(jwt.authorizationTokenDef)
       .map(h => Jwt.Token(h.value))
-      .toRight(AuthenticationFailed("No expected JWT found"))
+      .toRight(failedJwtCauseCreator("No expected JWT found"))
   }
 
-  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF)
+  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)
                                            (implicit requestId: RequestId) = {
     val parser = jwt.checkMethod match {
       case NoCheck(_) => Jwts.parser().unsecured().build()
@@ -100,7 +103,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
     def causeFrom(ex: Throwable): Cause = {
       logBadToken(ex, token)
-      AuthenticationFailed(s"Invalid JWT token")
+      failedJwtCauseCreator(s"Invalid JWT token")
     }
 
     jwt.checkMethod match {
@@ -111,7 +114,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
               .toEither
               .fold(ex => Left(causeFrom(ex)), claims => Right(Jwt.Payload(claims)))
           case _ =>
-            Left(AuthenticationFailed("Malformed JWT token structure"))
+            Left(failedJwtCauseCreator("Malformed JWT token structure"))
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
         Try(parser.parseSignedClaims(token.value.value).getPayload)

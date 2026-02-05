@@ -111,7 +111,7 @@ private[auth] trait BaseAuthorizationRule
       }
       result.toDecision
     } else {
-      rejectWithGroupsAuthorizationFailure("Current group is not eligible")
+      rejectWithGroupsAuthorizationFailure("Current group is not allowed")
     }
   }
 
@@ -130,7 +130,7 @@ private[auth] trait BaseAuthorizationRule
     EitherT.cond[Task](
       blockContext.isCurrentGroupEligible(GroupIds.from(userGroups)),
       (),
-      GroupsAuthorizationFailed("Current group is not in user's groups")
+      GroupsAuthorizationFailed("Current group is not allowed")
     )
   }
 

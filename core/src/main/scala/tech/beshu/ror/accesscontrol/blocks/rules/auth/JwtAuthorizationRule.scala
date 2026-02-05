@@ -40,16 +40,16 @@ final class JwtAuthorizationRule(val settings: Settings)
 
   override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     if (blockContext.isCurrentGroupPotentiallyEligible(settings.groupsLogic)) {
-      processUsingJwtToken(blockContext, settings.jwt) { payload =>
+      processUsingJwtToken(blockContext, settings.jwt, GroupsAuthorizationFailed.apply) { payload =>
         authorize(blockContext, payload)
       }
     } else {
-      Task.now(Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not eligible")))
+      Task.now(Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not allowed")))
     }
   }
 
   override protected[rules] def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    doPostAuthAction(blockContext, settings.jwt)
+    doPostAuthAction(blockContext, settings.jwt, GroupsAuthorizationFailed.apply)
   }
 
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
@@ -62,10 +62,10 @@ final class JwtAuthorizationRule(val settings: Settings)
       userGroups <- groupsFrom(groupsTokenSearchResult)
       matchedGroups <- settings.groupsLogic
         .availableGroupsFrom(userGroups)
-        .toRight(Cause.GroupsAuthorizationFailed("No matching groups from groups logic"))
+        .toRight(Cause.GroupsAuthorizationFailed("None of the user's groups match the configured groups"))
       _ <- Either.cond(
         blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)),
-        (), Cause.GroupsAuthorizationFailed("Current group is not in matched groups")
+        (), Cause.GroupsAuthorizationFailed("Current group is not allowed")
       )
     } yield {
       blockContext.withUserMetadata(

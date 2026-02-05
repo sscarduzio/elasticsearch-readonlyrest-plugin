@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import cats.implicits.toShow
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDefForAuthentication
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -44,13 +45,13 @@ final class JwtAuthenticationRule(val settings: Settings,
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    processUsingJwtToken(blockContext, settings.jwt) { payload =>
+    processUsingJwtToken(blockContext, settings.jwt, AuthenticationFailed.apply) { payload =>
       authenticate(blockContext, payload)
     }
   }
 
   override protected[rules] def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    doPostAuthAction(blockContext, settings.jwt)
+    doPostAuthAction(blockContext, settings.jwt, AuthenticationFailed.apply)
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,

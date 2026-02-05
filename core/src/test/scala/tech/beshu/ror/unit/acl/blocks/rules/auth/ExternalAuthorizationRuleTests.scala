@@ -19,19 +19,15 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -46,10 +42,9 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
 class ExternalAuthorizationRuleTests
-  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with MockFactory with BlockContextAssertion {
 
   "An ExternalAuthorizationRule" should {
     "match" when {
@@ -376,9 +371,9 @@ class ExternalAuthorizationRuleTests
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           preferredGroupId = Some(GroupId("g4")),
-          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "groups NOT_ANY_OF logic is used and not eligible preferred group present" in {
@@ -394,9 +389,9 @@ class ExternalAuthorizationRuleTests
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           preferredGroupId = Some(GroupId("g4")),
-          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "current group is set for a given user but it's not present in intersection groups set" in {
@@ -410,7 +405,7 @@ class ExternalAuthorizationRuleTests
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
           preferredGroupId = Some(GroupId("g3")),
-          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "user is being impersonated" when {
@@ -434,7 +429,7 @@ class ExternalAuthorizationRuleTests
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
+              denialCause = GroupsAuthorizationFailed("User has no groups")
             )
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
@@ -508,20 +503,20 @@ class ExternalAuthorizationRuleTests
                               loggedUser: Option[LoggedUser],
                               preferredGroupId: Option[GroupId])
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(settings: ExternalAuthorizationRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
                                  denialCause: Cause): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(denialCause))
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(settings: ExternalAuthorizationRule.Settings,
                          impersonation: Impersonation,
                          loggedUser: Option[LoggedUser],
                          preferredGroup: Option[GroupId],
-                         assertionType: AssertionType): Unit = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new ExternalAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroup.map(_.toCurrentGroupHeader)
@@ -538,17 +533,7 @@ class ExternalAuthorizationRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Permitted(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Denied(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id,

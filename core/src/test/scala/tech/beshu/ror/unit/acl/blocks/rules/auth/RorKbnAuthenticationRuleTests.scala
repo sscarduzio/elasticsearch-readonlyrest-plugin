@@ -17,14 +17,11 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -40,11 +37,10 @@ import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 
 import java.security.Key
-import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class RorKbnAuthenticationRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+  extends AnyWordSpec with BlockContextAssertion {
 
   "A RorKbnAuthenticationRule" should {
     "match" when {
@@ -143,7 +139,8 @@ class RorKbnAuthenticationRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
-          tokenHeader = bearerHeader(jwt2)
+          tokenHeader = bearerHeader(jwt2),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "token has invalid RS256 signature" in {
@@ -158,7 +155,8 @@ class RorKbnAuthenticationRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "userId isn't passed in JWT token claim" in {
@@ -172,7 +170,8 @@ class RorKbnAuthenticationRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("User claim not found in ROR Kibana token")
         )
       }
     }
@@ -182,17 +181,18 @@ class RorKbnAuthenticationRuleTests
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, blockContextAssertion = None)
+                                 preferredGroupId: Option[GroupId] = None,
+                                 denialCause: Cause): Unit =
+    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
@@ -206,14 +206,6 @@ class RorKbnAuthenticationRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Permitted(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Denied(AuthenticationFailed("todo12312321")))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 }

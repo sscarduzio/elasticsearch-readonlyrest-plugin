@@ -17,28 +17,25 @@
 package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.{Action, DataStreamName}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
-import scala.concurrent.duration.*
 import scala.language.postfixOps
-import tech.beshu.ror.syntax.*
 
-class DataStreamsRuleTests extends AnyWordSpec with Inside {
+class DataStreamsRuleTests extends AnyWordSpec {
 
   "A DataStreamsRule" should {
     "match" when {
@@ -154,18 +151,18 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
   private def assertMatchRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
                               requestAction: Action,
                               requestDataStreams: Set[DataStreamName])
-                             (blockContextAssertion: DataStreamRequestBlockContext => Unit): Unit =
-    assertRule(configuredDataStreams, requestAction, requestDataStreams, Some(blockContextAssertion))
+                             (blockContextAssertion: BlockContext => Unit): Unit =
+    assertRule(configuredDataStreams, requestAction, requestDataStreams, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
                                  requestAction: Action,
                                  requestDataStreams: Set[DataStreamName]): Unit =
-    assertRule(configuredDataStreams, requestAction, requestDataStreams, blockContextAssertion = None)
+    assertRule(configuredDataStreams, requestAction, requestDataStreams, RuleCheckAssertion.RuleDenied(NotAuthorized))
 
   private def assertRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
                          requestAction: Action,
                          requestDataStreams: Set[DataStreamName],
-                         blockContextAssertion: Option[DataStreamRequestBlockContext => Unit]) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new DataStreamsRule(DataStreamsRule.Settings(configuredDataStreams))
     val requestContext = MockRequestContext.dataStreams.copy(
       dataStreams = requestDataStreams,
@@ -174,15 +171,7 @@ class DataStreamsRuleTests extends AnyWordSpec with Inside {
     val blockContext = DataStreamRequestBlockContext(
       requestContext, UserMetadata.empty, Set.empty, List.empty, requestDataStreams, BackingIndices.IndicesNotInvolved
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Permitted(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Denied(NotAuthorized))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
 }

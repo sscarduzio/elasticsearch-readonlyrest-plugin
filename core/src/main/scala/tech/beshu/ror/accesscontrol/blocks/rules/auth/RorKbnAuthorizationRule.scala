@@ -43,7 +43,7 @@ final class RorKbnAuthorizationRule(val settings: Settings)
         authorize(blockContext, tokenData.groups)
       }
     } else {
-      Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not eligible"))
+      Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not allowed"))
     }
   }
 
@@ -57,10 +57,10 @@ final class RorKbnAuthorizationRule(val settings: Settings)
       userGroups <- groupsFrom(groupsTokenSearchResult)
       matchedGroups <- settings.groupsLogic
         .availableGroupsFrom(userGroups)
-        .toRight(GroupsAuthorizationFailed("No matching groups from groups logic"))
+        .toRight(GroupsAuthorizationFailed("None of the user's groups match the configured groups"))
       _ <- Either.cond(
         blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)),
-        (), GroupsAuthorizationFailed("Current group is not in matched groups")
+        (), GroupsAuthorizationFailed("Current group is not allowed")
       )
     } yield {
       blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))

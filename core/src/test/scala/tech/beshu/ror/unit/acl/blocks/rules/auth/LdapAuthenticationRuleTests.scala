@@ -109,14 +109,14 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
         val service = mock[LdapAuthenticationService]
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
           .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-          .returning(Task.now(Left(AuthenticationFailed("ddsads"))))
+          .returning(Task.now(Left(AuthenticationFailed("auth failed"))))
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("auth failed")))
       }
       "there is no basic auth header" in {
         val requestContext = MockRequestContext.indices
@@ -128,7 +128,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+        rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("No basic auth credentials provided")))
       }
       "LDAP service fails" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:pass"))
@@ -220,7 +220,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               ))
             )
 
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo")))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("Impersonated user does not exist")))
           }
           "mocks provider is unavailable" in {
             val requestContext = MockRequestContext.indices.withHeaders(
@@ -255,14 +255,14 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val service = mock[LdapAuthenticationService]
             (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
               .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-              .returning(Task.now(Left(AuthenticationFailed("todox33"))))
+              .returning(Task.now(Left(AuthenticationFailed("auth failed"))))
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
               CaseSensitivity.Enabled,
               Impersonation.Disabled
             )
-            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("todo13221321")))
+            rule.check(blockContext).runSyncStep shouldBe Right(Denied(AuthenticationFailed("auth failed")))
           }
         }
       }

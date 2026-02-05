@@ -18,16 +18,12 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import io.jsonwebtoken.Jwts
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -45,12 +41,11 @@ import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import java.security.Key
-import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 class JwtAuthRuleTests
-  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion with WithDummyRequestIdSupport {
+  extends AnyWordSpec with MockFactory with BlockContextAssertion with WithDummyRequestIdSupport {
 
   "A JwtAuthRule" should {
     "match" when {
@@ -443,7 +438,8 @@ class JwtAuthRuleTests
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group3"))
+          preferredGroupId = Some(GroupId("group3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "user claim name is defined but userId isn't passed in JWT token claim" in {
@@ -460,7 +456,7 @@ class JwtAuthRuleTests
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           tokenHeader = bearerHeader(jwt),
-          denialCause = AuthenticationFailed("todo")
+          denialCause = AuthenticationFailed("User claim 'userId' not found in JWT")
         )
       }
       "group IDs claim name is defined but groups aren't passed in JWT token claim" in {
@@ -476,7 +472,8 @@ class JwtAuthRuleTests
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("Groups claim not found in JWT")
         )
       }
       "group IDs claim path is wrong" in {
@@ -496,7 +493,8 @@ class JwtAuthRuleTests
           configuredGroups = Some(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
           ))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("Groups claim not found in JWT")
         )
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is empty" in {
@@ -516,7 +514,8 @@ class JwtAuthRuleTests
           configuredGroups = Some(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
           ))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is empty" in {
@@ -536,7 +535,8 @@ class JwtAuthRuleTests
           configuredGroups = Some(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           ))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "preferred group is not on the permitted groups list" in {
@@ -557,7 +557,8 @@ class JwtAuthRuleTests
             UniqueNonEmptyList.of(GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group3"))
+          preferredGroupId = Some(GroupId("group3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
     }
@@ -568,21 +569,20 @@ class JwtAuthRuleTests
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredJwtDef: AuthJwtDef,
                                  configuredGroups: Option[GroupsLogic] = None,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None,
-                                 denialCause: Cause = GroupsAuthorizationFailed("todo")): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None, denialCause)
+                                 denialCause: Cause): Unit =
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredJwtDef: AuthJwtDef,
                          configuredGroups: Option[GroupsLogic],
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit],
-                         denialCause: Cause = GroupsAuthorizationFailed("todo")) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val groupsLogic = configuredGroups.getOrElse(
       GroupsLogic.AnyOf(GroupIds(UniqueNonEmptyList.of(GroupIdPattern.fromNes(nes("*")))))
     )
@@ -609,14 +609,6 @@ class JwtAuthRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Permitted(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Denied(denialCause))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 }

@@ -61,8 +61,10 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
         resolveGroupsLogic(blockContext) match {
           case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
             continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)
-          case None | Some(_) =>
-            rejectWithGroupsAuthorizationFailure("Current group is not eligible")
+          case Some(_) =>
+            rejectWithGroupsAuthorizationFailure("Current group is not allowed")
+          case None =>
+            rejectWithGroupsAuthorizationFailure("No resolved allowed groups")
         }
       }
   }
@@ -151,8 +153,10 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
               userDef.mode
             )
         }
-      case None | Some(_) =>
-        Task.now(Left(GroupsAuthorizationFailed("No eligible local groups for user")))
+      case Some(_) =>
+        Task.now(Left(GroupsAuthorizationFailed("Current group is not allowed")))
+      case None =>
+        Task.now(Left(GroupsAuthorizationFailed("No user's groups allowed")))
     }
   }
 
@@ -222,7 +226,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       updatedBlockContextAfterAuthn <- updateBlockContextWithLoggedUser(blockContextAfterAuthn, blockContext, allowedUserMatcher)
       blockContextAfterAuthz <- EitherT(authzRule.check(updatedBlockContextAfterAuthn).map {
         case Decision.Permitted(bc) => Right(bc)
-        case Decision.Denied(_) => Left(GroupsAuthorizationFailed("Authorization rule denied access"))
+        case Decision.Denied(cause) => Left(cause)
       })
       updatedBlockContextAfterAuthz <- updateBlockContextWithAllowedGroups(blockContextAfterAuthz, updatedBlockContextAfterAuthn, availableGroups, groupMappings)
     } yield updatedBlockContextAfterAuthz
@@ -306,9 +310,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                              externalGroup: UniqueList[Group]) = {
     groupMappings match {
       case GroupMappings.Simple(localGroups) =>
-        UniqueNonEmptyList
-          .from(localGroups.map(_.id))
-          .toRight(GroupsAuthorizationFailed("Empty local groups in simple mapping"))
+        Right(UniqueNonEmptyList.unsafeFrom(localGroups.map(_.id)))
       case GroupMappings.Advanced(mappings) =>
         UniqueNonEmptyList
           .from {
