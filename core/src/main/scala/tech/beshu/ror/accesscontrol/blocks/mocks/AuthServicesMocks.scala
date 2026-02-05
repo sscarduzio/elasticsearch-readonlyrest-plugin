@@ -17,12 +17,12 @@
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 
 final case class AuthServicesMocks(ldapMocks: Map[LdapService.Name, LdapServiceMock],
                                    externalAuthenticationServiceMocks: Map[ExternalAuthenticationService.Name, ExternalAuthenticationServiceMock],
-                                   externalAuthorizationServiceMocks: Map[ExternalAuthorizationService.Name, ExternalAuthorizationServiceMock])
+                                   externalAuthorizationServiceMocks: Map[ExternalGroupsProviderService.Name, ExternalAuthorizationServiceMock])
 object AuthServicesMocks {
   def empty: AuthServicesMocks = AuthServicesMocks(Map.empty, Map.empty, Map.empty)
 }

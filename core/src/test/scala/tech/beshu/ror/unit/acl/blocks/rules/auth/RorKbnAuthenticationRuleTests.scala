@@ -17,14 +17,10 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -35,16 +31,15 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.TestsUtils.{RuleCheckAssertion, *}
 import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 
 import java.security.Key
-import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class RorKbnAuthenticationRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+  extends AnyWordSpec with BlockContextAssertion {
 
   "A RorKbnAuthenticationRule" should {
     "match" when {
@@ -182,17 +177,17 @@ class RorKbnAuthenticationRuleTests
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, blockContextAssertion = None)
+    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(AuthenticationFailed))
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
@@ -206,14 +201,6 @@ class RorKbnAuthenticationRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Permitted(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Denied(AuthenticationFailed))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 }

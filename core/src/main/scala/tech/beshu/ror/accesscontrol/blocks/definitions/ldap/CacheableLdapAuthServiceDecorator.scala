@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 import com.google.common.hash.Hashing
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.CacheableLdapAuthenticationServiceDecorator.HashedUserCredentials
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
 import tech.beshu.ror.accesscontrol.utils.{CacheableAction, CacheableActionWithKeyMapping}
@@ -33,7 +34,7 @@ class CacheableLdapAuthenticationServiceDecorator(val underlying: LdapAuthentica
   extends LdapAuthenticationService {
 
   private val cacheableAuthentication =
-    new CacheableActionWithKeyMapping[(User.Id, domain.PlainTextSecret), HashedUserCredentials, Boolean](
+    new CacheableActionWithKeyMapping[(User.Id, domain.PlainTextSecret), HashedUserCredentials, AuthenticationResult](
       ttl = ttl,
       action = {
         case ((userId, secret), requestId) => authenticateAction((userId, secret))(requestId)
@@ -46,7 +47,8 @@ class CacheableLdapAuthenticationServiceDecorator(val underlying: LdapAuthentica
     ttl = Option.when(cacheLdapUserServiceAsWell)(ttl)
   )
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)
+                           (implicit requestId: RequestId): Task[AuthenticationResult] =
     cacheableAuthentication.call((user, secret), serviceTimeout)
 
   private def hashCredential(value: (User.Id, domain.PlainTextSecret)) = {

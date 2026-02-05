@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequ
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.AuthenticationResult
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
@@ -259,8 +260,9 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
       override def id: ExternalAuthenticationService.Name = ExternalAuthenticationService.Name(name)
 
       override def authenticate(aCredentials: Credentials)
-                               (implicit requestId: RequestId): Task[Boolean] = Task.delay {
-        credentials == aCredentials
+                               (implicit requestId: RequestId): Task[AuthenticationResult] = Task.delay {
+        if(credentials == aCredentials) Right(DirectlyLoggedUser(credentials.user))
+        else Left(AuthenticationFailed)
       }
 
       override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(5 second)

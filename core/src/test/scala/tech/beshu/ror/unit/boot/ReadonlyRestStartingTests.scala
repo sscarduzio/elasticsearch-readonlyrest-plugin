@@ -39,7 +39,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
@@ -492,7 +492,7 @@ class ReadonlyRestStartingTests
               ))
               rorInstance.mocksProvider.externalAuthenticationServiceWith(ExternalAuthenticationService.Name("ext2"))(newRequestId()) should be(None)
 
-              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalAuthorizationService.Name("grp1"))(newRequestId()) should be(Some(
+              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalGroupsProviderService.Name("grp1"))(newRequestId()) should be(Some(
                 ExternalAuthorizationServiceMock(Set(
                   ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(
                     id = User.Id("Bruce"),
@@ -500,7 +500,7 @@ class ReadonlyRestStartingTests
                   )
                 ))
               ))
-              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalAuthorizationService.Name("grp2"))(newRequestId()) should be(None)
+              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalGroupsProviderService.Name("grp2"))(newRequestId()) should be(None)
             }
           }
           "load test engine as invalidated" when {

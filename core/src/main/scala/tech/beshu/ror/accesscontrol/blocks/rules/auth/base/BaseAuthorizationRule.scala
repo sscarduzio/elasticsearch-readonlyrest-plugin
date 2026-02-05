@@ -79,7 +79,7 @@ private[auth] trait BaseAuthorizationRule
         authorizeLoggedUser(
           blockContext,
           user,
-          userGroupsProvider = (_, _) => Task.now(mockedGroups)
+          fetchUserGroups = (_, _) => Task.now(mockedGroups)
         )
       case Groups.CannotCheck =>
         Task.now(Denied(Cause.ImpersonationNotSupported))
@@ -92,15 +92,15 @@ private[auth] trait BaseAuthorizationRule
     authorizeLoggedUser(
       blockContext,
       user,
-      userGroupsProvider = userGroups
+      fetchUserGroups = userGroups
     )
   }
 
   private def authorizeLoggedUser[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                            user: LoggedUser,
-                                                                           userGroupsProvider: (B, LoggedUser) => Task[UniqueList[Group]]): Task[Decision[B]] = {
+                                                                           fetchUserGroups: (B, LoggedUser) => Task[UniqueList[Group]]): Task[Decision[B]] = {
     if (blockContext.isCurrentGroupPotentiallyEligible(groupsLogic)) {
-      userGroupsProvider(blockContext, user)
+      fetchUserGroups(blockContext, user)
         .map(uniqueList => UniqueNonEmptyList.from(uniqueList.toSet))
         .map {
           case Some(fetchedUserGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(fetchedUserGroups)) =>

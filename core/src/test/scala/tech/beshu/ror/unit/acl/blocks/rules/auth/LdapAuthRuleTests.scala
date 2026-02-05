@@ -18,16 +18,12 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
@@ -43,13 +39,10 @@ import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
 class LdapAuthRuleTests
   extends AnyWordSpec
-    with Inside
     with MockFactory
     with BlockContextAssertion
     with WithDummyRequestIdSupport {
@@ -561,7 +554,7 @@ class LdapAuthRuleTests
       authorizationSettings,
       impersonation,
       impersonateAsHeader.toCovariantSet + basicHeader,
-      AssertionType.RuleFulfilled(blockContextAssertion)
+      RuleCheckAssertion.RulePermitted(blockContextAssertion)
     )
 
   private def assertNotMatchRule(authenticationSettings: LdapAuthenticationRule.Settings,
@@ -575,7 +568,7 @@ class LdapAuthRuleTests
       authorizationSettings,
       impersonation,
       impersonateAsHeader.toCovariantSet ++ basicHeader.toSet,
-      AssertionType.RuleRejected(denialCause)
+      RuleCheckAssertion.RuleDenied(denialCause)
     )
 
   private def assertRuleThrown(authenticationSettings: LdapAuthenticationRule.Settings,
@@ -588,14 +581,14 @@ class LdapAuthRuleTests
       authorizationSettings,
       impersonation,
       Set(basicHeader),
-      AssertionType.RuleThrownException(exception)
+      RuleCheckAssertion.RuleThrownException(exception)
     )
 
   private def assertRule(authenticationSettings: LdapAuthenticationRule.Settings,
                          authorizationSettings: LdapAuthorizationRule.Settings,
                          impersonation: Impersonation,
                          headers: Set[Header],
-                         assertionType: AssertionType): Unit = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new LdapAuthRule(
       authentication = new LdapAuthenticationRule(authenticationSettings, CaseSensitivity.Enabled, impersonation),
       authorization = new LdapAuthorizationRule(authorizationSettings, CaseSensitivity.Enabled, impersonation)
@@ -610,22 +603,17 @@ class LdapAuthRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Permitted(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Denied(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
   private def mockLdapAuthenticationService(user: User.Id, secret: PlainTextSecret, result: Task[Boolean]) = {
     val service = mock[LdapAuthenticationService]
-    (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId)).expects(user, secret, *).returning(result)
+    (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
+      .expects(user, secret, *)
+      .returning(result.map {
+        case true => Right(DirectlyLoggedUser(user))
+        case false => Left(AuthenticationFailed)
+      })
     service
   }
 

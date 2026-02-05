@@ -20,8 +20,9 @@ import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.{Ec, Hmac, NoCheck, Rsa}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -47,8 +48,8 @@ trait BaseJwtRule extends RequestIdAwareLogging {
             service
               .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
               .map {
-                case true => Permitted(blockContext)
-                case false => Denied(denialCause)
+                case Right(_) => Permitted(blockContext)
+                case Left(AuthenticationFailed) => Denied(denialCause)
               }
         }
       case _ =>

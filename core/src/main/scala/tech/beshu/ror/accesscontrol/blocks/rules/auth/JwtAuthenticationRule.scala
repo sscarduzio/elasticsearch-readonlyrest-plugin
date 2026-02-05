@@ -72,7 +72,7 @@ final class JwtAuthenticationRule(val settings: Settings,
   private def logClaimSearchResults[B <: BlockContext](blockContext: B,
                                                        user: ClaimSearchResult[User.Id]): Unit = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-    logger.debug(s"[${requestId.show}] JWT resolved user for claim ${settings.jwt.userClaim.name.rawPath}: ${user.show}")
+    logger.debug(s"[${requestId.show}] JWT resolved user for claim ${settings.jwt.userClaim.name.show}: ${user.show}")
   }
 
 }

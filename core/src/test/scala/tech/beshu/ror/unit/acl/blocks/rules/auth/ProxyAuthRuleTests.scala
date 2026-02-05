@@ -17,15 +17,11 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
@@ -37,11 +33,10 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
-class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
+class ProxyAuthRuleTests
+  extends AnyWordSpec with BlockContextAssertion {
 
   "A ProxyAuthRule" should {
     "match" when {
@@ -166,18 +161,18 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
                               impersonation: Impersonation = Impersonation.Disabled,
                               headers: Set[Header])
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(settings, impersonation, headers, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(settings: ProxyAuthRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  headers: Set[Header],
                                  denialCause: Cause = AuthenticationFailed): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(denialCause))
+    assertRule(settings, impersonation, headers, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(settings: ProxyAuthRule.Settings,
                          impersonation: Impersonation,
                          headers: Set[Header],
-                         assertionType: AssertionType): Unit = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new ProxyAuthRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = CurrentUserMetadataRequestBlockContext(
@@ -186,17 +181,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
       Set.empty,
       List.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Permitted(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Denied(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id): BlockContext => Unit =

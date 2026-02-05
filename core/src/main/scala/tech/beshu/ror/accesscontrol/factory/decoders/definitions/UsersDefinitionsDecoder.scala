@@ -52,7 +52,7 @@ object UsersDefinitionsDecoder {
   import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder.*
 
   def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-               authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+               authorizationServiceDefinitions: Definitions[ExternalGroupsProviderService],
                authProxyDefinitions: Definitions[ProxyAuth],
                jwtDefinitions: Definitions[JwtDef],
                rorKbnDefinitions: Definitions[RorKbnDef],
@@ -99,7 +99,7 @@ object UsersDefinitionsDecoder {
 
   private def userDefRulesDecoder(usernamePatterns: UserIdPatterns,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                  authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                  authorizationServiceDefinitions: Definitions[ExternalGroupsProviderService],
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
                                   rorKbnDefinitions: Definitions[RorKbnDef],

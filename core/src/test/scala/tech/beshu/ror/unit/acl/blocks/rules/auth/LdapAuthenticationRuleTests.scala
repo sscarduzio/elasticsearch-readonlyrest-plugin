@@ -47,9 +47,10 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
+        val userId = User.Id("admin")
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
-          .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-          .returning(Task.now(true))
+          .expects(userId, PlainTextSecret("pass"), *)
+          .returning(Task.now(Right(DirectlyLoggedUser(userId))))
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
@@ -91,10 +92,10 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             )
             rule.check(blockContext).runSyncStep shouldBe Right(Permitted(
               CurrentUserMetadataRequestBlockContext(
-                requestContext,
-                UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
-                Set.empty,
-                List.empty)
+                requestContext = requestContext,
+                userMetadata = UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
+                responseHeaders = Set.empty,
+                responseTransformations = List.empty)
             ))
           }
         }
@@ -108,7 +109,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
         val service = mock[LdapAuthenticationService]
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
           .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-          .returning(Task.now(false))
+          .returning(Task.now(Left(AuthenticationFailed)))
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
@@ -254,7 +255,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val service = mock[LdapAuthenticationService]
             (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
               .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-              .returning(Task.now(false))
+              .returning(Task.now(Left(AuthenticationFailed)))
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),

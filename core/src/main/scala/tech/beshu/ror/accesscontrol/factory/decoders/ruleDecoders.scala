@@ -120,7 +120,7 @@ object ruleDecoders {
 
   def usersDefinitionsAllowedRulesDecoderBy(name: Rule.Name,
                                             authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                            authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                            authorizationServiceDefinitions: Definitions[ExternalGroupsProviderService],
                                             authProxyDefinitions: Definitions[ProxyAuth],
                                             jwtDefinitions: Definitions[JwtDef],
                                             rorKbnDefinitions: Definitions[RorKbnDef],

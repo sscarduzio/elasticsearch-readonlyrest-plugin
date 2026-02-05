@@ -21,9 +21,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.GroupsConfig.{GroupIdsConfig, GroupNamesConfig}
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalGroupsProviderService.Config
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalGroupsProviderService.Config.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalGroupsProviderService.Config.GroupsConfig.{GroupIdsConfig, GroupNamesConfig}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.*
@@ -71,10 +71,10 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
-              service shouldBe a[HttpExternalAuthorizationService]
-              service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
+              service shouldBe a[HttpExternalGroupsProviderService]
+              service.asInstanceOf[HttpExternalGroupsProviderService].config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
@@ -127,10 +127,10 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService2"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService2"))
               service.serviceTimeout.value should be(5 seconds)
-              service shouldBe a[HttpExternalAuthorizationService]
-              service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
+              service shouldBe a[HttpExternalGroupsProviderService]
+              service.asInstanceOf[HttpExternalGroupsProviderService].config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user2"),
@@ -178,12 +178,12 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
-              service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
-              val cachableService = service.asInstanceOf[CacheableExternalAuthorizationServiceDecorator]
-              cachableService.underlying shouldBe a[HttpExternalAuthorizationService]
-              val httpService = cachableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
+              service shouldBe a[CacheableExternalGroupsProviderServiceDecorator]
+              val cachableService = service.asInstanceOf[CacheableExternalGroupsProviderServiceDecorator]
+              cachableService.underlying shouldBe a[HttpExternalGroupsProviderService]
+              val httpService = cachableService.underlying.asInstanceOf[HttpExternalGroupsProviderService]
               httpService.config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
@@ -229,10 +229,10 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
-              service shouldBe a[HttpExternalAuthorizationService]
-              service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
+              service shouldBe a[HttpExternalGroupsProviderService]
+              service.asInstanceOf[HttpExternalGroupsProviderService].config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
@@ -279,10 +279,10 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
-              service shouldBe a[HttpExternalAuthorizationService]
-              service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
+              service shouldBe a[HttpExternalGroupsProviderService]
+              service.asInstanceOf[HttpExternalGroupsProviderService].config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
@@ -331,10 +331,10 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
-              service shouldBe a[HttpExternalAuthorizationService]
-              service.asInstanceOf[HttpExternalAuthorizationService].config should be(Config(
+              service shouldBe a[HttpExternalGroupsProviderService]
+              service.asInstanceOf[HttpExternalGroupsProviderService].config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Get,
                 tokenName = AuthTokenName("user"),
@@ -386,13 +386,13 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService1"))
               service.serviceTimeout.value should be(5 seconds)
-              service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
-              val cacheableService = service.asInstanceOf[CacheableExternalAuthorizationServiceDecorator]
+              service shouldBe a[CacheableExternalGroupsProviderServiceDecorator]
+              val cacheableService = service.asInstanceOf[CacheableExternalGroupsProviderServiceDecorator]
               cacheableService.ttl.value should be(100 seconds)
-              cacheableService.underlying shouldBe a[HttpExternalAuthorizationService]
-              val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
+              cacheableService.underlying shouldBe a[HttpExternalGroupsProviderService]
+              val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalGroupsProviderService]
               underlyingService.config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Post,
@@ -450,13 +450,13 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             inside(rule.settings) { case Settings(service, groupsLogic, users) =>
-              service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
+              service.id should be(ExternalGroupsProviderService.Name("GroupsService1"))
               service.serviceTimeout.value should be(10 seconds)
-              service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
-              val cacheableService = service.asInstanceOf[CacheableExternalAuthorizationServiceDecorator]
+              service shouldBe a[CacheableExternalGroupsProviderServiceDecorator]
+              val cacheableService = service.asInstanceOf[CacheableExternalGroupsProviderServiceDecorator]
               cacheableService.ttl.value should be(100 seconds)
-              cacheableService.underlying shouldBe a[HttpExternalAuthorizationService]
-              val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalAuthorizationService]
+              cacheableService.underlying shouldBe a[HttpExternalGroupsProviderService]
+              val underlyingService = cacheableService.underlying.asInstanceOf[HttpExternalGroupsProviderService]
               underlyingService.config should be(Config(
                 url = urlFrom("http://localhost:8080/groups"),
                 method = SupportedHttpMethod.Post,

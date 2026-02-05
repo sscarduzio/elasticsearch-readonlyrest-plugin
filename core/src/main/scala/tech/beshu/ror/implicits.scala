@@ -188,7 +188,7 @@ trait LogsShowInstances
   implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
   implicit val ldapHostShow: Show[LdapHost] = Show.show(_.url.toString())
   implicit val ldapServiceNameShow: Show[LdapService.Name] = Show.show(_.value.value)
-  implicit val externalAuthorizationServiceNameShow: Show[ExternalAuthorizationService.Name] = Show.show(_.value.value)
+  implicit val externalAuthorizationServiceNameShow: Show[ExternalGroupsProviderService.Name] = Show.show(_.value.value)
   implicit val jwtDefNameShow: Show[JwtDef.Name] = Show.show(_.value.value)
   implicit val rorKbnDefNameShow: Show[RorKbnDef.Name] = Show.show(_.value.value)
   implicit val httpRequestShow: Show[HttpClient.Request] = Show.show(_.toString)

@@ -28,21 +28,23 @@ import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, definitions}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
@@ -62,9 +64,9 @@ import tech.beshu.ror.utils.yaml.YamlParser
 import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
-import scala.concurrent.duration.FiniteDuration
-import scala.language.implicitConversions
-import scala.util.{Failure, Success}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.language.{implicitConversions, postfixOps}
+import scala.util.{Failure, Success, Try}
 
 object TestsUtils {
 
@@ -208,7 +210,7 @@ object TestsUtils {
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                    (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
     }
   }
@@ -225,19 +227,19 @@ object TestsUtils {
           .map(users => ExternalAuthenticationServiceMock(users.map(ExternalAuthenticationUserMock.apply)))
       }
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                    (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
+      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
                                                    (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
         map
           .get(id)
@@ -326,11 +328,27 @@ object TestsUtils {
     }
   }
 
-  sealed trait AssertionType
-  object AssertionType {
-    final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
-    final case class RuleRejected(cause: Cause) extends AssertionType
-    final case class RuleThrownException(exception: Throwable) extends AssertionType
+  sealed trait RuleCheckAssertion
+  object RuleCheckAssertion {
+    final case class RulePermitted(blockContextAssertion: BlockContext => Unit) extends RuleCheckAssertion
+    final case class RuleDenied(cause: Cause) extends RuleCheckAssertion
+    final case class RuleThrownException(exception: Throwable) extends RuleCheckAssertion
+  }
+
+  extension (rule: Rule) {
+    def checkAndAssert[B <: BlockContext : BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
+      import monix.execution.Scheduler.Implicits.global
+      val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
+      assertion match {
+        case RuleCheckAssertion.RulePermitted(blockContextAssertion) =>
+          result.get shouldBe a[Permitted[B]]
+          blockContextAssertion(result.get.asInstanceOf[Permitted[B]].context)
+        case RuleCheckAssertion.RuleDenied(cause) =>
+          result.get should be(Denied(cause))
+        case RuleCheckAssertion.RuleThrownException(ex) =>
+          result should be(Failure(ex))
+      }
+    }
   }
 
   def headerFrom(nameAndValue: (String, String)): Header = {

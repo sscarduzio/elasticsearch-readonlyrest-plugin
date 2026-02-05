@@ -17,8 +17,11 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -31,13 +34,18 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
   extends LdapAuthenticationService
     with RequestIdAwareLogging {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)
+                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
     logger.debug(s"Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying
       .authenticate(user, secret)
       .andThen {
         case Success(authenticationResult) =>
-          logger.debug(s"User [${user.show}]${if (authenticationResult) "" else " not"} authenticated by LDAP [${id.show}]")
+          val authenticated = authenticationResult match {
+            case Right(_: DirectlyLoggedUser) => true
+            case Left(AuthenticationFailed) => false
+          }
+          logger.debug(s"User [${user.show}]${if (authenticated) "" else " not"} authenticated by LDAP [${id.show}]")
         case Failure(ex) =>
           logger.debug(s"LDAP authentication failed:", ex)
       }

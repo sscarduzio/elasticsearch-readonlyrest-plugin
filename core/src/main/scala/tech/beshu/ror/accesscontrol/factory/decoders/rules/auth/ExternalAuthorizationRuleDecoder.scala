@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalGroupsProviderServiceDecorator, ExternalGroupsProviderService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, User}
@@ -38,7 +38,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
+class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalGroupsProviderService],
                                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                        mocksProvider: MocksProvider,
                                        globalSettings: GlobalSettings)
@@ -59,7 +59,7 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
     Decoder
       .instance { c =>
         for {
-          name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
+          name <- c.downField("user_groups_provider").as[ExternalGroupsProviderService.Name]
           users <- c.downField("users").as[Option[UniqueNonEmptyList[User.Id]]]
           ttl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           groupsLogic <- GroupsLogicDecoder.simpleDecoder[ExternalAuthorizationRule].apply(c)
@@ -71,14 +71,14 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
       .decoder
   }
 
-  private def createExternalAuthorizationSettings(name: ExternalAuthorizationService.Name,
+  private def createExternalAuthorizationSettings(name: ExternalGroupsProviderService.Name,
                                                   ttl: Option[PositiveFiniteDuration],
                                                   groupsLogic: GroupsLogic,
                                                   users: Option[UniqueNonEmptyList[User.Id]]) = {
     findAuthorizationService(authorizationServices.items, name)
       .map { service =>
         ttl match {
-          case Some(ttlValue) => new CacheableExternalAuthorizationServiceDecorator(service, ttlValue)
+          case Some(ttlValue) => new CacheableExternalGroupsProviderServiceDecorator(service, ttlValue)
           case None => service
         }
       }
@@ -89,8 +89,8 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
       ))
   }
 
-  private def findAuthorizationService(authorizationServices: List[ExternalAuthorizationService],
-                                       searchedServiceName: ExternalAuthorizationService.Name): Either[CoreCreationError, ExternalAuthorizationService] = {
+  private def findAuthorizationService(authorizationServices: List[ExternalGroupsProviderService],
+                                       searchedServiceName: ExternalGroupsProviderService.Name): Either[CoreCreationError, ExternalGroupsProviderService] = {
     authorizationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)
       case None => Left(RulesLevelCreationError(Message(s"Cannot find user groups provider with name: ${searchedServiceName.show}")))

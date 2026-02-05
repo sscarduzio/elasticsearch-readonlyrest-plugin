@@ -19,19 +19,15 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -46,10 +42,9 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
 class ExternalAuthorizationRuleTests
-  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with MockFactory with BlockContextAssertion {
 
   "An ExternalAuthorizationRule" should {
     "match" when {
@@ -222,7 +217,7 @@ class ExternalAuthorizationRuleTests
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List.empty, // not needed in this context
                 mocksProvider = mocksProviderForExternalAuthzServiceFrom(Map(
-                  ExternalAuthorizationService.Name("service1") -> user2GroupsInService1
+                  ExternalGroupsProviderService.Name("service1") -> user2GroupsInService1
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(User.Id("user2"), User.Id("admin"))),
@@ -243,7 +238,7 @@ class ExternalAuthorizationRuleTests
       "user is not logged in" in {
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
-            service = mock[ExternalAuthorizationService],
+            service = mock[ExternalGroupsProviderService],
             permittedGroupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
@@ -256,7 +251,7 @@ class ExternalAuthorizationRuleTests
       "user is logged, but his id is not listed on user config list" in {
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
-            service = mock[ExternalAuthorizationService],
+            service = mock[ExternalGroupsProviderService],
             permittedGroupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
@@ -393,7 +388,7 @@ class ExternalAuthorizationRuleTests
       "current group is set for a given user but it's not present in intersection groups set" in {
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
-            service = mock[ExternalAuthorizationService],
+            service = mock[ExternalGroupsProviderService],
             permittedGroupsLogic = GroupsLogic.AnyOf(GroupIds(
               UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
             )),
@@ -419,7 +414,7 @@ class ExternalAuthorizationRuleTests
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List.empty, // not needed in this context
                 mocksProvider = mocksProviderForExternalAuthzServiceFrom(Map(
-                  ExternalAuthorizationService.Name("service1") -> user2GroupsInService1
+                  ExternalGroupsProviderService.Name("service1") -> user2GroupsInService1
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
@@ -441,7 +436,7 @@ class ExternalAuthorizationRuleTests
               impersonation = Impersonation.Enabled(ImpersonationSettings(
                 impersonators = List.empty, // not needed in this context
                 mocksProvider = mocksProviderForExternalAuthzServiceFrom(Map(
-                  ExternalAuthorizationService.Name("service1") -> user2GroupsInService1
+                  ExternalGroupsProviderService.Name("service1") -> user2GroupsInService1
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
@@ -474,7 +469,7 @@ class ExternalAuthorizationRuleTests
           "admin is trying to impersonate user" in {
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
-                service = mock[ExternalAuthorizationService],
+                service = mock[ExternalGroupsProviderService],
                 permittedGroupsLogic = GroupsLogic.AnyOf(GroupIds(
                   UniqueNonEmptyList.of(GroupId("g1"), GroupId("g2"))
                 )),
@@ -496,20 +491,20 @@ class ExternalAuthorizationRuleTests
                               loggedUser: Option[LoggedUser],
                               preferredGroupId: Option[GroupId])
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(settings: ExternalAuthorizationRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
                                  denialCause: Cause = GroupsAuthorizationFailed): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(denialCause))
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(settings: ExternalAuthorizationRule.Settings,
                          impersonation: Impersonation,
                          loggedUser: Option[LoggedUser],
                          preferredGroup: Option[GroupId],
-                         assertionType: AssertionType): Unit = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new ExternalAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroup.map(_.toCurrentGroupHeader)
@@ -526,17 +521,7 @@ class ExternalAuthorizationRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Permitted(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Denied(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id,
@@ -563,10 +548,10 @@ class ExternalAuthorizationRuleTests
     }
 
   private def mockExternalAuthorizationService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) =
-    new ExternalAuthorizationService {
-      override def id: ExternalAuthorizationService.Name = ExternalAuthorizationService.Name(name)
+    new ExternalGroupsProviderService {
+      override def id: ExternalGroupsProviderService.Name = ExternalGroupsProviderService.Name(name)
 
-      override def grantsFor(userId: User.Id)
+      override def groupsFor(userId: User.Id)
                             (implicit requestId: RequestId): Task[UniqueList[Group]] = Task.delay {
         groups.get(userId) match {
           case Some(g) => UniqueList.from(g)

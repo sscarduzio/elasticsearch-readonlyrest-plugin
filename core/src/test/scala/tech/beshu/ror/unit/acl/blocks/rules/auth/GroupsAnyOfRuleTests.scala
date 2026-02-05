@@ -47,7 +47,7 @@ class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("g1")
             )
           ))
@@ -76,7 +76,7 @@ class GroupsAnyOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AnyOf
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("g1", "g2")
             )
           ))

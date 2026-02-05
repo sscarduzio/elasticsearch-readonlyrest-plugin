@@ -20,18 +20,15 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.{AuthenticationResult, Name}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -39,6 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthentic
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -189,7 +187,10 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = true)),
+            SignatureCheckMethod.NoCheck(authService(
+              rawToken = jwt.stringify(),
+              authenticated = Right(DirectlyLoggedUser(User.Id("user")))
+            )),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
@@ -329,7 +330,10 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
-            SignatureCheckMethod.NoCheck(authService(jwt.stringify(), authenticated = false)),
+            SignatureCheckMethod.NoCheck(authService(
+              rawToken = jwt.stringify(),
+              authenticated = Left(AuthenticationFailed)
+            )),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
@@ -358,19 +362,18 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredJwtDef: DEF,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None,
                                  denialCause: Cause): Unit =
-    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, blockContextAssertion = None, denialCause)
+    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredJwtDef: DEF,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit],
-                         denialCause: Cause = GroupsAuthorizationFailed) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = createRule(configuredJwtDef)
 
     val requestContext = MockRequestContext.indices.withHeaders(
@@ -385,18 +388,10 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Permitted(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Denied(denialCause))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
-  private def authService(rawToken: String, authenticated: Boolean) = {
+  private def authService(rawToken: String, authenticated: AuthenticationResult) = {
     val service = mock[ExternalAuthenticationService]
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(rawToken)) })
@@ -408,11 +403,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
     val service = mock[ExternalAuthenticationService]
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(authenticatedToken)) })
-      .returning(Task.now(true))
+      .returning(Task.now(Right(DirectlyLoggedUser(User.Id("testuser")))))
       .once()
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
-      .returning(Task.now(false))
+      .returning(Task.now(Left(AuthenticationFailed)))
       .once()
     (() => service.id)
       .expects()

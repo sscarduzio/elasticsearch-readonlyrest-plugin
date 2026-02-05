@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -29,7 +30,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
   extends BaseAuthenticationRule {
 
   protected def authenticateUsing(credentials: Credentials)
-                                 (implicit requestId: RequestId): Task[Boolean]
+                                 (implicit requestId: RequestId): Task[Either[AuthenticationFailed.type, DirectlyLoggedUser]]
 
   override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     Task
@@ -41,8 +42,8 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
           case Some(credentials) =>
             authenticateUsing(credentials)
               .map {
-                case true => Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))
-                case false => reject()
+                case Right(user) => Permitted(blockContext.withUserMetadata(_.withLoggedUser(user)))
+                case Left(AuthenticationFailed) => reject()
               }
           case None =>
             Task.now(reject())
@@ -57,8 +58,13 @@ abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDE
   extends BaseBasicAuthAuthenticationRule {
 
   override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Boolean] =
+                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed.type, DirectlyLoggedUser]] = {
     compare(settings.credentials, credentials)
+      .map {
+        case true => Right(DirectlyLoggedUser(credentials.user))
+        case false => Left(AuthenticationFailed)
+      }
+  }
 
   protected def compare(configuredCredentials: CREDENTIALS, credentials: Credentials): Task[Boolean]
 }
