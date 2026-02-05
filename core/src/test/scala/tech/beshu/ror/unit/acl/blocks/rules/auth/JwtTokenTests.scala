@@ -72,6 +72,7 @@ class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRul
   override protected def expectedCurrentGroup: Option[GroupId] = None
 
   override protected def badJwtRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
+  override protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
 }
 
 class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule, AuthorizationJwtDef] {
@@ -92,6 +93,7 @@ class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule,
   override protected def expectedCurrentGroup: Option[GroupId] = Some(GroupId(nes("group1")))
 
   override protected def badJwtRelatedDeniedCauseCreator: String => Cause = GroupsAuthorizationFailed.apply
+  override protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause = GroupsAuthorizationFailed.apply
 }
 
 class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
@@ -117,6 +119,7 @@ class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
     Some(GroupId(nes("group1")))
 
   override protected def badJwtRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
+  override protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause = GroupsAuthorizationFailed.apply
 }
 
 trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
@@ -137,6 +140,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
   protected def expectedCurrentGroup: Option[GroupId]
 
   protected def badJwtRelatedDeniedCauseCreator: String => Cause
+  protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause
 
   s"A $ruleName rule using jwt token" should {
     "match" when {
@@ -232,7 +236,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         def checkInvalidToken(): Unit = assertNotMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = bearerHeader(invalidJwt),
-          denialCause = badJwtRelatedDeniedCauseCreator("mocked - auth failed")
+          denialCause = externalJwtVerifierRelatedDeniedCauseCreator("mocked - auth failed")
         )
 
         checkValidToken()
@@ -339,7 +343,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt),
-          denialCause = badJwtRelatedDeniedCauseCreator("mocked - JWT verification failed")
+          denialCause = externalJwtVerifierRelatedDeniedCauseCreator("mocked - JWT verification failed")
         )
       }
       "token is invalid and cannot be parsed" in {

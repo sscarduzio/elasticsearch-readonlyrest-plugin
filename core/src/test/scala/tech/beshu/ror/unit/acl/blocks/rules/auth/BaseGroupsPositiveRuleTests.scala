@@ -38,6 +38,54 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
   // Common tests
 
   "An AbstractPositiveGroupsRule" should {
+    "not match because of not eligible preferred group present" when {
+      "groups mapping is not configured" in {
+        val ruleSettings = GroupsRulesSettings(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
+            AlreadyResolved(GroupId("g1").nel),
+            AlreadyResolved(GroupId("g2").nel),
+          )),
+          usersDefinitions = NonEmptyList.of(UserDef(
+            usernames = userIdPatterns("user1"),
+            mode = WithoutGroupsMapping(
+              authenticationRule.permitting(User.Id("user1")),
+              groups("g1")
+            )
+          ))
+        )
+        val usr = Some(User.Id("user1"))
+        assertNotMatchRule(
+          settings = ruleSettings,
+          loggedUser = usr,
+          caseSensitivity = CaseSensitivity.Disabled,
+          preferredGroupId = Some(GroupId("g3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
+        )
+      }
+      "groups mapping is configured" in {
+        val ruleSettings = GroupsRulesSettings(
+          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
+            AlreadyResolved(GroupId("g1").nel),
+            AlreadyResolved(GroupId("g2").nel),
+          )),
+          usersDefinitions = NonEmptyList.of(UserDef(
+            usernames = userIdPatterns("user1"),
+            mode = WithGroupsMapping(
+              SingleRule(authRule.permitting(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
+              groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group"))))
+            )
+          ))
+        )
+        val usr = Some(User.Id("user1"))
+        assertNotMatchRule(
+          settings = ruleSettings,
+          loggedUser = usr,
+          caseSensitivity = CaseSensitivity.Disabled,
+          preferredGroupId = Some(GroupId("g3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
+        )
+      }
+    }
     "not match" when {
       "groups mapping is not configured" when {
         "no group can be resolved" in {
