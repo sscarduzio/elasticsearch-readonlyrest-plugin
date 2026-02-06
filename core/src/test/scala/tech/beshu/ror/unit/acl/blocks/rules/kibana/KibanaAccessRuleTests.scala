@@ -40,7 +40,7 @@ class KibanaAccessRuleTests
       assertBlockContext(
         indices = indices,
         dataStreams = dataStreams,
-        kibanaMetadata = Some(KibanaPolicy.default.copy(
+        kibanaPolicy = Some(KibanaPolicy.default.copy(
           access = settings.access,
           index = Some(kibanaIndexFrom(customKibanaIndex)),
         )),

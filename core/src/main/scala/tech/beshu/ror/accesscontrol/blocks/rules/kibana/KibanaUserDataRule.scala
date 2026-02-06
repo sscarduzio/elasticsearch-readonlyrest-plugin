@@ -71,8 +71,8 @@ class KibanaUserDataRule(override val settings: Settings)
         _.withAllowedKibanaApiPaths(_)
       )
     } andThen {
-      applyToBlockMetadata(resolvedKibanaMetadata(context))(
-        _.withKibanaMetadata(_)
+      applyToBlockMetadata(resolvedKibanaGenericMetadata(context))(
+        _.withKibanaGenericMetadata(_)
       )
     }
   }
@@ -100,13 +100,13 @@ class KibanaUserDataRule(override val settings: Settings)
   private lazy val resolveAllowedApiPaths =
     UniqueNonEmptyList.from(settings.allowedApiPaths)
 
-  private def resolvedKibanaMetadata(context: BlockContext) =
+  private def resolvedKibanaGenericMetadata(context: BlockContext) =
     settings
       .genericMetadata
       .flatMap {
         _.resolve(context) match {
-          case Right(resolvedKibanaMetadata) =>
-            Some(resolvedKibanaMetadata)
+          case Right(resolvedMetadata) =>
+            Some(resolvedMetadata)
           case Left(error) =>
             implicit val blockContextImpl: BlockContext = context
             logger.warn(s"Cannot resolve variable(s) used in Kibana metadata; error: ${error.show}")

@@ -171,7 +171,7 @@ class KibanaUserDataRuleTests
             .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(KibanaIndexName.default)
-            .withKibanaMetadata(
+            .withKibanaGenericMetadata(
               JsonTree.Object(Map(
                 "a" -> JsonTree.Value(NumValue(1)),
                 "b" -> JsonTree.Value(BooleanValue(true)),
@@ -238,7 +238,7 @@ class KibanaUserDataRuleTests
       assertBlockContext(
         indices = indices,
         dataStreams = dataStreams,
-        kibanaMetadata = Some(KibanaPolicy.default.copy(
+        kibanaPolicy = Some(KibanaPolicy.default.copy(
           access = settings.access,
           index = Some(kibanaIndexFrom(customKibanaIndex)),
         )),

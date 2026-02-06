@@ -110,7 +110,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
               indices = Set(requestedIndex(".readonlyrest")),
-              kibanaMetadata = Some(KibanaPolicy.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.Admin,
                 index = Some(kibanaIndexName(".kibana_template")),
               )),
@@ -134,7 +134,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaMetadata = Some(KibanaPolicy.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.Admin,
                 index = Some(kibanaIndexName(".kibana_template")),
               )),
@@ -160,7 +160,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
               loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
               currentGroup = Some(GroupId("RW_ror_custom")),
               availableGroups = UniqueList.of(group("RW_ror_custom")),
-              kibanaMetadata = Some(KibanaPolicy.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.RW,
                 index = Some(kibanaIndexName(".kibana_ror_custom")),
               )),
@@ -184,7 +184,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaMetadata = Some(KibanaPolicy.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.Admin,
                 index = Some(kibanaIndexName(".kibana_template")),
               )),
@@ -215,7 +215,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             currentGroup = Some(GroupId("RW_ror_custom")),
             availableGroups = UniqueList.of(group("RW_ror_custom")),
             indices = Set(requestedIndex(".kibana_ror_custom")),
-            kibanaMetadata = Some(KibanaPolicy.default.copy(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = KibanaAccess.RW,
               index = Some(kibanaIndexName(".kibana_ror_custom")),
             )),
@@ -287,7 +287,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             currentGroup = Some(GroupId("Administrators")),
             availableGroups = UniqueList.of(group("Administrators")),
             indices = Set(requestedIndex(".kibana_admins")),
-            kibanaMetadata = Some(KibanaPolicy.default.copy(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = KibanaAccess.Admin,
               index = Some(kibanaIndexName(".kibana_admins")),
               hiddenApps = Set(

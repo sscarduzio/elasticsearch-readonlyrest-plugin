@@ -396,7 +396,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                   .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
                   .withKibanaAccess(KibanaAccess.RO)
                   .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
-                  .withKibanaMetadata(
+                  .withKibanaGenericMetadata(
                     JsonTree.Object(Map(
                       "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
                     ))
@@ -426,7 +426,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                   .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
                   .withKibanaAccess(KibanaAccess.RO)
                   .withKibanaIndex(KibanaIndexName.default)
-                  .withKibanaMetadata(
+                  .withKibanaGenericMetadata(
                     JsonTree.Object(Map(
                       "a" -> JsonTree.Value(JsonValue.StringValue("jwt_value_j0,j3")),
                       "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
