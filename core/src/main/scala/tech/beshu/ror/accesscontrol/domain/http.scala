@@ -197,10 +197,10 @@ object Address {
 
 final case class UriPath private(value: NonEmptyString) {
   def isAuditEventPath: Boolean =
-    this != UriPath.slashPath && UriPath.auditEventPath.value.value.startsWith(value.value)
+    this != UriPath.slashPath && value.value.startsWith(UriPath.auditEventPath.value.value)
 
   def isCurrentUserMetadataPath: Boolean =
-    this != UriPath.slashPath && UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
+    this != UriPath.slashPath && value.value.startsWith(UriPath.currentUserMetadataPath.value.value)
 
   def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
 
