@@ -20,7 +20,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaMetadata}
+import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
@@ -238,7 +238,7 @@ class KibanaUserDataRuleTests
       assertBlockContext(
         indices = indices,
         dataStreams = dataStreams,
-        kibanaMetadata = Some(KibanaMetadata.default.copy(
+        kibanaMetadata = Some(KibanaPolicy.default.copy(
           access = settings.access,
           index = Some(kibanaIndexFrom(customKibanaIndex)),
         )),

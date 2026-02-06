@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNo
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.*
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.metadata.{KibanaMetadata, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.metadata.{KibanaPolicy, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
@@ -277,16 +277,16 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("group3") :: GroupId("group1") :: Nil)
 
             val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-            group3Metadata.block.name should be(Block.Name("User 1 - index1"))
+            group3Metadata.metadataOrigin.block.name should be(Block.Name("User 1 - index1"))
             group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
             group3Metadata.userOrigin should be(None)
-            group3Metadata.kibanaMetadata should be(None)
+            group3Metadata.kibanaPolicy should be(None)
 
             val group1Metadata = metadata.groupsMetadata(GroupId("group1"))
-            group1Metadata.block.name should be(Block.Name("User 1 - index2"))
+            group1Metadata.metadataOrigin.block.name should be(Block.Name("User 1 - index2"))
             group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
             group1Metadata.userOrigin should be(None)
-            group1Metadata.kibanaMetadata should be(None)
+            group1Metadata.kibanaPolicy should be(None)
           }
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user1:pass"))
@@ -300,10 +300,10 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("group5") :: GroupId("group6") :: Nil)
 
             val group5Metadata = metadata.groupsMetadata(GroupId("group5"))
-            group5Metadata.block.name should be(Block.Name("User 4 - index1"))
+            group5Metadata.metadataOrigin.block.name should be(Block.Name("User 4 - index1"))
             group5Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
             group5Metadata.userOrigin should be(None)
-            group5Metadata.kibanaMetadata should be(Some(KibanaMetadata(
+            group5Metadata.kibanaPolicy should be(Some(KibanaPolicy(
               access = KibanaAccess.Unrestricted,
               index = Some(kibanaIndexName("user4_group5_kibana_index")),
               templateIndex = None,
@@ -313,10 +313,10 @@ class CurrentUserMetadataAccessControlTests
             )))
 
             val group6Metadata = metadata.groupsMetadata(GroupId("group6"))
-            group6Metadata.block.name should be(Block.Name("User 4 - index2"))
+            group6Metadata.metadataOrigin.block.name should be(Block.Name("User 4 - index2"))
             group6Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
             group6Metadata.userOrigin should be(None)
-            group6Metadata.kibanaMetadata should be(Some(KibanaMetadata(
+            group6Metadata.kibanaPolicy should be(Some(KibanaPolicy(
               access = KibanaAccess.Unrestricted,
               index = Some(kibanaIndexName("user4_group6_kibana_index")),
               templateIndex = None,
@@ -347,10 +347,10 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: Nil)
 
             val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-            group2Metadata.block.name should be(Block.Name("User 2"))
+            group2Metadata.metadataOrigin.block.name should be(Block.Name("User 2"))
             group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
             group2Metadata.userOrigin should be(None)
-            group2Metadata.kibanaMetadata should be(Some(KibanaMetadata(
+            group2Metadata.kibanaPolicy should be(Some(KibanaPolicy(
               access = KibanaAccess.RO,
               index = Some(kibanaIndexName("user2_kibana_index")),
               templateIndex = None,
@@ -371,10 +371,10 @@ class CurrentUserMetadataAccessControlTests
         }
         "block with no available groups collected is matched" in {
           def assertAllowUserMetadataWithoutGroupsResponse(metadata: UserMetadata.WithoutGroups) = {
-            metadata.block.name should be(Block.Name("User 3"))
+            metadata.metadataOrigin.block.name should be(Block.Name("User 3"))
             metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
             metadata.userOrigin should be(None)
-            metadata.kibanaMetadata should be(Some(KibanaMetadata(
+            metadata.kibanaPolicy should be(Some(KibanaPolicy(
               access = KibanaAccess.Unrestricted,
               index = Some(kibanaIndexName("user3_kibana_index")),
               templateIndex = None,
@@ -396,11 +396,11 @@ class CurrentUserMetadataAccessControlTests
               metadata.groupsMetadata.keys.toList should be(GroupId("service1_group1") :: GroupId("service1_group2") :: Nil)
 
               val group1Metadata = metadata.groupsMetadata(GroupId("service1_group1"))
-              group1Metadata.block.name should be(Block.Name("SERVICE1 user5 (1)"))
+              group1Metadata.metadataOrigin.block.name should be(Block.Name("SERVICE1 user5 (1)"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
 
               val group2Metadata = metadata.groupsMetadata(GroupId("service1_group2"))
-              group2Metadata.block.name should be(Block.Name("SERVICE1 user5 (2)"))
+              group2Metadata.metadataOrigin.block.name should be(Block.Name("SERVICE1 user5 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
             }
 
@@ -408,7 +408,7 @@ class CurrentUserMetadataAccessControlTests
               metadata.groupsMetadata.keys.toList should be(GroupId("service3_group1") :: Nil)
 
               val group1Metadata = metadata.groupsMetadata(GroupId("service3_group1"))
-              group1Metadata.block.name should be(Block.Name("SERVICE3 user7"))
+              group1Metadata.metadataOrigin.block.name should be(Block.Name("SERVICE3 user7"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
             }
 
@@ -442,11 +442,11 @@ class CurrentUserMetadataAccessControlTests
               metadata.groupsMetadata.keys.toList should be(GroupId("ldap2_group1") :: GroupId("ldap2_group2") :: Nil)
 
               val group1Metadata = metadata.groupsMetadata(GroupId("ldap2_group1"))
-              group1Metadata.block.name should be(Block.Name("LDAP2 user6 (1)"))
+              group1Metadata.metadataOrigin.block.name should be(Block.Name("LDAP2 user6 (1)"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
 
               val group2Metadata = metadata.groupsMetadata(GroupId("ldap2_group2"))
-              group2Metadata.block.name should be(Block.Name("LDAP2 user6 (2)"))
+              group2Metadata.metadataOrigin.block.name should be(Block.Name("LDAP2 user6 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
             }
 
@@ -472,10 +472,10 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("tracy_tenant1") :: GroupId("tracy_tenant2") :: Nil)
 
             val tenant1Metadata = metadata.groupsMetadata(GroupId("tracy_tenant1"))
-            tenant1Metadata.block.name should be(Block.Name("Allow RW access to tenant1 Kibana"))
+            tenant1Metadata.metadataOrigin.block.name should be(Block.Name("Allow RW access to tenant1 Kibana"))
             tenant1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user9")))
             tenant1Metadata.userOrigin should be(None)
-            tenant1Metadata.kibanaMetadata should be(Some(KibanaMetadata(
+            tenant1Metadata.kibanaPolicy should be(Some(KibanaPolicy(
               access = KibanaAccess.RW,
               index = Some(kibanaIndexName(".kib_tracy_tenant1")),
               templateIndex = None,
@@ -485,10 +485,10 @@ class CurrentUserMetadataAccessControlTests
             )))
 
             val tenant2Metadata = metadata.groupsMetadata(GroupId("tracy_tenant2"))
-            tenant2Metadata.block.name should be(Block.Name("Allow RW access to tenant2 Kibana"))
+            tenant2Metadata.metadataOrigin.block.name should be(Block.Name("Allow RW access to tenant2 Kibana"))
             tenant2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user9")))
             tenant2Metadata.userOrigin should be(None)
-            tenant2Metadata.kibanaMetadata should be(Some(KibanaMetadata(
+            tenant2Metadata.kibanaPolicy should be(Some(KibanaPolicy(
               access = KibanaAccess.RW,
               index = Some(kibanaIndexName(".kib_tracy_tenant2")),
               templateIndex = None,

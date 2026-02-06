@@ -191,7 +191,7 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def kibanaIndexFrom(blockContext: BlockContext) = {
-    blockContext.blockMetadata.kibanaMetadata.flatMap(_.index)
+    blockContext.blockMetadata.kibanaPolicy.flatMap(_.index)
   }
 
   private val matchAll = settings.allowedIndices.exists {

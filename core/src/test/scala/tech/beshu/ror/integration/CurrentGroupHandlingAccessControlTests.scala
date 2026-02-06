@@ -130,16 +130,16 @@ class CurrentGroupHandlingAccessControlTests
           metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
           val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-          group2Metadata.block.name should be(Block.Name("User 1 block"))
+          group2Metadata.metadataOrigin.block.name should be(Block.Name("User 1 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
           group2Metadata.userOrigin should be(None)
-          group2Metadata.kibanaMetadata should be(None)
+          group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.block.name should be(Block.Name("User 1 block"))
+          group3Metadata.metadataOrigin.block.name should be(Block.Name("User 1 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
           group3Metadata.userOrigin should be(None)
-          group3Metadata.kibanaMetadata should be(None)
+          group3Metadata.kibanaPolicy should be(None)
         }
 
         val loginRequest = MockRequestContext.metadata.withHeaders(basicAuthHeader("user1:pass"))
@@ -161,16 +161,16 @@ class CurrentGroupHandlingAccessControlTests
           metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
           val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-          group2Metadata.block.name should be(Block.Name("User 2 block"))
+          group2Metadata.metadataOrigin.block.name should be(Block.Name("User 2 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
           group2Metadata.userOrigin should be(None)
-          group2Metadata.kibanaMetadata should be(None)
+          group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.block.name should be(Block.Name("User 2 block"))
+          group3Metadata.metadataOrigin.block.name should be(Block.Name("User 2 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
           group3Metadata.userOrigin should be(None)
-          group3Metadata.kibanaMetadata should be(None)
+          group3Metadata.kibanaPolicy should be(None)
         }
 
         val jwt = Jwt(Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
@@ -197,16 +197,16 @@ class CurrentGroupHandlingAccessControlTests
           metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
           val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-          group2Metadata.block.name should be(Block.Name("User 3 block"))
+          group2Metadata.metadataOrigin.block.name should be(Block.Name("User 3 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
           group2Metadata.userOrigin should be(None)
-          group2Metadata.kibanaMetadata should be(None)
+          group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.block.name should be(Block.Name("User 3 block"))
+          group3Metadata.metadataOrigin.block.name should be(Block.Name("User 3 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
           group3Metadata.userOrigin should be(None)
-          group3Metadata.kibanaMetadata should be(None)
+          group3Metadata.kibanaPolicy should be(None)
         }
 
         val jwt = Jwt(Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
@@ -233,16 +233,16 @@ class CurrentGroupHandlingAccessControlTests
           metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
           val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-          group2Metadata.block.name should be(Block.Name("User 4 block"))
+          group2Metadata.metadataOrigin.block.name should be(Block.Name("User 4 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
           group2Metadata.userOrigin should be(None)
-          group2Metadata.kibanaMetadata should be(None)
+          group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.block.name should be(Block.Name("User 4 block"))
+          group3Metadata.metadataOrigin.block.name should be(Block.Name("User 4 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
           group3Metadata.userOrigin should be(None)
-          group3Metadata.kibanaMetadata should be(None)
+          group3Metadata.kibanaPolicy should be(None)
         }
 
         val jwt = Jwt(Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
@@ -269,16 +269,16 @@ class CurrentGroupHandlingAccessControlTests
           metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
           val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-          group2Metadata.block.name should be(Block.Name("User 5 block"))
+          group2Metadata.metadataOrigin.block.name should be(Block.Name("User 5 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
           group2Metadata.userOrigin should be(None)
-          group2Metadata.kibanaMetadata should be(None)
+          group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.block.name should be(Block.Name("User 5 block"))
+          group3Metadata.metadataOrigin.block.name should be(Block.Name("User 5 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
           group3Metadata.userOrigin should be(None)
-          group3Metadata.kibanaMetadata should be(None)
+          group3Metadata.kibanaPolicy should be(None)
         }
 
         val jwt = Jwt(Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
@@ -305,16 +305,16 @@ class CurrentGroupHandlingAccessControlTests
           metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
           val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-          group2Metadata.block.name should be(Block.Name("User 6 block"))
+          group2Metadata.metadataOrigin.block.name should be(Block.Name("User 6 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
           group2Metadata.userOrigin should be(None)
-          group2Metadata.kibanaMetadata should be(None)
+          group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.block.name should be(Block.Name("User 6 block"))
+          group3Metadata.metadataOrigin.block.name should be(Block.Name("User 6 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
           group3Metadata.userOrigin should be(None)
-          group3Metadata.kibanaMetadata should be(None)
+          group3Metadata.kibanaPolicy should be(None)
         }
 
         val jwt = Jwt(Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
@@ -341,16 +341,16 @@ class CurrentGroupHandlingAccessControlTests
           metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
 
           val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-          group2Metadata.block.name should be(Block.Name("User 7 block"))
+          group2Metadata.metadataOrigin.block.name should be(Block.Name("User 7 block"))
           group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
           group2Metadata.userOrigin should be(None)
-          group2Metadata.kibanaMetadata should be(None)
+          group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.block.name should be(Block.Name("User 7 block"))
+          group3Metadata.metadataOrigin.block.name should be(Block.Name("User 7 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
           group3Metadata.userOrigin should be(None)
-          group3Metadata.kibanaMetadata should be(None)
+          group3Metadata.kibanaPolicy should be(None)
         }
 
         val jwt = Jwt(Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),

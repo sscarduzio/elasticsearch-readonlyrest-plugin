@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
-import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
@@ -257,7 +257,7 @@ object TestsUtils {
         loggedUser = expected.blockMetadata.loggedUser,
         currentGroup = expected.blockMetadata.currentGroupId,
         availableGroups = expected.blockMetadata.availableGroups,
-        kibanaMetadata = expected.blockMetadata.kibanaMetadata,
+        kibanaMetadata = expected.blockMetadata.kibanaPolicy,
         userOrigin = expected.blockMetadata.userOrigin,
         jwt = expected.blockMetadata.jwtToken,
         responseHeaders = expected.responseHeaders,
@@ -271,7 +271,7 @@ object TestsUtils {
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
                            currentGroup: Option[GroupId] = None,
                            availableGroups: UniqueList[Group] = UniqueList.empty,
-                           kibanaMetadata: Option[KibanaMetadata] = None,
+                           kibanaMetadata: Option[KibanaPolicy] = None,
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
@@ -285,7 +285,7 @@ object TestsUtils {
       blockContext.blockMetadata.loggedUser should be(loggedUser)
       blockContext.blockMetadata.availableGroups should contain allElementsOf availableGroups
       blockContext.blockMetadata.currentGroupId should be(currentGroup)
-      blockContext.blockMetadata.kibanaMetadata should be (kibanaMetadata)
+      blockContext.blockMetadata.kibanaPolicy should be (kibanaMetadata)
       blockContext.blockMetadata.userOrigin should be(userOrigin)
       blockContext.blockMetadata.jwtToken should be(jwt)
       blockContext.responseHeaders should be(responseHeaders)

@@ -39,7 +39,7 @@ class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest,
 object RRTestSettingsRequest {
 
   def createFrom(request: RestRequest): RRTestSettingsRequest = {
-    val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+    val requestType = (request.uri().removeTrailingSlashIfPresent(), request.method()) match {
       case (constants.PROVIDE_TEST_SETTINGS_PATH, GET) =>
         TestSettingsApi.TestSettingsRequest.Type.ProvideTestSettings
       case (constants.DELETE_TEST_SETTINGS_PATH, DELETE) =>

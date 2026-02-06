@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.blocks
 import cats.data.{NonEmptyList, Validated, WriterT}
 import cats.{Eq, Show}
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
@@ -36,7 +35,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.accesscontrol.domain.RequestId.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
+
 import scala.language.implicitConversions
 
 class Block(val name: Name,

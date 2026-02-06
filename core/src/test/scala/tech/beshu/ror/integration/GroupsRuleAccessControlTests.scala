@@ -320,11 +320,11 @@ class GroupsRuleAccessControlTests
             val metadata1 = userMetadata1.groupsMetadata(group1)
             val metadata2 = userMetadata2.groupsMetadata(group1)
 
-            metadata1.block.name should be(Block.Name("ror_kbn_auth in root of ACL"))
-            metadata2.block.name should be(Block.Name("local groups-based ror_kbn_auth"))
+            metadata1.metadataOrigin.block.name should be(Block.Name("ror_kbn_auth in root of ACL"))
+            metadata2.metadataOrigin.block.name should be(Block.Name("local groups-based ror_kbn_auth"))
 
             metadata1.userOrigin should be(metadata2.userOrigin)
-            metadata1.kibanaMetadata should be (metadata2.kibanaMetadata)
+            metadata1.kibanaPolicy should be (metadata2.kibanaPolicy)
           }
         }
       }
@@ -351,11 +351,11 @@ class GroupsRuleAccessControlTests
             val metadata1 = userMetadata1.groupsMetadata(group1)
             val metadata2 = userMetadata2.groupsMetadata(group1)
 
-            metadata1.block.name should be(Block.Name("jwt_auth in root of ACL"))
-            metadata2.block.name should be(Block.Name("local groups-based jwt_auth"))
+            metadata1.metadataOrigin.block.name should be(Block.Name("jwt_auth in root of ACL"))
+            metadata2.metadataOrigin.block.name should be(Block.Name("local groups-based jwt_auth"))
 
             metadata1.userOrigin should be(metadata2.userOrigin)
-            metadata1.kibanaMetadata should be (metadata2.kibanaMetadata)
+            metadata1.kibanaPolicy should be (metadata2.kibanaPolicy)
           }
         }
       }
@@ -379,11 +379,11 @@ class GroupsRuleAccessControlTests
             val metadata1 = userMetadata1.groupsMetadata(group1)
             val metadata2 = userMetadata2.groupsMetadata(group1)
 
-            metadata1.block.name should be(Block.Name("ldap_auth in root of ACL"))
-            metadata2.block.name should be(Block.Name("local groups-based ldap_auth"))
+            metadata1.metadataOrigin.block.name should be(Block.Name("ldap_auth in root of ACL"))
+            metadata2.metadataOrigin.block.name should be(Block.Name("local groups-based ldap_auth"))
 
             metadata1.userOrigin should be(metadata2.userOrigin)
-            metadata1.kibanaMetadata should be (metadata2.kibanaMetadata)
+            metadata1.kibanaPolicy should be (metadata2.kibanaPolicy)
           }
         }
       }

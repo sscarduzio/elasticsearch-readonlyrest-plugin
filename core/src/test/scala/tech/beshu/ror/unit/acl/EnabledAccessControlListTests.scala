@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.MetadataOrigin
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -140,7 +141,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -227,7 +228,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, block, _)) =>
+              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
                 loggedUser.id should be (userId("u1"))
                 block.name should be(Block.Name("b1"))
                 block.policy should be(Policy.Allow)
@@ -538,8 +539,8 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
 
     private def assert(groupsMetadata: ListMap[GroupId, GroupMetadata]) = Try {
       val metadata = groupsMetadata(group.id)
-      metadata.block.name should be(Block.Name(blockName))
-      metadata.block.policy should be(blockPolicy)
+      metadata.metadataOrigin.block.name should be(Block.Name(blockName))
+      metadata.metadataOrigin.block.policy should be(blockPolicy)
       metadata.group should be(group)
       metadata.loggedUser.id should be(userId)
     }
