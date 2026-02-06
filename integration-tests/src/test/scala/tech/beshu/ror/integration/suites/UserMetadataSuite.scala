@@ -134,8 +134,7 @@ class UserMetadataSuite
                |    "d": [ "a","b" ],
                |    "e": {
                |      "f": 1
-               |    },
-               |    "g": null
+               |    }
                |  }
                |}""".stripMargin))
         }
@@ -286,8 +285,7 @@ class UserMetadataSuite
                |    "d": [ "a","b" ],
                |    "e": {
                |      "f": 1
-               |    },
-               |    "g": null
+               |    }
                |  }
                |}""".stripMargin))
         }
@@ -458,7 +456,7 @@ class UserMetadataSuite
                |          {"http_method":"ANY","path_regex":"^/api/spaces/.*$$"},
                |          {"http_method":"GET","path_regex":"^/api/spaces\\\\?test\\\\=12\\\\.2$$"}
                |        ],
-               |        "metadata":{"e":{"f":1},"a":1,"b":true,"g":null,"c":"text","d":["a","b"]}
+               |        "metadata":{"e":{"f":1},"a":1,"b":true,"c":"text","d":["a","b"]}
                |      }
                |    }
                |  ]
@@ -637,7 +635,7 @@ class UserMetadataSuite
                |          {"http_method":"ANY","path_regex":"^/api/spaces/.*$$"},
                |          {"http_method":"GET","path_regex":"^/api/spaces\\\\?test\\\\=12\\\\.2$$"}
                |        ],
-               |        "metadata":{"e":{"f":1},"a":1,"b":true,"g":null,"c":"text","d":["a","b"]}
+               |        "metadata":{"e":{"f":1},"a":1,"b":true,"c":"text","d":["a","b"]}
                |      }
                |    }
                |  ]

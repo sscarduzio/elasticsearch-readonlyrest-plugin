@@ -108,7 +108,7 @@ private class RRMetadataResponse(apiVersion: UserMetadataApiVersion,
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val json = MetadataResponse.from(apiVersion, userMetadata, currentGroupId, correlationId)
+    val json = MetadataResponse.fromAsJavaJsonObject(apiVersion, userMetadata, currentGroupId, correlationId)
     builder.map(json)
     builder
   }

@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 import cats.data.NonEmptyList
 import io.circe.syntax.*
 import io.circe.{Encoder, Json}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.*
@@ -31,18 +32,25 @@ object MetadataResponse {
 
   type JavaJsonObject = java.util.Map[String, Object]
 
-  def from(version: UserMetadataApiVersion,
-           userMetadata: UserMetadata,
-           currentGroupId: Option[GroupId],
-           correlationId: CorrelationId): JavaJsonObject = {
-    val json = version match {
-      case UserMetadataApiVersion.V1 => CurrentUserMetadataValue.from(userMetadata, correlationId, currentGroupId)
-      case UserMetadataApiVersion.V2(licenseType) => UserMetadataValue.from(userMetadata, correlationId, licenseType)
-    }
+  def fromAsJavaJsonObject(version: UserMetadataApiVersion,
+                           userMetadata: UserMetadata,
+                           currentGroupId: Option[GroupId],
+                           correlationId: CorrelationId): JavaJsonObject = {
+    val json = fromAsCirceJson(version, userMetadata, currentGroupId, correlationId)
     if (json.isObject) {
       json.toJava.asInstanceOf[JavaJsonObject]
     } else {
       throw new IllegalStateException("Response metadata must be a JSON object.")
+    }
+  }
+
+  def fromAsCirceJson(version: UserMetadataApiVersion,
+                      userMetadata: UserMetadata,
+                      currentGroupId: Option[GroupId],
+                      correlationId: CorrelationId): Json = {
+    version match {
+      case UserMetadataApiVersion.V1 => CurrentUserMetadataValue.from(userMetadata, correlationId, currentGroupId)
+      case UserMetadataApiVersion.V2(licenseType) => UserMetadataValue.from(userMetadata, correlationId, licenseType)
     }
   }
 }
@@ -52,144 +60,83 @@ private object UserMetadataValue {
   def from(userMetadata: UserMetadata,
            correlationId: CorrelationId,
            licenseType: RorKbnLicenseType): Json = {
+    implicit val licenseTypeImplicit: RorKbnLicenseType = licenseType
     userMetadata match {
       case withoutGroups: UserMetadata.WithoutGroups =>
-        Json.obj(
-          List(
-            userType("type", withoutGroups),
-            Some(correlationIdField("correlation_id", correlationId)),
-            Some(username("username", withoutGroups)),
-            userOrigin("ror_origin", withoutGroups),
-            kibana("kibana", withoutGroups, licenseType)
-          ).flatten *
-        )
+        implicit val encoder: Encoder[UserMetadata.WithoutGroups] = withoutGroupsEncoder(correlationId)
+        withoutGroups.asJson.deepDropNullValues
       case withGroups: UserMetadata.WithGroups =>
-        Json.obj(
-          List(
-            userType("type", withGroups),
-            Some(correlationIdField("correlation_id", correlationId)),
-            Some(groups("groups", withGroups, licenseType))
-          ).flatten *
-        )
+        implicit val encoder: Encoder[UserMetadata.WithGroups] = withGroupsEncoder(correlationId)
+        withGroups.asJson.deepDropNullValues
     }
   }
 
-  private def userType(fieldName: String, userMetadata: UserMetadata): Option[(String, Json)] = {
-    val typeName = userMetadata match {
-      case _: UserMetadata.WithoutGroups => "USER_WITHOUT_GROUPS"
-      case _: UserMetadata.WithGroups => "USER_WITH_GROUPS"
-    }
-    Some(fieldName -> Json.fromString(typeName))
-  }
-
-  private def correlationIdField(fieldName: String, correlationId: CorrelationId): (String, Json) = {
-    fieldName -> Json.fromString(correlationId.value.value)
-  }
-
-  private def username(fieldName: String, userMetadata: UserMetadata.WithoutGroups): (String, Json) = {
-    fieldName -> Json.fromString(userMetadata.loggedUser.id.value.value)
-  }
-
-  private def userOrigin(fieldName: String, userMetadata: UserMetadata.WithoutGroups): Option[(String, Json)] = {
-    userMetadata.userOrigin.map(origin => fieldName -> Json.fromString(origin.value.value))
-  }
-
-  private def kibana(fieldName: String, userMetadata: UserMetadata.WithoutGroups, licenseType: RorKbnLicenseType): Option[(String, Json)] = {
-    userMetadata.kibanaPolicy.map(m => fieldName -> kibanaJson(m, licenseType))
-  }
-
-  private def groups(fieldName: String, userMetadata: UserMetadata.WithGroups, licenseType: RorKbnLicenseType): (String, Json) = {
-    fieldName -> Json.arr(userMetadata.groupsMetadata.values.map(groupEntry(_, licenseType)).toSeq *)
-  }
-
-  private def groupEntry(groupMetadata: UserMetadata.WithGroups.GroupMetadata, licenseType: RorKbnLicenseType): Json = {
-    Json.obj(
-      List(
-        Some(group("group", groupMetadata)),
-        Some(groupUsername("username", groupMetadata)),
-        groupUserOrigin("ror_origin", groupMetadata),
-        groupKibana("kibana", groupMetadata, licenseType)
-      ).flatten *
-    )
-  }
-
-  private def group(fieldName: String, groupMetadata: UserMetadata.WithGroups.GroupMetadata): (String, Json) = {
-    fieldName -> groupMetadata.group.asJson
-  }
-
-  private def groupUsername(fieldName: String, groupMetadata: UserMetadata.WithGroups.GroupMetadata): (String, Json) = {
-    fieldName -> Json.fromString(groupMetadata.loggedUser.id.value.value)
-  }
-
-  private def groupUserOrigin(fieldName: String, groupMetadata: UserMetadata.WithGroups.GroupMetadata): Option[(String, Json)] = {
-    groupMetadata.userOrigin.map(origin => fieldName -> Json.fromString(origin.value.value))
-  }
-
-  private def groupKibana(fieldName: String, groupMetadata: UserMetadata.WithGroups.GroupMetadata, licenseType: RorKbnLicenseType): Option[(String, Json)] = {
-    groupMetadata.kibanaPolicy.map(m => fieldName -> kibanaJson(m, licenseType))
-  }
-
-  private def kibanaJson(kibanaPolicy: KibanaPolicy, licenseType: RorKbnLicenseType): Json = {
-    val isEnterprise = licenseType match {
-      case RorKbnLicenseType.Enterprise(_) => true
-      case _ => false
-    }
-    val isProOrEnterprise = licenseType match {
-      case RorKbnLicenseType.Pro | RorKbnLicenseType.Enterprise(_) => true
-      case _ => false
-    }
-
-    Json.obj(
-      List(
-        Some(kibanaAccess("access", kibanaPolicy)),
-        kibanaIndex("index", kibanaPolicy),
-        if (isEnterprise) kibanaTemplateIndex("template_index", kibanaPolicy) else None,
-        if (isProOrEnterprise) hiddenKibanaApps("hidden_apps", kibanaPolicy) else None,
-        kibanaApiAllowedPaths("allowed_api_paths", kibanaPolicy),
-        if (isEnterprise) kibanaGenericMetadata("metadata", kibanaPolicy) else None
-      ).flatten *
-    )
-  }
-
-  private def kibanaAccess(fieldName: String, kibanaPolicy: KibanaPolicy): (String, Json) = {
-    fieldName -> kibanaPolicy.access.asJson
-  }
-
-  private def kibanaIndex(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
-    kibanaPolicy.index.map(idx => fieldName -> Json.fromString(idx.stringify))
-  }
-
-  private def kibanaTemplateIndex(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
-    kibanaPolicy.templateIndex.map(idx => fieldName -> Json.fromString(idx.stringify))
-  }
-
-  private def hiddenKibanaApps(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
-    Option.when(kibanaPolicy.hiddenApps.nonEmpty) {
-      fieldName -> Json.arr(
-        kibanaPolicy.hiddenApps.toList.map {
-          case KibanaApp.FullNameKibanaApp(name) => Json.fromString(name.value)
-          case KibanaApp.KibanaAppRegex(regex) => Json.fromString(regex.value.value)
-        } *
+  private def withoutGroupsEncoder(correlationId: CorrelationId)
+                                  (implicit licenseType: RorKbnLicenseType): Encoder[UserMetadata.WithoutGroups] =
+    Encoder.forProduct5("type", "correlation_id", "username", "ror_origin", "kibana") { userMetadata =>
+      (
+        "USER_WITHOUT_GROUPS",
+        correlationId,
+        userMetadata.loggedUser,
+        userMetadata.userOrigin,
+        userMetadata.kibanaPolicy
       )
     }
-  }
 
-  private def kibanaApiAllowedPaths(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
-    Option.when(kibanaPolicy.allowedApiPaths.nonEmpty) {
-      fieldName -> Json.arr(kibanaPolicy.allowedApiPaths.toList.map(_.asJson) *)
+  private def withGroupsEncoder(correlationId: CorrelationId)
+                               (implicit licenseType: RorKbnLicenseType): Encoder[UserMetadata.WithGroups] =
+    Encoder.forProduct3("type", "correlation_id", "groups") { userMetadata =>
+      (
+        "USER_WITH_GROUPS",
+        correlationId,
+        userMetadata.groupsMetadata.values
+      )
     }
+
+  private implicit def groupMetadataEncoder(implicit licenseType: RorKbnLicenseType): Encoder[GroupMetadata] = {
+    Encoder
+      .forProduct4("group", "username", "ror_origin", "kibana") { groupMetadata =>
+        (
+          groupMetadata.group,
+          groupMetadata.loggedUser,
+          groupMetadata.userOrigin,
+          groupMetadata.kibanaPolicy
+        )
+      }
   }
 
-  private def kibanaGenericMetadata(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
-    kibanaPolicy.genericMetadata.map(json => fieldName -> jsonRepresentationToCirceJson(json))
+  private implicit def kibanaPolicyEncoder(implicit licenseType: RorKbnLicenseType): Encoder[KibanaPolicy] =
+    Encoder
+      .forProduct6("access", "index", "template_index", "hidden_apps", "allowed_api_paths", "metadata") { policy =>
+        (
+          policy.access,
+          policy.index,
+          if (licenseType.isEnterprise) policy.templateIndex else None,
+          if (licenseType.isProOrEnterprise) NonEmptyList.fromList(policy.hiddenApps.toList) else None,
+          NonEmptyList.fromList(policy.allowedApiPaths.toList),
+          if (licenseType.isEnterprise) policy.genericMetadata else None
+        )
+      }
+
+  private implicit lazy val correlationIdEncoder: Encoder[CorrelationId] = Encoder.encodeString.contramap(_.value.value)
+
+  private implicit lazy val loggedUserEncoder: Encoder[LoggedUser] = Encoder.encodeString.contramap(_.id.value.value)
+
+  private implicit lazy val userOriginEncoder: Encoder[UserOrigin] = Encoder.encodeString.contramap(_.value.value)
+
+  private implicit lazy val kibanaIndexNameEncoder: Encoder[KibanaIndexName] = Encoder.encodeString.contramap(_.stringify)
+
+  private implicit lazy val kibanaAppEncoder: Encoder[KibanaApp] = Encoder.encodeString.contramap {
+    case KibanaApp.FullNameKibanaApp(name) => name.value
+    case KibanaApp.KibanaAppRegex(regex) => regex.value.value
   }
 
-  private def jsonRepresentationToCirceJson(json: JsonRepresentation): Json = {
-    json match {
+  private implicit lazy val jsonRepresentationEncoder: Encoder[JsonRepresentation] = Encoder.instance { json =>
+    def convert(j: JsonRepresentation): Json = j match {
       case JsonTree.Object(fields) =>
-        Json.obj(fields.view.mapValues(jsonRepresentationToCirceJson).toSeq *)
+        Json.obj(fields.view.mapValues(convert).toSeq *)
       case JsonTree.Array(elements) =>
-        Json.arr(elements.map(jsonRepresentationToCirceJson) *)
+        Json.arr(elements.map(convert) *)
       case JsonTree.Value(value) =>
         value match {
           case JsonValue.StringValue(v) => Json.fromString(v)
@@ -198,9 +145,14 @@ private object UserMetadataValue {
           case JsonValue.NullValue => Json.Null
         }
     }
+
+    convert(json)
   }
 
-  private implicit val kibanaAccessEncoder: Encoder[KibanaAccess] = Encoder.encodeString.contramap {
+  private implicit lazy val groupEncoder: Encoder[Group] =
+    Encoder.forProduct2("id", "name")(g => (g.id.value.value, g.name.value.value))
+
+  private implicit lazy val kibanaAccessEncoder: Encoder[KibanaAccess] = Encoder.encodeString.contramap {
     case KibanaAccess.RO => "ro"
     case KibanaAccess.ROStrict => "ro_strict"
     case KibanaAccess.RW => "rw"
@@ -209,7 +161,7 @@ private object UserMetadataValue {
     case KibanaAccess.Unrestricted => "unrestricted"
   }
 
-  private implicit val allowedHttpMethodEncoder: Encoder[AllowedHttpMethod] = Encoder.encodeString.contramap {
+  private implicit lazy val allowedHttpMethodEncoder: Encoder[AllowedHttpMethod] = Encoder.encodeString.contramap {
     case AllowedHttpMethod.Any => "ANY"
     case AllowedHttpMethod.Specific(httpMethod) =>
       httpMethod match {
@@ -220,19 +172,8 @@ private object UserMetadataValue {
       }
   }
 
-  private implicit val kibanaAllowedApiPathEncoder: Encoder[KibanaAllowedApiPath] = Encoder.instance { path =>
-    Json.obj(
-      "http_method" -> path.httpMethod.asJson,
-      "path_regex" -> Json.fromString(path.pathRegex.pattern.pattern())
-    )
-  }
-
-  private implicit val groupEncoder: Encoder[Group] = Encoder.instance { group =>
-    Json.obj(
-      "id" -> Json.fromString(group.id.value.value),
-      "name" -> Json.fromString(group.name.value.value)
-    )
-  }
+  private implicit lazy val kibanaAllowedApiPathEncoder: Encoder[KibanaAllowedApiPath] =
+    Encoder.forProduct2("http_method", "path_regex")(k => (k.httpMethod, k.pathRegex.pattern.pattern()))
 }
 
 // To be removed in RORDEV-1924
@@ -242,7 +183,7 @@ private object CurrentUserMetadataValue {
            correlationId: CorrelationId,
            currentGroupId: Option[GroupId]): Json = {
     implicit val encoder: Encoder[UserMetadata] = userMetadataEncoder(correlationId, currentGroupId)
-    userMetadata.asJson.dropNullValues
+    userMetadata.asJson.deepDropNullValues
   }
 
   private def userMetadataEncoder(correlationId: CorrelationId,
@@ -300,6 +241,7 @@ private object CurrentUserMetadataValue {
           case JsonValue.NullValue => Json.Null
         }
     }
+
     convert(json)
   }
 
@@ -331,7 +273,7 @@ private object CurrentUserMetadataValue {
       }
   }
 
-  extension(userMetadata: UserMetadata) {
+  extension (userMetadata: UserMetadata) {
 
     private def loggedUser: LoggedUser = {
       userMetadata match {
@@ -402,5 +344,4 @@ private object CurrentUserMetadataValue {
       }
     }
   }
-
 }

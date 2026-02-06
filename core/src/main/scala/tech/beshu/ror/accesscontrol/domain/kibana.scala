@@ -89,4 +89,15 @@ object RorKbnLicenseType {
       case _ => Left(())
     }
   }
+
+  extension (licenseType: RorKbnLicenseType) {
+    def isEnterprise: Boolean = licenseType match {
+      case RorKbnLicenseType.Enterprise(_) => true
+      case _ => false
+    }
+    def isProOrEnterprise: Boolean = licenseType match {
+      case RorKbnLicenseType.Pro | RorKbnLicenseType.Enterprise(_) => true
+      case _ => false
+    }
+  }
 }

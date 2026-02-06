@@ -36,11 +36,11 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
     "filter kibana fields correctly based on license type" when {
       "Free license removes all premium fields" in {
         val metadata = createUserMetadataWithAllFields()
-        val result = MetadataResponse.from(
-          UserMetadataApiVersion.V2(RorKbnLicenseType.Free),
-          metadata,
-          None,
-          CorrelationId(nes("test-id"))
+        val result = MetadataResponse.fromAsCirceJson(
+          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Free),
+          userMetadata = metadata,
+          currentGroupId = None,
+          correlationId = CorrelationId(nes("test-id"))
         )
 
         result shouldBe circeJsonFrom(
@@ -57,11 +57,11 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       }
       "Pro license includes hidden_apps but not enterprise-only fields" in {
         val metadata = createUserMetadataWithAllFields()
-        val result = MetadataResponse.from(
-          UserMetadataApiVersion.V2(RorKbnLicenseType.Pro),
-          metadata,
-          None,
-          CorrelationId(nes("test-id"))
+        val result = MetadataResponse.fromAsCirceJson(
+          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Pro),
+          userMetadata = metadata,
+          currentGroupId = None,
+          correlationId = CorrelationId(nes("test-id"))
         )
 
         result shouldBe circeJsonFrom(
@@ -79,11 +79,11 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       }
       "Enterprise license with multitenancy disabled includes all fields" in {
         val metadata = createUserMetadataWithAllFields()
-        val result = MetadataResponse.from(
-          UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false)),
-          metadata,
-          None,
-          CorrelationId(nes("test-id"))
+        val result = MetadataResponse.fromAsCirceJson(
+          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false)),
+          userMetadata = metadata,
+          currentGroupId = None,
+          correlationId = CorrelationId(nes("test-id"))
         )
 
         result shouldBe circeJsonFrom(
@@ -105,11 +105,11 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       }
       "Enterprise license with multitenancy enabled returns USER_WITH_GROUPS" in {
         val metadata = createUserMetadataWithGroups()
-        val result = MetadataResponse.from(
-          UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true)),
-          metadata,
-          None,
-          CorrelationId(nes("test-id"))
+        val result = MetadataResponse.fromAsCirceJson(
+          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true)),
+          userMetadata = metadata,
+          currentGroupId = None,
+          correlationId = CorrelationId(nes("test-id"))
         )
 
         result shouldBe circeJsonFrom(
