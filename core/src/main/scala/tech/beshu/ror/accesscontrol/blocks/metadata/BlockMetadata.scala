@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 final case class BlockMetadata private(loggedUser: Option[LoggedUser],
                                        currentGroupId: Option[GroupId],
                                        availableGroups: UniqueList[Group],
-                                       kibanaMetadata: Option[KibanaMetadata],
+                                       kibanaPolicy: Option[KibanaPolicy],
                                        userOrigin: Option[UserOrigin],
                                        jwtToken: Option[Jwt.Payload]) {
 
@@ -52,34 +52,34 @@ final case class BlockMetadata private(loggedUser: Option[LoggedUser],
   )
 
   def withKibanaIndex(index: KibanaIndexName): BlockMetadata = {
-    this.copy(kibanaMetadata = Some(currentKibanaMetadataOrDefault.copy(index = Some(index))))
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(index = Some(index))))
   }
 
   def withKibanaTemplateIndex(index: KibanaIndexName): BlockMetadata = {
-    this.copy(kibanaMetadata = Some(currentKibanaMetadataOrDefault.copy(templateIndex = Some(index))))
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(templateIndex = Some(index))))
   }
 
   def addHiddenKibanaApp(app: KibanaApp): BlockMetadata = {
-    val currentKibanaMetadata = currentKibanaMetadataOrDefault
-    this.copy(kibanaMetadata = Some(currentKibanaMetadataOrDefault.copy(hiddenApps = currentKibanaMetadata.hiddenApps + app)))
+    val currentKibanaPolicy = currentKibanaPolicyOrDefault
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(hiddenApps = currentKibanaPolicy.hiddenApps + app)))
   }
 
   def withHiddenKibanaApps(apps: UniqueNonEmptyList[KibanaApp]): BlockMetadata = {
-    val currentKibanaMetadata = currentKibanaMetadataOrDefault
-    this.copy(kibanaMetadata = Some(currentKibanaMetadataOrDefault.copy(hiddenApps = currentKibanaMetadata.hiddenApps ++ apps)))
+    val currentKibanaPolicy = currentKibanaPolicyOrDefault
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(hiddenApps = currentKibanaPolicy.hiddenApps ++ apps)))
   }
 
   def withAllowedKibanaApiPaths(paths: UniqueNonEmptyList[KibanaAllowedApiPath]): BlockMetadata = {
-    val currentKibanaMetadata = currentKibanaMetadataOrDefault
-    this.copy(kibanaMetadata = Some(currentKibanaMetadataOrDefault.copy(allowedApiPaths = currentKibanaMetadata.allowedApiPaths ++ paths)))
+    val currentKibanaPolicy = currentKibanaPolicyOrDefault
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(allowedApiPaths = currentKibanaPolicy.allowedApiPaths ++ paths)))
   }
 
   def withKibanaAccess(access: KibanaAccess): BlockMetadata = {
-    this.copy(kibanaMetadata = Some(currentKibanaMetadataOrDefault.copy(access = access)))
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(access = access)))
   }
 
-  def withKibanaMetadata(json: JsonRepresentation): BlockMetadata = {
-    this.copy(kibanaMetadata = Some(currentKibanaMetadataOrDefault.copy(genericMetadata = Some(json))))
+  def withKibanaGenericMetadata(json: JsonRepresentation): BlockMetadata = {
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(genericMetadata = Some(json))))
   }
 
   def withUserOrigin(origin: UserOrigin): BlockMetadata = this.copy(userOrigin = Some(origin))
@@ -88,7 +88,7 @@ final case class BlockMetadata private(loggedUser: Option[LoggedUser],
 
   def clearCurrentGroup: BlockMetadata = this.copy(currentGroupId = None)
 
-  private def currentKibanaMetadataOrDefault = kibanaMetadata.getOrElse(KibanaMetadata.default)
+  private def currentKibanaPolicyOrDefault = kibanaPolicy.getOrElse(KibanaPolicy.default)
 }
 
 object BlockMetadata {
@@ -104,7 +104,7 @@ object BlockMetadata {
     loggedUser = None,
     currentGroupId = None,
     availableGroups = UniqueList.empty,
-    kibanaMetadata = None,
+    kibanaPolicy = None,
     userOrigin = None,
     jwtToken = None
   )

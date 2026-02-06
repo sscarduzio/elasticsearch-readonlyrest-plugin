@@ -212,8 +212,8 @@ object ScalaOps {
 
     def oneLiner: String = value.stripMargin.replaceAll("\n", "")
 
-    def addTrailingSlashIfNotPresent(): String = {
-      if (value.endsWith("/")) value else s"$value/"
+    def removeTrailingSlashIfPresent(): String = {
+      if (value.endsWith("/")) value.dropRight(1) else value
     }
 
   extension (duration: PositiveFiniteDuration)

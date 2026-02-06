@@ -22,7 +22,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaMetadata, MetadataResponse, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.MetadataOrigin
+import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy, MetadataResponse, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.{Json as DomainJson, *}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
@@ -155,7 +156,7 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
     UserMetadata.WithoutGroups(
       loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
       userOrigin = Some(UserOrigin(nes("jwt-issuer"))),
-      kibanaMetadata = Some(KibanaMetadata(
+      kibanaPolicy = Some(KibanaPolicy(
         access = KibanaAccess.Admin,
         index = Some(kibanaIndexName(nes(".kibana"))),
         templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
@@ -163,8 +164,10 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
         allowedApiPaths = Set.empty,
         genericMetadata = Some(DomainJson.JsonTree.Object(Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))))
       )),
-      block = mock[Block],
-      blockContext = dummyCtx
+      metadataOrigin = MetadataOrigin(
+        block = mock[Block],
+        blockContext = dummyCtx
+      )
     )
   }
 
@@ -173,7 +176,7 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       group = group("admins", "Administrators"),
       loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
       userOrigin = Some(UserOrigin(nes("jwt-issuer"))),
-      kibanaMetadata = Some(KibanaMetadata(
+      kibanaPolicy = Some(KibanaPolicy(
         access = KibanaAccess.Admin,
         index = Some(kibanaIndexName(nes(".kibana"))),
         templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
@@ -181,15 +184,17 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
         allowedApiPaths = Set.empty,
         genericMetadata = Some(DomainJson.JsonTree.Object(Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))))
       )),
-      block = mock[Block],
-      blockContext = dummyCtx
+      metadataOrigin = MetadataOrigin(
+        block = mock[Block],
+        blockContext = dummyCtx
+      )
     )
 
     val group2 = UserMetadata.WithGroups.GroupMetadata(
       group = group("users", "Users"),
       loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
       userOrigin = None,
-      kibanaMetadata = Some(KibanaMetadata(
+      kibanaPolicy = Some(KibanaPolicy(
         access = KibanaAccess.Admin,
         index = Some(kibanaIndexName(nes(".kibana_users"))),
         templateIndex = Some(kibanaIndexName(nes(".kibana_users_template"))),
@@ -197,8 +202,10 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
         allowedApiPaths = Set.empty,
         genericMetadata = None
       )),
-      block = mock[Block],
-      blockContext = dummyCtx
+      metadataOrigin = MetadataOrigin(
+        block = mock[Block],
+        blockContext = dummyCtx
+      )
     )
 
     UserMetadata.WithGroups(

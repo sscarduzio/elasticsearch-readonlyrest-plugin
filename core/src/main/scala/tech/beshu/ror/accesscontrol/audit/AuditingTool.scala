@@ -76,7 +76,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
           requestContext = toAuditRequestContext(
             requestContext = allow.requestContext,
             loggedUser = allow.userMetadata match {
-              case UserMetadata.WithoutGroups(loggedUser, _, _, _, _) => Some(loggedUser)
+              case UserMetadata.WithoutGroups(loggedUser, _, _, _) => Some(loggedUser)
               case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.headOption.map(_.loggedUser)
             },
             auditEnvironmentContext = auditEnvironmentContext,
@@ -86,8 +86,8 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
           ),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
           reason = allow.userMetadata match {
-            case UserMetadata.WithoutGroups(_, _, _, block, _) => block.show
-            case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.map(_.block).toList.show
+            case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) => metadataOrigin.block.show
+            case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.map(_.metadataOrigin.block).toList.show
           }
         )
       case forbiddenBy: ResponseContext.ForbiddenBy[B] =>

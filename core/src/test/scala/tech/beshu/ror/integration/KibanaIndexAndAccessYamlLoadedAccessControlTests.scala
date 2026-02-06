@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.metadata.{KibanaMetadata, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.metadata.{KibanaPolicy, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
@@ -110,7 +110,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
               indices = Set(requestedIndex(".readonlyrest")),
-              kibanaMetadata = Some(KibanaMetadata.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.Admin,
                 index = Some(kibanaIndexName(".kibana_template")),
               )),
@@ -134,7 +134,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaMetadata = Some(KibanaMetadata.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.Admin,
                 index = Some(kibanaIndexName(".kibana_template")),
               )),
@@ -160,7 +160,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
               loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
               currentGroup = Some(GroupId("RW_ror_custom")),
               availableGroups = UniqueList.of(group("RW_ror_custom")),
-              kibanaMetadata = Some(KibanaMetadata.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.RW,
                 index = Some(kibanaIndexName(".kibana_ror_custom")),
               )),
@@ -184,7 +184,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaMetadata = Some(KibanaMetadata.default.copy(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(
                 access = KibanaAccess.Admin,
                 index = Some(kibanaIndexName(".kibana_template")),
               )),
@@ -215,7 +215,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             currentGroup = Some(GroupId("RW_ror_custom")),
             availableGroups = UniqueList.of(group("RW_ror_custom")),
             indices = Set(requestedIndex(".kibana_ror_custom")),
-            kibanaMetadata = Some(KibanaMetadata.default.copy(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = KibanaAccess.RW,
               index = Some(kibanaIndexName(".kibana_ror_custom")),
             )),
@@ -235,10 +235,10 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           metadata.groupsMetadata.keys.toList should be(GroupId("Administrators") :: GroupId("Infosec") :: Nil)
 
           val adminMetadata = metadata.groupsMetadata(GroupId("Administrators"))
-          adminMetadata.block.name should be(Block.Name("ADMIN_GRP"))
+          adminMetadata.metadataOrigin.block.name should be(Block.Name("ADMIN_GRP"))
           adminMetadata.loggedUser should be(DirectlyLoggedUser(User.Id("admin")))
           adminMetadata.userOrigin should be(None)
-          adminMetadata.kibanaMetadata should be(Some(KibanaMetadata(
+          adminMetadata.kibanaPolicy should be(Some(KibanaPolicy(
             access = KibanaAccess.Admin,
             index = Some(kibanaIndexName(".kibana_admins")),
             templateIndex = None,
@@ -252,10 +252,10 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
           )))
 
           val infosecMetadata = metadata.groupsMetadata(GroupId("Infosec"))
-          infosecMetadata.block.name should be(Block.Name("Infosec"))
+          infosecMetadata.metadataOrigin.block.name should be(Block.Name("Infosec"))
           infosecMetadata.loggedUser should be(DirectlyLoggedUser(User.Id("admin")))
           infosecMetadata.userOrigin should be(None)
-          infosecMetadata.kibanaMetadata should be(Some(KibanaMetadata(
+          infosecMetadata.kibanaPolicy should be(Some(KibanaPolicy(
             access = KibanaAccess.RW,
             index = Some(kibanaIndexName(".kibana_infosec")),
             templateIndex = None,
@@ -287,7 +287,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             currentGroup = Some(GroupId("Administrators")),
             availableGroups = UniqueList.of(group("Administrators")),
             indices = Set(requestedIndex(".kibana_admins")),
-            kibanaMetadata = Some(KibanaMetadata.default.copy(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = KibanaAccess.Admin,
               index = Some(kibanaIndexName(".kibana_admins")),
               hiddenApps = Set(

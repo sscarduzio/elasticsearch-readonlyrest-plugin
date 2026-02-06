@@ -20,14 +20,14 @@ import tech.beshu.ror.accesscontrol.domain.Json.JsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaAllowedApiPath, KibanaApp, KibanaIndexName}
 import tech.beshu.ror.syntax.Set
 
-final case class KibanaMetadata(access: KibanaAccess,
-                                index: Option[KibanaIndexName],
-                                templateIndex: Option[KibanaIndexName],
-                                hiddenApps: Set[KibanaApp],
-                                allowedApiPaths: Set[KibanaAllowedApiPath],
-                                genericMetadata: Option[JsonRepresentation])
-object KibanaMetadata {
-  def default: KibanaMetadata = KibanaMetadata(
+final case class KibanaPolicy(access: KibanaAccess,
+                              index: Option[KibanaIndexName],
+                              templateIndex: Option[KibanaIndexName],
+                              hiddenApps: Set[KibanaApp],
+                              allowedApiPaths: Set[KibanaAllowedApiPath],
+                              genericMetadata: Option[JsonRepresentation])
+object KibanaPolicy {
+  def default: KibanaPolicy = KibanaPolicy(
     access = KibanaAccess.Unrestricted,
     index = None,
     templateIndex = None,

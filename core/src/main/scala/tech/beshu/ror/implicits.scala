@@ -219,10 +219,10 @@ trait LogsShowInstances
         s"""${constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${constants.ANSI_RESET}"""
       case allow: Allowed[B] =>
         val (users, blocks) = allow.userMetadata match {
-          case UserMetadata.WithoutGroups(user, _, _, block, _) =>
-            (user :: Nil, block :: Nil)
+          case UserMetadata.WithoutGroups(user, _, _, metadataOrigin) =>
+            (user :: Nil, metadataOrigin.block :: Nil)
           case UserMetadata.WithGroups(groupsMetadata) =>
-            groupsMetadata.values.map(m => (m.loggedUser, m.block)).toList.unzip
+            groupsMetadata.values.map(m => (m.loggedUser, m.metadataOrigin.block)).toList.unzip
         }
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(users, allow.history, debugEnabled)
         s"""${constants.ANSI_CYAN}ALLOWED by ${blocks.show} req=${allow.requestContext.show}${constants.ANSI_RESET}"""
@@ -296,7 +296,7 @@ trait LogsShowInstances
         showOption("group", bc.blockMetadata.currentGroupId) ::
         showNamedIterable("av_groups", bc.blockMetadata.availableGroups.toList.map(_.id)) ::
         showNamedIterable("indices", bc.indices) :: // todo: for sure it's ok?
-        showOption("kibana_idx", bc.blockMetadata.kibanaMetadata.flatMap(_.index)) ::
+        showOption("kibana_idx", bc.blockMetadata.kibanaPolicy.flatMap(_.index)) ::
         showOption("fls", bc.fieldLevelSecurity) ::
         showNamedIterable("response_hdr", bc.responseHeaders) ::
         showNamedIterable("repositories", bc.repositories) ::

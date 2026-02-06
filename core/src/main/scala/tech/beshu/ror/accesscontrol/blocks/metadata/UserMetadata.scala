@@ -31,9 +31,8 @@ object UserMetadata {
 
   final case class WithoutGroups(loggedUser: LoggedUser,
                                  userOrigin: Option[UserOrigin],
-                                 kibanaMetadata: Option[KibanaMetadata],
-                                 block: Block,
-                                 blockContext: UserMetadataRequestBlockContext)
+                                 kibanaPolicy: Option[KibanaPolicy],
+                                 metadataOrigin: MetadataOrigin)
     extends UserMetadata
 
   final case class WithGroups private(groupsMetadata: ListMap[GroupId, GroupMetadata])
@@ -48,9 +47,9 @@ object UserMetadata {
     final case class GroupMetadata(group: Group,
                                    loggedUser: LoggedUser,
                                    userOrigin: Option[UserOrigin],
-                                   kibanaMetadata: Option[KibanaMetadata],
-                                   block: Block,
-                                   blockContext: UserMetadataRequestBlockContext)
+                                   kibanaPolicy: Option[KibanaPolicy],
+                                   // todo: try to get rid of the metadata origin in the future from this place
+                                   metadataOrigin: MetadataOrigin)
 
     extension (withGroups: WithGroups) {
       def excludeOtherThanAllowTypeGroups(): Option[WithGroups] = {
@@ -58,12 +57,13 @@ object UserMetadata {
           .fromList {
             withGroups
               .groupsMetadata.values
-              .filter(_.block.policy == Policy.Allow)
+              .filter(_.metadataOrigin.block.policy == Policy.Allow)
               .toList
           }
           .map(WithGroups.apply)
-
       }
     }
   }
+
+  final case class MetadataOrigin(block: Block, blockContext: UserMetadataRequestBlockContext)
 }

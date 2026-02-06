@@ -50,7 +50,7 @@ class KibanaAccessRule(override val settings: Settings)
   }
 
   private def kibanaIndexFrom(blockContext: BlockContext): KibanaIndexName = {
-    blockContext.blockMetadata.kibanaMetadata.flatMap(_.index).getOrElse(KibanaIndexName.default)
+    blockContext.blockMetadata.kibanaPolicy.flatMap(_.index).getOrElse(KibanaIndexName.default)
   }
 }
 

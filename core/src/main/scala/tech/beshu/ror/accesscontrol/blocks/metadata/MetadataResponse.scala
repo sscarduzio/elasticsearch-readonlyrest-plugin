@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
+import cats.data.NonEmptyList
 import io.circe.syntax.*
 import io.circe.{Encoder, Json}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -24,16 +25,24 @@ import tech.beshu.ror.accesscontrol.domain.Json.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod
 import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMethod.HttpMethod
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
+import tech.beshu.ror.utils.CirceOps.toJava
 
 object MetadataResponse {
+
+  type JavaJsonObject = java.util.Map[String, Object]
 
   def from(version: UserMetadataApiVersion,
            userMetadata: UserMetadata,
            currentGroupId: Option[GroupId],
-           correlationId: CorrelationId): Json = {
-    version match {
+           correlationId: CorrelationId): JavaJsonObject = {
+    val json = version match {
       case UserMetadataApiVersion.V1 => CurrentUserMetadataValue.from(userMetadata, correlationId, currentGroupId)
       case UserMetadataApiVersion.V2(licenseType) => UserMetadataValue.from(userMetadata, correlationId, licenseType)
+    }
+    if (json.isObject) {
+      json.toJava.asInstanceOf[JavaJsonObject]
+    } else {
+      throw new IllegalStateException("Response metadata must be a JSON object.")
     }
   }
 }
@@ -86,7 +95,7 @@ private object UserMetadataValue {
   }
 
   private def kibana(fieldName: String, userMetadata: UserMetadata.WithoutGroups, licenseType: RorKbnLicenseType): Option[(String, Json)] = {
-    userMetadata.kibanaMetadata.map(m => fieldName -> kibanaJson(m, licenseType))
+    userMetadata.kibanaPolicy.map(m => fieldName -> kibanaJson(m, licenseType))
   }
 
   private def groups(fieldName: String, userMetadata: UserMetadata.WithGroups, licenseType: RorKbnLicenseType): (String, Json) = {
@@ -117,10 +126,10 @@ private object UserMetadataValue {
   }
 
   private def groupKibana(fieldName: String, groupMetadata: UserMetadata.WithGroups.GroupMetadata, licenseType: RorKbnLicenseType): Option[(String, Json)] = {
-    groupMetadata.kibanaMetadata.map(m => fieldName -> kibanaJson(m, licenseType))
+    groupMetadata.kibanaPolicy.map(m => fieldName -> kibanaJson(m, licenseType))
   }
 
-  private def kibanaJson(metadata: KibanaMetadata, licenseType: RorKbnLicenseType): Json = {
+  private def kibanaJson(kibanaPolicy: KibanaPolicy, licenseType: RorKbnLicenseType): Json = {
     val isEnterprise = licenseType match {
       case RorKbnLicenseType.Enterprise(_) => true
       case _ => false
@@ -132,32 +141,32 @@ private object UserMetadataValue {
 
     Json.obj(
       List(
-        Some(kibanaAccess("access", metadata)),
-        kibanaIndex("index", metadata),
-        if (isEnterprise) kibanaTemplateIndex("template_index", metadata) else None,
-        if (isProOrEnterprise) hiddenKibanaApps("hidden_apps", metadata) else None,
-        kibanaApiAllowedPaths("allowed_api_paths", metadata),
-        if (isEnterprise) kibanaGenericMetadata("metadata", metadata) else None
+        Some(kibanaAccess("access", kibanaPolicy)),
+        kibanaIndex("index", kibanaPolicy),
+        if (isEnterprise) kibanaTemplateIndex("template_index", kibanaPolicy) else None,
+        if (isProOrEnterprise) hiddenKibanaApps("hidden_apps", kibanaPolicy) else None,
+        kibanaApiAllowedPaths("allowed_api_paths", kibanaPolicy),
+        if (isEnterprise) kibanaGenericMetadata("metadata", kibanaPolicy) else None
       ).flatten *
     )
   }
 
-  private def kibanaAccess(fieldName: String, metadata: KibanaMetadata): (String, Json) = {
-    fieldName -> metadata.access.asJson
+  private def kibanaAccess(fieldName: String, kibanaPolicy: KibanaPolicy): (String, Json) = {
+    fieldName -> kibanaPolicy.access.asJson
   }
 
-  private def kibanaIndex(fieldName: String, metadata: KibanaMetadata): Option[(String, Json)] = {
-    metadata.index.map(idx => fieldName -> Json.fromString(idx.stringify))
+  private def kibanaIndex(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
+    kibanaPolicy.index.map(idx => fieldName -> Json.fromString(idx.stringify))
   }
 
-  private def kibanaTemplateIndex(fieldName: String, metadata: KibanaMetadata): Option[(String, Json)] = {
-    metadata.templateIndex.map(idx => fieldName -> Json.fromString(idx.stringify))
+  private def kibanaTemplateIndex(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
+    kibanaPolicy.templateIndex.map(idx => fieldName -> Json.fromString(idx.stringify))
   }
 
-  private def hiddenKibanaApps(fieldName: String, metadata: KibanaMetadata): Option[(String, Json)] = {
-    Option.when(metadata.hiddenApps.nonEmpty) {
+  private def hiddenKibanaApps(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
+    Option.when(kibanaPolicy.hiddenApps.nonEmpty) {
       fieldName -> Json.arr(
-        metadata.hiddenApps.toList.map {
+        kibanaPolicy.hiddenApps.toList.map {
           case KibanaApp.FullNameKibanaApp(name) => Json.fromString(name.value)
           case KibanaApp.KibanaAppRegex(regex) => Json.fromString(regex.value.value)
         } *
@@ -165,14 +174,14 @@ private object UserMetadataValue {
     }
   }
 
-  private def kibanaApiAllowedPaths(fieldName: String, metadata: KibanaMetadata): Option[(String, Json)] = {
-    Option.when(metadata.allowedApiPaths.nonEmpty) {
-      fieldName -> Json.arr(metadata.allowedApiPaths.toList.map(_.asJson) *)
+  private def kibanaApiAllowedPaths(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
+    Option.when(kibanaPolicy.allowedApiPaths.nonEmpty) {
+      fieldName -> Json.arr(kibanaPolicy.allowedApiPaths.toList.map(_.asJson) *)
     }
   }
 
-  private def kibanaGenericMetadata(fieldName: String, metadata: KibanaMetadata): Option[(String, Json)] = {
-    metadata.genericMetadata.map(json => fieldName -> jsonRepresentationToCirceJson(json))
+  private def kibanaGenericMetadata(fieldName: String, kibanaPolicy: KibanaPolicy): Option[(String, Json)] = {
+    kibanaPolicy.genericMetadata.map(json => fieldName -> jsonRepresentationToCirceJson(json))
   }
 
   private def jsonRepresentationToCirceJson(json: JsonRepresentation): Json = {
@@ -232,83 +241,57 @@ private object CurrentUserMetadataValue {
   def from(userMetadata: UserMetadata,
            correlationId: CorrelationId,
            currentGroupId: Option[GroupId]): Json = {
-    Json.obj(
-      List(
-        Some("x-ror-correlation-id" -> Json.fromString(correlationId.value.value)),
-        loggedUser("x-ror-username", userMetadata),
-        availableGroups("x-ror-available-groups", userMetadata),
-        currentGroup("x-ror-current-group", userMetadata, currentGroupId),
-        kibanaAccess("x-ror-kibana_access", userMetadata, currentGroupId),
-        kibanaIndex("x-ror-kibana_index", userMetadata, currentGroupId),
-        kibanaTemplateIndex("x-ror-kibana_template_index", userMetadata, currentGroupId),
-        hiddenKibanaApps("x-ror-kibana-hidden-apps", userMetadata, currentGroupId),
-        kibanaApiAllowedPaths("x-ror-kibana-allowed-api-paths", userMetadata, currentGroupId),
-        kibanaGenericMetadata("x-ror-kibana-metadata", userMetadata, currentGroupId),
-        userOrigin("x-ror-origin", userMetadata)
-      ).flatten *
-    )
+    implicit val encoder: Encoder[UserMetadata] = userMetadataEncoder(correlationId, currentGroupId)
+    userMetadata.asJson.dropNullValues
   }
 
-  private def userOrigin(fieldName: String, userMetadata: UserMetadata): Option[(String, Json)] = {
-    val origin = userMetadata match {
-      case UserMetadata.WithoutGroups(_, userOrigin, _, _, _) => userOrigin
-      case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.userOrigin
+  private def userMetadataEncoder(correlationId: CorrelationId,
+                                  currentGroupId: Option[GroupId]): Encoder[UserMetadata] = Encoder
+    .forProduct11(
+      "x-ror-correlation-id",
+      "x-ror-username",
+      "x-ror-available-groups",
+      "x-ror-current-group",
+      "x-ror-kibana_access",
+      "x-ror-kibana_index",
+      "x-ror-kibana_template_index",
+      "x-ror-kibana-hidden-apps",
+      "x-ror-kibana-allowed-api-paths",
+      "x-ror-kibana-metadata",
+      "x-ror-origin"
+    ) { userMetadata =>
+      (
+        correlationId,
+        userMetadata.loggedUser,
+        userMetadata.availableGroups,
+        userMetadata.currentGroupBy(currentGroupId),
+        userMetadata.kibanaAccessBy(currentGroupId),
+        userMetadata.kibanaIndexBy(currentGroupId),
+        userMetadata.kibanaTemplateIndexBy(currentGroupId),
+        userMetadata.hiddenAppsBy(currentGroupId),
+        userMetadata.allowedApiPathsBy(currentGroupId),
+        userMetadata.genericKibanaMetadataBy(currentGroupId),
+        userMetadata.userOrigin
+      )
     }
-    origin.map(uo => fieldName -> Json.fromString(uo.value.value))
+
+  private implicit lazy val correlationIdEncoder: Encoder[CorrelationId] = Encoder.encodeString.contramap(_.value.value)
+
+  private implicit lazy val loggedUserEncoder: Encoder[LoggedUser] = Encoder.encodeString.contramap(_.id.value.value)
+
+  private implicit lazy val kibanaIndexNameEncoder: Encoder[KibanaIndexName] = Encoder.encodeString.contramap(_.stringify)
+
+  private implicit lazy val kibanaAppEncoder: Encoder[KibanaApp] = Encoder.encodeString.contramap {
+    case KibanaApp.FullNameKibanaApp(name) => name.value
+    case KibanaApp.KibanaAppRegex(regex) => regex.value.value
   }
 
-  private def kibanaAccess(fieldName: String,
-                           userMetadata: UserMetadata,
-                           currentGroupId: Option[GroupId]): Option[(String, Json)] = {
-    userMetadata
-      .kibanaRelatedMetadata(currentGroupId)
-      .map { kibanaMetadata => fieldName -> kibanaMetadata.access.asJson }
-  }
-
-  private def hiddenKibanaApps(fieldName: String,
-                               userMetadata: UserMetadata,
-                               currentGroupId: Option[GroupId]): Option[(String, Json)] = {
-    userMetadata
-      .kibanaRelatedMetadata(currentGroupId)
-      .flatMap { kibanaMetadata =>
-        Option.when(kibanaMetadata.hiddenApps.nonEmpty) {
-          fieldName -> Json.arr(
-            kibanaMetadata.hiddenApps.toList.map {
-              case KibanaApp.FullNameKibanaApp(name) => Json.fromString(name.value)
-              case KibanaApp.KibanaAppRegex(regex) => Json.fromString(regex.value.value)
-            } *
-          )
-        }
-      }
-  }
-
-  private def kibanaApiAllowedPaths(fieldName: String,
-                                    userMetadata: UserMetadata,
-                                    currentGroupId: Option[GroupId]): Option[(String, Json)] = {
-    userMetadata
-      .kibanaRelatedMetadata(currentGroupId)
-      .flatMap { kibanaMetadata =>
-        Option.when(kibanaMetadata.allowedApiPaths.nonEmpty) {
-          fieldName -> Json.arr(kibanaMetadata.allowedApiPaths.toList.map(_.asJson) *)
-        }
-      }
-  }
-
-  private def kibanaGenericMetadata(fieldName: String,
-                                    userMetadata: UserMetadata,
-                                    currentGroupId: Option[GroupId]): Option[(String, Json)] = {
-    userMetadata
-      .kibanaRelatedMetadata(currentGroupId)
-      .flatMap(_.genericMetadata)
-      .map { genericMetadata => fieldName -> jsonRepresentationToCirceJson(genericMetadata) }
-  }
-
-  private def jsonRepresentationToCirceJson(json: JsonRepresentation): Json = {
-    json match {
+  private implicit lazy val jsonRepresentationEncoder: Encoder[JsonRepresentation] = Encoder.instance { json =>
+    def convert(j: JsonRepresentation): Json = j match {
       case JsonTree.Object(fields) =>
-        Json.obj(fields.view.mapValues(jsonRepresentationToCirceJson).toSeq *)
+        Json.obj(fields.view.mapValues(convert).toSeq *)
       case JsonTree.Array(elements) =>
-        Json.arr(elements.map(jsonRepresentationToCirceJson) *)
+        Json.arr(elements.map(convert) *)
       case JsonTree.Value(value) =>
         value match {
           case JsonValue.StringValue(v) => Json.fromString(v)
@@ -317,62 +300,18 @@ private object CurrentUserMetadataValue {
           case JsonValue.NullValue => Json.Null
         }
     }
+    convert(json)
   }
 
-  private def loggedUser(fieldName: String, userMetadata: UserMetadata) = {
-    val user = userMetadata match {
-      case UserMetadata.WithoutGroups(loggedUser, _, _, _, _) => loggedUser
-      case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.loggedUser
-    }
-    Some(fieldName -> Json.fromString(user.id.value.value))
-  }
+  private implicit lazy val userOriginEncoder: Encoder[UserOrigin] = Encoder.encodeString.contramap(_.value.value)
 
-  private def availableGroups(fieldName: String, userMetadata: UserMetadata): Option[(String, Json)] = {
-    userMetadata match {
-      case UserMetadata.WithoutGroups(_, _, _, _, _) =>
-        None
-      case UserMetadata.WithGroups(groupsMetadata) =>
-        Option.when(groupsMetadata.nonEmpty) {
-          fieldName -> Json.arr(groupsMetadata.values.map(_.group).map(_.asJson).toSeq *)
-        }
-    }
-  }
+  private implicit lazy val groupEncoder: Encoder[Group] =
+    Encoder.forProduct2("id", "name")(g => (g.id.value.value, g.name.value.value))
 
-  private def kibanaIndex(fieldName: String,
-                          userMetadata: UserMetadata,
-                          currentGroupId: Option[GroupId]): Option[(String, Json)] = {
-    userMetadata
-      .kibanaRelatedMetadata(currentGroupId)
-      .flatMap(_.index)
-      .map { index => fieldName -> Json.fromString(index.stringify) }
-  }
+  private implicit lazy val kibanaAllowedApiPathEncoder: Encoder[KibanaAllowedApiPath] =
+    Encoder.forProduct2("http_method", "path_regex")(k => (k.httpMethod, k.pathRegex.pattern.pattern()))
 
-  private def kibanaTemplateIndex(fieldName: String,
-                                  userMetadata: UserMetadata,
-                                  currentGroupId: Option[GroupId]): Option[(String, Json)] = {
-    userMetadata
-      .kibanaRelatedMetadata(currentGroupId)
-      .flatMap(_.templateIndex)
-      .map { index => fieldName -> Json.fromString(index.stringify) }
-  }
-
-  private def currentGroup(fieldName: String,
-                           userMetadata: UserMetadata,
-                           currentGroupId: Option[GroupId]): Option[(String, Json)] = {
-    (userMetadata, currentGroupId) match {
-      case (UserMetadata.WithGroups(groupsMetadata), Some(groupId)) =>
-        groupsMetadata.get(groupId).map { groupMetadata =>
-          fieldName -> groupMetadata.group.asJson
-        }
-      case (UserMetadata.WithGroups(groupsMetadata), None) =>
-        groupsMetadata.values.headOption.map { groupMetadata =>
-          fieldName -> groupMetadata.group.asJson
-        }
-      case _ => None
-    }
-  }
-
-  private implicit val kibanaAccessEncoder: Encoder[KibanaAccess] = Encoder.encodeString.contramap {
+  private implicit lazy val kibanaAccessEncoder: Encoder[KibanaAccess] = Encoder.encodeString.contramap {
     case KibanaAccess.RO => "ro"
     case KibanaAccess.ROStrict => "ro_strict"
     case KibanaAccess.RW => "rw"
@@ -381,7 +320,7 @@ private object CurrentUserMetadataValue {
     case KibanaAccess.Unrestricted => "unrestricted"
   }
 
-  private implicit val allowedHttpMethodEncoder: Encoder[AllowedHttpMethod] = Encoder.encodeString.contramap {
+  private implicit lazy val allowedHttpMethodEncoder: Encoder[AllowedHttpMethod] = Encoder.encodeString.contramap {
     case AllowedHttpMethod.Any => "ANY"
     case AllowedHttpMethod.Specific(httpMethod) =>
       httpMethod match {
@@ -392,30 +331,76 @@ private object CurrentUserMetadataValue {
       }
   }
 
-  private implicit val kibanaAllowedApiPathEncoder: Encoder[KibanaAllowedApiPath] = Encoder.instance { path =>
-    Json.obj(
-      "http_method" -> path.httpMethod.asJson,
-      "path_regex" -> Json.fromString(path.pathRegex.pattern.pattern())
-    )
-  }
+  extension(userMetadata: UserMetadata) {
 
-  private implicit val groupEncoder: Encoder[Group] = Encoder.instance { group =>
-    Json.obj(
-      "id" -> Json.fromString(group.id.value.value),
-      "name" -> Json.fromString(group.name.value.value)
-    )
-  }
-
-  extension (userMetadata: UserMetadata) {
-    private def kibanaRelatedMetadata(currentGroupId: Option[GroupId]): Option[KibanaMetadata] = {
+    private def loggedUser: LoggedUser = {
       userMetadata match {
-        case UserMetadata.WithoutGroups(_, _, metadata, _, _) => metadata
+        case UserMetadata.WithoutGroups(loggedUser, _, _, _) => loggedUser
+        case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.loggedUser
+      }
+    }
+
+    private def availableGroups: Option[NonEmptyList[Group]] = {
+      NonEmptyList.fromList {
+        userMetadata match {
+          case UserMetadata.WithoutGroups(_, _, _, _) => List.empty
+          case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.map(_.group).toList
+        }
+      }
+    }
+
+    private def currentGroupBy(groupId: Option[GroupId]): Option[Group] = {
+      (userMetadata, groupId) match {
+        case (UserMetadata.WithGroups(groupsMetadata), Some(groupId)) =>
+          groupsMetadata.get(groupId).map(_.group)
+        case (UserMetadata.WithGroups(groupsMetadata), None) =>
+          groupsMetadata.values.headOption.map(_.group)
+        case _ =>
+          None
+      }
+    }
+
+    private def kibanaAccessBy(groupId: Option[GroupId]): Option[KibanaAccess] = {
+      kibanaPolicyBy(groupId).map(_.access)
+    }
+
+    private def kibanaIndexBy(groupId: Option[GroupId]): Option[KibanaIndexName] = {
+      kibanaPolicyBy(groupId).flatMap(_.index)
+    }
+
+    private def kibanaTemplateIndexBy(groupId: Option[GroupId]): Option[KibanaIndexName] = {
+      kibanaPolicyBy(groupId).flatMap(_.templateIndex)
+    }
+
+    private def hiddenAppsBy(groupId: Option[GroupId]): Option[NonEmptyList[KibanaApp]] = {
+      NonEmptyList.fromList(kibanaPolicyBy(groupId).toList.flatMap(_.hiddenApps))
+    }
+
+    private def allowedApiPathsBy(groupId: Option[GroupId]): Option[NonEmptyList[KibanaAllowedApiPath]] = {
+      NonEmptyList.fromList(kibanaPolicyBy(groupId).toList.flatMap(_.allowedApiPaths))
+    }
+
+    private def genericKibanaMetadataBy(groupId: Option[GroupId]): Option[JsonRepresentation] = {
+      kibanaPolicyBy(groupId).flatMap(_.genericMetadata)
+    }
+
+    private def userOrigin: Option[UserOrigin] = {
+      userMetadata match {
+        case UserMetadata.WithoutGroups(_, userOrigin, _, _) => userOrigin
+        case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.userOrigin
+      }
+    }
+
+    private def kibanaPolicyBy(currentGroupId: Option[GroupId]): Option[KibanaPolicy] = {
+      userMetadata match {
+        case UserMetadata.WithoutGroups(_, _, metadata, _) => metadata
         case UserMetadata.WithGroups(groupsMetadata) =>
           currentGroupId match {
-            case Some(id) => groupsMetadata.get(id).flatMap(_.kibanaMetadata)
-            case None => groupsMetadata.values.head.kibanaMetadata
+            case Some(id) => groupsMetadata.get(id).flatMap(_.kibanaPolicy)
+            case None => groupsMetadata.values.head.kibanaPolicy
           }
       }
     }
   }
+
 }
