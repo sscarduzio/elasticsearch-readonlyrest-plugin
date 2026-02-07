@@ -46,7 +46,7 @@ class FilterRule(val settings: Settings)
             Rejected()
           case Right(filter) =>
             BlockContextUpdater[B] match {
-              case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
+              case UserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
               case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
               case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
               case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)

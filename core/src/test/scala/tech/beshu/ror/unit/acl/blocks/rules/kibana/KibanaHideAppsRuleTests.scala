@@ -19,8 +19,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
@@ -38,18 +38,18 @@ class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
       "set kibana app" in {
         val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(UniqueNonEmptyList.of(FullNameKibanaApp("app1"))))
         val requestContext = mock[RequestContext]
-        val blockContext = CurrentUserMetadataRequestBlockContext(
+        val blockContext = UserMetadataRequestBlockContext(
           requestContext = requestContext,
-          userMetadata = UserMetadata
+          blockMetadata = BlockMetadata
             .empty
             .withLoggedUser(DirectlyLoggedUser(Id("user1"))),
           responseHeaders = Set.empty,
           responseTransformations = List.empty
         )
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          CurrentUserMetadataRequestBlockContext(
+          UserMetadataRequestBlockContext(
             requestContext = requestContext,
-            userMetadata = UserMetadata
+            blockMetadata = BlockMetadata
               .empty
               .withLoggedUser(DirectlyLoggedUser(Id("user1")))
               .withHiddenKibanaApps(UniqueNonEmptyList.of(FullNameKibanaApp("app1"))),

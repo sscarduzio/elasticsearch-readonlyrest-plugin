@@ -57,10 +57,8 @@ final class RestClientAuditSinkService private(clients: NonEmptyList[RestClient]
     }
   }
 
-  private val indexType = "ror_audit_evt"
-
   private def createRequest(indexName: String, documentId: String, jsonBody: String) = {
-    val request = new Request("PUT", s"/$indexName/$indexType/$documentId")
+    val request = new Request("PUT", s"/$indexName/ror_audit_evt/$documentId")
     request.addParameter("op_type", "create")
     request.setJsonEntity(jsonBody)
     request

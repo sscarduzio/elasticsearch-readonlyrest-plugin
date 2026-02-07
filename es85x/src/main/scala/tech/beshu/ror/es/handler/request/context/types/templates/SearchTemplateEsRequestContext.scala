@@ -22,7 +22,6 @@ import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndices
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -58,8 +57,8 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[domain.Filter],
-                                fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ModificationResult = {
+                                filter: Option[Filter],
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchTemplateRequest.setRequest(
       searchRequest, filteredRequestedIndices, filter, fieldLevelSecurity
     )
@@ -120,8 +119,8 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
 
   def setRequest(searchRequest: SearchRequest,
                  indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                 filter: Option[domain.Filter],
-                 fieldLevelSecurity: Option[domain.FieldLevelSecurity]): Unit = {
+                 filter: Option[Filter],
+                 fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
     setSearchRequest(new EnhancedSearchRequest(searchRequest, indices, filter, fieldLevelSecurity))
   }
 

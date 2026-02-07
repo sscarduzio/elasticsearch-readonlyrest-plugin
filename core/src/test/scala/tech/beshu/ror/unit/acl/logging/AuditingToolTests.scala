@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStre
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
@@ -137,7 +137,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 Block.Audit.Enabled,
                 NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
               ),
-              GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
+              GeneralIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
               Vector.empty
             )
 
@@ -268,7 +268,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         Block.Audit.Enabled,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
       ),
-      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
+      GeneralIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
       Vector.empty
     )
   }

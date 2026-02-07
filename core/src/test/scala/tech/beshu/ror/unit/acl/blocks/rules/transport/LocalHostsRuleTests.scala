@@ -22,8 +22,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.LocalHostsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -83,7 +83,7 @@ class LocalHostsRuleTests extends AnyWordSpec with MockFactory {
       new Ip4sBasedHostnameResolver
     )
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(localAddress = localAddress))
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

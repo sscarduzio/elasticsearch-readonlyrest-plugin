@@ -23,13 +23,13 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpecLike
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.UserMetadataRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.SingleRule
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -142,11 +142,11 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
       path = UriPath.auditEventPath
     ))
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
       requestContext,
       loggedUser match {
-        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
-        case None => UserMetadata.from(requestContext)
+        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
+        case None => BlockMetadata.from(requestContext)
       },
       Set.empty,
       List.empty
@@ -189,7 +189,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
-        Task.now(Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
+        Task.now(Fulfilled(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
     }
 
     val rejecting: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
@@ -217,7 +217,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-        Task.now(Fulfilled(blockContext.withUserMetadata(
+        Task.now(Fulfilled(blockContext.withBlockMetadata(
           _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
       }
@@ -240,12 +240,12 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator] extends AnyWordSpe
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
-        Task.now(Fulfilled(blockContext.withUserMetadata(
+        Task.now(Fulfilled(blockContext.withBlockMetadata(
           _.withLoggedUser(DirectlyLoggedUser(user))
         )))
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
-        Task.now(Fulfilled(blockContext.withUserMetadata(
+        Task.now(Fulfilled(blockContext.withBlockMetadata(
           _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
     }

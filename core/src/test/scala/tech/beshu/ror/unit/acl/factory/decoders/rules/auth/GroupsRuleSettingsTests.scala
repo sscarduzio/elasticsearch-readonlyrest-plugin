@@ -20,13 +20,13 @@ import cats.data.NonEmptyList
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseGroupsRule, BasicAuthenticationRule}
@@ -1623,11 +1623,11 @@ class GroupsRuleSettingsTests
     }
   }
 
-  private def currentUserMetadataRequestBlockContextFrom(update: UserMetadata => UserMetadata = identity,
+  private def currentUserMetadataRequestBlockContextFrom(update: BlockMetadata => BlockMetadata = identity,
                                                          requestContext: MockUserMetadataRequestContext = MockRequestContext.metadata) = {
-    CurrentUserMetadataRequestBlockContext(
+    UserMetadataRequestBlockContext(
       requestContext,
-      update(UserMetadata.from(requestContext)),
+      update(BlockMetadata.from(requestContext)),
       syntax.Set.empty,
       List.empty
     )

@@ -20,22 +20,27 @@ import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControlList.*
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.{MetadataOrigin, WithGroups}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.{Group, Header}
+import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.ScalaOps.*
+
+import scala.collection.View
 
 class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                override val staticContext: AccessControlListStaticContext)
@@ -86,57 +91,203 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       }
   }
 
-  override def handleMetadataRequest(context: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
+  override def handleMetadataRequest(context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, UserMetadataRequestBlockContext]] = {
     Task
       .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
       .map(_.flatten)
       .map { blockResults =>
         val (executionResults, history) = blockResults.unzip
-        val result = matchedAllowedBlocks(executionResults) match {
-          case Right(matchedResults) =>
-            userMetadataFrom(matchedResults, context.initialBlockContext.userMetadata.currentGroupId) match {
-              case Some((userMetadata, matchedBlock)) => UserMetadataRequestResult.Allow(userMetadata, matchedBlock)
-              case None => createForbiddenResult(executionResults, history)
-            }
-          case Left(()) => createForbiddenResult(executionResults, history)
-        }
+        val result = determineUserMetadataBasedOn(executionResults.view.onlyMatched(), context.currentGroupId, history)
         WithHistory(history.toVector, result)
       }
   }
 
-  private def userMetadataFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]],
-                               optPreferredGroupId: Option[GroupId]): Option[(UserMetadata, Block)] = {
-    optPreferredGroupId match {
-      case Some(preferredGroupId) =>
-        val matchingPreferredGroupResults = matchedResults
-          .toList
-          .flatMap { case result@Matched(_, bc) =>
-            bc.userMetadata.availableGroups.find(_.id == preferredGroupId)
-              .map(preferredGroup => (result, preferredGroup))
-          }
-        matchingPreferredGroupResults
-          .find { case (matched, preferredGroup) => matched.blockContext.userMetadata.kibanaIndex.isDefined }
-          .orElse { matchingPreferredGroupResults.headOption }
-          .map { case (result, preferredGroup) =>
-            val userMetadata =
-              updateUserMetadataGroups(result.blockContext, Some(preferredGroup), allAvailableGroupsFrom(matchedResults))
-            (userMetadata, result.block)
-          }
-      case None =>
-        Some {
-          val Matched(block, bc) = matchedResults.toList
-            .find { _.blockContext.userMetadata.kibanaIndex.isDefined }
-            .getOrElse { matchedResults.head }
-          val userMetadata = updateUserMetadataGroups(bc, None, allAvailableGroupsFrom(matchedResults))
-          (userMetadata, block)
+  private def determineUserMetadataBasedOn(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
+                                           optPreferredGroupId: Option[GroupId],
+                                           history: Iterable[History[UserMetadataRequestBlockContext]]): UserMetadataRequestResult = {
+    val result = determineUserMetadataBasedOn(matched, history)
+    (result, optPreferredGroupId) match {
+      case (Allow(_: UserMetadata.WithoutGroups), Some(currentGroupId)) =>
+        createForbiddenByMismatchedResult(history)
+      case (Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)), Some(currentGroupId)) =>
+        determineUserMetadataForCurrentGroup(withGroups, currentGroupId, history)
+      case (allow@Allow(UserMetadata.WithoutGroups(_, _, _, metadataOrigin)), None) =>
+        metadataOrigin.block.policy match {
+          case Policy.Allow => allow
+          case Policy.Forbid(_) => ForbiddenBy(metadataOrigin.blockContext, metadataOrigin.block)
         }
+      case (Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)), None) =>
+        determineUserMetadataForFirstAllowedGroup(withGroups, history)
+      case _ =>
+        result
     }
   }
 
+  private def determineUserMetadataForCurrentGroup(userMetadata: WithGroups,
+                                                   currentGroupId: GroupId,
+                                                   history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    userMetadata.groupsMetadata.get(currentGroupId) match {
+      case Some(groupMetadata) =>
+        groupMetadata.metadataOrigin.block.policy match {
+          case Policy.Allow =>
+            userMetadata
+              .excludeOtherThanAllowTypeGroups().map(Allow.apply)
+              .getOrElse(createForbiddenByMismatchedResult(history))
+          case Policy.Forbid(_) =>
+            createForbiddenBy(groupMetadata)
+        }
+      case None =>
+        createForbiddenByMismatchedResult(history)
+    }
+  }
 
-  private def createForbiddenResult(blockResults: List[Block.ExecutionResult[CurrentUserMetadataRequestBlockContext]],
-                                    history: List[History[CurrentUserMetadataRequestBlockContext]]) = {
-    val matchedForbidBlock = blockResults.collectFirstSome {
+  private def determineUserMetadataForFirstAllowedGroup(userMetadata: WithGroups,
+                                                        history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    userMetadata.groupsMetadata.values.find(_.metadataOrigin.block.policy == Policy.Allow) match {
+      case Some(groupMetadata) =>
+        userMetadata
+          .excludeOtherThanAllowTypeGroups().map(Allow.apply)
+          .getOrElse(createForbiddenByMismatchedResult(history))
+      case None =>
+        createForbiddenBy(userMetadata.groupsMetadata.values.head)
+    }
+  }
+
+  private def determineUserMetadataBasedOn(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
+                                           history: Iterable[History[UserMetadataRequestBlockContext]]): UserMetadataRequestResult = {
+    val withLoggedUsers = matched.view.onlyLoggedUsers()
+    val withGroups = withLoggedUsers.onlyWithAvailableGroups()
+
+    if (withGroups.nonEmpty) {
+      val groupsMetadata = withGroups
+        .gatherGroupMetadataPreservingOrder()
+        .groupByOrdered(_.group)
+        .flatMap { case (group, metadataCollection) =>
+          metadataCollection
+            .allowedThroughFirstForbidden()
+            .firstAllowedWithKibanaIndexOrHead()
+            .map(group -> _)
+        }
+        .values
+        .toList
+
+      NonEmptyList.fromList(groupsMetadata) match {
+        case Some(nel) => createAllowResult(nel)
+        case None => createForbiddenResult(matched, history)
+      }
+    } else {
+      val firstFittingMatch = withLoggedUsers
+        .allowedThroughFirstForbidden()
+        .firstAllowedWithKibanaIndexOrHead()
+
+      firstFittingMatch match {
+        case Some(m) if m.matchedResult.block.policy == Policy.Allow =>
+          createAllowResult(m)
+        case Some(_) | None =>
+          createForbiddenResult(matched, history)
+      }
+    }
+  }
+
+  extension [T <: ExecutionResult[UserMetadataRequestBlockContext]](blockResults: View[T]) {
+
+    private def onlyMatched(): View[Matched[UserMetadataRequestBlockContext]] = {
+      blockResults.collect { case m@Matched(_, blockContext) => m }
+    }
+  }
+
+  extension (blockResults: View[Matched[UserMetadataRequestBlockContext]]) {
+
+    private def onlyLoggedUsers(): View[MatchedWithUser[UserMetadataRequestBlockContext]] = {
+      blockResults.flatMap { r =>
+        r.blockContext
+          .blockMetadata.loggedUser
+          .map(user => MatchedWithUser(r, user))
+      }
+    }
+  }
+
+  extension (blockResults: View[MatchedWithUser[UserMetadataRequestBlockContext]]) {
+
+    private def onlyWithAvailableGroups(): View[MatchedWithUser[UserMetadataRequestBlockContext]] = {
+      blockResults.takeWhile(_.matchedResult.blockContext.blockMetadata.availableGroups.nonEmpty)
+    }
+
+    private def gatherGroupMetadataPreservingOrder(): Seq[GroupMetadata] = {
+      blockResults.foldLeft(Vector.empty[GroupMetadata]) { case (acc, matched) =>
+        matched.matchedResult.blockContext.blockMetadata.availableGroups
+          .foldLeft(acc) { case (acc, group) =>
+            acc :+ groupMetadataFrom(group, matched)
+          }
+      }
+    }
+
+    private def allowedThroughFirstForbidden(): View[MatchedWithUser[UserMetadataRequestBlockContext]] = {
+      val (allowed, rest) = blockResults.span(_.matchedResult.block.policy == Policy.Allow)
+      allowed ++ rest.headOption.toList
+    }
+
+    private def firstAllowedWithKibanaIndexOrHead(): Option[MatchedWithUser[UserMetadataRequestBlockContext]] = {
+      blockResults
+        .find { m =>
+          m.matchedResult.block.policy == Policy.Allow &&
+            m.matchedResult.blockContext.blockMetadata.kibanaPolicy.flatMap(_.index).isDefined
+        }
+        .orElse(blockResults.headOption)
+    }
+  }
+
+  extension (metadata: Iterable[GroupMetadata]) {
+    private def allowedThroughFirstForbidden(): Iterable[GroupMetadata] = {
+      val (allowed, rest) = metadata.span(_.metadataOrigin.block.policy == Policy.Allow)
+      allowed ++ rest.headOption.toList
+    }
+
+    private def firstAllowedWithKibanaIndexOrHead(): Option[GroupMetadata] = {
+      metadata
+        .find(m => m.metadataOrigin.block.policy == Policy.Allow && m.kibanaPolicy.flatMap(_.index).isDefined)
+        .orElse(metadata.headOption)
+    }
+  }
+
+  private final case class MatchedWithUser[T <: BlockContext](matchedResult: Matched[T], loggedUser: LoggedUser)
+
+  private def groupMetadataFrom(group: Group, matched: MatchedWithUser[UserMetadataRequestBlockContext]) = {
+    val blockMetadata = matched.matchedResult.blockContext.blockMetadata
+    GroupMetadata(
+      group,
+      matched.loggedUser,
+      blockMetadata.userOrigin,
+      blockMetadata.kibanaPolicy,
+      MetadataOrigin(
+        matched.matchedResult.block,
+        matched.matchedResult.blockContext
+      )
+    )
+  }
+
+  private def createAllowResult(groupsMetadata: NonEmptyList[GroupMetadata]) = {
+    Allow(UserMetadata.WithGroups(groupsMetadata))
+  }
+
+  private def createAllowResult(matched: MatchedWithUser[UserMetadataRequestBlockContext]) = {
+    Allow {
+      val matchedBlockMetadata = matched.matchedResult.blockContext.blockMetadata
+      UserMetadata.WithoutGroups(
+        matched.loggedUser,
+        matchedBlockMetadata.userOrigin,
+        matchedBlockMetadata.kibanaPolicy,
+        MetadataOrigin(
+          matched.matchedResult.block,
+          matched.matchedResult.blockContext
+        )
+      )
+    }
+  }
+
+  private def createForbiddenResult(blockResults: Iterable[ExecutionResult[UserMetadataRequestBlockContext]],
+                                    history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    val matchedForbidBlock = blockResults.toList.collectFirstSome {
       case m@Matched(block, _) => block.policy match {
         case Policy.Allow => None
         case Policy.Forbid(_) => Some(m)
@@ -144,59 +295,25 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       case Mismatched(_) => None
     }
     matchedForbidBlock match {
-      case Some(Matched(block, blockContext)) => UserMetadataRequestResult.ForbiddenBy(blockContext, block)
-      case None => UserMetadataRequestResult.ForbiddenByMismatched(nonEmptySetOfMismatchedCausesFromHistory(history))
+      case Some(Matched(block, blockContext)) => ForbiddenBy(blockContext, block)
+      case None => ForbiddenByMismatched(nonEmptySetOfMismatchedCausesFromHistory(history))
     }
   }
 
-  private def allAvailableGroupsFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
-    UniqueList.from(
-      matchedResults.toList.flatMap {
-        case Matched(_, bc) => bc.userMetadata.availableGroups
-      }
-    )
+  private def createForbiddenBy(groupMetadata: GroupMetadata) = {
+    ForbiddenBy(groupMetadata.metadataOrigin.blockContext, groupMetadata.metadataOrigin.block)
   }
 
-  private def updateUserMetadataGroups(blockContext: CurrentUserMetadataRequestBlockContext,
-                                       currentGroup: Option[Group],
-                                       availableGroups: UniqueList[Group]) = {
-    currentGroup
-      .foldLeft(blockContext.userMetadata.withAvailableGroups(availableGroups)) {
-        case (userMetadata, group) => userMetadata.withCurrentGroup(group)
-      }
+  private def createForbiddenByMismatchedResult(history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    ForbiddenByMismatched(nonEmptySetOfMismatchedCausesFromHistory(history))
   }
 
   private def executeBlocksForUserMetadata(block: Block,
-                                           context: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]) = {
+                                           context: RequestContext.Aux[UserMetadataRequestBlockContext]) = {
     block
       .execute(context)
       .map(Some.apply)
       .onErrorRecover { case _ => None }
-  }
-
-  private def matchedAllowedBlocks[B <: BlockContext](blockResults: List[Block.ExecutionResult[B]]) = {
-    val matchedBlocks = NonEmptyList.fromList {
-      blockResults.collect { case r@Matched(_, _) => r }
-    }
-    matchedBlocks match {
-      case Some(matchedBlocksNel) =>
-        NonEmptyList.fromList {
-          findAllMatchedBlocksWithAllowPolicyPrecedingFirstMatchedForbidPolicyBlock(matchedBlocksNel)
-        } match {
-          case Some(allowedPolicyMatchedBlocks) => Right(allowedPolicyMatchedBlocks)
-          case None => Left(())
-        }
-      case None => Left(())
-    }
-  }
-
-  private def findAllMatchedBlocksWithAllowPolicyPrecedingFirstMatchedForbidPolicyBlock[B <: BlockContext](blocks: NonEmptyList[Matched[B]]) = {
-    blocks.toList.takeWhile { b =>
-      b.block.policy match {
-        case Policy.Allow => true
-        case Policy.Forbid(_) => false
-      }
-    }
   }
 
   private def checkBlock[B <: BlockContext : BlockContextUpdater](block: Block,

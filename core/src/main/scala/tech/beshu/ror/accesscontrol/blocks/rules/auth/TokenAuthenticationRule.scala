@@ -54,7 +54,7 @@ final class TokenAuthenticationRule(val settings: Settings,
       .map { _ =>
         val requestContext = blockContext.requestContext
         if (verifyTokenFromHeader(requestContext)) {
-          Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
+          Fulfilled(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
         } else {
           Rejected()
         }

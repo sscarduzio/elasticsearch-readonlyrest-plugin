@@ -16,83 +16,54 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
-import cats.implicits.*
-import tech.beshu.ror.accesscontrol.domain.*
+import cats.data.NonEmptyList
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.Block.Policy
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.Json.JsonRepresentation
-import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, UserOrigin}
 
-final case class UserMetadata private(loggedUser: Option[LoggedUser],
-                                      currentGroupId: Option[GroupId],
-                                      availableGroups: UniqueList[Group],
-                                      kibanaIndex: Option[KibanaIndexName],
-                                      kibanaTemplateIndex: Option[KibanaIndexName],
-                                      hiddenKibanaApps: Set[KibanaApp],
-                                      allowedKibanaApiPaths: Set[KibanaAllowedApiPath],
-                                      kibanaAccess: Option[KibanaAccess],
-                                      kibanaMetadata: Option[JsonRepresentation],
-                                      userOrigin: Option[UserOrigin],
-                                      jwtToken: Option[Jwt.Payload]) {
+import scala.collection.immutable.ListMap
 
-  def findCurrentGroup: Option[Group] = {
-    currentGroupId
-      .flatMap(groupId =>
-        availableGroups.find(_.id == groupId)
-      )
-  }
-  def withLoggedUser(user: LoggedUser): UserMetadata = this.copy(loggedUser = Some(user))
-  def withCurrentGroup(group: Group): UserMetadata = withCurrentGroupId(group.id)
-  def withCurrentGroupId(groupId: GroupId): UserMetadata = this.copy(currentGroupId = Some(groupId))
-  def addAvailableGroup(group: Group): UserMetadata = addAvailableGroups(UniqueNonEmptyList.of(group))
-  def addAvailableGroups(groups: UniqueNonEmptyList[Group]): UserMetadata = {
-    val newAvailableGroups = UniqueList.from(this.availableGroups ++ groups)
-    this.copy(
-      availableGroups = newAvailableGroups,
-      currentGroupId = this.currentGroupId.orElse(newAvailableGroups.headOption.map(_.id))
-    )
-  }
-  def withAvailableGroups(groups: UniqueList[Group]): UserMetadata = this.copy(
-    availableGroups = groups,
-    currentGroupId = this.currentGroupId.orElse(groups.headOption.map(_.id))
-  )
-  def withKibanaIndex(index: KibanaIndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
-  def withKibanaTemplateIndex(index: KibanaIndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
-  def addHiddenKibanaApp(app: KibanaApp): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps + app)
-  def withHiddenKibanaApps(apps: UniqueNonEmptyList[KibanaApp]): UserMetadata =
-    this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps)
-  def withAllowedKibanaApiPaths(paths: UniqueNonEmptyList[KibanaAllowedApiPath]): UserMetadata =
-    this.copy(allowedKibanaApiPaths = this.allowedKibanaApiPaths ++ paths)
-  def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))
-  def withKibanaMetadata(json: JsonRepresentation): UserMetadata = this.copy(kibanaMetadata = Some(json))
-  def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
-  def withJwtToken(token: Jwt.Payload): UserMetadata = this.copy(jwtToken = Some(token))
-  def clearCurrentGroup: UserMetadata = this.copy(currentGroupId = None)
-}
-
+sealed trait UserMetadata
 object UserMetadata {
-  def from(request: RequestContext): UserMetadata = {
-    request
-      .restRequest
-      .allHeaders
-      .find(_.name === Header.Name.currentGroup) match {
-      case None => UserMetadata.empty
-      case Some(Header(_, value)) => UserMetadata.empty.withCurrentGroupId(GroupId(value))
+
+  final case class WithoutGroups(loggedUser: LoggedUser,
+                                 userOrigin: Option[UserOrigin],
+                                 kibanaPolicy: Option[KibanaPolicy],
+                                 metadataOrigin: MetadataOrigin)
+    extends UserMetadata
+
+  final case class WithGroups private(groupsMetadata: ListMap[GroupId, GroupMetadata])
+    extends UserMetadata
+  object WithGroups {
+    def apply(groupsMetadata: NonEmptyList[GroupMetadata]): WithGroups = WithGroups {
+      groupsMetadata.foldLeft(ListMap.empty[GroupId, GroupMetadata]) {
+        case (acc, elem) => acc.updated(elem.group.id, elem)
+      }
+    }
+
+    final case class GroupMetadata(group: Group,
+                                   loggedUser: LoggedUser,
+                                   userOrigin: Option[UserOrigin],
+                                   kibanaPolicy: Option[KibanaPolicy],
+                                   // todo: try to get rid of the metadata origin in the future from this place
+                                   metadataOrigin: MetadataOrigin)
+
+    extension (withGroups: WithGroups) {
+      def excludeOtherThanAllowTypeGroups(): Option[WithGroups] = {
+        NonEmptyList
+          .fromList {
+            withGroups
+              .groupsMetadata.values
+              .filter(_.metadataOrigin.block.policy == Policy.Allow)
+              .toList
+          }
+          .map(WithGroups.apply)
+      }
     }
   }
 
-  def empty: UserMetadata = new UserMetadata(
-    loggedUser = None,
-    currentGroupId = None,
-    availableGroups = UniqueList.empty,
-    kibanaIndex = None,
-    kibanaTemplateIndex = None,
-    hiddenKibanaApps = Set.empty,
-    allowedKibanaApiPaths = Set.empty,
-    kibanaAccess = None,
-    kibanaMetadata = None,
-    userOrigin = None,
-    jwtToken = None
-  )
+  final case class MetadataOrigin(block: Block, blockContext: UserMetadataRequestBlockContext)
 }

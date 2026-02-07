@@ -22,8 +22,8 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.ImpersonationNotAllowed
@@ -180,11 +180,11 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
                          assertionType: AssertionType): Unit = {
     val rule = new ProxyAuthRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers)
-    val blockContext = CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      UserMetadata.from(requestContext),
-      Set.empty,
-      List.empty
+    val blockContext = UserMetadataRequestBlockContext(
+      requestContext = requestContext,
+      blockMetadata = BlockMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
     )
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {

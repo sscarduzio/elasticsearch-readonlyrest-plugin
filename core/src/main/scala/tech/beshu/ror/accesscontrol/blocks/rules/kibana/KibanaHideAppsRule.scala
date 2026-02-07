@@ -31,7 +31,7 @@ class KibanaHideAppsRule(val settings: Settings)
   override val name: Rule.Name = KibanaHideAppsRule.Name.name
 
   override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
-    blockContext.withUserMetadata(_.withHiddenKibanaApps(settings.kibanaAppsToHide))
+    blockContext.withBlockMetadata(_.withHiddenKibanaApps(settings.kibanaAppsToHide))
   }
 }
 

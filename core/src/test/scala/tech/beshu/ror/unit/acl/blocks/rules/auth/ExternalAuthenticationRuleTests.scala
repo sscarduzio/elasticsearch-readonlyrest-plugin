@@ -24,9 +24,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralNonIndexRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{UserMetadataRequestBlockContext, GeneralNonIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
@@ -55,7 +55,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         )
 
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("user:pass"))
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
         val rule = new ExternalAuthenticationRule(
           Settings(externalAuthenticationService),
@@ -65,7 +65,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("user"))),
+            BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("user"))),
             Set.empty,
             List.empty
           )
@@ -82,7 +82,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
 
-            val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+            val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),
@@ -101,7 +101,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
               GeneralNonIndexRequestBlockContext(
                 requestContext,
-                UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
+                BlockMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
                 Set.empty,
                 List.empty
               )
@@ -117,7 +117,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
           credentials = Credentials(User.Id("user"), PlainTextSecret("pass"))
         )
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("user:wrong_pass"))
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
         val rule = new ExternalAuthenticationRule(
           Settings(externalAuthenticationService),
@@ -132,7 +132,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
             val rule = new ExternalAuthenticationRule(
               Settings(mock[ExternalAuthenticationService]),
@@ -155,7 +155,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
             val rule = new ExternalAuthenticationRule(
               Settings(mock[ExternalAuthenticationService]),
@@ -183,7 +183,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),
@@ -211,7 +211,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),
@@ -239,7 +239,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
             val rule = new ExternalAuthenticationRule(
               Settings(externalAuthenticationService),

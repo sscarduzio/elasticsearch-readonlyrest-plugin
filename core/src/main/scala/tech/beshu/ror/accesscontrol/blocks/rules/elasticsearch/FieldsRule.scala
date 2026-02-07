@@ -55,7 +55,7 @@ class FieldsRule(val settings: Settings)
 
   private def handleReadOnlyRequest[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
     BlockContextUpdater[B] match {
-      case CurrentUserMetadataRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case UserMetadataRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
       case GeneralNonIndexRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
       case RepositoryRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
       case SnapshotRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)

@@ -17,11 +17,11 @@
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class KibanaAccessRuleTests
   extends BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {
@@ -38,10 +38,12 @@ class KibanaAccessRuleTests
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
-        kibanaAccess = Some(settings.access),
-        kibanaIndex = Some(kibanaIndexFrom(customKibanaIndex)),
         indices = indices,
-        dataStreams = dataStreams
+        dataStreams = dataStreams,
+        kibanaPolicy = Some(KibanaPolicy.default.copy(
+          access = settings.access,
+          index = Some(kibanaIndexFrom(customKibanaIndex)),
+        )),
       )(
         blockContext
       )

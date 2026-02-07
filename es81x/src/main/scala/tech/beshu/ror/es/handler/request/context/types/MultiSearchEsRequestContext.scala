@@ -23,7 +23,7 @@ import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse,
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
@@ -51,7 +51,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     indexPacks = indexPacksFrom(actionRequest),

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
@@ -45,34 +45,34 @@ class KibanaUserDataRule(override val settings: Settings)
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Fulfilled[B] = {
     RuleResult.Fulfilled[B] {
-      blockContext.withUserMetadata {
+      blockContext.withBlockMetadata {
         updateUserMetadata(blockContext)
       }
     }
   }
 
   private def updateUserMetadata(context: BlockContext) = {
-    applyToUserMetadata(Some(settings.access))(
+    applyToBlockMetadata(Some(settings.access))(
       _.withKibanaAccess(_)
     ) andThen {
-      applyToUserMetadata(Some(resolveKibanaIndex(context)))(
+      applyToBlockMetadata(Some(resolveKibanaIndex(context)))(
         _.withKibanaIndex(_)
       )
     } andThen {
-      applyToUserMetadata(resolveKibanaIndexTemplate(context))(
+      applyToBlockMetadata(resolveKibanaIndexTemplate(context))(
         _.withKibanaTemplateIndex(_)
       )
     } andThen {
-      applyToUserMetadata(resolveAppsToHide)(
+      applyToBlockMetadata(resolveAppsToHide)(
         _.withHiddenKibanaApps(_)
       )
     } andThen {
-      applyToUserMetadata(resolveAllowedApiPaths)(
+      applyToBlockMetadata(resolveAllowedApiPaths)(
         _.withAllowedKibanaApiPaths(_)
       )
     } andThen {
-      applyToUserMetadata(resolvedKibanaMetadata(context))(
-        _.withKibanaMetadata(_)
+      applyToBlockMetadata(resolvedKibanaGenericMetadata(context))(
+        _.withKibanaGenericMetadata(_)
       )
     }
   }
@@ -100,13 +100,13 @@ class KibanaUserDataRule(override val settings: Settings)
   private lazy val resolveAllowedApiPaths =
     UniqueNonEmptyList.from(settings.allowedApiPaths)
 
-  private def resolvedKibanaMetadata(context: BlockContext) =
+  private def resolvedKibanaGenericMetadata(context: BlockContext) =
     settings
-      .metadata
+      .genericMetadata
       .flatMap {
         _.resolve(context) match {
-          case Right(resolvedKibanaMetadata) =>
-            Some(resolvedKibanaMetadata)
+          case Right(resolvedMetadata) =>
+            Some(resolvedMetadata)
           case Left(error) =>
             implicit val blockContextImpl: BlockContext = context
             logger.warn(s"Cannot resolve variable(s) used in Kibana metadata; error: ${error.show}")
@@ -114,11 +114,11 @@ class KibanaUserDataRule(override val settings: Settings)
         }
       }
 
-  private def applyToUserMetadata[T](opt: Option[T])
-                                    (userMetadataUpdateFunction: (UserMetadata, T) => UserMetadata): UserMetadata => UserMetadata = {
+  private def applyToBlockMetadata[T](opt: Option[T])
+                                    (userMetadataUpdateFunction: (BlockMetadata, T) => BlockMetadata): BlockMetadata => BlockMetadata = {
     opt match {
       case Some(value) => userMetadataUpdateFunction(_, value)
-      case None => identity[UserMetadata]
+      case None => identity[BlockMetadata]
     }
   }
 }
@@ -134,7 +134,7 @@ object KibanaUserDataRule {
                             kibanaTemplateIndex: Option[RuntimeSingleResolvableVariable[KibanaIndexName]],
                             appsToHide: Set[KibanaApp],
                             allowedApiPaths: Set[KibanaAllowedApiPath],
-                            metadata: Option[ResolvableJsonRepresentation],
+                            genericMetadata: Option[ResolvableJsonRepresentation],
                             override val rorIndex: RorSettingsIndex)
     extends BaseKibanaRule.Settings(access, rorIndex)
 }

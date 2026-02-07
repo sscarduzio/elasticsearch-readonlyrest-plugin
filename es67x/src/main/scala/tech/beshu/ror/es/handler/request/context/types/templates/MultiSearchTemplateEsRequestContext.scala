@@ -28,7 +28,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
@@ -58,7 +58,7 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     indexPacks = indexPacksFrom(multiSearchTemplateRequest),
@@ -221,11 +221,8 @@ private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: Actio
   import org.joor.Reflect.on
 
   def requests: List[ReflectionBasedSearchTemplateRequest] = {
-    on(actionRequest)
-      .call("requests")
-      .get[java.util.List[ActionRequest]]
-      .asSafeList
-      .map(new ReflectionBasedSearchTemplateRequest(_))
+    val reqs: java.util.List[ActionRequest] = on(actionRequest).call("requests").get[java.util.List[ActionRequest]]
+    reqs.asSafeList.map(new ReflectionBasedSearchTemplateRequest(_))
   }
 
   def indicesOptions(): IndicesOptions = {
@@ -240,11 +237,10 @@ private class ReflectionBasedMultiSearchTemplateResponse(val actionResponse: Act
   import org.joor.Reflect.on
 
   def getResponses: List[Either[Throwable, ReflectionBasedSearchTemplateResponse]] = {
-    on(actionResponse)
+    val responses = on(actionResponse)
       .call("getResponses")
       .get[Array[AnyRef]]
-      .asSafeList
-      .map(itemToEither)
+    responses.asSafeList.map(itemToEither)
   }
 
   def updateUsing(multiSearchResponse: MultiSearchResponse): Unit = {

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonTree, JsonValue}
@@ -277,8 +277,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group id from jwt variable (array)"))
-            blockContext.userMetadata should be(
-              UserMetadata
+            blockContext.blockMetadata should be(
+              BlockMetadata
                 .empty
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
@@ -306,8 +306,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group id from jwt variable"))
-            blockContext.userMetadata should be(
-              UserMetadata
+            blockContext.blockMetadata should be(
+              BlockMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
@@ -336,8 +336,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("Variables usage in filter"))
-            blockContext.userMetadata should be(
-              UserMetadata
+            blockContext.blockMetadata should be(
+              BlockMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user5")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
@@ -365,8 +365,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
           inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("LDAP groups explode"))
-            blockContext.userMetadata should be(
-              UserMetadata
+            blockContext.blockMetadata should be(
+              BlockMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("cartman")))
                 .withCurrentGroupId(GroupId("g1"))
@@ -390,13 +390,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           inside(result.result) {
             case RegularRequestResult.Allow(blockContext, block) =>
               block.name should be(Block.Name("Kibana metadata resolving test (with jwt_authentication)"))
-              blockContext.userMetadata should be(
-                UserMetadata
+              blockContext.blockMetadata should be(
+                BlockMetadata
                   .from(request)
                   .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
                   .withKibanaAccess(KibanaAccess.RO)
                   .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
-                  .withKibanaMetadata(
+                  .withKibanaGenericMetadata(
                     JsonTree.Object(Map(
                       "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
                     ))
@@ -420,13 +420,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           inside(result.result) {
             case RegularRequestResult.Allow(blockContext, block) =>
               block.name should be(Block.Name("Kibana metadata resolving test (with jwt_auth)"))
-              blockContext.userMetadata should be(
-                UserMetadata
+              blockContext.blockMetadata should be(
+                BlockMetadata
                   .from(request)
                   .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
                   .withKibanaAccess(KibanaAccess.RO)
                   .withKibanaIndex(KibanaIndexName.default)
-                  .withKibanaMetadata(
+                  .withKibanaGenericMetadata(
                     JsonTree.Object(Map(
                       "a" -> JsonTree.Value(JsonValue.StringValue("jwt_value_j0,j3")),
                       "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),

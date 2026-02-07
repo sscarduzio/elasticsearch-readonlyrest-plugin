@@ -22,8 +22,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -86,11 +86,11 @@ class UsersRuleTests extends AnyWordSpec {
   private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.metadata
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
       requestContext,
       loggedUser match {
-        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
-        case None => UserMetadata.from(requestContext)
+        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(user)
+        case None => BlockMetadata.from(requestContext)
       },
       Set.empty,
       List.empty

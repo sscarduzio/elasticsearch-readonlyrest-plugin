@@ -22,13 +22,13 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -103,7 +103,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices, Set.empty
+    this, BlockMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices, Set.empty
   )
 
   def withHeaders(header: Header, headers: Header*): MockGeneralIndexRequestContext = {
@@ -139,7 +139,7 @@ final case class MockFilterableMultiRequestContext(override val timestamp: Insta
   override type BLOCK_CONTEXT = FilterableMultiRequestBlockContext
 
   override def initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty, indexPacks, filter, fieldLevelSecurity, requestFieldsUsage
+    this, BlockMetadata.from(this), Set.empty, List.empty, indexPacks, filter, fieldLevelSecurity, requestFieldsUsage
   )
 
 }
@@ -165,7 +165,7 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
   override type BLOCK_CONTEXT = GeneralNonIndexRequestBlockContext
 
   override def initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty
+    this, BlockMetadata.from(this), Set.empty, List.empty
   )
 }
 
@@ -191,7 +191,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty, indices, allAllowedIndices, None
+    this, BlockMetadata.from(this), Set.empty, List.empty, indices, allAllowedIndices, None
   )
 
   def withHeaders(header: Header, headers: Header*): MockSearchRequestContext = {
@@ -225,7 +225,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
 
   override def initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty, repositories
+    this, BlockMetadata.from(this), Set.empty, List.empty, repositories
   )
 }
 
@@ -250,7 +250,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
 
   override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty, snapshots, Set.empty, Set.empty, Set.empty
+    this, BlockMetadata.from(this), Set.empty, List.empty, snapshots, Set.empty, Set.empty, Set.empty
   )
 }
 
@@ -275,7 +275,7 @@ final case class MockDataStreamsRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = DataStreamRequestBlockContext
 
   override def initialBlockContext: DataStreamRequestBlockContext = DataStreamRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty, dataStreams, BackingIndices.IndicesNotInvolved
+    this, BlockMetadata.from(this), Set.empty, List.empty, dataStreams, BackingIndices.IndicesNotInvolved
   )
 }
 
@@ -295,11 +295,12 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true)
-  extends RequestContext {
-  override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
+  extends UserMetadataRequestContext {
 
-  override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, List.empty
+  override type BLOCK_CONTEXT = UserMetadataRequestBlockContext
+
+  override def initialBlockContext: UserMetadataRequestBlockContext = UserMetadataRequestBlockContext(
+    this, BlockMetadata.from(this), Set.empty, List.empty
   )
 
   def withHeaders(header: Header, headers: Header*): MockUserMetadataRequestContext = {
@@ -309,7 +310,6 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
   def withHeaders(headers: Iterable[Header]): MockUserMetadataRequestContext = {
     this.copy(restRequest = this.restRequest.copy(allHeaders = headers.toCovariantSet))
   }
-
 }
 
 final case class MockTemplateRequestContext(override val timestamp: Instant,
@@ -333,7 +333,7 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = TemplateRequestBlockContext
 
   override def initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
-    this, UserMetadata.empty, Set.empty, List.empty, templateOperation, identity, Set.empty
+    this, BlockMetadata.empty, Set.empty, List.empty, templateOperation, identity, Set.empty
   )
 }
 

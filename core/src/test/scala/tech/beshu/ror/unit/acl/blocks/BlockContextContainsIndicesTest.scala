@@ -35,7 +35,7 @@ class BlockContextContainsIndicesTest extends AnyWordSpec {
     bc.involvesIndices shouldEqual true
   }
   "not find any  indices" in {
-    val bc: BlockContext.CurrentUserMetadataRequestBlockContext = BlockContext.CurrentUserMetadataRequestBlockContext(null, null, null, null)
+    val bc: BlockContext.UserMetadataRequestBlockContext = BlockContext.UserMetadataRequestBlockContext(null, null, null, null)
     bc.involvesIndices shouldEqual false
   }
 }

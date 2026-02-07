@@ -22,7 +22,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersOrRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
@@ -181,7 +181,7 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
     val blockContext = GeneralNonIndexRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )

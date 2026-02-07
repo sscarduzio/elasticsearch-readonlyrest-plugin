@@ -22,7 +22,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
@@ -49,12 +49,12 @@ class ResponseFieldsRuleTests extends AnyWordSpec {
     val resolvedFields = fields.map(field => AlreadyResolved(ResponseField(NonEmptyString.unsafeFrom(field)).nel))
     val rule = new ResponseFieldsRule(ResponseFieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), mode))
     val requestContext = MockRequestContext.indices
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
+    val blockContext = GeneralIndexRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
     rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
       BlockContext.GeneralIndexRequestBlockContext(
         requestContext = requestContext,
-        userMetadata = UserMetadata.empty,
+        blockMetadata = BlockMetadata.empty,
         responseHeaders = Set.empty,
         responseTransformations = FilteredResponseFields(ResponseFieldsRestrictions(
           UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode

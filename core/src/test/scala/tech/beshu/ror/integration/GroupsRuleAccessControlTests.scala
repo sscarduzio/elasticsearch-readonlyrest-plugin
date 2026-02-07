@@ -24,6 +24,8 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allo
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
@@ -215,8 +217,8 @@ class GroupsRuleAccessControlTests
         result.history should have size 1
         inside(result.result) {
           case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user2"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group3"), group("group4")))
+            blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user2"))))
+            blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group3"), group("group4")))
         }
       }
     }
@@ -232,8 +234,8 @@ class GroupsRuleAccessControlTests
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
+            blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
+            blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }
         }
       }
@@ -267,8 +269,8 @@ class GroupsRuleAccessControlTests
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 4
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group5")))
+            blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
+            blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group5")))
           }
         }
       }
@@ -285,8 +287,8 @@ class GroupsRuleAccessControlTests
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 5
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("morgan"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("admin")))
+            blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("morgan"))))
+            blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("admin")))
           }
         }
       }
@@ -310,18 +312,19 @@ class GroupsRuleAccessControlTests
         val result1 = metadataRequest(username = "user_root_ror_kbn_auth")
         val result2 = metadataRequest(username = "user_local_groups_ror_kbn_auth")
 
-        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1, matchedBlock1) =>
-          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2, matchedBlock2) =>
-            matchedBlock1.name should be (Block.Name("ror_kbn_auth in root of ACL"))
-            matchedBlock2.name should be (Block.Name("local groups-based ror_kbn_auth"))
+        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1@UserMetadata.WithGroups(_)) =>
+          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2@UserMetadata.WithGroups(_)) =>
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
 
-            userMetadata1.currentGroupId should be(userMetadata2.currentGroupId)
-            userMetadata1.kibanaIndex should be(userMetadata2.kibanaIndex)
-            userMetadata1.hiddenKibanaApps should be(userMetadata2.hiddenKibanaApps)
-            userMetadata1.allowedKibanaApiPaths should be(userMetadata2.allowedKibanaApiPaths)
-            userMetadata1.kibanaAccess should be(userMetadata2.kibanaAccess)
-            userMetadata1.userOrigin should be(userMetadata2.userOrigin)
-            userMetadata1.jwtToken.isDefined should be(userMetadata2.jwtToken.isDefined)
+            val group1 = GroupId("example_group_ror_kbn_auth")
+            val metadata1 = userMetadata1.groupsMetadata(group1)
+            val metadata2 = userMetadata2.groupsMetadata(group1)
+
+            metadata1.metadataOrigin.block.name should be(Block.Name("ror_kbn_auth in root of ACL"))
+            metadata2.metadataOrigin.block.name should be(Block.Name("local groups-based ror_kbn_auth"))
+
+            metadata1.userOrigin should be(metadata2.userOrigin)
+            metadata1.kibanaPolicy should be (metadata2.kibanaPolicy)
           }
         }
       }
@@ -340,18 +343,19 @@ class GroupsRuleAccessControlTests
         val result1 = metadataRequest(username = "user_root_jwt_auth")
         val result2 = metadataRequest(username = "user_local_groups_jwt_auth")
 
-        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1, matchedBlock1) =>
-          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2, matchedBlock2) =>
-            matchedBlock1.name should be (Block.Name("jwt_auth in root of ACL"))
-            matchedBlock2.name should be (Block.Name("local groups-based jwt_auth"))
+        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1@UserMetadata.WithGroups(_)) =>
+          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2@UserMetadata.WithGroups(_)) =>
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
 
-            userMetadata1.currentGroupId should be(userMetadata2.currentGroupId)
-            userMetadata1.kibanaIndex should be(userMetadata2.kibanaIndex)
-            userMetadata1.hiddenKibanaApps should be(userMetadata2.hiddenKibanaApps)
-            userMetadata1.allowedKibanaApiPaths should be(userMetadata2.allowedKibanaApiPaths)
-            userMetadata1.kibanaAccess should be(userMetadata2.kibanaAccess)
-            userMetadata1.userOrigin should be(userMetadata2.userOrigin)
-            userMetadata1.jwtToken.isDefined should be(userMetadata2.jwtToken.isDefined)
+            val group1 = GroupId("example_group_jwt_auth")
+            val metadata1 = userMetadata1.groupsMetadata(group1)
+            val metadata2 = userMetadata2.groupsMetadata(group1)
+
+            metadata1.metadataOrigin.block.name should be(Block.Name("jwt_auth in root of ACL"))
+            metadata2.metadataOrigin.block.name should be(Block.Name("local groups-based jwt_auth"))
+
+            metadata1.userOrigin should be(metadata2.userOrigin)
+            metadata1.kibanaPolicy should be (metadata2.kibanaPolicy)
           }
         }
       }
@@ -367,18 +371,19 @@ class GroupsRuleAccessControlTests
         val result1 = metadataRequest(headerValue = "acl_root")
         val result2 = metadataRequest(headerValue = "local_groups")
 
-        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1, matchedBlock1) =>
-          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2, matchedBlock2) =>
-            matchedBlock1.name should be (Block.Name("ldap_auth in root of ACL"))
-            matchedBlock2.name should be (Block.Name("local groups-based ldap_auth"))
+        inside(result1.result) { case UserMetadataRequestResult.Allow(userMetadata1@UserMetadata.WithGroups(_)) =>
+          inside(result2.result) { case UserMetadataRequestResult.Allow(userMetadata2@UserMetadata.WithGroups(_)) =>
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
 
-            userMetadata1.currentGroupId should be(userMetadata2.currentGroupId)
-            userMetadata1.kibanaIndex should be(userMetadata2.kibanaIndex)
-            userMetadata1.hiddenKibanaApps should be(userMetadata2.hiddenKibanaApps)
-            userMetadata1.allowedKibanaApiPaths should be(userMetadata2.allowedKibanaApiPaths)
-            userMetadata1.kibanaAccess should be(userMetadata2.kibanaAccess)
-            userMetadata1.userOrigin should be(userMetadata2.userOrigin)
-            userMetadata1.jwtToken.isDefined should be(userMetadata2.jwtToken.isDefined)
+            val group1 = GroupId("europe")
+            val metadata1 = userMetadata1.groupsMetadata(group1)
+            val metadata2 = userMetadata2.groupsMetadata(group1)
+
+            metadata1.metadataOrigin.block.name should be(Block.Name("ldap_auth in root of ACL"))
+            metadata2.metadataOrigin.block.name should be(Block.Name("local groups-based ldap_auth"))
+
+            metadata1.userOrigin should be(metadata2.userOrigin)
+            metadata1.kibanaPolicy should be (metadata2.kibanaPolicy)
           }
         }
       }

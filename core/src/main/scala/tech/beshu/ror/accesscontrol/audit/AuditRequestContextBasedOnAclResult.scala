@@ -20,20 +20,18 @@ import cats.Show
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{Address, Header}
+import tech.beshu.ror.accesscontrol.domain.{Address, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
 import java.time.Instant
-import scala.collection.immutable.{Set => ScalaSet}
+import scala.collection.immutable.Set as ScalaSet
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                                            userMetadata: Option[UserMetadata],
+                                                                            loggedUser: Option[LoggedUser],
                                                                             historyEntries: Vector[History[B]],
                                                                             loggingContext: LoggingContext,
                                                                             override val auditEnvironmentContext: AuditEnvironmentContext,
@@ -42,9 +40,6 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
   extends AuditRequestContext {
 
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
-
-  private val loggedUser: Option[domain.LoggedUser] = userMetadata
-    .flatMap(_.loggedUser)
 
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value

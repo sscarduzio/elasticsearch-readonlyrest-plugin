@@ -93,7 +93,7 @@ object SingleExtractable {
   final class UserIdVar(transformation: Option[Function]) extends SingleExtractable with VariableType.User {
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
       blockContext
-        .userMetadata
+        .blockMetadata
         .loggedUser
         .map(_.id.value) match {
         case Some(value) => Right(value.value)
@@ -120,7 +120,7 @@ object SingleExtractable {
     private val varClaim = Jwt.ClaimName(jsonPath)
 
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
-      blockContext.userMetadata.jwtToken match {
+      blockContext.blockMetadata.jwtToken match {
         case Some(payload) =>
           payload.claims.customClaim(varClaim) match {
             case Found(SingleValue(value)) =>
@@ -140,7 +140,7 @@ object SingleExtractable {
 
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
       blockContext
-        .userMetadata
+        .blockMetadata
         .currentGroupId
         .map(_.value.value) match {
         case Some(value) => Right(value)
@@ -152,7 +152,7 @@ object SingleExtractable {
   final class AvailableGroupsVar(transformation: Option[Function]) extends SingleExtractable with VariableType.AvailableGroups {
 
     override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = withTransformation(transformation) {
-      Right(blockContext.userMetadata.availableGroups.toList.map(v => s""""${v.id.value.value}"""").mkString(","))
+      Right(blockContext.blockMetadata.availableGroups.toList.map(v => s""""${v.id.value.value}"""").mkString(","))
     }
   }
 
@@ -238,7 +238,7 @@ object MultiExtractable {
         NonEmptyList
           .fromList(
             blockContext
-              .userMetadata
+              .blockMetadata
               .availableGroups
               .map(_.id.value.value)
               .toList

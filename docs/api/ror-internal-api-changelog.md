@@ -1,5 +1,17 @@
 # ROR INTERNAL API CHANGELOG
 
+## 3.1.0
+
+Changes:
+
+* endpoint GET `/_readonlyrest/metadata/current_user` is now **deprecated**. Use `/_readonlyrest/metadata/user` instead.
+
+* new endpoint GET `/_readonlyrest/metadata/user`:
+
+    Returns user metadata in a new format. If the user belongs to groups, it returns all groups with their metadata (type `USER_WITH_GROUPS`). If the user has no groups, it returns user metadata directly (type `USER_WITHOUT_GROUPS`). Unlike `/metadata/current_user`, this returns all data in a single call without requiring the `X-ROR-Current-Group` header.
+
+    Supports optional `X-ROR-KBN-License-Type` header with values: `free`, `pro`, `ent`.
+
 ## 3.0.0
 
 Changes:

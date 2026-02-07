@@ -32,10 +32,9 @@ object ResponseContext {
                                                 history: Vector[Block.History[B]])
     extends ResponseContext[B]
 
-  final case class Allow[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                            userMetadata: UserMetadata,
-                                            block: Block,
-                                            history: Vector[Block.History[B]])
+  final case class Allowed[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                              userMetadata: UserMetadata,
+                                              history: Vector[Block.History[B]])
     extends ResponseContext[B]
 
   final case class ForbiddenBy[B <: BlockContext](requestContext: RequestContext.Aux[B],
@@ -59,7 +58,7 @@ object ResponseContext {
   implicit class RequestContextFromResponseContext[B <: BlockContext](val response: ResponseContext[B]) extends AnyVal {
     def requestContext: RequestContext.Aux[B] = response match {
       case AllowedBy(requestContext, _, _, _) => requestContext
-      case Allow(requestContext, _, _, _) => requestContext
+      case Allowed(requestContext, _, _) => requestContext
       case ForbiddenBy(requestContext, _, _, _) => requestContext
       case Forbidden(requestContext, _) => requestContext
       case RequestedIndexNotExist(requestContext, _) => requestContext

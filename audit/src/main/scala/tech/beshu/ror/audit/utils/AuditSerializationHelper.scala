@@ -83,9 +83,11 @@ private[ror] object AuditSerializationHelper {
       Map(AuditFieldPath("@timestamp") -> timestampFormatter.format(eventData.requestContext.timestamp)) ++
         fields.map { case (name, valueDescriptor) => name -> resolveAuditFieldValue(valueDescriptor) }
 
-    resolvedFields.foldLeft(new JSONObject()) { case (soFar, (path, value)) =>
-      putNested(soFar, path.path.toList, value)
-    }.mergeWith(eventData.requestContext.generalAuditEvents)
+    resolvedFields
+      .foldLeft(new JSONObject()) {
+        case (soFar, (path, value)) => putNested(soFar, path.path, value)
+      }
+      .mergeWith(eventData.requestContext.generalAuditEvents)
   }
 
   private def putNested(json: JSONObject, path: List[String], value: Any): JSONObject = {

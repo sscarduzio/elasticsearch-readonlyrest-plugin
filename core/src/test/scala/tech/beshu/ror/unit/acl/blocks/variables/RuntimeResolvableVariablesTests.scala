@@ -22,8 +22,8 @@ import io.jsonwebtoken.impl.DefaultClaims
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable.CannotExtractValue
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
@@ -366,11 +366,11 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
     )
   }
 
-  private def currentUserMetadataRequestBlockContextFrom(update: UserMetadata => UserMetadata = identity,
+  private def currentUserMetadataRequestBlockContextFrom(update: BlockMetadata => BlockMetadata = identity,
                                                          requestContext: MockUserMetadataRequestContext = MockRequestContext.metadata) = {
-    CurrentUserMetadataRequestBlockContext(
+    UserMetadataRequestBlockContext(
       requestContext,
-      update(UserMetadata.from(requestContext)),
+      update(BlockMetadata.from(requestContext)),
       Set.empty,
       List.empty
     )

@@ -22,9 +22,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.{ImpersonationNotAllowed, ImpersonationNotSupported}
@@ -44,7 +44,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
     "match" when {
       "LDAP service authenticates user" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:pass"))
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
@@ -57,9 +57,9 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
           Impersonation.Disabled
         )
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
-          CurrentUserMetadataRequestBlockContext(
+          UserMetadataRequestBlockContext(
             requestContext,
-            UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(Id("admin"))),
+            BlockMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(Id("admin"))),
             Set.empty,
             List.empty)
         ))
@@ -70,7 +70,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
             val service = mock[LdapAuthenticationService]
             (() => service.id).expects().returning(LdapService.Name("ldap1"))
@@ -90,9 +90,9 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
               ))
             )
             rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
-              CurrentUserMetadataRequestBlockContext(
+              UserMetadataRequestBlockContext(
                 requestContext,
-                UserMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
+                BlockMetadata.from(requestContext).withLoggedUser(ImpersonatedUser(Id("user1"), Id("admin"))),
                 Set.empty,
                 List.empty)
             ))
@@ -103,7 +103,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
     "not match" when {
       "LDAP service doesn't authenticate user" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:pass"))
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
@@ -119,7 +119,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
       }
       "there is no basic auth header" in {
         val requestContext = MockRequestContext.indices
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
         val service = mock[LdapAuthenticationService]
 
         val rule = new LdapAuthenticationRule(
@@ -131,7 +131,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
       }
       "LDAP service fails" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:pass"))
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
@@ -152,7 +152,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
             val service = mock[LdapAuthenticationService]
 
             val rule = new LdapAuthenticationRule(
@@ -176,7 +176,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
             val service = mock[LdapAuthenticationService]
 
             val rule = new LdapAuthenticationRule(
@@ -200,7 +200,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
             val service = mock[LdapAuthenticationService]
             (() => service.id).expects().returning(LdapService.Name("ldap1"))
 
@@ -225,7 +225,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
             val service = mock[LdapAuthenticationService]
             (() => service.id).expects().returning(LdapService.Name("ldap1"))
 
@@ -250,7 +250,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory with With
             val requestContext = MockRequestContext.indices.withHeaders(
               basicAuthHeader("admin:pass"), impersonationHeader("user1")
             )
-            val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
+            val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.from(requestContext), Set.empty, List.empty)
             val service = mock[LdapAuthenticationService]
             (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
               .expects(User.Id("admin"), PlainTextSecret("pass"), *)

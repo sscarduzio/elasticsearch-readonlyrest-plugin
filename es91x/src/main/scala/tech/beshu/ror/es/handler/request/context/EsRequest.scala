@@ -23,12 +23,11 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.Set
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.util.Try
-import tech.beshu.ror.utils.RequestIdAwareLogging
 
 trait EsRequest[B <: BlockContext] extends RequestIdAwareLogging {
   implicit def threadPool: ThreadPool

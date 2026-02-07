@@ -22,7 +22,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -170,7 +170,7 @@ class SnapshotsRuleTests extends AnyWordSpec with Inside {
       action = requestAction
     )
     val blockContext = SnapshotRequestBlockContext(
-      requestContext, UserMetadata.empty, Set.empty, List.empty, requestSnapshots, Set.empty, Set.empty, Set.empty
+      requestContext, BlockMetadata.empty, Set.empty, List.empty, requestSnapshots, Set.empty, Set.empty, Set.empty
     )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {

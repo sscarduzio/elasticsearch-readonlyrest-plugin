@@ -58,7 +58,7 @@ final class RorKbnAuthorizationRule(val settings: Settings)
           nonEmptyGroups <- UniqueNonEmptyList.from(groups)
           matchedGroups <- groupsLogic.availableGroupsFrom(nonEmptyGroups)
           if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-        } yield blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))).toRight(())
+        } yield blockContext.withBlockMetadata(_.addAvailableGroups(matchedGroups))).toRight(())
     }
   }
 

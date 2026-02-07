@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.acl.blocks.rules.kibana
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaIndexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
@@ -36,11 +36,11 @@ class KibanaIndexRuleTests extends AnyWordSpec {
       "set kibana index if can be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index")))
         val requestContext = MockRequestContext.indices
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          CurrentUserMetadataRequestBlockContext(
+          UserMetadataRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withKibanaIndex(kibanaIndexName("kibana_index")),
+            BlockMetadata.empty.withKibanaIndex(kibanaIndexName("kibana_index")),
             Set.empty,
             List.empty)
         ))
@@ -48,11 +48,11 @@ class KibanaIndexRuleTests extends AnyWordSpec {
       "not set kibana index if cannot be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index_of_@{user}")))
         val requestContext = MockRequestContext.indices
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          CurrentUserMetadataRequestBlockContext(
+          UserMetadataRequestBlockContext(
             requestContext,
-            UserMetadata.empty,
+            BlockMetadata.empty,
             Set.empty,
             List.empty)
         ))

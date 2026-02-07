@@ -22,8 +22,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -123,11 +123,11 @@ class UriRegexRuleTests extends AnyWordSpec {
                          isMatched: Boolean) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(path = uriPath))
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(userId) => UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(userId))
-        case None => UserMetadata.empty
+      blockMetadata = loggedUser match {
+        case Some(userId) => BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(userId))
+        case None => BlockMetadata.empty
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty

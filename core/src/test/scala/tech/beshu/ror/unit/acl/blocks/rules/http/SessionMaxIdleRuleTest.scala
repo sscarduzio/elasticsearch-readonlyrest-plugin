@@ -20,8 +20,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
@@ -81,7 +81,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         val rule = new SessionMaxIdleRule(Settings(positive(1 minute)), CaseSensitivity.Enabled)
         val requestContext = mock[RequestContext]
         (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
       "ror cookie is expired" in {
@@ -143,22 +143,22 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(user) => UserMetadata.empty.withLoggedUser(user)
-        case None => UserMetadata.empty
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.empty.withLoggedUser(user)
+        case None => BlockMetadata.empty
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) {
-        Fulfilled(CurrentUserMetadataRequestBlockContext(
+        Fulfilled(UserMetadataRequestBlockContext(
           requestContext,
           loggedUser match {
-            case Some(user) => UserMetadata.empty.withLoggedUser(user)
-            case None => UserMetadata.empty
+            case Some(user) => BlockMetadata.empty.withLoggedUser(user)
+            case None => BlockMetadata.empty
           },
           Set(headerFrom("Set-Cookie" -> setRawCookie)),
           List.empty

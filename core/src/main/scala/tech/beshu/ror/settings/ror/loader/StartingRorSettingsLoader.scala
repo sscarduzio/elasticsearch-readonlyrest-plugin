@@ -24,7 +24,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.EitherTOps
+import tech.beshu.ror.utils.ScalaOps.*
 
 trait StartingRorSettingsLoader {
   this: RequestIdAwareLogging =>

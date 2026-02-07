@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain
@@ -285,7 +285,7 @@ class JwtAuthorizationRuleTests
     )
     val blockContext = GeneralIndexRequestBlockContext(
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,

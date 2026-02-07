@@ -33,7 +33,7 @@ class TransportRRUserMetadataAction(settings: Settings,
                                     indexNameExpressionResolver: IndexNameExpressionResolver,
                                     @unused constructorDiscriminator: Unit)
   extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
-    settings, RRUserMetadataActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRUserMetadataRequest
+    settings, RRUserMetadataActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRUserMetadataRequest()
   ) {
 
   @Inject

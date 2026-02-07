@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
@@ -43,12 +43,12 @@ class FilterRuleTests extends AnyWordSpec {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
-          val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+          val blockContext = FilterableRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
             BlockContext.FilterableRequestBlockContext(
               requestContext = requestContext,
-              userMetadata = UserMetadata.empty,
+              blockMetadata = BlockMetadata.empty,
               responseHeaders = Set.empty,
               responseTransformations = List.empty,
               filteredIndices = Set.empty,
@@ -61,12 +61,12 @@ class FilterRuleTests extends AnyWordSpec {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
-          val blockContext = FilterableMultiRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, List.empty, None)
+          val blockContext = FilterableMultiRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, List.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
             BlockContext.FilterableMultiRequestBlockContext(
               requestContext = requestContext,
-              userMetadata = UserMetadata.empty,
+              blockMetadata = BlockMetadata.empty,
               responseHeaders = Set.empty,
               responseTransformations = List.empty,
               indexPacks = List.empty,
@@ -81,7 +81,7 @@ class FilterRuleTests extends AnyWordSpec {
         val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
         val blockContext = FilterableRequestBlockContext(
           requestContext = requestContext,
-          userMetadata = UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
+          blockMetadata = BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
           responseHeaders = Set.empty,
           responseTransformations = List.empty,
           filteredIndices = Set.empty,
@@ -92,7 +92,7 @@ class FilterRuleTests extends AnyWordSpec {
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
           FilterableRequestBlockContext(
             requestContext = requestContext,
-            userMetadata = UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
+            blockMetadata = BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
             responseHeaders = Set.empty,
             responseTransformations = List.empty,
             filteredIndices = Set.empty,
@@ -107,7 +107,7 @@ class FilterRuleTests extends AnyWordSpec {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
-        val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -115,7 +115,7 @@ class FilterRuleTests extends AnyWordSpec {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isAllowedForDLS = false)
-        val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -123,7 +123,7 @@ class FilterRuleTests extends AnyWordSpec {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(action = MockRequestContext.adminAction)
-        val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }

@@ -21,7 +21,7 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -38,7 +38,7 @@ abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest
 
   override val initialBlockContext: DataStreamRequestBlockContext = DataStreamRequestBlockContext(
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     dataStreams = discoverDataStreams(),

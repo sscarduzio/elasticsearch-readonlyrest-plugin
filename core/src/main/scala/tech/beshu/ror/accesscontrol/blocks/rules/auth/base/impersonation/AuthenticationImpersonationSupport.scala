@@ -81,7 +81,7 @@ private [rules]trait SimpleAuthenticationImpersonationSupport extends Authentica
         _ <- checkIfImpersonatorDifferFromTheImpersonatedUser[B](loggedImpersonator, theImpersonatedUserId)
         _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId, settings.mocksProvider)
       } yield {
-        blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
+        blockContext.withBlockMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
       }
     } map {
       Handled.apply
@@ -113,7 +113,7 @@ private [rules]trait SimpleAuthenticationImpersonationSupport extends Authentica
       .check(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
       .map {
         case Fulfilled(bc) =>
-          bc.userMetadata.loggedUser match {
+          bc.blockMetadata.loggedUser match {
             case Some(loggedUser) => Right(loggedUser)
             case None => throw new IllegalStateException("Impersonator should be logged")
           }
