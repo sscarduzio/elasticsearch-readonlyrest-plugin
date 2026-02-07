@@ -32,6 +32,7 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.net.InetSocketAddress
 import java.util.{Locale, UUID}
 import scala.util.Try
+import scala.jdk.CollectionConverters.*
 
 final case class CorrelationId(value: NonEmptyString)
 object CorrelationId {
@@ -70,7 +71,18 @@ object Header {
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def fromRawHeaders(headers: Map[String, List[String]]): Either[AuthorizationValueError, Set[Header]] = {
+  def fromRawHeaders(headers: java.util.Map[String, java.util.List[String]]): Either[AuthorizationValueError, Set[Header]] = {
+    fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
+  }
+
+  def findHeader(header: Header.Name, in: java.util.Map[String, java.util.List[String]]): Option[Header] = {
+    for {
+      headers <- fromRawHeaders(in).toOption
+      header <- headers.find(_.name == header)
+    } yield header
+  }
+
+  def fromRawHeaders(headers: collection.Map[String, Iterable[String]]): Either[AuthorizationValueError, Set[Header]] = {
     val (authorizationHeaders, nonAuthorizationHeaders) =
       headers
         .map { case (name, values) => (name, values.toCovariantSet) }
@@ -202,6 +214,9 @@ final case class UriPath private(value: NonEmptyString) {
   def isCurrentUserMetadataPath: Boolean =
     this != UriPath.slashPath && value.value.startsWith(UriPath.currentUserMetadataPath.value.value)
 
+  def isUserMetadataPath: Boolean =
+    this != UriPath.slashPath && value.value.startsWith(UriPath.userMetadataPath.value.value)
+
   def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
 
   def isTemplatePath: Boolean = value.value.startsWith("/_template")
@@ -222,6 +237,7 @@ final case class UriPath private(value: NonEmptyString) {
 }
 object UriPath {
   val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.CURRENT_USER_METADATA_PATH))
+  val userMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.USER_METADATA_PATH))
   val auditEventPath = UriPath(NonEmptyString.unsafeFrom(constants.AUDIT_EVENT_COLLECTOR_PATH))
   val slashPath = UriPath(nes("/"))
 
@@ -255,20 +271,6 @@ object UriPath {
   object TemplatePath {
     def unapply(uriPath: UriPath): Option[UriPath] = {
       if (uriPath.isTemplatePath) Some(uriPath)
-      else None
-    }
-  }
-
-  object AliasesPath {
-    def unapply(uriPath: UriPath): Option[UriPath] = {
-      if (uriPath.isAliasesPath) Some(uriPath)
-      else None
-    }
-  }
-
-  object CurrentUserMetadataPath {
-    def unapply(uriPath: UriPath): Option[UriPath] = {
-      if (uriPath.isCurrentUserMetadataPath) Some(uriPath)
       else None
     }
   }

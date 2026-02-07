@@ -18,17 +18,17 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import cats.Id
 import cats.data.ReaderT
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
-import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.regex.Pattern
 import scala.util.Try
@@ -44,7 +44,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   protected def shouldMatch: ProcessingContext = {
     isUnrestrictedAccessConfigured ||
-      isCurrentUserMetadataRequest ||
+      isUserMetadataRequest ||
       isDevNullKibanaRelated ||
       isRoAction ||
       isClusterAction ||
@@ -62,10 +62,10 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
-  private def isCurrentUserMetadataRequest = ProcessingContext.create { (r, _) =>
+  private def isUserMetadataRequest = ProcessingContext.create { (r, _) =>
     implicit val requestContextImpl: RequestContext = r
-    val result = r.restRequest.path.isCurrentUserMetadataPath
-    logger.debug(s"Is is a current user metadata request? ${result.show}")
+    val result = r.restRequest.path.isCurrentUserMetadataPath || r.restRequest.path.isCurrentUserMetadataPath
+    logger.debug(s"Is is a ReadonlyREST's user metadata request? ${result.show}")
     result
   }
 

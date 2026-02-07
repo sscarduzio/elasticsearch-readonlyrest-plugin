@@ -34,8 +34,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser}
+import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.{Enterprise, Free, Pro}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -97,15 +99,23 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       .map(_.flatten)
       .map { blockResults =>
         val (executionResults, history) = blockResults.unzip
-        val result = determineUserMetadataBasedOn(executionResults.view.onlyMatched(), context.currentGroupId, history)
+        val matchedResults = executionResults.view.onlyMatched()
+        val result = context.apiVersion match {
+          case UserMetadataApiVersion.V1 =>
+            determineUserMetadataForApiV1(matchedResults, context.currentGroupId, history)
+          case UserMetadataApiVersion.V2(Free | Pro | Enterprise(false)) =>
+            determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
+          case UserMetadataApiVersion.V2(Enterprise(true)) =>
+            determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
+        }
         WithHistory(history.toVector, result)
       }
   }
 
-  private def determineUserMetadataBasedOn(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
-                                           optPreferredGroupId: Option[GroupId],
-                                           history: Iterable[History[UserMetadataRequestBlockContext]]): UserMetadataRequestResult = {
-    val result = determineUserMetadataBasedOn(matched, history)
+  private def determineUserMetadataForApiV1(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
+                                            optPreferredGroupId: Option[GroupId],
+                                            history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    val result = determineUserMetadata(matched, history, ignoreGroupsHandling = false)
     (result, optPreferredGroupId) match {
       case (Allow(_: UserMetadata.WithoutGroups), Some(currentGroupId)) =>
         createForbiddenByMismatchedResult(history)
@@ -119,6 +129,26 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       case (Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)), None) =>
         determineUserMetadataForFirstAllowedGroup(withGroups, history)
       case _ =>
+        result
+    }
+  }
+
+  private def determineUserMetadataForApiV2WithoutTenancyHandling(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
+                                                                  history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    determineUserMetadata(matched, history, ignoreGroupsHandling = true)
+  }
+
+  private def determineUserMetadataForApiV2WithTenancyHandling(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
+                                                               history: Iterable[History[UserMetadataRequestBlockContext]]) = {
+    determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
+      case allow@Allow(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(block, blockContext))) =>
+        block.policy match {
+          case Policy.Allow => allow
+          case Policy.Forbid(_) => ForbiddenBy(blockContext, block)
+        }
+      case Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)) =>
+        determineUserMetadataForFirstAllowedGroup(withGroups, history)
+      case result =>
         result
     }
   }
@@ -153,12 +183,24 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def determineUserMetadataBasedOn(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
-                                           history: Iterable[History[UserMetadataRequestBlockContext]]): UserMetadataRequestResult = {
+  private def determineUserMetadata(matched: Iterable[Matched[UserMetadataRequestBlockContext]],
+                                    history: Iterable[History[UserMetadataRequestBlockContext]],
+                                    ignoreGroupsHandling: Boolean): UserMetadataRequestResult = {
     val withLoggedUsers = matched.view.onlyLoggedUsers()
-    val withGroups = withLoggedUsers.onlyWithAvailableGroups()
+    lazy val withGroups = withLoggedUsers.onlyWithAvailableGroups()
 
-    if (withGroups.nonEmpty) {
+    if (ignoreGroupsHandling || withGroups.isEmpty) {
+      val firstFittingMatch = withLoggedUsers
+        .allowedThroughFirstForbidden()
+        .firstAllowedWithKibanaIndexOrHead()
+
+      firstFittingMatch match {
+        case Some(m) if m.matchedResult.block.policy == Policy.Allow =>
+          createAllowResult(m)
+        case Some(_) | None =>
+          createForbiddenResult(matched, history)
+      }
+    } else {
       val groupsMetadata = withGroups
         .gatherGroupMetadataPreservingOrder()
         .groupByOrdered(_.group)
@@ -174,17 +216,6 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       NonEmptyList.fromList(groupsMetadata) match {
         case Some(nel) => createAllowResult(nel)
         case None => createForbiddenResult(matched, history)
-      }
-    } else {
-      val firstFittingMatch = withLoggedUsers
-        .allowedThroughFirstForbidden()
-        .firstAllowedWithKibanaIndexOrHead()
-
-      firstFittingMatch match {
-        case Some(m) if m.matchedResult.block.policy == Policy.Allow =>
-          createAllowResult(m)
-        case Some(_) | None =>
-          createForbiddenResult(matched, history)
       }
     }
   }

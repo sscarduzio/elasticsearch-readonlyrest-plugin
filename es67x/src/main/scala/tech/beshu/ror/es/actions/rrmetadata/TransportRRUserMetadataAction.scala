@@ -23,6 +23,7 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
+import tech.beshu.ror.accesscontrol.domain.UriPath
 
 import scala.annotation.unused
 
@@ -33,7 +34,7 @@ class TransportRRUserMetadataAction(settings: Settings,
                                     indexNameExpressionResolver: IndexNameExpressionResolver,
                                     @unused constructorDiscriminator: Unit)
   extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
-    settings, RRUserMetadataActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRUserMetadataRequest()
+    settings, RRUserMetadataActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRUserMetadataRequest(UriPath.currentUserMetadataPath, None)
   ) {
 
   @Inject

@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*
@@ -294,7 +295,8 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val allTemplates: Set[Template] = Set.empty,
                                                 override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
-                                                override val isAllowedForDLS: Boolean = true)
+                                                override val isAllowedForDLS: Boolean = true,
+                                                override val apiVersion: UserMetadataApiVersion = UserMetadataApiVersion.V1)
   extends UserMetadataRequestContext {
 
   override type BLOCK_CONTEXT = UserMetadataRequestBlockContext

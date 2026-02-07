@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataResponse, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
@@ -78,7 +79,7 @@ class UserMetadataRequestHandler(engine: Engine,
                       userMetadata: UserMetadata): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onResponse(
-      new RRMetadataResponse(userMetadata, requestContext.currentGroupId, esContext.correlationId.value)
+      new RRMetadataResponse(requestContext.apiVersion, userMetadata, requestContext.currentGroupId, esContext.correlationId.value)
     )
   }
 
@@ -100,13 +101,14 @@ class UserMetadataRequestHandler(engine: Engine,
 
 }
 
-private class RRMetadataResponse(userMetadata: UserMetadata,
+private class RRMetadataResponse(apiVersion: UserMetadataApiVersion,
+                                 userMetadata: UserMetadata,
                                  currentGroupId: Option[GroupId],
                                  correlationId: CorrelationId)
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val json = MetadataResponse.from(userMetadata, currentGroupId, correlationId)
+    val json = MetadataResponse.fromAsJavaJsonObject(apiVersion, userMetadata, currentGroupId, correlationId)
     builder.map(json)
     builder
   }
