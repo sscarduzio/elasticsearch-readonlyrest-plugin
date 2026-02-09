@@ -15,15 +15,17 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.http
+
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -40,7 +42,7 @@ import java.util.UUID
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
+class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAssertion {
 
   "A SessionMaxIdleRule" should {
     "match" when {
@@ -82,8 +84,8 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         val rule = new SessionMaxIdleRule(Settings(positive(1 minute)), CaseSensitivity.Enabled)
         val requestContext = mock[RequestContext]
         (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Denied(NotAuthorized))
+        val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+        rule.check(blockContext).runSyncStep should be (Right(Denied(NotAuthorized)))
       }
       "ror cookie is expired" in {
         implicit val _clock: Clock = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
@@ -144,29 +146,27 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(user) => UserMetadata.empty.withLoggedUser(user)
-        case None => UserMetadata.empty
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.empty.withLoggedUser(user)
+        case None => BlockMetadata.empty
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
-    rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) {
-        Permitted(CurrentUserMetadataRequestBlockContext(
-          requestContext,
-          loggedUser match {
-            case Some(user) => UserMetadata.empty.withLoggedUser(user)
-            case None => UserMetadata.empty
-          },
-          Set(headerFrom("Set-Cookie" -> setRawCookie)),
-          List.empty
-        ))
-      } else {
-        Denied(NotAuthorized)
+    val result = rule.check(blockContext).runSyncUnsafe()
+    if(isMatched) {
+      inside(result) {
+        case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+          assertBlockContext(blockContext)(
+            loggedUser = loggedUser,
+            responseHeaders = Set(headerFrom("Set-Cookie" -> setRawCookie))
+          )
       }
+    } else {
+      result should be (Denied(NotAuthorized))
     }
   }
 

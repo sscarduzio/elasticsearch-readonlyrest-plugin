@@ -49,7 +49,7 @@ class Block(val name: Name,
   import Lifter.*
 
   def evaluate[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(Decision[B], BlockHistory[B])] = {
-    val initBlockContext = requestContext.initialBlockContext
+    val initBlockContext = requestContext.initialBlockContext(this)
     rules
       .foldLeft(matched[B](Decision.Permitted(initBlockContext))) {
         case (currentResult, rule) =>

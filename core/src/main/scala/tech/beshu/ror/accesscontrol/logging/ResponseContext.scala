@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.logging
 
 import tech.beshu.ror.accesscontrol.History
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 sealed trait ResponseContext[B <: BlockContext] {
@@ -28,19 +28,16 @@ sealed trait ResponseContext[B <: BlockContext] {
 object ResponseContext {
 
   final case class AllowedBy[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                block: Block,
                                                 blockContext: B,
                                                 history: History[B])
     extends ResponseContext[B]
 
-  final case class Allow[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                            userMetadata: UserMetadata,
-                                            block: Block,
-                                            history: History[B])
+  final case class Allowed[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                              userMetadata: UserMetadata,
+                                              history: History[B])
     extends ResponseContext[B]
 
   final case class ForbiddenBy[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                  block: Block,
                                                   blockContext: B,
                                                   history: History[B])
     extends ResponseContext[B]

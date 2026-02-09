@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationSe
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, PlainTextSecret, RequestId, User}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.TaskOps.*
@@ -34,7 +34,7 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
   extends LdapAuthenticationService
     with RequestIdAwareLogging {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)
+  override def authenticate(user: User.Id, secret: PlainTextSecret)
                            (implicit requestId: RequestId): Task[AuthenticationResult] = {
     logger.debug(s"Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying

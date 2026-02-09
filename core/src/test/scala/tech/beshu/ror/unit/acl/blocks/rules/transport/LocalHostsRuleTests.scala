@@ -22,10 +22,11 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.LocalHostsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -84,18 +85,17 @@ class LocalHostsRuleTests extends AnyWordSpec with MockFactory {
       new Ip4sBasedHostnameResolver
     )
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(localAddress = localAddress))
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-    rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
+    val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+    rule.check(blockContext).runSyncUnsafe(10 seconds) should be {
       if (isMatched) Permitted(blockContext)
       else Denied(NotAuthorized)
     }
   }
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
+    implicit val convertible: AlwaysRightConvertible[Address] = AlwaysRightConvertible.from(str => Address.from(str.value).get)
     variableCreator
-      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(
-        AlwaysRightConvertible.from(str => Address.from(str.value).get),
-      )
+      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
 

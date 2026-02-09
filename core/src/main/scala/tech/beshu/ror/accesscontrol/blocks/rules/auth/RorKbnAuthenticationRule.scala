@@ -53,22 +53,22 @@ final class RorKbnAuthenticationRule(val settings: Settings,
                                                                     tokenPayload: Jwt.Payload): Either[Unit, B] = {
     userId match {
       case Found(userId) =>
-        val withUserMetadata = userOrigin match {
+        val withBlockMetadata = userOrigin match {
           case Found(header) =>
-            blockContext.withUserMetadata(
+            blockContext.withBlockMetadata(
               _
                 .withLoggedUser(DirectlyLoggedUser(userId))
                 .withUserOrigin(UserOrigin(header.value))
                 .withJwtToken(tokenPayload)
             )
           case ClaimSearchResult.NotFound =>
-            blockContext.withUserMetadata(
+            blockContext.withBlockMetadata(
               _
                 .withLoggedUser(DirectlyLoggedUser(userId))
                 .withJwtToken(tokenPayload)
             )
         }
-        Right(withUserMetadata)
+        Right(withBlockMetadata)
       case NotFound =>
         Left(())
     }

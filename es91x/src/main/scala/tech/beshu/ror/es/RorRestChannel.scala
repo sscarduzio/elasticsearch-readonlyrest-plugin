@@ -51,16 +51,9 @@ final class RorRestChannel private(underlying: EsRestChannel, val restRequest: R
 object RorRestRequest {
 
   def from(esRestRequest: EsRestRequest): Either[Header.AuthorizationValueError, RorRestRequest] = {
-    headersFrom(esRestRequest).map(new RorRestRequest(esRestRequest, _))
-  }
-
-  private def headersFrom(esRestRequest: EsRestRequest) = {
-    Header.fromRawHeaders(
-      esRestRequest
-        .getHeaders.asScala
-        .view.mapValues(_.asScala.toList)
-        .toMap
-    )
+    Header
+      .fromRawHeaders(esRestRequest.getHeaders)
+      .map(new RorRestRequest(esRestRequest, _))
   }
 }
 final class RorRestRequest private(underlying: EsRestRequest,

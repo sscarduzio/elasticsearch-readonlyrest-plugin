@@ -20,14 +20,14 @@ import cats.data.NonEmptyList
 import io.jsonwebtoken.Jwts
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -66,11 +66,11 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group1")),
-            )(blockContext)
+            )
         }
       }
       "group IDs claim name is defined and groups are passed in JWT token claim (no preferred group)" in {
@@ -90,11 +90,11 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group1")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+            )
         }
       }
       "group IDs claim name is defined and groups are passed in JWT token claim (with preferred group)" in {
@@ -115,11 +115,11 @@ class JwtAuthRuleTests
           preferredGroupId = Some(GroupId("group1"))
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group1"))
-            )(blockContext)
+            )
         }
       }
       "group IDs claim name is defined as http address and groups are passed in JWT token claim" in {
@@ -139,11 +139,11 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group1"))
-            )(blockContext)
+            )
         }
       }
       "group IDs claim name is defined and no groups field is passed in JWT token claim" in {
@@ -164,11 +164,11 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group1")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
       "group IDs claim path is defined and groups are passed in JWT token claim" in {
@@ -188,11 +188,11 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group1")), //RORDEV-1639 - this behavior changed, the `currentGroup` was not added to the context in pseudo-authorization before
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+            )
         }
       }
       "group names claim is defined and group names are passed in JWT token claim" in {
@@ -218,11 +218,11 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group1")), //RORDEV-1639 - this behavior changed, the `currentGroup` was not added to the context in pseudo-authorization before
-            )(blockContext)
+            )
         }
       }
       "group names claim is defined and group names passed in JWT token claim are malformed" when {
@@ -249,11 +249,11 @@ class JwtAuthRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
                 currentGroup = Some(GroupId("group1")), //RORDEV-1639 - this behavior changed, the `currentGroup` was not added to the context in pseudo-authorization before
-              )(blockContext)
+              )
           }
         }
         "one group does not have a name" in {
@@ -277,11 +277,11 @@ class JwtAuthRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
                 currentGroup = Some(GroupId("group1")), //RORDEV-1639 - this behavior changed, the `currentGroup` was not added to the context in pseudo-authorization before
-              )(blockContext)
+              )
           }
         }
       }
@@ -311,12 +311,12 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2", "Group 2"))
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -345,12 +345,12 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2", "Group 2"))
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
@@ -379,12 +379,12 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group1")),
               availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -413,12 +413,12 @@ class JwtAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group1")),
               availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2"))
-            )(blockContext)
+            )
         }
       }
     }
@@ -595,8 +595,9 @@ class JwtAuthRuleTests
       preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,

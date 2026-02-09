@@ -109,22 +109,22 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           history.blocks should have size 1
-          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("LDAP1"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
-              blockContext
-            }
+          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+            blockContext.block.name should be(Block.Name("LDAP1"))
+            assertBlockContext(blockContext)(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))
+            )
           }
         }
         "ROR is configured to ignore connectivity problems, but connection is possible" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("kyle:user2"))
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           history.blocks should have size 2
-          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("LDAP2"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("kyle")))) {
-              blockContext
-            }
+          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+            blockContext.block.name should be(Block.Name("LDAP2"))
+            assertBlockContext(blockContext)(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("kyle")))
+            )
           }
         }
       }

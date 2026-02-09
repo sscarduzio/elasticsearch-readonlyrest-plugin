@@ -17,8 +17,9 @@
 package tech.beshu.ror.es.handler.request.context.types.ror
 
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RorApiRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -33,15 +34,15 @@ class RorApiEsRequestContext(actionRequest: RorActionRequest,
   extends BaseEsRequestContext[RorApiRequestBlockContext](esContext, clusterService)
     with EsRequest[RorApiRequestBlockContext] {
 
-  override val initialBlockContext: RorApiRequestBlockContext = RorApiRequestBlockContext(
+  override def initialBlockContext(block: Block): RorApiRequestBlockContext = RorApiRequestBlockContext(
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty
   )
 
   override protected def modifyRequest(blockContext: RorApiRequestBlockContext): ModificationResult = {
-    blockContext.userMetadata.loggedUser match {
+    blockContext.blockMetadata.loggedUser match {
       case Some(value) => actionRequest.setLoggedUser(value)
       case None =>
     }

@@ -21,7 +21,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.ScalaOps.StringOps
+import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
 
 import java.nio.charset.StandardCharsets.UTF_8

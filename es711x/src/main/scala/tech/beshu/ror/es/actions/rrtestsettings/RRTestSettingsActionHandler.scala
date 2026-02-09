@@ -52,7 +52,7 @@ class RRTestSettingsActionHandler extends RequestIdAwareLogging {
     case Right(response) =>
       listener.onResponse(new RRTestSettingsResponse(response))
     case Left(ex) =>
-      logger.error(s"Internal error", ex)
+      logger.error("Internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 

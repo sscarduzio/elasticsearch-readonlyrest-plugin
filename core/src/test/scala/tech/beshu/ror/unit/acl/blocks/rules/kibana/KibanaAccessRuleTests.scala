@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.*
 import tech.beshu.ror.accesscontrol.domain.*
@@ -36,13 +37,13 @@ class KibanaAccessRuleTests
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
-        kibanaAccess = Some(settings.access),
-        kibanaIndex = Some(kibanaIndexFrom(customKibanaIndex)),
+      assertBlockContext(blockContext)(
         indices = indices,
-        dataStreams = dataStreams
-      )(
-        blockContext
+        dataStreams = dataStreams,
+        kibanaPolicy = Some(KibanaPolicy.default.copy(
+          access = settings.access,
+          index = Some(kibanaIndexFrom(customKibanaIndex)),
+        )),
       )
     }
 }

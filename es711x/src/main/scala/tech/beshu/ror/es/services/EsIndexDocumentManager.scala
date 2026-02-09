@@ -86,7 +86,7 @@ class EsIndexDocumentManager(client: NodeClient,
       }
   }
 
-   override def saveDocumentJson(index: IndexName.Full, id: String, document: Json)
+  override def saveDocumentJson(index: IndexName.Full, id: String, document: Json)
                                (implicit requestId: RequestId): Task[Either[WriteError, Unit]] = {
     Task {
       client

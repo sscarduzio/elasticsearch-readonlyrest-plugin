@@ -18,12 +18,12 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
@@ -57,10 +57,10 @@ class RorKbnAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "token has valid RS256 signature" in {
@@ -78,10 +78,10 @@ class RorKbnAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (no preferred group)" in {
@@ -103,10 +103,10 @@ class RorKbnAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (with preferred group)" in {
@@ -129,10 +129,10 @@ class RorKbnAuthorizationRuleTests
           preferredGroupId = Some(GroupId("group2"))
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "groups OR logic is used" when {
@@ -155,10 +155,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
-              )(blockContext)
+              )
           }
         }
         "at least one allowed group matches the JWT groups (2)" in {
@@ -180,10 +180,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
-              )(blockContext)
+              )
           }
         }
       }
@@ -207,10 +207,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
-              )(blockContext)
+              )
           }
         }
         "all allowed groups match the JWT groups (2)" in {
@@ -232,10 +232,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
-              )(blockContext)
+              )
           }
         }
       }
@@ -392,8 +392,9 @@ class RorKbnAuthorizationRuleTests
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,

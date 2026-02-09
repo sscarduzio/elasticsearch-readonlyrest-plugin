@@ -70,11 +70,11 @@ class RegularRequestAccessControlTests
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:container"))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 1
-        inside(result) { case Allow(blockContext, block) =>
-          block.name should be(Block.Name("CONTAINER ADMIN"))
-          assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))) {
-            blockContext
-          }
+        inside(result) { case Allow(blockContext) =>
+          blockContext.block.name should be(Block.Name("CONTAINER ADMIN"))
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))
+          )
         }
       }
       "regular request is sent in behalf of admin user, but the authorization token header is lower case string" in {
@@ -86,11 +86,11 @@ class RegularRequestAccessControlTests
         )
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 1
-        inside(result) { case Allow(blockContext, block) =>
-          block.name should be(Block.Name("CONTAINER ADMIN"))
-          assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))) {
-            blockContext
-          }
+        inside(result) { case Allow(blockContext) =>
+          blockContext.block.name should be(Block.Name("CONTAINER ADMIN"))
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))
+          )
         }
       }
     }
@@ -107,12 +107,12 @@ class RegularRequestAccessControlTests
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user2:dev"))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 3
-        inside(result) { case ForbiddenBy(blockContext, block) =>
-          block.name should be(Block.Name("User 2"))
-          block.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
-          assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user2")))) {
-            blockContext
-          }
+        inside(result) { case ForbiddenBy(blockContext) =>
+          blockContext.block.name should be(Block.Name("User 2"))
+          blockContext.block.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user2")))
+          )
         }
       }
     }

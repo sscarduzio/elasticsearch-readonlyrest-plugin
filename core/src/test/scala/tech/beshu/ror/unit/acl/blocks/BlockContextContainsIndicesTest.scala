@@ -26,16 +26,16 @@ class BlockContextContainsIndicesTest extends AnyWordSpec {
 
   "find HasIndexPacks" in {
     implicitly[HasIndexPacks[BlockContext.FilterableMultiRequestBlockContext]]
-    val bc: BlockContext.FilterableMultiRequestBlockContext = BlockContext.FilterableMultiRequestBlockContext(null, null, null, null, null, null)
+    val bc: BlockContext.FilterableMultiRequestBlockContext = BlockContext.FilterableMultiRequestBlockContext(null, null, null, null, null, null, null)
     bc.involvesIndices shouldEqual true
   }
   "find HasIndices" in {
     implicitly[HasIndices[BlockContext.SnapshotRequestBlockContext]]
-    val bc: BlockContext.SnapshotRequestBlockContext = BlockContext.SnapshotRequestBlockContext(null, null, null, null, null, null, null, null)
+    val bc: BlockContext.SnapshotRequestBlockContext = BlockContext.SnapshotRequestBlockContext(null, null, null, null, null, null, null, null, null)
     bc.involvesIndices shouldEqual true
   }
   "not find any  indices" in {
-    val bc: BlockContext.CurrentUserMetadataRequestBlockContext = BlockContext.CurrentUserMetadataRequestBlockContext(null, null, null, null)
+    val bc: BlockContext.UserMetadataRequestBlockContext = BlockContext.UserMetadataRequestBlockContext(null, null, null, null, null)
     bc.involvesIndices shouldEqual false
   }
 }

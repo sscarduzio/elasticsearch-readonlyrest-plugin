@@ -16,28 +16,21 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import cats.{Eval, Show}
+import cats.Eval
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import org.apache.logging.log4j.Level
 import org.json.JSONObject
-import squants.information.Bytes
-import tech.beshu.ror.accesscontrol.History
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.Instant
 import scala.language.implicitConversions
@@ -52,7 +45,7 @@ trait RequestContext {
 
   type BLOCK_CONTEXT <: BlockContext
 
-  def initialBlockContext: BLOCK_CONTEXT
+  def initialBlockContext(block: Block): BLOCK_CONTEXT
 
   def restRequest: RestRequest
 
@@ -67,6 +60,8 @@ trait RequestContext {
   def `type`: Type
 
   def action: Action
+
+  def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]]
 
   def indexAttributes: Set[IndexAttribute]
 
@@ -100,6 +95,12 @@ trait RequestContext {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
+  def currentGroupId: Option[GroupId] = {
+    restRequest
+      .allHeaders
+      .find(_.name === Header.Name.currentGroup)
+      .map(h => GroupId(h.value))
+  }
 }
 
 object RequestContext extends RequestIdAwareLogging {
@@ -117,58 +118,7 @@ object RequestContext extends RequestIdAwareLogging {
     }
   }
 
-  def show[B <: BlockContext](userMetadata: UserMetadata,
-                              history: History[B])
-                             (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
-    Show.show { r =>
-      def stringifyUser = {
-        userMetadata.loggedUser match {
-          case Some(DirectlyLoggedUser(user)) => s"${user.show}"
-          case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
-          // todo: better implementation needed
-          case None => r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
-        }
-      }
-
-      def stringifyContentLength = {
-        if (r.restRequest.contentLength == Bytes(0)) "<N/A>"
-        else if (logger.delegate.isEnabled(Level.DEBUG)) r.restRequest.content
-        else s"<OMITTED, LENGTH=${r.restRequest.contentLength}> "
-      }
-
-      def stringifyIndices = {
-        val idx = r.initialBlockContext.indices.toList.map(_.show)
-        if (idx.isEmpty) "<N/A>"
-        else idx.mkString(",")
-      }
-
-      def stringifyUserGroup = {
-        userMetadata.currentGroupId match {
-          case Some(groupId) => groupId.show
-          case None => "<N/A>"
-        }
-      }
-      s"""{
-         | ID:${r.id.show},
-         | TYP:${r.`type`.show},
-         | CGR:${stringifyUserGroup.show},
-         | USR:${stringifyUser.show},
-         | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
-         | KDX:${userMetadata.kibanaIndex.map(_.show).getOrElse("null").show},
-         | ACT:${r.action.show},
-         | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-         | XFF:${r.restRequest.allHeaders.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null").show},
-         | DA:${r.restRequest.localAddress.show},
-         | IDX:${stringifyIndices.show},
-         | MET:${r.restRequest.method.show},
-         | PTH:${r.restRequest.path.show},
-         | CNT:${stringifyContentLength.show},
-         | HDR:${r.restRequest.allHeaders.show},
-         | HIS:${history.blocks.map(b => blockHistoryShow(headerShow).show(b)).mkString(", ").show},
-         | }""".oneLiner
-    }
-
-  val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+  private val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       RorAction.RorUserMetadataAction.value,
       "cluster:monitor/*",
@@ -301,11 +251,6 @@ object RequestContextOps {
   object RequestGroup {
     final case class AGroup(userGroup: GroupId) extends RequestGroup
     case object `N/A` extends RequestGroup
-
-    implicit val show: Show[RequestGroup] = Show.show {
-      case AGroup(group) => group.value.value
-      case `N/A` => "N/A"
-    }
 
     implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
       def toOption: Option[GroupId] = requestGroup match {

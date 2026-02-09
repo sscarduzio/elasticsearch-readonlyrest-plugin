@@ -126,7 +126,7 @@ class RegularRequestHandler(engine: Engine,
         handleIndexNotFoundForMultiSearchRequest(request, allowedClusters)
       case AliasRequestBlockContextUpdater =>
         handleIndexNotFoundForAliasRequest(request, allowedClusters)
-      case CurrentUserMetadataRequestBlockContextUpdater |
+      case UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -145,7 +145,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -164,7 +164,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |

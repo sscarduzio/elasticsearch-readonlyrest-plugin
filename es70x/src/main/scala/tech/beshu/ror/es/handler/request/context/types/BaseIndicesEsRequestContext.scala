@@ -21,8 +21,9 @@ import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
@@ -40,9 +41,10 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
   extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext, clusterService)
     with EsRequest[GeneralIndexRequestBlockContext] {
 
-  override val initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
+  override def initialBlockContext(block: Block): GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     filteredIndices = discoverIndices(),

@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
@@ -126,7 +127,7 @@ class RegularRequestHandler(engine: Engine,
         handleIndexNotFoundForMultiSearchRequest(request, allowedClusters)
       case AliasRequestBlockContextUpdater =>
         handleIndexNotFoundForAliasRequest(request, allowedClusters)
-      case CurrentUserMetadataRequestBlockContextUpdater |
+      case UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -145,7 +146,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -164,7 +165,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |

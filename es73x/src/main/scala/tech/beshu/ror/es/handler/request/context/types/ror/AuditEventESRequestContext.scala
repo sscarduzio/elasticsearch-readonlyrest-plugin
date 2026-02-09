@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types.ror
 import org.elasticsearch.threadpool.ThreadPool
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -34,9 +34,9 @@ class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
   extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
-  override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
+  override def initialBlockContext(block: Block): GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty
   )

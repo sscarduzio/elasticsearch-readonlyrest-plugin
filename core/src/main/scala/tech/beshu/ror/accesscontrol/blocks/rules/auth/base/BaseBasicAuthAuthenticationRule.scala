@@ -42,7 +42,7 @@ private [auth] abstract class BaseBasicAuthAuthenticationRule
           case Some(credentials) =>
             authenticateUsing(credentials)
               .map {
-                case Right(user) => Permitted(blockContext.withUserMetadata(_.withLoggedUser(user)))
+                case Right(user) => Permitted(blockContext.withBlockMetadata(_.withLoggedUser(user)))
                 case Left(AuthenticationFailed) => reject()
               }
           case None =>

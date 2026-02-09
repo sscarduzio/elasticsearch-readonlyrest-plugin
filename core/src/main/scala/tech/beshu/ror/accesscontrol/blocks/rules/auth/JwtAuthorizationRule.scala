@@ -72,7 +72,7 @@ final class JwtAuthorizationRule(val settings: Settings)
           } else {
             Decision.Denied(Cause.GroupsAuthorizationFailed)
           }
-        } yield blockContext.withUserMetadata(
+        } yield blockContext.withBlockMetadata(
           _.addAvailableGroups(matchedGroups).withJwtToken(payload)
         )
     }

@@ -24,9 +24,8 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse, 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
@@ -61,8 +60,8 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[domain.Filter],
-                                fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ModificationResult = {
+                                filter: Option[Filter],
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchRequest.indices(filteredRequestedIndices.stringify: _*)
     if (searchTemplateRequest.isSimulate)
       ModificationResult.UpdateResponse.sync { resp =>
@@ -80,8 +79,8 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
    * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
    * solution is obviously less efficient, but at least it works.
    */
-  private def callSearchOnceAgain(filter: Option[domain.Filter],
-                                  fieldLevelSecurity: Option[domain.FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
+  private def callSearchOnceAgain(filter: Option[Filter],
+                                  fieldLevelSecurity: Option[FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
     searchTemplateResponse => {
       val updatedSearchRequest = searchRequest
         .applyFilterToQuery(filter)

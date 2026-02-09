@@ -36,7 +36,7 @@ class UsersRule(val settings: Settings,
   override val name: Rule.Name = UsersRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    blockContext.userMetadata.loggedUser match {
+    blockContext.blockMetadata.loggedUser match {
       case Some(user) => matchUser(user, blockContext)
       case None => Denied(Cause.NotAuthorized)
     }

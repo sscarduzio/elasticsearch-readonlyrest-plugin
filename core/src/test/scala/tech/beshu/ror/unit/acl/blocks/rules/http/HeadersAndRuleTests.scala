@@ -21,9 +21,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersAndRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
@@ -217,8 +218,9 @@ class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
     (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
     val blockContext = GeneralNonIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )

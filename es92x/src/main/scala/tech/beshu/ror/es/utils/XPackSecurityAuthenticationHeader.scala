@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.{TransportVersion, TransportVersions}
+import org.elasticsearch.TransportVersion
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.io.stream.BytesStreamOutput
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -58,18 +58,10 @@ object XPackSecurityAuthenticationHeader {
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")
-    if(output.getTransportVersion.onOrAfter(TransportVersions.V_8_2_0)) {
-      output.writeBoolean(false)
-    }
     output.writeBoolean(false)
-    if (output.getTransportVersion.onOrAfter(TransportVersions.V_7_0_0)) {
-      output.writeVInt(4) // Internal
-      if(output.getTransportVersion.onOrAfter(TransportVersions.V_8_8_0)) {
-        output.writeVInt(0)
-      } else {
-        output.writeGenericMap(Map.empty[String, Object].asJava)
-      }
-    }
+    output.writeBoolean(false)
+    output.writeVInt(4) // Internal
+    output.writeVInt(0)
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
     }

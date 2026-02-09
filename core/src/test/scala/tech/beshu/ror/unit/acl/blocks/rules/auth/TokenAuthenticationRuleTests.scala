@@ -18,11 +18,11 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
@@ -214,9 +214,10 @@ class TokenAuthenticationRuleTests
                          assertion: RuleCheckAssertion): Unit = {
     val rule = new TokenAuthenticationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers)
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
@@ -225,16 +226,16 @@ class TokenAuthenticationRuleTests
 
   private def defaultOutputBlockContextAssertion(user: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(DirectlyLoggedUser(user))
-      )(blockContext)
+      )
     }
 
   private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
                                                           impersonator: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(ImpersonatedUser(user, impersonator))
-      )(blockContext)
+      )
     }
 }

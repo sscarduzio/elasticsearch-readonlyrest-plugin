@@ -19,7 +19,7 @@ package tech.beshu.ror.es.handler.request.context.types
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -34,9 +34,9 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
   extends BaseEsRequestContext[SnapshotRequestBlockContext](esContext, clusterService)
     with EsRequest[SnapshotRequestBlockContext] {
 
-  override val initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
+  override def initialBlockContext(block: Block): SnapshotRequestBlockContext = SnapshotRequestBlockContext(
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     snapshots = snapshotsFrom(actionRequest).orWildcardWhenEmpty,

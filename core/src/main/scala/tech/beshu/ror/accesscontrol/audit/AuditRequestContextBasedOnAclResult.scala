@@ -18,13 +18,12 @@ package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{Address, Header}
+import tech.beshu.ror.accesscontrol.domain.{Address, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
-import tech.beshu.ror.accesscontrol.{History, domain}
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
@@ -32,7 +31,7 @@ import java.time.Instant
 import scala.collection.immutable.Set as ScalaSet
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                                            userMetadata: Option[UserMetadata],
+                                                                            loggedUser: Option[LoggedUser],
                                                                             aclProcessingHistory: History[B],
                                                                             loggingContext: LoggingContext,
                                                                             override val auditEnvironmentContext: AuditEnvironmentContext,
@@ -42,14 +41,13 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
 
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
 
-  private val loggedUser: Option[domain.LoggedUser] = userMetadata.flatMap(_.loggedUser)
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
   override val correlationId: String = requestContext.rorKibanaSessionId.value.value
-  override val indices: ScalaSet[String] =
-    requestContext
-      .initialBlockContext.indices
-      .map(_.stringify).toSet
+  override val indices: ScalaSet[String] = requestContext.requestedIndices match {
+    case Some(indices) => indices.map(_.stringify).toSet
+    case None => ScalaSet.empty
+  }
   override val action: String = requestContext.action.value
   override val headers: Map[String, String] =
     requestContext.restRequest.allHeaders

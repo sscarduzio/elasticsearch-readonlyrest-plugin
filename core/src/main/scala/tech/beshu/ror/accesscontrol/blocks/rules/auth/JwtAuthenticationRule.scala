@@ -60,7 +60,7 @@ final class JwtAuthenticationRule(val settings: Settings,
     logClaimSearchResults(blockContext, result)
     result match {
       case Found(userId) =>
-        Decision.Permitted(blockContext.withUserMetadata(
+        Decision.Permitted(blockContext.withBlockMetadata(
           _.withLoggedUser(DirectlyLoggedUser(userId))
             .withJwtToken(payload)
         ))

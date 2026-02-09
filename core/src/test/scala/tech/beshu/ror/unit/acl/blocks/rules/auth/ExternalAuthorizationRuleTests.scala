@@ -21,15 +21,15 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
@@ -510,10 +510,11 @@ class ExternalAuthorizationRuleTests
       preferredGroup.map(_.toCurrentGroupHeader)
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
-        case None => UserMetadata.from(requestContext)
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(user)
+        case None => BlockMetadata.from(requestContext)
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
@@ -528,11 +529,11 @@ class ExternalAuthorizationRuleTests
                                                  preferredGroupId: GroupId,
                                                  availableGroups: UniqueList[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(DirectlyLoggedUser(user)),
         currentGroup = Some(preferredGroupId),
         availableGroups = availableGroups
-      )(blockContext)
+      )
     }
 
   private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
@@ -540,11 +541,11 @@ class ExternalAuthorizationRuleTests
                                                           availableGroups: UniqueList[Group],
                                                           impersonator: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(ImpersonatedUser(user, impersonator)),
         currentGroup = Some(group),
         availableGroups = availableGroups
-      )(blockContext)
+      )
     }
 
   private def mockExternalAuthorizationService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) =

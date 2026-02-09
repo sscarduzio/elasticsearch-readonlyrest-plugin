@@ -53,7 +53,7 @@ final class ProxyAuthRule(val settings: Settings,
       case None =>
         Denied(Cause.AuthenticationFailed)
       case Some(loggedUser) if shouldAuthenticate(loggedUser.id) =>
-        Permitted(blockContext.withUserMetadata(_.withLoggedUser(loggedUser)))
+        Permitted(blockContext.withBlockMetadata(_.withLoggedUser(loggedUser)))
       case Some(_) =>
         Denied(Cause.AuthenticationFailed)
     }

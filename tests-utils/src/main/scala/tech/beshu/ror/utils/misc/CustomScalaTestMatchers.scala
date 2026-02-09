@@ -108,6 +108,7 @@ trait CustomScalaTestMatchers extends Matchers {
   implicit def toHaveWordStatusCode[T <: BaseManager#SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
     new HaveStatusCode(haveWord)
   }
+
 }
 
 object CustomScalaTestMatchers extends CustomScalaTestMatchers

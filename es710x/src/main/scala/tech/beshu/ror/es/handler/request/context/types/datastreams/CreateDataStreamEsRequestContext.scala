@@ -20,7 +20,6 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -36,7 +35,7 @@ private[datastreams] class CreateDataStreamEsRequestContext private(actionReques
                                                                     override val threadPool: ThreadPool)
   extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override def dataStreamsFrom(request: ActionRequest): Set[domain.DataStreamName] = dataStreams
+  override def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
   override def backingIndicesFrom(request: ActionRequest): BackingIndices = BackingIndices.IndicesNotInvolved
 

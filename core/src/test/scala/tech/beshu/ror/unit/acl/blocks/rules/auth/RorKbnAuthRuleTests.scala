@@ -18,13 +18,13 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -60,12 +60,12 @@ class RorKbnAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "token has valid RS256 signature" in {
@@ -83,12 +83,12 @@ class RorKbnAuthRuleTests
           tokenHeader = bearerHeader(jwt),
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (no preferred group)" in {
@@ -110,12 +110,12 @@ class RorKbnAuthRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+            )
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (with preferred group)" in {
@@ -138,12 +138,12 @@ class RorKbnAuthRuleTests
           preferredGroupId = Some(GroupId("group2"))
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+            )
         }
       }
       "groups OR logic is used" when {
@@ -166,12 +166,12 @@ class RorKbnAuthRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-              )(blockContext)
+              )
           }
         }
         "at least one allowed group matches the JWT groups (2)" in {
@@ -193,12 +193,12 @@ class RorKbnAuthRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-              )(blockContext)
+              )
           }
         }
       }
@@ -222,12 +222,12 @@ class RorKbnAuthRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-              )(blockContext)
+              )
           }
         }
         "all allowed groups match the JWT groups (2)" in {
@@ -249,12 +249,12 @@ class RorKbnAuthRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
                 jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-              )(blockContext)
+              )
           }
         }
       }
@@ -433,8 +433,9 @@ class RorKbnAuthRuleTests
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,

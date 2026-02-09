@@ -20,8 +20,9 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
@@ -37,9 +38,10 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
   extends BaseEsRequestContext[RepositoryRequestBlockContext](esContext, clusterService)
     with EsRequest[RepositoryRequestBlockContext] {
 
-  override val initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
+  override def initialBlockContext(block: Block): RepositoryRequestBlockContext = RepositoryRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     repositories = repositoriesFrom(actionRequest).orWildcardWhenEmpty

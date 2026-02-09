@@ -41,7 +41,7 @@ class SnapshotsRule(val settings: Settings)
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
-      case BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater =>
+      case BlockContextUpdater.UserMetadataRequestBlockContextUpdater =>
         Permitted(blockContext)
       case BlockContextUpdater.SnapshotRequestBlockContextUpdater =>
         checkAllowedSnapshots(

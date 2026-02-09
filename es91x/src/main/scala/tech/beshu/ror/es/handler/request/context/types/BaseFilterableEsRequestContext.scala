@@ -22,7 +22,7 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
@@ -41,9 +41,9 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
   extends BaseEsRequestContext[FilterableRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableRequestBlockContext] {
 
-  override val initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
+  override def initialBlockContext(block: Block): FilterableRequestBlockContext = FilterableRequestBlockContext(
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     filteredIndices = discoverIndices(),

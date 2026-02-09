@@ -48,7 +48,7 @@ class IndicesYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.indices.copy(filteredIndices = Set(requestedIndex("test")))
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           history.blocks should have size 1
-          inside(result) { case Allow(_, _) => }
+          inside(result) { case Allow(_) => }
         }
       }
       "not allow to proceed" when {
