@@ -322,9 +322,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
     matchedForbidBlock match {
       case Some(Permitted(blockContext)) => ForbiddenBy(blockContext)
-      case None =>
-        history.toString // todo:
-        ForbiddenByMismatched(???)
+      case None => createForbiddenByMismatchedResult(history)
     }
   }
 
@@ -332,10 +330,15 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     ForbiddenBy(groupMetadata.metadataOrigin.blockContext)
   }
 
-  private def createForbiddenByMismatchedResult(history: History[UserMetadataRequestBlockContext]) = {
-    history.toString // todo:
-    ForbiddenByMismatched(???)
-  }
+  private def createForbiddenByMismatchedResult(history: History[UserMetadataRequestBlockContext]) =
+    ForbiddenByMismatched {
+      history.blocks.foldLeft(ListMap.empty[Block.Name, Denied.Cause]) {
+        case (acc, BlockHistory.Denied(block, decision, _)) =>
+          acc + (block.name -> decision.cause)
+        case (acc, BlockHistory.Permitted(_, _, _)) =>
+          acc
+      }
+    }
 
   private def executeBlocksForUserMetadata(block: Block,
                                            requestContext: RequestContext.Aux[UserMetadataRequestBlockContext]) = {

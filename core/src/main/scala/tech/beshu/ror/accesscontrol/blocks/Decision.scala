@@ -29,7 +29,6 @@ object Decision {
   final case class Permitted[CONTEXT](context: CONTEXT)
     extends Decision[CONTEXT]
 
-  // todo: maybe extends Decision[Nothing]?
   final case class Denied[CONTEXT](cause: Cause)
     extends Decision[CONTEXT]
   object Denied {

@@ -347,7 +347,7 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: Nil)
 
             val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-            group2Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 2"))
+            group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 2"))
             group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
             group2Metadata.userOrigin should be(None)
             group2Metadata.kibanaPolicy should be(Some(KibanaPolicy(
@@ -400,7 +400,7 @@ class CurrentUserMetadataAccessControlTests
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
 
               val group2Metadata = metadata.groupsMetadata(GroupId("service1_group2"))
-              group2Metadata.metadataOrigin.blockContext.block should be(Block.Name("SERVICE1 user5 (2)"))
+              group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("SERVICE1 user5 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
             }
 
@@ -446,7 +446,7 @@ class CurrentUserMetadataAccessControlTests
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
 
               val group2Metadata = metadata.groupsMetadata(GroupId("ldap2_group2"))
-              group2Metadata.metadataOrigin.blockContext.block should be(Block.Name("LDAP2 user6 (2)"))
+              group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("LDAP2 user6 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
             }
 

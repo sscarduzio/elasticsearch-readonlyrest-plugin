@@ -136,7 +136,7 @@ class CurrentGroupHandlingAccessControlTests
           group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 1 block"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 1 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
           group3Metadata.userOrigin should be(None)
           group3Metadata.kibanaPolicy should be(None)
@@ -167,7 +167,7 @@ class CurrentGroupHandlingAccessControlTests
           group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 2 block"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 2 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
           group3Metadata.userOrigin should be(None)
           group3Metadata.kibanaPolicy should be(None)
@@ -203,7 +203,7 @@ class CurrentGroupHandlingAccessControlTests
           group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 3 block"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 3 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
           group3Metadata.userOrigin should be(None)
           group3Metadata.kibanaPolicy should be(None)
@@ -239,7 +239,7 @@ class CurrentGroupHandlingAccessControlTests
           group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 4 block"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 4 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
           group3Metadata.userOrigin should be(None)
           group3Metadata.kibanaPolicy should be(None)
@@ -275,7 +275,7 @@ class CurrentGroupHandlingAccessControlTests
           group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 5 block"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 5 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
           group3Metadata.userOrigin should be(None)
           group3Metadata.kibanaPolicy should be(None)
@@ -311,7 +311,7 @@ class CurrentGroupHandlingAccessControlTests
           group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 6 block"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 6 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
           group3Metadata.userOrigin should be(None)
           group3Metadata.kibanaPolicy should be(None)
@@ -347,7 +347,7 @@ class CurrentGroupHandlingAccessControlTests
           group2Metadata.kibanaPolicy should be(None)
 
           val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-          group3Metadata.metadataOrigin.blockContext.block should be(Block.Name("User 7 block"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 7 block"))
           group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
           group3Metadata.userOrigin should be(None)
           group3Metadata.kibanaPolicy should be(None)

@@ -52,8 +52,7 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
           inside(result){
             case Permitted(blockContext) =>
               assertBlockContext(blockContext)(
-                // todo:
-                // filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
+                filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
               )
           }
         }
@@ -68,8 +67,7 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
           inside(result){
             case Permitted(blockContext) =>
               assertBlockContext(blockContext)(
-                // todo:
-                // filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
+                filter = Some(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
               )
           }
         }
@@ -78,10 +76,11 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(action = Action("indices:data/write/index"))
+        val loggedUser = DirectlyLoggedUser(User.Id("bob"))
         val blockContext = FilterableRequestBlockContext(
           block = mock[Block],
           requestContext = requestContext,
-          blockMetadata = BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
+          blockMetadata = BlockMetadata.empty.withLoggedUser(loggedUser),
           responseHeaders = Set.empty,
           responseTransformations = List.empty,
           filteredIndices = Set.empty,
@@ -94,8 +93,8 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         inside(result) {
           case Permitted(blockContext) =>
             assertBlockContext(blockContext)(
-              // todo:
-              // filter = Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"bob\"}}}]}}")))
+              loggedUser = Some(loggedUser),
+              filter = Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"bob\"}}}]}}")))
             )
         }
       }
@@ -115,7 +114,7 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         val requestContext = MockRequestContext.indices.copy(isAllowedForDLS = false)
         val blockContext = FilterableRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
-        rule.check(blockContext).runSyncUnsafe should be (Denied(NotAuthorized))
+        rule.check(blockContext).runSyncUnsafe() should be (Denied(NotAuthorized))
       }
       "request is ROR admin request" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
@@ -123,7 +122,7 @@ class FilterRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         val requestContext = MockRequestContext.indices.copy(action = MockRequestContext.adminAction)
         val blockContext = FilterableRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
-        rule.check(blockContext).runSyncUnsafe should be (Denied(NotAuthorized))
+        rule.check(blockContext).runSyncUnsafe() should be (Denied(NotAuthorized))
       }
     }
   }

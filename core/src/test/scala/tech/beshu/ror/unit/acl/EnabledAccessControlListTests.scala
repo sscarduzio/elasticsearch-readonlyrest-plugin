@@ -327,8 +327,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenByMismatched(causes) =>
-                causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+              case f@ForbiddenByMismatched(detailedCauses) =>
+                detailedCauses should be(ListMap(
+                  Block.Name("b2") -> AuthenticationFailed,
+                  Block.Name("b5") -> AuthenticationFailed,
+                ))
+                f.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
             }
           }
         }
@@ -389,8 +393,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenByMismatched(causes) =>
-                causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+              case f@ForbiddenByMismatched(detailedCauses) =>
+                detailedCauses should be(ListMap.empty)
+                f.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
             }
           }
           "return forbidden when no-groups block (forbid type) is matched before with-groups one" in {

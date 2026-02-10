@@ -99,15 +99,9 @@ abstract class BaseIndicesRuleTests
       inside(result) {
         case Permitted(blockContext: GeneralIndexRequestBlockContext) =>
           assertBlockContext(blockContext)(
-            indices = filteredRequestedIndices
+            indices = filteredRequestedIndices,
+            kibanaPolicy = blockContext.blockMetadata.kibanaPolicy
           )
-        // todo: what about these?
-        //          allAllowedIndices = configuredValues
-        //            .toNonEmptyList.toList
-        //            .collect { case a: AlreadyResolved[ClusterIndexName] => a }
-        //            .flatMap(_.value.toList)
-        //            .toCovariantSet,
-        //        allAllowedClusters = allAllowedClusters
       }
     } else {
       result should be(Denied(Cause.IndexNotFound(allAllowedClusters)))
@@ -166,10 +160,9 @@ abstract class BaseIndicesRuleTests
       inside(result) {
         case Permitted(blockContext: FilterableMultiRequestBlockContext) =>
           assertBlockContext(blockContext)(
+            indexPacks = allowed,
+            kibanaPolicy = blockContext.blockMetadata.kibanaPolicy
           )
-        // todo: what about these?
-          allowed.toString()
-        //  indexPacks = allowed,
       }
     } else {
       result should be(Denied(Cause.IndexNotFound(Set(ClusterName.Full.local))))
@@ -201,7 +194,7 @@ abstract class BaseIndicesRuleTests
     val rule = createIndicesRule(configured)
     val blockContext = requestContext.initialBlockContext(mock[Block])
     val ruleResult = rule.check(blockContext).runSyncStep.toOption.get
-    ruleResult should be (Denied(specialCause))
+    ruleResult should be(Denied(specialCause))
   }
 
   private def createIndicesRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]]) = {

@@ -30,6 +30,7 @@ import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
@@ -266,11 +267,13 @@ object TestsUtils {
                            responseHeaders: Set[Header] = Set.empty,
                            responseTransformations: List[ResponseTransformation] = List.empty,
                            indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
+                           indexPacks: List[Indices] = List.empty,
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
                            dataStreams: Set[DataStreamName] = Set.empty,
-                           templates: Set[TemplateOperation] = Set.empty): Unit = {
+                           templates: Set[TemplateOperation] = Set.empty,
+                           filter: Option[Filter] = None): Unit = {
       blockContext.blockMetadata.loggedUser should be(loggedUser)
       blockContext.blockMetadata.availableGroups should contain allElementsOf availableGroups
       blockContext.blockMetadata.currentGroupId should be(currentGroup)
@@ -299,8 +302,10 @@ object TestsUtils {
           bc.indices should be(indices)
         case bc: FilterableRequestBlockContext =>
           bc.filteredIndices should be(indices)
+          bc.filter should be (filter)
         case bc: FilterableMultiRequestBlockContext =>
-          bc.indices should be(indices)
+          bc.indexPacks should be(indexPacks)
+          bc.filter should be (filter)
         case bc: AliasRequestBlockContext =>
           bc.indices should be(indices)
           bc.aliases should be(aliases)

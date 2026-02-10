@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allo
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.{WithGroups, WithoutGroups}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
@@ -320,13 +320,23 @@ class GroupsRuleAccessControlTests
         val (result1, _) = metadataRequest(username = "user_root_ror_kbn_auth")
         val (result2, _) = metadataRequest(username = "user_local_groups_ror_kbn_auth")
 
-        inside(result1) { case UserMetadataRequestResult.Allow(userMetadata1: WithoutGroups) =>
-          inside(result2) { case UserMetadataRequestResult.Allow(userMetadata2: WithoutGroups) =>
-            userMetadata1.metadataOrigin.blockContext.block.name should be (Block.Name("ror_kbn_auth in root of ACL"))
-            userMetadata2.metadataOrigin.blockContext.block.name should be (Block.Name("local groups-based ror_kbn_auth"))
+        inside(result1) { case UserMetadataRequestResult.Allow(userMetadata1: WithGroups) =>
+          inside(result2) { case UserMetadataRequestResult.Allow(userMetadata2: WithGroups) =>
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
+            userMetadata1.groupsMetadata.keys.size should be(1)
 
-            userMetadata1.userOrigin should be(userMetadata2.userOrigin)
-            userMetadata1.kibanaPolicy should be (userMetadata2.kibanaPolicy)
+            val groupMetadata1 = userMetadata1.groupsMetadata.values.toList.head
+            val groupMetadata2 = userMetadata2.groupsMetadata.values.toList.head
+
+            groupMetadata1.loggedUser should be(DirectlyLoggedUser(User.Id("user_root_ror_kbn_auth")))
+            groupMetadata2.loggedUser should be(DirectlyLoggedUser(User.Id("user_local_groups_ror_kbn_auth")))
+
+            groupMetadata1.group should be(groupMetadata2.group)
+            groupMetadata1.userOrigin should be(groupMetadata1.userOrigin)
+            groupMetadata1.kibanaPolicy should be(groupMetadata2.kibanaPolicy)
+
+            groupMetadata1.metadataOrigin.blockContext.block.name should be(Block.Name("ror_kbn_auth in root of ACL"))
+            groupMetadata2.metadataOrigin.blockContext.block.name should be(Block.Name("local groups-based ror_kbn_auth"))
           }
         }
       }
@@ -345,14 +355,23 @@ class GroupsRuleAccessControlTests
         val (result1, _) = metadataRequest(username = "user_root_jwt_auth")
         val (result2, _) = metadataRequest(username = "user_local_groups_jwt_auth")
 
+        inside(result1) { case UserMetadataRequestResult.Allow(userMetadata1: WithGroups) =>
+          inside(result2) { case UserMetadataRequestResult.Allow(userMetadata2: WithGroups) =>
+            userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
+            userMetadata1.groupsMetadata.keys.size should be(1)
 
-        inside(result1) { case UserMetadataRequestResult.Allow(userMetadata1: WithoutGroups) =>
-          inside(result2) { case UserMetadataRequestResult.Allow(userMetadata2: WithoutGroups) =>
-            userMetadata1.metadataOrigin.blockContext.block.name should be (Block.Name("jwt_auth in root of ACL"))
-            userMetadata2.metadataOrigin.blockContext.block.name should be (Block.Name("local groups-based jwt_auth"))
+            val groupMetadata1 = userMetadata1.groupsMetadata.values.toList.head
+            val groupMetadata2 = userMetadata2.groupsMetadata.values.toList.head
 
-            userMetadata1.userOrigin should be(userMetadata2.userOrigin)
-            userMetadata1.kibanaPolicy should be (userMetadata2.kibanaPolicy)
+            groupMetadata1.loggedUser should be(DirectlyLoggedUser(User.Id("user_root_jwt_auth")))
+            groupMetadata2.loggedUser should be(DirectlyLoggedUser(User.Id("user_local_groups_jwt_auth")))
+
+            groupMetadata1.group should be(groupMetadata2.group)
+            groupMetadata1.userOrigin should be(groupMetadata1.userOrigin)
+            groupMetadata1.kibanaPolicy should be(groupMetadata2.kibanaPolicy)
+
+            groupMetadata1.metadataOrigin.blockContext.block.name should be(Block.Name("jwt_auth in root of ACL"))
+            groupMetadata2.metadataOrigin.blockContext.block.name should be(Block.Name("local groups-based jwt_auth"))
           }
         }
       }
@@ -379,7 +398,7 @@ class GroupsRuleAccessControlTests
             metadata2.metadataOrigin.blockContext.block.name should be(Block.Name("local groups-based ldap_auth"))
 
             metadata1.userOrigin should be(metadata2.userOrigin)
-            metadata1.kibanaPolicy should be (metadata2.kibanaPolicy)
+            metadata1.kibanaPolicy should be(metadata2.kibanaPolicy)
           }
         }
       }
