@@ -17,12 +17,12 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
-import tech.beshu.ror.accesscontrol.domain.RepositoryName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
@@ -38,12 +38,15 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
     with EsRequest[RepositoryRequestBlockContext] {
 
   override def initialBlockContext(block: Block): RepositoryRequestBlockContext = RepositoryRequestBlockContext(
+    block = block,
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     repositories = repositoriesFrom(actionRequest).orWildcardWhenEmpty
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 
   override protected def modifyRequest(blockContext: RepositoryRequestBlockContext): ModificationResult = {
     NonEmptyList.fromList(blockContext.repositories.toList) match {

@@ -17,8 +17,10 @@
 package tech.beshu.ror.es.handler.request.context.types.ror
 
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
@@ -36,11 +38,14 @@ class UserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
     with EsRequest[UserMetadataRequestBlockContext] {
 
   override def initialBlockContext(block: Block): UserMetadataRequestBlockContext = UserMetadataRequestBlockContext(
+    block = block,
     requestContext = this,
     blockMetadata = BlockMetadata.empty,
     responseHeaders = Set.empty,
     responseTransformations = List.empty
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 
   override def apiVersion: UserMetadataRequestContext.UserMetadataApiVersion = actionRequest.apiVersion
 

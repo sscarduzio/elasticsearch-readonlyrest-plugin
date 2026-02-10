@@ -17,10 +17,10 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
@@ -43,12 +43,22 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     with EsRequest[MultiIndexRequestBlockContext] {
 
   override def initialBlockContext(block: Block): MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+    block = block,
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(actionRequest)
+    indexPacks = discoveredIndexPacks
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks
+      .flatMap {
+        case Indices.Found(indices) => indices
+        case Indices.NotFound => Set.empty
+      }
+      .toCovariantSet
+  }
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
@@ -66,6 +76,8 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
       ShouldBeInterrupted
     }
   }
+
+  private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
 
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {
     request

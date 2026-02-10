@@ -16,16 +16,18 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.data.NonEmptyList
 import cats.implicits.*
+import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.toOps
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -42,29 +44,32 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     with EsRequest[FilterableRequestBlockContext] {
 
   override def initialBlockContext(block: Block): FilterableRequestBlockContext = FilterableRequestBlockContext(
+    block = block,
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    filteredIndices = discoverIndices(),
+    filteredIndices = discoveredIndices,
     allAllowedIndices = Set(ClusterIndexName.Local.wildcard),
     filter = None,
     fieldLevelSecurity = None,
     requestFieldsUsage = requestFieldsUsage
   )
 
+  override lazy val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(discoveredIndices)
+
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
+      val nonExistentIndex = discoveredIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentLocalIndex()).toList)
+          .fromList(discoveredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         update(
           request = actionRequest,
           filteredRequestedIndices = nonExistingIndices,
-          filter = initialBlockContext.filter,
-          fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
+          filter = None,
+          fieldLevelSecurity = None
         )
         Modified
       } else {
@@ -73,9 +78,9 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     } else {
       update(
         request = actionRequest,
-        filteredRequestedIndices = NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)),
-        filter = initialBlockContext.filter,
-        fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
+        filteredRequestedIndices = NonEmptyList.of(discoveredIndices.randomNonexistentLocalIndex()),
+        filter = None,
+        fieldLevelSecurity = None
       )
       Modified
     }
@@ -100,7 +105,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
 
   protected def requestFieldsUsage: RequestFieldsUsage
 
-  private def discoverIndices() = {
+  private lazy val discoveredIndices: Set[RequestedIndex[ClusterIndexName]] = {
     val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
     logger.debug(s"Discovered indices: ${indices.show}")
     indices

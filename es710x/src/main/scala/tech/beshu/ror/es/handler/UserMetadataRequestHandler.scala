@@ -59,10 +59,10 @@ class UserMetadataRequestHandler(engine: Engine,
       result match {
         case UserMetadataRequestResult.Allowed(userMetadata) =>
           onAllow(request, userMetadata)
-        case UserMetadataRequestResult.Forbidden(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case r@UserMetadataRequestResult.ForbiddenByMismatched(_) =>
-          onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
+        case UserMetadataRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
+        case f@UserMetadataRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, f.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
       }

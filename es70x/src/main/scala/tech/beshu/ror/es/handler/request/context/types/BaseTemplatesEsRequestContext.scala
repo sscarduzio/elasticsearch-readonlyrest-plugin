@@ -21,7 +21,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex, TemplateOperation}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
@@ -46,4 +46,6 @@ abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOp
     responseTemplateTransformation = identity,
     allAllowedIndices = Set.empty
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 }

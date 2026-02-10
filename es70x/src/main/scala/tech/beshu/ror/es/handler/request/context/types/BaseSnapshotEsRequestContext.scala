@@ -46,6 +46,10 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
     allAllowedIndices = Set(ClusterIndexName.Local.wildcard)
   )
 
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    requestedIndicesFrom(actionRequest)
+  }
+
   protected def snapshotsFrom(request: T): Set[SnapshotName]
 
   protected def repositoriesFrom(request: T): Set[RepositoryName]
