@@ -69,8 +69,8 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         val handlingResult: RegularRequestResult[B] = result match {
           case Decision.Permitted(blockContext) =>
             blockContext.block.policy match {
-              case Policy.Allow => RegularRequestResult.Allow(blockContext)
-              case Policy.Forbid(_) => RegularRequestResult.ForbiddenBy(blockContext)
+              case Policy.Allow => RegularRequestResult.Allowed(blockContext)
+              case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
             }
           case Decision.Denied(_) if wasDeniedDueToAliasNotFound(blocksHistory) =>
             RegularRequestResult.AliasNotFound()
@@ -116,16 +116,16 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                             history: History[UserMetadataRequestBlockContext]) = {
     val result = determineUserMetadata(matched, history, ignoreGroupsHandling = false)
     (result, optPreferredGroupId) match {
-      case (Allow(_: UserMetadata.WithoutGroups), Some(currentGroupId)) =>
+      case (Allowed(_: UserMetadata.WithoutGroups), Some(currentGroupId)) =>
         createForbiddenByMismatchedResult(history)
-      case (Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)), Some(currentGroupId)) =>
+      case (Allowed(withGroups@UserMetadata.WithGroups(groupsMetadata)), Some(currentGroupId)) =>
         determineUserMetadataForCurrentGroup(withGroups, currentGroupId, history)
-      case (allow@Allow(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))), None) =>
+      case (allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))), None) =>
         blockContext.block.policy match {
           case Policy.Allow => allow
-          case Policy.Forbid(_) => ForbiddenBy(blockContext)
+          case Policy.Forbid(_) => Forbidden(blockContext)
         }
-      case (Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)), None) =>
+      case (Allowed(withGroups@UserMetadata.WithGroups(groupsMetadata)), None) =>
         determineUserMetadataForFirstAllowedGroup(withGroups, history)
       case _ =>
         result
@@ -140,12 +140,12 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   private def determineUserMetadataForApiV2WithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
                                                                history: History[UserMetadataRequestBlockContext]) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
-      case allow@Allow(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
+      case allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
         blockContext.block.policy match {
           case Policy.Allow => allow
-          case Policy.Forbid(_) => ForbiddenBy(blockContext)
+          case Policy.Forbid(_) => Forbidden(blockContext)
         }
-      case Allow(withGroups@UserMetadata.WithGroups(groupsMetadata)) =>
+      case Allowed(withGroups@UserMetadata.WithGroups(groupsMetadata)) =>
         determineUserMetadataForFirstAllowedGroup(withGroups, history)
       case result =>
         result
@@ -159,7 +159,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       case Some(groupMetadata) =>
         if (groupMetadata.isAllowed) {
           userMetadata
-            .excludeOtherThanAllowTypeGroups().map(Allow.apply)
+            .excludeOtherThanAllowTypeGroups().map(Allowed.apply)
             .getOrElse(createForbiddenByMismatchedResult(history))
         } else {
           createForbiddenBy(groupMetadata)
@@ -174,7 +174,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     userMetadata.groupsMetadata.values.find(_.isAllowed) match {
       case Some(groupMetadata) =>
         userMetadata
-          .excludeOtherThanAllowTypeGroups().map(Allow.apply)
+          .excludeOtherThanAllowTypeGroups().map(Allowed.apply)
           .getOrElse(createForbiddenByMismatchedResult(history))
       case None =>
         createForbiddenBy(userMetadata.groupsMetadata.values.head)
@@ -295,11 +295,11 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def createAllowResult(groupsMetadata: NonEmptyList[GroupMetadata]) = {
-    Allow(UserMetadata.WithGroups(groupsMetadata))
+    Allowed(UserMetadata.WithGroups(groupsMetadata))
   }
 
   private def createAllowResult(permitted: PermittedWithUser[UserMetadataRequestBlockContext]) = {
-    Allow {
+    Allowed {
       val context = permitted.result.context
       val blockMetadata = context.blockMetadata
       UserMetadata.WithoutGroups(
@@ -321,13 +321,13 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       case Denied(_) => None
     }
     matchedForbidBlock match {
-      case Some(Permitted(blockContext)) => ForbiddenBy(blockContext)
+      case Some(Permitted(blockContext)) => Forbidden(blockContext)
       case None => createForbiddenByMismatchedResult(history)
     }
   }
 
   private def createForbiddenBy(groupMetadata: GroupMetadata) = {
-    ForbiddenBy(groupMetadata.metadataOrigin.blockContext)
+    Forbidden(groupMetadata.metadataOrigin.blockContext)
   }
 
   private def createForbiddenByMismatchedResult(history: History[UserMetadataRequestBlockContext]) =

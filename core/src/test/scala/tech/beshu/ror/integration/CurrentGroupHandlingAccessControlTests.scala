@@ -20,7 +20,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.Allow
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.Allowed
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -144,7 +144,7 @@ class CurrentGroupHandlingAccessControlTests
 
         val loginRequest = MockRequestContext.metadata.withHeaders(basicAuthHeader("user1:pass"))
         val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
@@ -152,7 +152,7 @@ class CurrentGroupHandlingAccessControlTests
           basicAuthHeader("user1:pass"), currentGroupHeader("group3")
         )
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
@@ -180,7 +180,7 @@ class CurrentGroupHandlingAccessControlTests
         ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
@@ -188,7 +188,7 @@ class CurrentGroupHandlingAccessControlTests
           bearerHeader(jwt), currentGroupHeader("group3")
         )
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
@@ -216,7 +216,7 @@ class CurrentGroupHandlingAccessControlTests
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
@@ -224,7 +224,7 @@ class CurrentGroupHandlingAccessControlTests
           .withHeaders(bearerHeader(jwt), currentGroupHeader("group3")
         )
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
@@ -252,7 +252,7 @@ class CurrentGroupHandlingAccessControlTests
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
@@ -260,7 +260,7 @@ class CurrentGroupHandlingAccessControlTests
           bearerHeader(jwt), currentGroupHeader("group3")
         )
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
@@ -288,7 +288,7 @@ class CurrentGroupHandlingAccessControlTests
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
@@ -296,7 +296,7 @@ class CurrentGroupHandlingAccessControlTests
           bearerHeader(jwt), currentGroupHeader("group3")
         )
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
@@ -324,7 +324,7 @@ class CurrentGroupHandlingAccessControlTests
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
@@ -332,7 +332,7 @@ class CurrentGroupHandlingAccessControlTests
           bearerHeader(jwt), currentGroupHeader("group3")
         )
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
@@ -360,7 +360,7 @@ class CurrentGroupHandlingAccessControlTests
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
         val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
@@ -368,7 +368,7 @@ class CurrentGroupHandlingAccessControlTests
           bearerHeader(jwt), currentGroupHeader("group3")
         )
         val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
           assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }

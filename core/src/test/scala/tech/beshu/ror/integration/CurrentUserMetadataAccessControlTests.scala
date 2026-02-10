@@ -291,7 +291,7 @@ class CurrentUserMetadataAccessControlTests
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user1:pass"))
           val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          inside(result) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
@@ -330,7 +330,7 @@ class CurrentUserMetadataAccessControlTests
             basicAuthHeader("user4:pass"), currentGroupHeader("group6")
           )
           val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-          inside(loginResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
 
@@ -338,7 +338,7 @@ class CurrentUserMetadataAccessControlTests
             basicAuthHeader("user4:pass"), currentGroupHeader("group5")
           )
           val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-          inside(switchTenancyResponse) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
@@ -365,7 +365,7 @@ class CurrentUserMetadataAccessControlTests
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user2:pass"))
           val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          inside(result) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
@@ -386,7 +386,7 @@ class CurrentUserMetadataAccessControlTests
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user3:pass"))
           val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(userMetadata:UserMetadata.WithoutGroups) =>
+          inside(result) { case Allowed(userMetadata:UserMetadata.WithoutGroups) =>
             assertAllowUserMetadataWithoutGroupsResponse(userMetadata)
           }
         }
@@ -415,7 +415,7 @@ class CurrentUserMetadataAccessControlTests
             val request1 = MockRequestContext.metadata.withHeaders(header("X-Forwarded-User", "user5"))
             val (result1, _) = acl.handleMetadataRequest(request1).runSyncUnsafe()
 
-            inside(result1) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result1) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser5Response(userMetadata)
             }
 
@@ -424,7 +424,7 @@ class CurrentUserMetadataAccessControlTests
             )
             val (result2, _) = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
-            inside(result2) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result2) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser5Response(userMetadata)
             }
 
@@ -433,7 +433,7 @@ class CurrentUserMetadataAccessControlTests
             )
             val (result3, _) = acl.handleMetadataRequest(request3).runSyncUnsafe()
 
-            inside(result3) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result3) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser7Response(userMetadata)
             }
           }
@@ -453,7 +453,7 @@ class CurrentUserMetadataAccessControlTests
             val request1 = MockRequestContext.metadata.withHeaders(basicAuthHeader("user6:user2"))
             val (result1, _) = acl.handleMetadataRequest(request1).runSyncUnsafe()
 
-            inside(result1) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result1) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser6Response(userMetadata)
             }
 
@@ -462,7 +462,7 @@ class CurrentUserMetadataAccessControlTests
             )
             val (result2, _) = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
-            inside(result2) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result2) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser6Response(userMetadata)
             }
           }
@@ -500,7 +500,7 @@ class CurrentUserMetadataAccessControlTests
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user9:pass"))
           val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          inside(result) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
@@ -534,7 +534,7 @@ class CurrentUserMetadataAccessControlTests
         "request was matched only by the block with forbid policy" in {
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user8:pass"))
           val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result) { case ForbiddenBy(blockContext) =>
+          inside(result) { case Forbidden(blockContext) =>
             blockContext.block.name should be(Block.Name("User 8"))
             blockContext.block.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
             assertBlockContext(blockContext)(

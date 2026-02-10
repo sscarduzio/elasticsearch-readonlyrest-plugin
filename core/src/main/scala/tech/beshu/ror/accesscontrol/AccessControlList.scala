@@ -46,9 +46,9 @@ object AccessControlList {
 
   sealed trait RegularRequestResult[B <: BlockContext]
   object RegularRequestResult {
-    final case class Allow[B <: BlockContext](blockContext: B)
+    final case class Allowed[B <: BlockContext](matchedBlockContext: B)
       extends RegularRequestResult[B]
-    final case class ForbiddenBy[B <: BlockContext](blockContext: B)
+    final case class Forbidden[B <: BlockContext](matchedBlockContext: B)
       extends RegularRequestResult[B]
     final case class ForbiddenByMismatched[B <: BlockContext](detailedCauses: ListMap[Block.Name, Denied.Cause])
       extends RegularRequestResult[B] {
@@ -69,8 +69,8 @@ object AccessControlList {
 
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
-    final case class Allow(userMetadata: UserMetadata) extends UserMetadataRequestResult
-    final case class ForbiddenBy(blockContext: UserMetadataRequestBlockContext) extends UserMetadataRequestResult
+    final case class Allowed(userMetadata: UserMetadata) extends UserMetadataRequestResult
+    final case class Forbidden(matchedBlockContext: UserMetadataRequestBlockContext) extends UserMetadataRequestResult
     final case class ForbiddenByMismatched(detailedCauses: ListMap[Block.Name, Denied.Cause])
       extends UserMetadataRequestResult {
 

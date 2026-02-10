@@ -109,7 +109,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           history.blocks should have size 1
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("LDAP1"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))
@@ -120,7 +120,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("kyle:user2"))
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           history.blocks should have size 2
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("LDAP2"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("kyle")))

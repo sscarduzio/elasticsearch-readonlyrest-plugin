@@ -64,10 +64,10 @@ class RegularRequestHandler(engine: Engine,
                                                                     request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     Try {
       result match {
-        case allow: RegularRequestResult.Allow[B] =>
-          onAllow(request, allow.blockContext)
-        case RegularRequestResult.ForbiddenBy(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
+        case allow: RegularRequestResult.Allowed[B] =>
+          onAllow(request, allow.matchedBlockContext)
+        case RegularRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
         case r@RegularRequestResult.ForbiddenByMismatched(_) =>
           onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>

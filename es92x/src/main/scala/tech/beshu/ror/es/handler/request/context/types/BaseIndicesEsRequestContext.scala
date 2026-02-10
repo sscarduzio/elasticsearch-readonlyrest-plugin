@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
+import cats.implicits.*
 import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -30,6 +31,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
 abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,

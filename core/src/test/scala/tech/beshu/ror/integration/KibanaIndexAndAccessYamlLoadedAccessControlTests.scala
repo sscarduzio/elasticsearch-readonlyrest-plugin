@@ -105,7 +105,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
@@ -128,7 +128,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
@@ -150,7 +150,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("Read-Write access with RoR custom kibana index"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
@@ -174,7 +174,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
@@ -200,7 +200,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-        inside(result) { case RegularRequestResult.Allow(blockContext) =>
+        inside(result) { case RegularRequestResult.Allowed(blockContext) =>
           blockContext.block.name should be(Block.Name("Read-Write access with RoR custom kibana index"))
           assertBlockContext(blockContext)(
             loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
@@ -221,7 +221,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val (loginResult, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
 
-        inside(loginResult) { case UserMetadataRequestResult.Allow(metadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResult) { case UserMetadataRequestResult.Allowed(metadata@UserMetadata.WithGroups(_)) =>
           metadata.groupsMetadata.keys.toList should be(GroupId("Administrators") :: GroupId("Infosec") :: Nil)
 
           val adminMetadata = metadata.groupsMetadata(GroupId("Administrators"))
@@ -270,7 +270,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-        inside(result) { case RegularRequestResult.Allow(blockContext) =>
+        inside(result) { case RegularRequestResult.Allowed(blockContext) =>
           blockContext.block.name should be(Block.Name("ADMIN_GRP"))
           assertBlockContext(blockContext)(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin"))),

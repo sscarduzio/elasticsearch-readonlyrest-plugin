@@ -92,7 +92,7 @@ class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 2
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),

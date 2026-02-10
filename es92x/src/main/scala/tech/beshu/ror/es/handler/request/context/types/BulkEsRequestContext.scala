@@ -17,10 +17,10 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
@@ -42,7 +42,8 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
   extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)
     with EsRequest[MultiIndexRequestBlockContext] {
 
-  override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+  override def initialBlockContext(block: Block): MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+    block = block,
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
@@ -65,6 +66,15 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
         s"number of requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
     }
+  }
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    indexPacksFrom(actionRequest)
+      .flatMap {
+        case Indices.Found(indices) => indices
+        case Indices.NotFound => Set.empty
+      }
+      .toCovariantSet
   }
 
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {

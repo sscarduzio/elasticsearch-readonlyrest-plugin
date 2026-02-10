@@ -57,9 +57,9 @@ class UserMetadataRequestHandler(engine: Engine,
                            request: UserMetadataRequestContext): Unit = {
     Try {
       result match {
-        case UserMetadataRequestResult.Allow(userMetadata) =>
+        case UserMetadataRequestResult.Allowed(userMetadata) =>
           onAllow(request, userMetadata)
-        case UserMetadataRequestResult.ForbiddenBy(_, block) =>
+        case UserMetadataRequestResult.Forbidden(_, block) =>
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
         case r@UserMetadataRequestResult.ForbiddenByMismatched(_) =>
           onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))

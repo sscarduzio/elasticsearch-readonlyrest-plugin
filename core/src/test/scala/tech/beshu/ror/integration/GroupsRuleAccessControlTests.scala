@@ -20,7 +20,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allowed, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -215,7 +215,7 @@ class GroupsRuleAccessControlTests
           .copy(filteredIndices = Set(requestedIndex("g34_index")))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         inside(result) {
-          case Allow(blockContext) =>
+          case Allowed(blockContext) =>
             blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user2"))))
             blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group3"), group("group4")))
         }
@@ -234,7 +234,7 @@ class GroupsRuleAccessControlTests
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result) { case Allow(blockContext) =>
+          inside(result) { case Allowed(blockContext) =>
             blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
             blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }
@@ -272,7 +272,7 @@ class GroupsRuleAccessControlTests
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result) { case Allow(blockContext) =>
+          inside(result) { case Allowed(blockContext) =>
             blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
             blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group5")))
           }
@@ -292,7 +292,7 @@ class GroupsRuleAccessControlTests
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result) { case Allow(blockContext) =>
+          inside(result) { case Allowed(blockContext) =>
             blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("morgan"))))
             blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("admin")))
           }
@@ -320,8 +320,8 @@ class GroupsRuleAccessControlTests
         val (result1, _) = metadataRequest(username = "user_root_ror_kbn_auth")
         val (result2, _) = metadataRequest(username = "user_local_groups_ror_kbn_auth")
 
-        inside(result1) { case UserMetadataRequestResult.Allow(userMetadata1: WithGroups) =>
-          inside(result2) { case UserMetadataRequestResult.Allow(userMetadata2: WithGroups) =>
+        inside(result1) { case UserMetadataRequestResult.Allowed(userMetadata1: WithGroups) =>
+          inside(result2) { case UserMetadataRequestResult.Allowed(userMetadata2: WithGroups) =>
             userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
             userMetadata1.groupsMetadata.keys.size should be(1)
 
@@ -355,8 +355,8 @@ class GroupsRuleAccessControlTests
         val (result1, _) = metadataRequest(username = "user_root_jwt_auth")
         val (result2, _) = metadataRequest(username = "user_local_groups_jwt_auth")
 
-        inside(result1) { case UserMetadataRequestResult.Allow(userMetadata1: WithGroups) =>
-          inside(result2) { case UserMetadataRequestResult.Allow(userMetadata2: WithGroups) =>
+        inside(result1) { case UserMetadataRequestResult.Allowed(userMetadata1: WithGroups) =>
+          inside(result2) { case UserMetadataRequestResult.Allowed(userMetadata2: WithGroups) =>
             userMetadata1.groupsMetadata.keys should be(userMetadata2.groupsMetadata.keys)
             userMetadata1.groupsMetadata.keys.size should be(1)
 
@@ -387,8 +387,8 @@ class GroupsRuleAccessControlTests
         val (result1, _) = metadataRequest(headerValue = "acl_root")
         val (result2, _) = metadataRequest(headerValue = "local_groups")
 
-        inside(result1) { case UserMetadataRequestResult.Allow(userMetadata1: WithGroups) =>
-          inside(result2) { case UserMetadataRequestResult.Allow(userMetadata2: WithGroups) =>
+        inside(result1) { case UserMetadataRequestResult.Allowed(userMetadata1: WithGroups) =>
+          inside(result2) { case UserMetadataRequestResult.Allowed(userMetadata2: WithGroups) =>
 
             val group1 = GroupId("europe")
             val metadata1 = userMetadata1.groupsMetadata(group1)

@@ -51,10 +51,10 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
       .andThen {
         case Success((result, history)) =>
           result match {
-            case allow: RegularRequestResult.Allow[B] =>
-              log(AllowedBy(requestContext, allow.blockContext, history))
-            case forbiddenBy: RegularRequestResult.ForbiddenBy[B] =>
-              log(ForbiddenBy(requestContext, forbiddenBy.blockContext, history))
+            case allow: RegularRequestResult.Allowed[B] =>
+              log(AllowedBy(requestContext, allow.matchedBlockContext, history))
+            case forbiddenBy: RegularRequestResult.Forbidden[B] =>
+              log(ForbiddenBy(requestContext, forbiddenBy.matchedBlockContext, history))
             case RegularRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, history))
             case RegularRequestResult.IndexNotFound(_) =>
@@ -82,10 +82,10 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
       .andThen {
         case Success((result, history)) =>
           result match {
-            case UserMetadataRequestResult.Allow(userMetadata) =>
+            case UserMetadataRequestResult.Allowed(userMetadata) =>
               log(Allowed(requestContext, userMetadata, history))
-            case forbiddenBy: UserMetadataRequestResult.ForbiddenBy =>
-              log(ForbiddenBy(requestContext, forbiddenBy.blockContext, history))
+            case forbiddenBy: UserMetadataRequestResult.Forbidden =>
+              log(ForbiddenBy(requestContext, forbiddenBy.matchedBlockContext, history))
             case UserMetadataRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, history))
             case UserMetadataRequestResult.PassedThrough =>

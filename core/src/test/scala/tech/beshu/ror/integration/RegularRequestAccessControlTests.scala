@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allow, ForbiddenBy, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allowed, Forbidden, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -70,7 +70,7 @@ class RegularRequestAccessControlTests
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:container"))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 1
-        inside(result) { case Allow(blockContext) =>
+        inside(result) { case Allowed(blockContext) =>
           blockContext.block.name should be(Block.Name("CONTAINER ADMIN"))
           assertBlockContext(blockContext)(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))
@@ -86,7 +86,7 @@ class RegularRequestAccessControlTests
         )
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 1
-        inside(result) { case Allow(blockContext) =>
+        inside(result) { case Allowed(blockContext) =>
           blockContext.block.name should be(Block.Name("CONTAINER ADMIN"))
           assertBlockContext(blockContext)(
             loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))
@@ -107,7 +107,7 @@ class RegularRequestAccessControlTests
         val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user2:dev"))
         val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
         history.blocks should have size 3
-        inside(result) { case ForbiddenBy(blockContext) =>
+        inside(result) { case Forbidden(blockContext) =>
           blockContext.block.name should be(Block.Name("User 2"))
           blockContext.block.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
           assertBlockContext(blockContext)(

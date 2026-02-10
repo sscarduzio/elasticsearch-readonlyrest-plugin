@@ -88,7 +88,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           history.blocks should have size 1
-          inside(result) { case RegularRequestResult.Allow(blockContext) =>
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
             blockContext.block.name should be(Block.Name("LDAP test"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))

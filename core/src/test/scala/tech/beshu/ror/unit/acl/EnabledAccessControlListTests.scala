@@ -26,7 +26,7 @@ import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allow, ForbiddenBy, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allowed, Forbidden, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
@@ -76,7 +76,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -98,7 +98,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
 
                 groupsMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
@@ -119,7 +119,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -140,7 +140,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -160,7 +160,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -182,7 +182,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -204,7 +204,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -223,7 +223,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -243,7 +243,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -266,7 +266,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -288,7 +288,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -306,7 +306,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b2"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 2")))
             }
@@ -352,7 +352,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -374,7 +374,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -412,7 +412,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -437,7 +437,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -459,7 +459,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
 
                 groupsMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
@@ -480,7 +480,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -501,7 +501,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -521,7 +521,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -543,7 +543,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -565,7 +565,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -584,7 +584,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -604,7 +604,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -628,7 +628,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -648,7 +648,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -669,7 +669,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -689,7 +689,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -711,7 +711,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -731,7 +731,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Allow)
@@ -751,7 +751,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
@@ -770,7 +770,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               .runSyncUnsafe()
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(blockContext) =>
+              case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
