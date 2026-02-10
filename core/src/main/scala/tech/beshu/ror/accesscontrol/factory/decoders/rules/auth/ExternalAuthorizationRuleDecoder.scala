@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthorizationServicesDecoder.*
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalGroupsProviderServicesDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicDecoder
@@ -38,7 +38,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalGroupsProviderService],
+class ExternalAuthorizationRuleDecoder(rxternalGroupsProviderServiceDef: Definitions[ExternalGroupsProviderService],
                                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                        mocksProvider: MocksProvider,
                                        globalSettings: GlobalSettings)
@@ -67,15 +67,15 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
-      .emapE { case (name, ttl, users, groupsLogic) => createExternalAuthorizationSettings(name, ttl, groupsLogic, users) }
+      .emapE { case (name, ttl, users, groupsLogic) => createExternalAuthorizationRuleSettings(name, ttl, groupsLogic, users) }
       .decoder
   }
 
-  private def createExternalAuthorizationSettings(name: ExternalGroupsProviderService.Name,
-                                                  ttl: Option[PositiveFiniteDuration],
-                                                  groupsLogic: GroupsLogic,
-                                                  users: Option[UniqueNonEmptyList[User.Id]]) = {
-    findAuthorizationService(authorizationServices.items, name)
+  private def createExternalAuthorizationRuleSettings(name: ExternalGroupsProviderService.Name,
+                                                      ttl: Option[PositiveFiniteDuration],
+                                                      groupsLogic: GroupsLogic,
+                                                      users: Option[UniqueNonEmptyList[User.Id]]) = {
+    findExternalGroupsProviderService(rxternalGroupsProviderServiceDef.items, name)
       .map { service =>
         ttl match {
           case Some(ttlValue) => new CacheableExternalGroupsProviderServiceDecorator(service, ttlValue)
@@ -89,9 +89,9 @@ class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[Extern
       ))
   }
 
-  private def findAuthorizationService(authorizationServices: List[ExternalGroupsProviderService],
-                                       searchedServiceName: ExternalGroupsProviderService.Name): Either[CoreCreationError, ExternalGroupsProviderService] = {
-    authorizationServices.find(_.id === searchedServiceName) match {
+  private def findExternalGroupsProviderService(services: List[ExternalGroupsProviderService],
+                                                searchedServiceName: ExternalGroupsProviderService.Name): Either[CoreCreationError, ExternalGroupsProviderService] = {
+    services.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)
       case None => Left(RulesLevelCreationError(Message(s"Cannot find user groups provider with name: ${searchedServiceName.show}")))
     }

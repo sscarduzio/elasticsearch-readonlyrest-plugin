@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
-import tech.beshu.ror.accesscontrol.utils.TaskResultOps.*
+import tech.beshu.ror.accesscontrol.utils.TaskDecisionOps.*
 import tech.beshu.ror.syntax.*
 
 import scala.annotation.nowarn

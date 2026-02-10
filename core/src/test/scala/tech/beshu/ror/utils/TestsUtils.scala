@@ -41,9 +41,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationSe
 import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
@@ -214,8 +214,8 @@ object TestsUtils {
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
@@ -231,8 +231,8 @@ object TestsUtils {
           .map(users => ExternalAuthenticationServiceMock(users.map(ExternalAuthenticationUserMock.apply)))
       }
 
-      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
@@ -243,12 +243,12 @@ object TestsUtils {
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = {
         map
           .get(id)
-          .map(r => ExternalAuthorizationServiceMock {
-            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toCovariantSet
+          .map(r => ExternalGroupsProviderServiceMock {
+            r.map { case (userId, groups) => ExternalGroupsProviderServiceUserMock(userId, groups) }.toCovariantSet
           })
       }
     }

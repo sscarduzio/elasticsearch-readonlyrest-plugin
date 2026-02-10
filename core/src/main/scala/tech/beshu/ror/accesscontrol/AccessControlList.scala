@@ -84,6 +84,19 @@ object AccessControlList {
     case object OperationNotAllowed extends ForbiddenCause
     case object ImpersonationNotSupported extends ForbiddenCause
     case object ImpersonationNotAllowed extends ForbiddenCause
+
+    def from(cause: Denied.Cause): ForbiddenCause = {
+      cause match {
+        case Denied.Cause.ImpersonationNotAllowed =>
+          ForbiddenCause.ImpersonationNotAllowed
+        case Denied.Cause.ImpersonationNotSupported =>
+          ForbiddenCause.ImpersonationNotSupported
+        case _: Denied.Cause.OtherFailure |
+             _: Denied.Cause.AuthenticationFailure |
+             _: Denied.Cause.AuthorizationFailure =>
+          ForbiddenCause.OperationNotAllowed
+      }
+    }
   }
 
   trait AccessControlStaticContext {
@@ -97,18 +110,8 @@ object AccessControlList {
   }
 
   private def detailedToGenericCauses(detailedCauses: Iterable[Denied.Cause]): NonEmptySet[ForbiddenCause] = {
-    val causes = detailedCauses.map {
-      case Denied.Cause.ImpersonationNotAllowed =>
-        ForbiddenCause.ImpersonationNotAllowed
-      case Denied.Cause.ImpersonationNotSupported =>
-        ForbiddenCause.ImpersonationNotSupported
-      case _: Denied.Cause.OtherFailure |
-           _: Denied.Cause.AuthenticationFailure |
-           _: Denied.Cause.AuthorizationFailure =>
-        ForbiddenCause.OperationNotAllowed
-    }
     NonEmptyList
-      .fromList(causes.toList)
+      .fromList(detailedCauses.map(ForbiddenCause.from).toList.distinct)
       .getOrElse(NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
       .toNes
   }

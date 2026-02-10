@@ -32,7 +32,7 @@ object RorDependencies {
   def noOp: RorDependencies = RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader)
 
   final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
-                            authorizationServices: Seq[ExternalGroupsProviderService#Id],
+                            externalGroupsProviderServices: Seq[ExternalGroupsProviderService#Id],
                             ldaps: Seq[LdapService#Id])
   object Services {
     def empty: Services = Services(Seq.empty, Seq.empty, Seq.empty)

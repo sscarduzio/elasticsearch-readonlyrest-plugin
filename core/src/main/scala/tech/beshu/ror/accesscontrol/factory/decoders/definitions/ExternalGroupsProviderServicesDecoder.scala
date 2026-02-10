@@ -32,18 +32,18 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
 
-object ExternalAuthorizationServicesDecoder {
+object ExternalGroupsProviderServicesDecoder {
 
   def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[ExternalGroupsProviderService]] = {
     implicit val serviceDecoder: SyncDecoder[ExternalGroupsProviderService] = SyncDecoderCreator
-      .from(ExternalAuthorizationServicesDecoder.externalAuthorizationServiceDecoder(httpClientFactory))
+      .from(ExternalGroupsProviderServicesDecoder.externalGroupsProviderServiceDecoder(httpClientFactory))
     DefinitionsBaseDecoder.instance[Id, ExternalGroupsProviderService]("user_groups_providers")
   }
 
   implicit val serviceNameDecoder: Decoder[ExternalGroupsProviderService.Name] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(ExternalGroupsProviderService.Name.apply)
 
-  private implicit def externalAuthorizationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalGroupsProviderService] = {
+  private implicit def externalGroupsProviderServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalGroupsProviderService] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -59,7 +59,7 @@ object ExternalAuthorizationServicesDecoder {
           httpClientConfig <- c.as[ValidatedHttpClientConfig].map(_.config)
         } yield {
           val httpClient = httpClientFactory.create(httpClientConfig)
-          val externalAuthService: ExternalGroupsProviderService =
+          val externalGroupsProviderService: ExternalGroupsProviderService =
             new HttpExternalGroupsProviderService(
               id = name,
               serviceTimeout = httpClientConfig.requestTimeout,
@@ -74,7 +74,7 @@ object ExternalAuthorizationServicesDecoder {
               ),
               httpClient = httpClient
             )
-          cacheTtl.foldLeft(externalAuthService) {
+          cacheTtl.foldLeft(externalGroupsProviderService) {
             case (cacheableAuthService, ttl) =>
               new CacheableExternalGroupsProviderServiceDecorator(cacheableAuthService, ttl)
           }
@@ -100,8 +100,8 @@ object ExternalAuthorizationServicesDecoder {
       .emapE {
         case (Some(groupIdsConfig), None, groupNamesConfig) => Right(GroupsConfig(groupIdsConfig, groupNamesConfig))
         case (None, Some(groupIdsDeprecatedConfig), _) => Right(GroupsConfig(groupIdsDeprecatedConfig, None))
-        case (None, None, _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External authorization service '${name.show}' configuration is missing the 'response_group_ids_json_path' attribute")))
-        case (Some(_), Some(_), _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External authorization service '${name.show}' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time")))
+        case (None, None, _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External groups provider service '${name.show}' configuration is missing the 'response_group_ids_json_path' attribute")))
+        case (Some(_), Some(_), _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External groups provider service '${name.show}' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time")))
       }
       .mapError(DefinitionsLevelCreationError.apply)
       .decoder

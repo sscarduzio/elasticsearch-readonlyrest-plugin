@@ -20,7 +20,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision
 
-object TaskResultOps {
+object TaskDecisionOps {
   extension [B](result: Task[Decision[B]]) {
     def flatMapT[C <: BlockContext](f: B => Task[Decision[C]]): Task[Decision[C]] =
       result.flatMap {

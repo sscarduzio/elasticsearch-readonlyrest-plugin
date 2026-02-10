@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.template
 
 private[templates] sealed trait PartialResult[T]
 private[templates] object PartialResult {
-  sealed case class Allowed[T](value: T) extends PartialResult[T]
-  sealed case class NotFound[T](value: T) extends PartialResult[T]
-  sealed case class Forbidden[T](value: T) extends PartialResult[T]
+  final case class Allowed[T](value: T) extends PartialResult[T]
+  final case class NotFound[T](value: T) extends PartialResult[T]
+  final case class Forbidden[T](value: T) extends PartialResult[T]
 }

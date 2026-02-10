@@ -53,7 +53,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
                                        (implicit requestId: RequestId): Groups = {
     mocksProvider
-      .externalAuthorizationServiceWith(settings.service.id)
+      .externalGroupsProviderServiceWith(settings.service.id)
       .map { mock =>
         mock
           .users
