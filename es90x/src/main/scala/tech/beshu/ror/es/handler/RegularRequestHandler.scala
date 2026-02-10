@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
-import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
@@ -67,8 +66,8 @@ class RegularRequestHandler(engine: Engine,
       result match {
         case allow: RegularRequestResult.Allowed[B] =>
           onAllow(request, allow.matchedBlockContext)
-        case RegularRequestResult.Forbidden(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
+        case RegularRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
         case r@RegularRequestResult.ForbiddenByMismatched(_) =>
           onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>

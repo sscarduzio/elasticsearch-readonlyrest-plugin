@@ -48,8 +48,17 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(actionRequest)
+    indexPacks = discoveredIndexPacks
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks
+      .flatMap {
+        case Indices.Found(indices) => indices
+        case Indices.NotFound => Set.empty
+      }
+      .toCovariantSet
+  }
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
@@ -68,14 +77,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     }
   }
 
-  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
-    indexPacksFrom(actionRequest)
-      .flatMap {
-        case Indices.Found(indices) => indices
-        case Indices.NotFound => Set.empty
-      }
-      .toCovariantSet
-  }
+  private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
 
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {
     request

@@ -49,7 +49,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,

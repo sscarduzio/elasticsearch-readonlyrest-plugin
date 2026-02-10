@@ -68,7 +68,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
   }
 }
 
-object ReflectionBasedIndicesEsRequestContext extends RequestIdAwareLogging {
+object ReflectionBasedIndicesEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
     requestedIndicesFrom(arg.esContext.actionRequest)

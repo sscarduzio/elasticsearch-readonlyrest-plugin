@@ -48,7 +48,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    filteredIndices = requestedIndices.getOrElse(Set.empty),
+    filteredIndices = discoverIndices,
     allAllowedIndices = Set(ClusterIndexName.Local.wildcard),
     allAllowedClusters = Set(ClusterName.Full.local),
   )

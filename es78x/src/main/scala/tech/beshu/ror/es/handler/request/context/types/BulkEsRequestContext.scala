@@ -42,7 +42,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
   extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)
     with EsRequest[MultiIndexRequestBlockContext] {
 
-  override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+  override def initialBlockContext(block: Block): MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,

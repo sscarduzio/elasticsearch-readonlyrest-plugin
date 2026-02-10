@@ -66,8 +66,8 @@ class RegularRequestHandler(engine: Engine,
       result match {
         case allow: RegularRequestResult.Allowed[B] =>
           onAllow(request, allow.matchedBlockContext)
-        case RegularRequestResult.Forbidden(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
+        case RegularRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
         case r@RegularRequestResult.ForbiddenByMismatched(_) =>
           onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>
