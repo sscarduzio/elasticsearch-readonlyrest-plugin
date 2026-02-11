@@ -37,15 +37,19 @@ class HeadersOrRule(val settings: Settings)
   override val name: Rule.Name = HeadersOrRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    Decision.permit(`with` = blockContext) {
-      val requestHeaders = blockContext.requestContext.restRequest.allHeaders
-      val result = settings
-        .headerAccessRequirements
-        .exists { isFulfilled(_, requestHeaders) }
+    Decision.permit(`with` = blockContext)(
+      when = {
+        val requestHeaders = blockContext.requestContext.restRequest.allHeaders
+        val result = settings
+          .headerAccessRequirements
+          .exists {
+            isFulfilled(_, requestHeaders)
+          }
 
-      if(!result) logAccessRequirementsNotFulfilled(blockContext.requestContext)
-      result
-    }
+        if (!result) logAccessRequirementsNotFulfilled(blockContext.requestContext)
+        result
+      }
+    )
   }
 
   private def logAccessRequirementsNotFulfilled(requestContext: RequestContext): Unit = {

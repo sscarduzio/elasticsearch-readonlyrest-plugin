@@ -44,9 +44,9 @@ class UsersRule(val settings: Settings,
 
   private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): Decision[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
-    Decision.permit(`with` = blockContext) {
-      PatternsMatcher.create(resolvedIds).`match`(user.id)
-    }
+    Decision.permit(`with` = blockContext)(
+      when = PatternsMatcher.create(resolvedIds).`match`(user.id)
+    )
   }
 }
 

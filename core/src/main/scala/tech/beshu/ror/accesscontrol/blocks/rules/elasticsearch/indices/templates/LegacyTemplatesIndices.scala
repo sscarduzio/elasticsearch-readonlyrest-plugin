@@ -89,14 +89,14 @@ private[indices] trait LegacyTemplatesIndices
           s"""* Template with name [${existingTemplate.name.show}]
              | (indices patterns [${existingTemplate.patterns.show}]) exits ...""".oneLiner
         )
-        Decision.permit(`with` = blockContext) {
-          canModifyExistingTemplate(existingTemplate) &&
-            canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
-        }
+        Decision.permit(`with` = blockContext)(
+          when = canModifyExistingTemplate(existingTemplate) &&
+              canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
+        )
       case None =>
-        Decision.permit(`with` = blockContext) {
-          canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
-        }
+        Decision.permit(`with` = blockContext)(
+          when = canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
+        )
     }
   }
 

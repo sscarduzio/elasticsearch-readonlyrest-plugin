@@ -66,14 +66,14 @@ private[indices] trait ComponentTemplateIndices
         logger.debug(
           s"""* Component Template with name [${existingTemplate.name.show}] exits ...""".oneLiner
         )
-        Decision.permit(`with` = blockContext) {
-          canModifyExistingComponentTemplate(existingTemplate) &&
+        Decision.permit(`with` = blockContext)(
+          when = canModifyExistingComponentTemplate(existingTemplate) &&
             canAddNewComponentTemplate(newTemplateName, aliases)
-        }
+        )
       case None =>
-        Decision.permit(`with` = blockContext) {
-          canAddNewComponentTemplate(newTemplateName, aliases)
-        }
+        Decision.permit(`with` = blockContext)(
+          when = canAddNewComponentTemplate(newTemplateName, aliases)
+        )
     }
   }
 
