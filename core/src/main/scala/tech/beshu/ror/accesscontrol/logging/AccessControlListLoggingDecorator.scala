@@ -29,7 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
-import tech.beshu.ror.accesscontrol.request.{UserMetadataRequestContext, RequestContext}
+import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
+import tech.beshu.ror.accesscontrol.response.RorKbnPluginNotSupported
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.TaskOps.*
 
@@ -82,6 +83,8 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
       .andThen {
         case Success(resultWithHistory) =>
           resultWithHistory.result match {
+            case UserMetadataRequestResult.RorKbnPluginNotSupported =>
+              logger.warn(RorKbnPluginNotSupported.message)
             case UserMetadataRequestResult.Allow(userMetadata) =>
               log(Allowed(requestContext, userMetadata, resultWithHistory.history))
             case forbiddenBy: UserMetadataRequestResult.ForbiddenBy =>

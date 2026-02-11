@@ -73,6 +73,7 @@ object AccessControlList {
     final case class ForbiddenBy(blockContext: UserMetadataRequestBlockContext, block: Block) extends UserMetadataRequestResult
     final case class ForbiddenByMismatched(causes: NonEmptySet[ForbiddenCause]) extends UserMetadataRequestResult
     case object PassedThrough extends UserMetadataRequestResult
+    case object RorKbnPluginNotSupported extends UserMetadataRequestResult
   }
 
   sealed trait ForbiddenCause
