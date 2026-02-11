@@ -17,13 +17,13 @@
 package tech.beshu.ror.audit.utils
 
 import org.json.JSONObject
-import tech.beshu.ror.audit.AuditResponseContext.*
+import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.{AuditRequestContext, AuditResponseContext}
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters.*
 
 private[ror] object AuditSerializationHelper {
 
