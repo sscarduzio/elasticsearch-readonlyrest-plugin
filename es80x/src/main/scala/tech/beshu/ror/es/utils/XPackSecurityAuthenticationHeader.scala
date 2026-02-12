@@ -67,7 +67,7 @@ object XPackSecurityAuthenticationHeader {
     // Authentication type: INTERNAL = 4 (ES 7.0.0+)
     output.writeVInt(4)
     // Metadata: empty map
-    output.writeMap(Map[String, Object]().asJava)
+    output.writeMap(Map.empty[String, AnyRef].asJava)
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
     }
