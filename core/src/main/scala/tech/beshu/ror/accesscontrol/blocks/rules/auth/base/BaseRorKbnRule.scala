@@ -38,7 +38,6 @@ import scala.util.Try
 
 trait BaseRorKbnRule extends RequestIdAwareLogging {
 
-  // todo: in authz rule only we shouldn't have authentication failure cause, right?
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
                                                         rorKbnDef: RorKbnDef)
                                                        (operation: TokenData => Either[Cause, B]): Decision[B] = {
