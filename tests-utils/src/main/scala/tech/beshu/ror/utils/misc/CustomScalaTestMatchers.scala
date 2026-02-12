@@ -182,14 +182,13 @@ trait CustomScalaTestMatchers extends Matchers {
   class JsonCollectionMatcher(ignoredFields: Set[String], expected: Value) extends Matcher[Iterable[Value]] {
 
     override def apply(auditEntries: Iterable[Value]): MatchResult = {
-      val matchingEntry = auditEntries.find { actualEntry =>
-        try {
-          actualEntry should matchJsonIgnoring(ignoredFields.toSeq: _*)(expected)
-          true
-        } catch {
-          case _: Exception => false
-        }
+      val matcher = new JsonMatcherIgnoringFields(ignoredFields, expected)
+      val entriesWithDifferences = auditEntries.map { actualEntry =>
+        val differences = matcher.apply(actualEntry)
+        (actualEntry, differences)
       }
+
+      val matchingEntry = entriesWithDifferences.find(_._2.matches)
 
       MatchResult(
         matchingEntry.isDefined,
@@ -199,10 +198,24 @@ trait CustomScalaTestMatchers extends Matchers {
            |${ujson.write(expected, indent = 2)}
            |
            |Actual entries (${auditEntries.size} total):
-           |${auditEntries.map(e => ujson.write(e, indent = 2)).mkString("\n---\n")}
+           |${formatEntriesWithDifferences(entriesWithDifferences)}
            |""".stripMargin,
         s"Found audit entry matching expected JSON (ignoring fields: ${ignoredFields.mkString(", ")})"
       )
+    }
+
+    private def formatEntriesWithDifferences(entriesWithDifferences: Iterable[(Value, MatchResult)]): String = {
+      entriesWithDifferences.zipWithIndex.map { case ((entry, matchResult), index) =>
+        if (matchResult.matches) {
+          s"Entry ${index + 1}: ✓ MATCHES"
+        } else {
+          s"""Entry ${index + 1}: ✗ DOES NOT MATCH
+             |${matchResult.failureMessage}
+             |
+             |Actual JSON:
+             |${ujson.write(entry, indent = 2)}""".stripMargin
+        }
+      }.mkString("\n\n---\n\n")
     }
   }
 
