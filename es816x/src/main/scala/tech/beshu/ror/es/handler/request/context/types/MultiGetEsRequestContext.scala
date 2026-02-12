@@ -23,10 +23,10 @@ import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
@@ -54,12 +54,13 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(actionRequest),
+    indexPacks = discoveredIndexPacks,
     filter = None,
     fieldLevelSecurity = None,
     requestFieldsUsage = requestFieldsUsage
@@ -70,6 +71,15 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     actionRequest
       .getItems.asScala
       .flatMap(indexAttributesFrom)
+      .toCovariantSet
+  }
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks
+      .flatMap {
+        case Indices.Found(indices) => indices
+        case Indices.NotFound => Set.empty
+      }
       .toCovariantSet
   }
 
@@ -90,6 +100,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       ShouldBeInterrupted
     }
   }
+
+  private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
 
   private def indexPacksFrom(request: MultiGetRequest): List[Indices] = {
     request

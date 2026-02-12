@@ -60,18 +60,13 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: TransportDele
     }
   }
 
-  implicit class DeleteComposableIndexTemplateActionRequestOps(request: TransportDeleteComposableIndexTemplateAction.Request) {
-
-    def getNames: List[TemplateNamePattern] = {
-      on(request)
-        .call("names")
-        .get[Array[String]]
-        .asSafeList
-        .flatMap(TemplateNamePattern.fromString)
+  extension (request: TransportDeleteComposableIndexTemplateAction.Request)
+    private def getNames: List[TemplateNamePattern] = {
+      val names: Array[String] = on(request).call("names").get[Array[String]]
+      names.asSafeList.flatMap(TemplateNamePattern.fromString)
     }
 
-    def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
+    private def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
       on(request).set("names", names.toList.map(_.value.value).toArray)
     }
-  }
 }

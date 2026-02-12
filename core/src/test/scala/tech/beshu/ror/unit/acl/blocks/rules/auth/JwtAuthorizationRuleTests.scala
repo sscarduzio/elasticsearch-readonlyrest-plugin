@@ -20,13 +20,13 @@ import cats.data.NonEmptyList
 import io.jsonwebtoken.Jwts
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -72,11 +72,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -104,11 +104,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
@@ -136,11 +136,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group1")),
               availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -168,11 +168,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group1")),
               availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
     }
@@ -289,8 +289,9 @@ class JwtAuthorizationRuleTests
       preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,

@@ -36,7 +36,7 @@ class UsersRule(val settings: Settings,
   override val name: Rule.Name = UsersRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    blockContext.userMetadata.loggedUser match {
+    blockContext.blockMetadata.loggedUser match {
       case Some(user) => matchUser(user, blockContext)
       case None => Denied(Cause.NotAuthorized)
     }
@@ -44,9 +44,9 @@ class UsersRule(val settings: Settings,
 
   private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): Decision[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
-    Decision.permit(`with` = blockContext) {
-      PatternsMatcher.create(resolvedIds).`match`(user.id)
-    }
+    Decision.permit(`with` = blockContext)(
+      when = PatternsMatcher.create(resolvedIds).`match`(user.id)
+    )
   }
 }
 

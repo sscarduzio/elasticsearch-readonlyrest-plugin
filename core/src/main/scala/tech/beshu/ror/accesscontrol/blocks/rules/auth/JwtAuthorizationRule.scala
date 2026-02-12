@@ -68,7 +68,7 @@ final class JwtAuthorizationRule(val settings: Settings)
         (), Cause.GroupsAuthorizationFailed("Current group is not allowed")
       )
     } yield {
-      blockContext.withUserMetadata(
+      blockContext.withBlockMetadata(
         _.addAvailableGroups(matchedGroups).withJwtToken(payload)
       )
     }

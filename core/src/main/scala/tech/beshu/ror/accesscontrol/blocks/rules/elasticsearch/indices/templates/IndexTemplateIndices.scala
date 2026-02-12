@@ -88,9 +88,9 @@ private[indices] trait IndexTemplateIndices
                                     aliases: Set[RequestedIndex[ClusterIndexName]])
                                    (implicit blockContext: TemplateRequestBlockContext,
                                     allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
-    Decision.permit(`with` = blockContext) {
-      processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
-    }
+    Decision.permit(`with` = blockContext)(
+      when = processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
+    )
   }
 
   protected def addingIndexTemplateAndGetAllowedOnes(newTemplateName: TemplateName,

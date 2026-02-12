@@ -63,66 +63,78 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
         AuditResponseContext.Allowed(
           requestContext = toAuditRequestContext(
             requestContext = allowedBy.requestContext,
+            loggedUser = allowedBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(allowedBy.blockContext),
-            userMetadata = Some(allowedBy.blockContext.userMetadata),
-            history = allowedBy.history,
+            historyEntries = allowedBy.history,
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents
           ),
-          verbosity = toAuditVerbosity(allowedBy.block.verbosity),
-          reason = allowedBy.block.show
+          verbosity = toAuditVerbosity(allowedBy.blockContext.block.verbosity),
+          reason = allowedBy.blockContext.block.show
         )
-      case allow: ResponseContext.Allow[B] =>
+      case allow: ResponseContext.Allowed[B] =>
         AuditResponseContext.Allowed(
           requestContext = toAuditRequestContext(
             requestContext = allow.requestContext,
+            loggedUser = allow.userMetadata match {
+              case UserMetadata.WithoutGroups(loggedUser, _, _, _) => Some(loggedUser)
+              case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.headOption.map(_.loggedUser)
+            },
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            userMetadata = Some(allow.userMetadata),
-            history = allow.history,
+            historyEntries = allow.history,
             generalAuditEvents = allow.requestContext.generalAuditEvents
           ),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
-          reason = allow.block.show
+          reason = allow.userMetadata match {
+            case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
+              metadataOrigin.blockContext.block.show
+            case UserMetadata.WithGroups(groupsMetadata) =>
+              groupsMetadata.values.map(_.metadataOrigin.blockContext.block).toList.show
+          }
         )
       case forbiddenBy: ResponseContext.ForbiddenBy[B] =>
         AuditResponseContext.ForbiddenBy(
           requestContext = toAuditRequestContext(
             requestContext = forbiddenBy.requestContext,
+            loggedUser = forbiddenBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
-            userMetadata = Some(forbiddenBy.blockContext.userMetadata),
-            history = forbiddenBy.history),
-          verbosity = toAuditVerbosity(forbiddenBy.block.verbosity),
-          reason = forbiddenBy.block.show
+            historyEntries = forbiddenBy.history),
+          verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.verbosity),
+          reason = forbiddenBy.blockContext.block.show
         )
       case forbidden: ResponseContext.Forbidden[B] =>
-        AuditResponseContext.Forbidden(toAuditRequestContext(
-          requestContext = forbidden.requestContext,
-          auditEnvironmentContext = auditEnvironmentContext,
-          blockContext = None,
-          userMetadata = None,
-          history = forbidden.history
-        ))
-      case requestedIndexNotExist: ResponseContext.RequestedIndexNotExist[B] =>
-        AuditResponseContext.RequestedIndexNotExist(
-          toAuditRequestContext(
-            requestContext = requestedIndexNotExist.requestContext,
+        AuditResponseContext.Forbidden(
+          requestContext = toAuditRequestContext(
+            requestContext = forbidden.requestContext,
+            loggedUser = None,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            userMetadata = None,
-            history = requestedIndexNotExist.history
+            historyEntries = forbidden.history
+          )
+        )
+      case requestedIndexNotExist: ResponseContext.RequestedIndexNotExist[B] =>
+        AuditResponseContext.RequestedIndexNotExist(
+          requestContext = toAuditRequestContext(
+            requestContext = requestedIndexNotExist.requestContext,
+            loggedUser = None, // todo: in RORDEV-1922 consider this potential problem
+            auditEnvironmentContext = auditEnvironmentContext,
+            blockContext = None,
+            historyEntries = requestedIndexNotExist.history
           )
         )
       case errored: ResponseContext.Errored[B] =>
         AuditResponseContext.Errored(
           requestContext = toAuditRequestContext(
             requestContext = errored.requestContext,
+            loggedUser = None,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            userMetadata = None,
-            history = History.empty),
-          cause = errored.cause)
+            historyEntries = History.empty
+          ),
+          cause = errored.cause
+        )
     }
   }
 
@@ -132,15 +144,15 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
   }
 
   private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                                       loggedUser: Option[LoggedUser],
                                                        auditEnvironmentContext: AuditEnvironmentContext,
                                                        blockContext: Option[B],
-                                                       userMetadata: Option[UserMetadata],
-                                                       history: History[B],
+                                                       historyEntries: History[B],
                                                        generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
     new AuditRequestContextBasedOnAclResult(
       requestContext,
-      userMetadata,
-      history,
+      loggedUser,
+      historyEntries,
       loggingContext,
       auditEnvironmentContext,
       generalAuditEvents,
@@ -275,8 +287,8 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   private def createIndexSink(config: AuditSink.Config.EsIndexBasedSink,
-                              serviceCreator: IndexBasedAuditSinkServiceCreator,
-                              )(using Clock): Task[SupportedAuditSink] = Task.delay {
+                              serviceCreator: IndexBasedAuditSinkServiceCreator)
+                             (using Clock): Task[SupportedAuditSink] = Task.delay {
     val service = serviceCreator.index(config.auditCluster)
     EsIndexBasedAuditSink(
       serializer = config.logSerializer,

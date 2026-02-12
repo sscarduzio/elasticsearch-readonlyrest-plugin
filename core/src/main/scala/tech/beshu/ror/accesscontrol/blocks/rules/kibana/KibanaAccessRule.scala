@@ -33,7 +33,7 @@ class KibanaAccessRule(override val settings: Settings)
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     val kibanaIndex = kibanaIndexFrom(blockContext)
-    if (shouldMatch(blockContext.requestContext, kibanaIndex))
+    if (shouldMatch(blockContext, kibanaIndex))
       matched(blockContext, kibanaIndex)
     else
       Denied[B](Cause.NotAuthorized)
@@ -42,7 +42,7 @@ class KibanaAccessRule(override val settings: Settings)
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                kibanaIndex: KibanaIndexName): Permitted[B] = {
     Decision.Permitted[B] {
-      blockContext.withUserMetadata { metadata =>
+      blockContext.withBlockMetadata { metadata =>
         metadata
           .withKibanaAccess(settings.access)
           .withKibanaIndex(kibanaIndex)
@@ -51,7 +51,7 @@ class KibanaAccessRule(override val settings: Settings)
   }
 
   private def kibanaIndexFrom(blockContext: BlockContext): KibanaIndexName = {
-    blockContext.userMetadata.kibanaIndex.getOrElse(KibanaIndexName.default)
+    blockContext.blockMetadata.kibanaPolicy.flatMap(_.index).getOrElse(KibanaIndexName.default)
   }
 }
 

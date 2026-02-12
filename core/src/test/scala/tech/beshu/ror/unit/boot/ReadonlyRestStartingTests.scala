@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
@@ -492,15 +492,15 @@ class ReadonlyRestStartingTests
               ))
               rorInstance.mocksProvider.externalAuthenticationServiceWith(ExternalAuthenticationService.Name("ext2"))(newRequestId()) should be(None)
 
-              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalGroupsProviderService.Name("grp1"))(newRequestId()) should be(Some(
-                ExternalAuthorizationServiceMock(Set(
-                  ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(
+              rorInstance.mocksProvider.externalGroupsProviderServiceWith(ExternalGroupsProviderService.Name("grp1"))(newRequestId()) should be(Some(
+                ExternalGroupsProviderServiceMock(Set(
+                  ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock(
                     id = User.Id("Bruce"),
                     groups = Set(group("group3"), group("group4"))
                   )
                 ))
               ))
-              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalGroupsProviderService.Name("grp2"))(newRequestId()) should be(None)
+              rorInstance.mocksProvider.externalGroupsProviderServiceWith(ExternalGroupsProviderService.Name("grp2"))(newRequestId()) should be(None)
             }
           }
           "load test engine as invalidated" when {

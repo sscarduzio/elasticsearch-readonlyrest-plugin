@@ -24,10 +24,13 @@ import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.TestSuite
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
@@ -35,16 +38,17 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, definitions}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, ResponseTransformation, definitions}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
@@ -210,8 +214,8 @@ object TestsUtils {
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
@@ -227,8 +231,8 @@ object TestsUtils {
           .map(users => ExternalAuthenticationServiceMock(users.map(ExternalAuthenticationUserMock.apply)))
       }
 
-      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
@@ -239,68 +243,47 @@ object TestsUtils {
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalGroupsProviderService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = {
         map
           .get(id)
-          .map(r => ExternalAuthorizationServiceMock {
-            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toCovariantSet
+          .map(r => ExternalGroupsProviderServiceMock {
+            r.map { case (userId, groups) => ExternalGroupsProviderServiceUserMock(userId, groups) }.toCovariantSet
           })
       }
     }
   }
 
-  trait BlockContextAssertion {
+  trait BlockContextAssertion extends MockFactory {
+    this: TestSuite =>
 
-    def assertBlockContext(expected: BlockContext,
-                           current: BlockContext): Unit = {
-      assertBlockContext(
-        loggedUser = expected.userMetadata.loggedUser,
-        currentGroup = expected.userMetadata.currentGroupId,
-        availableGroups = expected.userMetadata.availableGroups,
-        kibanaIndex = expected.userMetadata.kibanaIndex,
-        kibanaTemplateIndex = expected.userMetadata.kibanaTemplateIndex,
-        hiddenKibanaApps = expected.userMetadata.hiddenKibanaApps,
-        kibanaAccess = expected.userMetadata.kibanaAccess,
-        userOrigin = expected.userMetadata.userOrigin,
-        jwt = expected.userMetadata.jwtToken,
-        responseHeaders = expected.responseHeaders,
-        indices = expected.indices,
-        repositories = expected.repositories,
-        snapshots = expected.snapshots) {
-        current
-      }
-    }
-
-    def assertBlockContext(loggedUser: Option[LoggedUser] = None,
+    def assertBlockContext(blockContext: BlockContext)
+                          (loggedUser: Option[LoggedUser] = None,
                            currentGroup: Option[GroupId] = None,
                            availableGroups: UniqueList[Group] = UniqueList.empty,
-                           kibanaIndex: Option[KibanaIndexName] = None,
-                           kibanaTemplateIndex: Option[KibanaIndexName] = None,
-                           hiddenKibanaApps: Set[KibanaApp] = Set.empty,
-                           kibanaAccess: Option[KibanaAccess] = None,
+                           kibanaPolicy: Option[KibanaPolicy] = None,
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
+                           responseTransformations: List[ResponseTransformation] = List.empty,
                            indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
+                           indexPacks: List[Indices] = List.empty,
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
                            dataStreams: Set[DataStreamName] = Set.empty,
-                           templates: Set[TemplateOperation] = Set.empty)
-                          (blockContext: BlockContext): Unit = {
-      blockContext.userMetadata.loggedUser should be(loggedUser)
-      blockContext.userMetadata.availableGroups should contain allElementsOf availableGroups
-      blockContext.userMetadata.currentGroupId should be(currentGroup)
-      blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
-      blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
-      blockContext.userMetadata.hiddenKibanaApps should be(hiddenKibanaApps)
-      blockContext.userMetadata.kibanaAccess should be(kibanaAccess)
-      blockContext.userMetadata.userOrigin should be(userOrigin)
-      blockContext.userMetadata.jwtToken should be(jwt)
+                           templates: Set[TemplateOperation] = Set.empty,
+                           filter: Option[Filter] = None): Unit = {
+      blockContext.blockMetadata.loggedUser should be(loggedUser)
+      blockContext.blockMetadata.availableGroups should contain allElementsOf availableGroups
+      blockContext.blockMetadata.currentGroupId should be(currentGroup)
+      blockContext.blockMetadata.kibanaPolicy should be(kibanaPolicy)
+      blockContext.blockMetadata.userOrigin should be(userOrigin)
+      blockContext.blockMetadata.jwtToken should be(jwt)
       blockContext.responseHeaders should be(responseHeaders)
+      blockContext.responseTransformations should be(responseTransformations)
       blockContext match {
-        case _: CurrentUserMetadataRequestBlockContext =>
+        case _: UserMetadataRequestBlockContext =>
         case _: RorApiRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
         case bc: DataStreamRequestBlockContext =>
@@ -319,8 +302,10 @@ object TestsUtils {
           bc.indices should be(indices)
         case bc: FilterableRequestBlockContext =>
           bc.filteredIndices should be(indices)
+          bc.filter should be (filter)
         case bc: FilterableMultiRequestBlockContext =>
-          bc.indices should be(indices)
+          bc.indexPacks should be(indexPacks)
+          bc.filter should be (filter)
         case bc: AliasRequestBlockContext =>
           bc.indices should be(indices)
           bc.aliases should be(aliases)

@@ -20,12 +20,11 @@ import cats.Show
 import cats.implicits.toShow
 import monix.catnap.*
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class CircuitBreakerLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticationService,
@@ -33,7 +32,7 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(val underlying: LdapAuthe
   extends LdapAuthenticationService
     with LdapCircuitBreaker {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)
+  override def authenticate(user: User.Id, secret: PlainTextSecret)
                            (implicit requestId: RequestId): Task[AuthenticationResult] = {
     protect(
       underlying.authenticate(user, secret)

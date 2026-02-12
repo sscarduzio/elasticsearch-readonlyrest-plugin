@@ -93,15 +93,13 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 2
-          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("arbitrary_group_name"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "JWT token with some arbitrary group is defined, preferred group is used and matches group in JWT" in {
@@ -115,15 +113,13 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 2
-          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group_in_jwt_token"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "JWT token with non-empty list of groups is defined, preferred group is used" in {
@@ -143,17 +139,15 @@ class RorKbnAuthYamlLoadedAccessControlTests
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 4
-          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Valid JWT token is present with a third key + role"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Valid JWT token is present with a third key + role"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               currentGroup = Some(preferredGroup.id),
               availableGroups = UniqueList.of(preferredGroup),
               indices = Set(requestedIndex("index2")),
               jwt = Some(Jwt.Payload(jwt.defaultClaims()))
-            ) {
-              blockContext
-            }
+            )
           }
         }
       }

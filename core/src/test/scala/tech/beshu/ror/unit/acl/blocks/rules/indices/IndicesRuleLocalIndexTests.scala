@@ -228,7 +228,7 @@ trait IndicesRuleLocalIndexTests {
             configured = NonEmptySet.of(indexNameVar("odd:test1*"), indexNameVar("local*")),
             requestIndices = Set(requestedIndex(".custom_kibana_7.9.0")),
             modifyBlockContext = bc => bc.copy(
-              userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
+              blockMetadata = bc.blockMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
             ),
             filteredRequestedIndices = Set(requestedIndex(".custom_kibana_7.9.0"))
           )
@@ -238,7 +238,7 @@ trait IndicesRuleLocalIndexTests {
             configured = NonEmptySet.of(indexNameVar("odd:test1*"), indexNameVar("local*")),
             requestIndices = Set(requestedIndex(".custom_kibana_8.10.4"), requestedIndex(".custom_kibana_task_manager_8.10.4")),
             modifyBlockContext = bc => bc.copy(
-              userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
+              blockMetadata = bc.blockMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
             ),
             filteredRequestedIndices = Set(requestedIndex(".custom_kibana_8.10.4"), requestedIndex(".custom_kibana_task_manager_8.10.4"))
           )
@@ -365,7 +365,7 @@ trait IndicesRuleLocalIndexTests {
           configured = NonEmptySet.of(indexNameVar("test12")),
           requestIndices = Set(requestedIndex(".kibana_8.10.4"), requestedIndex("test-index1")),
           modifyBlockContext = bc => bc.copy(
-            userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".kibana")))
+            blockMetadata = bc.blockMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".kibana")))
           ),
         )
       }

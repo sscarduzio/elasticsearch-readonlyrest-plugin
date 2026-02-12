@@ -64,10 +64,10 @@ class RegularRequestHandler(engine: Engine,
                                                                     request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     Try {
       result match {
-        case allow: RegularRequestResult.Allow[B] =>
-          onAllow(request, allow.blockContext)
-        case RegularRequestResult.ForbiddenBy(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
+        case allow: RegularRequestResult.Allowed[B] =>
+          onAllow(request, allow.matchedBlockContext)
+        case RegularRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
         case r@RegularRequestResult.ForbiddenByMismatched(_) =>
           onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>
@@ -126,7 +126,7 @@ class RegularRequestHandler(engine: Engine,
         handleIndexNotFoundForMultiSearchRequest(request, allowedClusters)
       case AliasRequestBlockContextUpdater =>
         handleIndexNotFoundForAliasRequest(request, allowedClusters)
-      case CurrentUserMetadataRequestBlockContextUpdater |
+      case UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -145,7 +145,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -164,7 +164,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |

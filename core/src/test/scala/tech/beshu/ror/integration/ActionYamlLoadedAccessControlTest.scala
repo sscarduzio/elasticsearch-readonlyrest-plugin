@@ -20,7 +20,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allowed, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.mocks.MockRequestContext
 
@@ -59,36 +59,36 @@ class ActionYamlLoadedAccessControlTest extends AnyWordSpec with BaseYamlLoadedA
         "it is an metadata request and the action is on the configured list with new name" in {
           val request = MockRequestContext.metadata.copy(action = Action.RorAction.RorUserMetadataAction)
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(_, block) =>
-            block.name.value should be("Allowed for user metadata action")
+          inside(result) { case Allowed(blockContext) =>
+            blockContext.block.name.value should be("Allowed for user metadata action")
           }
         }
         "it is a test config request and the action name match pattern on the configured list" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorTestSettingsAction)
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(_, block) =>
-            block.name.value should be("Allowed for test config action")
+          inside(result) { case Allowed(blockContext) =>
+            blockContext.block.name.value should be("Allowed for test config action")
           }
         }
         "it is a auth mock request and the action is on the configured list with old name" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorAuthMockAction)
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(_, block) =>
-            block.name.value should be("Allowed for auth mock action")
+          inside(result) { case Allowed(blockContext) =>
+            blockContext.block.name.value should be("Allowed for auth mock action")
           }
         }
         "it is a config request and the action name match pattern on the configured list with old name" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorMainSettingsAction)
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(_, block) =>
-            block.name.value should be("Allowed for config action")
+          inside(result) { case Allowed(blockContext) =>
+            blockContext.block.name.value should be("Allowed for config action")
           }
         }
         "it is a audit event request and the action match pattern on the configured list with old name" in {
           val request = MockRequestContext.indices.copy(action = Action.RorAction.RorAuditEventAction)
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
-          inside(result) { case Allow(_, block) =>
-            block.name.value should be("Allowed for any action")
+          inside(result) { case Allowed(blockContext) =>
+            blockContext.block.name.value should be("Allowed for any action")
           }
         }
       }

@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, Mode}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -35,7 +35,6 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, D
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.implicits.CauseFormatting
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -55,18 +54,16 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     .toMap
 
   override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    Task
-      .unit
-      .flatMap { _ =>
-        resolveGroupsLogic(blockContext) match {
-          case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
-            continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)
-          case Some(_) =>
-            rejectWithGroupsAuthorizationFailure("Current group is not allowed")
-          case None =>
-            rejectWithGroupsAuthorizationFailure("No resolved allowed groups")
-        }
+    Task.unit.flatMap { _ =>
+      resolveGroupsLogic(blockContext) match {
+        case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
+          continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)
+        case Some(_) =>
+          rejectWithGroupsAuthorizationFailure("Current group is not allowed")
+        case None =>
+          rejectWithGroupsAuthorizationFailure("No resolved allowed groups")
       }
+    }
   }
 
   override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
@@ -74,7 +71,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
 
   private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                            permittedGroupsLogic: GroupsLogic): Task[Decision[B]] = {
-    blockContext.userMetadata.loggedUser match {
+    blockContext.blockMetadata.loggedUser match {
       case Some(user) =>
         NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
@@ -113,7 +110,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
       case Right(newBlockContext) =>
         Permitted(newBlockContext)
       case Left(causes) =>
-        val details = CauseFormatting.formatGroupedCauses(causes.map { case (k, v) => (k.usernames, v)}.toList)
+        val details = CauseFormatting.formatGroupedCauses(causes.map { case (k, v) => (k.usernames, v) }.toList)
         Denied(GroupsAuthorizationFailed(details))
     }
   }
@@ -173,11 +170,9 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
         destinationBlockContext = blockContext,
         allowedUserMatcher = allowedUserMatcher
       )
-    } yield {
-      fullyUpdatedBlockContext.withUserMetadata(_
-        .withAvailableGroups(UniqueList.from(availableGroups))
-      )
-    }
+    } yield fullyUpdatedBlockContext.withBlockMetadata(_
+      .withAvailableGroups(UniqueList.from(availableGroups))
+    )
     result.value
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication unexpected error", ex)
@@ -241,9 +236,9 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                                         destinationBlockContext: B,
                                                                                         allowedUserMatcher: GenericPatternMatcher[User.Id]): EitherT[Task, Cause, B] = {
     EitherT.fromEither[Task] {
-      sourceBlockContext.userMetadata.loggedUser match {
+      sourceBlockContext.blockMetadata.loggedUser match {
         case Some(user) if allowedUserMatcher.`match`(user.id) =>
-          Right(destinationBlockContext.withUserMetadata(_.withLoggedUser(user)))
+          Right(destinationBlockContext.withBlockMetadata(_.withLoggedUser(user)))
         case Some(user) =>
           Left(AuthenticationFailed(s"User '${user.id.show}' doesn't match allowed patterns"))
         case None =>
@@ -257,25 +252,25 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                                            potentiallyAvailableGroups: UniqueNonEmptyList[Group],
                                                                                            groupMappings: GroupMappings): EitherT[Task, Cause, B] = {
     EitherT.fromEither[Task] {
-      val externalAvailableGroups = sourceBlockContext.userMetadata.availableGroups
+      val externalAvailableGroups = sourceBlockContext.blockMetadata.availableGroups
       for {
         externalGroupsMappedToLocalGroups <- mapExternalGroupsToLocalGroups(groupMappings, externalAvailableGroups)
         availableLocalGroups <- availableLocalGroupsFromExternalGroupsMappedToLocalGroups(externalGroupsMappedToLocalGroups, potentiallyAvailableGroups)
       } yield {
-        def requiredData: UserMetadata => UserMetadata = { metadata =>
+        def requiredData: BlockMetadata => BlockMetadata = { metadata =>
           metadata.withAvailableGroups(UniqueList.from(availableLocalGroups))
         }
 
-        def optionalUserOrigin: UserMetadata => UserMetadata = { metadata =>
-          sourceBlockContext.userMetadata.userOrigin.map(metadata.withUserOrigin).getOrElse(metadata)
+        def optionalUserOrigin: BlockMetadata => BlockMetadata = { metadata =>
+          sourceBlockContext.blockMetadata.userOrigin.map(metadata.withUserOrigin).getOrElse(metadata)
         }
 
-        def optionalJwtToken: UserMetadata => UserMetadata = { metadata =>
-          sourceBlockContext.userMetadata.jwtToken.map(metadata.withJwtToken).getOrElse(metadata)
+        def optionalJwtToken: BlockMetadata => BlockMetadata = { metadata =>
+          sourceBlockContext.blockMetadata.jwtToken.map(metadata.withJwtToken).getOrElse(metadata)
         }
 
         destinationBlockContext
-          .withUserMetadata { metadata =>
+          .withBlockMetadata { metadata =>
             (requiredData :: optionalUserOrigin :: optionalJwtToken :: Nil)
               .foldLeft(metadata) { case (acc, func) => func(acc) }
           }
@@ -295,7 +290,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                  blockContext: B,
                                                                  mode: Mode) = EitherT {
     val initialBlockContext = mode match {
-      case Mode.WithGroupsMapping(_, _) => blockContext.withUserMetadata(_.clearCurrentGroup)
+      case Mode.WithGroupsMapping(_, _) => blockContext.withBlockMetadata(_.clearCurrentGroup)
       case Mode.WithoutGroupsMapping(_, _) => blockContext
     }
     rule

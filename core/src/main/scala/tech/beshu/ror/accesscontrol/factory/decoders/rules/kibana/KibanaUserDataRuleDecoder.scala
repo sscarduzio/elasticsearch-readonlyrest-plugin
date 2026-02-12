@@ -68,7 +68,7 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
           kibanaTemplateIndex = kibanaTemplateIndex,
           appsToHide = appsToHide.getOrElse(Set.empty),
           allowedApiPaths = allowedApiPaths.getOrElse(Set.empty),
-          metadata = metadataResolvableJsonRepresentation,
+          genericMetadata = metadataResolvableJsonRepresentation,
           rorIndex = settingsIndex
         ))
       }

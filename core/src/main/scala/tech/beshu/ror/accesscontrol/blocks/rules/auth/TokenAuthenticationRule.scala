@@ -56,7 +56,7 @@ final class TokenAuthenticationRule(val settings: Settings,
       .map { _ =>
         val requestContext = blockContext.requestContext
         if (verifyTokenFromHeader(requestContext)) {
-          Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
+          Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
         } else {
           Denied(Cause.AuthenticationFailed(s"Token header '${settings.tokenHeaderName.show}' missing or invalid"))
         }

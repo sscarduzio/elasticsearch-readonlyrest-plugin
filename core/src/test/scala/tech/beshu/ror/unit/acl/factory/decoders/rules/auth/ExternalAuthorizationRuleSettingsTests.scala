@@ -822,7 +822,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
-              "External authorization service 'GroupsService1' configuration is missing the 'response_group_ids_json_path' attribute"
+              "External groups provider service 'GroupsService1' configuration is missing the 'response_group_ids_json_path' attribute"
             )))
           }
         )
@@ -880,7 +880,9 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("External authorization service 'GroupsService1' configuration is missing the 'response_group_ids_json_path' attribute")))
+            errors.head should be(DefinitionsLevelCreationError(Message("" +
+              "External groups provider service 'GroupsService1' configuration is missing the 'response_group_ids_json_path' attribute"
+            )))
           }
         )
       }
@@ -941,7 +943,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message(
-              "External authorization service 'GroupsService1' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time"
+              "External groups provider service 'GroupsService1' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time"
             )))
           }
         )
@@ -1290,7 +1292,7 @@ class ExternalAuthorizationRuleSettingsTests
     }
   }
 
-  private val mockedHttpClientsFactory: HttpClientsFactory = {
+  private lazy val mockedHttpClientsFactory: HttpClientsFactory = {
     val httpClientMock = mock[SimpleHttpClient[Task]]
     new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)
   }

@@ -21,10 +21,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Information, Kilobytes}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
@@ -74,9 +75,10 @@ class MaxBodyLengthRuleTests extends AnyWordSpec with MockFactory {
     (() => restRequest.contentLength).expects().returning(Bytes(body.length))
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )

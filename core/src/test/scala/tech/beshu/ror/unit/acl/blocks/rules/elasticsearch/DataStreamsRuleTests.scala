@@ -17,13 +17,14 @@
 package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
@@ -35,7 +36,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.language.postfixOps
 
-class DataStreamsRuleTests extends AnyWordSpec {
+class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
 
   "A DataStreamsRule" should {
     "match" when {
@@ -169,7 +170,7 @@ class DataStreamsRuleTests extends AnyWordSpec {
       action = requestAction
     )
     val blockContext = DataStreamRequestBlockContext(
-      requestContext, UserMetadata.empty, Set.empty, List.empty, requestDataStreams, BackingIndices.IndicesNotInvolved
+      mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, requestDataStreams, BackingIndices.IndicesNotInvolved
     )
     rule.checkAndAssert(blockContext, assertion)
   }

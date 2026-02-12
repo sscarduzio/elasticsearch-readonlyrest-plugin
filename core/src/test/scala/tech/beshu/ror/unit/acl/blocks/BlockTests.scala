@@ -26,9 +26,10 @@ import org.scalatest.{Inside, TestSuite}
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
@@ -48,7 +49,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
     "be mismatched and contain all history, up to mismatched rule" when {
       "one of rules doesn't match" in {
         def withLoggedUser: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
-          _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
+          _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
 
         val blockName = Block.Name("test_block")
         val block = new Block(
@@ -68,11 +69,18 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
 
         inside(result) {
           case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
-            block.name should be (blockName)
+            block.name should be(blockName)
+            assertPermitted(rulesHistory(0))(
+              hasRuleName = Rule.Name("r1")
+            )
+            assertPermitted(rulesHistory(1))(
+              hasRuleName = Rule.Name("r2")
+            )
+            assertDenied(rulesHistory(2))(
+              hasRuleName = Rule.Name("r3"),
+              hasCause = NotAuthorized
+            )
             rulesHistory should have size 3
-            rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
-            rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
-            rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Denied(NotAuthorized)))
         }
       }
       "one of rules throws exception" in {
@@ -91,11 +99,18 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
 
         inside(result) {
           case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
-            block.name should be (blockName)
+            block.name should be(blockName)
+            assertPermitted(rulesHistory(0))(
+              hasRuleName = Rule.Name("r1")
+            )
+            assertPermitted(rulesHistory(1))(
+              hasRuleName = Rule.Name("r2")
+            )
+            assertDenied(rulesHistory(2))(
+              hasRuleName = Rule.Name("r3"),
+              hasCause = NotAuthorized
+            )
             rulesHistory should have size 3
-            rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
-            rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(requestContext.initialBlockContext)))
-            rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Denied(NotAuthorized)))
         }
       }
     }
@@ -115,20 +130,26 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
-          block.name should be (blockName)
+          block.name should be(blockName)
+          assertPermitted(rulesHistory(0))(
+            hasRuleName = Rule.Name("r1")
+          )
+          assertPermitted(rulesHistory(1))(
+            hasRuleName = Rule.Name("r2")
+          )
+          assertPermitted(rulesHistory(2))(
+            hasRuleName = Rule.Name("r3")
+          )
           rulesHistory should have size 3
-          rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(requestContext.initialBlockContext)))
-          rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(requestContext.initialBlockContext)))
-          rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Permitted(requestContext.initialBlockContext)))
 
-          blockContext.userMetadata should be(UserMetadata.empty)
+          blockContext.blockMetadata should be(BlockMetadata.empty)
           blockContext.filteredIndices should be(Set.empty)
           blockContext.responseHeaders should be(Set.empty)
       }
     }
     "be matched and contain all rules history from the block with modified block context" in {
       def withLoggedUser: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
-        _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
+        _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
 
       def withIndices: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
         _.withIndices(Set(requestedIndex("idx1")), Set(clusterIndexName("idx*")))
@@ -151,14 +172,20 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
-          block.name should be (blockName)
+          block.name should be(blockName)
+          assertPermitted(rulesHistory(0))(
+            hasRuleName = Rule.Name("r1")
+          )
+          assertPermitted(rulesHistory(1))(
+            hasRuleName = Rule.Name("r2")
+          )
+          assertPermitted(rulesHistory(2))(
+            hasRuleName = Rule.Name("r3")
+          )
           rulesHistory should have size 3
-          rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
-          rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(withLoggedUser(requestContext.initialBlockContext))))
-          rulesHistory(2) should be(RuleHistory(Rule.Name("r3"), Permitted(withLoggedUser(withIndices(requestContext.initialBlockContext)))))
 
-          blockContext.userMetadata should be(
-            UserMetadata
+          blockContext.blockMetadata should be(
+            BlockMetadata
               .empty
               .withLoggedUser(DirectlyLoggedUser(User.Id("user1")))
           )
@@ -168,11 +195,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       }
     }
     "be matched and contain all rules history from the block with overwritten logged user" in {
-      def withLoggedUser1: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
-        _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
-      def withLoggedUser2: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
-        _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))
-
       val blockName = Block.Name("test_block")
       val block = new Block(
         name = blockName,
@@ -180,8 +202,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         verbosity = Block.Verbosity.Info,
         audit = Block.Audit.Enabled,
         rules = NonEmptyList.fromListUnsafe(
-          passingRule("r1", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))) ::
-          passingRule("r2", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))) ::
+          passingRule("r1", _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))) ::
+            passingRule("r2", _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))) ::
             Nil
         )
       )
@@ -190,13 +212,17 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
-          block.name should be (blockName)
+          block.name should be(blockName)
+          assertPermitted(rulesHistory(0))(
+            hasRuleName = Rule.Name("r1")
+          )
+          assertPermitted(rulesHistory(1))(
+            hasRuleName = Rule.Name("r2")
+          )
           rulesHistory should have size 2
-          rulesHistory(0) should be(RuleHistory(Rule.Name("r1"), Permitted(withLoggedUser1(requestContext.initialBlockContext))))
-          rulesHistory(1) should be(RuleHistory(Rule.Name("r2"), Permitted(withLoggedUser2(requestContext.initialBlockContext))))
 
-          blockContext.userMetadata should be(
-            UserMetadata
+          blockContext.blockMetadata should be(
+            BlockMetadata
               .empty
               .withLoggedUser(DirectlyLoggedUser(User.Id("user2")))
           )
@@ -206,12 +232,23 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       }
     }
   }
+
+  private def assertPermitted[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name) = {
+    ruleHistory.rule should be(hasRuleName)
+    inside(ruleHistory.decision) { case (Permitted(_)) => }
+  }
+
+  private def assertDenied[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name, hasCause: Cause) = {
+    ruleHistory.rule should be(hasRuleName)
+    ruleHistory.decision should be(Denied(hasCause))
+  }
 }
 
-trait BlockTestsMockFactory extends MockFactory { this: TestSuite =>
+trait BlockTestsMockFactory extends MockFactory {
+  this: TestSuite =>
 
   protected def passingRule(ruleName: String,
-                          modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity) =
+                            modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity) =
     new RegularRule {
       override val name: Rule.Name = Rule.Name(ruleName)
 

@@ -19,11 +19,13 @@ package tech.beshu.ror.unit.acl.blocks.rules.http
 import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -38,7 +40,7 @@ import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class HostsRuleTests extends AnyWordSpec {
+class HostsRuleTests extends AnyWordSpec with MockFactory {
 
   "A HostsRule" should {
     "match" when {
@@ -103,7 +105,7 @@ class HostsRuleTests extends AnyWordSpec {
     val requestContext = MockRequestContext.metadata.copy(
       restRequest = MockRestRequest(allHeaders = Set.empty, remoteAddress = address)
     )
-    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
       if (isMatched) Permitted(blockContext)
       else Denied(NotAuthorized)

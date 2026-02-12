@@ -19,7 +19,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.{Allowed, ForbiddenByMismatched}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -48,7 +48,7 @@ class IndicesYamlLoadedAccessControlTests extends AnyWordSpec
           val request = MockRequestContext.indices.copy(filteredIndices = Set(requestedIndex("test")))
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           history.blocks should have size 1
-          inside(result) { case Allow(_, _) => }
+          inside(result) { case Allowed(_) => }
         }
       }
       "not allow to proceed" when {

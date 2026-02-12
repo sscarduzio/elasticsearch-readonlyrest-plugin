@@ -20,12 +20,12 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.scalatest.wordspec.AnyWordSpecLike
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.UserMetadataRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Authen
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -47,7 +47,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.language.postfixOps
 
-trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator]
+trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
   extends AnyWordSpecLike with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
@@ -86,11 +86,12 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator]
       allHeaders = preferredGroupId.map(_.toCurrentGroupHeader).toCovariantSet,
       path = UriPath.auditEventPath
     ))
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
-        case None => UserMetadata.from(requestContext)
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
+        case None => BlockMetadata.from(requestContext)
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty
@@ -104,14 +105,14 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator]
 
   def defaultOutputBlockContextAssertion(user: User.Id,
                                          group: GroupId,
-                                         availableGroups: UniqueList[Group]): BlockContext => Unit =
-    (blockContext: BlockContext) => {
-      assertBlockContext(
+                                         availableGroups: UniqueList[Group]): BlockContext => Unit = {
+    (blockContext: BlockContext) =>
+      assertBlockContext(blockContext)(
         loggedUser = Some(DirectlyLoggedUser(user)),
         currentGroup = Some(group),
         availableGroups = availableGroups
-      )(blockContext)
-    }
+      )
+  }
 
   protected def createVariable[T: Convertible](text: NonEmptyString): Either[RuntimeResolvableVariableCreator.CreationError, RuntimeMultiResolvableVariable[T]] = {
     variableCreator.createMultiResolvableVariableFrom[T](text)
@@ -125,7 +126,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator]
       override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Permitted(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
+        Task.now(Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
     }
 
     val denying: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
@@ -153,7 +154,7 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator]
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-        Task.now(Permitted(blockContext.withUserMetadata(
+        Task.now(Permitted(blockContext.withBlockMetadata(
           _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
       }
@@ -176,12 +177,12 @@ trait GroupsRuleTests[GL <: GroupsLogic: GroupsLogic.Creator]
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Permitted(blockContext.withUserMetadata(
+        Task.now(Permitted(blockContext.withBlockMetadata(
           _.withLoggedUser(DirectlyLoggedUser(user))
         )))
 
       override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Permitted(blockContext.withUserMetadata(
+        Task.now(Permitted(blockContext.withBlockMetadata(
           _.withAvailableGroups(UniqueList.from(groups.toList))
         )))
     }

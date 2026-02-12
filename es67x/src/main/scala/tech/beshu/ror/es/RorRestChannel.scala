@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel, RestRequest as EsRestRequest, RestResponse as EsRestResponse}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
@@ -25,6 +24,7 @@ import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.net.{InetSocketAddress, SocketAddress}
 import scala.jdk.CollectionConverters.*
@@ -50,16 +50,9 @@ final class RorRestChannel private(underlying: EsRestChannel, val restRequest: R
 object RorRestRequest {
 
   def from(esRestRequest: EsRestRequest): Either[Header.AuthorizationValueError, RorRestRequest] = {
-    headersFrom(esRestRequest).map(new RorRestRequest(esRestRequest, _))
-  }
-
-  private def headersFrom(esRestRequest: EsRestRequest) = {
-    Header.fromRawHeaders(
-      esRestRequest
-        .getHeaders.asScala
-        .view.mapValues(_.asScala.toList)
-        .toMap
-    )
+    Header
+      .fromRawHeaders(esRestRequest.getHeaders)
+      .map(new RorRestRequest(esRestRequest, _))
   }
 }
 final class RorRestRequest private(underlying: EsRestRequest,

@@ -33,16 +33,14 @@ private[auth] abstract class BaseBasicAuthAuthenticationRule
                                  (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]]
 
   override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    Task
-      .unit
-      .flatMap { _ =>
-        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-        val result = for {
-          credentials <- basicAuthCredentialsFrom(blockContext.requestContext)
-          loggedUser <- EitherT(authenticateUsing(credentials))
-        } yield blockContext.withUserMetadata(_.withLoggedUser(loggedUser))
-        result.toDecision
-      }
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+    val result = for {
+      credentials <- basicAuthCredentialsFrom(blockContext.requestContext)
+      loggedUser <- EitherT(authenticateUsing(credentials))
+    } yield blockContext.withBlockMetadata(
+      _.withLoggedUser(loggedUser)
+    )
+    result.toDecision
   }
 
   private def basicAuthCredentialsFrom(requestContext: RequestContext) = {

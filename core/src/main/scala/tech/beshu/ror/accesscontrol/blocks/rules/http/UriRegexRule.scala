@@ -33,11 +33,11 @@ class UriRegexRule(val settings: Settings)
   override val name: Rule.Name = UriRegexRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    Decision.permit(`with` = blockContext) {
-      settings
+    Decision.permit(`with` = blockContext)(
+      when = settings
         .uriPatterns
         .exists(variableMatchingRequestedUri(blockContext))
-    }
+    )
   }
 
   private def variableMatchingRequestedUri[B <: BlockContext](blockContext: B)

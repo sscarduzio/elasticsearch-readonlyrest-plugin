@@ -23,14 +23,14 @@ import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.{AuthenticationResult, Name}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
@@ -158,11 +158,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               loggedUser = expectedLoggedUser("user"),
               currentGroup = expectedCurrentGroup,
-            )(blockContext)
+            )
         }
       }
       "token has valid RS256 signature" in {
@@ -179,11 +179,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               loggedUser = expectedLoggedUser("user"),
               currentGroup = expectedCurrentGroup,
-            )(blockContext)
+            )
         }
       }
       "token has no signature and external auth service returns true" in {
@@ -202,11 +202,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               loggedUser = expectedLoggedUser("user"),
               currentGroup = expectedCurrentGroup,
-            )(blockContext)
+            )
         }
       }
       "token has no signature and external auth service state is cached" in {
@@ -226,11 +226,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           tokenHeader = bearerHeader(validJwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               jwt = Some(domain.Jwt.Payload(validJwt.defaultClaims())),
               loggedUser = expectedLoggedUser("testuser"),
               currentGroup = expectedCurrentGroup,
-            )(blockContext)
+            )
         }
 
         def checkInvalidToken(): Unit = assertNotMatchRule(
@@ -261,11 +261,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           tokenHeader = bearerHeader("x-jwt-custom-header", jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               loggedUser = expectedLoggedUser("user1"),
               currentGroup = expectedCurrentGroup,
-            )(blockContext)
+            )
         }
       }
       "custom authorization token prefix is used" in {
@@ -288,11 +288,11 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
           )
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               loggedUser = expectedLoggedUser("user1"),
               currentGroup = expectedCurrentGroup,
-            )(blockContext)
+            )
         }
       }
     }
@@ -385,8 +385,9 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
       preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,

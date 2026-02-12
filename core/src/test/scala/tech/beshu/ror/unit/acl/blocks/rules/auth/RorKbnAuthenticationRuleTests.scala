@@ -18,13 +18,13 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthenticationRule
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -58,10 +58,10 @@ class RorKbnAuthenticationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+            )
         }
       }
       "token has valid RS256 signature" in {
@@ -78,10 +78,10 @@ class RorKbnAuthenticationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+            )
         }
       }
       "groups claim name is defined and no groups field is passed in token claim" in {
@@ -97,10 +97,10 @@ class RorKbnAuthenticationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+            )
         }
       }
       "preferred group is not on the groups list from JWT" in {
@@ -118,11 +118,11 @@ class RorKbnAuthenticationRuleTests
           preferredGroupId = Some(GroupId("group5"))
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("group5"))
-            )(blockContext)
+            )
         }
       }
     }
@@ -198,8 +198,9 @@ class RorKbnAuthenticationRuleTests
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,

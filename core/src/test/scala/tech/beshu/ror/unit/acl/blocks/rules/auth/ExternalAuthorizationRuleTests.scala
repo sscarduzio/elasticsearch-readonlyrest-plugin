@@ -21,15 +21,15 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
@@ -52,7 +52,7 @@ class ExternalAuthorizationRuleTests
         "has current group" when {
           "groups OR logic is used" when {
             "at least one allowed group matches the external groups (1)" in {
-              val service = mockExternalAuthorizationService(
+              val service = mockExternalGroupsProviderService(
                 name = "service1",
                 groups = Map(User.Id("user2") -> Set(group("g2"), group("g3")))
               )
@@ -76,7 +76,7 @@ class ExternalAuthorizationRuleTests
               )
             }
             "at least one allowed group matches the external groups (2)" in {
-              val service = mockExternalAuthorizationService(
+              val service = mockExternalGroupsProviderService(
                 name = "service1",
                 groups = Map(User.Id("user2") -> Set(group("g2"), group("g3")))
               )
@@ -102,7 +102,7 @@ class ExternalAuthorizationRuleTests
           }
           "groups AND logic is used" when {
             "all allowed groups match the external groups (1)" in {
-              val service = mockExternalAuthorizationService(
+              val service = mockExternalGroupsProviderService(
                 name = "service1",
                 groups = Map(User.Id("user2") -> Set(group("g1"), group("g2"), group("g3")))
               )
@@ -126,7 +126,7 @@ class ExternalAuthorizationRuleTests
               )
             }
             "all allowed groups match the external groups (2)" in {
-              val service = mockExternalAuthorizationService(
+              val service = mockExternalGroupsProviderService(
                 name = "service1",
                 groups = Map(User.Id("user2") -> Set(group("g1"), group("g2"), group("g3")))
               )
@@ -152,7 +152,7 @@ class ExternalAuthorizationRuleTests
           }
         }
         "doesn't have current group set, but there is non empty intersection set between fetched groups and configured ones" in {
-          val service = mockExternalAuthorizationService(
+          val service = mockExternalGroupsProviderService(
             name = "service1",
             groups = Map(User.Id("user2") -> Set(group("g1"), group("g2"), group("g3")))
           )
@@ -176,7 +176,7 @@ class ExternalAuthorizationRuleTests
           )
         }
         "configured user name has wildcard" in {
-          val service = mockExternalAuthorizationService(
+          val service = mockExternalGroupsProviderService(
             name = "service1",
             groups = Map(User.Id("user2") -> Set(group("g1"), group("g2"), group("g3")))
           )
@@ -204,7 +204,7 @@ class ExternalAuthorizationRuleTests
         "impersonation is enabled" when {
           "mocks provider has a given user with proper groups for the given external service" in {
             val user2GroupsInService1 = Map(User.Id("user2") -> Set(group("g2"), group("g3")))
-            val service = mockExternalAuthorizationService(name = "service1", groups = user2GroupsInService1)
+            val service = mockExternalGroupsProviderService(name = "service1", groups = user2GroupsInService1)
 
             assertMatchRule(
               settings = ExternalAuthorizationRule.Settings(
@@ -264,7 +264,7 @@ class ExternalAuthorizationRuleTests
         )
       }
       "authorization service returns empty groups list" in {
-        val service = mockExternalAuthorizationService(
+        val service = mockExternalGroupsProviderService(
           name = "service1",
           groups = Map(User.Id("user2") -> Set.empty)
         )
@@ -283,7 +283,7 @@ class ExternalAuthorizationRuleTests
         )
       }
       "authorization service groups for given user has empty intersection with configured groups" in {
-        val service = mockExternalAuthorizationService(
+        val service = mockExternalGroupsProviderService(
           name = "service1",
           groups = Map(User.Id("user2") -> Set(group("g3"), group("g4")))
         )
@@ -302,7 +302,7 @@ class ExternalAuthorizationRuleTests
         )
       }
       "groups AND logic is used and not all configured groups are matched" in {
-        val service = mockExternalAuthorizationService(
+        val service = mockExternalGroupsProviderService(
           name = "service1",
           groups = Map(User.Id("user2") -> Set(group("g3"), group("g4")))
         )
@@ -321,7 +321,7 @@ class ExternalAuthorizationRuleTests
         )
       }
       "groups NOT_ALL_OF logic is used and all configured groups are matched" in {
-        val service = mockExternalAuthorizationService(
+        val service = mockExternalGroupsProviderService(
           name = "service1",
           groups = Map(User.Id("user2") -> Set(group("g3"), group("g4")))
         )
@@ -340,7 +340,7 @@ class ExternalAuthorizationRuleTests
         )
       }
       "groups NOT_ANY_OF logic is used and one of the configured groups is matched" in {
-        val service = mockExternalAuthorizationService(
+        val service = mockExternalGroupsProviderService(
           name = "service1",
           groups = Map(User.Id("user2") -> Set(group("g3"), group("g4")))
         )
@@ -359,7 +359,7 @@ class ExternalAuthorizationRuleTests
         )
       }
       "groups NOT_ALL_OF logic is used and not eligible preferred group present" in {
-        val service = mockExternalAuthorizationService(
+        val service = mockExternalGroupsProviderService(
           name = "ldap1",
           groups = Map(User.Id("user1") -> Set(group("g1"), group("g2"), group("g3")))
         )
@@ -377,7 +377,7 @@ class ExternalAuthorizationRuleTests
         )
       }
       "groups NOT_ANY_OF logic is used and not eligible preferred group present" in {
-        val service = mockExternalAuthorizationService(
+        val service = mockExternalGroupsProviderService(
           name = "ldap1",
           groups = Map(User.Id("user1") -> Set(group("g1"), group("g2"), group("g3")))
         )
@@ -412,7 +412,7 @@ class ExternalAuthorizationRuleTests
         "impersonation is enabled" when {
           "mocks provider doesn't have a given user" in {
             val user2GroupsInService1 = Map(User.Id("user2") -> Set(group("g1"), group("g2")))
-            val service = mockExternalAuthorizationService(name = "service1", groups = user2GroupsInService1)
+            val service = mockExternalGroupsProviderService(name = "service1", groups = user2GroupsInService1)
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
                 service = service,
@@ -434,7 +434,7 @@ class ExternalAuthorizationRuleTests
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
             val user2GroupsInService1 = Map(User.Id("user1") -> Set(group("g5"), group("g6")))
-            val service = mockExternalAuthorizationService(name = "service1", groups = user2GroupsInService1)
+            val service = mockExternalGroupsProviderService(name = "service1", groups = user2GroupsInService1)
 
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
@@ -457,7 +457,7 @@ class ExternalAuthorizationRuleTests
           }
           "mocks provider is unavailable" in {
             val user2GroupsInService1 = Map(User.Id("user1") -> Set(group("g5"), group("g6")))
-            val service = mockExternalAuthorizationService(name = "service1", groups = user2GroupsInService1)
+            val service = mockExternalGroupsProviderService(name = "service1", groups = user2GroupsInService1)
 
             assertNotMatchRule(
               settings = ExternalAuthorizationRule.Settings(
@@ -522,10 +522,11 @@ class ExternalAuthorizationRuleTests
       preferredGroup.map(_.toCurrentGroupHeader)
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
-        case None => UserMetadata.from(requestContext)
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(user)
+        case None => BlockMetadata.from(requestContext)
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
@@ -540,11 +541,11 @@ class ExternalAuthorizationRuleTests
                                                  preferredGroupId: GroupId,
                                                  availableGroups: UniqueList[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(DirectlyLoggedUser(user)),
         currentGroup = Some(preferredGroupId),
         availableGroups = availableGroups
-      )(blockContext)
+      )
     }
 
   private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
@@ -552,14 +553,14 @@ class ExternalAuthorizationRuleTests
                                                           availableGroups: UniqueList[Group],
                                                           impersonator: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(ImpersonatedUser(user, impersonator)),
         currentGroup = Some(group),
         availableGroups = availableGroups
-      )(blockContext)
+      )
     }
 
-  private def mockExternalAuthorizationService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) =
+  private def mockExternalGroupsProviderService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) =
     new ExternalGroupsProviderService {
       override def id: ExternalGroupsProviderService.Name = ExternalGroupsProviderService.Name(name)
 

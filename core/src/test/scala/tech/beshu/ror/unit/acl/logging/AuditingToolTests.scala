@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStre
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
@@ -131,14 +131,22 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = ForbiddenBy(
               requestContext = requestContext,
-              block = new Block(
-                Block.Name("mock-block"),
-                Block.Policy.Forbid(),
-                Block.Verbosity.Info,
-                Block.Audit.Enabled,
-                NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+              blockContext = GeneralIndexRequestBlockContext(
+                block = new Block(
+                  Block.Name("mock-block"),
+                  Block.Policy.Forbid(),
+                  Block.Verbosity.Info,
+                  Block.Audit.Enabled,
+                  NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+                ),
+                requestContext = requestContext,
+                blockMetadata = BlockMetadata.empty,
+                responseHeaders = Set.empty,
+                responseTransformations = List.empty,
+                filteredIndices = Set.empty,
+                allAllowedIndices = Set.empty,
+                allAllowedClusters = Set.empty
               ),
-              blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
               history = History.empty
             )
 
@@ -262,14 +270,22 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
     AllowedBy(
       requestContext = requestContext,
-      block = new Block(
-        Block.Name("mock-block"),
-        policy,
-        verbosity,
-        Block.Audit.Enabled,
-        NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+      blockContext = GeneralIndexRequestBlockContext(
+        block = new Block(
+          Block.Name("mock-block"),
+          policy,
+          verbosity,
+          Block.Audit.Enabled,
+          NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+        ),
+        requestContext = requestContext,
+        blockMetadata = BlockMetadata.empty,
+        responseHeaders = Set.empty,
+        responseTransformations = List.empty,
+        filteredIndices = Set.empty,
+        allAllowedIndices = Set.empty,
+        allAllowedClusters = Set.empty
       ),
-      blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty),
       history = History.empty
     )
   }

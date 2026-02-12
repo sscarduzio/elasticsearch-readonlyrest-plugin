@@ -29,9 +29,9 @@ class MaxBodyLengthRule(val settings: Settings)
   override val name: Rule.Name = MaxBodyLengthRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    Decision.permit(`with` = blockContext) {
-      blockContext.requestContext.restRequest.contentLength <= settings.maxContentLength
-    }
+    Decision.permit(`with` = blockContext)(
+      when = blockContext.requestContext.restRequest.contentLength <= settings.maxContentLength
+    )
   }
 }
 

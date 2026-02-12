@@ -52,7 +52,7 @@ object UsersDefinitionsDecoder {
   import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder.*
 
   def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-               authorizationServiceDefinitions: Definitions[ExternalGroupsProviderService],
+               externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
                authProxyDefinitions: Definitions[ProxyAuth],
                jwtDefinitions: Definitions[JwtDef],
                rorKbnDefinitions: Definitions[RorKbnDef],
@@ -71,7 +71,7 @@ object UsersDefinitionsDecoder {
               val rulesDecoder = userDefRulesDecoder(
                 usernamePatterns,
                 authenticationServiceDefinitions,
-                authorizationServiceDefinitions,
+                externalGroupsProviderServiceDefinitions,
                 authProxyDefinitions,
                 jwtDefinitions,
                 rorKbnDefinitions,
@@ -99,7 +99,7 @@ object UsersDefinitionsDecoder {
 
   private def userDefRulesDecoder(usernamePatterns: UserIdPatterns,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                  authorizationServiceDefinitions: Definitions[ExternalGroupsProviderService],
+                                  externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
@@ -115,7 +115,7 @@ object UsersDefinitionsDecoder {
         usersDefinitionsAllowedRulesDecoderBy(
           ruleName,
           authenticationServiceDefinitions,
-          authorizationServiceDefinitions,
+          externalGroupsProviderServiceDefinitions,
           authProxyDefinitions,
           jwtDefinitions,
           rorKbnDefinitions,

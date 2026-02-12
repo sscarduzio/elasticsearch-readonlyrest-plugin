@@ -53,7 +53,7 @@ final class ProxyAuthRule(val settings: Settings,
       loggedUser <- getLoggedUser(blockContext.requestContext)
       _ <- shouldAuthenticate(loggedUser.id)
     } yield {
-      blockContext.withUserMetadata(_.withLoggedUser(loggedUser))
+      blockContext.withBlockMetadata(_.withLoggedUser(loggedUser))
     }
     result.toDecision
   }

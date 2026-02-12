@@ -63,7 +63,7 @@ final class RorKbnAuthorizationRule(val settings: Settings)
         (), GroupsAuthorizationFailed("Current group is not allowed")
       )
     } yield {
-      blockContext.withUserMetadata(_.addAvailableGroups(matchedGroups))
+      blockContext.withBlockMetadata(_.addAvailableGroups(matchedGroups))
     }
   }
 

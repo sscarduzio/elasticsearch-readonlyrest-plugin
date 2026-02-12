@@ -18,7 +18,6 @@ package org.elasticsearch.transport.netty4
 
 import io.netty.channel.*
 import io.netty.handler.ssl.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -31,7 +30,7 @@ import org.elasticsearch.transport.netty4.{Netty4Transport, SharedGroupFactory}
 import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
 
 import java.net.{InetSocketAddress, SocketAddress}

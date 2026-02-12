@@ -26,20 +26,21 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
-import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
+import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.MockRequestContext.{adminAction, roAction, rwAction}
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.unit.acl.blocks.rules.elasticsearch.FieldsRuleTests.{BlockContextCreator, Configuration, Fields, RequestContextCreator}
+import tech.beshu.ror.unit.acl.blocks.rules.elasticsearch.FieldsRuleTests.{Configuration, Fields}
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -54,8 +55,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               flsEngine = FlsEngine.Lucene,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
-            requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-            incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields),
+            incomingBlockContext = emptyFilterable(
+              requestContext = MockRequestContext.filterable().copy(action = roAction),
+              requestFieldsUsage = RequestFieldsUsage.NotUsingFields
+            ),
             expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
         }
@@ -66,8 +69,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields),
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.CannotExtractFields
+              ),
               expectedStrategy = Strategy.FlsAtLuceneLevelApproach
             )
           }
@@ -77,8 +82,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))),
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))
+              ),
               expectedStrategy = Strategy.FlsAtLuceneLevelApproach
             )
           }
@@ -92,8 +99,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields),
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.NotUsingFields
+              ),
               expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
             )
           }
@@ -103,8 +112,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1")))),
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1")))
+              ),
               expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
             )
           }
@@ -114,8 +125,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))),
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))
+              ),
               expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField.fromString("notAllowedField")))
             )
           }
@@ -127,8 +140,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ES,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields),
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.NotUsingFields
+              ),
               expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
             )
           }
@@ -138,8 +153,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ES,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1")))),
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1")))
+              ),
               expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
             )
           }
@@ -149,9 +166,15 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
                 flsEngine = FlsEngine.ES,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
-              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))),
-              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField.fromString("notAllowedField")))
+              incomingBlockContext = emptyFilterable(
+                requestContext = MockRequestContext.filterable().copy(action = roAction),
+                requestFieldsUsage = RequestFieldsUsage.UsingFields(
+                  NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField"))
+                )
+              ),
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(
+                NonEmptyList.one(UsedField.SpecificField.fromString("notAllowedField"))
+              )
             )
           }
         }
@@ -165,8 +188,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               flsEngine = FlsEngine.ES,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
-            requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-            incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
+            incomingBlockContext = emptyFilterable(
+              requestContext = MockRequestContext.filterable().copy(action = roAction),
+              requestFieldsUsage = RequestFieldsUsage.CannotExtractFields
+            )
           )
         }
         "there is used field with wildcard" in {
@@ -175,8 +200,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               flsEngine = FlsEngine.ES,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
-            requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
-            incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1"))))
+            incomingBlockContext = emptyFilterable(
+              requestContext = MockRequestContext.filterable().copy(action = roAction),
+              requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))
+            )
           )
         }
       }
@@ -189,8 +216,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
               flsEngine = FlsEngine.ESWithLucene,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
-            requestContext = MockRequestContext.readOnly[FilterableMultiRequestBlockContext],
-            incomingBlockContext = emptyFilterableMultiBlockContext(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields),
+            incomingBlockContext = emptyFilterableMultiBlockContext(
+              requestContext = MockRequestContext.filterable().copy(action = roAction),
+              requestFieldsUsage = RequestFieldsUsage.CannotExtractFields
+            ),
             expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
         }
@@ -203,8 +232,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
             flsEngine = FlsEngine.ESWithLucene,
             fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
           ),
-          requestContext = MockRequestContext.notReadOnly[FilterableRequestBlockContext],
-          incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
+          incomingBlockContext = emptyFilterable(
+            requestContext = MockRequestContext.filterable().copy(action = rwAction),
+            requestFieldsUsage = RequestFieldsUsage.CannotExtractFields
+          )
         )
       }
     }
@@ -215,8 +246,10 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
             flsEngine = FlsEngine.ESWithLucene,
             fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
           ),
-          requestContext = MockRequestContext.readOnlyAdmin[FilterableRequestBlockContext],
-          incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields)
+          incomingBlockContext = emptyFilterable(
+            requestContext = MockRequestContext.filterable().copy(action = adminAction),
+            requestFieldsUsage = RequestFieldsUsage.NotUsingFields
+          )
         )
       }
     }
@@ -235,43 +268,39 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
         (() => requestContext.action).expects().returning(MockRequestContext.roAction).anyNumberOfTimes()
 
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(
+          block = mock[Block],
           requestContext = requestContext,
-          userMetadata = UserMetadata.empty,
+          blockMetadata = BlockMetadata.empty,
           responseHeaders = Set.empty,
           responseTransformations = List.empty
         )
         inside(rule.check(incomingBlockContext).runSyncStep) {
           case Right(Permitted(outBlockContext)) =>
-            outBlockContext shouldBe incomingBlockContext
+            outBlockContext should be (incomingBlockContext)
         }
       }
     }
   }
 
   private def assertMatchRule[B <: BlockContext : BlockContextUpdater : HasFieldLevelSecurity](config: Configuration,
-                                                                                               requestContext: RequestContextCreator[B],
-                                                                                               incomingBlockContext: BlockContextCreator[B],
+                                                                                               incomingBlockContext: B,
                                                                                                expectedStrategy: Strategy) = {
     import HasFieldLevelSecurity.*
-
     val rule = createRule(config)
-    val incomingRequest = requestContext(incomingBlockContext)
 
-    inside(rule.check(incomingRequest.initialBlockContext).runSyncStep) {
+    inside(rule.check(incomingBlockContext).runSyncStep) {
       case Right(Permitted(outBlockContext)) =>
-        outBlockContext.fieldLevelSecurity.isDefined shouldBe true
-        outBlockContext.fieldLevelSecurity.get.strategy shouldBe expectedStrategy
+        outBlockContext.fieldLevelSecurity.isDefined should be (true)
+        outBlockContext.fieldLevelSecurity.get.strategy should be (expectedStrategy)
     }
   }
 
   private def assertRejectRule[B <: BlockContext : BlockContextUpdater](config: Configuration,
-                                                                        requestContext: RequestContextCreator[B],
-                                                                        incomingBlockContext: BlockContextCreator[B]) = {
+                                                                        incomingBlockContext: B) = {
 
     val rule = createRule(config)
-    val incomingRequest = requestContext(incomingBlockContext)
 
-    rule.check(incomingRequest.initialBlockContext).runSyncStep shouldBe Right(Denied(NotAuthorized))
+    rule.check(incomingBlockContext).runSyncStep should be (Right(Denied(NotAuthorized)))
   }
 
   private def createRule(configuredFLS: Configuration) = {
@@ -279,11 +308,12 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
     new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), configuredFLS.fields.accessMode, configuredFLS.flsEngine))
   }
 
-  private def emptyFilterable(requestFieldsUsage: RequestFieldsUsage)
-                             (requestContext: RequestContext) = {
+  private def emptyFilterable(requestContext: RequestContext,
+                              requestFieldsUsage: RequestFieldsUsage) = {
     FilterableRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
@@ -294,11 +324,12 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
     )
   }
 
-  private def emptyFilterableMultiBlockContext(requestFieldsUsage: RequestFieldsUsage)
-                                              (requestContext: RequestContext) = {
+  private def emptyFilterableMultiBlockContext(requestContext: RequestContext,
+                                               requestFieldsUsage: RequestFieldsUsage) = {
     FilterableMultiRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       indexPacks = List.empty,
@@ -310,9 +341,6 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
 }
 
 object FieldsRuleTests {
-  type BlockContextCreator[B <: BlockContext] = RequestContext => B
-  type RequestContextCreator[B <: BlockContext] = BlockContextCreator[B] => MockSimpleRequestContext[B]
-
   final case class Fields(values: NonEmptyList[String], accessMode: AccessMode)
 
   final case class Configuration(fields: Fields, flsEngine: FlsEngine)

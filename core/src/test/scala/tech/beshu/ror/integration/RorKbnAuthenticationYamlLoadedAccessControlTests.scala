@@ -86,14 +86,12 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 2
-          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(Jwt.Payload(jwt.defaultClaims()))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "JWT token is defined with group that does not match the current group passed in header" in {
@@ -109,15 +107,13 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
           history.blocks should have size 2
-          inside(result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("mapped_viewer_group"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
       }

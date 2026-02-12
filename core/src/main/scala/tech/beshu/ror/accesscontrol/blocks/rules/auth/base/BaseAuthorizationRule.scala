@@ -51,7 +51,7 @@ private[auth] trait BaseAuthorizationRule
   }
 
   override protected[base] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    (blockContext.userMetadata.loggedUser, impersonation) match {
+    (blockContext.blockMetadata.loggedUser, impersonation) match {
       case (Some(user@ImpersonatedUser(_, _)), Impersonation.Enabled(ImpersonationSettings(_, mocksProvider))) =>
         loggedUserPreconditionCheck(user) match {
           case Left(cause) => reject(cause)
@@ -105,7 +105,7 @@ private[auth] trait BaseAuthorizationRule
         _ <- checkIfCurrentGroupIsEligible(blockContext, userGroups)
         allowedGroups <- calculateAllowedGroupsForUser(userGroups)
       } yield {
-        blockContext.withUserMetadata(
+        blockContext.withBlockMetadata(
           _.addAvailableGroups(allowedGroups)
         )
       }
