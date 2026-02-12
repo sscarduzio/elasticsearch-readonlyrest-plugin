@@ -85,7 +85,6 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "username",
                 |  "presented_identity": "username",
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
-                |  "headers": ["Connection", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "match": true,
                 |  "req_method": "GET",
@@ -98,7 +97,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedV1Entry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedV1Entry)
 
             val expectedV2Entry = ujson.read(
               """{
@@ -109,7 +108,6 @@ class LocalClusterAuditingToolsSuite
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "headers": ["Connection", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "match": true,
                 |  "req_method": "GET",
@@ -122,7 +120,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedV2Entry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedV2Entry)
           }
         }
         updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
@@ -147,7 +145,6 @@ class LocalClusterAuditingToolsSuite
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "headers": ["Connection", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "match": true,
                 |  "req_method": "GET",
@@ -160,7 +157,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedMainEntry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedMainEntry)
 
             val expectedRefreshConfigEntry = ujson.read(
               """{
@@ -171,7 +168,6 @@ class LocalClusterAuditingToolsSuite
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "headers": ["Content-Type", "Connection", "Content-Length", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin]]",
                 |  "match": true,
                 |  "req_method": "POST",
@@ -184,7 +180,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedRefreshConfigEntry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedRefreshConfigEntry)
 
             val expectedSearchEntry = ujson.read(
               """{
@@ -195,7 +191,6 @@ class LocalClusterAuditingToolsSuite
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "headers": ["Connection", "Content-Length", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin;indices=audit_index]]",
                 |  "match": true,
                 |  "req_method": "POST",
@@ -208,7 +203,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedSearchEntry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedSearchEntry)
           }
         }
         updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
@@ -235,7 +230,6 @@ class LocalClusterAuditingToolsSuite
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "headers": ["Connection", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "match": true,
                 |  "req_method": "GET",
@@ -249,7 +243,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedMainEntry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedMainEntry)
 
             val expectedRefreshConfigEntry = ujson.read(
               """{
@@ -260,7 +254,6 @@ class LocalClusterAuditingToolsSuite
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "headers": ["Content-Type", "Connection", "Content-Length", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin]]",
                 |  "match": true,
                 |  "req_method": "POST",
@@ -274,7 +267,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedRefreshConfigEntry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedRefreshConfigEntry)
 
             val expectedSearchEntry = ujson.read(
               """{
@@ -285,7 +278,6 @@ class LocalClusterAuditingToolsSuite
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "headers": ["Connection", "Content-Length", "Authorization", "Accept-Encoding", "User-Agent", "Host"],
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin;indices=audit_index]]",
                 |  "match": true,
                 |  "req_method": "POST",
@@ -299,7 +291,7 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination")(expectedSearchEntry)
+            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedSearchEntry)
           }
         }
         updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
