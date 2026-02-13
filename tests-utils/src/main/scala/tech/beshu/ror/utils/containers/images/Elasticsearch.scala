@@ -183,6 +183,7 @@ class Elasticsearch(val esVersion: String,
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
+      .run(replaceBuggyBundledJdkCommand)
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
@@ -200,6 +201,7 @@ class Elasticsearch(val esVersion: String,
       .run(s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list""")
       .run(s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion""")
       .run("apt clean && rm -rf /var/lib/apt/lists/*")
+      .run(replaceBuggyBundledJdkCommand)
       .user("elasticsearch")
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
       .copyFile(
@@ -216,11 +218,7 @@ class Elasticsearch(val esVersion: String,
       .run(s"chown -R elasticsearch:elasticsearch ${config.esDir.toString()}")
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .run("rm /etc/elasticsearch/elasticsearch.keystore")
-      .addEnvs(config.envs +
-        ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)) +
-        // JAVA_TOOL_OPTIONS applies to all JVM subprocesses (JvmOptionsParser, AutoConfigureNode, etc.)
-        // which avoids a cgroup v2 NullPointerException in nested Docker containers on CI
-        ("JAVA_TOOL_OPTIONS" -> "-XX:-UseContainerSupport"))
+      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
       .user("elasticsearch")
   }
@@ -306,6 +304,16 @@ class Elasticsearch(val esVersion: String,
       else "log4j2_es_before_7.10.properties"
     )
   }
+
+  // JDK 17.0.0–17.0.2 has cgroup v2 bug JDK-8281181: CgroupV2Subsystem.getInstance() NPEs
+  // before UseContainerSupport flag is checked, crashing JvmOptionsParser on startup.
+  // Detect the buggy version at Docker build time and replace it in-place with Amazon Corretto 17.
+  private val replaceBuggyBundledJdkCommand: String =
+    """if /usr/share/elasticsearch/jdk/bin/java -version 2>&1 | grep -qE '"17\.0\.[012]"'; then """ +
+      "rm -rf /usr/share/elasticsearch/jdk && " +
+      "mkdir -p /usr/share/elasticsearch/jdk && " +
+      "curl -sL https://corretto.aws/downloads/latest/amazon-corretto-17-x64-linux-jdk.tar.gz " +
+      "| tar xz -C /usr/share/elasticsearch/jdk --strip-components=1; fi"
 
   private def javaOptsBasedOn(withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {
     withEsJavaOptsBuilder(baseJavaOptsBuilder)
