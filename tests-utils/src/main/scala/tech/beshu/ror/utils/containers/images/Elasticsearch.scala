@@ -32,15 +32,22 @@ object Elasticsearch extends LazyLogging {
   // We use 17.0.3 (the earliest fixed version) to stay closest to the bundled 17.0.2.
   // Downloaded once per JVM process and reused across all container builds.
   private lazy val correttoJdk17Tarball: File = {
-    logger.info("Downloading Amazon Corretto 17.0.3 JDK (one-time, for replacing buggy bundled JDK)...")
-    val url = new java.net.URL("https://corretto.aws/downloads/resources/17.0.3.6.1/amazon-corretto-17.0.3.6.1-linux-x64.tar.gz")
     val targetFile = File.newTemporaryFile("amazon-corretto-17-jdk-", ".tar.gz")
+    logger.info("Downloading Amazon Corretto 17.0.3 JDK (one-time, for replacing buggy bundled JDK)...")
     for {
-      in <- url.openStream().autoClosed
+      in <- downloadJdk().getInputStream.autoClosed
       out <- targetFile.newOutputStream.autoClosed
     } yield in.pipeTo(out)
     logger.info(s"Downloaded Amazon Corretto 17.0.3 JDK to ${targetFile.pathAsString}")
     targetFile
+  }
+
+  private def downloadJdk() = {
+    val url = new java.net.URL("https://corretto.aws/downloads/resources/17.0.3.6.1/amazon-corretto-17.0.3.6.1-linux-x64.tar.gz")
+    val connection = url.openConnection()
+    connection.setConnectTimeout(30_000)
+    connection.setReadTimeout(120_000)
+    connection
   }
 
   final case class Config(clusterName: String,
