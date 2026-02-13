@@ -315,7 +315,7 @@ class Elasticsearch(val esVersion: String,
   // Replace the bundled JDK in-place with the cached custom JDK tarball.
   private def replaceBundledJdk(image: DockerImageDescription): DockerImageDescription = {
     // JDK 17.0.0–17.0.2 has cgroup v2 bug JDK-8281181 that crashes JvmOptionsParser on startup.
-    // We use 17.0.3 (the earliest fixed version) to stay closest to the bundled 17.0.2.
+    // We replace the bundled JDK with the latest Corretto 17 (any 17.0.3+ is fine).
     // Downloaded once per JVM process and reused across all container builds.
     image
       .copyFile(destination = os.root / "tmp" / "custom-jdk.tar.gz", file = AmazonCorretto1703jdk.tarball)

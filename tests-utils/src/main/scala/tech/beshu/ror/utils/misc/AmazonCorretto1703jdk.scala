@@ -23,12 +23,12 @@ object AmazonCorretto1703jdk extends LazyLogging {
 
   lazy val tarball: File = {
     val targetFile = File.newTemporaryFile("amazon-corretto-17-jdk", ".tar.gz")
-    logger.info("Downloading Amazon Corretto 17.0.3 JDK (one-time, for replacing buggy bundled JDK)...")
+    logger.info("Downloading Amazon Corretto 17 JDK (one-time, for replacing buggy bundled JDK)...")
     for {
       in <- downloadJdk().getInputStream.autoClosed
       out <- targetFile.newOutputStream.autoClosed
     } in.pipeTo(out)
-    logger.info(s"Downloaded Amazon Corretto 17.0.3 JDK to ${targetFile.pathAsString}")
+    logger.info(s"Downloaded Amazon Corretto 17 JDK to ${targetFile.pathAsString}")
     targetFile
   }
 
@@ -37,7 +37,7 @@ object AmazonCorretto1703jdk extends LazyLogging {
       case a if a == "aarch64" || a == "arm64" => "aarch64"
       case _ => "x64"
     }
-    val url = new java.net.URL(s"https://corretto.aws/downloads/resources/17.0.3.6.1/amazon-corretto-17.0.3.6.1-linux-$arch.tar.gz")
+    val url = new java.net.URL(s"https://corretto.aws/downloads/latest/amazon-corretto-17-$arch-linux-jdk.tar.gz")
     val connection = url.openConnection()
     connection.setConnectTimeout(30_000)
     connection.setReadTimeout(120_000)
