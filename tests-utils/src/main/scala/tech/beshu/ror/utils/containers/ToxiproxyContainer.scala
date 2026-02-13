@@ -33,7 +33,7 @@ import scala.language.postfixOps
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
   extends GenericContainer(
-    dockerImage = "shopify/toxiproxy:2.1.4",
+    dockerImage = "ghcr.io/shopify/toxiproxy:2.9.0",
     exposedPorts = Seq(httpApiPort, proxiedPort),
     waitStrategy = Some(new ToxiproxyApiWaitStrategy())
   ) with LazyLogging {
