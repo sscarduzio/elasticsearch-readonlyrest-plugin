@@ -76,6 +76,18 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
           s"""{
              |  "headers":["x-forwarded-for", "custom-one"],
              |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]]",
+             |  "blocks_history":[
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "block_name":"CONTAINER ADMIN",
+             |      "matched":false
+             |    },
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "block_name":"User 1",
+             |      "matched":false
+             |    }
+             |  ],
              |  "origin":"localhost",
              |  "match":false,
              |  "final_state":"FORBIDDEN",
@@ -101,11 +113,11 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
+        ujson.read(jsonStringFromIndex) should be (expectedJson(jsonStringFromIndex))
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
-        dataStream shouldBe fullDataStreamName(NonEmptyString.unsafeFrom("readonlyrest_audit"))
-        ujson.read(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
+        dataStream should be (fullDataStreamName(NonEmptyString.unsafeFrom("readonlyrest_audit")))
+        ujson.read(jsonStringFromDataStream) should be (expectedJson(jsonStringFromDataStream))
       }
       "is passed normally" in {
         val indexAuditSinkService = new MockedIndexAuditSinkService()
@@ -121,6 +133,18 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
           s"""{
              |  "headers":["X-Forwarded-For", "Custom-One"],
              |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]]",
+             |  "blocks_history":[
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "block_name":"CONTAINER ADMIN",
+             |      "matched":false
+             |    },
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "block_name":"User 1",
+             |      "matched":false
+             |    }
+             |  ],
              |  "origin":"localhost",
              |  "match":false,
              |  "final_state":"FORBIDDEN",
@@ -146,11 +170,11 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
+        ujson.read(jsonStringFromIndex) should be (expectedJson(jsonStringFromIndex))
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
-        dataStream shouldBe fullDataStreamName(nes("readonlyrest_audit"))
-        ujson.read(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
+        dataStream should be (fullDataStreamName(nes("readonlyrest_audit")))
+        ujson.read(jsonStringFromDataStream) should be (expectedJson(jsonStringFromDataStream))
       }
     }
   }
