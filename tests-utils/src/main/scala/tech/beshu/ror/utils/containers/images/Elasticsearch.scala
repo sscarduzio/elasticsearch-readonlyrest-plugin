@@ -24,31 +24,10 @@ import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{PluginInstallationStep, PluginInstallationSteps}
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.misc.{AmazonCorretto1703jdk, Version}
 
-object Elasticsearch extends LazyLogging {
 
-  // JDK 17.0.0–17.0.2 has cgroup v2 bug JDK-8281181 that crashes JvmOptionsParser on startup.
-  // We use 17.0.3 (the earliest fixed version) to stay closest to the bundled 17.0.2.
-  // Downloaded once per JVM process and reused across all container builds.
-  private lazy val correttoJdk17Tarball: File = {
-    val targetFile = File.newTemporaryFile("amazon-corretto-17-jdk-", ".tar.gz")
-    logger.info("Downloading Amazon Corretto 17.0.3 JDK (one-time, for replacing buggy bundled JDK)...")
-    for {
-      in <- downloadJdk().getInputStream.autoClosed
-      out <- targetFile.newOutputStream.autoClosed
-    } yield in.pipeTo(out)
-    logger.info(s"Downloaded Amazon Corretto 17.0.3 JDK to ${targetFile.pathAsString}")
-    targetFile
-  }
-
-  private def downloadJdk() = {
-    val url = new java.net.URL("https://corretto.aws/downloads/resources/17.0.3.6.1/amazon-corretto-17.0.3.6.1-linux-x64.tar.gz")
-    val connection = url.openConnection()
-    connection.setConnectTimeout(30_000)
-    connection.setReadTimeout(120_000)
-    connection
-  }
+object Elasticsearch {
 
   final case class Config(clusterName: String,
                           nodeName: String,
@@ -205,7 +184,7 @@ class Elasticsearch(val esVersion: String,
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
-      .when(hasBuggyBundledJdk, replaceBundledJdkWithCorretto)
+      .when(hasBuggyBundledJdk, replaceBundledJdk)
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
@@ -223,7 +202,7 @@ class Elasticsearch(val esVersion: String,
       .run(s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list""")
       .run(s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion""")
       .run("apt clean && rm -rf /var/lib/apt/lists/*")
-      .when(hasBuggyBundledJdk, replaceBundledJdkWithCorretto)
+      .when(hasBuggyBundledJdk, replaceBundledJdk)
       .user("elasticsearch")
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
       .copyFile(
@@ -333,14 +312,19 @@ class Elasticsearch(val esVersion: String,
   private def hasBuggyBundledJdk: Boolean =
     Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 2, 0)
 
-  // Replace the bundled JDK in-place with the cached Corretto 17 tarball.
-  private def replaceBundledJdkWithCorretto(image: DockerImageDescription): DockerImageDescription = {
+  // Replace the bundled JDK in-place with the cached custom JDK tarball.
+  private def replaceBundledJdk(image: DockerImageDescription): DockerImageDescription = {
+    // JDK 17.0.0–17.0.2 has cgroup v2 bug JDK-8281181 that crashes JvmOptionsParser on startup.
+    // We use 17.0.3 (the earliest fixed version) to stay closest to the bundled 17.0.2.
+    // Downloaded once per JVM process and reused across all container builds.
     image
-      .copyFile(destination = os.root / "tmp" / "corretto-jdk.tar.gz", file = correttoJdk17Tarball)
-      .run("rm -rf /usr/share/elasticsearch/jdk && " +
-        "mkdir -p /usr/share/elasticsearch/jdk && " +
-        "tar xzf /tmp/corretto-jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 && " +
-        "rm /tmp/corretto-jdk.tar.gz")
+      .copyFile(destination = os.root / "tmp" / "custom-jdk.tar.gz", file = AmazonCorretto1703jdk.tarball)
+      .run(
+        "rm -rf /usr/share/elasticsearch/jdk",
+        "mkdir -p /usr/share/elasticsearch/jdk",
+        "tar xzf /tmp/custom-jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1",
+        "rm /tmp/custom-jdk.tar.gz"
+      )
   }
 
   private def javaOptsBasedOn(withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {
