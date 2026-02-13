@@ -27,7 +27,7 @@ object AmazonCorretto1703jdk extends LazyLogging {
     for {
       in <- downloadJdk().getInputStream.autoClosed
       out <- targetFile.newOutputStream.autoClosed
-    } yield in.pipeTo(out)
+    } in.pipeTo(out)
     logger.info(s"Downloaded Amazon Corretto 17.0.3 JDK to ${targetFile.pathAsString}")
     targetFile
   }
