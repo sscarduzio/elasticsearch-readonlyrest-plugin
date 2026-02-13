@@ -26,7 +26,23 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{PluginInstal
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
 import tech.beshu.ror.utils.misc.Version
 
-object Elasticsearch {
+object Elasticsearch extends LazyLogging {
+
+  // JDK 17.0.0–17.0.2 has cgroup v2 bug JDK-8281181 that crashes JvmOptionsParser on startup.
+  // We use 17.0.3 (the earliest fixed version) to stay closest to the bundled 17.0.2.
+  // Downloaded once per JVM process and reused across all container builds.
+  private lazy val correttoJdk17Tarball: File = {
+    logger.info("Downloading Amazon Corretto 17.0.3 JDK (one-time, for replacing buggy bundled JDK)...")
+    val targetFile = File.newTemporaryFile("amazon-corretto-17-jdk-", ".tar.gz")
+    val in = new java.net.URL("https://corretto.aws/downloads/resources/17.0.3.6.1/amazon-corretto-17.0.3.6.1-linux-x64.tar.gz").openStream()
+    try {
+      java.nio.file.Files.copy(in, targetFile.path, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    } finally {
+      in.close()
+    }
+    logger.info(s"Downloaded Amazon Corretto 17.0.3 JDK to ${targetFile.pathAsString}")
+    targetFile
+  }
 
   final case class Config(clusterName: String,
                           nodeName: String,
@@ -183,6 +199,7 @@ class Elasticsearch(val esVersion: String,
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
+      .when(hasBuggyBundledJdk, replaceBundledJdkWithCorretto)
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
@@ -200,6 +217,7 @@ class Elasticsearch(val esVersion: String,
       .run(s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list""")
       .run(s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion""")
       .run("apt clean && rm -rf /var/lib/apt/lists/*")
+      .when(hasBuggyBundledJdk, replaceBundledJdkWithCorretto)
       .user("elasticsearch")
       .setCommand("/usr/share/elasticsearch/bin/elasticsearch")
       .copyFile(
@@ -301,6 +319,22 @@ class Elasticsearch(val esVersion: String,
       name = if (Version.greaterOrEqualThan(esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
       else "log4j2_es_before_7.10.properties"
     )
+  }
+
+  // ES 8.0.x and 8.1.x bundle JDK 17.0.2 which has cgroup v2 bug JDK-8281181:
+  // CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport flag is checked.
+  // Fixed in JDK 17.0.3+. ES 8.2.0+ ships JDK 18+ which doesn't have the bug.
+  private def hasBuggyBundledJdk: Boolean =
+    Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 2, 0)
+
+  // Replace the bundled JDK in-place with the cached Corretto 17 tarball.
+  private def replaceBundledJdkWithCorretto(image: DockerImageDescription): DockerImageDescription = {
+    image
+      .copyFile(destination = os.root / "tmp" / "corretto-jdk.tar.gz", file = correttoJdk17Tarball)
+      .run("rm -rf /usr/share/elasticsearch/jdk && " +
+        "mkdir -p /usr/share/elasticsearch/jdk && " +
+        "tar xzf /tmp/corretto-jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 && " +
+        "rm /tmp/corretto-jdk.tar.gz")
   }
 
   private def javaOptsBasedOn(withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {
