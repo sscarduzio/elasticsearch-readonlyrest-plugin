@@ -86,6 +86,17 @@ class LocalClusterAuditingToolsSuite
                 |  "presented_identity": "username",
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "blocks_history": [
+                |    {
+                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": false
+                |    },
+                |    {
+                |      "block_name": "Rule 1",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "GET",
                 |  "type": "GetIndexRequest",
@@ -109,6 +120,17 @@ class LocalClusterAuditingToolsSuite
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "blocks_history": [
+                |    {
+                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": false
+                |    },
+                |    {
+                |      "block_name": "Rule 1",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "GET",
                 |  "type": "GetIndexRequest",
@@ -146,6 +168,17 @@ class LocalClusterAuditingToolsSuite
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "blocks_history": [
+                |    {
+                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": false
+                |    },
+                |    {
+                |      "block_name": "Rule 1",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "GET",
                 |  "type": "GetIndexRequest",
@@ -169,6 +202,12 @@ class LocalClusterAuditingToolsSuite
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin]]",
+                |  "blocks_history": [
+                |    {
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "POST",
                 |  "type": "RRAdminRequest",
@@ -192,6 +231,12 @@ class LocalClusterAuditingToolsSuite
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin;indices=audit_index]]",
+                |  "blocks_history": [
+                |    {
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "POST",
                 |  "type": "SearchRequest",
@@ -231,6 +276,17 @@ class LocalClusterAuditingToolsSuite
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "blocks_history": [
+                |    {
+                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": false
+                |    },
+                |    {
+                |      "block_name": "Rule 1",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "GET",
                 |  "type": "GetIndexRequest",
@@ -255,6 +311,12 @@ class LocalClusterAuditingToolsSuite
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin]]",
+                |  "blocks_history": [
+                |    {
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "POST",
                 |  "type": "RRAdminRequest",
@@ -279,6 +341,12 @@ class LocalClusterAuditingToolsSuite
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin;indices=audit_index]]",
+                |  "blocks_history": [
+                |    {
+                |      "block_name": "CONTAINER ADMIN",
+                |      "matched": true
+                |    }
+                |  ],
                 |  "match": true,
                 |  "req_method": "POST",
                 |  "type": "SearchRequest",

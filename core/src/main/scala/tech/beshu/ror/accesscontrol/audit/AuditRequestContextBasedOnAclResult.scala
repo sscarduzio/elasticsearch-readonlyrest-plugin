@@ -64,13 +64,13 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
   )
   override val uriPath: String = requestContext.restRequest.path.value.value
   override val history: String = aclProcessingHistory.blocks.map(b => blockHistoryShow(showHeader).show(b)).mkString(", ")
-  override val blocksHistory: Map[String, (Boolean, String)] =
+  override val blocksHistory: Map[String, (Boolean, Option[String])] =
     aclProcessingHistory.blocks
       .map { h =>
         val blockName = h.block.name.value
         val matchedAndCause = h match {
-          case BlockHistory.Permitted(_, _, _) => true -> ""
-          case BlockHistory.Denied(_, denied, _) => false -> denied.cause.show
+          case BlockHistory.Permitted(_, _, _) => true -> None
+          case BlockHistory.Denied(_, denied, _) => false -> Some(denied.cause.show)
         }
         blockName -> matchedAndCause
       }

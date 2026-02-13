@@ -176,9 +176,21 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.PresentedIdentity => requestContext.attemptedUserName.orNull
       case AuditFieldValueDescriptor.ImpersonatedByUser => requestContext.impersonatedByUserName.orNull
       case AuditFieldValueDescriptor.Action => requestContext.action
-      case AuditFieldValueDescriptor.InvolvedIndices => if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
+      case AuditFieldValueDescriptor.InvolvedIndices =>
+        if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava
       case AuditFieldValueDescriptor.AclHistory => requestContext.history
-      case AuditFieldValueDescriptor.BlocksHistory => requestContext.blocksHistory
+      case AuditFieldValueDescriptor.BlocksHistory =>
+        requestContext
+          .blocksHistory
+          .map { case (blockName, (matched, cause)) =>
+            Map(
+              "block_name" -> blockName,
+              "matched" -> matched,
+              "forbidden_cause" -> cause.orNull
+            ).asJava
+          }
+          .toList
+          .asJava
       case AuditFieldValueDescriptor.ProcessingDurationMillis => eventData.duration.toMillis
       case AuditFieldValueDescriptor.ProcessingDurationNanos => eventData.duration.toNanos
       case AuditFieldValueDescriptor.Timestamp => timestampFormatter.format(requestContext.timestamp)
@@ -191,7 +203,8 @@ private[ror] object AuditSerializationHelper {
       case AuditFieldValueDescriptor.HttpMethod => requestContext.httpMethod
       case AuditFieldValueDescriptor.HttpHeaderNames => requestContext.requestHeaders.names.asJava
       case AuditFieldValueDescriptor.HttpPath => requestContext.uriPath
-      case AuditFieldValueDescriptor.XForwardedForHttpHeader => requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull
+      case AuditFieldValueDescriptor.XForwardedForHttpHeader =>
+        requestContext.requestHeaders.getValue("X-Forwarded-For").flatMap(_.headOption).orNull
       case AuditFieldValueDescriptor.RemoteAddress => requestContext.remoteAddress
       case AuditFieldValueDescriptor.LocalAddress => requestContext.localAddress
       case AuditFieldValueDescriptor.Content => requestContext.content
@@ -381,7 +394,8 @@ private[ror] object AuditSerializationHelper {
     AuditFieldPath("impersonated_by") -> AuditFieldValueDescriptor.ImpersonatedByUser,
     AuditFieldPath("action") -> AuditFieldValueDescriptor.Action,
     AuditFieldPath("indices") -> AuditFieldValueDescriptor.InvolvedIndices,
-    AuditFieldPath("acl_history") -> AuditFieldValueDescriptor.AclHistory
+    AuditFieldPath("acl_history") -> AuditFieldValueDescriptor.AclHistory,
+    AuditFieldPath("blocks_history") -> AuditFieldValueDescriptor.BlocksHistory,
   )
 
   private val esEnvironmentFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(

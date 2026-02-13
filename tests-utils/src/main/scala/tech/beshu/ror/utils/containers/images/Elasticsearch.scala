@@ -216,7 +216,11 @@ class Elasticsearch(val esVersion: String,
       .run(s"chown -R elasticsearch:elasticsearch ${config.esDir.toString()}")
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .run("rm /etc/elasticsearch/elasticsearch.keystore")
-      .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
+      .addEnvs(config.envs +
+        ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)) +
+        // JAVA_TOOL_OPTIONS applies to all JVM subprocesses (JvmOptionsParser, AutoConfigureNode, etc.)
+        // which avoids a cgroup v2 NullPointerException in nested Docker containers on CI
+        ("JAVA_TOOL_OPTIONS" -> "-XX:-UseContainerSupport"))
       .installPlugins()
       .user("elasticsearch")
   }
