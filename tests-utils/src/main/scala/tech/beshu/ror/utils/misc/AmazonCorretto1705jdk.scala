@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.misc
 import better.files.*
 import com.typesafe.scalalogging.LazyLogging
 
-object AmazonCorretto1703jdk extends LazyLogging {
+object AmazonCorretto1705jdk extends LazyLogging {
 
   lazy val tarball: File = {
     val targetFile = File.newTemporaryFile("amazon-corretto-17-jdk", ".tar.gz")
@@ -37,7 +37,7 @@ object AmazonCorretto1703jdk extends LazyLogging {
       case a if a == "aarch64" || a == "arm64" => "aarch64"
       case _ => "x64"
     }
-    val url = new java.net.URL(s"https://corretto.aws/downloads/resources/17.0.4.9.1/amazon-corretto-17.0.4.9.1-linux-$arch.tar.gz")
+    val url = new java.net.URL(s"https://corretto.aws/downloads/resources/17.0.5.8.1/amazon-corretto-17.0.5.8.1-linux-$arch.tar.gz")
     val connection = url.openConnection()
     connection.setConnectTimeout(30_000)
     connection.setReadTimeout(120_000)

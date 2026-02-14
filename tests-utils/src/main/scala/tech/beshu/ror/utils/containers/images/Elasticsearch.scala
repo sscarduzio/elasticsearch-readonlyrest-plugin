@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.images.Elasticsearch.*
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{PluginInstallationStep, PluginInstallationSteps}
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
-import tech.beshu.ror.utils.misc.{AmazonCorretto1703jdk, Version}
+import tech.beshu.ror.utils.misc.{AmazonCorretto1705jdk, Version}
 
 
 object Elasticsearch {
@@ -306,19 +306,19 @@ class Elasticsearch(val esVersion: String,
     )
   }
 
-  // ES 8.0.x and 8.1.x bundle JDK 17.0.2 which has cgroup v2 bug JDK-8281181:
+  // ES 8.0.x and 8.1.x bundle JDK 17.0.2 which has cgroup v2 bug JDK-8287073:
   // CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport flag is checked.
-  // Fixed in JDK 17.0.3+. ES 8.2.0+ ships JDK 18+ which doesn't have the bug.
+  // Fixed in JDK 17.0.5+ (backport JDK-8288308). ES 8.2.0+ ships JDK 18+ which doesn't have the bug.
   private def hasBuggyBundledJdk: Boolean =
     Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 2, 0)
 
   // Replace the bundled JDK in-place with the cached custom JDK tarball.
   private def replaceBundledJdk(image: DockerImageDescription): DockerImageDescription = {
-    // JDK 17.0.0–17.0.2 has cgroup v2 bug JDK-8281181 that crashes JvmOptionsParser on startup.
-    // We replace the bundled JDK with the latest Corretto 17 (any 17.0.3+ is fine).
+    // JDK 17.0.0–17.0.4 has cgroup v2 bug JDK-8287073 that crashes ES on startup (NPE in CgroupV2Subsystem).
+    // We replace the bundled JDK with the Corretto 17 with the fix of the bug (any 17.0.5+ is fine).
     // Downloaded once per JVM process and reused across all container builds.
     image
-      .copyFile(destination = os.root / "tmp" / "custom-jdk.tar.gz", file = AmazonCorretto1703jdk.tarball)
+      .copyFile(destination = os.root / "tmp" / "custom-jdk.tar.gz", file = AmazonCorretto1705jdk.tarball)
       .run(
         "rm -rf /usr/share/elasticsearch/jdk",
         "mkdir -p /usr/share/elasticsearch/jdk",
