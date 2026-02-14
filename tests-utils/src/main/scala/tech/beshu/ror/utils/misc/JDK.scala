@@ -19,28 +19,33 @@ package tech.beshu.ror.utils.misc
 import better.files.*
 import com.typesafe.scalalogging.LazyLogging
 
-object AmazonCorretto1705jdk extends LazyLogging {
+object JDK extends LazyLogging {
 
-  lazy val tarball: File = {
-    val targetFile = File.newTemporaryFile("amazon-corretto-17-jdk", ".tar.gz")
-    logger.info("Downloading Amazon Corretto 17 JDK (one-time, for replacing buggy bundled JDK)...")
-    for {
-      in <- downloadJdk().getInputStream.autoClosed
-      out <- targetFile.newOutputStream.autoClosed
-    } in.pipeTo(out)
-    logger.info(s"Downloaded Amazon Corretto 17 JDK to ${targetFile.pathAsString}")
-    targetFile
+  object AmazonCorretto1705jdk {
+    lazy val tarball: File = downloadCorretto("17.0.5.8.1")
   }
 
-  private def downloadJdk() = {
+  object AmazonCorretto1900jdk {
+    lazy val tarball: File = downloadCorretto("19.0.0.36.1")
+  }
+
+  private def downloadCorretto(version: String): File = {
+    val majorVersion = version.takeWhile(_ != '.')
     val arch = System.getProperty("os.arch") match {
       case a if a == "aarch64" || a == "arm64" => "aarch64"
       case _ => "x64"
     }
-    val url = new java.net.URL(s"https://corretto.aws/downloads/resources/17.0.5.8.1/amazon-corretto-17.0.5.8.1-linux-$arch.tar.gz")
+    val targetFile = File.newTemporaryFile(s"amazon-corretto-$majorVersion-jdk", ".tar.gz")
+    logger.info(s"Downloading Amazon Corretto $majorVersion JDK (one-time, for replacing buggy bundled JDK)...")
+    val url = new java.net.URL(s"https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz")
     val connection = url.openConnection()
     connection.setConnectTimeout(30_000)
     connection.setReadTimeout(120_000)
-    connection
+    for {
+      in <- connection.getInputStream.autoClosed
+      out <- targetFile.newOutputStream.autoClosed
+    } in.pipeTo(out)
+    logger.info(s"Downloaded Amazon Corretto $majorVersion JDK to ${targetFile.pathAsString}")
+    targetFile
   }
 }

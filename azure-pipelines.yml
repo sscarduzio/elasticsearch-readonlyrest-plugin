@@ -287,6 +287,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - bash: |
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
+              displayName: 'Free up disk space'
+              target: host
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -338,6 +347,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - bash: |
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
+              displayName: 'Free up disk space'
+              target: host
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -417,6 +435,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - bash: |
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
+              displayName: 'Free up disk space'
+              target: host
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -486,6 +513,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - bash: |
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
+              displayName: 'Free up disk space'
+              target: host
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -533,6 +569,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - bash: |
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
+              displayName: 'Free up disk space'
+              target: host
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -584,6 +629,15 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - bash: |
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
+              displayName: 'Free up disk space'
+              target: host
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
