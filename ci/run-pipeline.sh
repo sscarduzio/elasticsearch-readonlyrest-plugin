@@ -43,7 +43,9 @@ run_integration_tests() {
   ES_MODULE=$1
 
   echo ">>> $ES_MODULE => Running integration tests.."
-  ./gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+  ./gradlew --no-daemon ror-tools:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+  docker system prune -af
+  ./gradlew --no-daemon integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
 if [[ $ROR_TASK == "integration_es92x" ]]; then
