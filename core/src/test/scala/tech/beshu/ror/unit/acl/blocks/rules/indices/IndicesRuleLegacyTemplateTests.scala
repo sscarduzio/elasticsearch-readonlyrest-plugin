@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.{NonEmptyList, NonEmptySet}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingLegacyTemplate, DeletingLegacyTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
@@ -149,7 +149,7 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
                 requestContext = MockRequestContext
                   .template(gettingTemplateOperation)
                   .addExistingTemplates(existingTemplate1, existingTemplate2),
-                specialCause = Some(Cause.TemplateNotFound)
+                specialCause = Cause.TemplateNotFound
               )
             }
           }

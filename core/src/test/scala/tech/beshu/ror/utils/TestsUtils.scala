@@ -24,26 +24,31 @@ import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.TestSuite
 import org.scalatest.matchers.should.Matchers.*
 import squants.information.Megabytes
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef.ImpersonatedUsers
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService, ImpersonatorDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, definitions}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, ResponseTransformation, definitions}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
@@ -63,9 +68,9 @@ import tech.beshu.ror.utils.yaml.YamlParser
 import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
-import scala.concurrent.duration.FiniteDuration
-import scala.language.implicitConversions
-import scala.util.{Failure, Success}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.language.{implicitConversions, postfixOps}
+import scala.util.{Failure, Success, Try}
 
 object TestsUtils {
 
@@ -209,8 +214,8 @@ object TestsUtils {
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
@@ -226,69 +231,57 @@ object TestsUtils {
           .map(users => ExternalAuthenticationServiceMock(users.map(ExternalAuthenticationUserMock.apply)))
       }
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalAuthorizationService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
       override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                     (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-      override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
-                                                   (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
+      override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                    (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = {
         map
           .get(id)
-          .map(r => ExternalAuthorizationServiceMock {
-            r.map { case (userId, groups) => ExternalAuthorizationServiceUserMock(userId, groups) }.toCovariantSet
+          .map(r => ExternalGroupsProviderServiceMock {
+            r.map { case (userId, groups) => ExternalGroupsProviderServiceUserMock(userId, groups) }.toCovariantSet
           })
       }
     }
   }
 
-  trait BlockContextAssertion {
+  trait BlockContextAssertion extends MockFactory {
+    this: TestSuite =>
 
-    def assertBlockContext(expected: BlockContext,
-                           current: BlockContext): Unit = {
-      assertBlockContext(
-        loggedUser = expected.blockMetadata.loggedUser,
-        currentGroup = expected.blockMetadata.currentGroupId,
-        availableGroups = expected.blockMetadata.availableGroups,
-        kibanaPolicy = expected.blockMetadata.kibanaPolicy,
-        userOrigin = expected.blockMetadata.userOrigin,
-        jwt = expected.blockMetadata.jwtToken,
-        responseHeaders = expected.responseHeaders,
-        indices = expected.indices,
-        repositories = expected.repositories,
-        snapshots = expected.snapshots) {
-        current
-      }
-    }
-
-    def assertBlockContext(loggedUser: Option[LoggedUser] = None,
+    def assertBlockContext(blockContext: BlockContext)
+                          (loggedUser: Option[LoggedUser] = None,
                            currentGroup: Option[GroupId] = None,
                            availableGroups: UniqueList[Group] = UniqueList.empty,
                            kibanaPolicy: Option[KibanaPolicy] = None,
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[Jwt.Payload] = None,
                            responseHeaders: Set[Header] = Set.empty,
+                           responseTransformations: List[ResponseTransformation] = List.empty,
                            indices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
+                           indexPacks: List[Indices] = List.empty,
                            aliases: Set[ClusterIndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
                            dataStreams: Set[DataStreamName] = Set.empty,
-                           templates: Set[TemplateOperation] = Set.empty)
-                          (blockContext: BlockContext): Unit = {
+                           templates: Set[TemplateOperation] = Set.empty,
+                           filter: Option[Filter] = None): Unit = {
       blockContext.blockMetadata.loggedUser should be(loggedUser)
       blockContext.blockMetadata.availableGroups should contain allElementsOf availableGroups
       blockContext.blockMetadata.currentGroupId should be(currentGroup)
-      blockContext.blockMetadata.kibanaPolicy should be (kibanaPolicy)
+      blockContext.blockMetadata.kibanaPolicy should be(kibanaPolicy)
       blockContext.blockMetadata.userOrigin should be(userOrigin)
       blockContext.blockMetadata.jwtToken should be(jwt)
       blockContext.responseHeaders should be(responseHeaders)
+      blockContext.responseTransformations should be(responseTransformations)
       blockContext match {
         case _: UserMetadataRequestBlockContext =>
         case _: RorApiRequestBlockContext =>
@@ -309,8 +302,10 @@ object TestsUtils {
           bc.indices should be(indices)
         case bc: FilterableRequestBlockContext =>
           bc.filteredIndices should be(indices)
+          bc.filter should be (filter)
         case bc: FilterableMultiRequestBlockContext =>
-          bc.indices should be(indices)
+          bc.indexPacks should be(indexPacks)
+          bc.filter should be (filter)
         case bc: AliasRequestBlockContext =>
           bc.indices should be(indices)
           bc.aliases should be(aliases)
@@ -318,11 +313,27 @@ object TestsUtils {
     }
   }
 
-  sealed trait AssertionType
-  object AssertionType {
-    final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
-    final case class RuleRejected(cause: Option[Cause]) extends AssertionType
-    final case class RuleThrownException(exception: Throwable) extends AssertionType
+  sealed trait RuleCheckAssertion
+  object RuleCheckAssertion {
+    final case class RulePermitted(blockContextAssertion: BlockContext => Unit) extends RuleCheckAssertion
+    final case class RuleDenied(cause: Cause) extends RuleCheckAssertion
+    final case class RuleThrownException(exception: Throwable) extends RuleCheckAssertion
+  }
+
+  extension (rule: Rule) {
+    def checkAndAssert[B <: BlockContext : BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
+      import monix.execution.Scheduler.Implicits.global
+      val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
+      assertion match {
+        case RuleCheckAssertion.RulePermitted(blockContextAssertion) =>
+          result.get shouldBe a[Permitted[B]]
+          blockContextAssertion(result.get.asInstanceOf[Permitted[B]].context)
+        case RuleCheckAssertion.RuleDenied(cause) =>
+          result.get should be(Denied(cause))
+        case RuleCheckAssertion.RuleThrownException(ex) =>
+          result should be(Failure(ex))
+      }
+    }
   }
 
   def headerFrom(nameAndValue: (String, String)): Header = {

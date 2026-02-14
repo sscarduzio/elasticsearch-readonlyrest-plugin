@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits.*
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
@@ -49,7 +50,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
           assertion = rule => {
             val resolvedPatten = rule.settings
               .uriPatterns.head
-              .resolve(UserMetadataRequestBlockContext(mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
+              .resolve(UserMetadataRequestBlockContext(mock[Block], mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
               .map(_.head.pattern())
 
             resolvedPatten shouldBe Right("^/secret-idx/.*")
@@ -72,7 +73,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
             val patternsAsStrings = rule
               .settings.uriPatterns
               .map(_
-                .resolve(UserMetadataRequestBlockContext(mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
+                .resolve(UserMetadataRequestBlockContext(mock[Block], mock[RequestContext], BlockMetadata.empty, Set.empty, List.empty))
                 .map(_.head.pattern)
                 .toOption.get
               )

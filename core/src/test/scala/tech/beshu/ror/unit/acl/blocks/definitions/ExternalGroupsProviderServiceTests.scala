@@ -17,4 +17,4 @@
 package tech.beshu.ror.unit.acl.blocks.definitions
 
 // todo: it'd be nice to have them
-class ExternalAuthorizationServiceTests
+class ExternalGroupsProviderServiceTests

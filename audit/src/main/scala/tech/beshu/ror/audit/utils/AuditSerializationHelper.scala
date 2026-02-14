@@ -49,23 +49,73 @@ private[ror] object AuditSerializationHelper {
                 allowedEventMode: AllowedEventMode): Option[JSONObject] = {
     responseContext match {
       case Allowed(requestContext, verbosity, reason) =>
-        allowedEvent(
-          allowedEventMode,
-          verbosity,
-          createEntry(fields, EventData(matched = true, FinalState.Allowed, reason, responseContext.duration, requestContext, None))
+        createAllowedEvent(
+          allowedEventMode = allowedEventMode,
+          verbosity = verbosity,
+          entry = createEntry(
+            fields,
+            EventData(
+              matched = true,
+              finalState = FinalState.Allowed,
+              reason = reason,
+              duration = responseContext.duration,
+              requestContext = requestContext,
+              error = None
+            )
+          )
         )
       case ForbiddenBy(requestContext, _, reason) =>
-        Some(createEntry(fields, EventData(matched = true, FinalState.Forbidden, reason, responseContext.duration, requestContext, None)))
+        Some(createEntry(
+          fields = fields,
+          eventData = EventData(
+            matched = true,
+            finalState = FinalState.Forbidden,
+            reason = reason,
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = None
+          )
+        ))
       case Forbidden(requestContext) =>
-        Some(createEntry(fields, EventData(matched = false, FinalState.Forbidden, "default", responseContext.duration, requestContext, None)))
+        Some(createEntry(
+          fields,
+          EventData(
+            matched = false,
+            finalState = FinalState.Forbidden,
+            reason = "default",
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = None
+          )
+        ))
       case RequestedIndexNotExist(requestContext) =>
-        Some(createEntry(fields, EventData(matched = false, FinalState.IndexNotExist, "Requested index doesn't exist", responseContext.duration, requestContext, None)))
+        Some(createEntry(
+          fields,
+          EventData(
+            matched = false,
+            finalState = FinalState.IndexNotExist,
+            reason = "Requested index doesn't exist",
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = None
+          )
+        ))
       case Errored(requestContext, cause) =>
-        Some(createEntry(fields, EventData(matched = false, FinalState.Errored, "error", responseContext.duration, requestContext, Some(cause))))
+        Some(createEntry(
+          fields,
+          EventData(
+            matched = false,
+            finalState = FinalState.Errored,
+            reason = "error",
+            duration = responseContext.duration,
+            requestContext = requestContext,
+            error = Some(cause)
+          )
+        ))
     }
   }
 
-  private def allowedEvent(allowedEventMode: AllowedEventMode, verbosity: Verbosity, entry: JSONObject) = {
+  private def createAllowedEvent(allowedEventMode: AllowedEventMode, verbosity: Verbosity, entry: JSONObject) = {
     allowedEventMode match {
       case AllowedEventMode.IncludeAll =>
         Some(entry)
@@ -84,8 +134,8 @@ private[ror] object AuditSerializationHelper {
         fields.map { case (name, valueDescriptor) => name -> resolveAuditFieldValue(valueDescriptor) }
 
     resolvedFields
-      .foldLeft(new JSONObject()) {
-        case (soFar, (path, value)) => putNested(soFar, path.path, value)
+      .foldLeft(new JSONObject()) { case (soFar, (path, value)) =>
+        putNested(soFar, path.path, value)
       }
       .mergeWith(eventData.requestContext.generalAuditEvents)
   }

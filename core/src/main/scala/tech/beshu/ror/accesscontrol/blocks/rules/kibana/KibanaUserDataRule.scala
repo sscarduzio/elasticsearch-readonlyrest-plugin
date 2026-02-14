@@ -17,14 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.implicits.*
@@ -36,15 +37,15 @@ class KibanaUserDataRule(override val settings: Settings)
 
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    if (shouldMatch(blockContext.requestContext, resolveKibanaIndex(blockContext)))
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+    if (shouldMatch(blockContext, resolveKibanaIndex(blockContext)))
       matched(blockContext)
     else
-      Rejected[B]()
+      Denied[B](Cause.NotAuthorized)
   }
 
-  private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Fulfilled[B] = {
-    RuleResult.Fulfilled[B] {
+  private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Permitted[B] = {
+    Decision.Permitted[B] {
       blockContext.withBlockMetadata {
         updateUserMetadata(blockContext)
       }
@@ -52,9 +53,9 @@ class KibanaUserDataRule(override val settings: Settings)
   }
 
   private def updateUserMetadata(context: BlockContext) = {
-    applyToBlockMetadata(Some(settings.access))(
+    applyToBlockMetadata(Some(settings.access)) {
       _.withKibanaAccess(_)
-    ) andThen {
+    } andThen {
       applyToBlockMetadata(Some(resolveKibanaIndex(context)))(
         _.withKibanaIndex(_)
       )

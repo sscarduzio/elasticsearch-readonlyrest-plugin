@@ -22,12 +22,13 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{DataStreamRequestBlockContext, GeneralIndexRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
@@ -70,7 +71,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(requestedIndex(".kibana")))
         assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(requestedIndex(".kibana")))
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(requestedIndex(".kibana"))) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(kibanaIndexName(".kibana"))
@@ -129,7 +130,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           customKibanaIndex = Some(customKibanaIndex),
           requestedIndices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false))
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(customKibanaIndex)
@@ -229,7 +230,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         requestedIndices = Set.empty,
         uriPath = Some(UriPath.from("/_cluster/settings"))
       ) {
-        assertBlockContext(
+        assertBlockContext(_)(
           kibanaPolicy = Some(KibanaPolicy.default.copy(
             access = RW,
             index = Some(kibanaIndexFrom(None))
@@ -245,7 +246,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           requestedIndices = Set.empty,
           uriPath = Some(UriPath.from("/_ccr/auto_follow"))
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = access,
               index = Some(kibanaIndexFrom(None))
@@ -289,7 +290,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           requestedIndices = Set(requestedIndex(".kibana_8.8.0")),
           uriPath = Some(UriPath.from("/_bulk"))
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(kibanaIndexName(".kibana"))
@@ -305,7 +306,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           requestedIndices = Set(requestedIndex(".kibana_analytics_8.8.0")),
           uriPath = Some(UriPath.from("/_bulk"))
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(kibanaIndexName(".kibana"))
@@ -321,7 +322,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           requestedIndices = Set(requestedIndex(".kibana"), requestedIndex(".kibana_analytics_8.8.0")),
           uriPath = Some(UriPath.from("/_bulk"))
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(kibanaIndexName(".kibana"))
@@ -339,7 +340,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           uriPath = Some(UriPath.from("/_bulk")),
           customKibanaIndex = Some(customKibanaIndex),
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(kibanaIndexName(".kibana-admin"))
@@ -357,7 +358,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           uriPath = Some(UriPath.from("/_bulk")),
           customKibanaIndex = Some(customKibanaIndex),
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(kibanaIndexName(".kibana-admin"))
@@ -375,7 +376,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           requestedDataStreams = Set(fullDataStreamName("kibana_sample_data_logs")),
           uriPath = Some(UriPath.from("/_data_stream/kibana_sample_data_logs"))
         ) {
-          assertBlockContext(
+          assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
               access = RW,
               index = Some(kibanaIndexName(".kibana"))
@@ -402,7 +403,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       requestedIndices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false)),
       uriPath = Some(uriPath)
     ) {
-      assertBlockContext(
+      assertBlockContext(_)(
         kibanaPolicy = Some(KibanaPolicy.default.copy(
           access = RO,
           index = Some(customKibanaIndex)
@@ -417,7 +418,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       requestedIndices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false)),
       uriPath = Some(uriPath)
     ) {
-      assertBlockContext(
+      assertBlockContext(_)(
         kibanaPolicy = Some(KibanaPolicy.default.copy(
           access = RW,
           index = Some(customKibanaIndex)
@@ -461,6 +462,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       filteredIndices = requestedIndices,
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
       blockMetadata = BlockMetadata.from(requestContext).withKibanaIndex(kibanaIndexFrom(customKibanaIndex)),
       responseHeaders = Set.empty,
@@ -484,6 +486,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       dataStreams = requestedDataStreams,
     )
     val blockContext = DataStreamRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
       blockMetadata = BlockMetadata.from(requestContext).withKibanaIndex(kibanaIndexFrom(customKibanaIndex)),
       responseHeaders = Set.empty,
@@ -501,11 +504,11 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
-        inside(result) { case Fulfilled(outBlockContext) =>
+        inside(result) { case Permitted(outBlockContext) =>
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Rejected())
+        result should be(Denied(NotAuthorized))
     }
   }
 

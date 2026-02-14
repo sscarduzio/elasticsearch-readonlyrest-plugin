@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.actions.rrmetadata.rest
 
-import eu.timepit.refined.types.all.NonEmptyString
+import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
