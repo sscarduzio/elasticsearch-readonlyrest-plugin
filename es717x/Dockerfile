@@ -32,7 +32,27 @@ USER root
 
 RUN chmod +x /usr/local/bin/gosu \
     && gosu --version \
-    && gosu nobody true
+    && gosu nobody true \
+    # ES 7.17.0–7.17.2 bundle JDK 17.0.x and 7.17.3–7.17.6 bundle JDK 18, both of which \
+    # crash on cgroup v2 hosts (JDK-8287073). Replace with Corretto 17.0.5 (fix backport \
+    # JDK-8288308) for the JDK-17 builds, or Corretto 19.0.0 (fixed) for the JDK-18 builds. \
+    # 7.17.7+ bundle JDK 19+ which already contains the fix, so no replacement is needed. \
+    && PATCH=$(echo "$ES_VERSION" | cut -d. -f3) \
+    && if [ "$PATCH" -le 2 ]; then \
+         ARCH=$(uname -m | sed 's/x86_64/x64/' | sed 's/arm64/aarch64/') \
+         && curl -fsSLk "https://corretto.aws/downloads/resources/17.0.5.8.1/amazon-corretto-17.0.5.8.1-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz \
+         && rm -rf /usr/share/elasticsearch/jdk \
+         && mkdir -p /usr/share/elasticsearch/jdk \
+         && tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 \
+         && rm /tmp/jdk.tar.gz; \
+       elif [ "$PATCH" -le 6 ]; then \
+         ARCH=$(uname -m | sed 's/x86_64/x64/' | sed 's/arm64/aarch64/') \
+         && curl -fsSLk "https://corretto.aws/downloads/resources/19.0.0.36.1/amazon-corretto-19.0.0.36.1-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz \
+         && rm -rf /usr/share/elasticsearch/jdk \
+         && mkdir -p /usr/share/elasticsearch/jdk \
+         && tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 \
+         && rm /tmp/jdk.tar.gz; \
+       fi
 
 USER elasticsearch
 
