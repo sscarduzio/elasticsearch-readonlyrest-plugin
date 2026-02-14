@@ -277,21 +277,21 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("group3") :: GroupId("group1") :: Nil)
 
             val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
-            group3Metadata.metadataOrigin.block.name should be(Block.Name("User 1 - index1"))
+            group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 1 - index1"))
             group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
             group3Metadata.userOrigin should be(None)
             group3Metadata.kibanaPolicy should be(None)
 
             val group1Metadata = metadata.groupsMetadata(GroupId("group1"))
-            group1Metadata.metadataOrigin.block.name should be(Block.Name("User 1 - index2"))
+            group1Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 1 - index2"))
             group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
             group1Metadata.userOrigin should be(None)
             group1Metadata.kibanaPolicy should be(None)
           }
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user1:pass"))
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
@@ -300,7 +300,7 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("group5") :: GroupId("group6") :: Nil)
 
             val group5Metadata = metadata.groupsMetadata(GroupId("group5"))
-            group5Metadata.metadataOrigin.block.name should be(Block.Name("User 4 - index1"))
+            group5Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 4 - index1"))
             group5Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
             group5Metadata.userOrigin should be(None)
             group5Metadata.kibanaPolicy should be(Some(KibanaPolicy(
@@ -313,7 +313,7 @@ class CurrentUserMetadataAccessControlTests
             )))
 
             val group6Metadata = metadata.groupsMetadata(GroupId("group6"))
-            group6Metadata.metadataOrigin.block.name should be(Block.Name("User 4 - index2"))
+            group6Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 4 - index2"))
             group6Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
             group6Metadata.userOrigin should be(None)
             group6Metadata.kibanaPolicy should be(Some(KibanaPolicy(
@@ -329,16 +329,16 @@ class CurrentUserMetadataAccessControlTests
           val loginRequest = MockRequestContext.metadata.withHeaders(
             basicAuthHeader("user4:pass"), currentGroupHeader("group6")
           )
-          val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-          inside(loginResponse.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+          inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
 
           val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
             basicAuthHeader("user4:pass"), currentGroupHeader("group5")
           )
-          val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-          inside(switchTenancyResponse.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+          inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
@@ -347,7 +347,7 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: Nil)
 
             val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
-            group2Metadata.metadataOrigin.block.name should be(Block.Name("User 2"))
+            group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 2"))
             group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
             group2Metadata.userOrigin should be(None)
             group2Metadata.kibanaPolicy should be(Some(KibanaPolicy(
@@ -364,14 +364,14 @@ class CurrentUserMetadataAccessControlTests
           }
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user2:pass"))
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
         "block with no available groups collected is matched" in {
           def assertAllowUserMetadataWithoutGroupsResponse(metadata: UserMetadata.WithoutGroups) = {
-            metadata.metadataOrigin.block.name should be(Block.Name("User 3"))
+            metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 3"))
             metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
             metadata.userOrigin should be(None)
             metadata.kibanaPolicy should be(Some(KibanaPolicy(
@@ -385,8 +385,8 @@ class CurrentUserMetadataAccessControlTests
           }
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user3:pass"))
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Allow(userMetadata:UserMetadata.WithoutGroups) =>
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case Allowed(userMetadata:UserMetadata.WithoutGroups) =>
             assertAllowUserMetadataWithoutGroupsResponse(userMetadata)
           }
         }
@@ -396,11 +396,11 @@ class CurrentUserMetadataAccessControlTests
               metadata.groupsMetadata.keys.toList should be(GroupId("service1_group1") :: GroupId("service1_group2") :: Nil)
 
               val group1Metadata = metadata.groupsMetadata(GroupId("service1_group1"))
-              group1Metadata.metadataOrigin.block.name should be(Block.Name("SERVICE1 user5 (1)"))
+              group1Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("SERVICE1 user5 (1)"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
 
               val group2Metadata = metadata.groupsMetadata(GroupId("service1_group2"))
-              group2Metadata.metadataOrigin.block.name should be(Block.Name("SERVICE1 user5 (2)"))
+              group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("SERVICE1 user5 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
             }
 
@@ -408,32 +408,32 @@ class CurrentUserMetadataAccessControlTests
               metadata.groupsMetadata.keys.toList should be(GroupId("service3_group1") :: Nil)
 
               val group1Metadata = metadata.groupsMetadata(GroupId("service3_group1"))
-              group1Metadata.metadataOrigin.block.name should be(Block.Name("SERVICE3 user7"))
+              group1Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("SERVICE3 user7"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
             }
 
             val request1 = MockRequestContext.metadata.withHeaders(header("X-Forwarded-User", "user5"))
-            val result1 = acl.handleMetadataRequest(request1).runSyncUnsafe()
+            val (result1, _) = acl.handleMetadataRequest(request1).runSyncUnsafe()
 
-            inside(result1.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result1) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser5Response(userMetadata)
             }
 
             val request2 = MockRequestContext.metadata.withHeaders(
               header("X-Forwarded-User", "user5"), currentGroupHeader("service1_group2")
             )
-            val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
+            val (result2, _) = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
-            inside(result2.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result2) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser5Response(userMetadata)
             }
 
             val request3 = MockRequestContext.metadata.withHeaders(
               header("X-Forwarded-User", "user7"), currentGroupHeader("service3_group1")
             )
-            val result3 = acl.handleMetadataRequest(request3).runSyncUnsafe()
+            val (result3, _) = acl.handleMetadataRequest(request3).runSyncUnsafe()
 
-            inside(result3.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result3) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser7Response(userMetadata)
             }
           }
@@ -442,27 +442,27 @@ class CurrentUserMetadataAccessControlTests
               metadata.groupsMetadata.keys.toList should be(GroupId("ldap2_group1") :: GroupId("ldap2_group2") :: Nil)
 
               val group1Metadata = metadata.groupsMetadata(GroupId("ldap2_group1"))
-              group1Metadata.metadataOrigin.block.name should be(Block.Name("LDAP2 user6 (1)"))
+              group1Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("LDAP2 user6 (1)"))
               group1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
 
               val group2Metadata = metadata.groupsMetadata(GroupId("ldap2_group2"))
-              group2Metadata.metadataOrigin.block.name should be(Block.Name("LDAP2 user6 (2)"))
+              group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("LDAP2 user6 (2)"))
               group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
             }
 
             val request1 = MockRequestContext.metadata.withHeaders(basicAuthHeader("user6:user2"))
-            val result1 = acl.handleMetadataRequest(request1).runSyncUnsafe()
+            val (result1, _) = acl.handleMetadataRequest(request1).runSyncUnsafe()
 
-            inside(result1.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result1) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser6Response(userMetadata)
             }
 
             val request2 = MockRequestContext.metadata.withHeaders(
               basicAuthHeader("user6:user2"), currentGroupHeader("ldap2_group2")
             )
-            val result2 = acl.handleMetadataRequest(request2).runSyncUnsafe()
+            val (result2, _) = acl.handleMetadataRequest(request2).runSyncUnsafe()
 
-            inside(result2.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+            inside(result2) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
               assertUser6Response(userMetadata)
             }
           }
@@ -472,7 +472,7 @@ class CurrentUserMetadataAccessControlTests
             metadata.groupsMetadata.keys.toList should be(GroupId("tracy_tenant1") :: GroupId("tracy_tenant2") :: Nil)
 
             val tenant1Metadata = metadata.groupsMetadata(GroupId("tracy_tenant1"))
-            tenant1Metadata.metadataOrigin.block.name should be(Block.Name("Allow RW access to tenant1 Kibana"))
+            tenant1Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("Allow RW access to tenant1 Kibana"))
             tenant1Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user9")))
             tenant1Metadata.userOrigin should be(None)
             tenant1Metadata.kibanaPolicy should be(Some(KibanaPolicy(
@@ -485,7 +485,7 @@ class CurrentUserMetadataAccessControlTests
             )))
 
             val tenant2Metadata = metadata.groupsMetadata(GroupId("tracy_tenant2"))
-            tenant2Metadata.metadataOrigin.block.name should be(Block.Name("Allow RW access to tenant2 Kibana"))
+            tenant2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("Allow RW access to tenant2 Kibana"))
             tenant2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user9")))
             tenant2Metadata.userOrigin should be(None)
             tenant2Metadata.kibanaPolicy should be(Some(KibanaPolicy(
@@ -499,8 +499,8 @@ class CurrentUserMetadataAccessControlTests
           }
 
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user9:pass"))
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case Allow(userMetadata@UserMetadata.WithGroups(_)) =>
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
             assertAllowUserMetadataWithGroupsResponse(userMetadata)
           }
         }
@@ -508,38 +508,38 @@ class CurrentUserMetadataAccessControlTests
       "return forbidden" when {
         "no block is matched" in {
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("userXXX:pass"))
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case ForbiddenByMismatched(causes) =>
-            causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case r@ForbiddenByMismatched(_) =>
+            r.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
         "current group is set but it doesn't exist on available groups list" in {
           val request = MockRequestContext.metadata.withHeaders(
             basicAuthHeader("user4:pass"), currentGroupHeader("group7")
           )
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case ForbiddenByMismatched(causes) =>
-            causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case r@ForbiddenByMismatched(_) =>
+            r.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
         "block with no available groups collected is matched and current group is set" in {
           val request = MockRequestContext.metadata.withHeaders(
             basicAuthHeader("user3:pass"), currentGroupHeader("group7")
           )
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case ForbiddenByMismatched(causes) =>
-            causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case r@ForbiddenByMismatched(_) =>
+            r.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
           }
         }
         "request was matched only by the block with forbid policy" in {
           val request = MockRequestContext.metadata.withHeaders(basicAuthHeader("user8:pass"))
-          val result = acl.handleMetadataRequest(request).runSyncUnsafe()
-          inside(result.result) { case ForbiddenBy(blockContext, block) =>
-            block.name should be(Block.Name("User 8"))
-            block.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user8")))) {
-              blockContext
-            }
+          val (result, _) = acl.handleMetadataRequest(request).runSyncUnsafe()
+          inside(result) { case Forbidden(blockContext) =>
+            blockContext.block.name should be(Block.Name("User 8"))
+            blockContext.block.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
+            assertBlockContext(blockContext)(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user8")))
+            )
           }
         }
       }

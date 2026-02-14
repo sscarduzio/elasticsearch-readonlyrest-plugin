@@ -165,7 +165,6 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
         genericMetadata = Some(DomainJson.JsonTree.Object(Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))))
       )),
       metadataOrigin = MetadataOrigin(
-        block = mock[Block],
         blockContext = dummyCtx
       )
     )
@@ -185,7 +184,6 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
         genericMetadata = Some(DomainJson.JsonTree.Object(Map("role" -> DomainJson.JsonTree.Value(DomainJson.JsonValue.StringValue("admin")))))
       )),
       metadataOrigin = MetadataOrigin(
-        block = mock[Block],
         blockContext = dummyCtx
       )
     )
@@ -203,7 +201,6 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
         genericMetadata = None
       )),
       metadataOrigin = MetadataOrigin(
-        block = mock[Block],
         blockContext = dummyCtx
       )
     )
@@ -214,6 +211,7 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
   }
 
   private lazy val dummyCtx = UserMetadataRequestBlockContext(
+    block = mock[Block],
     requestContext = mock[RequestContext],
     blockMetadata = BlockMetadata.empty,
     responseHeaders = Set.empty,

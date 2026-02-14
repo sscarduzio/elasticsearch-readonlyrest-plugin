@@ -254,7 +254,7 @@ class LocalClusterAuditingToolsSuite
               entry("labels")("es_node_name").str == "ROR_SINGLE_1" &&
               entry("labels")("es_task_id").numOpt.isDefined &&
               entry("labels")("ror_involved_indices").arrOpt.isDefined &&
-              entry("labels")("ror_acl_history").str == "[CONTAINER ADMIN-> RULES:[auth_key->false] RESOLVED:[indices=twitter]], [Rule 1-> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]" &&
+              entry("labels")("ror_acl_history").str == "[CONTAINER ADMIN-> RULES:[auth_key->false]], [Rule 1-> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]" &&
               entry("labels")("ror_final_state").str == "ALLOWED" &&
               entry("labels")("ror_detailed_reason").str == "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }"
           } shouldBe true

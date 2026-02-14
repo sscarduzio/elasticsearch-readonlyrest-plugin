@@ -18,12 +18,15 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.{LDAPBindException, ResultCode, SimpleBindRequest}
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapService, LdapUser, LdapUsersService}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, RequestId, User}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.TaskOps.*
 
 import java.time.Clock
@@ -35,7 +38,8 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
                                                 (implicit clock: Clock)
   extends LdapAuthenticationService with RequestIdAwareLogging {
 
-  override def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: PlainTextSecret)
+                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
     Task.measure(
       doAuthenticate(user, secret),
       measurement => Task.delay {
@@ -51,7 +55,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
         case Some(ldapUser) =>
           ldapAuthenticate(ldapUser, secret)
         case None =>
-          Task.now(false)
+          Task.now(Left(AuthenticationFailed))
       }
   }
 
@@ -60,12 +64,16 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
     connectionPool
       .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))
       .map(_.getResultCode == ResultCode.SUCCESS)
+      .map {
+        case true => Right(DirectlyLoggedUser(user.id))
+        case false => Left(AuthenticationFailed)
+      }
       .onError { case ex =>
         Task(logger.error(s"LDAP authenticate operation failed - cause [${ex.getMessage.show}]", ex))
       }
       .recover {
         case ex: LDAPBindException if ex.getResultCode == ResultCode.INVALID_CREDENTIALS =>
-          false
+          Left(AuthenticationFailed)
       }
   }
 }

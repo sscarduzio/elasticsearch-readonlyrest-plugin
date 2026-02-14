@@ -26,21 +26,22 @@ import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
 import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allow, ForbiddenBy, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allowed, Forbidden, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.MetadataOrigin
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.Enterprise
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
@@ -70,13 +71,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -93,13 +93,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
 
                 groupsMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
@@ -115,15 +114,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -137,16 +135,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
-                loggedUser.id should be (userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+                loggedUser.id should be(userId("u1"))
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "first matched block is a forbid policy block" in {
@@ -158,15 +155,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg23")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -181,13 +177,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b6", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -204,15 +199,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
           "return allow without groups when first matched block has no groups" in {
@@ -224,16 +218,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
-                loggedUser.id should be (userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+                loggedUser.id should be(userId("u1"))
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "return forbidden when first matched block without groups is a forbid policy block" in {
@@ -245,15 +238,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -269,13 +261,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g1"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -292,15 +283,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 2")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g3"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
           "return forbidden when all matched groups are forbidden and the forbid block is matched by the current group" in {
@@ -311,15 +301,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b2"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 2")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b2"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 2")))
             }
           }
         }
@@ -333,14 +322,17 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenByMismatched(causes) =>
-                causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+              case f@ForbiddenByMismatched(detailedCauses) =>
+                detailedCauses should be(ListMap(
+                  Block.Name("b2") -> AuthenticationFailed,
+                  Block.Name("b5") -> AuthenticationFailed,
+                ))
+                f.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
             }
           }
         }
@@ -355,13 +347,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b6", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -378,15 +369,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
           "return forbidden by mismatched when no-groups block (allow type) is matched before with-groups one" in {
@@ -398,14 +388,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g1"))))
+            val (userMetadataRequestResult, _) = acl
+              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenByMismatched(causes) =>
-                causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
+              case f@ForbiddenByMismatched(detailedCauses) =>
+                detailedCauses should be(ListMap.empty)
+                f.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
             }
           }
           "return forbidden when no-groups block (forbid type) is matched before with-groups one" in {
@@ -417,15 +407,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g3"))))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -443,13 +432,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -466,13 +454,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
 
                 groupsMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
@@ -488,15 +475,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -510,16 +496,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
-                loggedUser.id should be (userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+                loggedUser.id should be(userId("u1"))
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "first matched block is a forbid policy block" in {
@@ -531,15 +516,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg23")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -554,13 +538,12 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b6", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithGroups(groupsMetadata)) =>
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
 
                 groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
@@ -577,15 +560,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
           "return allow without groups when first matched block has no groups" in {
@@ -597,16 +579,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
-                loggedUser.id should be (userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+                loggedUser.id should be(userId("u1"))
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "return forbidden when first matched block without groups is a forbid policy block" in {
@@ -618,15 +599,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -643,16 +623,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
-                loggedUser.id should be (userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+                loggedUser.id should be(userId("u1"))
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "return forbidden when the first matched block is a forbid policy block" in {
@@ -664,15 +643,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 2")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -686,16 +664,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "first matched block is a forbid policy block" in {
@@ -707,15 +684,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg23")), result = Mismatched),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -730,16 +706,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
-                loggedUser.id should be (userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
+                loggedUser.id should be(userId("u1"))
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "return allow with the first block matched (case 2)" in {
@@ -751,16 +726,15 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case Allow(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(block, _))) =>
+              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
                 loggedUser.id should be(userId("u1"))
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Allow)
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Allow)
             }
           }
           "return forbidden when the first matched block is forbidden (case 1)" in {
@@ -772,15 +746,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
           "return forbidden when the first matched block is forbidden (case 2)" in {
@@ -792,15 +765,14 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Matched(userId("u1"), UniqueList.empty)),
             )
 
-            val userMetadataRequestResult = acl
+            val (userMetadataRequestResult, _) = acl
               .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
               .runSyncUnsafe()
-              .result
 
             inside(userMetadataRequestResult) {
-              case ForbiddenBy(_, block) =>
-                block.name should be(Block.Name("b1"))
-                block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+              case Forbidden(blockContext) =>
+                blockContext.block.name should be(Block.Name("b1"))
+                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
         }
@@ -850,17 +822,17 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       verbosity = Block.Verbosity.Info,
       audit = Block.Audit.Enabled,
       rules = NonEmptyList.of(result match {
-        case MockedBlockResult.Matched(userId, groups) => matchedRule(userId, groups)
-        case MockedBlockResult.Mismatched => mismatchedRule
+        case MockedBlockResult.Matched(userId, groups) => permittedRule(userId, groups)
+        case MockedBlockResult.Mismatched => deniedRule
       })
     )
   }
 
-  private def matchedRule(userId: User.Id, groups: UniqueList[Group]): Rule = new RegularRule {
+  private def permittedRule(userId: User.Id, groups: UniqueList[Group]): Rule = new RegularRule {
     override val name: Rule.Name = Rule.Name("auth")
 
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-      Task.now(RuleResult.Fulfilled(
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+      Task.now(Decision.Permitted(
         blockContext.withBlockMetadata(_
           .withLoggedUser(DirectlyLoggedUser(userId))
           .withAvailableGroups(groups)
@@ -869,11 +841,11 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     }
   }
 
-  private def mismatchedRule: Rule = new RegularRule {
+  private def deniedRule: Rule = new RegularRule {
     override val name: Rule.Name = Rule.Name("auth")
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
-      Task.now(RuleResult.Rejected())
+    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      Task.now(Decision.Denied(AuthenticationFailed))
   }
 
   private def mockUserMetadataRequestContext(licenseType: RorKbnLicenseType) = {
@@ -887,9 +859,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
   private def mockRequestContext(apiVersion: UserMetadataApiVersion,
                                  currentGroup: Option[Group]) = {
     val rc = mock[MockUserMetadataRequestContext]
-    (() => rc.initialBlockContext)
-      .expects()
-      .returning(UserMetadataRequestBlockContext(rc, BlockMetadata.empty, Set.empty, List.empty))
+    (rc.initialBlockContext _)
+      .expects(*)
+      .onCall { (block: Block) => UserMetadataRequestBlockContext(block, rc, BlockMetadata.empty, Set.empty, List.empty) }
       .anyNumberOfTimes()
 
     (() => rc.apiVersion)
@@ -940,8 +912,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
 
     private def assert(groupsMetadata: ListMap[GroupId, GroupMetadata]) = Try {
       val metadata = groupsMetadata(group.id)
-      metadata.metadataOrigin.block.name should be(Block.Name(blockName))
-      metadata.metadataOrigin.block.policy should be(blockPolicy)
+      val block = metadata.metadataOrigin.blockContext.block
+      block.name should be(Block.Name(blockName))
+      block.policy should be(blockPolicy)
       metadata.group should be(group)
       metadata.loggedUser.id should be(userId)
     }

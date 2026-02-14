@@ -19,17 +19,16 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
-import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -38,26 +37,27 @@ import scala.util.Try
 trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
-                                                        rorKbnDef: RorKbnDef)
-                                                       (operation: TokenData => Either[Unit, B]): RuleResult[B] = {
+                                                        rorKbnDef: RorKbnDef,
+                                                        denialCause: => Denied.Cause)
+                                                       (operation: TokenData => Either[Unit, B]): Decision[B] = {
     val authHeaderName = Header.Name.authorization
     implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Rejected()
+        Denied(denialCause)
       case Some(token) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         jwtTokenData(token, rorKbnDef) match {
           case Left(_) =>
-            Rejected()
+            Denied(denialCause)
           case Right(tokenData) =>
             val claimProcessingResult = operation(tokenData)
             claimProcessingResult match {
               case Left(_) =>
-                Rejected()
+                Denied(denialCause)
               case Right(modifiedBlockContext) =>
-                Fulfilled(modifiedBlockContext)
+                Permitted(modifiedBlockContext)
             }
         }
     }

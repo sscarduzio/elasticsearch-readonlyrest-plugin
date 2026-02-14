@@ -19,8 +19,11 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
@@ -47,9 +50,12 @@ trait LdapUsersService extends LdapService {
 trait LdapAuthenticationService extends LdapService {
   def ldapUsersService: LdapUsersService
 
-  def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[Boolean]
+  def authenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId): Task[AuthenticationResult]
 
   def serviceTimeout: PositiveFiniteDuration
+}
+object LdapAuthenticationService {
+  type AuthenticationResult = Either[AuthenticationFailed.type, DirectlyLoggedUser]
 }
 
 sealed trait LdapAuthorizationService extends LdapService {

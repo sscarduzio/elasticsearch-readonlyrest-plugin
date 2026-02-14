@@ -17,11 +17,11 @@
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.{Group, RequestId, User}
 import tech.beshu.ror.syntax.*
 
@@ -33,8 +33,8 @@ trait MocksProvider {
   def externalAuthenticationServiceWith(id: ExternalAuthenticationService#Id)
                                        (implicit context: RequestId): Option[ExternalAuthenticationServiceMock]
 
-  def externalAuthorizationServiceWith(id: ExternalAuthorizationService#Id)
-                                      (implicit context: RequestId): Option[ExternalAuthorizationServiceMock]
+  def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService#Id)
+                                       (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock]
 }
 object MocksProvider {
 
@@ -48,9 +48,9 @@ object MocksProvider {
     final case class ExternalAuthenticationUserMock(id: User.Id)
   }
 
-  final case class ExternalAuthorizationServiceMock(users: Set[ExternalAuthorizationServiceUserMock])
-  object ExternalAuthorizationServiceMock {
-    final case class ExternalAuthorizationServiceUserMock(id: User.Id, groups: Set[Group])
+  final case class ExternalGroupsProviderServiceMock(users: Set[ExternalGroupsProviderServiceUserMock])
+  object ExternalGroupsProviderServiceMock {
+    final case class ExternalGroupsProviderServiceUserMock(id: User.Id, groups: Set[Group])
   }
 }
 
@@ -61,6 +61,6 @@ object NoOpMocksProvider extends MocksProvider {
   override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
                                                 (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = None
 
-  override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
-                                               (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = None
+  override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
+                                                (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] = None
 }

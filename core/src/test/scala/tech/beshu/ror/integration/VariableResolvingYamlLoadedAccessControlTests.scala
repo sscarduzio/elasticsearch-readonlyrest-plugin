@@ -201,17 +201,15 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             basicAuthHeader("user1:passwd"), header("X-my-group-id-1", "g3")
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from header variable"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from header variable"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("g3")),
               availableGroups = UniqueList.of(group("g3"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "new style header variable is used" in {
@@ -219,49 +217,43 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             basicAuthHeader("user1:passwd"), header("X-my-group-id-2", "g3")
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from header variable"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from header variable"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("g3")),
               availableGroups = UniqueList.of(group("g3"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "old style of env variable is used" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user2:passwd"))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from env variable (old syntax)"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from env variable (old syntax)"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
               currentGroup = Some(GroupId("gs2")),
               availableGroups = UniqueList.of(group("gs2"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "new style of env variable is used" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user1:passwd"))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from env variable"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from env variable"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("gs1")),
               availableGroups = UniqueList.of(group("gs1"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "JWT variable is used (array)" in {
@@ -273,10 +265,10 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             filteredIndices = Set(requestedIndex("gjj1"))
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
-            block.name should be(Block.Name("Group id from jwt variable (array)"))
+          inside(result) { case RegularRequestResult.Allowed(blockContext: GeneralIndexRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from jwt variable (array)"))
             blockContext.blockMetadata should be(
               BlockMetadata
                 .empty
@@ -302,10 +294,10 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
             )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
-            block.name should be(Block.Name("Group id from jwt variable"))
+          inside(result) { case RegularRequestResult.Allowed(blockContext: GeneralIndexRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from jwt variable"))
             blockContext.blockMetadata should be(
               BlockMetadata
                 .from(request)
@@ -325,17 +317,17 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
           ))
 
-          val request = MockRequestContext.search
+          val request = MockRequestContext.filterable
             .withHeaders(bearerHeader(jwt))
             .copy(
               indices = Set.empty,
               allIndicesAndAliases = Set.empty
             )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
-            block.name should be(Block.Name("Variables usage in filter"))
+          inside(result) { case RegularRequestResult.Allowed(blockContext: FilterableRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("Variables usage in filter"))
             blockContext.blockMetadata should be(
               BlockMetadata
                 .from(request)
@@ -350,7 +342,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "Available groups env is used" in {
-          val request = MockRequestContext.search
+          val request = MockRequestContext.filterable
             .withHeaders(basicAuthHeader("cartman:user2"))
             .copy(
               indices = Set(requestedIndex("*")),
@@ -361,10 +353,10 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               )
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
-            block.name should be(Block.Name("LDAP groups explode"))
+          inside(result) { case RegularRequestResult.Allowed(blockContext: FilterableRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("LDAP groups explode"))
             blockContext.blockMetadata should be(
               BlockMetadata
                 .from(request)
@@ -383,13 +375,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "user_id_list" := List("alice", "bob"),
           ))
 
-          val request = MockRequestContext.search.withHeaders(bearerHeader(jwt))
+          val request = MockRequestContext.filterable.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) {
-            case RegularRequestResult.Allow(blockContext, block) =>
-              block.name should be(Block.Name("Kibana metadata resolving test (with jwt_authentication)"))
+          inside(result) {
+            case RegularRequestResult.Allowed(blockContext) =>
+              blockContext.block.name should be(Block.Name("Kibana metadata resolving test (with jwt_authentication)"))
               blockContext.blockMetadata should be(
                 BlockMetadata
                   .from(request)
@@ -413,13 +405,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
           ))
 
-          val request = MockRequestContext.search.withHeaders(bearerHeader(jwt))
+          val request = MockRequestContext.filterable.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) {
-            case RegularRequestResult.Allow(blockContext, block) =>
-              block.name should be(Block.Name("Kibana metadata resolving test (with jwt_auth)"))
+          inside(result) {
+            case RegularRequestResult.Allowed(blockContext) =>
+              blockContext.block.name should be(Block.Name("Kibana metadata resolving test (with jwt_auth)"))
               blockContext.blockMetadata should be(
                 BlockMetadata
                   .from(request)

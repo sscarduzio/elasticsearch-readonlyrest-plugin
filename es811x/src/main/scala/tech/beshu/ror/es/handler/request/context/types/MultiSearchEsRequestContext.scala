@@ -21,6 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
@@ -49,12 +50,13 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+    block = block,
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(actionRequest),
+    indexPacks = discoveredIndexPacks,
     filter = None,
     fieldLevelSecurity = None,
     requestFieldsUsage = requestFieldsUsage
@@ -65,6 +67,15 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     actionRequest
       .requests().asScala
       .flatMap(indexAttributesFrom)
+      .toCovariantSet
+  }
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks
+      .flatMap {
+        case Indices.Found(indices) => indices
+        case Indices.NotFound => Set.empty
+      }
       .toCovariantSet
   }
 
@@ -84,6 +95,8 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       ShouldBeInterrupted
     }
   }
+
+  private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
 
   private def requestFieldsUsage: RequestFieldsUsage = {
     NonEmptyList.fromList(actionRequest.requests().asScala.toList) match {

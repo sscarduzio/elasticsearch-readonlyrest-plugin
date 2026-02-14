@@ -26,7 +26,6 @@ class AnyOfGroupsRule(override val settings: Settings[GroupsLogic.AnyOf])
                      (override implicit val userIdCaseSensitivity: CaseSensitivity)
   extends BaseGroupsRule[GroupsLogic.AnyOf](AnyOfGroupsRule.SimpleSyntaxName.name, settings)
 
-
 object AnyOfGroupsRule {
   implicit val anyOfCreator: Creator[GroupsLogic.AnyOf] = new AnyOfGroupsRule(_)(_)
 
