@@ -31,6 +31,10 @@ final case class DockerImageDescription(baseImage: String,
     this.copy(runCommands = this.runCommands :+ Command.Run(command))
   }
 
+  def run(command: String, otherCommands: String*): DockerImageDescription = {
+    this.copy(runCommands = (this.runCommands :+ Command.Run(command)) ++ otherCommands.map(Command.Run.apply))
+  }
+
   def runWhen(condition: Boolean, command: => String): DockerImageDescription = {
     if (condition) run(command)
     else this
