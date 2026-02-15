@@ -358,4 +358,6 @@ private object DummyAuditRequestContext extends AuditRequestContext {
 
     override def esClusterName: String = "testEsCluster"
   }
+
+  override def matchedBlockNames: Option[List[String]] = None
 }

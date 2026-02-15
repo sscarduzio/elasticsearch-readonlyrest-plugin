@@ -2269,4 +2269,6 @@ private class DummyAuditRequestContext(override val loggedInUserName: Option[Str
   override def generalAuditEvents: JSONObject = new JSONObject
 
   override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
+
+  override def matchedBlockNames: Option[List[String]] = None
 }

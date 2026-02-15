@@ -66,6 +66,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = allowedBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(allowedBy.blockContext),
+            blocks = Some(NonEmptyList.one(allowedBy.block)),
             historyEntries = allowedBy.history,
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents
           ),
@@ -82,6 +83,17 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             },
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
+            blocks = Some(
+              allow.userMetadata match {
+                case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
+                  NonEmptyList.one(metadataOrigin.block)
+                case UserMetadata.WithGroups(groupsMetadata) =>
+                  NonEmptyList(
+                    groupsMetadata.head._2.metadataOrigin.block,
+                    groupsMetadata.tail.values.map(_.metadataOrigin.block).toList,
+                  )
+              }
+            ),
             historyEntries = allow.history,
             generalAuditEvents = allow.requestContext.generalAuditEvents
           ),
@@ -100,6 +112,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = forbiddenBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
+            blocks = Some(NonEmptyList.one(forbiddenBy.block)),
             historyEntries = forbiddenBy.history),
           verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.verbosity),
           reason = forbiddenBy.blockContext.block.show
@@ -111,6 +124,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = None,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
+            blocks = None,
             historyEntries = forbidden.history
           )
         )
@@ -121,6 +135,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = None, // todo: in RORDEV-1922 consider this potential problem
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
+            blocks = None,
             historyEntries = requestedIndexNotExist.history
           )
         )
@@ -131,6 +146,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = None,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
+            blocks = None,
             historyEntries = History.empty
           ),
           cause = errored.cause
@@ -147,11 +163,13 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
                                                        loggedUser: Option[LoggedUser],
                                                        auditEnvironmentContext: AuditEnvironmentContext,
                                                        blockContext: Option[B],
+                                                       blocks: Option[NonEmptyList[Block]],
                                                        historyEntries: History[B],
                                                        generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
     new AuditRequestContextBasedOnAclResult(
       requestContext,
       loggedUser,
+      blocks,
       historyEntries,
       loggingContext,
       auditEnvironmentContext,
