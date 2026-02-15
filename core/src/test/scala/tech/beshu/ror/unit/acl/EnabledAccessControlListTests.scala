@@ -52,6 +52,7 @@ import tech.beshu.ror.utils.NonEmptyListMap
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import scala.collection.immutable.ListMap
 import scala.util.{Failure, Success, Try}
 
 class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside {
