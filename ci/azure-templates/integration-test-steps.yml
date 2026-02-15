@@ -1,13 +1,12 @@
 steps:
   - bash: |
-      sudo rm -rf /usr/share/dotnet
-      sudo rm -rf /usr/local/lib/android
-      sudo rm -rf /opt/ghc
-      sudo rm -rf /usr/local/.ghcup
-      sudo rm -rf /usr/share/swift
-      sudo rm -rf /usr/local/share/powershell
+      rm -rf /usr/share/dotnet
+      rm -rf /usr/local/lib/android
+      rm -rf /opt/ghc
+      rm -rf /usr/local/.ghcup
+      rm -rf /usr/share/swift
+      rm -rf /usr/local/share/powershell
     displayName: 'Free up disk space'
-    target: host
   - checkout: self
     fetchDepth: 1
     clean: false
