@@ -66,7 +66,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = allowedBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(allowedBy.blockContext),
-            blocks = Some(NonEmptyList.one(allowedBy.block)),
+            blocks = Some(NonEmptyList.one(allowedBy.blockContext.block)),
             historyEntries = allowedBy.history,
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents
           ),
@@ -86,11 +86,11 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             blocks = Some(
               allow.userMetadata match {
                 case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
-                  NonEmptyList.one(metadataOrigin.block)
+                  NonEmptyList.one(metadataOrigin.blockContext.block)
                 case UserMetadata.WithGroups(groupsMetadata) =>
                   NonEmptyList(
-                    groupsMetadata.head._2.metadataOrigin.block,
-                    groupsMetadata.tail.values.map(_.metadataOrigin.block).toList,
+                    groupsMetadata.head._2.metadataOrigin.blockContext.block,
+                    groupsMetadata.tail.values.map(_.metadataOrigin.blockContext.block).toList,
                   )
               }
             ),
@@ -112,7 +112,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = forbiddenBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
-            blocks = Some(NonEmptyList.one(forbiddenBy.block)),
+            blocks = Some(NonEmptyList.one(forbiddenBy.blockContext.block)),
             historyEntries = forbiddenBy.history),
           verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.verbosity),
           reason = forbiddenBy.blockContext.block.show
