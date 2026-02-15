@@ -288,12 +288,12 @@ stages:
             clean: false
             persistCredentials: true
           - bash: |
-              rm -rf /usr/share/dotnet
-              rm -rf /usr/local/lib/android
-              rm -rf /opt/ghc
-              rm -rf /usr/local/.ghcup
-              rm -rf /usr/share/swift
-              rm -rf /usr/local/share/powershell
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
               docker system prune -af
               docker builder prune -af
             displayName: 'Free up disk space and clean Docker'
@@ -350,12 +350,12 @@ stages:
             clean: false
             persistCredentials: true
           - bash: |
-              rm -rf /usr/share/dotnet
-              rm -rf /usr/local/lib/android
-              rm -rf /opt/ghc
-              rm -rf /usr/local/.ghcup
-              rm -rf /usr/share/swift
-              rm -rf /usr/local/share/powershell
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
               docker system prune -af
               docker builder prune -af
             displayName: 'Free up disk space and clean Docker'
@@ -440,12 +440,12 @@ stages:
             clean: false
             persistCredentials: true
           - bash: |
-              rm -rf /usr/share/dotnet
-              rm -rf /usr/local/lib/android
-              rm -rf /opt/ghc
-              rm -rf /usr/local/.ghcup
-              rm -rf /usr/share/swift
-              rm -rf /usr/local/share/powershell
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
               docker system prune -af
               docker builder prune -af
             displayName: 'Free up disk space and clean Docker'
@@ -520,12 +520,12 @@ stages:
             clean: false
             persistCredentials: true
           - bash: |
-              rm -rf /usr/share/dotnet
-              rm -rf /usr/local/lib/android
-              rm -rf /opt/ghc
-              rm -rf /usr/local/.ghcup
-              rm -rf /usr/share/swift
-              rm -rf /usr/local/share/powershell
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
               docker system prune -af
               docker builder prune -af
             displayName: 'Free up disk space and clean Docker'
@@ -578,12 +578,12 @@ stages:
             clean: false
             persistCredentials: true
           - bash: |
-              rm -rf /usr/share/dotnet
-              rm -rf /usr/local/lib/android
-              rm -rf /opt/ghc
-              rm -rf /usr/local/.ghcup
-              rm -rf /usr/share/swift
-              rm -rf /usr/local/share/powershell
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
               docker system prune -af
               docker builder prune -af
             displayName: 'Free up disk space and clean Docker'
@@ -640,12 +640,12 @@ stages:
             clean: false
             persistCredentials: true
           - bash: |
-              rm -rf /usr/share/dotnet
-              rm -rf /usr/local/lib/android
-              rm -rf /opt/ghc
-              rm -rf /usr/local/.ghcup
-              rm -rf /usr/share/swift
-              rm -rf /usr/local/share/powershell
+              sudo rm -rf /usr/share/dotnet
+              sudo rm -rf /usr/local/lib/android
+              sudo rm -rf /opt/ghc
+              sudo rm -rf /usr/local/.ghcup
+              sudo rm -rf /usr/share/swift
+              sudo rm -rf /usr/local/share/powershell
               docker system prune -af
               docker builder prune -af
             displayName: 'Free up disk space and clean Docker'
