@@ -43,10 +43,13 @@ object XPackSecurityAuthenticationHeader {
     val currentVersion = Version.CURRENT
     output.setVersion(currentVersion)
     Version.writeVersion(currentVersion, output)
+    // Internal user flag
     output.writeBoolean(isInternal)
-    if(isInternal) {
+    if (isInternal) {
+      // Internal users only need their name
       output.writeString(userName)
     } else {
+      // Regular User.writeUser format: name, roles, metadata, fullName, email, enabled, runAs
       output.writeString(userName)
       output.writeStringArray(Array("superuser"))
       output.writeMap(Map.empty[String, AnyRef].asJava)
@@ -55,14 +58,16 @@ object XPackSecurityAuthenticationHeader {
       output.writeBoolean(true)
       output.writeBoolean(false)
     }
+    // Authenticating realm: nodeName as realm reference, "__attach" as realm type and name
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")
+    // Lookup realm present flag
     output.writeBoolean(false)
-    if (output.getVersion.onOrAfter(Version.V_7_0_0)) {
-      output.writeVInt(4) // Internal
-      output.writeMap(Map[String, Object]().asJava)
-    }
+    // Authentication type: INTERNAL = 4 (ES 7.0.0+)
+    output.writeVInt(4)
+    // Metadata: empty map
+    output.writeMap(Map.empty[String, AnyRef].asJava)
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
     }
