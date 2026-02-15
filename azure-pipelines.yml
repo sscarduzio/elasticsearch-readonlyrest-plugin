@@ -295,6 +295,10 @@ stages:
               rm -rf /usr/share/swift
               rm -rf /usr/local/share/powershell
             displayName: 'Free up disk space'
+          - bash: |
+              docker system prune -af
+              docker builder prune -af
+            displayName: 'Clean Docker resources'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -309,6 +313,7 @@ stages:
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              TMPDIR: $(Agent.TempDirectory)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -354,6 +359,10 @@ stages:
               rm -rf /usr/share/swift
               rm -rf /usr/local/share/powershell
             displayName: 'Free up disk space'
+          - bash: |
+              docker system prune -af
+              docker builder prune -af
+            displayName: 'Clean Docker resources'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -368,6 +377,7 @@ stages:
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              TMPDIR: $(Agent.TempDirectory)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -441,6 +451,10 @@ stages:
               rm -rf /usr/share/swift
               rm -rf /usr/local/share/powershell
             displayName: 'Free up disk space'
+          - bash: |
+              docker system prune -af
+              docker builder prune -af
+            displayName: 'Clean Docker resources'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -455,6 +469,7 @@ stages:
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              TMPDIR: $(Agent.TempDirectory)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -518,6 +533,10 @@ stages:
               rm -rf /usr/share/swift
               rm -rf /usr/local/share/powershell
             displayName: 'Free up disk space'
+          - bash: |
+              docker system prune -af
+              docker builder prune -af
+            displayName: 'Clean Docker resources'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -532,6 +551,7 @@ stages:
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              TMPDIR: $(Agent.TempDirectory)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -573,6 +593,10 @@ stages:
               rm -rf /usr/share/swift
               rm -rf /usr/local/share/powershell
             displayName: 'Free up disk space'
+          - bash: |
+              docker system prune -af
+              docker builder prune -af
+            displayName: 'Clean Docker resources'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -587,6 +611,7 @@ stages:
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              TMPDIR: $(Agent.TempDirectory)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -632,6 +657,10 @@ stages:
               rm -rf /usr/share/swift
               rm -rf /usr/local/share/powershell
             displayName: 'Free up disk space'
+          - bash: |
+              docker system prune -af
+              docker builder prune -af
+            displayName: 'Clean Docker resources'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -646,6 +675,7 @@ stages:
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              TMPDIR: $(Agent.TempDirectory)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
