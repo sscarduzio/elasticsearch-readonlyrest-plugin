@@ -294,8 +294,15 @@ stages:
               sudo rm -rf /usr/local/.ghcup
               sudo rm -rf /usr/share/swift
               sudo rm -rf /usr/local/share/powershell
+              sudo rm -rf /opt/hostedtoolcache
+              sudo rm -rf /usr/share/rust
+              sudo rm -rf /usr/share/miniconda
+              sudo rm -rf /usr/local/share/chromium
+              sudo rm -rf /usr/local/share/chrome_driver
+              sudo rm -rf /opt/pipx
               docker system prune -af
               docker builder prune -af
+              df -h /
             displayName: 'Free up disk space and clean Docker'
             target: host
           - task: Cache@2
@@ -356,8 +363,15 @@ stages:
               sudo rm -rf /usr/local/.ghcup
               sudo rm -rf /usr/share/swift
               sudo rm -rf /usr/local/share/powershell
+              sudo rm -rf /opt/hostedtoolcache
+              sudo rm -rf /usr/share/rust
+              sudo rm -rf /usr/share/miniconda
+              sudo rm -rf /usr/local/share/chromium
+              sudo rm -rf /usr/local/share/chrome_driver
+              sudo rm -rf /opt/pipx
               docker system prune -af
               docker builder prune -af
+              df -h /
             displayName: 'Free up disk space and clean Docker'
             target: host
           - task: Cache@2
@@ -446,8 +460,15 @@ stages:
               sudo rm -rf /usr/local/.ghcup
               sudo rm -rf /usr/share/swift
               sudo rm -rf /usr/local/share/powershell
+              sudo rm -rf /opt/hostedtoolcache
+              sudo rm -rf /usr/share/rust
+              sudo rm -rf /usr/share/miniconda
+              sudo rm -rf /usr/local/share/chromium
+              sudo rm -rf /usr/local/share/chrome_driver
+              sudo rm -rf /opt/pipx
               docker system prune -af
               docker builder prune -af
+              df -h /
             displayName: 'Free up disk space and clean Docker'
             target: host
           - task: Cache@2
@@ -526,8 +547,15 @@ stages:
               sudo rm -rf /usr/local/.ghcup
               sudo rm -rf /usr/share/swift
               sudo rm -rf /usr/local/share/powershell
+              sudo rm -rf /opt/hostedtoolcache
+              sudo rm -rf /usr/share/rust
+              sudo rm -rf /usr/share/miniconda
+              sudo rm -rf /usr/local/share/chromium
+              sudo rm -rf /usr/local/share/chrome_driver
+              sudo rm -rf /opt/pipx
               docker system prune -af
               docker builder prune -af
+              df -h /
             displayName: 'Free up disk space and clean Docker'
             target: host
           - task: Cache@2
@@ -584,8 +612,15 @@ stages:
               sudo rm -rf /usr/local/.ghcup
               sudo rm -rf /usr/share/swift
               sudo rm -rf /usr/local/share/powershell
+              sudo rm -rf /opt/hostedtoolcache
+              sudo rm -rf /usr/share/rust
+              sudo rm -rf /usr/share/miniconda
+              sudo rm -rf /usr/local/share/chromium
+              sudo rm -rf /usr/local/share/chrome_driver
+              sudo rm -rf /opt/pipx
               docker system prune -af
               docker builder prune -af
+              df -h /
             displayName: 'Free up disk space and clean Docker'
             target: host
           - task: Cache@2
@@ -646,8 +681,15 @@ stages:
               sudo rm -rf /usr/local/.ghcup
               sudo rm -rf /usr/share/swift
               sudo rm -rf /usr/local/share/powershell
+              sudo rm -rf /opt/hostedtoolcache
+              sudo rm -rf /usr/share/rust
+              sudo rm -rf /usr/share/miniconda
+              sudo rm -rf /usr/local/share/chromium
+              sudo rm -rf /usr/local/share/chrome_driver
+              sudo rm -rf /opt/pipx
               docker system prune -af
               docker builder prune -af
+              df -h /
             displayName: 'Free up disk space and clean Docker'
             target: host
           - task: Cache@2
