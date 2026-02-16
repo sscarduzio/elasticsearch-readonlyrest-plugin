@@ -32,7 +32,20 @@ USER root
 
 RUN chmod +x /usr/local/bin/gosu \
     && gosu --version \
-    && gosu nobody true
+    && gosu nobody true \
+    # ES 7.15.1 and 7.15.2 bundle JDK 17.0.0/17.0.1 which crash on cgroup v2 hosts (JDK-8287073). \
+    # Replace with Corretto 17.0.5 which contains the fix (backport JDK-8288308). \
+    # ES 7.14.x bundles JDK 16, which is not affected. \
+    && ES_MINOR=$(echo "${ES_VERSION}" | cut -d. -f2) \
+    && ES_PATCH=$(echo "${ES_VERSION}" | cut -d. -f3) \
+    && if [ "${ES_MINOR}" -eq "15" ] && [ "${ES_PATCH}" -ge "1" ]; then \
+           ARCH="$(uname -m | sed 's/x86_64/x64/' | sed 's/arm64/aarch64/')"; \
+           curl -fsSLk "https://corretto.aws/downloads/resources/17.0.5.8.1/amazon-corretto-17.0.5.8.1-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz; \
+           rm -rf /usr/share/elasticsearch/jdk; \
+           mkdir -p /usr/share/elasticsearch/jdk; \
+           tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1; \
+           rm /tmp/jdk.tar.gz; \
+       fi
 
 USER elasticsearch
 
