@@ -283,48 +283,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -352,48 +311,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -449,48 +367,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -536,48 +413,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -601,48 +437,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -670,48 +465,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -742,31 +496,7 @@ stages:
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-              Write-Host ">>> $env:ES_MODULE"
-              .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-              if ($LASTEXITCODE -ne 0) {
-                Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                  Get-Content $_.FullName
-                }
-                exit 1
-              }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -799,31 +529,7 @@ stages:
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -847,31 +553,7 @@ stages:
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
