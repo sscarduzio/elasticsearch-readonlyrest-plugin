@@ -21,6 +21,6 @@ steps:
   - task: PublishTestResults@2
     condition: failed()
     inputs:
-      testRunTitle: "$(Windows ES_MODULE) results"
+      testRunTitle: "Windows $(ES_MODULE) results"
       testResultsFiles: "**/TEST*xml"
       mergeTestResults: true

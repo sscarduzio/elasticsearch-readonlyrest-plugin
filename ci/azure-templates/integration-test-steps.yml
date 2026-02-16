@@ -1,12 +1,22 @@
 steps:
   - bash: |
-      rm -rf /usr/share/dotnet
-      rm -rf /usr/local/lib/android
-      rm -rf /opt/ghc
-      rm -rf /usr/local/.ghcup
-      rm -rf /usr/share/swift
-      rm -rf /usr/local/share/powershell
-    displayName: 'Free up disk space'
+      sudo rm -rf /usr/share/dotnet
+      sudo rm -rf /usr/local/lib/android
+      sudo rm -rf /opt/ghc
+      sudo rm -rf /usr/local/.ghcup
+      sudo rm -rf /usr/share/swift
+      sudo rm -rf /usr/local/share/powershell
+      sudo rm -rf /opt/hostedtoolcache
+      sudo rm -rf /usr/share/rust
+      sudo rm -rf /usr/share/miniconda
+      sudo rm -rf /usr/local/share/chromium
+      sudo rm -rf /usr/local/share/chrome_driver
+      sudo rm -rf /opt/pipx
+      docker system prune -af
+      docker builder prune -af
+      df -h /
+      displayName: 'Free up disk space and clean Docker'
+      target: host
   - checkout: self
     fetchDepth: 1
     clean: false
