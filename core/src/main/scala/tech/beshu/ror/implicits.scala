@@ -406,8 +406,7 @@ trait LogsShowInstances
 
     def formatGroupedCauses[T : Show](causes: Iterable[(T, Cause)]): String = {
       val grouped = causes
-        .groupBy { case (_, cause) => cause.show }
-        .toList
+        .groupByOrdered { case (_, cause) => cause.show }
         .map { case (causeStr, entries) =>
           val keys = entries.map { case (key, _) => key.show }
           val keysStr = if (keys.size > 1) s"{${keys.mkString(",")}}" else keys.head

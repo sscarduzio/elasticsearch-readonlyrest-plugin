@@ -41,9 +41,10 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
         "no group can be resolved" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
-              )),
+              permittedGroupsLogic = resolvableGroupsLogic {
+                implicit val convertible: AlwaysRightConvertible[GroupIdLike] = AlwaysRightConvertible.from(GroupIdLike.from)
+                UniqueNonEmptyList.of(createVariable("group_@{user}").toOption.get)
+              },
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithoutGroupsMapping(authenticationRule.denying, groups("group_user1"))
