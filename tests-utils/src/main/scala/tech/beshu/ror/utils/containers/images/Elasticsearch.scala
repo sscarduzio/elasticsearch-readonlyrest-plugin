@@ -306,19 +306,19 @@ class Elasticsearch(val esVersion: String,
     )
   }
 
-  // ES 7.16.x–7.17.6 and 8.0.x–8.4.x bundle JDK 17.0.1/17.0.2 or JDK 18, which have cgroup v2
+  // ES 7.15.1–7.17.6 and 8.0.x–8.4.x bundle JDK 17.0.0/17.0.1/17.0.2 or JDK 18, which have cgroup v2
   // bug JDK-8287073: CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport is checked.
   // Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+.
   // NOTE: the same version-range logic is maintained in the e2e-tests repo at
   //   environments/common/images/es-jdk-patch/patch-es-jdk.sh
   private def hasBuggyBundledJdk: Boolean =
-    (Version.greaterOrEqualThan(esVersion, 7, 16, 0) && Version.lowerThan(esVersion, 7, 17, 7)) ||
+    (Version.greaterOrEqualThan(esVersion, 7, 15, 1) && Version.lowerThan(esVersion, 7, 17, 7)) ||
     (Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 5, 0))
 
   // Replace the bundled JDK in-place with the cached custom JDK tarball.
   private def replaceBundledJdk(image: DockerImageDescription): DockerImageDescription = {
     // JDK 17.0.0–17.0.4 and JDK 18 have cgroup v2 bug JDK-8287073 (NPE in CgroupV2Subsystem).
-    // JDK-17 builds (ES 7.16.x, 7.17.0–7.17.2, 8.0.x–8.1.x) → Corretto 17.0.5 (backport JDK-8288308).
+    // JDK-17 builds (ES 7.15.1–7.15.2, 7.16.x, 7.17.0–7.17.2, 8.0.x–8.1.x) → Corretto 17.0.5 (backport JDK-8288308).
     // JDK-18 builds (ES 7.17.3–7.17.6, 8.2.x–8.4.x) → Corretto 19.0.0 (first JDK 19 with the fix).
     // Downloaded once per JVM process and reused across all container builds.
     val needsCorretto19 =
