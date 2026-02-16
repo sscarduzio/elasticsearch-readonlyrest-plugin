@@ -15,8 +15,8 @@ steps:
       docker system prune -af
       docker builder prune -af
       df -h /
-      displayName: 'Free up disk space and clean Docker'
-      target: host
+    displayName: 'Free up disk space and clean Docker'
+    target: host
   - checkout: self
     fetchDepth: 1
     clean: false
