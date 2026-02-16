@@ -21,9 +21,11 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.ApiKeysRule
 import tech.beshu.ror.accesscontrol.domain.{ApiKey, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
@@ -61,15 +63,15 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
 
   private def assertMatchRule(configuredApiKeys: NonEmptySet[ApiKey],
                               requestHeaders: Set[Header]) =
-    assertRule(configuredApiKeys, requestHeaders, isMatched = true)
+    assertRule(configuredApiKeys, requestHeaders, isPermitted = true)
 
   private def assertNotMatchRule(configuredApiKeys: NonEmptySet[ApiKey],
                                  requestHeaders: Set[Header]) =
-    assertRule(configuredApiKeys, requestHeaders, isMatched = false)
+    assertRule(configuredApiKeys, requestHeaders, isPermitted = false)
 
   private def assertRule(configuredApiKeys: NonEmptySet[ApiKey],
                          requestHeaders: Set[Header],
-                         isMatched: Boolean) = {
+                         isPermitted: Boolean) = {
     val rule = new ApiKeysRule(ApiKeysRule.Settings(configuredApiKeys))
     val restRequest = mock[RestRequest]
     (() => restRequest.allHeaders).expects().returning(requestHeaders)
@@ -77,14 +79,15 @@ class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
     val blockContext = GeneralNonIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
       blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(blockContext)
-      else Rejected()
+      if (isPermitted) Permitted(blockContext)
+      else Denied(NotAuthorized)
     }
   }
 }

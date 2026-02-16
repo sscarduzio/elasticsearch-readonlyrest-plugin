@@ -43,7 +43,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[UserMetadataRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: UserMetadataRequestBlockContext): UserMetadataRequestBlockContext =
-      UserMetadataRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty)
+      UserMetadataRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
     override def withBlockMetadata(blockContext: UserMetadataRequestBlockContext,
                                    blockMetadata: BlockMetadata): UserMetadataRequestBlockContext =
@@ -62,7 +62,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[GeneralNonIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: GeneralNonIndexRequestBlockContext): GeneralNonIndexRequestBlockContext =
-      GeneralNonIndexRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty)
+      GeneralNonIndexRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
     override def withBlockMetadata(blockContext: GeneralNonIndexRequestBlockContext,
                                    blockMetadata: BlockMetadata): GeneralNonIndexRequestBlockContext =
@@ -81,7 +81,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[RepositoryRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: RepositoryRequestBlockContext): RepositoryRequestBlockContext =
-      RepositoryRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty)
+      RepositoryRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty)
 
     override def withBlockMetadata(blockContext: RepositoryRequestBlockContext,
                                    blockMetadata: BlockMetadata): RepositoryRequestBlockContext =
@@ -103,7 +103,7 @@ object BlockContextUpdater {
   implicit object SnapshotRequestBlockContextUpdater
     extends BlockContextUpdater[SnapshotRequestBlockContext] {
     override def emptyBlockContext(blockContext: SnapshotRequestBlockContext): SnapshotRequestBlockContext =
-      SnapshotRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty, Set.empty)
+      SnapshotRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty, Set.empty)
 
     override def withBlockMetadata(blockContext: SnapshotRequestBlockContext,
                                    blockMetadata: BlockMetadata): SnapshotRequestBlockContext =
@@ -134,7 +134,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[DataStreamRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: DataStreamRequestBlockContext): DataStreamRequestBlockContext =
-      DataStreamRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, DataStreamRequestBlockContext.BackingIndices.IndicesNotInvolved)
+      DataStreamRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, DataStreamRequestBlockContext.BackingIndices.IndicesNotInvolved)
 
     override def withBlockMetadata(blockContext: DataStreamRequestBlockContext,
                                    blockMetadata: BlockMetadata): DataStreamRequestBlockContext =
@@ -158,7 +158,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[TemplateRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: TemplateRequestBlockContext): TemplateRequestBlockContext =
-      TemplateRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, blockContext.templateOperation, identity, Set.empty)
+      TemplateRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, blockContext.templateOperation, identity, Set.empty)
 
     override def withBlockMetadata(blockContext: TemplateRequestBlockContext,
                                    blockMetadata: BlockMetadata): TemplateRequestBlockContext =
@@ -190,7 +190,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[AliasRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: AliasRequestBlockContext): AliasRequestBlockContext =
-      AliasRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+      AliasRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
     override def withBlockMetadata(blockContext: AliasRequestBlockContext,
                                    blockMetadata: BlockMetadata): AliasRequestBlockContext =
@@ -217,7 +217,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[GeneralIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: GeneralIndexRequestBlockContext): GeneralIndexRequestBlockContext =
-      GeneralIndexRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
+      GeneralIndexRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
     override def withBlockMetadata(blockContext: GeneralIndexRequestBlockContext,
                                    blockMetadata: BlockMetadata): GeneralIndexRequestBlockContext =
@@ -237,7 +237,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[MultiIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: MultiIndexRequestBlockContext): MultiIndexRequestBlockContext =
-      MultiIndexRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, List.empty)
+      MultiIndexRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, List.empty)
 
     override def withBlockMetadata(blockContext: MultiIndexRequestBlockContext,
                                    blockMetadata: BlockMetadata): MultiIndexRequestBlockContext =
@@ -257,7 +257,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[FilterableRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: FilterableRequestBlockContext): FilterableRequestBlockContext =
-      FilterableRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None, None)
+      FilterableRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None, None)
 
     override def withBlockMetadata(blockContext: FilterableRequestBlockContext,
                                    blockMetadata: BlockMetadata): FilterableRequestBlockContext =
@@ -277,7 +277,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[FilterableMultiRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: FilterableMultiRequestBlockContext): FilterableMultiRequestBlockContext =
-      FilterableMultiRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, List.empty, None)
+      FilterableMultiRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty, List.empty, None)
 
     override def withBlockMetadata(blockContext: FilterableMultiRequestBlockContext,
                                    blockMetadata: BlockMetadata): FilterableMultiRequestBlockContext =
@@ -296,7 +296,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[RorApiRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: RorApiRequestBlockContext): RorApiRequestBlockContext =
-      RorApiRequestBlockContext(blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty)
+      RorApiRequestBlockContext(blockContext.block, blockContext.requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
     override def withBlockMetadata(blockContext: RorApiRequestBlockContext,
                                    blockMetadata: BlockMetadata): RorApiRequestBlockContext =

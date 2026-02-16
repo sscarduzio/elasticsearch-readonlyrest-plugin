@@ -19,13 +19,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.{FilterableBlockContextWithFilterUpdater, FilterableMultiRequestBlockContextWithFilterUpdater}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Filter
 
 /**
@@ -36,28 +37,28 @@ class FilterRule(val settings: Settings)
 
   override val name: Rule.Name = FilterRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.requestContext match {
-      case r if !r.isAllowedForDLS => Rejected()
-      case r if r.action.isRorAction => Rejected()
+      case r if !r.isAllowedForDLS => reject()
+      case r if r.action.isRorAction => reject()
       case _ =>
         settings.filter.resolve(blockContext) match {
           case Left(_: Unresolvable) =>
-            Rejected()
+            reject()
           case Right(filter) =>
             BlockContextUpdater[B] match {
-              case UserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
-              case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-              case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
-              case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
-              case DataStreamRequestBlockContextUpdater => Fulfilled(blockContext)
-              case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
-              case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-              case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
-              case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+              case UserMetadataRequestBlockContextUpdater => Permitted(blockContext)
+              case GeneralNonIndexRequestBlockContextUpdater => Permitted(blockContext)
+              case RepositoryRequestBlockContextUpdater => Permitted(blockContext)
+              case SnapshotRequestBlockContextUpdater => Permitted(blockContext)
+              case DataStreamRequestBlockContextUpdater => Permitted(blockContext)
+              case TemplateRequestBlockContextUpdater => Permitted(blockContext)
+              case GeneralIndexRequestBlockContextUpdater => Permitted(blockContext)
+              case AliasRequestBlockContextUpdater => Permitted(blockContext)
+              case MultiIndexRequestBlockContextUpdater => Permitted(blockContext)
               case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
               case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
-              case RorApiRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+              case RorApiRequestBlockContextUpdater => Decision.Permitted(blockContext)
             }
         }
     }
@@ -65,8 +66,10 @@ class FilterRule(val settings: Settings)
 
   private def addFilter[B <: BlockContext : BlockContextWithFilterUpdater](blockContext: B,
                                                                            filter: Filter) = {
-    Fulfilled(blockContext.withFilter(filter))
+    Permitted(blockContext.withFilter(filter))
   }
+
+  private def reject[T]() = Decision.Denied[T](Cause.NotAuthorized)
 }
 
 object FilterRule {

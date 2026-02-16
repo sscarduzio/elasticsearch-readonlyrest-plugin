@@ -72,26 +72,32 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   }
 
   private def determineRequestedFullClusterNames() = {
-    initialBlockContext
-      .indices.toList
-      .flatMap[ClusterName] { r =>
-        r.name match {
-          case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
-          case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
-          case ClusterIndexName.Remote(_, ClusterName.Pattern(_)) => None
+    requestedIndices match {
+      case Some(indices) =>
+        indices.toList.flatMap[ClusterName] { r =>
+          r.name match {
+            case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
+            case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
+            case ClusterIndexName.Remote(_, ClusterName.Pattern(_)) => None
+          }
         }
-      }
+      case None =>
+        List.empty
+    }
   }
 
   private def requestNonexistentIndices() = {
-    val newRequestedNonexistentIndices = initialBlockContext
-      .indices.toList
-      .distinctBy(_.name.index match {
-        case ClusterIndexName.Local(_) => ClusterName.Full.local
-        case ClusterIndexName.Remote(_, cluster) => cluster
-      })
-      .map(_.randomNonexistentIndex())
-
+    val newRequestedNonexistentIndices = requestedIndices match {
+      case Some(indices) =>
+        indices.toList
+          .distinctBy(_.name.index match {
+            case ClusterIndexName.Local(_) => ClusterName.Full.local
+            case ClusterIndexName.Remote(_, cluster) => cluster
+          })
+          .map(_.randomNonexistentIndex())
+      case None =>
+        List.empty
+    }
     setIndices(actionRequest, newRequestedNonexistentIndices.stringify)
     ModificationResult.Modified
   }
@@ -99,7 +105,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   private def setIndices(request: ResolveClusterActionRequest, indices: Seq[String]) = {
     request.indices(indices: _*)
     val containsLocalIndices = indices.exists(i => !i.contains(":"))
-    if(request.isLocalIndicesRequested != containsLocalIndices) {
+    if (request.isLocalIndicesRequested != containsLocalIndices) {
       Reflect.on(request).set("localIndicesRequested", containsLocalIndices)
     }
   }

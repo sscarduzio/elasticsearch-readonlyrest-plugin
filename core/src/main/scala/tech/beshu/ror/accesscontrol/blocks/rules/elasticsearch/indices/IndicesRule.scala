@@ -26,16 +26,16 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndexPacksUpdater.{FilterableMultiRequestBlockContextWithIndexPacksUpdater, MultiIndexRequestBlockContextWithIndexPacksUpdater}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextWithIndicesUpdater.{FilterableRequestBlockContextWithIndicesUpdater, GeneralIndexRequestBlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.AllClusterIndices
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.templates.AllTemplateIndices
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
@@ -53,7 +53,7 @@ class IndicesRule(override val settings: Settings,
 
   override val name: Rule.Name = IndicesRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     BlockContextUpdater[B] match {
       case UserMetadataRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
       case GeneralNonIndexRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
@@ -70,33 +70,33 @@ class IndicesRule(override val settings: Settings,
     }
   }
 
-  private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): Task[RuleResult[B]] = Task.now {
-    if (settings.mustInvolveIndices) Rejected()
-    else Fulfilled(blockContext)
+  private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): Task[Decision[B]] = Task.now {
+    if (settings.mustInvolveIndices) reject()
+    else Permitted(blockContext)
   }
 
-  private def processIndicesRequest[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B): Task[RuleResult[B]] = {
+  private def processIndicesRequest[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B): Task[Decision[B]] = {
     if (matchAll) {
-      Task.now(Fulfilled(blockContext))
+      Task.now(Permitted(blockContext))
     } else {
       val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices, kibanaIndexFrom(blockContext))
         .map {
           case ProcessResult.Ok(filteredIndices) =>
             val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
-            Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices).withClusters(allowedClusters))
+            Permitted(blockContext.withIndices(filteredIndices, allAllowedIndices).withClusters(allowedClusters))
           case ProcessResult.Failed.IndexNotFound =>
             val allowedClusters = getAllowedClusterNames(blockContext.requestContext, allAllowedIndices)
-            Rejected(Some(Cause.IndexNotFound(allowedClusters)))
+            Denied(Cause.IndexNotFound(allowedClusters))
           case ProcessResult.Failed.Other =>
-            Rejected()
+            reject()
         }
     }
   }
 
-  private def processIndicesPacks[B <: BlockContext : BlockContextWithIndexPacksUpdater : HasIndexPacks](blockContext: B): Task[RuleResult[B]] = {
+  private def processIndicesPacks[B <: BlockContext : BlockContextWithIndexPacksUpdater : HasIndexPacks](blockContext: B): Task[Decision[B]] = {
     if (matchAll) {
-      Task.now(Fulfilled(blockContext))
+      Task.now(Permitted(blockContext))
     } else {
       import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.*
       def atLeastOneFound(indices: Vector[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
@@ -126,18 +126,18 @@ class IndicesRule(override val settings: Settings,
           }
         }
         .map {
-          case Right(indices) if atLeastOneFound(indices) => Fulfilled(blockContext.withIndicesPacks(indices.toList))
-          case Right(_) => Rejected(Cause.IndexNotFound(
+          case Right(indices) if atLeastOneFound(indices) => Permitted(blockContext.withIndicesPacks(indices.toList))
+          case Right(_) => Denied(Cause.IndexNotFound(
             getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
           ))
-          case Left(_) => Rejected()
+          case Left(_) => reject()
         }
     }
   }
 
-  private def processAliasRequest(blockContext: AliasRequestBlockContext): Task[RuleResult[AliasRequestBlockContext]] = {
+  private def processAliasRequest(blockContext: AliasRequestBlockContext): Task[Decision[AliasRequestBlockContext]] = {
     if (matchAll) {
-      Task.now(Fulfilled(blockContext))
+      Task.now(Permitted(blockContext))
     } else {
       val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       for {
@@ -146,30 +146,30 @@ class IndicesRule(override val settings: Settings,
       } yield {
         (indicesResult, aliasesResult) match {
           case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
-            Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
+            Permitted(blockContext.withIndices(indices).withAliases(aliases))
           case (ProcessResult.Failed.IndexNotFound, _) =>
-            Rejected(Some(Cause.IndexNotFound(
+            Denied(Cause.IndexNotFound(
               getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
-            )))
+            ))
           case (ProcessResult.Failed.Other, _) =>
-            Rejected()
+            reject()
           case (_, ProcessResult.Failed.IndexNotFound) =>
-            Rejected(Some(Cause.AliasNotFound))
+            Denied(Cause.AliasNotFound)
           case (_, ProcessResult.Failed.Other) =>
-            Rejected()
+            reject()
         }
       }
     }
   }
 
-  private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): Task[RuleResult[SnapshotRequestBlockContext]] = {
-    if (matchAll) Task.now(Fulfilled(blockContext))
+  private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): Task[Decision[SnapshotRequestBlockContext]] = {
+    if (matchAll) Task.now(Permitted(blockContext))
     else if (blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
   }
 
-  private def processDataStreamRequest(blockContext: DataStreamRequestBlockContext): Task[RuleResult[DataStreamRequestBlockContext]] = {
-    if (matchAll) Task.now(Fulfilled(blockContext))
+  private def processDataStreamRequest(blockContext: DataStreamRequestBlockContext): Task[Decision[DataStreamRequestBlockContext]] = {
+    if (matchAll) Task.now(Permitted(blockContext))
     else if (blockContext.backingIndices == BackingIndices.IndicesNotInvolved) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
   }
@@ -199,6 +199,7 @@ class IndicesRule(override val settings: Settings,
     case _ => false
   }
 
+  private def reject[T]() = Decision.Denied[T](Cause.NotAuthorized)
 }
 
 object IndicesRule {

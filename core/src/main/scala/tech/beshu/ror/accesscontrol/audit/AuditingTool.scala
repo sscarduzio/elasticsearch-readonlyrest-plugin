@@ -20,12 +20,12 @@ import cats.Show
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.audit.sink.*
-import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -35,6 +35,7 @@ import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.EsNodeSettings
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 
@@ -68,8 +69,8 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             historyEntries = allowedBy.history,
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents
           ),
-          verbosity = toAuditVerbosity(allowedBy.block.verbosity),
-          reason = allowedBy.block.show
+          verbosity = toAuditVerbosity(allowedBy.blockContext.block.verbosity),
+          reason = allowedBy.blockContext.block.show
         )
       case allow: ResponseContext.Allowed[B] =>
         AuditResponseContext.Allowed(
@@ -86,8 +87,10 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
           ),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
           reason = allow.userMetadata match {
-            case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) => metadataOrigin.block.show
-            case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.map(_.metadataOrigin.block).toList.show
+            case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
+              metadataOrigin.blockContext.block.show
+            case UserMetadata.WithGroups(groupsMetadata) =>
+              groupsMetadata.values.map(_.metadataOrigin.blockContext.block).toList.show
           }
         )
       case forbiddenBy: ResponseContext.ForbiddenBy[B] =>
@@ -97,10 +100,9 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = forbiddenBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
-            historyEntries = forbiddenBy.history
-          ),
-          verbosity = toAuditVerbosity(forbiddenBy.block.verbosity),
-          reason = forbiddenBy.block.show
+            historyEntries = forbiddenBy.history),
+          verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.verbosity),
+          reason = forbiddenBy.blockContext.block.show
         )
       case forbidden: ResponseContext.Forbidden[B] =>
         AuditResponseContext.Forbidden(
@@ -129,7 +131,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = None,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            historyEntries = Vector.empty
+            historyEntries = History.empty
           ),
           cause = errored.cause
         )
@@ -145,7 +147,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
                                                        loggedUser: Option[LoggedUser],
                                                        auditEnvironmentContext: AuditEnvironmentContext,
                                                        blockContext: Option[B],
-                                                       historyEntries: Vector[History[B]],
+                                                       historyEntries: History[B],
                                                        generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
     new AuditRequestContextBasedOnAclResult(
       requestContext,

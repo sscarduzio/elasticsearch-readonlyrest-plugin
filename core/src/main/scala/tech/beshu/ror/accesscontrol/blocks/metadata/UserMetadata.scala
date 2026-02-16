@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
@@ -51,13 +50,20 @@ object UserMetadata {
                                    // todo: try to get rid of the metadata origin in the future from this place
                                    metadataOrigin: MetadataOrigin)
 
+
+    extension (groupMetadata: GroupMetadata) {
+      def isAllowed: Boolean = {
+        groupMetadata.metadataOrigin.blockContext.block.policy == Policy.Allow
+      }
+    }
+
     extension (withGroups: WithGroups) {
       def excludeOtherThanAllowTypeGroups(): Option[WithGroups] = {
         NonEmptyList
           .fromList {
             withGroups
               .groupsMetadata.values
-              .filter(_.metadataOrigin.block.policy == Policy.Allow)
+              .filter(_.metadataOrigin.blockContext.block.policy == Policy.Allow)
               .toList
           }
           .map(WithGroups.apply)
@@ -65,5 +71,5 @@ object UserMetadata {
     }
   }
 
-  final case class MetadataOrigin(block: Block, blockContext: UserMetadataRequestBlockContext)
+  final case class MetadataOrigin(blockContext: UserMetadataRequestBlockContext)
 }

@@ -15,12 +15,14 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
+
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
+import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaIndexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
@@ -29,33 +31,36 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.utils.KibanaIndexNameRuntimeResolvableVariable
 import tech.beshu.ror.utils.TestsUtils.*
 
-class KibanaIndexRuleTests extends AnyWordSpec {
+class KibanaIndexRuleTests
+  extends AnyWordSpec with Inside with BlockContextAssertion {
 
   "A KibanaIndexRule" should {
     "always match" should {
       "set kibana index if can be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index")))
         val requestContext = MockRequestContext.indices
-        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          UserMetadataRequestBlockContext(
-            requestContext,
-            BlockMetadata.empty.withKibanaIndex(kibanaIndexName("kibana_index")),
-            Set.empty,
-            List.empty)
-        ))
+        val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+
+        val result = rule.check(blockContext).runSyncUnsafe()
+
+        inside(result) {
+          case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+            assertBlockContext(blockContext)(
+              kibanaPolicy = Some(KibanaPolicy.default.copy(index = Some(kibanaIndexName("kibana_index"))))
+            )
+        }
       }
       "not set kibana index if cannot be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index_of_@{user}")))
         val requestContext = MockRequestContext.indices
-        val blockContext = UserMetadataRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          UserMetadataRequestBlockContext(
-            requestContext,
-            BlockMetadata.empty,
-            Set.empty,
-            List.empty)
-        ))
+        val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+
+        val result = rule.check(blockContext).runSyncUnsafe()
+
+        inside(result) {
+          case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+            assertBlockContext(blockContext)()
+        }
       }
     }
   }

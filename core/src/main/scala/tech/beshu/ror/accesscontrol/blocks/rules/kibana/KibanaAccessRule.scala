@@ -17,11 +17,12 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 
 @deprecated("[ROR] This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
@@ -30,17 +31,17 @@ class KibanaAccessRule(override val settings: Settings)
 
   override val name: Rule.Name = KibanaAccessRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     val kibanaIndex = kibanaIndexFrom(blockContext)
-    if (shouldMatch(blockContext.requestContext, kibanaIndex))
+    if (shouldMatch(blockContext, kibanaIndex))
       matched(blockContext, kibanaIndex)
     else
-      Rejected[B]()
+      Denied[B](Cause.NotAuthorized)
   }
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                               kibanaIndex: KibanaIndexName): Fulfilled[B] = {
-    RuleResult.Fulfilled[B] {
+                                                               kibanaIndex: KibanaIndexName): Permitted[B] = {
+    Decision.Permitted[B] {
       blockContext.withBlockMetadata { metadata =>
         metadata
           .withKibanaAccess(settings.access)

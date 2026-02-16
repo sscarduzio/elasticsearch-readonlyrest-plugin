@@ -29,6 +29,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 
 sealed trait BlockContext {
+  def block: Block
+
   def requestContext: RequestContext
 
   def blockMetadata: BlockMetadata
@@ -63,26 +65,30 @@ sealed trait BlockContext {
 
 object BlockContext {
 
-  final case class UserMetadataRequestBlockContext(override val requestContext: RequestContext,
+  final case class UserMetadataRequestBlockContext(override val block: Block,
+                                                   override val requestContext: RequestContext,
                                                    override val blockMetadata: BlockMetadata,
                                                    override val responseHeaders: Set[Header],
                                                    override val responseTransformations: List[ResponseTransformation])
     extends BlockContext
 
-  final case class GeneralNonIndexRequestBlockContext(override val requestContext: RequestContext,
+  final case class GeneralNonIndexRequestBlockContext(override val block: Block,
+                                                      override val requestContext: RequestContext,
                                                       override val blockMetadata: BlockMetadata,
                                                       override val responseHeaders: Set[Header],
                                                       override val responseTransformations: List[ResponseTransformation])
     extends BlockContext
 
-  final case class RepositoryRequestBlockContext(override val requestContext: RequestContext,
+  final case class RepositoryRequestBlockContext(override val block: Block,
+                                                 override val requestContext: RequestContext,
                                                  override val blockMetadata: BlockMetadata,
                                                  override val responseHeaders: Set[Header],
                                                  override val responseTransformations: List[ResponseTransformation],
                                                  repositories: Set[RepositoryName])
     extends BlockContext
 
-  final case class SnapshotRequestBlockContext(override val requestContext: RequestContext,
+  final case class SnapshotRequestBlockContext(override val block: Block,
+                                               override val requestContext: RequestContext,
                                                override val blockMetadata: BlockMetadata,
                                                override val responseHeaders: Set[Header],
                                                override val responseTransformations: List[ResponseTransformation],
@@ -92,7 +98,8 @@ object BlockContext {
                                                allAllowedIndices: Set[ClusterIndexName])
     extends BlockContext
 
-  final case class DataStreamRequestBlockContext(override val requestContext: RequestContext,
+  final case class DataStreamRequestBlockContext(override val block: Block,
+                                                 override val requestContext: RequestContext,
                                                  override val blockMetadata: BlockMetadata,
                                                  override val responseHeaders: Set[Header],
                                                  override val responseTransformations: List[ResponseTransformation],
@@ -111,7 +118,8 @@ object BlockContext {
     }
   }
 
-  final case class AliasRequestBlockContext(override val requestContext: RequestContext,
+  final case class AliasRequestBlockContext(override val block: Block,
+                                            override val requestContext: RequestContext,
                                             override val blockMetadata: BlockMetadata,
                                             override val responseHeaders: Set[Header],
                                             override val responseTransformations: List[ResponseTransformation],
@@ -119,7 +127,8 @@ object BlockContext {
                                             indices: Set[RequestedIndex[ClusterIndexName]])
     extends BlockContext
 
-  final case class TemplateRequestBlockContext(override val requestContext: RequestContext,
+  final case class TemplateRequestBlockContext(override val block: Block,
+                                               override val requestContext: RequestContext,
                                                override val blockMetadata: BlockMetadata,
                                                override val responseHeaders: Set[Header],
                                                override val responseTransformations: List[ResponseTransformation],
@@ -132,7 +141,8 @@ object BlockContext {
     type TemplatesTransformation = Set[Template] => Set[Template]
   }
 
-  final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
+  final case class GeneralIndexRequestBlockContext(override val block: Block,
+                                                   override val requestContext: RequestContext,
                                                    override val blockMetadata: BlockMetadata,
                                                    override val responseHeaders: Set[Header],
                                                    override val responseTransformations: List[ResponseTransformation],
@@ -141,7 +151,8 @@ object BlockContext {
                                                    allAllowedClusters: Set[ClusterName.Full])
     extends BlockContext
 
-  final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
+  final case class FilterableRequestBlockContext(override val block: Block,
+                                                 override val requestContext: RequestContext,
                                                  override val blockMetadata: BlockMetadata,
                                                  override val responseHeaders: Set[Header],
                                                  override val responseTransformations: List[ResponseTransformation],
@@ -152,7 +163,8 @@ object BlockContext {
                                                  requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
     extends BlockContext
 
-  final case class FilterableMultiRequestBlockContext(override val requestContext: RequestContext,
+  final case class FilterableMultiRequestBlockContext(override val block: Block,
+                                                      override val requestContext: RequestContext,
                                                       override val blockMetadata: BlockMetadata,
                                                       override val responseHeaders: Set[Header],
                                                       override val responseTransformations: List[ResponseTransformation],
@@ -162,7 +174,8 @@ object BlockContext {
                                                       requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
     extends BlockContext
 
-  final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
+  final case class MultiIndexRequestBlockContext(override val block: Block,
+                                                 override val requestContext: RequestContext,
                                                  override val blockMetadata: BlockMetadata,
                                                  override val responseHeaders: Set[Header],
                                                  override val responseTransformations: List[ResponseTransformation],
@@ -179,7 +192,8 @@ object BlockContext {
     }
   }
 
-  final case class RorApiRequestBlockContext(override val requestContext: RequestContext,
+  final case class RorApiRequestBlockContext(override val block: Block,
+                                             override val requestContext: RequestContext,
                                              override val blockMetadata: BlockMetadata,
                                              override val responseHeaders: Set[Header],
                                              override val responseTransformations: List[ResponseTransformation])
@@ -329,7 +343,7 @@ object BlockContext {
       BlockContextWithIndicesUpdater[B].withIndices(blockContext, filteredIndices, allAllowedIndices)
     }
 
-    def withClusters(allAllowedClusters: Set[ClusterName.Full]): B =  {
+    def withClusters(allAllowedClusters: Set[ClusterName.Full]): B = {
       BlockContextWithIndicesUpdater[B].withClusters(blockContext, allAllowedClusters)
     }
   }

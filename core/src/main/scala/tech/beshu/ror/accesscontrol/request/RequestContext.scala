@@ -20,7 +20,7 @@ import cats.Eval
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -45,7 +45,7 @@ trait RequestContext {
 
   type BLOCK_CONTEXT <: BlockContext
 
-  def initialBlockContext: BLOCK_CONTEXT
+  def initialBlockContext(block: Block): BLOCK_CONTEXT
 
   def restRequest: RestRequest
 
@@ -60,6 +60,8 @@ trait RequestContext {
   def `type`: Type
 
   def action: Action
+
+  def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]]
 
   def indexAttributes: Set[IndexAttribute]
 
