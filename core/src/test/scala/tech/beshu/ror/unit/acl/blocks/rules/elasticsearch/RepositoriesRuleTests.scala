@@ -18,12 +18,15 @@ package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
@@ -36,7 +39,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class RepositoriesRuleTests extends AnyWordSpec with Inside {
+class RepositoriesRuleTests extends AnyWordSpec with Inside with MockFactory {
 
   "A RepositoriesRule" should {
     "match" when {
@@ -178,15 +181,15 @@ class RepositoriesRuleTests extends AnyWordSpec with Inside {
       repositories = requestRepositories,
       action = requestAction
     )
-    val blockContext = RepositoryRequestBlockContext(requestContext, BlockMetadata.empty, Set.empty, List.empty, requestRepositories)
+    val blockContext = RepositoryRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, requestRepositories)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
-        inside(result) { case Fulfilled(outBlockContext) =>
+        inside(result) { case Permitted(outBlockContext) =>
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Rejected())
+        result should be(Denied(NotAuthorized))
     }
   }
 

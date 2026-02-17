@@ -20,11 +20,14 @@ import cats.data.NonEmptySet
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
@@ -40,7 +43,7 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import java.util.regex.Pattern
 import scala.util.Try
 
-class UriRegexRuleTests extends AnyWordSpec {
+class UriRegexRuleTests extends AnyWordSpec with MockFactory {
 
   "An UriRegexRule" should {
     "match" when {
@@ -124,6 +127,7 @@ class UriRegexRuleTests extends AnyWordSpec {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val requestContext = MockRequestContext.metadata.copy(restRequest = MockRestRequest(path = uriPath))
     val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
       blockMetadata = loggedUser match {
         case Some(userId) => BlockMetadata.empty.withLoggedUser(DirectlyLoggedUser(userId))
@@ -133,8 +137,8 @@ class UriRegexRuleTests extends AnyWordSpec {
       responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(blockContext)
-      else Rejected()
+      if (isMatched) Permitted(blockContext)
+      else Denied(NotAuthorized)
     }
   }
 

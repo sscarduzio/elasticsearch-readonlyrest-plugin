@@ -18,14 +18,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRepositoryFilterScalaAdapter}
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
+import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
 
 class RepositoriesRule(val settings: Settings)
   extends RegularRule
@@ -43,38 +43,38 @@ class RepositoriesRule(val settings: Settings)
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.RepositoryRequestBlockContextUpdater =>
         checkRepositories(blockContext)
       case BlockContextUpdater.SnapshotRequestBlockContextUpdater =>
         checkSnapshotRepositories(blockContext)
       case _ =>
-        Fulfilled(blockContext)
+        Permitted(blockContext)
     }
   }
 
   private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)
-                                                  (implicit ev: RepositoryRequestBlockContext <:< B): RuleResult[B] = {
+                                                  (implicit ev: RepositoryRequestBlockContext <:< B): Decision[B] = {
     checkAllowedRepositories(
       resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {
-      case Right(filteredRepositories) => Fulfilled(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Rejected()
+      case Right(filteredRepositories) => Permitted(blockContext.withRepositories(filteredRepositories))
+      case Left(_) => Denied(Cause.NotAuthorized)
     }
   }
 
   private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)
-                                                          (implicit ev: SnapshotRequestBlockContext <:< B): RuleResult[B] = {
+                                                          (implicit ev: SnapshotRequestBlockContext <:< B): Decision[B] = {
     checkAllowedRepositories(
       resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {
-      case Right(filteredRepositories) => Fulfilled(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Rejected()
+      case Right(filteredRepositories) => Permitted(blockContext.withRepositories(filteredRepositories))
+      case Left(_) => Denied(Cause.NotAuthorized)
     }
   }
 

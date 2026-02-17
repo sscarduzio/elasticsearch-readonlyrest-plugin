@@ -16,15 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import cats.implicits.*
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Url
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.{AuthenticationResult, Name}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
@@ -36,12 +37,14 @@ trait ExternalAuthenticationService extends Item {
   override type Id = Name
 
   def authenticate(credentials: Credentials)
-                  (implicit requestId: RequestId): Task[Boolean]
+                  (implicit requestId: RequestId): Task[AuthenticationResult]
   def serviceTimeout: PositiveFiniteDuration
 
   override val idShow: Show[Name] = Show.show(_.value.value)
 }
 object ExternalAuthenticationService {
+
+  type AuthenticationResult = Either[AuthenticationFailed.type, DirectlyLoggedUser]
 
   final case class Name(value: NonEmptyString)
   object Name {
@@ -57,7 +60,7 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
   extends ExternalAuthenticationService {
 
   override def authenticate(credentials: Credentials)
-                           (implicit requestId: RequestId): Task[Boolean] = {
+                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
     val basicAuthHeader = BasicAuth.fromCredentials(credentials).header
     httpClient
       .send(
@@ -67,7 +70,13 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
           headers = Map(basicAuthHeader.name.value.value -> basicAuthHeader.value.value)
         )
       )
-      .map(response => response.status == successStatusCode)
+      .map { response =>
+        Either.cond(
+          response.status == successStatusCode,
+          DirectlyLoggedUser(credentials.user),
+          AuthenticationFailed
+        )
+      }
   }
 }
 
@@ -79,7 +88,7 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
   extends ExternalAuthenticationService {
 
   override def authenticate(credentials: Credentials)
-                           (implicit requestId: RequestId): Task[Boolean] = {
+                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
     httpClient
       .send(
         HttpClient.Request(
@@ -88,7 +97,13 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
           headers = Map(Header.Name.authorization.value.value -> s"Bearer ${credentials.secret.value}")
         )
       )
-      .map(response => response.status == successStatusCode)
+      .map { response =>
+        Either.cond(
+          response.status == successStatusCode,
+          DirectlyLoggedUser(credentials.user),
+          AuthenticationFailed
+        )
+      }
   }
 }
 
@@ -97,7 +112,7 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
   extends ExternalAuthenticationService {
 
   private val cacheableAuthentication =
-    new CacheableActionWithKeyMapping[Credentials, HashedUserCredentials, Boolean](
+    new CacheableActionWithKeyMapping[Credentials, HashedUserCredentials, AuthenticationResult](
       ttl,
       (credentials, requestId) => authenticateAction(credentials)(requestId),
       hashCredential
@@ -106,7 +121,7 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
   override val id: ExternalAuthenticationService#Id = underlying.id
 
   override def authenticate(credentials: Credentials)
-                           (implicit requestId: RequestId): Task[Boolean] = {
+                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
     cacheableAuthentication.call(credentials, serviceTimeout)
   }
 

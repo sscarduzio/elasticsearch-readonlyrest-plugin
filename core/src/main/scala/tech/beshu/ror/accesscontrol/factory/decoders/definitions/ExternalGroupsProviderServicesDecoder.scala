@@ -20,7 +20,7 @@ import cats.Id
 import io.lemonlabs.uri.Url
 import io.circe.Decoder
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.Config.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalGroupsProviderService.Config.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
@@ -32,22 +32,22 @@ import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCre
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
 
-object ExternalAuthorizationServicesDecoder {
+object ExternalGroupsProviderServicesDecoder {
 
-  def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[ExternalAuthorizationService]] = {
-    implicit val serviceDecoder: SyncDecoder[ExternalAuthorizationService] = SyncDecoderCreator
-      .from(ExternalAuthorizationServicesDecoder.externalAuthorizationServiceDecoder(httpClientFactory))
-    DefinitionsBaseDecoder.instance[Id, ExternalAuthorizationService]("user_groups_providers")
+  def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[ExternalGroupsProviderService]] = {
+    implicit val serviceDecoder: SyncDecoder[ExternalGroupsProviderService] = SyncDecoderCreator
+      .from(ExternalGroupsProviderServicesDecoder.externalGroupsProviderServiceDecoder(httpClientFactory))
+    DefinitionsBaseDecoder.instance[Id, ExternalGroupsProviderService]("user_groups_providers")
   }
 
-  implicit val serviceNameDecoder: Decoder[ExternalAuthorizationService.Name] =
-    DecoderHelpers.decodeStringLikeNonEmpty.map(ExternalAuthorizationService.Name.apply)
+  implicit val serviceNameDecoder: Decoder[ExternalGroupsProviderService.Name] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(ExternalGroupsProviderService.Name.apply)
 
-  private implicit def externalAuthorizationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthorizationService] = {
+  private implicit def externalGroupsProviderServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalGroupsProviderService] = {
     SyncDecoderCreator
       .instance { c =>
         for {
-          name <- c.downField("name").as[ExternalAuthorizationService.Name]
+          name <- c.downField("name").as[ExternalGroupsProviderService.Name]
           url <- c.downFieldAlternatives("groups_endpoint", "url").as[Url]
           authTokenName <- c.downField("auth_token_name").as[AuthTokenName]
           sendUsing <- c.downField("auth_token_passed_as").as[AuthTokenSendMethod]
@@ -59,11 +59,11 @@ object ExternalAuthorizationServicesDecoder {
           httpClientConfig <- c.as[ValidatedHttpClientConfig].map(_.config)
         } yield {
           val httpClient = httpClientFactory.create(httpClientConfig)
-          val externalAuthService: ExternalAuthorizationService =
-            new HttpExternalAuthorizationService(
+          val externalGroupsProviderService: ExternalGroupsProviderService =
+            new HttpExternalGroupsProviderService(
               id = name,
               serviceTimeout = httpClientConfig.requestTimeout,
-              config = HttpExternalAuthorizationService.Config(
+              config = HttpExternalGroupsProviderService.Config(
                 url = url,
                 method = httpMethod.getOrElse(defaults.httpMethod),
                 tokenName = authTokenName,
@@ -74,9 +74,9 @@ object ExternalAuthorizationServicesDecoder {
               ),
               httpClient = httpClient
             )
-          cacheTtl.foldLeft(externalAuthService) {
+          cacheTtl.foldLeft(externalGroupsProviderService) {
             case (cacheableAuthService, ttl) =>
-              new CacheableExternalAuthorizationServiceDecorator(cacheableAuthService, ttl)
+              new CacheableExternalGroupsProviderServiceDecorator(cacheableAuthService, ttl)
           }
         }
       }
@@ -84,7 +84,7 @@ object ExternalAuthorizationServicesDecoder {
       .decoder
   }
 
-  private def groupsConfigDecoder(name: ExternalAuthorizationService.Name): Decoder[GroupsConfig] = {
+  private def groupsConfigDecoder(name: ExternalGroupsProviderService.Name): Decoder[GroupsConfig] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -100,8 +100,8 @@ object ExternalAuthorizationServicesDecoder {
       .emapE {
         case (Some(groupIdsConfig), None, groupNamesConfig) => Right(GroupsConfig(groupIdsConfig, groupNamesConfig))
         case (None, Some(groupIdsDeprecatedConfig), _) => Right(GroupsConfig(groupIdsDeprecatedConfig, None))
-        case (None, None, _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External authorization service '${name.show}' configuration is missing the 'response_group_ids_json_path' attribute")))
-        case (Some(_), Some(_), _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External authorization service '${name.show}' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time")))
+        case (None, None, _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External groups provider service '${name.show}' configuration is missing the 'response_group_ids_json_path' attribute")))
+        case (Some(_), Some(_), _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External groups provider service '${name.show}' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time")))
       }
       .mapError(DefinitionsLevelCreationError.apply)
       .decoder

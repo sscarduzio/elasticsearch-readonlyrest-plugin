@@ -24,6 +24,7 @@ import org.elasticsearch.cluster.metadata.AliasMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, RandomIndexBasedOnBlockContextIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
@@ -50,14 +51,17 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
   extends BaseEsRequestContext[AliasRequestBlockContext](esContext, clusterService)
     with EsRequest[AliasRequestBlockContext] {
 
-  override val initialBlockContext: AliasRequestBlockContext = AliasRequestBlockContext(
+  override def initialBlockContext(block: Block): AliasRequestBlockContext = AliasRequestBlockContext(
+    block = block,
     requestContext = this,
     blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    aliases = discoverAliases(actionRequest),
-    indices = discoverIndices(actionRequest),
+    aliases = discoveredAliases,
+    indices = discoveredIndices,
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(discoveredIndices)
 
   override protected def modifyRequest(blockContext: AliasRequestBlockContext): ModificationResult = {
     val result = for {
@@ -79,10 +83,10 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentLocalIndex(_.indices)
+      val nonExistentIndex = discoveredIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.indices.map(_.randomNonexistentLocalIndex()).toList)
+          .fromList(discoveredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         updateIndices(actionRequest, nonExistingIndices)
         Modified
@@ -90,17 +94,17 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         ShouldBeInterrupted
       }
     } else {
-      updateIndices(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.indices)))
+      updateIndices(actionRequest, NonEmptyList.of(discoveredIndices.randomNonexistentLocalIndex()))
       Modified
     }
   }
 
   override def modifyWhenAliasNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentAlias = initialBlockContext.randomNonexistentLocalIndex(_.aliases)
+      val nonExistentAlias = discoveredAliases.randomNonexistentLocalIndex()
       if (nonExistentAlias.name.hasWildcard) {
         val nonExistingAliases = NonEmptyList
-          .fromList(initialBlockContext.aliases.map(_.randomNonexistentLocalIndex()).toList)
+          .fromList(discoveredAliases.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentAlias))
         updateAliases(actionRequest, nonExistingAliases)
         Modified
@@ -108,13 +112,13 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
         ShouldBeInterrupted
       }
     } else {
-      updateAliases(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.aliases)))
+      updateAliases(actionRequest, NonEmptyList.of(discoveredAliases.randomNonexistentLocalIndex()))
       Modified
     }
   }
 
-  private def discoverIndices(request: GetAliasesRequest) = {
-    val indices = request
+  private lazy val discoveredIndices = {
+    val indices = actionRequest
       .indices().asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
@@ -122,8 +126,8 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     indices
   }
 
-  private def discoverAliases(request: GetAliasesRequest) = {
-    val aliases = rawRequestAliasesSet(request)
+  private lazy val discoveredAliases = {
+    val aliases = rawRequestAliasesSet(actionRequest)
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
     logger.debug(s"Discovered aliases: ${aliases.show}")

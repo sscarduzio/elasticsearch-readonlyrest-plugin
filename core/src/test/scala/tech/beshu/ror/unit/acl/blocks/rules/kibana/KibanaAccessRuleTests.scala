@@ -37,15 +37,13 @@ class KibanaAccessRuleTests
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         indices = indices,
         dataStreams = dataStreams,
         kibanaPolicy = Some(KibanaPolicy.default.copy(
           access = settings.access,
           index = Some(kibanaIndexFrom(customKibanaIndex)),
         )),
-      )(
-        blockContext
       )
     }
 }

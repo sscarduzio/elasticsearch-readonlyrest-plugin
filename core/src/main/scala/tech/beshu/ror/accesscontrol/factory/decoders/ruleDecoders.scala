@@ -105,7 +105,7 @@ object ruleDecoders {
       case _ => usersDefinitionsAllowedRulesDecoderBy(
         name,
         definitions.authenticationServices,
-        definitions.authorizationServices,
+        definitions.externalGroupsProviderServices,
         definitions.proxies,
         definitions.jwts,
         definitions.rorKbns,
@@ -120,7 +120,7 @@ object ruleDecoders {
 
   def usersDefinitionsAllowedRulesDecoderBy(name: Rule.Name,
                                             authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                            authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                            externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
                                             authProxyDefinitions: Definitions[ProxyAuth],
                                             jwtDefinitions: Definitions[JwtDef],
                                             rorKbnDefinitions: Definitions[RorKbnDef],
@@ -130,7 +130,7 @@ object ruleDecoders {
                                             globalSettings: GlobalSettings): Option[RuleDecoder[Rule]] = {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
-        Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
+        Some(new ExternalAuthorizationRuleDecoder(externalGroupsProviderServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case JwtAuthRule.Name.name =>
         val definitions = jwtDefinitions.items.collect {case definition: JwtDefForAuth => definition}
         Some(new JwtAuthRulesDecoders.AuthRuleDecoder(jwtDefinitions.items, definitions, globalSettings))

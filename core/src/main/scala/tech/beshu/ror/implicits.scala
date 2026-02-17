@@ -20,20 +20,20 @@ import better.files.File
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits.*
-import eu.timepit.refined.api.*
+import eu.timepit.refined.api.{Result as _, *}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.*
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy}
+import tech.beshu.ror.accesscontrol.blocks.Block.{Name, Policy}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, FieldsRule, FilterRule, ResponseFieldsRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
@@ -74,6 +74,7 @@ import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSaving
 import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -195,7 +196,7 @@ trait LogsShowInstances
   implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
   implicit val ldapHostShow: Show[LdapHost] = Show.show(_.url.toString())
   implicit val ldapServiceNameShow: Show[LdapService.Name] = Show.show(_.value.value)
-  implicit val externalAuthorizationServiceNameShow: Show[ExternalAuthorizationService.Name] = Show.show(_.value.value)
+  implicit val externalAuthorizationServiceNameShow: Show[ExternalGroupsProviderService.Name] = Show.show(_.value.value)
   implicit val jwtDefNameShow: Show[JwtDef.Name] = Show.show(_.value.value)
   implicit val rorKbnDefNameShow: Show[RorKbnDef.Name] = Show.show(_.value.value)
   implicit val httpRequestShow: Show[HttpClient.Request] = Show.show(_.toString)
@@ -216,19 +217,19 @@ trait LogsShowInstances
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(
           allowedBy.blockContext.blockMetadata.loggedUser.toList, allowedBy.history, debugEnabled
         )
-        s"""${constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${constants.ANSI_RESET}"""
+        s"""${constants.ANSI_CYAN}ALLOWED by ${allowedBy.blockContext.block.show} req=${allowedBy.requestContext.show}${constants.ANSI_RESET}"""
       case allow: Allowed[B] =>
         val (users, blocks) = allow.userMetadata match {
           case UserMetadata.WithoutGroups(user, _, _, metadataOrigin) =>
-            (user :: Nil, metadataOrigin.block :: Nil)
+            (user :: Nil, metadataOrigin.blockContext.block :: Nil)
           case UserMetadata.WithGroups(groupsMetadata) =>
-            groupsMetadata.values.map(m => (m.loggedUser, m.metadataOrigin.block)).toList.unzip
+            groupsMetadata.values.map(m => (m.loggedUser, m.metadataOrigin.blockContext.block)).toList.unzip
         }
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(users, allow.history, debugEnabled)
         s"""${constants.ANSI_CYAN}ALLOWED by ${blocks.show} req=${allow.requestContext.show}${constants.ANSI_RESET}"""
       case forbiddenBy: ForbiddenBy[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, forbiddenBy.history, debugEnabled)
-        s"""${constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.block.show} req=${forbiddenBy.requestContext.show}${constants.ANSI_RESET}"""
+        s"""${constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.blockContext.block.show} req=${forbiddenBy.requestContext.show}${constants.ANSI_RESET}"""
       case forbidden: Forbidden[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, forbidden.history, debugEnabled)
         s"""${constants.ANSI_PURPLE}FORBIDDEN by default req=${forbidden.requestContext.show}${constants.ANSI_RESET}"""
@@ -236,13 +237,13 @@ trait LogsShowInstances
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, requestedIndexNotExist.history, debugEnabled)
         s"""${constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestedIndexNotExist.requestContext.show}${constants.ANSI_RESET}"""
       case errored: Errored[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, Vector.empty, debugEnabled)
+        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, History.empty, debugEnabled)
         s"""${constants.ANSI_YELLOW}ERRORED by error req=${errored.requestContext.show}${constants.ANSI_RESET}"""
     }
   }
 
   def requestContextShow[B <: BlockContext](loggedUsers: Iterable[LoggedUser],
-                                            history: Vector[Block.History[B]],
+                                            history: History[B],
                                             debugEnabled: Boolean)
                                            (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] = Show.show { r =>
     def stringifyUsers = {
@@ -260,7 +261,7 @@ trait LogsShowInstances
     }
 
     def stringifyIndices = {
-      val idx = r.initialBlockContext.indices.toList.map(_.show)
+      val idx = r.requestedIndices.toList.flatten.map(_.show)
       if (idx.isEmpty) "<N/A>"
       else idx.mkString(",")
     }
@@ -286,7 +287,7 @@ trait LogsShowInstances
        | PTH:${r.restRequest.path.show},
        | CNT:${stringifyContentLength.show},
        | HDR:${r.restRequest.allHeaders.show},
-       | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ").show},
+       | HIS:${history.blocks.map(h => blockHistoryShow(headerShow).show(h)).mkString(", ").show},
        | }""".oneLiner
   }
 
@@ -352,26 +353,29 @@ trait LogsShowInstances
   implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
   implicit val blockNameShow: Show[Name] = Show.show(_.value)
 
-  implicit def ruleHistoryItemShow[B <: BlockContext]: Show[RuleHistoryItem[B]] = Show.show { hi =>
-    s"${hi.rule.show}->${
-      hi.result match {
-        case RuleResult.Fulfilled(_) => "true"
-        case RuleResult.Rejected(_) => "false"
+  implicit def ruleHistoryShow[B <: BlockContext]: Show[RuleHistory[B]] = Show.show { h =>
+    s"${h.rule.show}->${
+      h.decision match {
+        case Decision.Permitted(_) => "true"
+        case Decision.Denied(_) => "false"
       }
     }"
   }
 
-  implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
-    Show.show[History[B]] { h =>
-      val rulesHistoryItemsStr = h.items
-        .collect { case hi: RuleHistoryItem[B] => hi }
+  implicit def blockHistoryShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[BlockHistory[B]] =
+    Show.show[BlockHistory[B]] { r =>
+      val rulesHistoryItemsStr = r
+        .history
         .map(_.show)
         .mkStringOrEmptyString(" RULES:[", ", ", "]")
-      val resolvedPart = h.blockContext.show match {
-        case "" => ""
-        case nonEmpty => s" RESOLVED:[$nonEmpty]"
+      val resolvedPart = r match {
+        case BlockHistory.Permitted(_, decision, _) => decision.context.show match {
+          case "" => ""
+          case nonEmpty => s" RESOLVED:[$nonEmpty]"
+        }
+        case BlockHistory.Denied(_, _, _) => ""
       }
-      s"""[${h.block.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
+      s"""[${r.block.name.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
     }
 
   implicit val policyShow: Show[Policy] = Show.show {

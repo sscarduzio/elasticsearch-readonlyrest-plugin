@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
 
 class Ip4sBasedHostnameResolver extends HostnameResolver {
 
-  // fixme: (improvements) blocking resolving (shift to another EC)
+  // todo: (improvements) blocking resolving (shift to another EC)
   def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
     Blocker[Task].use { implicit blocker =>
       implicit val dns: Dns[Task] = Dns.forSync[Task]

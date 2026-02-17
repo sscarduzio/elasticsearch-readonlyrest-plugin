@@ -50,7 +50,7 @@ class UserMetadataRequestHandler(engine: Engine,
   def handle(request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext] with EsRequest[UserMetadataRequestBlockContext]): Task[Unit] = {
     engine.core.accessControl
       .handleMetadataRequest(request)
-      .map { r => commitResult(r.result, request) }
+      .map { case (result, _) => commitResult(result, request) }
   }
 
   private def commitResult(result: UserMetadataRequestResult,
@@ -59,12 +59,12 @@ class UserMetadataRequestHandler(engine: Engine,
       result match {
         case UserMetadataRequestResult.RorKbnPluginNotSupported =>
           onForbidden(request, RorKbnPluginNotSupported.responseContext)
-        case UserMetadataRequestResult.Allow(userMetadata) =>
+        case UserMetadataRequestResult.Allowed(userMetadata) =>
           onAllow(request, userMetadata)
-        case UserMetadataRequestResult.ForbiddenBy(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case UserMetadataRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
+        case UserMetadataRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
+        case f@UserMetadataRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, f.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
       }

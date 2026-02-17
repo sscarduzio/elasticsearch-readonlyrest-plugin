@@ -18,15 +18,15 @@ package tech.beshu.ror.accesscontrol.blocks.rules.tranport
 
 import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
-import tech.beshu.ror.implicits.*
 
 class HostsRule(val settings: Settings,
                 resolver: HostnameResolver)
@@ -34,7 +34,7 @@ class HostsRule(val settings: Settings,
 
   override val name: Rule.Name = HostsRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     val requestContext = blockContext.requestContext
     requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>
@@ -43,7 +43,7 @@ class HostsRule(val settings: Settings,
           addressToCheck = xForwardedHeaderValue
         ).flatMap {
           case true =>
-            Task.now(RuleResult.Fulfilled(blockContext))
+            Task.now(Decision.Permitted(blockContext))
           case false =>
             checkRemoteAddress(blockContext)
         }
@@ -52,17 +52,17 @@ class HostsRule(val settings: Settings,
     }
   }
 
-  private def checkRemoteAddress[B <: BlockContext](blockContext: B): Task[RuleResult[B]] = {
+  private def checkRemoteAddress[B <: BlockContext](blockContext: B): Task[Decision[B]] = {
     implicit val blockContextImpl: B = blockContext
     blockContext.requestContext.restRequest.remoteAddress match {
       case Some(remoteAddress) =>
         checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedHosts,
           addressToCheck = remoteAddress
-        ).map(condition => RuleResult.resultBasedOnCondition(blockContext)(condition))
+        ).map(condition => Decision.permit(`with` = blockContext)(when = condition))
       case None =>
         logger.warn(s"Remote address is unavailable!")
-        Task.now(Rejected())
+        Task.now(Denied(Cause.NotAuthorized))
     }
   }
 }

@@ -17,9 +17,11 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
 import cats.data.NonEmptyList
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
@@ -46,7 +48,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[BaseGroupsRule[GroupsLogic]]
-    with Inside
+    with Inside with MockFactory
     with ScalaCheckPropertyChecks {
 
   private val simpleSyntaxTestParams = Table[String, GroupIds => GroupsLogic](
@@ -1626,10 +1628,11 @@ class GroupsRuleSettingsTests
   private def currentUserMetadataRequestBlockContextFrom(update: BlockMetadata => BlockMetadata = identity,
                                                          requestContext: MockUserMetadataRequestContext = MockRequestContext.metadata) = {
     UserMetadataRequestBlockContext(
-      requestContext,
-      update(BlockMetadata.from(requestContext)),
-      syntax.Set.empty,
-      List.empty
+      block = mock[Block],
+      requestContext = requestContext,
+      blockMetadata = update(BlockMetadata.from(requestContext)),
+      responseHeaders = syntax.Set.empty,
+      responseTransformations = List.empty
     )
   }
 }

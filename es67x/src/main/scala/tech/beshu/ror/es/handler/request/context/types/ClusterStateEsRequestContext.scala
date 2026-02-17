@@ -22,8 +22,9 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.toOps
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -59,7 +60,7 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     restRequest.path match {
       case CatIndicesPath(_) =>
-        val randomNonExistentIndices = NonEmptyList.of(initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices))
+        val randomNonExistentIndices = NonEmptyList.of(requestedIndices.getOrElse(Set.empty).randomNonexistentLocalIndex())
         update(actionRequest, randomNonExistentIndices, randomNonExistentIndices.map(_.name), allowedClusters)
       case _ =>
         super.modifyWhenIndexNotFound(allowedClusters)

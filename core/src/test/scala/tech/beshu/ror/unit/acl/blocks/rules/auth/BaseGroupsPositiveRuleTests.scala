@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import org.scalatest.matchers.should.Matchers.*
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
@@ -48,7 +48,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("group_user1"))
+                mode = WithoutGroupsMapping(authenticationRule.denying, groups("group_user1"))
               ))
             ),
             loggedUser = None,
@@ -61,7 +61,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupIdLike.from("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1"))
+                mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
               ))
             ),
             loggedUser = None,
@@ -74,11 +74,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1"))
+                mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
               ))
             ),
             loggedUser = Some(User.Id("user2")),
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = AuthenticationFailed
           )
         }
         "there is no matching auth rule for given user" in {
@@ -87,7 +88,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1"))
+                mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
               ))
             ),
             loggedUser = Some(User.Id("user1")),
@@ -100,7 +101,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("u*"),
-                mode = WithoutGroupsMapping(authenticationRule.matching(User.Id("User1")), groups("g1"))
+                mode = WithoutGroupsMapping(authenticationRule.permitting(User.Id("User1")), groups("g1"))
               ))
             ),
             loggedUser = None,
@@ -130,7 +131,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
-                mode = WithGroupsMapping(SingleRule(authRule.rejecting), noGroupMappingFrom("group_user1"))
+                mode = WithGroupsMapping(SingleRule(authRule.denying), noGroupMappingFrom("group_user1"))
               ))
             ),
             loggedUser = None,
@@ -147,8 +148,8 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
-                    authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.rejecting
+                    authenticationRule.permitting(User.Id("user1")),
+                    authorizationRule.denying
                   ),
                   noGroupMappingFrom("group_user1")
                 )
@@ -168,8 +169,8 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
-                    authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(group("remote_group1")))
+                    authenticationRule.permitting(User.Id("user1")),
+                    authorizationRule.permitting(NonEmptyList.of(group("remote_group1")))
                   ),
                   noGroupMappingFrom("group_user1")
                 )
@@ -189,8 +190,8 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
-                    authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(group("remote_group2")))
+                    authenticationRule.permitting(User.Id("user1")),
+                    authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
                   ),
                   groupMapping(
                     Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_1"))),
@@ -213,8 +214,8 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
-                    authenticationRule.matching(User.Id("user1")),
-                    authorizationRule.matching(NonEmptyList.of(group("remote_group2")))
+                    authenticationRule.permitting(User.Id("user1")),
+                    authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
                   ),
                   groupMapping(
                     Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))),
@@ -240,7 +241,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithoutGroupsMapping(
-                      authenticationRule.matching(User.Id("user1")),
+                      authenticationRule.permitting(User.Id("user1")),
                       groups("g1")
                     )
                   ))
@@ -262,7 +263,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithoutGroupsMapping(
-                      authenticationRule.matching(User.Id("User1")),
+                      authenticationRule.permitting(User.Id("User1")),
                       groups("g1")
                     )
                   ))
@@ -287,7 +288,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("u*"),
                     mode = WithoutGroupsMapping(
-                      authenticationRule.matching(User.Id("user1")),
+                      authenticationRule.permitting(User.Id("user1")),
                       groups("g1")
                     )
                   ))
@@ -309,7 +310,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                   usersDefinitions = NonEmptyList.of(UserDef(
                     usernames = userIdPatterns("u*"),
                     mode = WithoutGroupsMapping(
-                      authenticationRule.matching(User.Id("User1")),
+                      authenticationRule.permitting(User.Id("User1")),
                       groups("g1")
                     )
                   ))
@@ -337,14 +338,14 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                     UserDef(
                       usernames = userIdPatterns("user2"),
                       mode = WithoutGroupsMapping(
-                        authenticationRule.rejecting,
+                        authenticationRule.denying,
                         groups("g1", "g2")
                       )
                     ),
                     UserDef(
                       usernames = userIdPatterns("user1"),
                       mode = WithoutGroupsMapping(
-                        authenticationRule.matching(User.Id("user1")),
+                        authenticationRule.permitting(User.Id("user1")),
                         groups("g1")
                       )
                     )
@@ -372,12 +373,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
-                    mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1", "g2"))
+                    mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1", "g2"))
                   ),
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
+                      SingleRule(authRule.permitting(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
                       noGroupMappingFrom("g1")
                     )
                   )
@@ -400,12 +401,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
-                    mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1", "g2"))
+                    mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1", "g2"))
                   ),
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
+                      SingleRule(authRule.permitting(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
                       groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group"))))
                     )
                   )
@@ -428,12 +429,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
-                    mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1", "g2"))
+                    mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1", "g2"))
                   ),
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
-                      SingleRule(authRule.matching(User.Id("user1"), NonEmptyList.of(group("remote_group_1")))),
+                      SingleRule(authRule.permitting(User.Id("user1"), NonEmptyList.of(group("remote_group_1")))),
                       groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))))
                     )
                   )
@@ -458,14 +459,14 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
                 usersDefinitions = NonEmptyList.of(
                   UserDef(
                     usernames = userIdPatterns("user2"),
-                    mode = WithoutGroupsMapping(authenticationRule.rejecting, groups("g1", "g2"))
+                    mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1", "g2"))
                   ),
                   UserDef(
                     usernames = userIdPatterns("user1"),
                     mode = WithGroupsMapping(
                       SeparateRules(
-                        authenticationRule.matching(User.Id("user1")),
-                        authorizationRule.matching(NonEmptyList.of(group("remote_group")))
+                        authenticationRule.permitting(User.Id("user1")),
+                        authorizationRule.permitting(NonEmptyList.of(group("remote_group")))
                       ),
                       noGroupMappingFrom("g1")
                     )

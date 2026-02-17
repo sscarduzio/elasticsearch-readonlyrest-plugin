@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.http.HttpChannel
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel, RestRequest as EsRestRequest, RestResponse as EsRestResponse}
 import squants.information.{Bytes, Information}
@@ -26,6 +25,7 @@ import tech.beshu.ror.accesscontrol.request.RestRequest
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.net.InetSocketAddress
 import scala.jdk.CollectionConverters.*

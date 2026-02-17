@@ -18,6 +18,7 @@ package tech.beshu.ror.integration
 
 import better.files.File
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.TestSuite
 import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
@@ -34,6 +35,7 @@ import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, defaultEsVersionForTests, testEsNodeSettings, unsafeNes}
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
+  this: TestSuite =>
 
   protected def settingsYaml: String
 

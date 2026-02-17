@@ -332,7 +332,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
-        authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
+        externalGroupsProviderServices <- AsyncDecoderCreator.from(ExternalGroupsProviderServicesDecoder.instance(httpClientFactory))
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, variableCreator))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(using ldapConnectionPoolProvider, systemContext.clock)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
@@ -342,7 +342,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(
           authenticationServices,
-          authorizationServices,
+          externalGroupsProviderServices,
           authProxies,
           jwtDefs,
           rorKbnDefs,
@@ -360,7 +360,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 proxies = authProxies,
                 users = userDefs,
                 authenticationServices = authenticationServices,
-                authorizationServices = authorizationServices,
+                externalGroupsProviderServices = externalGroupsProviderServices,
                 jwts = jwtDefs,
                 rorKbns = rorKbnDefs,
                 ldaps = ldapServices,
@@ -400,7 +400,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         val rorDependencies = RorDependencies(
           services = RorDependencies.Services(
             authenticationServices = authenticationServices.items.map(_.id),
-            authorizationServices = authorizationServices.items.map(_.id),
+            externalGroupsProviderServices = externalGroupsProviderServices.items.map(_.id),
             ldaps = ldapServices.items.map(_.id)
           ),
           localUsers = localUsers,
