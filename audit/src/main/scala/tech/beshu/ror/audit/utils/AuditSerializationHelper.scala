@@ -271,6 +271,7 @@ private[ror] object AuditSerializationHelper {
 
     case object EcsEventOutcome extends AuditFieldValueDescriptor
 
+    @deprecated("[ROR] The Reason audit field value descriptor should not be used. Use MatchedBlockNames instead", "1.69.0")
     case object Reason extends AuditFieldValueDescriptor
 
     @deprecated("[ROR] The User audit field value descriptor should not be used. Use LoggedUser or PresentedIdentity instead", "1.68.0")

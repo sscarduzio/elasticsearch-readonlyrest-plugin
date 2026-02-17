@@ -88,9 +88,8 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
                 case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
                   NonEmptyList.one(metadataOrigin.blockContext.block)
                 case UserMetadata.WithGroups(groupsMetadata) =>
-                  NonEmptyList(
-                    groupsMetadata.head._2.metadataOrigin.blockContext.block,
-                    groupsMetadata.tail.values.map(_.metadataOrigin.blockContext.block).toList,
+                  NonEmptyList.fromListUnsafe( // safe here, because the argument is guaranteed to be a NonEmptyList
+                    groupsMetadata.values.map(_.metadataOrigin.blockContext.block).toList.distinctBy(_.name)
                   )
               }
             ),
