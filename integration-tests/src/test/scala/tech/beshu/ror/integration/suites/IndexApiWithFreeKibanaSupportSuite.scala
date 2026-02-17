@@ -30,6 +30,7 @@ class IndexApiWithFreeKibanaSupportSuite
   override val notFoundIndexStatusReturned: Int = 401
   override val forbiddenStatusReturned: Int = 401
 
+  // Those are not Index API tests, but this is the only place, where ROR is explicitly started in Free Kibana mode
   "ROR API user metadata endpoint" should {
     "return 403 with message about not supported KBN ROR plugin" when {
       "user would have access, but now does not because of free Kibana" in {

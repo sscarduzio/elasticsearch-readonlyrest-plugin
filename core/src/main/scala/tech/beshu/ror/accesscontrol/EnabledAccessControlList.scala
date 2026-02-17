@@ -93,14 +93,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   override def handleMetadataRequest(context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] = {
     if (staticContext.doesRequirePassword) {
-      Task.delay(WithHistory(Vector.empty, UserMetadataRequestResult.RorKbnPluginNotSupported))
+      Task.delay((UserMetadataRequestResult.RorKbnPluginNotSupported, History.empty))
     } else {
       Task
         .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
         .map(_.flatten)
         .map { blockResults =>
           val (executionResults, blocksHistory) = blockResults.unzip
-        val history = History(blocksHistory.toVector)
+          val history = History(blocksHistory.toVector)
           val matchedResults = executionResults.view.onlyMatched()
           val handlingResult = context.apiVersion match {
             case UserMetadataApiVersion.V1 =>
