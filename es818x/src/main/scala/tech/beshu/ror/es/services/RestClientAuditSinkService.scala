@@ -143,7 +143,6 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
       .build()
   }
 
-
   private def configureRequestConfig(cluster: AuditCluster.RemoteAuditCluster): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {
     httpClientBuilder
       .setDefaultRequestConfig(
@@ -169,7 +168,6 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
         httpClientBuilder
     }
   }
-
 
   private def configureSsl(): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {
     val trustAllCerts = createTrustAllManager()
