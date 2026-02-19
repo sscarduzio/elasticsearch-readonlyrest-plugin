@@ -33,7 +33,7 @@ import scala.language.postfixOps
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
   extends GenericContainer(
-    dockerImage = "shopify/toxiproxy:2.1.4",
+    dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
     exposedPorts = Seq(httpApiPort, proxiedPort),
     waitStrategy = Some(new ToxiproxyApiWaitStrategy())
   ) with LazyLogging {
@@ -43,6 +43,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
 
   private var innerContainerProxy: Option[Proxy] = None
   private var timeoutToxic: Option[toxic.Timeout] = None
+  private var latencyToxic: Option[toxic.Latency] = None
 
   def containerHost: String = container.getHost
 
@@ -62,9 +63,20 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     }
   }
 
+  def enableLatency(duration: FiniteDuration = 1 second): Unit = {
+    latencyToxic = innerContainerProxy.map { proxy =>
+      proxy.toxics().latency("latency", ToxicDirection.DOWNSTREAM, duration.toMillis)
+    }
+  }
+
   def disableNetworkTimeout(): Unit = {
     timeoutToxic.foreach(_.remove())
     timeoutToxic = None
+  }
+
+  def disableLatency(): Unit = {
+    latencyToxic.foreach(_.remove())
+    latencyToxic = None
   }
 
   override def start(): Unit = {
