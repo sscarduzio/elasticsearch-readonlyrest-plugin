@@ -24,6 +24,11 @@ import tech.beshu.ror.syntax
 
 object RorKbnPluginNotSupported {
 
+  // This is a response context for user metadata endpoint, when 'prompt_for_basic_auth: true' setting is configured.
+  // That setting means, that ROR ES plugin will return HTTP status 401 and will request user to provide basic auth credentials.
+  // This response context dedicated for user metadata endpoint:
+  // - has custom error message
+  // - sets doesRequirePassword=false, which means that the response will be returned with HTTP 403 Forbidden status
   val responseContext = new ForbiddenResponseContext(
     Some(UserMetadataAccessControlStaticContext),
     NonEmptyList.one(ForbiddenResponseContext.OperationNotAllowed)

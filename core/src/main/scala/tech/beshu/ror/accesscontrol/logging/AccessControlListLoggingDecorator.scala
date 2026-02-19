@@ -85,6 +85,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
           result match {
             case UserMetadataRequestResult.RorKbnPluginNotSupported =>
               logger.warn(RorKbnPluginNotSupported.message)
+              log(Forbidden(requestContext, History.empty))
             case UserMetadataRequestResult.Allowed(userMetadata) =>
               log(Allowed(requestContext, userMetadata, history))
             case forbiddenBy: UserMetadataRequestResult.Forbidden =>

@@ -16,68 +16,16 @@
  */
 package tech.beshu.ror.integration.suites
 
-import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.integration.suites.base.{BaseIndexApiSuite, EnabledPromptForBasicAuthSettingSuite}
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.elasticsearch.RorApiManager
+import tech.beshu.ror.utils.containers.EsClusterProvider
 
-class IndexApiWithFreeKibanaSupportSuite
-  extends BaseIndexApiSuite
-    with SingletonPluginTestSupport {
-
-  override implicit val rorSettingsFileName: String = "/index_api/free_readonlyrest.yml"
+trait IndexApiWithFreeKibanaSupportSuite
+  extends BaseIndexApiSuite {
+  this: EsClusterProvider with EnabledPromptForBasicAuthSettingSuite =>
 
   override val notFoundIndexStatusReturned: Int = 401
   override val forbiddenStatusReturned: Int = 401
-
-  // Those are not Index API tests, but this is the only place, where ROR is explicitly started in Free Kibana mode
-  "ROR API user metadata endpoint" should {
-    "return 403 with message about not supported KBN ROR plugin" when {
-      "user would have access, but now does not because of free Kibana" in {
-        val userMetadataManager = new RorApiManager(
-          basicAuthClientWithRorMetadataAttached("dev1", "test", ("x-ror-kbn-license-type", "ent")),
-          esVersionUsed,
-        )
-
-        val result = userMetadataManager.fetchUserMetadata()
-
-        result should have statusCode 403
-        result.responseJson should be(expectedNotSupportedKbnRorPluginJson)
-      }
-      "user does not have access" in {
-        val userMetadataManager = new RorApiManager(
-          basicAuthClientWithRorMetadataAttached("dev9", "test", ("x-ror-kbn-license-type", "ent")),
-          esVersionUsed,
-        )
-
-        val result = userMetadataManager.fetchUserMetadata()
-
-        result should have statusCode 403
-        result.responseJson should be(expectedNotSupportedKbnRorPluginJson)
-      }
-    }
-  }
-
-  "ROR API current user metadata endpoint" should {
-    "return 403 with message about not supported KBN ROR plugin" when {
-      "user would have access, but now does not because of free Kibana" in {
-        val userMetadataManager = new RorApiManager(basicAuthClient("dev1", "test"), esVersionUsed)
-
-        val result = userMetadataManager.fetchCurrentUserMetadata()
-
-        result should have statusCode 403
-        result.responseJson should be(expectedNotSupportedKbnRorPluginJson)
-      }
-      "user does not have access" in {
-        val userMetadataManager = new RorApiManager(basicAuthClient("dev9", "test"), esVersionUsed)
-
-        val result = userMetadataManager.fetchCurrentUserMetadata()
-
-        result should have statusCode 403
-        result.responseJson should be(expectedNotSupportedKbnRorPluginJson)
-      }
-    }
-  }
 
   override def forbiddenByBlockResponse(reason: String): ujson.Value = {
     ujson.read(
@@ -106,25 +54,5 @@ class IndexApiWithFreeKibanaSupportSuite
          |""".stripMargin
     )
   }
-
-  private def expectedNotSupportedKbnRorPluginJson = ujson.read(
-    s"""
-       |{
-       |  "error":{
-       |    "root_cause":[
-       |      {
-       |        "type":"forbidden_response",
-       |        "reason":"The ES ROR is configured with 'prompt_for_basic_auth: true' setting. This setting is appropriate only for using Kibana without KBN ROR plugin. See our docs for details https://docs.readonlyrest.com/elasticsearch#prompt_for_basic_auth",
-       |        "due_to":"OPERATION_NOT_ALLOWED"
-       |      }
-       |    ],
-       |    "type":"forbidden_response",
-       |    "reason":"The ES ROR is configured with 'prompt_for_basic_auth: true' setting. This setting is appropriate only for using Kibana without KBN ROR plugin. See our docs for details https://docs.readonlyrest.com/elasticsearch#prompt_for_basic_auth",
-       |    "due_to":"OPERATION_NOT_ALLOWED"
-       |  },
-       |  "status":403
-       |}
-       |""".stripMargin
-  )
 
 }

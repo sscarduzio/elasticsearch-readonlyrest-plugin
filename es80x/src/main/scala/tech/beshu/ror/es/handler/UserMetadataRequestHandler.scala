@@ -57,8 +57,6 @@ class UserMetadataRequestHandler(engine: Engine,
                            request: UserMetadataRequestContext): Unit = {
     Try {
       result match {
-        case UserMetadataRequestResult.RorKbnPluginNotSupported =>
-          onForbidden(request, RorKbnPluginNotSupported.responseContext)
         case UserMetadataRequestResult.Allowed(userMetadata) =>
           onAllow(request, userMetadata)
         case UserMetadataRequestResult.Forbidden(blockContext) =>
@@ -67,6 +65,8 @@ class UserMetadataRequestHandler(engine: Engine,
           onForbidden(request, f.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
+        case UserMetadataRequestResult.RorKbnPluginNotSupported =>
+          onForbidden(request, RorKbnPluginNotSupported.responseContext)
       }
     } match {
       case Success(_) =>
