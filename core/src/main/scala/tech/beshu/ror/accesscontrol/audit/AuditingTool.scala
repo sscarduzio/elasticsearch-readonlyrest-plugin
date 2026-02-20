@@ -22,6 +22,7 @@ import cats.implicits.*
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.History
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.audit.sink.*
@@ -66,7 +67,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = allowedBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(allowedBy.blockContext),
-            blocks = Some(NonEmptyList.one(allowedBy.blockContext.block)),
+            matchedBlocks = Some(NonEmptyList.one(allowedBy.blockContext.block)),
             historyEntries = allowedBy.history,
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents
           ),
@@ -77,32 +78,15 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
         AuditResponseContext.Allowed(
           requestContext = toAuditRequestContext(
             requestContext = allow.requestContext,
-            loggedUser = allow.userMetadata match {
-              case UserMetadata.WithoutGroups(loggedUser, _, _, _) => Some(loggedUser)
-              case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.headOption.map(_.loggedUser)
-            },
+            loggedUser = Some(allow.userMetadata.loggedUser),
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            blocks = Some(
-              allow.userMetadata match {
-                case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
-                  NonEmptyList.one(metadataOrigin.blockContext.block)
-                case UserMetadata.WithGroups(groupsMetadata) =>
-                  NonEmptyList.fromListUnsafe( // safe here, because the argument is guaranteed to be a NonEmptyList
-                    groupsMetadata.values.map(_.metadataOrigin.blockContext.block).toList.distinctBy(_.name)
-                  )
-              }
-            ),
+            matchedBlocks = Some(allow.userMetadata.matchedBlocks),
             historyEntries = allow.history,
             generalAuditEvents = allow.requestContext.generalAuditEvents
           ),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
-          reason = allow.userMetadata match {
-            case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
-              metadataOrigin.blockContext.block.show
-            case UserMetadata.WithGroups(groupsMetadata) =>
-              groupsMetadata.values.map(_.metadataOrigin.blockContext.block).toList.show
-          }
+          reason = allow.userMetadata.reason,
         )
       case forbiddenBy: ResponseContext.ForbiddenBy[B] =>
         AuditResponseContext.ForbiddenBy(
@@ -111,7 +95,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = forbiddenBy.blockContext.blockMetadata.loggedUser,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
-            blocks = Some(NonEmptyList.one(forbiddenBy.blockContext.block)),
+            matchedBlocks = Some(NonEmptyList.one(forbiddenBy.blockContext.block)),
             historyEntries = forbiddenBy.history),
           verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.verbosity),
           reason = forbiddenBy.blockContext.block.show
@@ -123,7 +107,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = None,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            blocks = None,
+            matchedBlocks = None,
             historyEntries = forbidden.history
           )
         )
@@ -134,7 +118,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = None, // todo: in RORDEV-1922 consider this potential problem
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            blocks = None,
+            matchedBlocks = None,
             historyEntries = requestedIndexNotExist.history
           )
         )
@@ -145,7 +129,7 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
             loggedUser = None,
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
-            blocks = None,
+            matchedBlocks = None,
             historyEntries = History.empty
           ),
           cause = errored.cause
@@ -162,13 +146,13 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
                                                        loggedUser: Option[LoggedUser],
                                                        auditEnvironmentContext: AuditEnvironmentContext,
                                                        blockContext: Option[B],
-                                                       blocks: Option[NonEmptyList[Block]],
+                                                       matchedBlocks: Option[NonEmptyList[Block]],
                                                        historyEntries: History[B],
                                                        generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
     new AuditRequestContextBasedOnAclResult(
       requestContext,
       loggedUser,
-      blocks,
+      matchedBlocks,
       historyEntries,
       loggingContext,
       auditEnvironmentContext,
@@ -332,5 +316,26 @@ object AuditingTool extends RequestIdAwareLogging {
     case _: EsIndexBasedAuditSink => "index"
     case _: LogBasedAuditSink => "log"
     case _: EsDataStreamBasedAuditSink => "data_stream"
+  }
+
+  extension (userMetadata: UserMetadata) {
+    def loggedUser: LoggedUser = userMetadata match {
+      case UserMetadata.WithoutGroups(loggedUser, _, _, _) => loggedUser
+      case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.loggedUser
+    }
+
+    def matchedBlocks: NonEmptyList[Block] = userMetadata match {
+      case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
+        NonEmptyList.one(metadataOrigin.blockContext.block)
+      case UserMetadata.WithGroups(groupsMetadata) =>
+        groupsMetadata.values.map(_.metadataOrigin.blockContext.block).distinctBy(_.name.value)
+    }
+
+    def reason: String = userMetadata match {
+      case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
+        metadataOrigin.blockContext.block.show
+      case UserMetadata.WithGroups(groupsMetadata) =>
+        groupsMetadata.values.map(_.metadataOrigin.blockContext.block).toList.show
+    }
   }
 }

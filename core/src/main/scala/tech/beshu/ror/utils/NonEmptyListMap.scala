@@ -16,23 +16,32 @@
  */
 package tech.beshu.ror.utils
 
+import cats.data.NonEmptyList
+
 import scala.collection.immutable.ListMap
 
-final case class NonEmptyListMap[K, +V] private(underlying: ListMap[K, V]):
+final class NonEmptyListMap[K, +V] private(val underlying: ListMap[K, V]):
   def head: (K, V) = underlying.head
 
   def tail: ListMap[K, V] = underlying.tail
 
-  def keys: Iterable[K] = underlying.keys
+  def keys: NonEmptyList[K] = NonEmptyList.fromListUnsafe(underlying.keys.toList)
 
-  def values: Iterable[V] = underlying.values
+  def values: NonEmptyList[V] = NonEmptyList.fromListUnsafe(underlying.values.toList)
 
   def get(key: K): Option[V] = underlying.get(key)
 
-  def updated[V1 >: V](k: K, v: V1): NonEmptyListMap[K, V1] =
-    NonEmptyListMap.fromUnsafe(underlying.updated(k, v))
+  def updated[V1 >: V](k: K, v: V1): NonEmptyListMap[K, V1] = NonEmptyListMap.fromUnsafe(underlying.updated(k, v))
 
   def apply(key: K): V = underlying.apply(key)
+
+  override def equals(other: Any): Boolean = other match
+    case that: NonEmptyListMap[_, _] => underlying == that.underlying
+    case _ => false
+
+  override def hashCode: Int = underlying.hashCode
+
+  override def toString: String = s"NonEmptyListMap($underlying)"
 
 object NonEmptyListMap:
 

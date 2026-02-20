@@ -33,7 +33,7 @@ import scala.collection.immutable.Set as ScalaSet
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                                             loggedUser: Option[LoggedUser],
-                                                                            blocks: Option[NonEmptyList[Block]],
+                                                                            matchedBlocks: Option[NonEmptyList[Block]],
                                                                             aclProcessingHistory: History[B],
                                                                             loggingContext: LoggingContext,
                                                                             override val auditEnvironmentContext: AuditEnvironmentContext,
@@ -64,7 +64,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
       }
   )
   override val uriPath: String = requestContext.restRequest.path.value.value
-  override val matchedBlockNames: Option[List[String]] = blocks.map(_.map(_.name.value).toList)
+  override val matchedBlockNames: Option[List[String]] = matchedBlocks.map(_.map(_.name.value).toList)
   override val history: String = aclProcessingHistory.blocks.map(b => blockHistoryShow(showHeader).show(b)).mkString(", ")
   override val content: String = requestContext.restRequest.content
   override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt

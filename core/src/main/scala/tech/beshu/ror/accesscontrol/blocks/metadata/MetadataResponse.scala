@@ -296,7 +296,7 @@ private object CurrentUserMetadataValue {
         case (UserMetadata.WithGroups(groupsMetadata), Some(groupId)) =>
           groupsMetadata.get(groupId).map(_.group)
         case (UserMetadata.WithGroups(groupsMetadata), None) =>
-          groupsMetadata.values.headOption.map(_.group)
+          Some(groupsMetadata.values.head.group)
         case _ =>
           None
       }
