@@ -37,10 +37,7 @@ object UserMetadata {
     extends UserMetadata
   object WithGroups {
     def apply(groupsMetadata: NonEmptyList[GroupMetadata]): WithGroups = WithGroups {
-      val head = groupsMetadata.head
-      groupsMetadata.tail.foldLeft(NonEmptyListMap.one[GroupId, GroupMetadata](head.group.id, head)) {
-        case (acc, elem) => acc.updated(elem.group.id, elem)
-      }
+      NonEmptyListMap.from(groupsMetadata.map(elem => (elem.group.id, elem)))
     }
 
     final case class GroupMetadata(group: Group,

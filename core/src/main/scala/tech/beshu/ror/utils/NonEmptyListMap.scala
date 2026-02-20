@@ -52,5 +52,8 @@ object NonEmptyListMap:
   def one[K, V](k: K, v: V): NonEmptyListMap[K, V] =
     new NonEmptyListMap(ListMap(k -> v))
 
+  def from[K, V](l: NonEmptyList[(K, V)]): NonEmptyListMap[K, V] =
+    NonEmptyListMap.fromUnsafe(ListMap(l.toList: _*))
+
   private def fromUnsafe[K, V](m: ListMap[K, V]) =
     new NonEmptyListMap(m)
