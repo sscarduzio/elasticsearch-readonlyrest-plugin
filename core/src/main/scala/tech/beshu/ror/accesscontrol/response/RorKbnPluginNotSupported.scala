@@ -29,21 +29,25 @@ object RorKbnPluginNotSupported {
   // This response context dedicated for user metadata endpoint:
   // - has custom error message
   // - sets doesRequirePassword=false, which means that the response will be returned with HTTP 403 Forbidden status
-  val responseContext = new ForbiddenResponseContext(
-    Some(UserMetadataAccessControlStaticContext),
-    NonEmptyList.one(ForbiddenResponseContext.OperationNotAllowed)
-  )
+  def forbiddenResponseContext(aclStaticContext: AccessControlStaticContext): ForbiddenResponseContext =
+    new ForbiddenResponseContext(
+      aclStaticContext = Some(new UserMetadataAccessControlStaticContext(aclStaticContext)),
+      forbiddenCauses = NonEmptyList.one(ForbiddenResponseContext.OperationNotAllowed)
+    )
 
   val message = "The ES ROR is configured with 'prompt_for_basic_auth: true' setting. This setting is appropriate only for using Kibana without KBN ROR plugin. See our docs for details https://docs.readonlyrest.com/elasticsearch#prompt_for_basic_auth"
 
-  private object UserMetadataAccessControlStaticContext extends AccessControlStaticContext {
-    override def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = None
+  private class UserMetadataAccessControlStaticContext(underlying: AccessControlStaticContext)
+    extends AccessControlStaticContext {
 
-    override def obfuscatedHeaders: syntax.Set[Header.Name] = syntax.Set.empty
+    override def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = underlying.usedFlsEngineInFieldsRule
+
+    override def obfuscatedHeaders: syntax.Set[Header.Name] = underlying.obfuscatedHeaders
 
     override def doesRequirePassword: Boolean = false
 
     override def forbiddenRequestMessage: String = message
+
   }
 
 }

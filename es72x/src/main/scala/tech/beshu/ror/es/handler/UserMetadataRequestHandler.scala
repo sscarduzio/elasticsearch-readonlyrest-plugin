@@ -66,7 +66,7 @@ class UserMetadataRequestHandler(engine: Engine,
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
         case UserMetadataRequestResult.RorKbnPluginNotSupported =>
-          onForbidden(request, RorKbnPluginNotSupported.responseContext)
+          onForbidden(request, RorKbnPluginNotSupported.forbiddenResponseContext(engine.core.accessControl.staticContext))
       }
     } match {
       case Success(_) =>

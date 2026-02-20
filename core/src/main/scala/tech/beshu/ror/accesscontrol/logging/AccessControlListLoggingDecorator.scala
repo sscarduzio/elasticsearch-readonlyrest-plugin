@@ -83,9 +83,6 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
       .andThen {
         case Success((result, history)) =>
           result match {
-            case UserMetadataRequestResult.RorKbnPluginNotSupported =>
-              logger.warn(RorKbnPluginNotSupported.message)
-              log(Forbidden(requestContext, History.empty))
             case UserMetadataRequestResult.Allowed(userMetadata) =>
               log(Allowed(requestContext, userMetadata, history))
             case forbiddenBy: UserMetadataRequestResult.Forbidden =>
@@ -93,7 +90,10 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             case UserMetadataRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, history))
             case UserMetadataRequestResult.PassedThrough =>
-            // ignore
+              // ignore
+            case UserMetadataRequestResult.RorKbnPluginNotSupported =>
+              logger.warn(RorKbnPluginNotSupported.message)
+              log(Forbidden(requestContext, History.empty))
           }
         case Failure(ex) =>
           logger.error(s"Request handling unexpected failure", ex)
