@@ -106,7 +106,7 @@ class JwtAuthSuite
     ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix${jwt.stringify()}"),
+      additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()

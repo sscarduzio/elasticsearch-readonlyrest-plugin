@@ -45,8 +45,8 @@ import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.rest.{RestController, RestHandler}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.transport.netty4.{Netty4Utils, SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import org.elasticsearch.transport.{Transport, TransportInterceptor}
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.boot.{EsInitListener, SecurityProviderConfiguratorForFips}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
@@ -238,4 +238,5 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       esInitListener.onEsReady()
     }
   }
+
 }

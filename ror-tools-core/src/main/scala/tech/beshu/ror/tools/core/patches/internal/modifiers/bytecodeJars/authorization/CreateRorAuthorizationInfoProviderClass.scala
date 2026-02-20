@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es800, es810, es820, es830}
-
-import java.io.File
 
 /**
  * Adds a new `org.elasticsearch.xpack.security.authz.RorAuthorizationInfoProvider` class.

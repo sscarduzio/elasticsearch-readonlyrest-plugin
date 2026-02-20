@@ -21,7 +21,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
@@ -31,9 +30,8 @@ import tech.beshu.ror.syntax.*
 private[datastreams] class CreateDataStreamEsRequestContext private(actionRequest: ActionRequest,
                                                                     dataStreams: Set[DataStreamName],
                                                                     esContext: EsContext,
-                                                                    clusterService: RorClusterService,
                                                                     override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -56,7 +54,7 @@ private[datastreams] object CreateDataStreamEsRequestContext extends ReflectionB
       getDataStreamsMethodName = "indices"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new CreateDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
+        Some(new CreateDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
       case MatchResult.NotMatched() =>
         None
     }

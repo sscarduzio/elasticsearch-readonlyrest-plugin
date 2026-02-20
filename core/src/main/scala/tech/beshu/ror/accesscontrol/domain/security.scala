@@ -19,13 +19,14 @@ package tech.beshu.ror.accesscontrol.domain
 import cats.Eq
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.json.JsonPath
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.Base64
+import java.util.{Base64, Locale}
 
 final case class Credentials(user: User.Id, secret: PlainTextSecret)
 object Credentials {
@@ -40,7 +41,7 @@ final case class BasicAuth private(credentials: Credentials) {
   )
 }
 object BasicAuth extends RequestIdAwareLogging {
-  def fromCredentials(credentials: Credentials) = {
+  def fromCredentials(credentials: Credentials): BasicAuth = {
     BasicAuth(credentials)
   }
   
@@ -88,9 +89,37 @@ object PlainTextSecret {
   implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
 }
 
-final case class Token(value: NonEmptyString)
+final case class AuthorizationToken(prefix: AuthorizationTokenPrefix, value: NonEmptyString)
+object AuthorizationToken {
+  def from(value: NonEmptyString): Option[AuthorizationToken] = {
+    value.value.split(" ").toList match {
+      case Nil =>
+        None
+      case _ :: Nil =>
+        Some(AuthorizationToken(AuthorizationTokenPrefix.None, value))
+      case prefixStr :: _ =>
+        for {
+          prefix <- NonEmptyString.unapply(prefixStr).map(AuthorizationTokenPrefix.Exact.apply)
+          value <- NonEmptyString.unapply(value.value.substring(prefixStr.length + 1))
+        } yield AuthorizationToken(prefix, value)
+    }
+  }
+}
 
-final case class AuthorizationToken(value: NonEmptyString)
+sealed trait AuthorizationTokenPrefix
+object AuthorizationTokenPrefix {
+  final case class Exact(value: NonEmptyString) extends AuthorizationTokenPrefix
+  case object None extends AuthorizationTokenPrefix
+
+  val bearer = AuthorizationTokenPrefix.Exact(nes("Bearer"))
+
+  implicit val eq: Eq[AuthorizationTokenPrefix] = Eq.instance((x, y) => (x, y) match {
+    case (Exact(a), Exact(b)) => a.value.toLowerCase(Locale.US) === b.value.toLowerCase(Locale.US)
+    case (None, None) => true
+    case (Exact(_), None) => false
+    case (None, Exact(_)) => false
+  })
+}
 
 object Jwt {
   final case class ClaimName(name: JsonPath)

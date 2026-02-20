@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Credentials, RequestId}
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
 private [auth] abstract class BaseBasicAuthAuthenticationRule
   extends BaseAuthenticationRule {

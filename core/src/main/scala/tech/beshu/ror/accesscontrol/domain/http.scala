@@ -21,6 +21,7 @@ import cats.{Eq, Show}
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.*
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.constants
@@ -277,6 +278,13 @@ object UriPath {
 }
 
 final case class AuthorizationTokenDef(headerName: Header.Name,
-                                       prefix: String)
+                                       allowedPrefix: AllowedPrefix)
+object AuthorizationTokenDef {
+ sealed trait AllowedPrefix
+ object AllowedPrefix {
+   final case class StrictlyDefined(prefix: AuthorizationTokenPrefix) extends AllowedPrefix
+   case object Any extends AllowedPrefix
+ }
+}
 
 final case class UserOrigin(value: NonEmptyString)

@@ -23,7 +23,6 @@ import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
@@ -33,7 +32,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Sig
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{Exact, bearer}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -145,7 +147,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(secret.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -166,7 +168,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Rsa(pub),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -186,7 +188,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.NoCheck(authService(
               rawToken = jwt.stringify(),
               authenticated = Right(DirectlyLoggedUser(User.Id("user")))
@@ -210,7 +212,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         val authService = cachedAuthService(validJwt.stringify(), invalidJwt.stringify())
         val jwtDef = createJwtDef(
           JwtDef.Name("test"),
-          AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+          AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
           SignatureCheckMethod.NoCheck(authService),
           domain.Jwt.ClaimName(jsonPathFrom("userId")),
           GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -248,7 +250,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "Bearer "),
+            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -272,7 +274,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "MyPrefix "),
+            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), StrictlyDefined(Exact("MyPrefix"))),
             SignatureCheckMethod.Hmac(key.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -299,7 +301,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key1.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -315,7 +317,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Rsa(pub),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -329,7 +331,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.NoCheck(authService(
               rawToken = jwt.stringify(),
               authenticated = Left(AuthenticationFailed)
@@ -346,7 +348,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(secret.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),

@@ -26,7 +26,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -38,12 +37,11 @@ import tech.beshu.ror.utils.ScalaOps.*
 class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                              esContext: EsContext,
                                              aclContext: AccessControlStaticContext,
-                                             clusterService: RorClusterService,
                                              nodeClient: NodeClient,
                                              override implicit val threadPool: ThreadPool)
                                             (implicit scheduler: Scheduler)
   extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
-    actionRequest, esContext, aclContext, clusterService, threadPool
+    actionRequest, esContext, aclContext, threadPool
   ) {
 
   private lazy val searchTemplateRequest = new ReflectionBasedSearchTemplateRequest(actionRequest)
@@ -129,7 +127,6 @@ object SearchTemplateEsRequestContext {
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
         arg.esContext,
         arg.aclContext,
-        arg.clusterService,
         arg.nodeClient,
         arg.threadPool
       ))

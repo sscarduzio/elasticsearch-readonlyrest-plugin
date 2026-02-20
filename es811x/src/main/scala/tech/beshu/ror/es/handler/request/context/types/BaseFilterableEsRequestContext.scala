@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.handler.request.context.types
 
-import cats.implicits.*
 import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -28,7 +27,6 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.toOps
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -38,9 +36,8 @@ import tech.beshu.ror.syntax.*
 abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                   esContext: EsContext,
                                                                   aclContext: AccessControlStaticContext,
-                                                                  clusterService: RorClusterService,
                                                                   override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext)
     with EsRequest[FilterableRequestBlockContext] {
 
   override def initialBlockContext(block: Block): FilterableRequestBlockContext = FilterableRequestBlockContext(

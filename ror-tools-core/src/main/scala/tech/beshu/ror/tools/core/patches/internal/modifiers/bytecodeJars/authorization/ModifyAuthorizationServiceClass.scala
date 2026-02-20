@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7160}
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   Elasticsearch’s AuthorizationService blocks requests without a full authorization flow. ROR needs to bypass this

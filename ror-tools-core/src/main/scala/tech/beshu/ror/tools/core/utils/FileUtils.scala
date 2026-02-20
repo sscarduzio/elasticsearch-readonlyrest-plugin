@@ -33,7 +33,7 @@ object FileUtils {
     digest.digest.map("%02x".format(_)).mkString
   }
 
-  extension (file: File)
+  extension (file: File) {
     def setFilePermissionsAndOwner(filePermissionsAndOwner: FilePermissionsAndOwner): File = {
       filePermissionsAndOwner match {
         case metadata: OriginalFilePermissionsAndOwner =>
@@ -53,6 +53,7 @@ object FileUtils {
         Files.getOwner(file.path),
       )
     }
+  }
 
   given osPathToFile: Conversion[os.Path, File] with
     def apply(path: os.Path): File = File(path.toString)

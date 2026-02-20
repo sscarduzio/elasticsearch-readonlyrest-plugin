@@ -17,7 +17,6 @@
 package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.internal.node.NodeClient
@@ -36,18 +35,18 @@ import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{EsIndexDocumentManager, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
+import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
-import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
+import tech.beshu.ror.utils.{JavaConverters, RequestIdAwareLogging, RorInstanceSupplier}
 
 import java.util.function.Supplier
 import scala.util.Try
@@ -82,15 +81,17 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
-  private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(
+  private val esServices = EsServices(
+    clusterService = new EsNodeClusterService(
       nodeName,
       clusterService,
       remoteClusterServiceSupplier,
       repositoriesServiceSupplier,
       client,
       threadPool
-    ),
+    )
+  )
+  private val aclAwareRequestFilter = new AclAwareRequestFilter(
     clusterService.getSettings,
     threadPool
   )
@@ -167,7 +168,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               request,
               rorActionListener,
               chain,
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
+              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet,
+              esServices
             )
           )
         } recover {
@@ -197,15 +199,17 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
-        case Right(result) => handleResult(esContext, result)
-        case Left(ex) => esContext.listener.onFailure(new Exception(ex))
+        case Right(Right(())) =>
+        case Right(Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured)) =>
+          handleImpersonatorsEngineNotConfigured(esContext)
+        case Left(ex) =>
+          esContext.listener.onFailure(new Exception(ex))
       }
   }
 
-  private def handleResult(esContext: EsContext, result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
-    case Right(_) =>
-    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
-      esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  private def handleImpersonatorsEngineNotConfigured(esContext: EsContext): Unit = {
+    noRequestIdLogger.info(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path().show} (impersonated) request because no Test Settings are configured")
+    esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {

@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, UpdateResponse}
@@ -37,9 +36,8 @@ import scala.jdk.CollectionConverters.*
 class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext,
-                                     clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ResolveClusterActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ResolveClusterActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ResolveClusterActionRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val indices = request

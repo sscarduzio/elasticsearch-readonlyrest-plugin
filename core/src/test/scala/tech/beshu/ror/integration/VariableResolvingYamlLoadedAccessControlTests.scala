@@ -31,7 +31,8 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonTree, JsonValue}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
+import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.syntax.*
@@ -291,7 +292,9 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             .withHeaders(bearerHeader(jwt))
             .copy(
               filteredIndices = Set(requestedIndex("gj0")),
-              allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
+              ))
             )
 
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -321,7 +324,9 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             .withHeaders(bearerHeader(jwt))
             .copy(
               indices = Set.empty,
-              allIndicesAndAliases = Set.empty
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = Set.empty
+              ))
             )
 
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -346,11 +351,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             .withHeaders(basicAuthHeader("cartman:user2"))
             .copy(
               indices = Set(requestedIndex("*")),
-              allIndicesAndAliases = Set(
-                fullLocalIndexWithAliases(fullIndexName("test-g1")),
-                fullLocalIndexWithAliases(fullIndexName("test-g2")),
-                fullLocalIndexWithAliases(fullIndexName("test-g3"))
-              )
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = Set(
+                  fullLocalIndexWithAliases(fullIndexName("test-g1")),
+                  fullLocalIndexWithAliases(fullIndexName("test-g2")),
+                  fullLocalIndexWithAliases(fullIndexName("test-g3"))
+                )
+              ))
           )
 
           val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()

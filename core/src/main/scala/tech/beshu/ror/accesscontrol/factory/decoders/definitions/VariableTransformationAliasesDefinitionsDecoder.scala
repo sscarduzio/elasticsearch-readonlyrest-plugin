@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Transformati
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{FunctionAlias, FunctionName}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, Reason}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 
@@ -64,6 +64,6 @@ object VariableTransformationAliasesDefinitionsDecoder {
 
   private def error(message: String) = {
     val errorMessage = s"${definitionsSectionName.show} definition malformed: ${message.show}"
-    DecodingFailureOps.fromError(DefinitionsLevelCreationError(Reason.Message(errorMessage)))
+    decodingFailureFrom(DefinitionsLevelCreationError(Reason.Message(errorMessage)))
   }
 }

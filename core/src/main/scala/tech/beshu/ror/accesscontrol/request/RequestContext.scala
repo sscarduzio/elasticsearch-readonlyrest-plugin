@@ -17,17 +17,18 @@
 package tech.beshu.ror.accesscontrol.request
 
 import cats.Eval
-import eu.timepit.refined.types.string.NonEmptyString
-import monix.eval.Task
+import cats.implicits.*
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
+import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -65,26 +66,7 @@ trait RequestContext {
 
   def indexAttributes: Set[IndexAttribute]
 
-  def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
-
-  def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
-
-  def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases]
-
-  def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
-
-  def allTemplates: Set[Template]
-
-  def allRemoteClusterNames: Set[ClusterName.Full]
-
-  lazy val legacyTemplates: Set[Template.LegacyTemplate] =
-    allTemplates.collect { case t: Template.LegacyTemplate => t }
-
-  lazy val indexTemplates: Set[Template.IndexTemplate] =
-    allTemplates.collect { case t: Template.IndexTemplate => t }
-
-  lazy val componentTemplates: Set[Template.ComponentTemplate] =
-    allTemplates.collect { case t: Template.ComponentTemplate => t }
+  def esServices: EsServices
 
   lazy val isReadOnlyRequest: Boolean =
     RequestContext.readActionPatternsMatcher.`match`(action)
@@ -115,6 +97,31 @@ object RequestContext extends RequestIdAwareLogging {
 
     def from(esContext: BaseEsContext): Id = {
       new Id(s"${esContext.correlationId.value.value.value}-${esContext.restRequest.hashCode()}#${esContext.esTaskId}")
+    }
+  }
+
+  final case class Method private(value: String) extends AnyVal
+  object Method {
+    val GET: Method = Method.fromStringUnsafe("GET")
+    val POST: Method = Method.fromStringUnsafe("POST")
+    val PUT: Method = Method.fromStringUnsafe("PUT")
+    val DELETE: Method = Method.fromStringUnsafe("DELETE")
+    val OPTIONS: Method = Method.fromStringUnsafe("OPTIONS")
+    val HEAD: Method = Method.fromStringUnsafe("HEAD")
+
+    def fromStringUnsafe(str: String): Method = new Method(str.toUpperCase)
+  }
+
+  sealed trait RequestGroup
+  object RequestGroup {
+    final case class AGroup(userGroup: GroupId) extends RequestGroup
+    case object `N/A` extends RequestGroup
+
+    implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
+      def toOption: Option[GroupId] = requestGroup match {
+        case AGroup(userGroup) => Some(userGroup)
+        case `N/A` => None
+      }
     }
   }
 
@@ -175,88 +182,53 @@ object RequestContext extends RequestIdAwareLogging {
     ).map(Action.apply)
   }
 
-  final case class Method private(value: String) extends AnyVal
+  extension (requestContext: RequestContext) {
 
-  object Method {
-    val GET: Method = Method.fromStringUnsafe("GET")
-    val POST: Method = Method.fromStringUnsafe("POST")
-    val PUT: Method = Method.fromStringUnsafe("PUT")
-    val DELETE: Method = Method.fromStringUnsafe("DELETE")
-    val OPTIONS: Method = Method.fromStringUnsafe("OPTIONS")
-    val HEAD: Method = Method.fromStringUnsafe("HEAD")
-
-    def fromStringUnsafe(str: String): Method = new Method(str.toUpperCase)
-  }
-}
-
-class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
-
-  type LocalAliasName = ClusterIndexName.Local
-
-  def impersonateAs: Option[User.Id] = {
-    findHeader(Header.Name.impersonateAs)
-      .map { header => User.Id(header.value) }
-  }
-
-  def xForwardedForHeaderValue: Option[Address] = {
-    findHeader(Header.Name.xForwardedFor)
-      .flatMap { header =>
-        Option(header.value.value)
-          .flatMap(_.split(",").headOption)
-          .flatMap(Address.from)
-      }
-  }
-
-  def basicAuth: Option[BasicAuth] = {
-    implicit val requestId: RequestId = requestContext.id.toRequestId
-    requestContext
-      .restRequest
-      .allHeaders
-      .to(LazyList)
-      .map(BasicAuth.fromHeader)
-      .find(_.isDefined)
-      .flatten
-  }
-
-  def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
-
-  def bearerToken: Option[AuthorizationToken] = authorizationToken {
-    AuthorizationTokenDef(Header.Name.authorization, "Bearer ")
-  }
-
-  def authorizationToken(config: AuthorizationTokenDef): Option[AuthorizationToken] = {
-    requestContext
-      .restRequest
-      .allHeaders
-      .find(_.name === config.headerName)
-      .flatMap { h =>
-        if (h.value.value.startsWith(config.prefix)) {
-          NonEmptyString
-            .unapply(h.value.value.substring(config.prefix.length))
-            .map(AuthorizationToken.apply)
-        } else {
-          None
-        }
-      }
-  }
-
-  private def findHeader(name: Header.Name) =
-    requestContext.restRequest.allHeaders.find(_.name === name)
-}
-
-object RequestContextOps {
-  implicit def from(rc: RequestContext): RequestContextOps = new RequestContextOps(rc)
-
-  sealed trait RequestGroup
-  object RequestGroup {
-    final case class AGroup(userGroup: GroupId) extends RequestGroup
-    case object `N/A` extends RequestGroup
-
-    implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
-      def toOption: Option[GroupId] = requestGroup match {
-        case AGroup(userGroup) => Some(userGroup)
-        case `N/A` => None
-      }
+    def impersonateAs: Option[User.Id] = {
+      findHeader(Header.Name.impersonateAs)
+        .map { header => User.Id(header.value) }
     }
+
+    def xForwardedForHeaderValue: Option[Address] = {
+      findHeader(Header.Name.xForwardedFor)
+        .flatMap { header =>
+          Option(header.value.value)
+            .flatMap(_.split(",").headOption)
+            .flatMap(Address.from)
+        }
+    }
+
+    def basicAuth: Option[BasicAuth] = {
+      implicit val requestId: RequestId = requestContext.id.toRequestId
+      requestContext
+        .restRequest
+        .allHeaders
+        .to(LazyList)
+        .map(BasicAuth.fromHeader)
+        .find(_.isDefined)
+        .flatten
+    }
+
+    def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
+
+    def bearerToken: Option[AuthorizationToken] = authorizationTokenBy(
+      AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
+    )
+
+    def authorizationTokenBy(config: AuthorizationTokenDef): Option[AuthorizationToken] = {
+      for {
+        tokenHeader <- findHeader(config.headerName)
+        authorizationToken <- AuthorizationToken.from(tokenHeader.value)
+        _ <- config.allowedPrefix match {
+          case AllowedPrefix.Any => Some(())
+          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Some(())
+          case AllowedPrefix.StrictlyDefined(_) => None
+        }
+      } yield authorizationToken
+
+    }
+
+    private def findHeader(name: Header.Name) =
+      requestContext.restRequest.allHeaders.find(_.name === name)
   }
 }
