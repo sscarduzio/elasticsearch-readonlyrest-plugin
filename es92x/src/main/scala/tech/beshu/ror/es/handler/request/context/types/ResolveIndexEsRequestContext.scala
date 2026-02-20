@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
-import org.elasticsearch.index.IndexMode
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
@@ -82,8 +81,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
         resolvedIndex.getName,
         allowedResolvedAliases,
         resolvedIndex.getAttributes,
-        resolvedIndex.getDataStream,
-        resolvedIndex.getMode
+        resolvedIndex.getDataStream
       ))
     } else {
       None
@@ -110,13 +108,9 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     allowedIndices.exists(_.matches(resolvedAliasOrIndexName))
   }
 
-  private def createResolvedIndex(index: String,
-                                  aliases: List[String],
-                                  attributes: Array[String],
-                                  dataStream: String,
-                                  indexMode: IndexMode) = {
+  private def createResolvedIndex(index: String, aliases: List[String], attributes: Array[String], dataStream: String) = {
     onClass(classOf[ResolvedIndex])
-      .create(index, aliases.toArray, attributes, dataStream, indexMode)
+      .create(index, aliases.toArray, attributes, dataStream)
       .get[ResolvedIndex]()
   }
 

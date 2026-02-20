@@ -52,7 +52,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, R
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{api, bearer}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -387,6 +387,8 @@ object TestsUtils {
   def strictlyDefinedBearerTokenDef = AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer))
 
   def anyTokenDef = AuthorizationTokenDef(Header.Name.authorization, AllowedPrefix.Any)
+
+  def apiKeyDef = AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(api))
 
   def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
 

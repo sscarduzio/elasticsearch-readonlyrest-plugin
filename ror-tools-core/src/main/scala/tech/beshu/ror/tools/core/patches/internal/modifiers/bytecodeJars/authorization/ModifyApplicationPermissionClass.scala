@@ -22,27 +22,22 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
 import java.io.InputStream
 
-/**
- * Modifies the ApplicationPermission class to disable application-level privilege filtering.
- *
- * This patch overrides the `grants(ApplicationPrivilege, String)` method so that it always returns
- * `true`, regardless of the requested application privilege and resource.
- *
- * As a result, any application privilege check performed through `ApplicationPermission.grants(...)`
- * is treated as granted, preventing X-Pack application permission evaluation from blocking requests
- * that are authorized by ReadonlyREST.
- */
+/*
+  It replaces the implementation of the grants(...) method so that it always returns true,
+  causing the ApplicationPermission to grant access to any requested application privilege and resource,
+  regardless of the actual permission configuration.
+*/
 private [patches] object ModifyApplicationPermissionClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
       filePathString = "org/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission.class",
-      processFileContent = doAlwaysGrantApplicationPermission
+      processFileContent = doCreatePermissiveApplicationPermission
     )
   }
 
-  private def doAlwaysGrantApplicationPermission(moduleInputStream: InputStream) = {
+  private def doCreatePermissiveApplicationPermission(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -71,15 +66,22 @@ private [patches] object ModifyApplicationPermissionClass extends BytecodeJarMod
 
     override def visitCode(): Unit = {
       underlying.visitCode()
-      val label0 = new Label
+
+      val label0 = new Label()
       underlying.visitLabel(label0)
+
+      // return true;
       underlying.visitInsn(Opcodes.ICONST_1)
       underlying.visitInsn(Opcodes.IRETURN)
-      val label1 = new Label
+
+      val label1 = new Label()
       underlying.visitLabel(label1)
+
+      // locals
       underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission;", null, label0, label1, 0)
       underlying.visitLocalVariable("other", "Lorg/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilege;", null, label0, label1, 1)
       underlying.visitLocalVariable("resource", "Ljava/lang/String;", null, label0, label1, 2)
+
       underlying.visitMaxs(1, 3)
       underlying.visitEnd()
     }

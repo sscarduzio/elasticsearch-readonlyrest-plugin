@@ -25,13 +25,14 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.StaticToken
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.{ApiKey, ServiceToken, StaticToken}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{api, bearer}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.es.EsServices
+import tech.beshu.ror.mocks.MockEsServices.{MockApiKeyService, MockServiceAccountTokenService}
 import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -86,6 +87,58 @@ class TokenAuthenticationRuleTests
           blockContextAssertion = defaultOutputBlockContextAssertion(
             User.Id("userA")
           )
+        )
+      }
+      "service-token type is configured and valid token is in the default header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          headers = Set(headerFrom("Authorization" -> "Bearer svc-token")),
+          esServices = MockEsServices.`with`(new MockServiceAccountTokenService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("svc-user"))
+        )
+      }
+      "service-token type is configured and valid token is in a custom header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(
+              AuthorizationTokenDef(headerNameFrom("X-Service-Token"), StrictlyDefined(bearer))
+            )
+          ),
+          headers = Set(headerFrom("X-Service-Token" -> "Bearer svc-token")),
+          esServices = MockEsServices.`with`(new MockServiceAccountTokenService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("svc-user"))
+        )
+      }
+      "api-key type is configured and valid token is in the default header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          headers = Set(headerFrom("Authorization" -> "Api api-key-value")),
+          esServices = MockEsServices.`with`(new MockApiKeyService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("api-user"))
+        )
+      }
+      "api-key type is configured and valid token is in a custom header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(
+              AuthorizationTokenDef(headerNameFrom("X-Api-Key"), StrictlyDefined(api))
+            )
+          ),
+          headers = Set(headerFrom("X-Api-Key" -> "Api api-key-value")),
+          esServices = MockEsServices.`with`(new MockApiKeyService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("api-user"))
         )
       }
       "user is being impersonated" when {
@@ -143,6 +196,68 @@ class TokenAuthenticationRuleTests
           ),
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ"))
+        )
+      }
+      "service-token validation fails" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Bearer svc-token")),
+          esServices = MockEsServices.`with`(new MockServiceAccountTokenService(false))
+        )
+      }
+      "service-token header is absent" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set.empty
+        )
+      }
+      "service-token header has wrong prefix" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Api svc-token"))
+        )
+      }
+      "api-key validation fails" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Api api-key-value")),
+          esServices = MockEsServices.`with`(new MockApiKeyService(false))
+        )
+      }
+      "api-key header is absent" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set.empty
+        )
+      }
+      "api-key header has wrong prefix" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Bearer api-key-value"))
         )
       }
       "user is being impersonated" when {

@@ -50,6 +50,7 @@ object InvokeCallerAndHandleResponse {
     new InvokeCallerAndHandleResponse(caller)
 }
 
+// todo: use the one from utils
 private final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {
 
   private val promise = Promise[RESPONSE]()

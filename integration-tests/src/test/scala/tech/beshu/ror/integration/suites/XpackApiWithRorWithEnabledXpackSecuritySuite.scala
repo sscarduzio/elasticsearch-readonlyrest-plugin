@@ -62,7 +62,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
           response.responseJson should be(ujson.read(
             s"""
                |{
-               |  "username":"_xpack",
+               |  "username":"ROR",
                |  "has_all_requested":false,
                |  "cluster":{
                |    "monitor":true
@@ -87,7 +87,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
           response.responseJson should be(ujson.read(
             s"""
                |{
-               |  "username":"_xpack",
+               |  "username":"ROR",
                |  "has_all_requested":true,
                |  "cluster":{
                |    "monitor":true

@@ -38,6 +38,7 @@ import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
+import tech.beshu.ror.es.handler.response.ForbiddenResponse.*
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
@@ -89,7 +90,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       repositoriesServiceSupplier,
       client,
       threadPool
-    )
+    ),
+    serviceAccountTokenService = new ReflectionBasedServiceAccountTokenService(),
+    apiKeyService = new ReflectionBasedApiKeyService(threadPool)
   )
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     clusterService.getSettings,
@@ -210,6 +213,11 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def handleImpersonatorsEngineNotConfigured(esContext: EsContext): Unit = {
     noRequestIdLogger.info(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path().show} (impersonated) request because no Test Settings are configured")
     esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  }
+
+  private def handleRequestCannotBeHandled(esContext: EsContext, cause: String): Unit = {
+    logger.error(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path()} request because: $cause")
+    esContext.listener.onFailure(createOperationNotAllowedResponse())
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {

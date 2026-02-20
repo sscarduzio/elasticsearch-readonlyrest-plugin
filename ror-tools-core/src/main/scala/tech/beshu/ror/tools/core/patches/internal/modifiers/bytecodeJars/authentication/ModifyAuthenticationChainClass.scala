@@ -107,30 +107,39 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         val label1 = new Label()
         underlying.visitLabel(label1)
 
-        // final Authentication auth = Authentication.newInternalAuthentication(InternalUsers.XPACK_USER, TransportVersion.current(), "any");
-        underlying.visitFieldInsn(
-          Opcodes.GETSTATIC,
-          "org/elasticsearch/xpack/core/security/user/InternalUsers",
-          "XPACK_USER",
-          "Lorg/elasticsearch/xpack/core/security/user/InternalUser;"
+        // final Authentication auth =
+        //   Authentication.newRealmAuthentication(new User("ROR", new String[0]), Authentication.RealmRef.newAnonymousRealmRef("any"))
+        underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/user/User")
+        underlying.visitInsn(Opcodes.DUP)
+        underlying.visitLdcInsn("ROR")
+        underlying.visitInsn(Opcodes.ICONST_0)
+        underlying.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+        underlying.visitMethodInsn(
+          Opcodes.INVOKESPECIAL,
+          "org/elasticsearch/xpack/core/security/user/User",
+          "<init>",
+          "(Ljava/lang/String;[Ljava/lang/String;)V",
+          false
         )
+        underlying.visitLdcInsn("any")
+
         val label2 = new Label()
         underlying.visitLabel(label2)
         underlying.visitMethodInsn(
           Opcodes.INVOKESTATIC,
-          "org/elasticsearch/TransportVersion",
-          "current",
-          "()Lorg/elasticsearch/TransportVersion;",
+          "org/elasticsearch/xpack/core/security/authc/Authentication$RealmRef",
+          "newAnonymousRealmRef",
+          "(Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;",
           false
         )
-        underlying.visitLdcInsn("any")
+
         val label3 = new Label()
         underlying.visitLabel(label3)
         underlying.visitMethodInsn(
           Opcodes.INVOKESTATIC,
           "org/elasticsearch/xpack/core/security/authc/Authentication",
-          "newInternalAuthentication",
-          "(Lorg/elasticsearch/xpack/core/security/user/InternalUser;Lorg/elasticsearch/TransportVersion;Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          "newRealmAuthentication",
+          "(Lorg/elasticsearch/xpack/core/security/user/User;Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
           false
         )
         underlying.visitVarInsn(Opcodes.ASTORE, 3)
