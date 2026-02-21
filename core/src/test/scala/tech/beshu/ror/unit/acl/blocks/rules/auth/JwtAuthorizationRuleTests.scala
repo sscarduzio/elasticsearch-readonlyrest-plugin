@@ -18,35 +18,31 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import io.jsonwebtoken.Jwts
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.TestsUtils.{RuleCheckAssertion, *}
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import java.security.Key
-import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
 class JwtAuthorizationRuleTests
-  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion with WithDummyRequestIdSupport {
+  extends AnyWordSpec with MockFactory with BlockContextAssertion with WithDummyRequestIdSupport {
 
   "A JwtAuthorizationRule" should {
     "match" when {
@@ -75,11 +71,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -107,11 +103,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (1)" in {
@@ -139,11 +135,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group1")),
               availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is not empty (2)" in {
@@ -171,11 +167,11 @@ class JwtAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group1")),
               availableGroups = UniqueList.of(group("group1", "Group 1"), group("group2", "Group 2")),
               jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-            )(blockContext)
+            )
         }
       }
     }
@@ -265,41 +261,34 @@ class JwtAuthorizationRuleTests
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredJwtDef: AuthorizationJwtDef,
                                  configuredGroups: GroupsLogic,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, blockContextAssertion = None)
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(GroupsAuthorizationFailed))
 
   private def assertRule(configuredJwtDef: AuthorizationJwtDef,
                          configuredGroups: GroupsLogic,
                          tokenHeader: Header,
                          preferredGroup: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new JwtAuthorizationRule(JwtAuthorizationRule.Settings(configuredJwtDef, configuredGroups))
 
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroup.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Fulfilled(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Rejected())
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 }

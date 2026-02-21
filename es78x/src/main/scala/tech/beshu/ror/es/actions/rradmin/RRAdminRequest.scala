@@ -37,7 +37,7 @@ class RRAdminRequest(adminApiRequest: MainSettingsApi.MainSettingsRequest,
 object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
-    val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+    val requestType = (request.uri().removeTrailingSlashIfPresent(), request.method()) match {
       case (constants.FORCE_RELOAD_SETTINGS_PATH, POST) =>
         MainSettingsApi.MainSettingsRequest.Type.ForceReload
       case (constants.PROVIDE_FILE_SETTINGS_PATH, GET) =>

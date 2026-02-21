@@ -22,9 +22,8 @@ import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, IndexAttribute, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, IndexAttribute, RequestedIndex}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
@@ -54,7 +53,7 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
 
   override protected def update(request: ActionRequest,
                                 filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[domain.Filter],
+                                filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchRequest
       .applyFilterToQuery(filter)

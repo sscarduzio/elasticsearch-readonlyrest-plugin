@@ -17,18 +17,18 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, RequestId}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.{Clock, Instant}
 
@@ -40,25 +40,25 @@ final class SessionMaxIdleRule(val settings: Settings,
 
   override val name: Rule.Name = SessionMaxIdleRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    blockContext.userMetadata.loggedUser match {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+    blockContext.blockMetadata.loggedUser match {
       case Some(user) =>
         checkCookieFor(user, blockContext)
       case None =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         logger.warn(s"Cannot state the logged in user, put the authentication rule on top of the block!")
-        Rejected()
+        Denied(Cause.NotAuthorized)
     }
   }
 
   private def checkCookieFor[B <: BlockContext : BlockContextUpdater](user: LoggedUser,
-                                                                      blockContext: B): RuleResult[B] = {
+                                                                      blockContext: B): Decision[B] = {
     RorSessionCookie.extractFrom(blockContext.requestContext, user) match {
       case Right(_) | Left(ExtractingError.Absent) =>
         val newCookie = RorSessionCookie(user.id, newExpiryDate)
-        Fulfilled(blockContext.withAddedResponseHeader(toSessionHeader(newCookie)))
+        Permitted(blockContext.withAddedResponseHeader(toSessionHeader(newCookie)))
       case Left(ExtractingError.Invalid) | Left(ExtractingError.Expired) =>
-        Rejected()
+        Denied(Cause.NotAuthorized)
     }
   }
 

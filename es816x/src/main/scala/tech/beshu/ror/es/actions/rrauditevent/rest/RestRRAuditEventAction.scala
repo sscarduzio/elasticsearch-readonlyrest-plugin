@@ -16,20 +16,19 @@
  */
 package tech.beshu.ror.es.actions.rrauditevent.rest
 
-import java.util
-
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.common.xcontent.XContentHelper
+import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.rest.*
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
 
+import java.util
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 

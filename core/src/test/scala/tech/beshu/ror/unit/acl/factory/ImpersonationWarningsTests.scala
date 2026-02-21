@@ -25,7 +25,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
@@ -135,7 +135,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
       }
       "external authorization service is mocked" in {
         val mocksProvider = mocksProviderForExternalAuthzServiceFrom(
-          Map(ExternalAuthorizationService.Name("GroupsService1") -> Map.empty)
+          Map(ExternalGroupsProviderService.Name("GroupsService1") -> Map.empty)
         )
 
         val settings =

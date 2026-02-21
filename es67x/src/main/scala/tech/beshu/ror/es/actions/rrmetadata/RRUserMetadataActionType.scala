@@ -19,6 +19,7 @@ package tech.beshu.ror.es.actions.rrmetadata
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
+import tech.beshu.ror.accesscontrol.domain.UriPath
 
 class RRUserMetadataActionType
   extends Action[RRUserMetadataRequest, RRUserMetadataResponse, RRUserMetadataActionType.RequestBuilder](RRUserMetadataActionType.name) {
@@ -26,7 +27,7 @@ class RRUserMetadataActionType
   override def newResponse(): RRUserMetadataResponse = new RRUserMetadataResponse()
 
   override def newRequestBuilder(client: ElasticsearchClient): RRUserMetadataActionType.RequestBuilder =
-    new RRUserMetadataActionType.RequestBuilder(client, this, new RRUserMetadataRequest())
+    new RRUserMetadataActionType.RequestBuilder(client, this, new RRUserMetadataRequest(UriPath.currentUserMetadataPath, None))
 }
 
 object RRUserMetadataActionType {

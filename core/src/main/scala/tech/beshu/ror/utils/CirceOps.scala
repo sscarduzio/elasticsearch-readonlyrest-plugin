@@ -22,7 +22,7 @@ import io.circe.generic.semiauto.*
 import io.circe.syntax.EncoderOps
 import tech.beshu.ror.implicits.*
 
-import scala.jdk.CollectionConverters.MapHasAsJava
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
 object CirceOps {

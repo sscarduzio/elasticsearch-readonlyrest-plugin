@@ -58,7 +58,7 @@ class RorDisabledSuite
       "ROR API endpoint is being called" in {
         val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
-        val result = user1MetadataManager.fetchMetadata()
+        val result = user1MetadataManager.fetchUserMetadata("ent")
 
         result should have statusCode 403
         result.responseJson("error")("reason").str should be("Forbidden by ReadonlyREST")

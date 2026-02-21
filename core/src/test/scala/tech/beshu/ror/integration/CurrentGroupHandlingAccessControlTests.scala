@@ -20,14 +20,15 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.Allow
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.Allowed
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.JwtUtils.*
-import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class CurrentGroupHandlingAccessControlTests
   extends AnyWordSpec
@@ -125,166 +126,250 @@ class CurrentGroupHandlingAccessControlTests
   "An ACL" should {
     "handle properly login request and change tenancy request" when {
       "groups rule with auth_key is used" in {
+        def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
+          group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 1 block"))
+          group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
+          group2Metadata.userOrigin should be(None)
+          group2Metadata.kibanaPolicy should be(None)
+
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 1 block"))
+          group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user1")))
+          group3Metadata.userOrigin should be(None)
+          group3Metadata.kibanaPolicy should be(None)
+        }
+
         val loginRequest = MockRequestContext.metadata.withHeaders(basicAuthHeader("user1:pass"))
-        val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
           basicAuthHeader("user1:pass"), currentGroupHeader("group3")
         )
-        val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
       "groups rule with ror_kbn_auth is used (with local groups mapping)" in {
+        def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
+          group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 2 block"))
+          group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
+          group2Metadata.userOrigin should be(None)
+          group2Metadata.kibanaPolicy should be(None)
+
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 2 block"))
+          group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user2")))
+          group3Metadata.userOrigin should be(None)
+          group3Metadata.kibanaPolicy should be(None)
+        }
+
         val jwt = Jwt(Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
           claims = List(
           "user" := "user2",
           "groups" := List("kbn_group1", "kbn_group2", "kbn_group3")
         ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
-        val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
           bearerHeader(jwt), currentGroupHeader("group3")
         )
-        val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
       "groups rule with ror_kbn_auth is used (without local groups mapping)" in {
+        def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
+          group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 3 block"))
+          group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
+          group2Metadata.userOrigin should be(None)
+          group2Metadata.kibanaPolicy should be(None)
+
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 3 block"))
+          group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user3")))
+          group3Metadata.userOrigin should be(None)
+          group3Metadata.kibanaPolicy should be(None)
+        }
+
         val jwt = Jwt(Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
           claims = List(
             "user" := "user3",
             "groups" := List("group1", "group3")
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
-        val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
         val switchTenancyRequest = MockRequestContext.metadata
           .withHeaders(bearerHeader(jwt), currentGroupHeader("group3")
         )
-        val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
       "ror_kbn_auth is used" in {
+        def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
+          group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 4 block"))
+          group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
+          group2Metadata.userOrigin should be(None)
+          group2Metadata.kibanaPolicy should be(None)
+
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 4 block"))
+          group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user4")))
+          group3Metadata.userOrigin should be(None)
+          group3Metadata.kibanaPolicy should be(None)
+        }
+
         val jwt = Jwt(Keys.hmacShaKeyFor(kbn1SignatureKey.getBytes),
           claims = List(
             "user" := "user4",
             "groups" := List("group1", "group2", "group3")
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
-        val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
           bearerHeader(jwt), currentGroupHeader("group3")
         )
-        val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
       "groups rule with jwt_auth is used (with local groups mapping)" in {
+        def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
+          group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 5 block"))
+          group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
+          group2Metadata.userOrigin should be(None)
+          group2Metadata.kibanaPolicy should be(None)
+
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 5 block"))
+          group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user5")))
+          group3Metadata.userOrigin should be(None)
+          group3Metadata.kibanaPolicy should be(None)
+        }
+
         val jwt = Jwt(Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
           claims = List(
             "user" := "user5",
             "groups" := List("jwt_group1", "jwt_group2", "jwt_group3")
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
-        val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
           bearerHeader(jwt), currentGroupHeader("group3")
         )
-        val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user5"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
       "groups rule with jwt_auth is used (without local groups mapping)" in {
+        def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
+          group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 6 block"))
+          group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
+          group2Metadata.userOrigin should be(None)
+          group2Metadata.kibanaPolicy should be(None)
+
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 6 block"))
+          group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user6")))
+          group3Metadata.userOrigin should be(None)
+          group3Metadata.kibanaPolicy should be(None)
+        }
+
         val jwt = Jwt(Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
           claims = List(
             "user" := "user6",
             "groups" := List("group1", "group3")
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
-        val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
           bearerHeader(jwt), currentGroupHeader("group3")
         )
-        val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user6"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
       "jwt_auth is used" in {
+        def assertAllowUserMetadataWithGroupsResponse(metadata: UserMetadata.WithGroups) = {
+          metadata.groupsMetadata.keys.toList should be(GroupId("group2") :: GroupId("group3") :: Nil)
+
+          val group2Metadata = metadata.groupsMetadata(GroupId("group2"))
+          group2Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 7 block"))
+          group2Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
+          group2Metadata.userOrigin should be(None)
+          group2Metadata.kibanaPolicy should be(None)
+
+          val group3Metadata = metadata.groupsMetadata(GroupId("group3"))
+          group3Metadata.metadataOrigin.blockContext.block.name should be(Block.Name("User 7 block"))
+          group3Metadata.loggedUser should be(DirectlyLoggedUser(User.Id("user7")))
+          group3Metadata.userOrigin should be(None)
+          group3Metadata.kibanaPolicy should be(None)
+        }
+
         val jwt = Jwt(Keys.hmacShaKeyFor(jwt1SignatureKey.getBytes),
           claims = List(
             "user" := "user7",
             "groups" := List("group1", "group2", "group3")
           ))
         val loginRequest = MockRequestContext.metadata.withHeaders(bearerHeader(jwt))
-        val loginResponse = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
-        inside(loginResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user7"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group2")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (loginResponse, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
+        inside(loginResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
 
         val switchTenancyRequest = MockRequestContext.metadata.withHeaders(
           bearerHeader(jwt), currentGroupHeader("group3")
         )
-        val switchTenancyResponse = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
-        inside(switchTenancyResponse.result) { case Allow(userMetadata, _) =>
-          userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user7"))))
-          userMetadata.currentGroupId should be (Some(GroupId("group3")))
-          userMetadata.availableGroups should be (UniqueList.of(group("group2"), group("group3")))
+        val (switchTenancyResponse, _) = acl.handleMetadataRequest(switchTenancyRequest).runSyncUnsafe()
+        inside(switchTenancyResponse) { case Allowed(userMetadata@UserMetadata.WithGroups(_)) =>
+          assertAllowUserMetadataWithGroupsResponse(userMetadata)
         }
       }
     }

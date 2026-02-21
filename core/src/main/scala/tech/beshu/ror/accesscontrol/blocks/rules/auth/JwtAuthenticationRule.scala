@@ -18,14 +18,15 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.toShow
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDefForAuthentication
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseJwtRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthenticationImpersonationCustomSupport
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
@@ -43,35 +44,35 @@ final class JwtAuthenticationRule(val settings: Settings,
 
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
-  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    processUsingJwtToken(blockContext, settings.jwt) { payload =>
+  override protected[rules] def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+    processUsingJwtToken(blockContext, settings.jwt, Cause.AuthenticationFailed) { payload =>
       authenticate(blockContext, payload)
     }
   }
 
-  override protected[rules] def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    doPostAuthAction(blockContext, settings.jwt)
+  override protected[rules] def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+    doPostAuthAction(blockContext, settings.jwt, Cause.AuthenticationFailed)
   }
 
   private def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                    payload: Jwt.Payload): RuleResult[B] = {
+                                                                    payload: Jwt.Payload): Decision[B] = {
     val result = payload.claims.userIdClaim(settings.jwt.userClaim)
     logClaimSearchResults(blockContext, result)
     result match {
       case Found(userId) =>
-        RuleResult.Fulfilled(blockContext.withUserMetadata(
+        Decision.Permitted(blockContext.withBlockMetadata(
           _.withLoggedUser(DirectlyLoggedUser(userId))
             .withJwtToken(payload)
         ))
       case NotFound =>
-        RuleResult.Rejected()
+        Decision.Denied(Cause.AuthenticationFailed)
     }
   }
 
   private def logClaimSearchResults[B <: BlockContext](blockContext: B,
                                                        user: ClaimSearchResult[User.Id]): Unit = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-    logger.debug(s"[${requestId.show}] JWT resolved user for claim ${settings.jwt.userClaim.name.rawPath}: ${user.show}")
+    logger.debug(s"[${requestId.show}] JWT resolved user for claim ${settings.jwt.userClaim.name.show}: ${user.show}")
   }
 
 }

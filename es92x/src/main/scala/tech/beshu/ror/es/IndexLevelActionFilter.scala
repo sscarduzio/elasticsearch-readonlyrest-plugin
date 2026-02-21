@@ -167,7 +167,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               request,
               rorActionListener,
               chain,
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
+              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet,
+              esEnv.esVersion
             )
           )
         } recover {

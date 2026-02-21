@@ -19,14 +19,12 @@ package tech.beshu.ror.accesscontrol.blocks
 import cats.data.{NonEmptyList, Validated, WriterT}
 import cats.{Eq, Show}
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
-import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
@@ -36,7 +34,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.accesscontrol.domain.RequestId.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
+
 import scala.language.implicitConversions
 
 class Block(val name: Name,
@@ -49,58 +48,59 @@ class Block(val name: Name,
 
   import Lifter.*
 
-  def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
-    val initBlockContext = requestContext.initialBlockContext
+  def evaluate[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(Decision[B], BlockHistory[B])] = {
+    val initBlockContext = requestContext.initialBlockContext(this)
     rules
-      .foldLeft(matched[B](initBlockContext)) {
+      .foldLeft(matched[B](Decision.Permitted(initBlockContext))) {
         case (currentResult, rule) =>
           for {
             previousRulesResult <- currentResult
             resultAfterRulesCheck <- previousRulesResult match {
-              case Matched(_, blockContext) =>
-                checkRule[B](rule, blockContext)
-              case Mismatched(lastBlockContext) =>
-                mismatched[B](lastBlockContext)
+              case Decision.Permitted(blockContext) =>
+                checkRule(rule, blockContext)
+              case r@Decision.Denied(_) =>
+                mismatched(r)
             }
           } yield resultAfterRulesCheck
       }
-      .mapBoth { case (history, result) =>
-        (History(name, history, result.blockContext), result)
-      }
       .run
-      .map(_.swap)
+      .map { case (history, result) =>
+        val blockHistory = result match {
+          case d@Decision.Permitted(_) => BlockHistory.Permitted(this, d, history)
+          case d@Decision.Denied(_) => BlockHistory.Denied(this, d, history)
+        }
+        result -> blockHistory
+      }
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule, blockContext: B) = {
     implicit val blockContextImpl: B = blockContext
-    val ruleResult = rule
+    val ruleDecision = rule
       .check[B](blockContext)
       .recover { case e =>
         logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
-        RuleResult.Rejected[B]()
+        val cause = rule match {
+          case rule: Rule.AuthenticationRule => Cause.AuthenticationFailed
+          case rule: Rule.AuthorizationRule => Cause.GroupsAuthorizationFailed
+          case rule: Rule.RegularRule => Cause.NotAuthorized
+        }
+        Decision.Denied[B](cause)
       }
-    lift[B](ruleResult)
-      .flatMap {
-        case result: RuleResult.Fulfilled[B] =>
-          matched[B](result.blockContext)
-            .tell(Vector(RuleHistoryItem(rule.name, result)))
-        case result: RuleResult.Rejected[B] =>
-          mismatched[B](blockContext)
-            .tell(Vector(RuleHistoryItem(rule.name, result)))
+    lift[B](ruleDecision)
+      .flatTap { decision =>
+        WriterT.tell(Vector(RuleHistory(rule.name, decision)))
       }
   }
 
-  private def matched[B <: BlockContext](blockContext: B): WriterT[Task, Vector[HistoryItem[B]], ExecutionResult[B]] =
-    lift[B](Task.now(ExecutionResult.matched(this, blockContext)))
+  private def matched[B <: BlockContext](result: Decision.Permitted[B]): WriterT[Task, Vector[RuleHistory[B]], Decision[B]] =
+    lift[B](Task.now(result))
 
-  private def mismatched[B <: BlockContext](blockContext: B): WriterT[Task, Vector[HistoryItem[B]], ExecutionResult[B]] =
-    lift[B](Task.now(ExecutionResult.mismatched(blockContext)))
+  private def mismatched[B <: BlockContext](result: Decision.Denied[B]): WriterT[Task, Vector[RuleHistory[B]], Decision[B]] =
+    lift[B](Task.now(result))
 
 }
 
 object Block {
-
-  private type BlockResultWithHistory[B <: BlockContext] = Task[(Block.ExecutionResult[B], History[B])]
 
   def createFrom(name: Name,
                  policy: Option[Policy],
@@ -125,23 +125,14 @@ object Block {
                                   rules: NonEmptyList[RuleDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
-      name,
-      policy.getOrElse(Block.Policy.Allow),
-      verbosity.getOrElse(Block.Verbosity.Info),
-      audit.getOrElse(Block.Audit.Enabled),
-      rules.map(_.rule)
+      name = name,
+      policy = policy.getOrElse(Block.Policy.Allow),
+      verbosity = verbosity.getOrElse(Block.Verbosity.Info),
+      audit = audit.getOrElse(Block.Audit.Enabled),
+      rules = rules.map(_.rule)
     )
 
   final case class Name(value: String) extends AnyVal
-  final case class History[B <: BlockContext](block: Block.Name,
-                                              items: Vector[HistoryItem[B]],
-                                              blockContext: B)
-  sealed trait HistoryItem[B <: BlockContext]
-  object HistoryItem {
-    final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
-                                                        result: RuleResult[B])
-      extends HistoryItem[B]
-  }
 
   final case class RuleDefinition[T <: Rule](rule: T,
                                              variableUsage: VariableUsage[T],
@@ -156,20 +147,6 @@ object Block {
         implicitly[ImpersonationWarningSupport[T]]
       )
     }
-  }
-
-  sealed trait ExecutionResult[B <: BlockContext] {
-    def blockContext: B
-  }
-  object ExecutionResult {
-    final case class Matched[B <: BlockContext](block: Block, override val blockContext: B)
-      extends ExecutionResult[B]
-    final case class Mismatched[B <: BlockContext](override val blockContext: B)
-      extends ExecutionResult[B]
-
-    def matched[B <: BlockContext](block: Block, blockContext: B): ExecutionResult[B] = Matched[B](block, blockContext)
-
-    def mismatched[B <: BlockContext](blockContext: B): ExecutionResult[B] = Mismatched[B](blockContext)
   }
 
   sealed trait Policy
@@ -199,8 +176,8 @@ object Block {
   }
 
   private class Lifter[B <: BlockContext] {
-    def apply[A](task: Task[A]): WriterT[Task, Vector[HistoryItem[B]], A] =
-      WriterT.liftF[Task, Vector[HistoryItem[B]], A](task)
+    def apply[A](task: Task[A]): WriterT[Task, Vector[RuleHistory[B]], A] =
+      WriterT.liftF[Task, Vector[RuleHistory[B]], A](task)
   }
   private object Lifter {
     def lift[B <: BlockContext]: Lifter[B] = new Lifter[B]()

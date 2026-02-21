@@ -60,7 +60,8 @@ class UnboundidLdapUsersService private(override val id: LdapService#Id,
     }
   }
 
-  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute)(implicit requestId: RequestId) = {
+  private def fetchLdapUser(userId: User.Id, uidAttribute: UserIdAttribute.CustomAttribute)
+                           (implicit requestId: RequestId) = {
     connectionPool
       .process(searchUserLdapRequest(_, userSearchFiler.searchUserBaseDN, uidAttribute, userId), serviceTimeout)
       .flatMap {

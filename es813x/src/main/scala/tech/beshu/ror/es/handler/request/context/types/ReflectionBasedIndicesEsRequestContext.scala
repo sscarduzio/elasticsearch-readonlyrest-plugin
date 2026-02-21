@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import cats.implicits.*
 import com.google.common.collect.Sets
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
@@ -68,7 +67,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
   }
 }
 
-object ReflectionBasedIndicesEsRequestContext extends RequestIdAwareLogging {
+object ReflectionBasedIndicesEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
     requestedIndicesFrom(arg.esContext.actionRequest)

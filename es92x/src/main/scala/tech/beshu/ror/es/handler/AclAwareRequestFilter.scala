@@ -76,7 +76,7 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
+import tech.beshu.ror.es.{EsVersion, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -102,8 +102,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                                       esContext: EsContext) = {
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
-        val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
-        handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
+        val handler = new UserMetadataRequestHandler(engine, esContext)
+        handler.handle(new UserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
         handleEsRestApiRequest(regularRequestHandler, esContext, engine.core.accessControl.staticContext)
@@ -280,7 +280,8 @@ object AclAwareRequestFilter {
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val threadContextResponseHeaders: Set[(String, String)]) extends BaseEsContext {
+                        val threadContextResponseHeaders: Set[(String, String)],
+                        val esVersion: EsVersion) extends BaseEsContext {
 
     override val esTaskId: Long = task.getId
 

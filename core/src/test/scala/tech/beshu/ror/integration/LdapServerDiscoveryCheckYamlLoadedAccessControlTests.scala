@@ -86,13 +86,13 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
       "allow core to start" when {
         "server discovery is used and DNS responds with proper address" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("LDAP test"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
-              blockContext
-            }
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 1
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("LDAP test"))
+            assertBlockContext(blockContext)(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))
+            )
           }
         }
       }

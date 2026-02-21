@@ -208,10 +208,10 @@ class EsServerBasedRorClusterService(nodeName: String,
 
   private def getRegisteredRemoteClusterNames(remoteClusterService: RemoteClusterService) = {
     import org.joor.Reflect.*
-    on(remoteClusterService)
+    val clusters = on(remoteClusterService)
       .call("getRemoteClusterNames")
-      .get[java.util.Set[String]].asSafeSet
-      .flatMap(ClusterName.Full.fromString)
+      .get[java.util.Set[String]]
+    clusters.asSafeSet.flatMap(ClusterName.Full.fromString)
   }
 
   private def resolveAllRemoteIndices(remoteClusterName: ClusterName.Full,

@@ -23,12 +23,14 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
@@ -73,19 +75,19 @@ abstract class UnboundidLdapAuthenticationServiceTests
         "user exists in LDAP and its credentials are correct" in {
           createSimpleAuthenticationService()
             .authenticate(morganUserId, PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(true)
+            .runSyncUnsafe() should be(Right(DirectlyLoggedUser(morganUserId)))
         }
       }
       "returns false" when {
         "user doesn't exist in LDAP" in {
           createSimpleAuthenticationService()
             .authenticate(User.Id("unknown"), PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(false)
+            .runSyncUnsafe() should be(Left(AuthenticationFailed))
         }
         "user has invalid credentials" in {
           createSimpleAuthenticationService()
             .authenticate(morganUserId, PlainTextSecret("invalid_secret"))
-            .runSyncUnsafe() should be(false)
+            .runSyncUnsafe() should be(Left(AuthenticationFailed))
         }
       }
     }

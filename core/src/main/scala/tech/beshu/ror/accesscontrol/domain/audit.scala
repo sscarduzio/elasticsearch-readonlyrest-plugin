@@ -31,6 +31,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
@@ -143,7 +144,12 @@ object AuditCluster {
   case object LocalAuditCluster extends AuditCluster
   final case class RemoteAuditCluster(nodes: UniqueNonEmptyList[AuditClusterNode],
                                       mode: ClusterMode,
-                                      credentials: Option[NodeCredentials]) extends AuditCluster
+                                      credentials: Option[NodeCredentials]) extends AuditCluster {
+    def requestTimeout: FiniteDuration = 30.seconds
+    def connectionTimeout: FiniteDuration = 1.seconds
+    def connectionRequestTimeout: FiniteDuration = 10.seconds
+    def maxInflightRequests: Int = 10000
+  }
 
   final case class AuditClusterNode(uri: Uri) {
     def hostname: String = uri.toUrl.hostOption.map(_.value).getOrElse("localhost")

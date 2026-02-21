@@ -99,8 +99,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                                       esContext: EsContext) = {
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
-        val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
-        handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
+        val handler = new UserMetadataRequestHandler(engine, esContext)
+        handler.handle(new UserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
         handleEsRestApiRequest(regularRequestHandler, esContext, engine.core.accessControl.staticContext)

@@ -2,13 +2,66 @@ openapi: 3.0.3
 info:
   title: ROR Internal API
   description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
-  version: 3.0.0
+  version: 3.1.0
 
 paths:
+  /_readonlyrest/metadata/user:
+    get:
+      summary: Getting user metadata from ES ROR
+      description: |
+        The endpoint returns user metadata. The response structure depends on the X-ROR-KBN-License-Type header:
+
+        - **USER_WITH_GROUPS**: Only returned when the license type is exactly 'ent' AND the user belongs to groups. This response includes all groups with their respective metadata.
+        - **USER_WITHOUT_GROUPS**: Returned for all other license types (free, pro, ent-disabled-multitenancy), regardless of whether the user has groups. Also returned for 'ent' license when the user has no groups.
+
+        Unlike /metadata/current_user, this returns all data in a single call without requiring the X-ROR-Current-Group header.
+      tags:
+        - ROR Kibana logging in
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+        - $ref: '#/components/parameters/XRorKbnLicenseTypeHeader'
+      responses:
+        200:
+          description: Contains user metadata - either with groups or without groups, depending on the license type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserMetadataResponse'
+              examples:
+                GetUserMetadataResponseExample:
+                  $ref: "#/components/examples/GetUserMetadataResponseExample"
+                GetUserMetadataResponseProExample:
+                  $ref: "#/components/examples/GetUserMetadataResponseProExample"
+                GetUserMetadataResponseEntDisabledMultitenancyExample:
+                  $ref: "#/components/examples/GetUserMetadataResponseEntDisabledMultitenancyExample"
+                GetUserWithoutGroupsMetadataResponseExample:
+                  $ref: "#/components/examples/GetUserWithoutGroupsMetadataResponseExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
   /_readonlyrest/metadata/current_user:
     get:
       summary: Getting logged user metadata from ES ROR
-      description: Then endpoint is used by ROR Kibana to figure out if user can be authenticated and authorized. In response metadata of the user are sent back to Kibana.
+      description: The endpoint is used by ROR Kibana to figure out if user can be authenticated and authorized. In response metadata of the user are sent back to Kibana.
+      deprecated: true
       tags:
         - ROR Kibana logging in
       parameters:
@@ -591,6 +644,16 @@ components:
       description: "Correlation ID to correlate requests/responses logs within one ROR KBN session"
       example: "CED054A0-9881-401E-AEED-4FB4C5915DD6"
 
+    XRorKbnLicenseType:
+      type: string
+      description: "The ROR Kibana plugin license type and configuration. Possible values are: 'free' for free license, 'pro' for pro license, 'ent' for enterprise license (multitenancy enabled by default), and 'ent-disabled-multitenancy' for enterprise license with multitenancy feature disabled."
+      enum:
+        - free
+        - pro
+        - ent
+        - ent-disabled-multitenancy
+      example: "ent"
+
     GetCurrentUserMetadataResponse:
       type: object
       properties:
@@ -657,6 +720,117 @@ components:
         name:
           type: string
           description: It's a human-readable group name used in tenancy selector in ROR Kibana
+
+    GetUserMetadataResponse:
+      description: |
+        User metadata response. The response type depends on the X-ROR-KBN-License-Type header:
+
+        - **USER_WITH_GROUPS**: Only returned when X-ROR-KBN-License-Type is 'ent' AND the user has groups
+        - **USER_WITHOUT_GROUPS**: Returned for all other license types (free, pro, ent-disabled-multitenancy), or when user has no groups
+      oneOf:
+        - $ref: '#/components/schemas/UserWithGroupsMetadataResponse'
+        - $ref: '#/components/schemas/UserWithoutGroupsMetadataResponse'
+      discriminator:
+        propertyName: type
+        mapping:
+          USER_WITH_GROUPS: '#/components/schemas/UserWithGroupsMetadataResponse'
+          USER_WITHOUT_GROUPS: '#/components/schemas/UserWithoutGroupsMetadataResponse'
+
+    UserWithGroupsMetadataResponse:
+      type: object
+      required:
+        - type
+        - groups
+      properties:
+        type:
+          type: string
+          enum:
+            - USER_WITH_GROUPS
+        correlation_id:
+          type: string
+          description: The correlation ID sent in request header
+        groups:
+          type: array
+          description: All groups the user has access to, with metadata for each
+          items:
+            $ref: '#/components/schemas/GroupMetadata'
+
+    UserWithoutGroupsMetadataResponse:
+      type: object
+      required:
+        - type
+        - username
+        - kibana
+      properties:
+        type:
+          type: string
+          enum:
+            - USER_WITHOUT_GROUPS
+        correlation_id:
+          type: string
+          description: The correlation ID sent in request header
+        username:
+          type: string
+          description: The authenticated username
+        ror_origin:
+          type: string
+          description: The value taken from JWT's x-ror-origin claim when 'ror_kbn_auth' rule is matched
+        kibana:
+          $ref: '#/components/schemas/KibanaRelatedMetadata'
+
+    GroupMetadata:
+      type: object
+      required:
+        - group
+        - username
+        - kibana
+      properties:
+        group:
+          $ref: '#/components/schemas/Group'
+        username:
+          type: string
+          description: The authenticated username for this group (may differ per group)
+        ror_origin:
+          type: string
+          description: The value taken from JWT's x-ror-origin claim when 'ror_kbn_auth' rule is matched
+        kibana:
+          $ref: '#/components/schemas/KibanaRelatedMetadata'
+
+    KibanaRelatedMetadata:
+      type: object
+      description: Kibana-related metadata for the user/group
+      required:
+        - access
+      properties:
+        access:
+          type: string
+          description: Defines the minimum set of actions necessary for browsers to use Kibana. Available for all license types.
+          enum:
+            - admin
+            - api_only
+            - ro
+            - ro_strict
+            - rw
+            - unrestricted
+        index:
+          type: string
+          description: The Kibana index name. Available for all license types.
+        template_index:
+          type: string
+          description: The Kibana template index name. Available only with enterprise licenses (ent, ent-disabled-multitenancy).
+        hidden_apps:
+          type: array
+          description: Kibana apps that should be hidden (supports regexes). Available with pro and enterprise licenses (pro, ent, ent-disabled-multitenancy).
+          items:
+            $ref: '#/components/schemas/KibanaHiddenAppLike'
+        allowed_api_paths:
+          type: array
+          description: Kibana API paths allowed (supports regexes). Available for all license types.
+          items:
+            $ref: '#/components/schemas/KibanaAllowedApiPath'
+        metadata:
+          type: object
+          description: JSON with metadata ([key, value] pairs) from the matched block. Available only with enterprise licenses (ent, ent-disabled-multitenancy).
 
     KibanaAllowedApiPath:
       type: object
@@ -1438,6 +1612,14 @@ components:
       schema:
         $ref: '#/components/schemas/GroupId'
 
+    XRorKbnLicenseTypeHeader:
+      name: X-ROR-KBN-License-Type
+      in: header
+      required: false
+      description: The ROR Kibana plugin license type. Used to determine available features.
+      schema:
+        $ref: '#/components/schemas/XRorKbnLicenseType'
+
   examples:
 
     GetCurrentUserMetadataResponseExample:
@@ -1473,6 +1655,117 @@ components:
           key5:
             a: 1
             b: 2
+
+    GetUserMetadataResponseExample:
+      summary: User with groups metadata (ent license)
+      description: Response when X-ROR-KBN-License-Type is 'ent' and user has groups. Shows all enterprise features including template_index, hidden_apps, and metadata.
+      value:
+        type: USER_WITH_GROUPS
+        correlation_id: 7D2695DF-C2CC-419A-9D0D-8A309D429786
+        groups:
+          - group:
+              id: administration_group
+              name: administration
+            username: admin
+            ror_origin: jwt-issuer-1
+            kibana:
+              access: admin
+              index: .kibana_7.17_admin
+              template_index: .kibana_7.17_template
+              hidden_apps: []
+              allowed_api_paths:
+                - http_method: ANY
+                  path_regex: "^/api/index_management/indices$"
+                - http_method: GET
+                  path_regex: "^/api/saved_objects/.*$"
+              metadata:
+                role: superuser
+                department: IT
+          - group:
+              id: management_group
+              name: management
+            username: admin
+            kibana:
+              access: rw
+              index: .kibana_7.17_management
+              template_index: .kibana_7.17_management_template
+              hidden_apps:
+                - "Enterprise Search|Overview"
+                - "Observability"
+              allowed_api_paths: []
+              metadata:
+                role: manager
+          - group:
+              id: users_group
+              name: users
+            username: john.doe
+            ror_origin: ldap-auth
+            kibana:
+              access: ro
+              index: .kibana_7.17_users
+              template_index: .kibana_7.17_users_template
+              hidden_apps:
+                - "Enterprise Search|Overview"
+                - "Observability"
+                - "/^Analytics\\|(?!(Maps)$).*$/"
+              allowed_api_paths: []
+              metadata: {}
+
+    GetUserWithoutGroupsMetadataResponseExample:
+      summary: User metadata (free license)
+      description: Response when X-ROR-KBN-License-Type is 'free'. Shows only basic fields (access, index, allowed_api_paths). No enterprise-only or pro features.
+      value:
+        type: USER_WITHOUT_GROUPS
+        correlation_id: 7D2695DF-C2CC-419A-9D0D-8A309D429786
+        username: admin
+        kibana:
+          access: admin
+          index: .kibana_7.17_admin
+          allowed_api_paths:
+            - http_method: ANY
+              path_regex: "^/api/index_management/indices$"
+
+    GetUserMetadataResponseProExample:
+      summary: User metadata (pro license)
+      description: Response when X-ROR-KBN-License-Type is 'pro'. Shows pro features like hidden_apps but no enterprise-only fields (template_index, metadata). Always returns USER_WITHOUT_GROUPS even if user has groups.
+      value:
+        type: USER_WITHOUT_GROUPS
+        correlation_id: 7D2695DF-C2CC-419A-9D0D-8A309D429786
+        username: admin
+        kibana:
+          access: rw
+          index: .kibana_7.17_admin
+          hidden_apps:
+            - "Enterprise Search|Overview"
+            - "Observability"
+          allowed_api_paths:
+            - http_method: ANY
+              path_regex: "^/api/index_management/indices$"
+            - http_method: GET
+              path_regex: "^/api/saved_objects/.*$"
+
+    GetUserMetadataResponseEntDisabledMultitenancyExample:
+      summary: User metadata (ent-disabled-multitenancy license)
+      description: Response when X-ROR-KBN-License-Type is 'ent-disabled-multitenancy'. Shows enterprise fields (template_index, metadata) but always returns USER_WITHOUT_GROUPS even if user has groups, since multitenancy is disabled.
+      value:
+        type: USER_WITHOUT_GROUPS
+        correlation_id: 7D2695DF-C2CC-419A-9D0D-8A309D429786
+        username: admin
+        ror_origin: jwt-issuer-1
+        kibana:
+          access: admin
+          index: .kibana_7.17_admin
+          template_index: .kibana_7.17_template
+          hidden_apps:
+            - "Enterprise Search|Overview"
+          allowed_api_paths:
+            - http_method: ANY
+              path_regex: "^/api/index_management/indices$"
+            - http_method: GET
+              path_regex: "^/api/saved_objects/.*$"
+          metadata:
+            role: superuser
+            department: IT
 
     NoAclBlockWasMatchedForbiddenResponseExample:
       summary: No ACL block was matched

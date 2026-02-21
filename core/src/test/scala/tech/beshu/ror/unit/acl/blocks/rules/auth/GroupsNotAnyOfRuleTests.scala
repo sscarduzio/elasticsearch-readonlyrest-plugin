@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.NotAnyOfGroupsRule.*
@@ -48,7 +47,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("g1")
             )
           ))
@@ -70,7 +69,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("g1", "g2")
             )
           ))
@@ -95,7 +94,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           usersDefinitions = NonEmptyList.of(UserDef(
             usernames = userIdPatterns("user1"),
             mode = WithoutGroupsMapping(
-              authenticationRule.matching(User.Id("user1")),
+              authenticationRule.permitting(User.Id("user1")),
               groups("h1", "h2")
             )
           ))
