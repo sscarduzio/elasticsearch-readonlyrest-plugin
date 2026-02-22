@@ -64,11 +64,6 @@ object CirceOps {
     def toJava: Any = json.foldWith(JsonToJavaFolder)
   }
 
-  extension (jsonObject: JsonObject) {
-    def toJavaMap: java.util.Map[String, Any] =
-      jsonObject.toMap.view.mapValues(_.foldWith(JsonToJavaFolder)).toMap.asJava
-  }
-
   private object JsonToJavaFolder extends Folder[Any] {
     override def onNull: Any = null
 

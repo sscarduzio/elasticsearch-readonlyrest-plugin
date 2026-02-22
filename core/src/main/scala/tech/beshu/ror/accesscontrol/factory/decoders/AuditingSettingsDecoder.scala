@@ -345,8 +345,6 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
     Try {
       serializer match {
-        case serializer: tech.beshu.ror.audit.AuditLogSerializer if fullClassName.startsWith("tech.beshu.ror.audit.instances") =>
-          Some((serializer, serializer.getClass.getName))
         case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
           Some((serializer, serializer.getClass.getName))
         case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
