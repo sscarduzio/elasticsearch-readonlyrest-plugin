@@ -14,12 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.es
 
-import org.json.JSONObject
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-
-class DefaultRorSchemaAuditLogSerializer(val underlying: AuditLogSerializer) extends AuditLogSerializer {
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
-    underlying.onResponse(responseContext)
+@FunctionalInterface
+trait EsXContentBuilder {
+  def build(map: java.util.Map[String, Any]): Unit
 }

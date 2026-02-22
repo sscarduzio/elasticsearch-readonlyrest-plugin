@@ -19,23 +19,23 @@ package tech.beshu.ror.unit.utils
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE
-import tech.beshu.ror.utils.ToKibanaIndexPatternDateTimeFormatter
+import tech.beshu.ror.utils.KibanaIndexPattern
 
-class ToKibanaIndexPatterDateTimeFormatterTests extends AnyWordSpec {
+class KibanaIndexPatternTests extends AnyWordSpec {
 
   "A ToKibanaIndexPatterDateTimeFormatter method kibanaIndexPattern" should {
-    "return correct Kibana index name patter for template" when {
+    "return correct Kibana index name pattern for template" when {
       "default template" in {
-        val formatter = new ToKibanaIndexPatternDateTimeFormatter(AUDIT_LOG_DEFAULT_INDEX_TEMPLATE)
-        formatter.kibanaIndexPattern should be("readonlyrest_audit-*")
+        val kibanaIndexPattern = KibanaIndexPattern.fromDateTimeIndexPattern(AUDIT_LOG_DEFAULT_INDEX_TEMPLATE)
+        kibanaIndexPattern should be("readonlyrest_audit-*")
       }
       "monthly pattern that is included in docs" in {
-        val formatter = new ToKibanaIndexPatternDateTimeFormatter("'custom-prefix'-yyyy-MM")
-        formatter.kibanaIndexPattern should be("custom-prefix-*")
+        val kibanaIndexPattern = KibanaIndexPattern.fromDateTimeIndexPattern("'custom-prefix'-yyyy-MM")
+        kibanaIndexPattern should be("custom-prefix-*")
       }
       "pattern in the middle" in {
-        val formatter = new ToKibanaIndexPatternDateTimeFormatter("'custom-prefix'-yyyy-MM'some-suffix")
-        formatter.kibanaIndexPattern should be("custom-prefix-*some-suffix")
+        val kibanaIndexPattern = KibanaIndexPattern.fromDateTimeIndexPattern("'custom-prefix'-yyyy-MM'some-suffix")
+        kibanaIndexPattern should be("custom-prefix-*some-suffix")
       }
     }
   }
