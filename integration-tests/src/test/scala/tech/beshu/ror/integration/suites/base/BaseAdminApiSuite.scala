@@ -1134,7 +1134,7 @@ trait BaseAdminApiSuite
   }
 
   private def assertAuditConfig(rorApiManager: RorApiManager) = {
-    val getIndexConfigResult = rorApiManager.getRorAuditIndexSettings
+    val getIndexConfigResult = rorApiManager.fetchCurrentAuditConfiguration
     getIndexConfigResult should have statusCode 200
     getIndexConfigResult.responseJson should be(ujson.read(
       """

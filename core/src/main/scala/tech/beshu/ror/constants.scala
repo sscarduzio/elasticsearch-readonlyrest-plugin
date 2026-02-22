@@ -44,7 +44,7 @@ object constants {
   val PROVIDE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock"
   val PROVIDE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config"
   val PROVIDE_FILE_SETTINGS_PATH = "/_readonlyrest/admin/config/file"
-  val PROVIDE_AUDIT_SETTINGS_PATH = "/_readonlyrest/admin/config/audit/"
+  val FETCH_CURRENT_AUDIT_CONFIGURATION_PATH = "/_readonlyrest/admin/config/audit"
 
   val FIELDS_TRANSIENT = "_fields"
 

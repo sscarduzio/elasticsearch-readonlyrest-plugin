@@ -1002,20 +1002,20 @@ components:
       type: object
       required:
         - status
-        - localAuditIndexes
-        - otherAuditOutputs
+        - local_audit_indexes
+        - other_audit_outputs
       properties:
         status:
           type: string
           description: "Success status"
           enum:
             - ok
-        localAuditIndexes:
+        local_audit_indexes:
           description: Local audit indexes used for ROR audit
           type: array
           items:
             $ref: '#/components/schemas/LocalAuditIndex'
-        otherAuditOutputs:
+        other_audit_outputs:
           description: Other audit outputs (remote indexes and loggers)
           type: array
           items:
@@ -1045,7 +1045,7 @@ components:
       properties:
         indexPattern:
           type: string
-          description: Description of the output
+          description: Audit index name pattern
 
     GetAuditSettingsFailureResponse:
       type: object
@@ -1887,12 +1887,12 @@ components:
       summary: Successfully fetched configuration of audit outputs
       value:
         status: ok
-        localAuditIndexes:
+        local_audit_indexes:
           - indexPattern: custom_template_*
             schema: rorDefault
           - indexPattern: readonlyrest_audit-*
             schema: ecsV1
-        otherAuditOutputs:
+        other_audit_outputs:
           - description: Logger with name [readonlyrest_audit]
 
     GetAuditSettingsFailureExample:

@@ -22,7 +22,7 @@ import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, DefaultRorSchemaAuditLogSerializer}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
@@ -346,13 +346,13 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     Try {
       serializer match {
         case serializer: tech.beshu.ror.audit.AuditLogSerializer if fullClassName.startsWith("tech.beshu.ror.audit.instances") =>
-          Some((new DefaultRorSchemaAuditLogSerializer(serializer), serializer.getClass.getName))
+          Some((serializer, serializer.getClass.getName))
         case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
           Some((serializer, serializer.getClass.getName))
         case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
           Some((new EnvironmentAwareAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
         case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] if fullClassName.startsWith("tech.beshu.ror.requestcontext") =>
-          Some((new DefaultRorSchemaAuditLogSerializer(new DeprecatedAuditLogSerializerAdapter(serializer)), serializer.getClass.getName))
+          Some((new DeprecatedAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
         case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
           Some((new DeprecatedAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
         case _ => None

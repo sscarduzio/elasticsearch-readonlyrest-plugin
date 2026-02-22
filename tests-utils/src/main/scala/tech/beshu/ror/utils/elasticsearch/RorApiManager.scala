@@ -60,8 +60,8 @@ class RorApiManager(client: RestClient,
     call(createGetRorInIndexSettingsRequest(), new RorApiJsonResponse(_))
   }
 
-  def getRorAuditIndexSettings: RorApiJsonResponse = {
-    call(createGetRorAuditIndexSettingsRequest(), new RorApiJsonResponse(_))
+  def fetchCurrentAuditConfiguration: RorApiJsonResponse = {
+    call(createFetchCurrentAuditConfigurationRequest(), new RorApiJsonResponse(_))
   }
 
   def updateRorInIndexSettings(settings: String): RorApiResponseWithBusinessStatus = {
@@ -206,7 +206,7 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config"))
   }
 
-  private def createGetRorAuditIndexSettingsRequest() = {
+  private def createFetchCurrentAuditConfigurationRequest() = {
     new HttpGet(client.from("/_readonlyrest/admin/config/audit"))
   }
 

@@ -25,17 +25,19 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.DefaultRorSchemaAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexPattern, RequestId}
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.{LocalAuditIndex, OtherAuditOutput}
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.{AuditIndexSchema, AuditOutput}
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
+import tech.beshu.ror.constants
+import tech.beshu.ror.es.interfaces.EsXContentBuilder
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.IndexNotFound
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
@@ -43,6 +45,7 @@ import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSour
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.utils.CirceOps.{toCirceErrorOps, toJava}
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.ScalaOps.*
 
 class MainSettingsApi(rorInstance: RorInstance,
                       settingsYamlParser: RawRorSettingsYamlParser,
@@ -57,7 +60,7 @@ class MainSettingsApi(rorInstance: RorInstance,
           (implicit requestId: RequestId): Task[MainSettingsResponse] = {
     val settingsResponse = request.aType match {
       case Type.ForceReload => forceReloadRor()
-      case Type.ProvideAuditSettings => provideAuditIndexSettings()
+      case Type.FetchCurrentAuditConfiguration => fetchCurrentAuditConfiguration()
       case Type.ProvideIndexSettings => provideRorIndexSettings()
       case Type.ProvideFileSettings => provideRorFileSettings()
       case Type.UpdateIndexSettings => updateRorIndexSettings(request.body)
@@ -66,35 +69,31 @@ class MainSettingsApi(rorInstance: RorInstance,
       .executeOn(RorSchedulers.restApiScheduler)
   }
 
-  private def provideAuditIndexSettings(): Task[ProvideAuditSettings] = Task.delay {
-    (for {
-      engines <- rorInstance.engines.toRight("Not ready")
-      auditingSettings <- engines.mainEngine.core.auditingSettings.toRight("Audit not configured")
-      sinks = auditingSettings.auditSinks
-      auditOutputs = sinks.toList.flatMap {
-        case AuditSink.Enabled(config) => config match {
-          case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
-            logSerializer match {
-              case serializer: EcsV1AuditLogSerializer =>
-                Some(LocalAuditIndex(rorAuditIndexTemplate.rawKibanaIndexPattern, "ecsV1"))
-              case withDefaultSchema: DefaultRorSchemaAuditLogSerializer =>
-                Some(LocalAuditIndex(rorAuditIndexTemplate.rawKibanaIndexPattern, "rorDefault"))
-              case other =>
-                Some(LocalAuditIndex(rorAuditIndexTemplate.rawKibanaIndexPattern, "custom"))
-            }
-          case Config.EsIndexBasedSink(_, _, _) =>
-            Some(OtherAuditOutput("Remote audit cluster"))
-          case Config.EsDataStreamBasedSink(_, ds, _) =>
-            Some(OtherAuditOutput(s"Data stream with name [${ds.dataStream.value.value}]"))
-          case Config.LogBasedSink(_, loggerName) =>
-            Some(OtherAuditOutput(s"Logger with name [${loggerName.value.value}]"))
-        }
-        case AuditSink.Disabled => None
+  private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
+    val sinks = rorInstance.auditSettings.map(_.auditSinks.toList).getOrElse(List.empty)
+    val auditOutputs = sinks.flatMap {
+      case AuditSink.Enabled(config) => config match {
+        case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
+          logSerializer match {
+            case serializer: EcsV1AuditLogSerializer =>
+              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.EcsV1))
+            case serializer if serializer.getClass.getName.startsWith("tech.beshu.ror.audit.instances") =>
+              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.RorDefault))
+            case serializer if serializer.getClass.getName.startsWith("tech.beshu.ror.requestcontext") =>
+              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.RorDefault))
+            case other =>
+              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.Custom))
+          }
+        case Config.EsIndexBasedSink(_, _, _) =>
+          Some(OtherAuditOutput("Remote audit cluster"))
+        case Config.EsDataStreamBasedSink(_, ds, _) =>
+          Some(OtherAuditOutput(s"${ds.dataStream.show} data stream"))
+        case Config.LogBasedSink(_, loggerName) =>
+          Some(OtherAuditOutput(s"Logger with name [${loggerName.value.value}]"))
       }
-    } yield auditOutputs) match {
-      case Left(error) => ProvideAuditSettings.Failure(error)
-      case Right(auditOutputs) => ProvideAuditSettings.AuditSettings(auditOutputs)
+      case AuditSink.Disabled => None
     }
+    ProvideAuditSettings.AuditSettings(auditOutputs)
   }
 
   private def forceReloadRor()
@@ -198,7 +197,24 @@ object MainSettingsApi {
       case object ProvideIndexSettings extends Type
       case object ProvideFileSettings extends Type
       case object UpdateIndexSettings extends Type
-      case object ProvideAuditSettings extends Type
+      case object FetchCurrentAuditConfiguration extends Type
+    }
+
+    def from(uri: String, method: Method): MainSettingsRequest.Type = {
+      (uri.removeTrailingSlashIfPresent(), method) match {
+        case (constants.FORCE_RELOAD_SETTINGS_PATH, Method.POST) =>
+          MainSettingsApi.MainSettingsRequest.Type.ForceReload
+        case (constants.PROVIDE_FILE_SETTINGS_PATH, Method.GET) =>
+          MainSettingsApi.MainSettingsRequest.Type.ProvideFileSettings
+        case (constants.PROVIDE_INDEX_SETTINGS_PATH, Method.GET) =>
+          MainSettingsApi.MainSettingsRequest.Type.ProvideIndexSettings
+        case (constants.FETCH_CURRENT_AUDIT_CONFIGURATION_PATH, Method.GET) =>
+          MainSettingsApi.MainSettingsRequest.Type.FetchCurrentAuditConfiguration
+        case (constants.UPDATE_INDEX_SETTINGS_PATH, Method.POST) =>
+          MainSettingsApi.MainSettingsRequest.Type.UpdateIndexSettings
+        case (unknownUri, unknownMethod) =>
+          throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
+      }
     }
   }
 
@@ -223,8 +239,15 @@ object MainSettingsApi {
       final case class AuditSettings(auditOutputs: List[AuditOutput]) extends ProvideAuditSettings
       sealed trait AuditOutput
       object AuditOutput {
-        final case class LocalAuditIndex(indexPattern: String, schema: String) extends AuditOutput
+        final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema) extends AuditOutput
         final case class OtherAuditOutput(description: String) extends AuditOutput
+      }
+
+      sealed trait AuditIndexSchema
+      object AuditIndexSchema {
+        case object RorDefault extends AuditIndexSchema
+        case object EcsV1 extends AuditIndexSchema
+        case object Custom extends AuditIndexSchema
       }
       final case class Failure(message: String) extends ProvideAuditSettings
     }
@@ -275,49 +298,51 @@ object MainSettingsApi {
     }
   }
 
-  def buildResponse(builder: EsJsonFromMapBuilder, response: MainSettingsApi.MainSettingsResponse): Unit = {
-    response match {
-      case forceReloadSettings: MainSettingsResponse.ForceReloadMainSettings => forceReloadSettings match {
-        case ForceReloadMainSettings.Success(message) => addResponseJson(builder, response.status, message)
-        case ForceReloadMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+  extension (response: MainSettingsApi.MainSettingsResponse) {
+    def buildJson(builder: EsXContentBuilder): Unit = {
+      response match {
+        case forceReloadSettings: MainSettingsResponse.ForceReloadMainSettings => forceReloadSettings match {
+          case ForceReloadMainSettings.Success(message) => addResponseJson(builder, response.status, message)
+          case ForceReloadMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+        }
+        case provideIndexSettings: MainSettingsResponse.ProvideIndexMainSettings => provideIndexSettings match {
+          case ProvideIndexMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
+          case ProvideIndexMainSettings.MainSettingsNotFound(message) => addResponseJson(builder, response.status, message)
+          case ProvideIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+        }
+        case provideFileSettings: MainSettingsResponse.ProvideFileMainSettings => provideFileSettings match {
+          case ProvideFileMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
+          case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+        }
+        case provideAuditSettings: MainSettingsResponse.ProvideAuditSettings => provideAuditSettings match {
+          case ProvideAuditSettings.AuditSettings(auditOutputs) => addResponseJson(builder, response.status, auditOutputs)
+          case ProvideAuditSettings.Failure(message) => addResponseJson(builder, response.status, message)
+        }
+        case updateIndexSettings: MainSettingsResponse.UpdateIndexMainSettings => updateIndexSettings match {
+          case UpdateIndexMainSettings.Success(message) => addResponseJson(builder, response.status, message)
+          case UpdateIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
+        }
+        case failure: MainSettingsResponse.Failure => failure match {
+          case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
+        }
       }
-      case provideIndexSettings: MainSettingsResponse.ProvideIndexMainSettings => provideIndexSettings match {
-        case ProvideIndexMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
-        case ProvideIndexMainSettings.MainSettingsNotFound(message) => addResponseJson(builder, response.status, message)
-        case ProvideIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
-      }
-      case provideFileSettings: MainSettingsResponse.ProvideFileMainSettings => provideFileSettings match {
-        case ProvideFileMainSettings.MainSettings(rawSettings) => addResponseJson(builder, response.status, rawSettings)
-        case ProvideFileMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
-      }
-      case provideAuditSettings: MainSettingsResponse.ProvideAuditSettings => provideAuditSettings match {
-        case ProvideAuditSettings.AuditSettings(auditOutputs) => addResponseJson(builder, response.status, auditOutputs)
-        case ProvideAuditSettings.Failure(message) => addResponseJson(builder, response.status, message)
-      }
-      case updateIndexSettings: MainSettingsResponse.UpdateIndexMainSettings => updateIndexSettings match {
-        case UpdateIndexMainSettings.Success(message) => addResponseJson(builder, response.status, message)
-        case UpdateIndexMainSettings.Failure(message) => addResponseJson(builder, response.status, message)
-      }
-      case failure: MainSettingsResponse.Failure => failure match {
-        case Failure.BadRequest(message) => addResponseJson(builder, response.status, message)
+    }
+
+    def httpStatus: HttpResponseStatus = {
+      response match {
+        case _: ForceReloadMainSettings => HttpResponseStatus.OK
+        case _: ProvideIndexMainSettings => HttpResponseStatus.OK
+        case _: ProvideFileMainSettings => HttpResponseStatus.OK
+        case _: ProvideAuditSettings => HttpResponseStatus.OK
+        case _: UpdateIndexMainSettings => HttpResponseStatus.OK
+        case failure: Failure => failure match {
+          case Failure.BadRequest(_) => HttpResponseStatus.BAD_REQUEST
+        }
       }
     }
   }
 
-  def httpStatus(response: MainSettingsApi.MainSettingsResponse): HttpResponseStatus = {
-    response match {
-      case _: ForceReloadMainSettings => HttpResponseStatus.OK
-      case _: ProvideIndexMainSettings => HttpResponseStatus.OK
-      case _: ProvideFileMainSettings => HttpResponseStatus.OK
-      case _: ProvideAuditSettings => HttpResponseStatus.OK
-      case _: UpdateIndexMainSettings => HttpResponseStatus.OK
-      case failure: Failure => failure match {
-        case Failure.BadRequest(_) => HttpResponseStatus.BAD_REQUEST
-      }
-    }
-  }
-
-  private def addResponseJson(builder: EsJsonFromMapBuilder, status: String, message: String): Unit = {
+  private def addResponseJson(builder: EsXContentBuilder, status: String, message: String): Unit = {
     builder.build(
       Json.obj(
         "status" -> status.asJson,
@@ -326,19 +351,23 @@ object MainSettingsApi {
     )
   }
 
-  private def addResponseJson(builder: EsJsonFromMapBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
+  private def addResponseJson(builder: EsXContentBuilder, status: String, auditOutputs: List[AuditOutput]): Unit = {
     val localAuditIndexes = auditOutputs.collect { case index: AuditOutput.LocalAuditIndex => index }
     val otherAuditOutputs = auditOutputs.collect { case output: AuditOutput.OtherAuditOutput => output }
     builder.build(
       Json.obj(
         "status" -> status.asJson,
-        "localAuditIndexes" -> localAuditIndexes.map{ index =>
+        "localAuditIndexes" -> localAuditIndexes.map { index =>
           Json.obj(
-            "indexPattern" -> index.indexPattern.asJson,
-            "schema" -> index.schema.asJson,
+            "indexPattern" -> index.indexPattern.show.asJson,
+            "schema" -> (index.schema match {
+              case AuditIndexSchema.RorDefault => "rorDefault"
+              case AuditIndexSchema.EcsV1 => "ecsV1"
+              case AuditIndexSchema.Custom => "custom"
+            }).asJson,
           )
         }.asJson,
-        "otherAuditOutputs" -> otherAuditOutputs.map{ output =>
+        "otherAuditOutputs" -> otherAuditOutputs.map { output =>
           Json.obj(
             "description" -> output.description.asJson,
           )

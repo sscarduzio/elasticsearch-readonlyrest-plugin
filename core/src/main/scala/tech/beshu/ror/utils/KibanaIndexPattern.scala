@@ -20,12 +20,12 @@ import tech.beshu.ror.accesscontrol.domain.IndexPattern
 
 import scala.annotation.tailrec
 
-object KibanaIndexNamePattern {
+object KibanaIndexPattern {
 
   import Token.*
 
-  def fromDateTimeIndexNamePattern(dateTimeIndexNamePattern: String): IndexPattern =
-    render(collapse(tokenize(dateTimeIndexNamePattern.toList)))
+  def fromDateTimeIndexPattern(dateTimeIndexPattern: String): Option[IndexPattern] =
+    IndexPattern.fromString(render(collapse(tokenize(dateTimeIndexPattern.toList))))
 
   @tailrec
   private def tokenize(chars: List[Char], acc: List[Token] = Nil): List[Token] = chars match {

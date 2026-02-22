@@ -31,7 +31,7 @@ class RestRRAdminAction(controller: RestController)
   register("POST", constants.FORCE_RELOAD_SETTINGS_PATH)
   register("GET", constants.PROVIDE_FILE_SETTINGS_PATH)
   register("GET", constants.PROVIDE_INDEX_SETTINGS_PATH)
-  register("GET", constants.PROVIDE_AUDIT_SETTINGS_PATH)
+  register("GET", constants.FETCH_CURRENT_AUDIT_CONFIGURATION_PATH)
   register("POST", constants.UPDATE_INDEX_SETTINGS_PATH)
 
   override val getName: String = "ror-admin-handler"

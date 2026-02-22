@@ -29,11 +29,11 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
   extends ActionResponse with StatusToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    buildResponse(builder.map, response)
+    response.buildJson(builder.map)
     builder
   }
 
   override def writeTo(out: StreamOutput): Unit = ()
 
-  override def status: RestStatus = RestStatus.fromCode(httpStatus(response).code())
+  override def status: RestStatus = RestStatus.fromCode(response.httpStatus.code())
 }

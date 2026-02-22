@@ -21,8 +21,8 @@ import cats.syntax.either.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
@@ -36,6 +36,7 @@ import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoading
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Instant
 import java.util.UUID
@@ -120,6 +121,10 @@ class RorInstance private(boot: ReadonlyRest,
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
+  def auditSettings: Option[AuditingTool.AuditSettings] = {
+    theMainSettingsEngine.engine.flatMap(_.core.auditingSettings)
+  }
+
   def stop(): Task[Unit] = {
     implicit val requestId: RequestId = RequestId("ES sigterm")
     for {
@@ -131,7 +136,7 @@ class RorInstance private(boot: ReadonlyRest,
     } yield ()
   }
 
-  private [boot] def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
+  private[boot] def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
     withGuard(mainReloadInProgress) {
       theMainSettingsEngine
         .reloadEngineUsingIndexSettingsWithoutPermit()(requestId)
@@ -140,7 +145,7 @@ class RorInstance private(boot: ReadonlyRest,
     }
   }
 
-  private [boot] def tryTestEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
+  private[boot] def tryTestEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
     withGuard(testReloadInProgress) {
       theTestSettingsEngine
         .reloadEngineUsingIndexSettingsWithoutPermit()(requestId)

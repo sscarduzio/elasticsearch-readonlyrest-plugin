@@ -30,10 +30,10 @@ class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
   }
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    buildResponse(builder.map, response)
+    response.buildJson(builder.map)
     builder
   }
 
-  override def status(): RestStatus = RestStatus.fromCode(httpStatus(response).code())
+  override def status(): RestStatus = RestStatus.fromCode(response.httpStatus.code())
 
 }

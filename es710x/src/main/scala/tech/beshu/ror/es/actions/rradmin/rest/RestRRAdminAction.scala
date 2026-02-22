@@ -37,7 +37,7 @@ class RestRRAdminAction
     new Route(POST, constants.FORCE_RELOAD_SETTINGS_PATH),
     new Route(GET, constants.PROVIDE_FILE_SETTINGS_PATH),
     new Route(GET, constants.PROVIDE_INDEX_SETTINGS_PATH),
-    new Route(GET, constants.PROVIDE_AUDIT_SETTINGS_PATH),
+    new Route(GET, constants.FETCH_CURRENT_AUDIT_CONFIGURATION_PATH),
     new Route(POST, constants.UPDATE_INDEX_SETTINGS_PATH),
   ).asJava
 
