@@ -1140,11 +1140,11 @@ trait BaseAdminApiSuite
       """
         |{
         |  "status":"ok",
-        |  "localAuditIndexes": [
-        |    {"indexPattern": "custom_template_*", "schema":"rorDefault"},
-        |    {"indexPattern": "readonlyrest_audit-*", "schema":"ecsV1"}
+        |  "local_audit_indexes": [
+        |    {"index_pattern": "custom_template_*", "schema":"rorDefault"},
+        |    {"index_pattern": "readonlyrest_audit-*", "schema":"ecsV1"}
         |  ],
-        |  "otherAuditOutputs": [
+        |  "other_audit_outputs": [
         |    {"description": "Logger with name [readonlyrest_audit]"}
         |  ]
         |}

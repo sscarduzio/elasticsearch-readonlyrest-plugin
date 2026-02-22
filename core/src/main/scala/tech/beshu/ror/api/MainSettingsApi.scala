@@ -357,9 +357,9 @@ object MainSettingsApi {
     builder.build(
       Json.obj(
         "status" -> status.asJson,
-        "localAuditIndexes" -> localAuditIndexes.map { index =>
+        "local_audit_indexes" -> localAuditIndexes.map { index =>
           Json.obj(
-            "indexPattern" -> index.indexPattern.show.asJson,
+            "index_pattern" -> index.indexPattern.show.asJson,
             "schema" -> (index.schema match {
               case AuditIndexSchema.RorDefault => "rorDefault"
               case AuditIndexSchema.EcsV1 => "ecsV1"
@@ -367,7 +367,7 @@ object MainSettingsApi {
             }).asJson,
           )
         }.asJson,
-        "otherAuditOutputs" -> otherAuditOutputs.map { output =>
+        "other_audit_outputs" -> otherAuditOutputs.map { output =>
           Json.obj(
             "description" -> output.description.asJson,
           )

@@ -242,12 +242,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetAuditSettingsResponse'
+                $ref: '#/components/schemas/FetchCurrentAuditConfigurationResponse'
               examples:
-                GetAuditSettingsSuccessExample:
-                  $ref: "#/components/examples/GetAuditSettingsSuccessExample"
-                GetAuditSettingsFailureExample:
-                  $ref: "#/components/examples/GetAuditSettingsFailureExample"
+                FetchCurrentAuditConfigurationSuccessExample:
+                  $ref: "#/components/examples/FetchCurrentAuditConfigurationSuccessExample"
+                FetchCurrentAuditConfigurationFailureExample:
+                  $ref: "#/components/examples/FetchCurrentAuditConfigurationFailureExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
@@ -988,17 +988,17 @@ components:
           type: string
           description: Human readable message
 
-    GetAuditSettingsResponse:
+    FetchCurrentAuditConfigurationResponse:
       oneOf:
-        - $ref: '#/components/schemas/GetAuditSettingsSuccessResponse'
-        - $ref: '#/components/schemas/GetAuditSettingsFailureResponse'
+        - $ref: '#/components/schemas/FetchCurrentAuditConfigurationSuccessResponse'
+        - $ref: '#/components/schemas/FetchCurrentAuditConfigurationFailureResponse'
       discriminator:
         propertyName: status
         mapping:
-          ok: '#/components/schemas/GetAuditSettingsSuccessResponse'
-          ko: '#/components/schemas/GetAuditSettingsFailureResponse'
+          ok: '#/components/schemas/FetchCurrentAuditConfigurationSuccessResponse'
+          ko: '#/components/schemas/FetchCurrentAuditConfigurationFailureResponse'
 
-    GetAuditSettingsSuccessResponse:
+    FetchCurrentAuditConfigurationSuccessResponse:
       type: object
       required:
         - status
@@ -1025,10 +1025,10 @@ components:
       description: "Represents the local index that is used for ROR audit"
       type: object
       required:
-        - indexPattern
+        - index_pattern
         - schema
       properties:
-        indexPattern:
+        index_pattern:
           type: string
           description: Audit index name pattern
         schema:
@@ -1043,11 +1043,11 @@ components:
       required:
         - description
       properties:
-        indexPattern:
+        index_pattern:
           type: string
           description: Audit index name pattern
 
-    GetAuditSettingsFailureResponse:
+    FetchCurrentAuditConfigurationFailureResponse:
       type: object
       required:
         - status
@@ -1883,19 +1883,19 @@ components:
         status: ko
         message: "Settings content is malformed"
 
-    GetAuditSettingsSuccessExample:
+    FetchCurrentAuditConfigurationSuccessExample:
       summary: Successfully fetched configuration of audit outputs
       value:
         status: ok
         local_audit_indexes:
-          - indexPattern: custom_template_*
+          - index_pattern: custom_template_*
             schema: rorDefault
-          - indexPattern: readonlyrest_audit-*
+          - index_pattern: readonlyrest_audit-*
             schema: ecsV1
         other_audit_outputs:
           - description: Logger with name [readonlyrest_audit]
 
-    GetAuditSettingsFailureExample:
+    FetchCurrentAuditConfigurationFailureExample:
       summary: Cannot get audit settings
       value:
         status: ko
