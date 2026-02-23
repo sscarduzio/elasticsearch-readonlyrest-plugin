@@ -288,7 +288,7 @@ class JwtAuthRuleSettingsTests
           assertion = rule => {
             // todo:
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(AuthorizationTokenPrefix.None)))
+            rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(AuthorizationTokenPrefix.NoPrefix)))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
             rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))

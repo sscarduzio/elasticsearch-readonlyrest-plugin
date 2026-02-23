@@ -177,7 +177,7 @@ object JwtDefinitionsDecoder {
     Decoder.decodeString.map { str =>
       NonEmptyString.from(str.stripTrailing) match {
         case Right(value) => AuthorizationTokenPrefix.Exact(value)
-        case Left(value) => AuthorizationTokenPrefix.None
+        case Left(value) => AuthorizationTokenPrefix.NoPrefix
       }
     }
   }
