@@ -92,16 +92,18 @@ object PlainTextSecret {
 final case class AuthorizationToken(prefix: AuthorizationTokenPrefix, value: NonEmptyString)
 object AuthorizationToken {
   def from(value: NonEmptyString): Option[AuthorizationToken] = {
-    value.value.split(" ").toList match {
+    value.value.split(" ", 2).toList match {
       case Nil =>
         None
       case _ :: Nil =>
-        Some(AuthorizationToken(AuthorizationTokenPrefix.None, value))
-      case prefixStr :: _ =>
+        Some(AuthorizationToken(AuthorizationTokenPrefix.NoPrefix, value))
+      case prefixStr :: restStr :: Nil =>
         for {
           prefix <- NonEmptyString.unapply(prefixStr).map(AuthorizationTokenPrefix.Exact.apply)
-          value <- NonEmptyString.unapply(value.value.substring(prefixStr.length + 1))
+          value <- NonEmptyString.unapply(restStr.trim)
         } yield AuthorizationToken(prefix, value)
+      case _ =>
+        None
     }
   }
 }
@@ -109,15 +111,15 @@ object AuthorizationToken {
 sealed trait AuthorizationTokenPrefix
 object AuthorizationTokenPrefix {
   final case class Exact(value: NonEmptyString) extends AuthorizationTokenPrefix
-  case object None extends AuthorizationTokenPrefix
+  case object NoPrefix extends AuthorizationTokenPrefix
 
   val bearer = AuthorizationTokenPrefix.Exact(nes("Bearer"))
 
   implicit val eq: Eq[AuthorizationTokenPrefix] = Eq.instance((x, y) => (x, y) match {
     case (Exact(a), Exact(b)) => a.value.toLowerCase(Locale.US) === b.value.toLowerCase(Locale.US)
-    case (None, None) => true
-    case (Exact(_), None) => false
-    case (None, Exact(_)) => false
+    case (NoPrefix, NoPrefix) => true
+    case (Exact(_), NoPrefix) => false
+    case (NoPrefix, Exact(_)) => false
   })
 }
 

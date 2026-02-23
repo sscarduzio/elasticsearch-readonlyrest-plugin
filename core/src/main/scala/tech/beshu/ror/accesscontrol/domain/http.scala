@@ -280,11 +280,11 @@ object UriPath {
 final case class AuthorizationTokenDef(headerName: Header.Name,
                                        allowedPrefix: AllowedPrefix)
 object AuthorizationTokenDef {
- sealed trait AllowedPrefix
- object AllowedPrefix {
-   final case class StrictlyDefined(prefix: AuthorizationTokenPrefix) extends AllowedPrefix
-   case object Any extends AllowedPrefix
- }
+  sealed trait AllowedPrefix
+  object AllowedPrefix {
+    final case class StrictlyDefined(prefix: AuthorizationTokenPrefix) extends AllowedPrefix
+    case object Any extends AllowedPrefix
+  }
 }
 
 final case class UserOrigin(value: NonEmptyString)
