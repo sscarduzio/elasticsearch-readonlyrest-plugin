@@ -38,9 +38,6 @@ import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
-import tech.beshu.ror.es.handler.response.ForbiddenResponse.*
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps

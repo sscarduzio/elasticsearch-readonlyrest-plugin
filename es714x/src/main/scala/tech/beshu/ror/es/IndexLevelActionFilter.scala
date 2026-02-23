@@ -89,7 +89,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       repositoriesServiceSupplier,
       client,
       threadPool
-    )
+    ),
+    serviceAccountTokenService = new ReflectionBasedServiceAccountTokenService(),
+    apiKeyService = new ReflectionBasedApiKeyService(threadPool)
   )
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     clusterService.getSettings,

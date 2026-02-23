@@ -21,45 +21,65 @@ import org.elasticsearch.ElasticsearchSecurityException
 import org.elasticsearch.common.settings.SecureString
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.{on, onClass}
-import tech.beshu.ror.accesscontrol.domain.AuthorizationToken
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
 import tech.beshu.ror.es.ApiKeyService
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
-import tech.beshu.ror.utils.AccessControllerHelper
+import tech.beshu.ror.utils.{AccessControllerHelper, RequestIdAwareLogging}
+
+import scala.util.{Failure, Success, Try, Using}
 
 class ReflectionBasedApiKeyService(threadPool: ThreadPool) extends ApiKeyService {
 
-  private lazy val instance = ApiKeyServiceRef.getInstance.get
+  private lazy val underlying = ApiKeyServiceRef.getInstance match {
+    case Success(ref) => new ApiKeyServiceRefAvailable(ref, threadPool)
+    case Failure(ex) => new ApiKeyServiceRefNotAvailable(ex)
+  }
 
-  private lazy val apiKeyType = {
-    val classLoader = instance.getClass.getClassLoader
+  override def validateToken(token: AuthorizationToken)
+                            (implicit requestId: RequestId): Task[Boolean] =
+    underlying.validateToken(token)
+}
+
+private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
+                                        threadPool: ThreadPool)
+  extends ApiKeyService with RequestIdAwareLogging {
+
+  private val apiKeyType: Try[AnyRef] = Try {
+    val classLoader = apiKeyServiceRef.getClass.getClassLoader
     val apiKeyTypeClass = Class.forName("org.elasticsearch.xpack.core.security.action.apikey.ApiKey$Type", true, classLoader)
     onClass(apiKeyTypeClass)
       .call("valueOf", "REST")
       .get[AnyRef]
   }
 
-  override def validateToken(token: AuthorizationToken): Task[Boolean] = {
-    parseApiKey(token)
-      .map(authenticateApiKey)
-      .getOrElse(Task.now(false))
-  }
-
-  private def parseApiKey(token: AuthorizationToken): Option[AnyRef] = {
-    Option {
-      on(instance)
-        .call("parseApiKey", new SecureString(token.value.value.toArray), apiKeyType)
-        .get[AnyRef]
+  override def validateToken(token: AuthorizationToken)
+                            (implicit requestId: RequestId): Task[Boolean] = {
+    parseApiKey(token) match {
+      case Success(apiKey) =>
+        authenticateApiKey(apiKey)
+      case Failure(ex) =>
+        logger.warn("Token cannot be parsed as ApiKey", ex)
+        Task.now(false)
     }
   }
 
+  private def parseApiKey(token: AuthorizationToken): Try[AnyRef] =
+    apiKeyType.flatMap { `type` =>
+      Using(new SecureString(token.value.value.toArray)) { secureString =>
+        on(apiKeyServiceRef)
+          .call("parseApiKey", secureString, `type`)
+          .get[AnyRef]
+      }
+    }
+
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]
-    on(instance).call("tryAuthenticate", threadPool.getThreadContext, apiKeyCredentials, listener)
+    on(apiKeyServiceRef).call("tryAuthenticate", threadPool.getThreadContext, apiKeyCredentials, listener)
     listener
       .result
       .map(isAuthenticated)
       .onErrorRecover {
-        case ex: ElasticsearchSecurityException => false
+        case _: ElasticsearchSecurityException => false
         case ex => throw ex
       }
   }
@@ -70,49 +90,37 @@ class ReflectionBasedApiKeyService(threadPool: ThreadPool) extends ApiKeyService
   }
 }
 
-object ApiKeyServiceRef {
-  private val Bridge = "org.elasticsearch.plugins.ApiKeyServiceBridge"
+private class ApiKeyServiceRefNotAvailable(cause: Throwable) extends ApiKeyService {
 
-  private def candidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {
+  override def validateToken(token: AuthorizationToken)
+                            (implicit requestId: RequestId): Task[Boolean] = Task.raiseError {
+    new Exception("ApiKey Service Ref is not available. Please report the issue!", cause)
+  }
+}
+
+private object ApiKeyServiceRef {
+  private val bridge = "org.elasticsearch.plugins.ApiKeyServiceBridge"
+
+  def getInstance: Try[AnyRef] =
+    loadBridgeClass()
+      .map(c => onClass(c).call("get").get[AnyRef])
+
+  private def loadBridgeClass(): Try[Class[_]] =
+    classLoaderCandidates.view
+      .flatMap { classLoader => Try(Class.forName(bridge, false, classLoader)).toOption }
+      .headOption match {
+      case Some(classLoader) => Success(classLoader)
+      case None => Failure(new IllegalStateException(s"Cannot load $bridge class"))
+    }
+
+  private def classLoaderCandidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {
     List(
-      Thread.currentThread().getContextClassLoader,
-      this.getClass.getClassLoader,
-      Option(this.getClass.getClassLoader).map(_.getParent).orNull,
-      ClassLoader.getSystemClassLoader,
-      ClassLoader.getPlatformClassLoader
-    ).filter(_ != null).distinct
+      Option(Thread.currentThread().getContextClassLoader),
+      Option(this.getClass.getClassLoader),
+      Option(this.getClass.getClassLoader).flatMap(c => Option(c.getParent)),
+      Option(ClassLoader.getSystemClassLoader),
+      Option(ClassLoader.getPlatformClassLoader)
+    ).flatten.distinct
   }
 
-  private def loadBridgeClass(): Option[Class[_]] =
-    candidates.view.flatMap { cl =>
-      try Some(Class.forName(Bridge, /*initialize*/ false, cl))
-      catch {
-        case _: Throwable => None
-      }
-    }.headOption
-
-  def available: Boolean = loadBridgeClass().isDefined
-
-  def getInstance: Option[AnyRef] =
-    loadBridgeClass().flatMap { cls =>
-      try Option(onClass(cls).call("get").get[AnyRef])
-      catch {
-        case _: Throwable => None
-      }
-    }
-
-  def clear(): Unit =
-    loadBridgeClass().foreach { cls =>
-      try onClass(cls).call("clear") catch {
-        case _: Throwable => ()
-      }
-    }
-
-  def debugProbe(): String = {
-    val resPath = "org/elasticsearch/plugins/ApiKeyServiceBridge.class"
-    val hits = candidates.flatMap { cl =>
-      Option(cl.getResource(resPath)).map(u => s"${cl.getClass.getName} -> $u")
-    }
-    if (hits.nonEmpty) hits.mkString("FOUND in:\n  ", "\n  ", "") else "NOT FOUND in any candidate"
-  }
 }

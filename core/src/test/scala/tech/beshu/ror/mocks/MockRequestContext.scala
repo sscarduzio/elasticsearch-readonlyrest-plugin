@@ -33,9 +33,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.es.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
-import tech.beshu.ror.es.{EsClusterService, EsServices}
-import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
-import tech.beshu.ror.es.RorClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
 import tech.beshu.ror.es.{ApiKeyService, EsClusterService, EsServices, ServiceAccountTokenService}
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
@@ -389,10 +386,12 @@ object MockEsServices {
   }
 
   class MockServiceAccountTokenService(validationResult: Boolean) extends ServiceAccountTokenService {
-    override def validateToken(token: AuthorizationToken): Task[Boolean] = Task.now(validationResult)
+    override def validateToken(token: AuthorizationToken)
+                              (implicit requestId: RequestId): Task[Boolean] = Task.now(validationResult)
   }
 
   class MockApiKeyService(validationResult: Boolean) extends ApiKeyService {
-    override def validateToken(token: AuthorizationToken): Task[Boolean] = Task.now(validationResult)
+    override def validateToken(token: AuthorizationToken)
+                              (implicit requestId: RequestId): Task[Boolean] = Task.now(validationResult)
   }
 }

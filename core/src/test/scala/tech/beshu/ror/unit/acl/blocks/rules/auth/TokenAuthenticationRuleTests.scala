@@ -121,7 +121,7 @@ class TokenAuthenticationRuleTests
             user = User.Id("api-user"),
             tokenType = ApiKey(apiKeyDef)
           ),
-          headers = Set(headerFrom("Authorization" -> "Api api-key-value")),
+          headers = Set(headerFrom("Authorization" -> "APIKey api-key-value")),
           esServices = MockEsServices.`with`(new MockApiKeyService(true))
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("api-user"))
@@ -135,7 +135,7 @@ class TokenAuthenticationRuleTests
               AuthorizationTokenDef(headerNameFrom("X-Api-Key"), StrictlyDefined(api))
             )
           ),
-          headers = Set(headerFrom("X-Api-Key" -> "Api api-key-value")),
+          headers = Set(headerFrom("X-Api-Key" -> "ApiKey api-key-value")),
           esServices = MockEsServices.`with`(new MockApiKeyService(true))
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("api-user"))

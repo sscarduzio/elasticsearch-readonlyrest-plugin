@@ -87,7 +87,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       snapshotsServiceSupplier,
       client,
       threadPool
-    )
+    ),
+    serviceAccountTokenService = NotAvailableServiceAccountTokenService,
+    apiKeyService = NotAvailableApiKeyService
   )
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     clusterService.getSettings,

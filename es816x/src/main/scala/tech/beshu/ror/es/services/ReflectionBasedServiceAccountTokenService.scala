@@ -20,90 +20,89 @@ import monix.eval.Task
 import org.elasticsearch.ElasticsearchSecurityException
 import org.elasticsearch.common.settings.SecureString
 import org.joor.Reflect.{on, onClass}
-import tech.beshu.ror.accesscontrol.domain.AuthorizationToken
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
 import tech.beshu.ror.es.ServiceAccountTokenService
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
-import tech.beshu.ror.utils.AccessControllerHelper
+import tech.beshu.ror.utils.{AccessControllerHelper, RequestIdAwareLogging}
+
+import scala.util.{Failure, Success, Try, Using}
 
 class ReflectionBasedServiceAccountTokenService extends ServiceAccountTokenService {
 
-  private lazy val instance = ServiceAccountServiceRef.getInstance.get
-
-  override def validateToken(token: AuthorizationToken): Task[Boolean] = {
-    tryParseToken(token)
-      .map(authenticateToken)
-      .getOrElse(Task.now(false))
+  private lazy val underlying = ServiceAccountServiceRef.getInstance match {
+    case Success(ref) => new ServiceAccountTokenServiceRefAvailable(ref)
+    case Failure(ex) => new ServiceAccountTokenServiceRefNotAvailable(ex)
   }
 
-  private def tryParseToken(token: AuthorizationToken): Option[AnyRef] = {
-    Option {
-      on(instance)
-        .call("tryParseToken", new SecureString(token.value.value.toArray))
-        .get[AnyRef]
+  override def validateToken(token: AuthorizationToken)
+                            (implicit requestId: RequestId): Task[Boolean] =
+    underlying.validateToken(token)
+}
+
+private class ServiceAccountTokenServiceRefAvailable(serviceAccountServiceRef: AnyRef)
+  extends ServiceAccountTokenService with RequestIdAwareLogging {
+
+  override def validateToken(token: AuthorizationToken)
+                            (implicit requestId: RequestId): Task[Boolean] = {
+    parseToken(token) match {
+      case Success(serviceAccountToken) =>
+        authenticateToken(serviceAccountToken)
+      case Failure(ex) =>
+        logger.warn("Token cannot be parsed as ServiceAccountToken", ex)
+        Task.now(false)
     }
   }
 
+  private def parseToken(token: AuthorizationToken): Try[AnyRef] =
+    Using(new SecureString(token.value.value.toArray)) { secureString =>
+      on(serviceAccountServiceRef)
+        .call("tryParseToken", secureString)
+        .get[AnyRef]
+    }
+
   private def authenticateToken(serviceAccountToken: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]
-    on(instance).call("authenticateToken", serviceAccountToken, "any", listener)
+    on(serviceAccountServiceRef).call("authenticateToken", serviceAccountToken, "any", listener)
     listener
       .result
-      .map { ref =>
-        Option(ref) match {
-          case Some(_) => true
-          case None => false
-        }
-      }
+      .map(ref => Option(ref).isDefined)
       .onErrorRecover {
-        case ex: ElasticsearchSecurityException => false
+        case _: ElasticsearchSecurityException => false
         case ex => throw ex
       }
   }
 }
 
-object ServiceAccountServiceRef {
-  private val Bridge = "org.elasticsearch.plugins.ServiceAccountServiceBridge"
+private class ServiceAccountTokenServiceRefNotAvailable(cause: Throwable) extends ServiceAccountTokenService {
 
-  private def candidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {
-    List(
-      Thread.currentThread().getContextClassLoader,
-      this.getClass.getClassLoader,
-      Option(this.getClass.getClassLoader).map(_.getParent).orNull,
-      ClassLoader.getSystemClassLoader,
-      ClassLoader.getPlatformClassLoader
-    ).filter(_ != null).distinct
+  override def validateToken(token: AuthorizationToken)
+                            (implicit requestId: RequestId): Task[Boolean] = Task.raiseError {
+    new Exception("ServiceAccount Service Ref is not available. Please report the issue!", cause)
   }
+}
 
-  private def loadBridgeClass(): Option[Class[_]] =
-    candidates.view.flatMap { cl =>
-      try Some(Class.forName(Bridge, /*initialize*/ false, cl))
-      catch {
-        case _: Throwable => None
-      }
-    }.headOption
+private object ServiceAccountServiceRef {
+  private val bridge = "org.elasticsearch.plugins.ServiceAccountServiceBridge"
 
-  def available: Boolean = loadBridgeClass().isDefined
+  def getInstance: Try[AnyRef] =
+    loadBridgeClass()
+      .map(c => onClass(c).call("get").get[AnyRef])
 
-  def getInstance: Option[AnyRef] =
-    loadBridgeClass().flatMap { cls =>
-      try Option(onClass(cls).call("get").get[AnyRef])
-      catch {
-        case _: Throwable => None
-      }
+  private def loadBridgeClass(): Try[Class[_]] =
+    classLoaderCandidates.view
+      .flatMap { classLoader => Try(Class.forName(bridge, false, classLoader)).toOption }
+      .headOption match {
+      case Some(classLoader) => Success(classLoader)
+      case None => Failure(new IllegalStateException(s"Cannot load $bridge class"))
     }
 
-  def clear(): Unit =
-    loadBridgeClass().foreach { cls =>
-      try onClass(cls).call("clear") catch {
-        case _: Throwable => ()
-      }
-    }
-
-  def debugProbe(): String = {
-    val resPath = "org/elasticsearch/plugins/ServiceAccountServiceBridge.class"
-    val hits = candidates.flatMap { cl =>
-      Option(cl.getResource(resPath)).map(u => s"${cl.getClass.getName} -> $u")
-    }
-    if (hits.nonEmpty) hits.mkString("FOUND in:\n  ", "\n  ", "") else "NOT FOUND in any candidate"
+  private def classLoaderCandidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {
+    List(
+      Option(Thread.currentThread().getContextClassLoader),
+      Option(this.getClass.getClassLoader),
+      Option(this.getClass.getClassLoader).flatMap(c => Option(c.getParent)),
+      Option(ClassLoader.getSystemClassLoader),
+      Option(ClassLoader.getPlatformClassLoader)
+    ).flatten.distinct
   }
 }
