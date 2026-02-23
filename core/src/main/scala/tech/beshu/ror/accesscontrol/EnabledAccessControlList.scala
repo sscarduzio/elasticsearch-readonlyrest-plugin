@@ -92,23 +92,27 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   }
 
   override def handleMetadataRequest(context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] = {
-    Task
-      .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
-      .map(_.flatten)
-      .map { blockResults =>
-        val (executionResults, blocksHistory) = blockResults.unzip
-        val history = History(blocksHistory.toVector)
-        val matchedResults = executionResults.view.onlyMatched()
-        val handlingResult = context.apiVersion match {
-          case UserMetadataApiVersion.V1 =>
-            determineUserMetadataForApiV1(matchedResults, context.currentGroupId, history)
-          case UserMetadataApiVersion.V2(Free | Pro | Enterprise(false)) =>
-            determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
-          case UserMetadataApiVersion.V2(Enterprise(true)) =>
-            determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
+    if (staticContext.doesRequirePassword) {
+      Task.delay((UserMetadataRequestResult.RorKbnPluginNotSupported, History.empty))
+    } else {
+      Task
+        .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
+        .map(_.flatten)
+        .map { blockResults =>
+          val (executionResults, blocksHistory) = blockResults.unzip
+          val history = History(blocksHistory.toVector)
+          val matchedResults = executionResults.view.onlyMatched()
+          val handlingResult = context.apiVersion match {
+            case UserMetadataApiVersion.V1 =>
+              determineUserMetadataForApiV1(matchedResults, context.currentGroupId, history)
+            case UserMetadataApiVersion.V2(Free | Pro | Enterprise(false)) =>
+              determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
+            case UserMetadataApiVersion.V2(Enterprise(true)) =>
+              determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
+          }
+          handlingResult -> history
         }
-        handlingResult -> history
-      }
+    }
   }
 
   private def determineUserMetadataForApiV1(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],

@@ -16,15 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
-import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.integration.suites.base.{BaseIndexApiSuite, EnabledPromptForBasicAuthSettingSuite}
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.containers.EsClusterProvider
 
-class IndexApiWithFreeKibanaSupportSuite
-  extends BaseIndexApiSuite
-    with SingletonPluginTestSupport {
-
-  override implicit val rorSettingsFileName: String = "/index_api/free_readonlyrest.yml"
+trait IndexApiWithFreeKibanaSupportSuite
+  extends BaseIndexApiSuite {
+  this: EsClusterProvider with EnabledPromptForBasicAuthSettingSuite =>
 
   override val notFoundIndexStatusReturned: Int = 401
   override val forbiddenStatusReturned: Int = 401
@@ -56,4 +54,5 @@ class IndexApiWithFreeKibanaSupportSuite
          |""".stripMargin
     )
   }
+
 }
