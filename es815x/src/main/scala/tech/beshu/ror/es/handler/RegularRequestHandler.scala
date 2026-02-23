@@ -38,6 +38,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.syntax.Set
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -55,7 +56,9 @@ class RegularRequestHandler(engine: Engine,
       .handleRegularRequest(request)
       .map { case (result, _) =>
         threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          commitResult(result, request)
+          doPrivileged {
+            commitResult(result, request)
+          }
         }
       }
   }

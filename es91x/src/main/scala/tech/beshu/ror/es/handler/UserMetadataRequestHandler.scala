@@ -38,6 +38,7 @@ import tech.beshu.ror.es.handler.request.context.EsRequest
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.{Duration, Instant}
@@ -50,7 +51,11 @@ class UserMetadataRequestHandler(engine: Engine,
   def handle(request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext] with EsRequest[UserMetadataRequestBlockContext]): Task[Unit] = {
     engine.core.accessControl
       .handleMetadataRequest(request)
-      .map { case (result, _) => commitResult(result, request) }
+      .map { case (result, _) =>
+        doPrivileged {
+          commitResult(result, request)
+        }
+      }
   }
 
   private def commitResult(result: UserMetadataRequestResult,
