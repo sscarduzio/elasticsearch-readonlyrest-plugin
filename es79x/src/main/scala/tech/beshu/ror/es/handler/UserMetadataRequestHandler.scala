@@ -49,13 +49,13 @@ class UserMetadataRequestHandler(engine: Engine,
   extends RequestIdAwareLogging {
 
   def handle(request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext] with EsRequest[UserMetadataRequestBlockContext]): Task[Unit] = {
-    engine.core.accessControl
-      .handleMetadataRequest(request)
-      .map { case (result, _) =>
-        doPrivileged {
+    doPrivileged {
+      engine.core.accessControl
+        .handleMetadataRequest(request)
+        .map { case (result, _) =>
           commitResult(result, request)
         }
-      }
+    }
   }
 
   private def commitResult(result: UserMetadataRequestResult,

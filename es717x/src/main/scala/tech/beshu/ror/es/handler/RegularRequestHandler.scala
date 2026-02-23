@@ -52,15 +52,15 @@ class RegularRequestHandler(engine: Engine,
   extends RequestIdAwareLogging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
-    engine.core.accessControl
-      .handleRegularRequest(request)
-      .map { case (result, _) =>
-        threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          doPrivileged {
+    doPrivileged {
+      engine.core.accessControl
+        .handleRegularRequest(request)
+        .map { case (result, _) =>
+          threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
             commitResult(result, request)
           }
         }
-      }
+    }
   }
 
   private def commitResult[B <: BlockContext : BlockContextUpdater](result: RegularRequestResult[B],
