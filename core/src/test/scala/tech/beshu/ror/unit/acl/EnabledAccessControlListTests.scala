@@ -48,6 +48,7 @@ import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.NonEmptyListMap
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -895,9 +896,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     new GroupsMetadataMatcher(group, userId, blockName, blockPolicy)
 
   private class GroupsMetadataMatcher(group: Group, userId: User.Id, blockName: String, blockPolicy: Policy)
-    extends Matcher[ListMap[GroupId, GroupMetadata]] {
+    extends Matcher[NonEmptyListMap[GroupId, GroupMetadata]] {
 
-    override def apply(groupsMetadata: ListMap[GroupId, GroupMetadata]): MatchResult = {
+    override def apply(groupsMetadata: NonEmptyListMap[GroupId, GroupMetadata]): MatchResult = {
       val result = assert(groupsMetadata)
       val errorMessage = result match {
         case Failure(exception) => exception.getMessage
@@ -910,7 +911,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       )
     }
 
-    private def assert(groupsMetadata: ListMap[GroupId, GroupMetadata]) = Try {
+    private def assert(groupsMetadata: NonEmptyListMap[GroupId, GroupMetadata]) = Try {
       val metadata = groupsMetadata(group.id)
       val block = metadata.metadataOrigin.blockContext.block
       block.name should be(Block.Name(blockName))
