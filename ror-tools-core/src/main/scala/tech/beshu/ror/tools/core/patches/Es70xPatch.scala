@@ -24,7 +24,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyApplicationPermissionClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityContextGetAuthenticationClass, ModifySecurityServerTransportInterceptorClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
 
 import scala.language.postfixOps
@@ -37,6 +37,7 @@ private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     OptionalXPackCoreJarPatchCreator(
       ModifyApplicationPermissionClass,
+      ModifySecurityContextGetAuthenticationClass,
     ),
     OptionalXPackSecurityJarPatchCreator(
       CreateRorAuthorizationInfoProviderClass(esVersion),
