@@ -57,58 +57,32 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
                |""".stripMargin
           ) :: Nil
         )
+
         response should have statusCode 200
-        if (Version.greaterOrEqualThan(esVersionUsed, 8, 9, 0)) {
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "username":"_xpack",
-               |  "has_all_requested":false,
-               |  "cluster":{
-               |    "monitor":true
-               |  },
-               |  "index":{
-               |    ".monitoring-*-6-*,.monitoring-*-7-*":{
-               |      "read":true
-               |    }
-               |  },
-               |  "application":{
-               |    "kibana":{
-               |      "space:default":{
-               |        "login:":false,
-               |        "version:$esVersionUsed":false
-               |      }
-               |    }
-               |  }
-               |}
-               |""".stripMargin
-          ))
-        } else {
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "username":"_xpack",
-               |  "has_all_requested":true,
-               |  "cluster":{
-               |    "monitor":true
-               |  },
-               |  "index":{
-               |    ".monitoring-*-6-*,.monitoring-*-7-*":{
-               |      "read":true
-               |    }
-               |  },
-               |  "application":{
-               |    "kibana":{
-               |      "space:default":{
-               |        "login:":true,
-               |        "version:$esVersionUsed":true
-               |      }
-               |    }
-               |  }
-               |}
-               |""".stripMargin
-          ))
-        }
+        response.responseJson should be(ujson.read(
+          s"""
+             |{
+             |  "username":"_xpack",
+             |  "has_all_requested":true,
+             |  "cluster":{
+             |    "monitor":true
+             |  },
+             |  "index":{
+             |    ".monitoring-*-6-*,.monitoring-*-7-*":{
+             |      "read":true
+             |    }
+             |  },
+             |  "application":{
+             |    "kibana":{
+             |      "space:default":{
+             |        "login:":true,
+             |        "version:$esVersionUsed":true
+             |      }
+             |    }
+             |  }
+             |}
+             |""".stripMargin
+        ))
       }
     }
     "/_security/user/_privileges endpoint is called" should {
