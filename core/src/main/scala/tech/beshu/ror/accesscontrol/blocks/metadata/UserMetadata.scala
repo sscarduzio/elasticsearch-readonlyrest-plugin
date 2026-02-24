@@ -22,8 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, UserOrigin}
-
-import scala.collection.immutable.ListMap
+import tech.beshu.ror.utils.NonEmptyListMap
 
 sealed trait UserMetadata
 object UserMetadata {
@@ -34,13 +33,11 @@ object UserMetadata {
                                  metadataOrigin: MetadataOrigin)
     extends UserMetadata
 
-  final case class WithGroups private(groupsMetadata: ListMap[GroupId, GroupMetadata])
+  final case class WithGroups private(groupsMetadata: NonEmptyListMap[GroupId, GroupMetadata])
     extends UserMetadata
   object WithGroups {
     def apply(groupsMetadata: NonEmptyList[GroupMetadata]): WithGroups = WithGroups {
-      groupsMetadata.foldLeft(ListMap.empty[GroupId, GroupMetadata]) {
-        case (acc, elem) => acc.updated(elem.group.id, elem)
-      }
+      NonEmptyListMap.from(groupsMetadata.map(elem => (elem.group.id, elem)))
     }
 
     final case class GroupMetadata(group: Group,

@@ -16,8 +16,10 @@
  */
 package tech.beshu.ror
 
+import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.SupportedVariablesFunctions
 import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.providers.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 
@@ -26,10 +28,11 @@ import java.time.Clock
 final class SystemContext(val clock: Clock = Clock.systemUTC(),
                           val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
                           val propertiesProvider: PropertiesProvider = JvmPropertiesProvider,
-                          val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
+                          implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
                           val uuidProvider: UuidProvider = JavaUuidProvider,
                           val jsCompiler: JsCompiler = MozillaJsCompiler,
-                          val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default)
+                          val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default,
+                          implicit val scheduler: Scheduler = RorSchedulers.Implicits.mainScheduler)
 object SystemContext {
 
   val default: SystemContext = new SystemContext()

@@ -23,7 +23,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusR
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestId, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext

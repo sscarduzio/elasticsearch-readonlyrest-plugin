@@ -37,7 +37,7 @@ object JDK extends LazyLogging {
     }
     val targetFile = File.newTemporaryFile(s"amazon-corretto-$majorVersion-jdk", ".tar.gz")
     logger.info(s"Downloading Amazon Corretto $majorVersion JDK (one-time, for replacing buggy bundled JDK)...")
-    val url = new java.net.URL(s"https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz")
+    val url = new java.net.URI(s"https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz").toURL
     val connection = url.openConnection()
     connection.setConnectTimeout(30_000)
     connection.setReadTimeout(120_000)

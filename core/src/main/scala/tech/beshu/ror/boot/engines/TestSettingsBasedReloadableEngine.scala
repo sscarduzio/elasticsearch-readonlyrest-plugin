@@ -19,7 +19,6 @@ package tech.beshu.ror.boot.engines
 import cats.data.EitherT
 import monix.catnap.Semaphore
 import monix.eval.Task
-import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.accesscontrol.domain.RequestId
@@ -47,8 +46,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
                                                               initialEngine: InitialEngine,
                                                               reloadInProgress: Semaphore[Task],
                                                               testSettingsSource: IndexSettingsSource[TestRorSettings])
-                                                             (implicit systemContext: SystemContext,
-                                                              scheduler: Scheduler)
+                                                             (implicit systemContext: SystemContext)
   extends BaseReloadableEngine(
     name = "test",
     boot = boot,
@@ -255,8 +253,7 @@ object TestSettingsBasedReloadableEngine {
                esConfigBasedRorSettings: EsConfigBasedRorSettings,
                initialEngine: ReadonlyRest.TestEngine,
                reloadInProgress: Semaphore[Task])
-              (implicit systemContext: SystemContext,
-               scheduler: Scheduler): TestSettingsBasedReloadableEngine = {
+              (implicit systemContext: SystemContext): TestSettingsBasedReloadableEngine = {
       val engine = initialEngine match {
         case TestEngine.NotConfigured =>
           InitialEngine.NotConfigured

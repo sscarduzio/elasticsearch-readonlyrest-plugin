@@ -77,6 +77,7 @@ object AccessControlList {
       lazy val causes: NonEmptySet[ForbiddenCause] = detailedToGenericCauses(detailedCauses.values)
     }
     case object PassedThrough extends UserMetadataRequestResult
+    case object RorKbnPluginNotSupported extends UserMetadataRequestResult
   }
 
   sealed trait ForbiddenCause
