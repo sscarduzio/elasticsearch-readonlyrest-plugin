@@ -20,7 +20,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import tech.beshu.ror.utils.httpclient.{HttpDeleteWithEntity, HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
@@ -90,6 +90,38 @@ class XpackApiManager(client: RestClient,
 
   def grantApiKeyPrivilege(username: String, password: String): JsonResponse = {
     call(createGrantApiKeyPrivilegeRequest(username, password), new JsonResponse(_))
+  }
+
+  def getServiceAccounts(): JsonResponse = {
+    call(new HttpGet(client.from("/_security/service")), new JsonResponse(_))
+  }
+
+  def getServiceAccount(namespace: String, service: String): JsonResponse = {
+    call(new HttpGet(client.from(s"/_security/service/$namespace/$service")), new JsonResponse(_))
+  }
+
+  def getServiceAccountCredentials(namespace: String, service: String): JsonResponse = {
+    call(new HttpGet(client.from(s"/_security/service/$namespace/$service/credential")), new JsonResponse(_))
+  }
+
+  def createServiceAccountToken(namespace: String, service: String, tokenName: String): JsonResponse = {
+    call(new HttpPost(client.from(s"/_security/service/$namespace/$service/credential/token/$tokenName")), new JsonResponse(_))
+  }
+
+  def deleteServiceAccountToken(namespace: String, service: String, tokenName: String): JsonResponse = {
+    call(new HttpDelete(client.from(s"/_security/service/$namespace/$service/credential/token/$tokenName")), new JsonResponse(_))
+  }
+
+  def createApiKey(keyName: String): JsonResponse = {
+    call(createApiKeyRequest(keyName), new JsonResponse(_))
+  }
+
+  def getApiKey(keyId: String): JsonResponse = {
+    call(new HttpGet(client.from("/_security/api_key", Map("id" -> keyId))), new JsonResponse(_))
+  }
+
+  def invalidateApiKey(keyId: String): JsonResponse = {
+    call(createInvalidateApiKeyRequest(keyId), new JsonResponse(_))
   }
 
   def getTerms(index: String, field: String): GetTermsResponse = {
@@ -248,6 +280,24 @@ class XpackApiManager(client: RestClient,
          |  "password": "$password",
          |  "api_key": {"name": "granted-api-key","expiration": "1d"}
          |}""".stripMargin
+    ))
+    request
+  }
+
+  private def createApiKeyRequest(keyName: String) = {
+    val request = new HttpPost(client.from("/_security/api_key"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{"name": "$keyName", "expiration": "1d"}"""
+    ))
+    request
+  }
+
+  private def createInvalidateApiKeyRequest(keyId: String) = {
+    val request = new HttpDeleteWithEntity(client.from("/_security/api_key"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{"ids": ["$keyId"]}"""
     ))
     request
   }

@@ -7,6 +7,20 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
+    - name: "Fleet server"
+      type: allow
+      token_authentication:
+        type: "service-token"
+        username: "fleet"
+      indices: [".fleet-servers", ".fleet-agents", ".fleet-actions", ".fleet-policies", ".fleet-policies-leader", ".fleet-enrollment-api-keys"]
+
+    - name: "Agents"
+      type: allow
+      token_authentication:
+        type: "api-key"
+        username: "fleet"
+      indices: [".apm-agent-configuration", "metrics-*", "traces-*", "logs-*"]
+
     - name: "test1"
       indices: ["test1_index_a"]
       auth_key: dev1:test
