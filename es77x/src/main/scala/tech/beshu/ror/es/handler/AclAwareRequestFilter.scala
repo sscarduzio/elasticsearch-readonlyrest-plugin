@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler
 import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
@@ -56,9 +55,9 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
@@ -80,9 +79,11 @@ import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(settings: Settings,
                             threadPool: ThreadPool)
-                           (implicit generator: UniqueIdentifierGenerator,
-                            scheduler: Scheduler)
+                           (implicit systemContext: SystemContext)
   extends RequestIdAwareLogging {
+
+  import systemContext.{scheduler, uniqueIdentifierGenerator}
+
 
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {

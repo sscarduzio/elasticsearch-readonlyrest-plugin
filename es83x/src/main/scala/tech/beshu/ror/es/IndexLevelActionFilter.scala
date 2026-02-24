@@ -30,10 +30,8 @@ import org.elasticsearch.xcontent.NamedXContentRegistry
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
@@ -64,7 +62,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             (implicit systemContext: SystemContext)
   extends ActionFilter with RequestIdAwareLogging {
 
-  private implicit val generator: UniqueIdentifierGenerator = systemContext.uniqueIdentifierGenerator
+  import systemContext.{scheduler, uniqueIdentifierGenerator}
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     new RorNotAvailableRequestHandler(esConfigBasedRorSettings.boot)

@@ -264,7 +264,6 @@ class EsNodeClusterService(nodeName: String,
         new ClusterStateRequest().metaData(true),
         new ActionListener[ClusterStateResponse] {
           override def onResponse(response: ClusterStateResponse): Unit = promise.trySuccess(response)
-
           override def onFailure(e: Exception): Unit = promise.tryFailure(e)
         }
       )

@@ -407,6 +407,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           localUsers = localUsers,
           impersonationWarningsReader = new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
         )
+        import systemContext.scheduler
         val accessControl = new EnabledAccessControlList(
           blocks,
           new AccessControlListStaticContext(

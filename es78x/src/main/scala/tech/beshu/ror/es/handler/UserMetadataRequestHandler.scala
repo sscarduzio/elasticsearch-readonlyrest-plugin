@@ -19,7 +19,6 @@ package tech.beshu.ror.es.handler
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
@@ -30,9 +29,9 @@ import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
-import tech.beshu.ror.accesscontrol.response.{ForbiddenResponseContext, RorKbnPluginNotSupported}
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.ForbiddenBlockMatch
+import tech.beshu.ror.accesscontrol.response.{ForbiddenResponseContext, RorKbnPluginNotSupported}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
@@ -47,17 +46,16 @@ import scala.util.{Failure, Success, Try}
 
 class UserMetadataRequestHandler(engine: Engine,
                                  esContext: EsContext)
-                                (implicit scheduler: Scheduler)
   extends RequestIdAwareLogging {
 
   def handle(request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext] with EsRequest[UserMetadataRequestBlockContext]): Task[Unit] = {
-    doPrivileged {
-      engine.core.accessControl
-        .handleMetadataRequest(request)
-        .map { case (result, _) =>
+    engine.core.accessControl
+      .handleMetadataRequest(request)
+      .map { case (result, _) =>
+        doPrivileged {
           commitResult(result, request)
         }
-    }
+      }
   }
 
   private def commitResult(result: UserMetadataRequestResult,
