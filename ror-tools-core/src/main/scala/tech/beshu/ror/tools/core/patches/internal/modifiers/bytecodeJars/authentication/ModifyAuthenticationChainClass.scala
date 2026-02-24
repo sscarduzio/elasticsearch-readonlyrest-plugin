@@ -108,10 +108,10 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         underlying.visitLabel(label1)
 
         // final Authentication auth =
-        //   Authentication.newRealmAuthentication(new User("ROR", new String[0]), Authentication.RealmRef.newAnonymousRealmRef("any"))
+        //   Authentication.newRealmAuthentication(new User("_xpack", new String[0]), Authentication.RealmRef.newAnonymousRealmRef("any"))
         underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/user/User")
         underlying.visitInsn(Opcodes.DUP)
-        underlying.visitLdcInsn("ROR")
+        underlying.visitLdcInsn("_xpack")
         underlying.visitInsn(Opcodes.ICONST_0)
         underlying.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
         underlying.visitMethodInsn(
