@@ -27,7 +27,7 @@ import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.Using
 
-private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = false)
+private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = true)
   extends FileModifier with AsmDebug {
 
   protected def addNewFileToJar(jar: File,

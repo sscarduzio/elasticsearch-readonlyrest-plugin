@@ -27,7 +27,7 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authent
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{ModifyApplicationPermissionClass, ModifySimpleRoleClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifyCreateComponentsInSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyCreateComponentsInSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, ModifyRepositoriesServiceClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
@@ -54,7 +54,6 @@ private[patches] class Es83xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       OpenModule,
       ModifySimpleRoleClass,
       ModifyApplicationPermissionClass,
-      ModifyAsyncSearchSecurityClass,
       ModifySecurityContextClass,
     ),
     XPackSecurityJarPatchCreator(
