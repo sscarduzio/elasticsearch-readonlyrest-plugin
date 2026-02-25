@@ -205,9 +205,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
           inside(createCore(settings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.dependencies.localUsers should be(allUsersResolved(Set(
-                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
-              )))
+              core.dependencies.localUsers should be(allUsersResolved(Set(User.Id("admin"))))
           }
         }
         "ror_kbn_auth rule used" in {
@@ -256,7 +254,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
               core.dependencies.localUsers should be(allUsersResolved(Set(
-                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
+                User.Id("admin")
               )))
           }
         }
@@ -306,7 +304,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
               core.dependencies.localUsers should be(allUsersResolved(Set(
-                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
+                User.Id("admin")
               )))
           }
         }

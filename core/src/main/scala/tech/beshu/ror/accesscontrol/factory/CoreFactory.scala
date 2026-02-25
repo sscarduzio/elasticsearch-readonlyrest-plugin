@@ -424,7 +424,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
     definitions.items
       .flatMap { definition =>
         List(
-          localUsersFromUsernamePatterns(definition.usernames, unknownUsersForWildcardPattern = true),
+          localUsersFromUsernamePatterns(definition.mode, definition.usernames, unknownUsersForWildcardPattern = true),
           localUsersFromMode(definition.mode)
         )
       }
@@ -436,6 +436,15 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       .map(_.impersonatedUsers.usernames)
       .map(localUsersFromUsernamePatterns(_, unknownUsersForWildcardPattern = false))
       .combineAll
+  }
+
+  private def localUsersFromUsernamePatterns(mode: UserDef.Mode,
+                                             userIdPatterns: UserIdPatterns,
+                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
+    withEligibleUsersSupport(mode)(
+      forAvailable = _ => localUsersFromUsernamePatterns(userIdPatterns, unknownUsersForWildcardPattern),
+      forNotAvailable = LocalUsers.empty,
+    )
   }
 
   private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns,
@@ -454,15 +463,23 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
   }
 
   private def localUsersFromMode(mode: UserDef.Mode): LocalUsers = {
-    def localUsersFor(support: EligibleUsersSupport) = support match {
-      case EligibleUsersSupport.Available(users) => LocalUsers(users, unknownUsers = false)
-      case EligibleUsersSupport.NotAvailable => LocalUsers.empty
-    }
+    withEligibleUsersSupport(mode)(
+      forAvailable = LocalUsers(_, unknownUsers = false),
+      forNotAvailable = LocalUsers.empty,
+    )
+  }
 
+  private def withEligibleUsersSupport[T](mode: UserDef.Mode)
+                                         (forAvailable: Set[User.Id] => T,
+                                          forNotAvailable: => T): T = {
+    def result(support: EligibleUsersSupport): T = support match {
+      case EligibleUsersSupport.Available(users) => forAvailable(users)
+      case EligibleUsersSupport.NotAvailable => forNotAvailable
+    }
     mode match {
-      case Mode.WithoutGroupsMapping(rule, _) => localUsersFor(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => localUsersFor(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => localUsersFor(rule.eligibleUsers)
+      case Mode.WithoutGroupsMapping(rule, _) => result(rule.eligibleUsers)
+      case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => result(rule.eligibleUsers)
+      case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => result(rule.eligibleUsers)
     }
   }
 }
