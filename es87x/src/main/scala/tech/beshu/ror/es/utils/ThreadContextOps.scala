@@ -27,12 +27,8 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 
   def stashPreservingSomeHeaders(esContext: EsContext): ThreadContext.StoredContext = {
     val responseHeaders = JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
-    val transientHeaders = ThreadContextOps.transientHeaderNames.flatMap { headerName =>
-      Option(threadContext.getTransient[AnyRef](headerName)).map((headerName, _))
-    }
     val storedContext = threadContext.stashContext()
     responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
-    transientHeaders.foreach { case (k, v) => threadContext.putTransient(k, v) }
     storedContext
   }
 
@@ -54,8 +50,6 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 }
 
 object ThreadContextOps {
-
-  private val transientHeaderNames: List[String] = "_xpack_security_authentication" :: "_authz_info" :: "_indices_permissions" :: Nil
 
   implicit def createThreadContextOps(threadContext: ThreadContext): ThreadContextOps = new ThreadContextOps(threadContext)
 }
