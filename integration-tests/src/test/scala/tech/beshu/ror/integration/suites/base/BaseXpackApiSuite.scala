@@ -18,10 +18,10 @@ package tech.beshu.ror.integration.suites.base
 
 import monix.execution.atomic.Atomic
 import org.scalatest.wordspec.AnyWordSpecLike
-import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.NextRollupJobName
+import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.{NextRollupJobName, nodeDataInitializer}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, *}
 import ujson.{Null, Num, Str}
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.*
@@ -43,10 +43,14 @@ trait BaseXpackApiSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings.create(
       clusterName = "ROR1",
-      nodeDataInitializer = BaseXpackApiSuite.nodeDataInitializer(),
+      nodeDataInitializer = new ComposedElasticsearchNodeDataInitializer(
+        nodeDataInitializer(), implementationSpecificInitializer()
+      ),
       securityType = rorClusterSecurityType
     )
   )
+
+  protected def implementationSpecificInitializer(): ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer
 
   protected lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)

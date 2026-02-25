@@ -124,6 +124,18 @@ class XpackApiManager(client: RestClient,
     call(createInvalidateApiKeyRequest(keyId), new JsonResponse(_))
   }
 
+  def updateApiKey(keyId: String, roleDescriptors: Option[JSON] = None): JsonResponse = {
+    call(createUpdateApiKeyRequest(keyId, roleDescriptors), new JsonResponse(_))
+  }
+
+  def bulkUpdateApiKeys(keyIds: String*): JsonResponse = {
+    call(createBulkUpdateApiKeysRequest(keyIds), new JsonResponse(_))
+  }
+
+  def queryApiKeys(nameFilter: Option[String] = None): JsonResponse = {
+    call(createQueryApiKeysRequest(nameFilter), new JsonResponse(_))
+  }
+
   def getTerms(index: String, field: String): GetTermsResponse = {
     call(createGetTermsRequest(index, field), new GetTermsResponse(_))
   }
@@ -299,6 +311,37 @@ class XpackApiManager(client: RestClient,
     request.setEntity(new StringEntity(
       s"""{"ids": ["$keyId"]}"""
     ))
+    request
+  }
+
+  private def createUpdateApiKeyRequest(keyId: String, roleDescriptors: Option[JSON]) = {
+    val request = new HttpPut(client.from(s"/_security/api_key/$keyId"))
+    request.setHeader("Content-Type", "application/json")
+    val body = roleDescriptors match {
+      case Some(rd) => s"""{"role_descriptors": ${ujson.write(rd)}}"""
+      case None => "{}"
+    }
+    request.setEntity(new StringEntity(body))
+    request
+  }
+
+  private def createBulkUpdateApiKeysRequest(keyIds: Seq[String]) = {
+    val request = new HttpPost(client.from("/_security/api_key/_bulk_update"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{"ids": [${keyIds.map(id => s""""$id"""").mkString(",")}]}"""
+    ))
+    request
+  }
+
+  private def createQueryApiKeysRequest(nameFilter: Option[String]) = {
+    val request = new HttpPost(client.from("/_security/_query/api_key"))
+    request.setHeader("Content-Type", "application/json")
+    val body = nameFilter match {
+      case Some(name) => s"""{"query": {"term": {"name": "$name"}}}"""
+      case None => "{}"
+    }
+    request.setEntity(new StringEntity(body))
     request
   }
 

@@ -18,10 +18,11 @@ package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.containers.SecurityType
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, SecurityType}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
 import java.util.Base64
@@ -36,6 +37,14 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       restSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.RestSsl.Xpack),
       internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
     ))
+
+  override protected def implementationSpecificInitializer(): ElasticsearchNodeDataInitializer = {
+    (esVersion: String, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc(".apm-agent-configuration", 1, ujson.read("""{}""")).force()
+      documentManager.createDoc(".fleet-servers", 1, ujson.read("""{}""")).force()
+    }
+  }
 
   "Security API" when {
     "/_security/user/_has_privileges endpoint is called" should {
@@ -137,13 +146,11 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         }
       }
     }
-    "API key grant request is called" should {
-      "be allowed" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "/_security/api_key endpoints are called" should {
+      "allow granting an API key" excludeES(allEs6x, allEs7xBelowEs77x) in {
         val response = adminXpackApiManager.grantApiKeyPrivilege("admin", "admin")
         response should have statusCode 200
       }
-    }
-    "/_security/api_key endpoints are called" should {
       "allow getting an API key by id" excludeES allEs6x in {
         val createResponse = adminXpackApiManager.createApiKey("test-get-key")
         createResponse should have statusCode 200
@@ -156,9 +163,6 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         getResponse.responseJson("api_keys")(0)("name").str should be("test-get-key")
       }
       "allow creating and using an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
-        val documentManager = new DocumentManager(adminClient, esVersionUsed)
-        documentManager.createDoc(".apm-agent-configuration", 1, ujson.read("""{}""")).force()
-
         val createResponse = adminXpackApiManager.createApiKey("test-agent-key")
         createResponse should have statusCode 200
         createResponse.responseJson("name").str should be("test-agent-key")
@@ -176,6 +180,44 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
         val searchAfterInvalidateResponse = agentSearchManager.search(".apm-agent-configuration")
         searchAfterInvalidateResponse should have statusCode 403
+      }
+      "allow updating an API key" excludeES(allEs6x, allEs7x, allEs8xBelowEs87x) in {
+        val createResponse = adminXpackApiManager.createApiKey("test-update-key")
+        createResponse should have statusCode 200
+        val apiKeyId = createResponse.responseJson("id").str
+        val apiKeyValue = createResponse.responseJson("api_key").str
+        val encodedKey = Base64.getEncoder.encodeToString(s"$apiKeyId:$apiKeyValue".getBytes)
+
+        val updateResponse = adminXpackApiManager.updateApiKey(apiKeyId)
+        updateResponse should have statusCode 200
+
+        val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey"), esVersionUsed)
+        agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
+      }
+      "allow bulk updating API keys" excludeES(allEs6x, allEs7x, allEs8xBelowEs87x) in {
+        val createResponse1 = adminXpackApiManager.createApiKey("test-bulk-update-key-1")
+        createResponse1 should have statusCode 200
+        val createResponse2 = adminXpackApiManager.createApiKey("test-bulk-update-key-2")
+        createResponse2 should have statusCode 200
+        val keyId1 = createResponse1.responseJson("id").str
+        val keyId2 = createResponse2.responseJson("id").str
+        val keyValue1 = createResponse1.responseJson("api_key").str
+        val encodedKey1 = Base64.getEncoder.encodeToString(s"$keyId1:$keyValue1".getBytes)
+
+        val bulkUpdateResponse = adminXpackApiManager.bulkUpdateApiKeys(keyId1, keyId2)
+        bulkUpdateResponse should have statusCode 200
+
+        val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey1"), esVersionUsed)
+        agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
+      }
+      "allow querying API keys" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        val keyName = "test-query-key"
+        val createResponse = adminXpackApiManager.createApiKey(keyName)
+        createResponse should have statusCode 200
+
+        val queryResponse = adminXpackApiManager.queryApiKeys(Some(keyName))
+        queryResponse should have statusCode 200
+        queryResponse.responseJson("api_keys").arr.map(_("name").str).toList should contain(keyName)
       }
     }
     "/_security/service endpoints are called" should {
@@ -195,9 +237,6 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         response.responseJson("service_account").str should be("elastic/fleet-server")
       }
       "allow creating and deleting a service account token" excludeES(allEs6x, allEs7xBelowEs714x) in {
-        val documentManager = new DocumentManager(adminClient, esVersionUsed)
-        documentManager.createDoc(".fleet-servers", 1, ujson.read("""{}""")).force()
-
         val createResponse = adminXpackApiManager.createServiceAccountToken("elastic", "fleet-server", "test-token")
         createResponse should have statusCode 200
         createResponse.responseJson("created").bool should be(true)
