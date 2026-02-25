@@ -62,7 +62,7 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
-      new ModifyCreateComponentsInSecurityClass(esVersion),
+      ModifyCreateComponentsInSecurityClass(esVersion),
       ModifyRBACEngineClass,
       ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,

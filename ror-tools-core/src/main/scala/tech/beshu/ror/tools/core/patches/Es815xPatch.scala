@@ -60,7 +60,7 @@ private[patches] class Es815xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     XPackSecurityJarPatchCreator(
       OpenModule,
-      new ModifyCreateComponentsInSecurityClass(esVersion),
+      ModifyCreateComponentsInSecurityClass(esVersion),
       CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),

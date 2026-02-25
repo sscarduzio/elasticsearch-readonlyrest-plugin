@@ -62,7 +62,7 @@ private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
-      new ModifyCreateComponentsInSecurityClass(esVersion),
+      ModifyCreateComponentsInSecurityClass(esVersion),
       ModifyRBACEngineClass,
       ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,

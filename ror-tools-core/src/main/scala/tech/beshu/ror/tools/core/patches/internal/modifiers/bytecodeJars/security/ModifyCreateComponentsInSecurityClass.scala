@@ -20,7 +20,7 @@ import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es8140, es8150, es900, es910, es920, es930}
+import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 import java.io.InputStream
 
@@ -181,10 +181,10 @@ private[patches] class ModifyCreateComponentsInSecurityClass(esVersion: SemVer)
       underlying.visitVarInsn(Opcodes.ALOAD, 1)
       val label16 = new Label()
       underlying.visitLabel(label16)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "projectRoutingResolver", "()Lorg/elasticsearch/cluster/project/ProjectRoutingResolver;", true)
+      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "projectRoutingResolver", "()Lorg/elasticsearch/search/crossproject/ProjectRoutingResolver;", true)
       val label17 = new Label()
       underlying.visitLabel(label17)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;Lorg/elasticsearch/persistent/PersistentTasksService;Lorg/elasticsearch/transport/LinkedProjectConfigService;Lorg/elasticsearch/cluster/project/ProjectResolver;Lorg/elasticsearch/cluster/project/ProjectRoutingResolver;)Ljava/util/Collection;", false)
+      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;Lorg/elasticsearch/persistent/PersistentTasksService;Lorg/elasticsearch/transport/LinkedProjectConfigService;Lorg/elasticsearch/cluster/project/ProjectResolver;Lorg/elasticsearch/search/crossproject/ProjectRoutingResolver;)Ljava/util/Collection;", false)
       underlying.visitVarInsn(Opcodes.ASTORE, 2)
       val label18 = new Label()
       underlying.visitLabel(label18)
@@ -857,4 +857,8 @@ private[patches] class ModifyCreateComponentsInSecurityClass(esVersion: SemVer)
       underlying.visitEnd()
     }
   }
+}
+
+object ModifyCreateComponentsInSecurityClass {
+  def apply(esVersion: SemVer): ModifyCreateComponentsInSecurityClass = new ModifyCreateComponentsInSecurityClass(esVersion)
 }
