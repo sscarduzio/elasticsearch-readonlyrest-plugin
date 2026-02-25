@@ -25,9 +25,10 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{ModifyApplicationPermissionClass, ModifySimpleRoleClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityContextClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifyCreateComponentsInSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, ModifyRepositoriesServiceClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
@@ -40,6 +41,8 @@ private[patches] class Es813xPatch(rorPluginDirectory: RorPluginDirectory, esVer
       ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
+      CreateApiKeyServiceBridgeClass,
+      CreateServiceAccountServiceBridgeClass,
       ModifyRepositoriesServiceClass(esVersion)
     ),
     RorSecurityPolicyPatchCreator(
@@ -49,10 +52,14 @@ private[patches] class Es813xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     ),
     XPackCoreJarPatchCreator(
       OpenModule,
+      ModifySimpleRoleClass,
+      ModifyApplicationPermissionClass,
+      ModifyAsyncSearchSecurityClass,
       ModifySecurityContextClass,
     ),
     XPackSecurityJarPatchCreator(
       OpenModule,
+      ModifyCreateComponentsInSecurityClass(esVersion),
       CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),

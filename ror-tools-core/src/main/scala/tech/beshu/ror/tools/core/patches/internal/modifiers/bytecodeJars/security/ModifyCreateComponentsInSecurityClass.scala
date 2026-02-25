@@ -82,6 +82,10 @@ private[patches] class ModifyCreateComponentsInSecurityClass(esVersion: SemVer)
               new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8140(
                 super.visitMethod(access, name, descriptor, signature, exceptions)
               )
+            case v if v >= es800 =>
+              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8140(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
