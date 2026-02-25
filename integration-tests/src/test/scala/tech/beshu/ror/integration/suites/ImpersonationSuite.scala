@@ -252,7 +252,7 @@ class ImpersonationSuite
         }
       }
       "is supported" - {
-        "when external auth service used in rule is mocked, the list of local users does not contain external users, and jwt users with external authn" in {
+        "when ldap service used in rule is mocked" in {
           rorApiManager
             .configureImpersonationMocks(ujson.read(
               s"""
