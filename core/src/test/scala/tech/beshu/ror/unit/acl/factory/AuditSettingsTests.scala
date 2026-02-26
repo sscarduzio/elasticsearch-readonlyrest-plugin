@@ -334,6 +334,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |                triple_nested_next: "tnt"
                 |          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
                 |          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+                |          matched_blocks: "{MATCHED_BLOCK_NAMES}"
                 |          tid: "{TASK_ID}"
                 |          bytes: "{CONTENT_LENGTH_IN_BYTES}"
               """.stripMargin
@@ -363,6 +364,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               ),
               AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
               AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
+              AuditFieldPath("matched_blocks") -> AuditFieldValueDescriptor.MatchedBlockNames,
               AuditFieldPath("tid") -> AuditFieldValueDescriptor.TaskId,
               AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
             )
@@ -610,7 +612,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_detailed_reason" : "default",
                   |    "ror_involved_indices" : [],
                   |    "presented_identity" : "basic auth user",
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -688,7 +691,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_detailed_reason" : "default",
                   |    "ror_involved_indices" : [],
                   |    "presented_identity" : "basic auth user",
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -765,7 +769,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_detailed_reason" : "default",
                   |    "ror_involved_indices" : [],
                   |    "presented_identity" : "basic auth user",
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -2271,4 +2276,6 @@ private class DummyAuditRequestContext(override val loggedInUserName: Option[Str
   override def generalAuditEvents: JSONObject = new JSONObject
 
   override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
+
+  override def matchedBlockNames: Option[List[String]] = Some(List("block1", "block2"))
 }

@@ -34,6 +34,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new QueryAuditLogSerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -66,6 +67,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new QueryAuditLogSerializerV2,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -98,6 +100,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new QueryAuditLogSerializerV1,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -128,6 +131,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new FullAuditLogWithQuerySerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -160,6 +164,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new FullAuditLogSerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -191,6 +196,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new BlockVerbosityAwareAuditLogSerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -222,6 +228,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new DefaultAuditLogSerializerV2 @nowarn("cat=deprecation"),
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -253,6 +260,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new DefaultAuditLogSerializerV1 @nowarn("cat=deprecation"),
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -358,4 +366,6 @@ private object DummyAuditRequestContext extends AuditRequestContext {
 
     override def esClusterName: String = "testEsCluster"
   }
+
+  override def matchedBlockNames: Option[List[String]] = Some(List("block1", "block2"))
 }
