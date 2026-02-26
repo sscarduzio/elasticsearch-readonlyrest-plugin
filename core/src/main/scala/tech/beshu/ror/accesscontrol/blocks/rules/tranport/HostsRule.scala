@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
 class HostsRule(val settings: Settings,
                 resolver: HostnameResolver)

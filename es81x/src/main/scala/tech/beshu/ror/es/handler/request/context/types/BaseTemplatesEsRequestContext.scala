@@ -22,16 +22,14 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex, TemplateOperation}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
 import tech.beshu.ror.syntax.*
 
 abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOperation](actionRequest: R,
                                                                                          esContext: EsContext,
-                                                                                         clusterService: RorClusterService,
                                                                                          override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[TemplateRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[TemplateRequestBlockContext](esContext)
     with EsRequest[TemplateRequestBlockContext] {
 
   protected def templateOperationFrom(actionRequest: R): T

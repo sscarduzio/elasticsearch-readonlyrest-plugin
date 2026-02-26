@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
@@ -38,9 +37,8 @@ import scala.util.Try
 private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRequest,
                                                          dataStreams: Set[DataStreamName],
                                                          esContext: EsContext,
-                                                         clusterService: RorClusterService,
                                                          override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -130,7 +128,7 @@ object GetDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContext
       getDataStreamsMethodName = "getNames"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new GetDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
+        Some(new GetDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
       case MatchResult.NotMatched() =>
         None
     }

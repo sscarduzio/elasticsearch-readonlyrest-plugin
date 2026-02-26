@@ -21,7 +21,7 @@ import cats.implicits.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.atomic.{Atomic, AtomicAny}
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.Cancelable
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
@@ -45,8 +45,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
                                                      esConfigBasedRorSettings: EsConfigBasedRorSettings,
                                                      initialEngine: InitialEngine,
                                                      reloadInProgress: Semaphore[Task])
-                                                    (implicit systemContext: SystemContext,
-                                                     scheduler: Scheduler)
+                                                    (implicit systemContext: SystemContext)
   extends RequestIdAwareLogging {
 
   import BaseReloadableEngine.EngineUpdateType
@@ -306,7 +305,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
     EngineState.Working(
       engineWithSetting,
       engineWithSetting.expiration.map(_.ttl).map { ttl =>
-        scheduler.scheduleOnce(ttl.value) {
+        systemContext.scheduler.scheduleOnce(ttl.value) {
           stopEngine(engineWithSetting)
         }
       }
@@ -340,7 +339,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
           case RemainingEngineTime.Valid(remainingEngineTtl) =>
             EngineState.Working(
               engineWithSetting,
-              scheduler
+              systemContext.scheduler
                 .scheduleOnce(remainingEngineTtl.value) {
                   stopEngine(engineWithSetting)
                 }
@@ -388,7 +387,7 @@ private[engines] abstract class BaseReloadableEngine(val name: String,
   private def stopEarly(engineState: EngineState.Working)
                        (implicit requestId: RequestId): Unit = {
     engineState.scheduledShutdownJob.foreach(_.cancel())
-    scheduler.scheduleOnce(delayOfOldEngineShutdown) {
+    systemContext.scheduler.scheduleOnce(delayOfOldEngineShutdown) {
       logger.info(s"ROR ${name.show} engine (id=${engineState.engineWithSetting.settings.hashString().show}) is being stopped early ...")
       stop(engineState.engineWithSetting)
     }

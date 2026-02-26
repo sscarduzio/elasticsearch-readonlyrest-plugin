@@ -19,13 +19,15 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.StaticToken
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, User}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.{headerNameFrom, tokenFrom, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.{anyTokenDef, authorizationTokenFrom, headerNameFrom, unsafeNes}
 
 class TokenAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[TokenAuthenticationRule] {
@@ -48,8 +50,7 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              token = tokenFrom("Bearer abc123XYZ"),
-              tokenHeaderName = headerNameFrom("Authorization")
+              tokenType = StaticToken(anyTokenDef, authorizationTokenFrom("Bearer abc123XYZ"))
             ))
         )
       }
@@ -70,8 +71,10 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              token = tokenFrom("Bearer abc123XYZ"),
-              tokenHeaderName = headerNameFrom("X-Custom-Header")
+              tokenType = StaticToken(
+                AuthorizationTokenDef(headerNameFrom("X-Custom-Header"), AllowedPrefix.Any),
+                authorizationTokenFrom("Bearer abc123XYZ")
+              )
             ))
         )
       }
@@ -92,8 +95,7 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              token = tokenFrom("Bearer abc123XYZ"),
-              tokenHeaderName = headerNameFrom("Authorization")
+              tokenType = StaticToken(anyTokenDef, authorizationTokenFrom("Bearer abc123XYZ"))
             ))
         )
       }
@@ -113,8 +115,28 @@ class TokenAuthenticationRuleSettingsTests
           assertion = rule =>
             rule.settings should be(Settings(
               user = User.Id("john"),
-              token = tokenFrom("Bearer abc123XYZ"),
-              tokenHeaderName = headerNameFrom("Authorization")
+              tokenType = StaticToken(anyTokenDef, authorizationTokenFrom("Bearer abc123XYZ"))
+            ))
+        )
+      }
+      "type is explicitly set to 'static'" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    token_authentication:
+               |      type: "static"
+               |      token: "Bearer abc123XYZ"
+               |      username: "john"
+               |""".stripMargin,
+          assertion = rule =>
+            rule.settings should be(Settings(
+              user = User.Id("john"),
+              tokenType = StaticToken(anyTokenDef, authorizationTokenFrom("Bearer abc123XYZ"))
             ))
         )
       }
@@ -156,10 +178,8 @@ class TokenAuthenticationRuleSettingsTests
                |""".stripMargin,
           assertion = { errors =>
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """token_authentication:
-                |  username: "john"
-                |""".stripMargin
+            errors.head should be(RulesLevelCreationError(Message(
+              "Invalid token value: ''"
             )))
           }
         )

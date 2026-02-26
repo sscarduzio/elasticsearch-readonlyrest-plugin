@@ -184,7 +184,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                                                                                    (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                    (implicit requestId: RequestContext.Id,
+                                                                                                                     allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     allowedIndicesManager
       .allIndices
       .map { allIndices =>
@@ -201,8 +202,9 @@ trait BaseIndicesProcessor {
     Task.now(Set.empty[RequestedIndex[T]])
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]]
-                                                                                                                        )(implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+  private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
+                                                                                                                        (implicit requestId: RequestContext.Id,
+                                                                                                                         allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     allowedIndicesManager
       .backingIndicesPerDataStreamMap
       .map { backingIndicesPerDataStream =>
@@ -245,7 +247,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                                                                                    (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                    (implicit requestId: RequestContext.Id,
+                                                                                                                     allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     allowedIndicesManager
       .allAliases
       .map { allAliases =>
@@ -257,7 +260,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                                                                                    (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                    (implicit requestId: RequestContext.Id,
+                                                                                                                     allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     for {
       allAliases <- allowedIndicesManager.allAliases
       aliasesPerIndex <- allowedIndicesManager.indicesPerAliasMap
@@ -280,7 +284,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatAliasesAreRequestedAndDataStreamAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                                                                                              (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                              (implicit requestId: RequestContext.Id,
+                                                                                                                               allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     allowedIndicesManager
       .allDataStreamAliases
       .map { allDataStreamAliases =>
@@ -306,7 +311,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatAliasesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                                                                                        (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                        (implicit requestId: RequestContext.Id,
+                                                                                                                         allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     for {
       allAliases <- allowedIndicesManager.allDataStreamAliases
       aliasesPerDataStream <- allowedIndicesManager.dataStreamsPerAliasMap
@@ -324,7 +330,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatDataStreamsAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                                                                                        (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                        (implicit requestId: RequestContext.Id,
+                                                                                                                         allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     for {
       allDataStreams <- allowedIndicesManager.allDataStreams
       backingIndicesPerDataStream <- allowedIndicesManager.backingIndicesPerDataStreamMap
@@ -357,7 +364,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatDataStreamsAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                                                                                            (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                            (implicit requestId: RequestContext.Id,
+                                                                                                                             allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     allowedIndicesManager
       .allDataStreams
       .map { allDataStreams =>
@@ -412,7 +420,7 @@ trait BaseIndicesProcessor {
 object BaseIndicesProcessor {
 
   trait IndicesManager[T <: ClusterIndexName] {
-    final def allIndicesAndAliasesAndDataStreams: Task[Set[T]] = {
+    final def allIndicesAndAliasesAndDataStreams(implicit requestId: RequestContext.Id): Task[Set[T]] = {
       for {
         indicesAndAliases <- allIndicesAndAliases
         dataStreamsAndAliases <- allDataStreamsAndDataStreamAliases
@@ -420,24 +428,24 @@ object BaseIndicesProcessor {
     }
 
     // indices and aliases
-    def allIndicesAndAliases: Task[Set[T]]
+    def allIndicesAndAliases(implicit id: RequestContext.Id): Task[Set[T]]
 
-    def allIndices: Task[Set[T]]
+    def allIndices(implicit id: RequestContext.Id): Task[Set[T]]
 
-    def allAliases: Task[Set[T]]
+    def allAliases(implicit id: RequestContext.Id): Task[Set[T]]
 
-    def indicesPerAliasMap: Task[Map[T, Set[T]]]
+    def indicesPerAliasMap(implicit id: RequestContext.Id): Task[Map[T, Set[T]]]
 
     // data streams and their aliases
-    def allDataStreamsAndDataStreamAliases: Task[Set[T]]
+    def allDataStreamsAndDataStreamAliases(implicit id: RequestContext.Id): Task[Set[T]]
 
-    def allDataStreams: Task[Set[T]]
+    def allDataStreams(implicit id: RequestContext.Id): Task[Set[T]]
 
-    def allDataStreamAliases: Task[Set[T]]
+    def allDataStreamAliases(implicit id: RequestContext.Id): Task[Set[T]]
 
-    def dataStreamsPerAliasMap: Task[Map[T, Set[T]]]
+    def dataStreamsPerAliasMap(implicit id: RequestContext.Id): Task[Map[T, Set[T]]]
 
-    def backingIndicesPerDataStreamMap: Task[Map[T, Set[T]]]
+    def backingIndicesPerDataStreamMap(implicit id: RequestContext.Id): Task[Map[T, Set[T]]]
 
     def allowedIndicesMatcher: PatternsMatcher[T]
   }

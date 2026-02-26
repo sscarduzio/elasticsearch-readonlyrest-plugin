@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
@@ -45,9 +44,8 @@ import scala.jdk.CollectionConverters.*
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
                                  aclContext: AccessControlStaticContext,
-                                 clusterService: RorClusterService,
                                  override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[AliasRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[AliasRequestBlockContext](esContext)
     with EsRequest[AliasRequestBlockContext] {
 
   override def initialBlockContext(block: Block): AliasRequestBlockContext = AliasRequestBlockContext(

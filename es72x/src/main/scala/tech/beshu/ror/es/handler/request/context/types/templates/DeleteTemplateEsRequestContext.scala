@@ -23,7 +23,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.DeletingLegacyTemplates
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -33,10 +32,9 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
                                      esContext: EsContext,
-                                     clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext[DeleteIndexTemplateRequest, DeletingLegacyTemplates](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   override protected def templateOperationFrom(request: DeleteIndexTemplateRequest): DeletingLegacyTemplates = {

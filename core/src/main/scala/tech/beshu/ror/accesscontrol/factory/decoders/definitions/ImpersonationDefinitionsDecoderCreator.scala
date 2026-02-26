@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureOps}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureUtils}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -117,6 +117,6 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
   }
 
   private def decodingFailure(message: Message) = {
-    DecodingFailureOps.fromError(DefinitionsLevelCreationError(message))
+    DecodingFailureUtils.decodingFailureFrom(DefinitionsLevelCreationError(message))
   }
 }

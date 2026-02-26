@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.{Ec, Hmac, NoCheck, Rsa}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -73,7 +72,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
     B <: BlockContext, JWT_DEF <: JwtDef
   ](blockContext: B, jwt: JWT_DEF, denialCause: => Denied.Cause): Decision[Jwt.Token] = {
     implicit val blockContextImpl: B = blockContext
-    blockContext.requestContext.authorizationToken(jwt.authorizationTokenDef) match {
+    blockContext.requestContext.authorizationTokenBy(jwt.authorizationTokenDef) match {
       case Some(t) =>
         Decision.Permitted(Jwt.Token(t.value))
       case None =>
