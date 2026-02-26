@@ -18,23 +18,22 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.utils.JavaConverters
 
 import scala.language.implicitConversions
 
 final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 
-  def stashPreservingSomeHeaders(esContext: EsContext): ThreadContext.StoredContext = {
-    val responseHeaders = JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
-    val transientHeaders = ThreadContextOps.transientHeaderNames.flatMap { headerName =>
-      Option(threadContext.getTransient[AnyRef](headerName)).map((headerName, _))
-    }
-    val storedContext = threadContext.stashContext()
-    responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
-    transientHeaders.foreach { case (k, v) => threadContext.putTransient(k, v) }
-    storedContext
-  }
+  // todo: to remove
+//  def stashPreservingSomeHeaders(esContext: EsContext): ThreadContext.StoredContext = {
+//    val responseHeaders = JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet ++ esContext.threadContextResponseHeaders
+//    val transientHeaders = ThreadContextOps.transientHeaderNames.flatMap { headerName =>
+//      Option(threadContext.getTransient[AnyRef](headerName)).map((headerName, _))
+//    }
+//    val storedContext = threadContext.stashContext()
+//    responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+//    transientHeaders.foreach { case (k, v) => threadContext.putTransient(k, v) }
+//    storedContext
+//  }
 
   def addXpackUserAuthenticationHeader(nodeName: String): ThreadContext = {
     putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createXpackUserAuthenticationHeader(nodeName))
@@ -54,8 +53,6 @@ final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
 }
 
 object ThreadContextOps {
-
-  private val transientHeaderNames: List[String] = "_xpack_security_authentication" :: "_authz_info" :: "_indices_permissions" :: Nil
 
   implicit def createThreadContextOps(threadContext: ThreadContext): ThreadContextOps = new ThreadContextOps(threadContext)
 }

@@ -25,10 +25,11 @@ object ThreadContextPropagation {
 
   def capture(tc: ThreadContext): Unit = {
     val capturedTransients = transientHeaderNames.flatMap(n => Option(tc.getTransient[AnyRef](n)).map(n -> _)).toMap
-    val capturedResponseHeaders = JavaConverters.flattenPair(tc.getResponseHeaders)
+    val capturedResponseHeaders = JavaConverters.flattenPair(tc.getResponseHeaders).toSet
     SchedulerContextRestore.onContextSwitch := Some(() => {
+      tc.stashContext() // clear thread context to remove leftover state from previous requests (StoredContext intentionally discarded)
       capturedTransients.foreach { case (k, v) =>
-        if (tc.getTransient[AnyRef](k) == null) tc.putTransient(k, v)
+        tc.putTransient(k, v)
       }
       capturedResponseHeaders.foreach { case (k, v) =>
         tc.addResponseHeader(k, v)

@@ -44,7 +44,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
-import tech.beshu.ror.utils.{JavaConverters, RequestIdAwareLogging, RorInstanceSupplier}
+import tech.beshu.ror.utils.{RequestIdAwareLogging, RorInstanceSupplier}
 
 import java.util.function.Supplier
 import scala.util.Try
@@ -166,7 +166,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               request,
               rorActionListener,
               chain,
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet,
               esServices
             )
           )
