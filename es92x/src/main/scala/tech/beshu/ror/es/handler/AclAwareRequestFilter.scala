@@ -278,7 +278,6 @@ object AclAwareRequestFilter {
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val threadContextResponseHeaders: Set[(String, String)],
                         val esServices: EsServices,
                         val esVersion: EsVersion) extends BaseEsContext {
 
