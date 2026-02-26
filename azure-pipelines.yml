@@ -267,90 +267,6 @@ stages:
               mergeTestResults: true
 
 #######################################################
-##### Integration tests for ES 9.x on master/develop
-#######################################################
-      - job:
-        condition:
-          and(
-            succeeded(),
-            or(
-              eq(variables.isEpicBranchOrPr, true),
-              eq(variables.isDevelop, true),
-              eq(variables.isMaster, true),
-              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
-            )
-          )
-        container: eclipse-temurin:17-jdk
-        timeoutInMinutes: 120
-        steps:
-          - template: ci/azure-templates/integration-test-steps.yml
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es92x:
-              ROR_TASK: integration_es92x
-            IT_es91x:
-              ROR_TASK: integration_es91x
-            IT_es90x:
-              ROR_TASK: integration_es90x
-
-#######################################################
-##### Integration tests for ES 8.x on master/develop
-#######################################################
-      - job:
-        condition:
-          and(
-            succeeded(),
-            or(
-              eq(variables.isEpicBranchOrPr, true),
-              eq(variables.isDevelop, true),
-              eq(variables.isMaster, true),
-              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
-            )
-          )
-        container: eclipse-temurin:17-jdk
-        timeoutInMinutes: 120
-        steps:
-          - template: ci/azure-templates/integration-test-steps.yml
-        strategy:
-          maxParallel: 99
-          matrix:
-            IT_es818x:
-              ROR_TASK: integration_es818x
-            IT_es816x:
-              ROR_TASK: integration_es816x
-            IT_es815x:
-              ROR_TASK: integration_es815x
-            IT_es814x:
-              ROR_TASK: integration_es814x
-            IT_es813x:
-              ROR_TASK: integration_es813x
-            IT_es812x:
-              ROR_TASK: integration_es812x
-            IT_es811x:
-              ROR_TASK: integration_es811x
-            IT_es810x:
-              ROR_TASK: integration_es810x
-            IT_es89x:
-              ROR_TASK: integration_es89x
-            IT_es88x:
-              ROR_TASK: integration_es88x
-            IT_es87x:
-              ROR_TASK: integration_es87x
-            IT_es85x:
-              ROR_TASK: integration_es85x
-            IT_es84x:
-              ROR_TASK: integration_es84x
-            IT_es83x:
-              ROR_TASK: integration_es83x
-            IT_es82x:
-              ROR_TASK: integration_es82x
-            IT_es81x:
-              ROR_TASK: integration_es81x
-            IT_es80x:
-              ROR_TASK: integration_es80x
-
-#######################################################
 ##### Integration tests for ES <= 7.x on master/develop
 #######################################################
       - job:
@@ -371,32 +287,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es717x:
-              ROR_TASK: integration_es717x
-            IT_es716x:
-              ROR_TASK: integration_es716x
             IT_es714x:
               ROR_TASK: integration_es714x
-            IT_es711x:
-              ROR_TASK: integration_es711x
-            IT_es710x:
-              ROR_TASK: integration_es710x
-            IT_es79x:
-              ROR_TASK: integration_es79x
-            IT_es78x:
-              ROR_TASK: integration_es78x
-            IT_es77x:
-              ROR_TASK: integration_es77x
-            IT_es74x:
-              ROR_TASK: integration_es74x
-            IT_es73x:
-              ROR_TASK: integration_es73x
-            IT_es72x:
-              ROR_TASK: integration_es72x
-            IT_es70x:
-              ROR_TASK: integration_es70x
-            IT_es67x:
-              ROR_TASK: integration_es67x
 
 #######################################################
 ##### Integration tests for ES 9.x on PRs

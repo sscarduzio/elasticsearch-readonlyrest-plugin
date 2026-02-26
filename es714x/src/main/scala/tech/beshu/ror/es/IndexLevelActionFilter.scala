@@ -39,7 +39,7 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNo
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
+import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadContextPropagation, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.syntax.*
@@ -194,6 +194,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleRequest(engines: Engines, esContext: EsContext): Unit = {
+    ThreadContextPropagation.capture(threadPool.getThreadContext)
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
