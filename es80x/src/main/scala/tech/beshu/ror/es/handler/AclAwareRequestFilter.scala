@@ -89,7 +89,6 @@ class AclAwareRequestFilter(settings: Settings,
 
   import systemContext.{scheduler, uniqueIdentifierGenerator}
 
-
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {
     esContext
@@ -267,7 +266,6 @@ object AclAwareRequestFilter {
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val threadContextResponseHeaders: Set[(String, String)],
                         val esServices: EsServices) extends BaseEsContext {
 
     override val esTaskId: Long = task.getId
