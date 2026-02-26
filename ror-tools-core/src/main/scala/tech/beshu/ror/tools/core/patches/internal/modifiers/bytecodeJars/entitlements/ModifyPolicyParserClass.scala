@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements
 
+import better.files.File
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /**
  * Modifies the PolicyParser class to extend entitlements for the ReadonlyREST policy scope.

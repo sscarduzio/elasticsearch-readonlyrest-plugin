@@ -19,9 +19,9 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers
 import better.files.*
 import tech.beshu.ror.tools.core.utils.FileUtils.*
 
-import java.io.{ByteArrayInputStream, File, InputStream}
+import java.io.{ByteArrayInputStream, InputStream}
 import java.net.URI
-import java.nio.file.{FileSystems, Files, Paths, StandardCopyOption, StandardOpenOption}
+import java.nio.file.{FileSystems, Files, StandardCopyOption, StandardOpenOption}
 import java.util.jar.JarFile
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
@@ -33,23 +33,23 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
   protected def addNewFileToJar(jar: File,
                                 filePathString: String,
                                 content: Array[Byte]): Unit = {
-    val originalPermsAndOwner = jar.toScala.getFilePermissionsAndOwner
+    val originalPermsAndOwner = jar.getFilePermissionsAndOwner
     if (debugEnabled) debug(content)
     val env = Map("create" -> "true").asJava
-    val uri = URI.create("jar:" + jar.toURI)
+    val uri = URI.create("jar:" + jar.toJava.toURI)
 
     Using.resource(FileSystems.newFileSystem(uri, env)) { zipfs =>
       val path = zipfs.getPath(filePathString)
       Option(path.getParent).foreach(p => Files.createDirectories(p))
       Files.write(path, content, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     }
-    jar.toScala.setFilePermissionsAndOwner(originalPermsAndOwner)
+    jar.setFilePermissionsAndOwner(originalPermsAndOwner)
   }
 
   protected def modifyFileInJar(jar: File,
                                 filePathString: String,
                                 processFileContent: InputStream => Array[Byte]): Unit = {
-    val originalFilePermissionsAndOwner = jar.toScala.getFilePermissionsAndOwner
+    val originalFilePermissionsAndOwner = jar.getFilePermissionsAndOwner
     val modifiedFileContent = loadAndProcessFileFromJar(
       jar = jar,
       filePathString = filePathString,
@@ -60,13 +60,13 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
       destinationPathSting = filePathString,
       newContent = modifiedFileContent
     )
-    jar.toScala.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
+    jar.setFilePermissionsAndOwner(originalFilePermissionsAndOwner)
   }
 
   private def loadAndProcessFileFromJar(jar: File,
                                         filePathString: String,
                                         processFileContent: InputStream => Array[Byte]): Array[Byte] = {
-    Option(new JarFile(jar))
+    Option(new JarFile(jar.toJava))
       .flatMap { jarFile =>
         try {
           findFileInJar(jarFile, filePathString)
@@ -85,7 +85,7 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
                               newContent: Array[Byte]): Unit = {
     if (debugEnabled) debug(newContent)
     Option(FileSystems.newFileSystem(
-      URI.create("jar:" + jar.toURI),
+      URI.create("jar:" + jar.toJava.toURI),
       Map("create" -> "true").asJava
     )) map { zipfs =>
       try {
@@ -110,7 +110,6 @@ private[patches] abstract class BytecodeJarModifier(debugEnabled: Boolean = fals
   // for manual tests purposes
   def main(args: Array[String]): Unit = {
     val pathToJar = args(0)
-    val jar = Paths.get(pathToJar).toFile
-    apply(jar)
+    apply(File(pathToJar))
   }
 }

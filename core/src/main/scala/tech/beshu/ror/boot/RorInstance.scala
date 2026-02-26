@@ -20,7 +20,6 @@ import cats.effect.Resource
 import cats.syntax.either.*
 import monix.catnap.Semaphore
 import monix.eval.Task
-import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
@@ -49,8 +48,7 @@ class RorInstance private(boot: ReadonlyRest,
                           mainReloadInProgress: Semaphore[Task],
                           testInitialEngine: ReadonlyRest.TestEngine,
                           testReloadInProgress: Semaphore[Task])
-                         (implicit systemContext: SystemContext,
-                          scheduler: Scheduler)
+                         (implicit systemContext: SystemContext)
   extends RequestIdAwareLogging {
 
   import RorInstance.*
@@ -175,8 +173,7 @@ object RorInstance {
              creators: SettingsRelatedCreators,
              mainEngine: ReadonlyRest.MainEngine,
              testEngine: ReadonlyRest.TestEngine)
-            (implicit systemContext: SystemContext,
-             scheduler: Scheduler): Task[RorInstance] = {
+            (implicit systemContext: SystemContext): Task[RorInstance] = {
     for {
       isReloadInProgressSemaphore <- Semaphore[Task](1)
       isTestReloadInProgressSemaphore <- Semaphore[Task](1)

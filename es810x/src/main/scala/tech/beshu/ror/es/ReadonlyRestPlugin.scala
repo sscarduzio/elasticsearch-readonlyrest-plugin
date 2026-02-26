@@ -255,4 +255,5 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       esInitListener.onEsReady()
     }
   }
+
 }

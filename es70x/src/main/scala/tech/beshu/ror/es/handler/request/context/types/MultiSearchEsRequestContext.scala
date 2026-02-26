@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBl
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -45,9 +44,8 @@ import scala.jdk.CollectionConverters.*
 
 class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   esContext: EsContext,
-                                  clusterService: RorClusterService,
                                   override implicit val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
   override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(

@@ -281,7 +281,6 @@ object QueryWithModifiableFields {
       case builder: TermQueryBuilder => handleLeafQuery(builder, notAllowedFields)
       case builder: TermsSetQueryBuilder => handleLeafQuery(builder, notAllowedFields)
       case builder: WildcardQueryBuilder => handleLeafQuery(builder, notAllowedFields)
-
       case other => other
     }
 

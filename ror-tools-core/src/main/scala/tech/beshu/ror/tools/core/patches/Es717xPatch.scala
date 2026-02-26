@@ -24,7 +24,8 @@ import tech.beshu.ror.tools.core.patches.internal.filePatchers.{ElasticsearchJar
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyApplicationPermissionClass, ModifyPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyApplicationPermissionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyPolicyUtilClass, SecurityManagerShouldAllowReadingEsConfigFile}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions

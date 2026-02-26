@@ -28,7 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
+import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
@@ -230,7 +231,9 @@ class GroupsRuleAccessControlTests
             .withHeaders(header("X-Auth-Token", "user1-proxy-id"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+              ))
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -248,7 +251,9 @@ class GroupsRuleAccessControlTests
             .withHeaders(header("X-Auth-Token", "user1-invalid"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+              ))
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
           inside(result) { case ForbiddenByMismatched(_) => }
@@ -268,7 +273,9 @@ class GroupsRuleAccessControlTests
             .withHeaders(bearerHeader(jwt))
             .copy(
               filteredIndices = Set(requestedIndex("g*")),
-              allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+              ))
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -288,7 +295,9 @@ class GroupsRuleAccessControlTests
             .withHeaders(basicAuthHeader("morgan:user1"), currentGroupHeader("admin"))
             .copy(
               filteredIndices = Set(requestedIndex(".kibana")),
-              allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName(".kibana")))
+              ))
             )
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 

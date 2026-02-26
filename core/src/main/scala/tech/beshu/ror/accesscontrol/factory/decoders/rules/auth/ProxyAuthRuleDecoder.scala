@@ -30,7 +30,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ProxyAuthDefinitionsDecoder.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -74,7 +75,7 @@ private object ProxyAuthRuleDecoder {
           case Some(name) =>
             authProxiesDefinitions.items.find(_.id === name) match {
               case Some(proxy) => Right(ProxyAuthRule.Settings(users, proxy.userIdHeader))
-              case None => Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Cannot find proxy auth with name: ${name.show}"))))
+              case None => Left(decodingFailureFrom(RulesLevelCreationError(Message(s"Cannot find proxy auth with name: ${name.show}"))))
             }
         }
       } yield settings

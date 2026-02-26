@@ -230,7 +230,7 @@ private[indices] trait LegacyTemplatesIndices
   }
 
   private def findTemplateBy(name: TemplateName, in: TemplateRequestBlockContext) = {
-    in.requestContext.legacyTemplates.find(_.name == name)
+    in.requestContext.esServices.clusterService.legacyTemplates.find(_.name == name)
   }
 
   private def findTemplatesBy(namePattern: TemplateNamePattern, in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
@@ -238,7 +238,7 @@ private[indices] trait LegacyTemplatesIndices
   }
 
   private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
-    filterTemplates(namePatterns, in.requestContext.legacyTemplates)
+    filterTemplates(namePatterns, in.requestContext.esServices.clusterService.legacyTemplates)
   }
 
   private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])

@@ -23,12 +23,18 @@ import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
-import tech.beshu.ror.accesscontrol.domain.{Header, Token, User}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.StaticToken
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, AuthorizationTokenDef, Header, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.OptionalImpersonatorDefinitionOps
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderOps
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 
 final class TokenAuthenticationRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                            mocksProvider: MocksProvider,
@@ -38,6 +44,7 @@ final class TokenAuthenticationRuleDecoder(impersonatorsDef: Option[Definitions[
   override protected def decoder: Decoder[Block.RuleDefinition[TokenAuthenticationRule]] =
     TokenAuthenticationRuleDecoder
       .decoder
+      .toSyncDecoder
       .map { settings =>
         RuleDefinition.create(new TokenAuthenticationRule(
           settings,
@@ -45,6 +52,8 @@ final class TokenAuthenticationRuleDecoder(impersonatorsDef: Option[Definitions[
           impersonatorsDef.toImpersonation(mocksProvider)
         ))
       }
+      .mapError(RulesLevelCreationError.apply)
+      .decoder
 }
 
 private object TokenAuthenticationRuleDecoder {
@@ -52,14 +61,31 @@ private object TokenAuthenticationRuleDecoder {
   private val decoder: Decoder[TokenAuthenticationRule.Settings] =
     Decoder.instance { c =>
       for {
-        token <- c.downField("token").as[NonEmptyString].map(Token.apply)
         username <- c.downField("username").as[User.Id]
+        tokenValueStr <- c.downField("token").as[Option[NonEmptyString]]
         maybeCustomHeaderName <- c.downField("header").as[Option[Header.Name]]
+        tokenType <- tokenTypeFrom(tokenValueStr, maybeCustomHeaderName)
       } yield TokenAuthenticationRule.Settings(
         user = username,
-        token = token,
-        customHeaderName = maybeCustomHeaderName
+        tokenType = tokenType
       )
     }
 
+  private def tokenTypeFrom(tokenValueStr: Option[NonEmptyString],
+                            customHeaderName: Option[Header.Name]) = {
+    val authTokenHeaderName = customHeaderName.getOrElse(Header.Name.authorization)
+    tokenValueStr.flatMap(AuthorizationToken.from) match {
+      case Some(authorizationToken) =>
+        Right(StaticToken(
+          AuthorizationTokenDef(authTokenHeaderName, AllowedPrefix.Any),
+          authorizationToken
+        ))
+      case None =>
+        errorFrom(s"Invalid token value: '${tokenValueStr.getOrElse("")}'")
+    }
+  }
+
+  private def errorFrom(msg: String) = {
+    Left(decodingFailureFrom(RulesLevelCreationError(Message(msg))))
+  }
 }

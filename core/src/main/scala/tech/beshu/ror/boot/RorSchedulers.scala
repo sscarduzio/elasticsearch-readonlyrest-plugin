@@ -18,21 +18,23 @@ package tech.beshu.ror.boot
 
 import monix.execution.Scheduler
 import monix.execution.Scheduler.global
+import monix.execution.schedulers.TracingScheduler
+import tech.beshu.ror.boot.SchedulerContextRestore.ContextRestoringScheduler
 
 object RorSchedulers {
 
   object Implicits {
-    implicit val mainScheduler: Scheduler = RorSchedulers.scheduler
+    implicit val mainScheduler: Scheduler = RorSchedulers.mainScheduler
     implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
   }
 
-  val scheduler: Scheduler = {
+  val mainScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler {
     // This is hack for this specific version of java(1.8.0_262). There were permission issues when default scheduler was used.
     // Java 1.8.0_265 have that fixed, but we have found that using ThreadPoolExecutor instead of ForkJoinPool solves permission
     // issues with version 262.
     if (System.getProperty("java.version") == "1.8.0_262") cachedScheduler
     else global
-  }
+  })
 
   private lazy val cachedScheduler = Scheduler.cached(
     "CustomThreadPoolExecutor",
@@ -40,9 +42,9 @@ object RorSchedulers {
     getInt("scala.concurrent.context.maxThreads", "x1")
   )
 
-  val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
+  val blockingScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler(Scheduler.io("blocking-index-content-provider")))
 
-  val restApiScheduler: Scheduler = Scheduler.fixedPool("ror-rest-api-executor", 10)
+  val restApiScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler(Scheduler.fixedPool("ror-rest-api-executor", 10)))
 
   private def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
     case _: SecurityException => default
