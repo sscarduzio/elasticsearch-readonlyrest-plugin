@@ -62,7 +62,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             (implicit systemContext: SystemContext)
   extends ActionFilter with RequestIdAwareLogging {
 
-  import systemContext.{scheduler, uniqueIdentifierGenerator}
+  import systemContext.scheduler
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     new RorNotAvailableRequestHandler(esConfigBasedRorSettings.boot)

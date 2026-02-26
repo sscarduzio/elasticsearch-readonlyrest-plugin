@@ -39,12 +39,12 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNo
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
+import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadContextPropagation, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
-import tech.beshu.ror.utils.{JavaConverters, RequestIdAwareLogging, RorInstanceSupplier}
+import tech.beshu.ror.utils.{RequestIdAwareLogging, RorInstanceSupplier}
 
 import java.util.function.Supplier
 import scala.util.Try
@@ -62,7 +62,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             (implicit systemContext: SystemContext)
   extends ActionFilter with RequestIdAwareLogging {
 
-  import systemContext.{scheduler, uniqueIdentifierGenerator}
+  import systemContext.scheduler
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     new RorNotAvailableRequestHandler(esConfigBasedRorSettings.boot)
@@ -166,7 +166,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               request,
               rorActionListener,
               chain,
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet,
               esServices,
               esEnv.esVersion
             )
@@ -195,6 +194,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleRequest(engines: Engines, esContext: EsContext): Unit = {
+    ThreadContextPropagation.capture(threadPool.getThreadContext)
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {

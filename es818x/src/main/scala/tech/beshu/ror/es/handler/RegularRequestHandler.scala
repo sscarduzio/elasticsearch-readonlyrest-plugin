@@ -55,10 +55,8 @@ class RegularRequestHandler(engine: Engine,
     engine.core.accessControl
       .handleRegularRequest(request)
       .map { case (result, _) =>
-        threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          doPrivileged {
-            commitResult(result, request)
-          }
+        doPrivileged {
+          commitResult(result, request)
         }
       }
   }

@@ -88,7 +88,6 @@ class AclAwareRequestFilter(settings: Settings,
 
   import systemContext.{scheduler, uniqueIdentifierGenerator}
 
-
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {
     esContext

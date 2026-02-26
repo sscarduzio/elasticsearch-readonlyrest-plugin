@@ -20,13 +20,13 @@ import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
+import tech.beshu.ror.es.utils.ThreadContextPropagation
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 sealed abstract class RorActionListener[T](val underlying: ActionListener[T]) extends ActionListener[T] {
 
@@ -60,13 +60,11 @@ final class AtEsLevelUpdateActionResponseListener(esContext: EsContext,
   extends RorActionListener[ActionResponse](esContext.listener.underlying) {
 
   override def onResponse(response: ActionResponse): Unit = {
-    val stashedContext = threadPool.getThreadContext.stashPreservingSomeHeaders(esContext)
+    ThreadContextPropagation.capture(threadPool.getThreadContext)
     update(response) runAsync {
       case Right(updatedResponse) =>
-        stashedContext.restore()
         super.onResponse(updatedResponse)
       case Left(ex) =>
-        stashedContext.close()
         onFailure(new Exception(ex))
     }
   }
