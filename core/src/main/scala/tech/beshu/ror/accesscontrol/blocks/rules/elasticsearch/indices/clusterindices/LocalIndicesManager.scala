@@ -30,19 +30,21 @@ class LocalIndicesManager(requestContext: RequestContext,
                           override val allowedIndicesMatcher: PatternsMatcher[LocalIndexName])
   extends IndicesManager[LocalIndexName] {
 
-  override def allIndicesAndAliases: Task[Set[LocalIndexName]] = Task.delay {
+  private val clusterService = requestContext.esServices.clusterService
+
+  override def allIndicesAndAliases(implicit requestId: RequestContext.Id): Task[Set[LocalIndexName]] = Task.delay {
     indices(requestContext.indexAttributes).flatMap(_.all)
   }
 
-  override def allIndices: Task[Set[LocalIndexName]] = Task.delay {
+  override def allIndices(implicit requestId: RequestContext.Id): Task[Set[LocalIndexName]] = Task.delay {
     indices(requestContext.indexAttributes).map(_.index)
   }
 
-  override def allAliases: Task[Set[LocalIndexName]] = Task.delay {
-    requestContext.allIndicesAndAliases.flatMap(_.aliases)
+  override def allAliases(implicit requestId: RequestContext.Id): Task[Set[LocalIndexName]] = Task.delay {
+    clusterService.allIndicesAndAliases.flatMap(_.aliases)
   }
 
-  override def indicesPerAliasMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
+  override def indicesPerAliasMap(implicit requestId: RequestContext.Id): Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
     indices(requestContext.indexAttributes)
       .foldLeft(Map.empty[LocalIndexName, Set[LocalIndexName]]) {
         case (acc, indexWithAliases) =>
@@ -51,21 +53,21 @@ class LocalIndicesManager(requestContext: RequestContext,
       }
   }
 
-  override def allDataStreamsAndDataStreamAliases: Task[Set[LocalIndexName]] = Task.delay {
+  override def allDataStreamsAndDataStreamAliases(implicit requestId: RequestContext.Id): Task[Set[LocalIndexName]] = Task.delay {
     dataStreams(requestContext.indexAttributes).flatMap(_.all)
   }
 
-  override def allDataStreams: Task[Set[LocalIndexName]] = Task.delay {
+  override def allDataStreams(implicit requestId: RequestContext.Id): Task[Set[LocalIndexName]] = Task.delay {
     dataStreams(requestContext.indexAttributes).map(_.dataStream)
   }
 
-  override def allDataStreamAliases: Task[Set[LocalIndexName]] = Task.delay {
-    requestContext
+  override def allDataStreamAliases(implicit requestId: RequestContext.Id): Task[Set[LocalIndexName]] = Task.delay {
+    clusterService
       .allDataStreamsAndAliases
       .flatMap(_.aliases)
   }
 
-  override def dataStreamsPerAliasMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
+  override def dataStreamsPerAliasMap(implicit requestId: RequestContext.Id): Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
     dataStreams(requestContext.indexAttributes)
       .foldLeft(Map.empty[LocalIndexName, Set[LocalIndexName]]) {
         case (acc, dataStreamWithAliases) =>
@@ -74,7 +76,7 @@ class LocalIndicesManager(requestContext: RequestContext,
       }
   }
 
-  override def backingIndicesPerDataStreamMap: Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
+  override def backingIndicesPerDataStreamMap(implicit requestId: RequestContext.Id): Task[Map[LocalIndexName, Set[LocalIndexName]]] = Task.delay {
     dataStreams(requestContext.indexAttributes)
       .foldLeft(Map.empty[LocalIndexName, Set[LocalIndexName]]) {
         case (acc, fullDataStream) =>
@@ -84,7 +86,7 @@ class LocalIndicesManager(requestContext: RequestContext,
   }
 
   private def dataStreams(filteredBy: Set[IndexAttribute]) =
-    requestContext
+    clusterService
       .allDataStreamsAndAliases
       .filter(ds =>
         if (filteredBy.nonEmpty) filteredBy.contains(ds.attribute)
@@ -92,7 +94,7 @@ class LocalIndicesManager(requestContext: RequestContext,
       )
 
   private def indices(filteredBy: Set[IndexAttribute]) = {
-    requestContext
+    clusterService
       .allIndicesAndAliases
       .filter(i =>
         if (filteredBy.nonEmpty) filteredBy.contains(i.attribute)

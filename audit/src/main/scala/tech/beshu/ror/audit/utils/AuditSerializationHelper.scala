@@ -158,6 +158,7 @@ private[ror] object AuditSerializationHelper {
     val requestContext = eventData.requestContext
     auditValue match {
       case AuditFieldValueDescriptor.IsMatched => eventData.matched
+      case AuditFieldValueDescriptor.MatchedBlockNames => eventData.requestContext.matchedBlockNames.map(_.asJava).orNull
       case AuditFieldValueDescriptor.FinalState => eventData.finalState match {
         case FinalState.Allowed => "ALLOWED"
         case FinalState.Forbidden => "FORBIDDEN"
@@ -278,10 +279,13 @@ private[ror] object AuditSerializationHelper {
     // Rule
     case object IsMatched extends AuditFieldValueDescriptor
 
+    case object MatchedBlockNames extends AuditFieldValueDescriptor
+
     case object FinalState extends AuditFieldValueDescriptor
 
     case object EcsEventOutcome extends AuditFieldValueDescriptor
 
+    @deprecated("[ROR] The Reason audit field value descriptor should not be used. Use MatchedBlockNames instead", "1.69.0")
     case object Reason extends AuditFieldValueDescriptor
 
     @deprecated("[ROR] The User audit field value descriptor should not be used. Use LoggedUser or PresentedIdentity instead", "1.68.0")
@@ -370,6 +374,7 @@ private[ror] object AuditSerializationHelper {
 
   private val commonFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(
     AuditFieldPath("match") -> AuditFieldValueDescriptor.IsMatched,
+    AuditFieldPath("matched_block_names") -> AuditFieldValueDescriptor.MatchedBlockNames,
     AuditFieldPath("block") -> AuditFieldValueDescriptor.Reason,
     AuditFieldPath("id") -> AuditFieldValueDescriptor.Id,
     AuditFieldPath("final_state") -> AuditFieldValueDescriptor.FinalState,

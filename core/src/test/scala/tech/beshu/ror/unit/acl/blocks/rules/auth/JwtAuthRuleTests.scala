@@ -29,6 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
@@ -58,7 +60,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -82,7 +84,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -106,7 +108,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -131,7 +133,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None)
@@ -155,7 +157,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -180,7 +182,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups")), None)
@@ -207,7 +209,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(
@@ -238,7 +240,7 @@ class JwtAuthRuleTests
           assertMatchRule(
             configuredJwtDef = AuthJwtDef(
               JwtDef.Name("test"),
-              AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+              AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
               SignatureCheckMethod.Hmac(key.getEncoded),
               userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
               groupsConfig = GroupsConfig(
@@ -269,7 +271,7 @@ class JwtAuthRuleTests
           assertMatchRule(
             configuredJwtDef = AuthJwtDef(
               JwtDef.Name("test"),
-              AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+              AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
               SignatureCheckMethod.Hmac(key.getEncoded),
               userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
               groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")), Some(domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.name)].name"))))
@@ -297,7 +299,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(
@@ -331,7 +333,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(
@@ -365,7 +367,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(
@@ -399,7 +401,7 @@ class JwtAuthRuleTests
         assertMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(
@@ -432,7 +434,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -450,7 +452,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -467,7 +469,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -485,7 +487,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")), None)
@@ -506,7 +508,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -527,7 +529,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -548,7 +550,7 @@ class JwtAuthRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)

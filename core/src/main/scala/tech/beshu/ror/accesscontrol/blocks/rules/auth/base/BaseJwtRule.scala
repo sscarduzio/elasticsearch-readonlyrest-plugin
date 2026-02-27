@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMeth
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging

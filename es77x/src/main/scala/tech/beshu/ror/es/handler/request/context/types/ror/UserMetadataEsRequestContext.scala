@@ -22,7 +22,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -31,9 +30,8 @@ import tech.beshu.ror.syntax.*
 
 class UserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
                                    esContext: EsContext,
-                                   clusterService: RorClusterService,
                                    override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[UserMetadataRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[UserMetadataRequestBlockContext](esContext)
     with UserMetadataRequestContext
     with EsRequest[UserMetadataRequestBlockContext] {
 

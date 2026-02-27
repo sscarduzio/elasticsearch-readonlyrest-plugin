@@ -21,7 +21,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -30,9 +29,8 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 class GetRollupCapsEsRequestContext private(actionRequest: ActionRequest,
                                            esContext: EsContext,
                                            aclContext: AccessControlStaticContext,
-                                           clusterService: RorClusterService,
                                            override val threadPool: ThreadPool)
-  extends BaseSingleIndexEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseSingleIndexEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndexFrom(request: ActionRequest): RequestedIndex[ClusterIndexName] = {
     val indexStr = on(request).call("getIndexPattern").get[String]()
@@ -53,7 +51,7 @@ object GetRollupCapsEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[GetRollupCapsEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getName.endsWith("GetRollupCapsAction$Request")) {
-      Some(new GetRollupCapsEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      Some(new GetRollupCapsEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool))
     } else {
       None
     }

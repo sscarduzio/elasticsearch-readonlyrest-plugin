@@ -19,13 +19,13 @@ package tech.beshu.ror.boot
 import cats.Show
 import cats.implicits.toShow
 import monix.eval.Task
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.Cancelable
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError, ScheduledReloadError}
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.atomic.AtomicReference
@@ -37,8 +37,7 @@ trait RorSettingsAutoReloader {
 
 class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
                                      instance: RorInstance)
-                                    (implicit systemContext: SystemContext,
-                                     scheduler: Scheduler)
+                                    (implicit systemContext: SystemContext)
   extends RorSettingsAutoReloader with RequestIdAwareLogging {
 
   private val reloadTaskState: AtomicReference[ReloadTaskState] = new AtomicReference(ReloadTaskState.NotInitiated)
@@ -85,6 +84,7 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
   private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
                                             reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]])
                                            (implicit requestId: RequestId): CancelableWithRequestId = {
+    import systemContext.scheduler
     logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check within ${interval.show}")
     val cancellable = scheduler.scheduleOnce(interval.value) {
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST settings from index ...")

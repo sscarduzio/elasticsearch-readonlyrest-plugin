@@ -29,15 +29,16 @@ import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
-import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.ForbiddenBlockMatch
+import tech.beshu.ror.accesscontrol.response.{ForbiddenResponseContext, RorKbnPluginNotSupported}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.EsRequest
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createRorNotEnabledResponse
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.{Duration, Instant}
@@ -50,7 +51,11 @@ class UserMetadataRequestHandler(engine: Engine,
   def handle(request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext] with EsRequest[UserMetadataRequestBlockContext]): Task[Unit] = {
     engine.core.accessControl
       .handleMetadataRequest(request)
-      .map { case (result, _) => commitResult(result, request) }
+      .map { case (result, _) =>
+        doPrivileged {
+          commitResult(result, request)
+        }
+      }
   }
 
   private def commitResult(result: UserMetadataRequestResult,
@@ -65,6 +70,8 @@ class UserMetadataRequestHandler(engine: Engine,
           onForbidden(request, f.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
+        case UserMetadataRequestResult.RorKbnPluginNotSupported =>
+          onForbidden(request, RorKbnPluginNotSupported.forbiddenResponseContext(engine.core.accessControl.staticContext))
       }
     } match {
       case Success(_) =>
@@ -83,10 +90,13 @@ class UserMetadataRequestHandler(engine: Engine,
     )
   }
 
-  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit = {
+  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit =
+    onForbidden(requestContext, ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext))
+
+  private def onForbidden(requestContext: RequestContext, forbiddenResponseContext: ForbiddenResponseContext): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onFailure(ForbiddenResponse.create(
-      ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext)
+      forbiddenResponseContext
     ))
   }
 

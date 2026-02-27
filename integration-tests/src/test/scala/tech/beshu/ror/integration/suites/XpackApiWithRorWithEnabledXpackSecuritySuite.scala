@@ -57,6 +57,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
                |""".stripMargin
           ) :: Nil
         )
+        
         response should have statusCode 200
         if (Version.greaterOrEqualThan(esVersionUsed, 8, 9, 0)) {
           response.responseJson should be(ujson.read(

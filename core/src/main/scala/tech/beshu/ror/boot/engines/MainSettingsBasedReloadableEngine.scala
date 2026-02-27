@@ -19,7 +19,6 @@ package tech.beshu.ror.boot.engines
 import cats.data.EitherT
 import monix.catnap.Semaphore
 import monix.eval.Task
-import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.ReadonlyRest
@@ -42,8 +41,7 @@ private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest
                                                               initialEngine: MainEngine,
                                                               reloadInProgress: Semaphore[Task],
                                                               settingsSource: IndexSettingsSource[MainRorSettings])
-                                                             (implicit systemContext: SystemContext,
-                                                              scheduler: Scheduler)
+                                                             (implicit systemContext: SystemContext)
   extends BaseReloadableEngine(
     name = "main",
     boot = boot,
@@ -143,8 +141,7 @@ object MainSettingsBasedReloadableEngine {
                esConfigBasedRorSettings: EsConfigBasedRorSettings,
                initialEngine: MainEngine,
                reloadInProgress: Semaphore[Task])
-              (implicit systemContext: SystemContext,
-               scheduler: Scheduler): MainSettingsBasedReloadableEngine = {
+              (implicit systemContext: SystemContext): MainSettingsBasedReloadableEngine = {
       new MainSettingsBasedReloadableEngine(boot, esConfigBasedRorSettings, initialEngine, reloadInProgress, settingsSource)
     }
   }

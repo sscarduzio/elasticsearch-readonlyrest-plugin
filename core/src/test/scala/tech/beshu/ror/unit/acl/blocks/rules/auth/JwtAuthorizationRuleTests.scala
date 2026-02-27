@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import io.jsonwebtoken.Jwts
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
@@ -28,7 +27,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -59,7 +61,7 @@ class JwtAuthorizationRuleTests
         assertMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
@@ -91,7 +93,7 @@ class JwtAuthorizationRuleTests
         assertMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
@@ -123,7 +125,7 @@ class JwtAuthorizationRuleTests
         assertMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
@@ -155,7 +157,7 @@ class JwtAuthorizationRuleTests
         assertMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(
               idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups[?(@.id)].id")),
@@ -186,7 +188,7 @@ class JwtAuthorizationRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("tech.beshu.groups.subgroups")), None)
           ),
@@ -207,7 +209,7 @@ class JwtAuthorizationRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
@@ -228,7 +230,7 @@ class JwtAuthorizationRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
@@ -249,7 +251,7 @@ class JwtAuthorizationRuleTests
         assertNotMatchRule(
           configuredJwtDef = AuthorizationJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),

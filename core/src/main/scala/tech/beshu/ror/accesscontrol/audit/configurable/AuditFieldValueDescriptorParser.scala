@@ -58,6 +58,7 @@ object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
   private def deserializerAuditFieldValueDescriptor(str: String): Option[AuditFieldValueDescriptor] = {
     str.toUpperCase match {
       case "IS_MATCHED" => Some(AuditFieldValueDescriptor.IsMatched)
+      case "MATCHED_BLOCK_NAMES" => Some(AuditFieldValueDescriptor.MatchedBlockNames)
       case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
       case "ECS_EVENT_OUTCOME" => Some(AuditFieldValueDescriptor.EcsEventOutcome)
       case "REASON" => Some(AuditFieldValueDescriptor.Reason)

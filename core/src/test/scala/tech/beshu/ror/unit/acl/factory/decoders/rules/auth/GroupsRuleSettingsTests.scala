@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsM
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.StaticToken
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseGroupsRule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
@@ -257,7 +258,7 @@ class GroupsRuleSettingsTests
                   localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group4")))
                   authRule shouldBe an[TokenAuthenticationRule]
                   authRule.asInstanceOf[TokenAuthenticationRule].settings should be {
-                    TokenAuthenticationRule.Settings(userId("morgan"), Token("Bearer abc123XYZ"), Header.Name.authorization)
+                    TokenAuthenticationRule.Settings(userId("morgan"), StaticToken(anyTokenDef, authorizationTokenFrom("Bearer abc123XYZ")))
                   }
                 }
               }

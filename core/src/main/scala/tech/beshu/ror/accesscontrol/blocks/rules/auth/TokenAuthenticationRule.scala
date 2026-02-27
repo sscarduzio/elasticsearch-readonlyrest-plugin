@@ -19,12 +19,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
@@ -50,25 +51,24 @@ final class TokenAuthenticationRule(val settings: Settings,
     else UserExistence.NotExist
   }
 
-  override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-    Task
-      .unit
-      .map { _ =>
-        val requestContext = blockContext.requestContext
-        if (verifyTokenFromHeader(requestContext)) {
-          Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
-        } else {
-          Denied(Cause.AuthenticationFailed(s"Token header '${settings.tokenHeaderName.show}' missing or invalid"))
-        }
-      }
-
-  private def verifyTokenFromHeader(requestContext: RequestContext) = {
-    requestContext
-      .restRequest
-      .allHeaders
-      .find(_.name === settings.tokenHeaderName)
-      .exists(_.value == settings.token.value)
+  override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+    val verification = settings.tokenType match {
+      case tokenType: TokenType.StaticToken => authenticateWithStaticToken(blockContext, tokenType)
+    }
+    verification.map {
+      case true =>
+        Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
+      case false =>
+        Denied(Cause.AuthenticationFailed(s"Token header '${settings.tokenHeaderName.show}' missing or invalid"))
+    }
   }
+
+  private def authenticateWithStaticToken(blockContext: BlockContext, tokenType: TokenType.StaticToken) =
+    Task.delay {
+      blockContext.requestContext
+        .authorizationTokenBy(tokenType.tokenDef)
+        .contains(tokenType.token)
+    }
 }
 
 object TokenAuthenticationRule {
@@ -76,19 +76,11 @@ object TokenAuthenticationRule {
     override val name: Rule.Name = Rule.Name("token_authentication")
   }
 
-  final case class Settings(user: User.Id,
-                            token: Token,
-                            tokenHeaderName: Header.Name)
-
+  final case class Settings(user: User.Id, tokenType: TokenType)
   object Settings {
-    def apply(user: User.Id,
-              token: Token,
-              customHeaderName: Option[Header.Name]): Settings = {
-      Settings(
-        user = user,
-        token = token,
-        tokenHeaderName = customHeaderName.getOrElse(Header.Name.authorization)
-      )
+    sealed trait TokenType
+    object TokenType {
+      final case class StaticToken(tokenDef: AuthorizationTokenDef, token: AuthorizationToken) extends TokenType
     }
   }
 }

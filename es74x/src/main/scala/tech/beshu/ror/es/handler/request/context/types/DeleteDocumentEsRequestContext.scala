@@ -20,7 +20,6 @@ import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -30,9 +29,8 @@ import tech.beshu.ror.syntax.*
 class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext,
-                                     clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseSingleIndexEsRequestContext[DeleteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseSingleIndexEsRequestContext[DeleteRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndexFrom(request: DeleteRequest): RequestedIndex[ClusterIndexName] = {
     RequestedIndex

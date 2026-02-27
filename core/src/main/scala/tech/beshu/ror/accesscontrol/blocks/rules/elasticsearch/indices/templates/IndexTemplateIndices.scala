@@ -267,7 +267,7 @@ private[indices] trait IndexTemplateIndices
   }
 
   private def findTemplateBy(name: TemplateName, in: TemplateRequestBlockContext) = {
-    in.requestContext.indexTemplates.find(_.name == name)
+    in.requestContext.esServices.clusterService.indexTemplates.find(_.name == name)
   }
 
   private def findTemplatesBy(namePattern: TemplateNamePattern, in: TemplateRequestBlockContext): Set[Template.IndexTemplate] = {
@@ -275,7 +275,7 @@ private[indices] trait IndexTemplateIndices
   }
 
   private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.IndexTemplate] = {
-    filterTemplates(namePatterns, in.requestContext.indexTemplates)
+    filterTemplates(namePatterns, in.requestContext.esServices.clusterService.indexTemplates)
   }
 
   private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])

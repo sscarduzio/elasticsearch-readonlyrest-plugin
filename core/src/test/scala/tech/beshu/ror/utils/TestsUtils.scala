@@ -50,6 +50,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, ResponseTransformation, definitions}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -374,10 +377,17 @@ object TestsUtils {
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
   }
 
-  def tokenFrom(value: String): Token = NonEmptyString.from(value) match {
-    case Right(v) => Token(v)
-    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Token")
+  def authorizationTokenFrom(value: String): AuthorizationToken = (for {
+    nes <- NonEmptyString.from(value)
+    token <- AuthorizationToken.from(nes).toRight("Cannot create authorization token")
+  } yield token) match {
+    case Right(v) => v
+    case Left(msg) => throw new IllegalArgumentException(s"Cannot convert $value to AuthorizationToken; $msg")
   }
+
+  def strictlyDefinedBearerTokenDef = AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer))
+
+  def anyTokenDef = AuthorizationTokenDef(Header.Name.authorization, AllowedPrefix.Any)
 
   def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
 

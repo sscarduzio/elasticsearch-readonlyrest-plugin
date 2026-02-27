@@ -46,4 +46,5 @@ trait AuditRequestContext {
   def rawAuthHeader: Option[String]
   def generalAuditEvents: JSONObject
   def auditEnvironmentContext: AuditEnvironmentContext
+  def matchedBlockNames: Option[List[String]]
 }

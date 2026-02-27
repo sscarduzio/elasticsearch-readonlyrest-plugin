@@ -17,14 +17,14 @@
 package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
+import cats.data.NonEmptyList
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.History.BlockHistory
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
@@ -33,6 +33,7 @@ import scala.collection.immutable.Set as ScalaSet
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                                             loggedUser: Option[LoggedUser],
+                                                                            matchedBlocks: Option[NonEmptyList[Block]],
                                                                             aclProcessingHistory: History[B],
                                                                             loggingContext: LoggingContext,
                                                                             override val auditEnvironmentContext: AuditEnvironmentContext,
@@ -63,6 +64,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
       }
   )
   override val uriPath: String = requestContext.restRequest.path.value.value
+  override val matchedBlockNames: Option[List[String]] = matchedBlocks.map(_.map(_.name.value).toList)
   override val history: String = aclProcessingHistory.blocks.map(b => blockHistoryShow(showHeader).show(b)).mkString(", ")
   override val blocksHistory: Map[String, (Boolean, Option[String])] =
     aclProcessingHistory.blocks

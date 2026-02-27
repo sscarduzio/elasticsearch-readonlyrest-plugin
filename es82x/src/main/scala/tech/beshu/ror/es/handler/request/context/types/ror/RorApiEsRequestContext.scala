@@ -21,7 +21,6 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RorApiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -30,9 +29,8 @@ import tech.beshu.ror.syntax.*
 
 class RorApiEsRequestContext(actionRequest: RorActionRequest,
                              esContext: EsContext,
-                             clusterService: RorClusterService,
                              override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[RorApiRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[RorApiRequestBlockContext](esContext)
     with EsRequest[RorApiRequestBlockContext] {
 
   override def initialBlockContext(block: Block): RorApiRequestBlockContext = RorApiRequestBlockContext(

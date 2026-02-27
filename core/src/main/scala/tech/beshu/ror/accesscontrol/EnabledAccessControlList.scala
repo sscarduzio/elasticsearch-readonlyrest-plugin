@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol
 import cats.data.{NonEmptyList, WriterT}
 import cats.implicits.*
 import monix.eval.Task
+import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.*
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
@@ -39,6 +40,7 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.collection.View
@@ -46,70 +48,77 @@ import scala.collection.immutable.ListMap
 
 class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                override val staticContext: AccessControlListStaticContext)
+                              (implicit scheduler: Scheduler)
   extends AccessControlList {
 
   override val description: String = "Enabled ROR ACL"
 
-  override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])] = {
-    blocks
-      .tail
-      .foldLeft(executeBlocksForRegularRequest(blocks.head, context)) { case (currentResult, block) =>
-        for {
-          prevBlocksExecutionResult <- currentResult
-          newCurrentResult <- prevBlocksExecutionResult match {
+  override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])] =
+    doPrivileged {
+      blocks
+        .tail
+        .foldLeft(executeBlocksForRegularRequest(blocks.head, context)) { case (currentResult, block) =>
+          for {
+            prevBlocksExecutionResult <- currentResult
+            newCurrentResult <- prevBlocksExecutionResult match {
+              case Decision.Denied(_) =>
+                executeBlocksForRegularRequest(block, context)
+              case Decision.Permitted(_) =>
+                lift(prevBlocksExecutionResult)
+            }
+          } yield newCurrentResult
+        }
+        .run
+        .map { case (blocksHistory, result) =>
+          val handlingResult: RegularRequestResult[B] = result match {
+            case Decision.Permitted(blockContext) =>
+              blockContext.block.policy match {
+                case Policy.Allow => RegularRequestResult.Allowed(blockContext)
+                case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
+              }
+            case Decision.Denied(_) if wasDeniedDueToAliasNotFound(blocksHistory) =>
+              RegularRequestResult.AliasNotFound()
+            case Decision.Denied(_) if wasDeniedDueToTemplateNotFound(blocksHistory) =>
+              RegularRequestResult.TemplateNotFound()
             case Decision.Denied(_) =>
-              executeBlocksForRegularRequest(block, context)
-            case Decision.Permitted(_) =>
-              lift(prevBlocksExecutionResult)
+              wasDeniedDueToIndexNotFound(blocksHistory) match {
+                case Some(error) =>
+                  RegularRequestResult.IndexNotFound(error.allowedClusters)
+                case None =>
+                  RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
+              }
           }
-        } yield newCurrentResult
-      }
-      .run
-      .map { case (blocksHistory, result) =>
-        val handlingResult: RegularRequestResult[B] = result match {
-          case Decision.Permitted(blockContext) =>
-            blockContext.block.policy match {
-              case Policy.Allow => RegularRequestResult.Allowed(blockContext)
-              case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
-            }
-          case Decision.Denied(_) if wasDeniedDueToAliasNotFound(blocksHistory) =>
-            RegularRequestResult.AliasNotFound()
-          case Decision.Denied(_) if wasDeniedDueToTemplateNotFound(blocksHistory) =>
-            RegularRequestResult.TemplateNotFound()
-          case Decision.Denied(_) =>
-            wasDeniedDueToIndexNotFound(blocksHistory) match {
-              case Some(error) =>
-                RegularRequestResult.IndexNotFound(error.allowedClusters)
-              case None =>
-                RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
-            }
+          handlingResult -> History(blocksHistory)
         }
-        handlingResult -> History(blocksHistory)
-      }
-      .onErrorHandle { ex =>
-        RegularRequestResult.Failed(ex) -> History.empty
-      }
-  }
+        .onErrorHandle { ex =>
+          RegularRequestResult.Failed(ex) -> History.empty
+        }
+    }
 
-  override def handleMetadataRequest(context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] = {
-    Task
-      .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
-      .map(_.flatten)
-      .map { blockResults =>
-        val (executionResults, blocksHistory) = blockResults.unzip
-        val history = History(blocksHistory.toVector)
-        val matchedResults = executionResults.view.onlyMatched()
-        val handlingResult = context.apiVersion match {
-          case UserMetadataApiVersion.V1 =>
-            determineUserMetadataForApiV1(matchedResults, context.currentGroupId, history)
-          case UserMetadataApiVersion.V2(Free | Pro | Enterprise(false)) =>
-            determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
-          case UserMetadataApiVersion.V2(Enterprise(true)) =>
-            determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
-        }
-        handlingResult -> history
+  override def handleMetadataRequest(context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] =
+    doPrivileged {
+      if (staticContext.doesRequirePassword) {
+        Task.delay((UserMetadataRequestResult.RorKbnPluginNotSupported, History.empty))
+      } else {
+        Task
+          .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
+          .map(_.flatten)
+          .map { blockResults =>
+            val (executionResults, blocksHistory) = blockResults.unzip
+            val history = History(blocksHistory.toVector)
+            val matchedResults = executionResults.view.onlyMatched()
+            val handlingResult = context.apiVersion match {
+              case UserMetadataApiVersion.V1 =>
+                determineUserMetadataForApiV1(matchedResults, context.currentGroupId, history)
+              case UserMetadataApiVersion.V2(Free | Pro | Enterprise(false)) =>
+                determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
+              case UserMetadataApiVersion.V2(Enterprise(true)) =>
+                determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
+            }
+            handlingResult -> history
+          }
       }
-  }
+    }
 
   private def determineUserMetadataForApiV1(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
                                             optPreferredGroupId: Option[GroupId],

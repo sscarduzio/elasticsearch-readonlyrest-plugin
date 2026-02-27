@@ -26,7 +26,6 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, RequestedIndex, TemplateNamePattern}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseIndicesEsRequestContext
@@ -40,10 +39,9 @@ import scala.jdk.CollectionConverters.*
 class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexTemplateRequest,
                                                    esContext: EsContext,
                                                    aclContext: AccessControlStaticContext,
-                                                   clusterService: RorClusterService,
                                                    override val threadPool: ThreadPool)
   // note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
-  extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: SimulateIndexTemplateRequest): Set[RequestedIndex[ClusterIndexName]] =
     Option(request.getIndexName)
