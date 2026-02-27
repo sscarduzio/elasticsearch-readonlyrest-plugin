@@ -75,7 +75,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
       }
       .recover {
         case ex: LDAPBindException if ex.getResultCode == ResultCode.INVALID_CREDENTIALS =>
-          Left(AuthenticationFailed("Invalid credentials"))
+          Left(AuthenticationFailed("Invalid LDAP credentials"))
       }
   }
 }

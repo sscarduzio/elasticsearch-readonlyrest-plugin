@@ -47,15 +47,15 @@ class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsUidTests extends Un
   override protected val morganUserId: User.Id = User.Id("morgan")
 
   override protected val noUserDeniedCause: Cause = AuthenticationFailed("User not found in LDAP")
-  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid credentials")
+  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
 }
 
 class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsCnTests extends UnboundidLdapAuthenticationServiceTests {
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
   override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
 
-  override protected val noUserDeniedCause: Cause = AuthenticationFailed("Invalid credentials")
-  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid credentials")
+  override protected val noUserDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
+  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
 }
 
 abstract class UnboundidLdapAuthenticationServiceTests

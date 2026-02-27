@@ -51,7 +51,7 @@ final class ProxyAuthRule(val settings: Settings,
   override def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task.delay {
     val result = for {
       loggedUser <- getLoggedUser(blockContext.requestContext)
-      _ <- shouldAuthenticate(loggedUser.id)
+      _ <- checkUserAllowed(loggedUser.id)
     } yield {
       blockContext.withBlockMetadata(_.withLoggedUser(loggedUser))
     }
@@ -60,7 +60,7 @@ final class ProxyAuthRule(val settings: Settings,
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
                                       (implicit requestId: RequestId): Task[UserExistence] = Task.delay {
-    shouldAuthenticate(user) match {
+    checkUserAllowed(user) match {
       case Right(()) => UserExistence.Exists
       case Left(_: AuthenticationFailed) => UserExistence.NotExist
     }
@@ -74,10 +74,10 @@ final class ProxyAuthRule(val settings: Settings,
       .toRight(AuthenticationFailed(s"User header '${settings.userHeaderName.show}' not found"))
   }
 
-  private def shouldAuthenticate(userId: User.Id) = {
+  private def checkUserAllowed(userId: User.Id) = {
     Either.cond(
       userMatcher.`match`(userId),
-      (), AuthenticationFailed(s"User '${userId.show}' not in allowed users list")
+      (), AuthenticationFailed(s"User not found in allowed users list")
     )
   }
 }

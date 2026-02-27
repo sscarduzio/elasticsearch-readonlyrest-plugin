@@ -86,7 +86,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
                                                            failedJwtCauseCreator: String => Cause) = {
     blockContext
       .requestContext
-      .authorizationToken(jwt.authorizationTokenDef)
+      .authorizationTokenBy(jwt.authorizationTokenDef)
       .map(h => Jwt.Token(h.value))
       .toRight(failedJwtCauseCreator("No expected JWT found"))
   }
@@ -133,7 +133,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
     else {
       token.show
     }
-    logger.debug(s"[${requestId.show}] JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
+    logger.debug(s"JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
   }
 
 }

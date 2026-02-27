@@ -240,7 +240,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
         case Some(user) if allowedUserMatcher.`match`(user.id) =>
           Right(destinationBlockContext.withBlockMetadata(_.withLoggedUser(user)))
         case Some(user) =>
-          Left(AuthenticationFailed(s"User '${user.id.show}' doesn't match allowed patterns"))
+          Left(AuthenticationFailed(s"Logged user doesn't match allowed patterns"))
         case None =>
           Left(AuthenticationFailed("No logged user found after authentication"))
       }
@@ -283,7 +283,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     val potentiallyPermitted = GroupIds(externalGroupsMappedToLocalGroups)
     UniqueNonEmptyList
       .from(potentiallyPermitted.filterOnlyPermitted(potentiallyAvailableGroups))
-      .toRight(GroupsAuthorizationFailed("No matching local groups after mapping"))
+      .toRight(GroupsAuthorizationFailed("None of the user's external groups could be mapped to any of the locally permitted groups"))
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,

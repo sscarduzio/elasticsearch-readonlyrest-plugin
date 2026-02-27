@@ -260,7 +260,7 @@ class ExternalAuthorizationRuleTests
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
           preferredGroupId = None,
-          denialCause = GroupsAuthorizationFailed("User 'user2' not in allowed users list")
+          denialCause = GroupsAuthorizationFailed("Logged user not found in allowed users list")
         )
       }
       "authorization service returns empty groups list" in {

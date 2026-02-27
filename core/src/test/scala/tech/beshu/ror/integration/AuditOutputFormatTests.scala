@@ -75,15 +75,15 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         def expectedJson(jsonString: String) = ujson.read(
           s"""{
              |  "headers":["x-forwarded-for", "custom-one"],
-             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]]",
+             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]]",
              |  "blocks_history":[
              |    {
-             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
              |      "block_name":"CONTAINER ADMIN",
              |      "matched":false
              |    },
              |    {
-             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
              |      "block_name":"User 1",
              |      "matched":false
              |    }
@@ -132,15 +132,15 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         def expectedJson(jsonString: String) = ujson.read(
           s"""{
              |  "headers":["X-Forwarded-For", "Custom-One"],
-             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL(No basic auth credentials provided)) -> RULES:[auth_key->false]]",
+             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]]",
              |  "blocks_history":[
              |    {
-             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
              |      "block_name":"CONTAINER ADMIN",
              |      "matched":false
              |    },
              |    {
-             |      "forbidden_cause":"AUTH_FAIL(No basic auth credentials provided)",
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
              |      "block_name":"User 1",
              |      "matched":false
              |    }

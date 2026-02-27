@@ -143,7 +143,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL(mocked - authn in authn rule fail)")
+            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (mocked - authn in authn rule fail)")
           )
         }
         "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
@@ -157,7 +157,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("u*:AUTH_FAIL(User 'User1' doesn't match allowed patterns)")
+            denialCause = GroupsAuthorizationFailed("u*:AUTH_FAIL (Logged user doesn't match allowed patterns)")
           )
         }
         "one auth rule available is throwing an exception" in {
@@ -171,7 +171,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL(Authentication unexpected error)")
+            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (Authentication unexpected error)")
           )
         }
       }
@@ -189,7 +189,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL(mocked - authn in auth rule fail)")
+            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (mocked - authn in auth rule fail)")
           )
         }
         "user cannot be authorized by authentication with authorization rule" in {
@@ -211,7 +211,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(mocked - authz in authz rule fail)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (mocked - authz in authz rule fail)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (simple groups mapping matching fails)" in {
@@ -233,7 +233,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping matching fails)" in {
@@ -258,7 +258,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No external groups matched any mapping pattern)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No external groups matched any mapping pattern)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping with wildcard matching fails)" in {
@@ -283,7 +283,7 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No matching local groups after mapping)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (None of the user's external groups could be mapped to any of the locally permitted groups)")
           )
         }
       }

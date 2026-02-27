@@ -61,7 +61,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = Some(GroupId("g3")),
-          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
         )
       }
       "groups mapping is configured" in {
@@ -84,7 +84,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = Some(GroupId("g3")),
-          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
         )
       }
     }
@@ -109,7 +109,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = None,
-          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
         )
       }
       "user has all forbidden group" in {
@@ -132,7 +132,7 @@ class GroupsNotAnyOfRuleTests extends BaseGroupsNegativeRuleTests[GroupsLogic.No
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = None,
-          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
         )
       }
     }

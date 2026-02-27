@@ -95,7 +95,7 @@ class ProxyAuthRuleTests
             headerNameFrom("custom-user-auth-header")
           ),
           headers = Set(headerFrom("custom-user-auth-header" -> "userD")),
-          denialCause = AuthenticationFailed("User 'userD' not in allowed users list")
+          denialCause = AuthenticationFailed("User not found in allowed users list")
         )
       }
       "user id is passed in different header than the configured one" in {

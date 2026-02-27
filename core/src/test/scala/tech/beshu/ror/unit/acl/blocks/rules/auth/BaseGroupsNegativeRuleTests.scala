@@ -66,7 +66,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = Some(GroupId("g2")),
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "there is no user definition for given logged user" in {
@@ -94,7 +94,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
@@ -108,7 +108,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL(No user's groups allowed)")
+            denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "one auth rule available is throwing an exception" in {
@@ -122,7 +122,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
       }
@@ -140,7 +140,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL(mocked - authn in auth rule fail)")
+            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (mocked - authn in auth rule fail)")
           )
         }
         "user cannot be authorized by authentication with authorization rule" in {
@@ -162,7 +162,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(mocked - authz in authz rule fail)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (mocked - authz in authz rule fail)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (simple groups mapping matching fails)" in {
@@ -184,7 +184,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping matching fails)" in {
@@ -209,7 +209,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No external groups matched any mapping pattern)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No external groups matched any mapping pattern)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping with wildcard matching fails)" in {
@@ -234,7 +234,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No external groups matched any mapping pattern)")
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No external groups matched any mapping pattern)")
           )
         }
       }
@@ -257,7 +257,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 ),
                 loggedUser = None,
                 preferredGroupId = None,
-                denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+                denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
             "authentication rule matches and case insensitivity is configured" in {
@@ -275,7 +275,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 loggedUser = None,
                 preferredGroupId = None,
                 caseSensitivity = CaseSensitivity.Disabled,
-                denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+                denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
           }
@@ -294,7 +294,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 ),
                 loggedUser = None,
                 preferredGroupId = None,
-                denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL(No user's groups allowed)")
+                denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
             "authentication rule matches and and case insensitivity is configured" in {
@@ -312,7 +312,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 loggedUser = None,
                 preferredGroupId = None,
                 caseSensitivity = CaseSensitivity.Disabled,
-                denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL(No user's groups allowed)")
+                denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
           }
@@ -342,7 +342,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 ),
                 loggedUser = None,
                 preferredGroupId = Some(GroupId("g1")),
-                denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL(No user's groups allowed)")
+                denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
           }
@@ -370,7 +370,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ),
               loggedUser = None,
               preferredGroupId = None,
-              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL(No user's groups allowed)")
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
           "user can be matched and user can be authorized in external system and locally (advanced groups mapping)" in {
@@ -393,7 +393,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ),
               loggedUser = None,
               preferredGroupId = None,
-              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL(No user's groups allowed)")
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
           "user can be matched and user can be authorized in external system and locally (advanced groups mapping with wildcard)" in {
@@ -416,7 +416,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ),
               loggedUser = None,
               preferredGroupId = None,
-              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL(No user's groups allowed)")
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
         }
@@ -444,7 +444,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ),
               loggedUser = None,
               preferredGroupId = None,
-              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL(No user's groups allowed)")
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
         }

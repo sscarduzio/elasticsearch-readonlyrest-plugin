@@ -59,7 +59,7 @@ class GroupsAllOfRuleTests extends BaseGroupsPositiveRuleTests[GroupsLogic.AllOf
           loggedUser = usr,
           caseSensitivity = CaseSensitivity.Disabled,
           preferredGroupId = None,
-          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL(No user's groups allowed)")
+          denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
         )
       }
     }

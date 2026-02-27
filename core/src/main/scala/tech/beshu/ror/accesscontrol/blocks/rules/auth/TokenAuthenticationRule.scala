@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -59,7 +58,10 @@ final class TokenAuthenticationRule(val settings: Settings,
       case true =>
         Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(settings.user))))
       case false =>
-        Denied(Cause.AuthenticationFailed(s"Token header '${settings.tokenHeaderName.show}' missing or invalid"))
+        val tokenHeaderName = settings.tokenType match {
+          case TokenType.StaticToken(tokenDef, _) => tokenDef.headerName
+        }
+        Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' missing or invalid"))
     }
   }
 

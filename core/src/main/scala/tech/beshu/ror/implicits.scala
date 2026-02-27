@@ -392,8 +392,8 @@ trait LogsShowInstances
     s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}] }"
   }
   implicit val deniedCauseShow: Show[Denied.Cause] = Show.show {
-    case Cause.AuthenticationFailed(details) => s"AUTH_FAIL($details)"
-    case Cause.GroupsAuthorizationFailed(details) => s"GROUPS_AUTH_FAIL($details)"
+    case Cause.AuthenticationFailed(details) => s"AUTH_FAIL ($details)"
+    case Cause.GroupsAuthorizationFailed(details) => s"GROUPS_AUTH_FAIL ($details)"
     case Cause.NotAuthorized => "AUTHZ_FAIL"
     case Cause.ImpersonationNotSupported => "IMPERSONATION_NOT_SUPPORTED"
     case Cause.ImpersonationNotAllowed => "IMPERSONATION_NOT_ALLOWED"
