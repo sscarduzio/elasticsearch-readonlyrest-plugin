@@ -18,29 +18,51 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import tech.beshu.ror.accesscontrol.domain.Header
-
-import scala.language.implicitConversions
-
-final class ThreadContextOps(val threadContext: ThreadContext) extends AnyVal {
-
-  def addXpackUserAuthenticationHeader(nodeName: String): ThreadContext = {
-    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createXpackUserAuthenticationHeader(nodeName))
-  }
-
-  def addSystemAuthenticationHeader(nodeName: String): ThreadContext = {
-    putHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
-  }
-
-  private def putHeaderIfNotPresent(header: Header): ThreadContext = {
-    Option(threadContext.getHeader(header.name.value.value)) match {
-      case Some(_) =>
-      case None => threadContext.putHeader(header.name.value.value, header.value.value)
-    }
-    threadContext
-  }
-}
+import tech.beshu.ror.boot.SchedulerContextRestore
+import tech.beshu.ror.utils.JavaConverters
 
 object ThreadContextOps {
 
-  implicit def createThreadContextOps(threadContext: ThreadContext): ThreadContextOps = new ThreadContextOps(threadContext)
+  private val nonAuthTransientNames = List("_authz_info", "_indices_permissions")
+  private val transientHeaderNames = "_xpack_security_authentication" :: nonAuthTransientNames
+
+  extension (threadContext: ThreadContext) {
+
+    def setupContextPropagation(): Unit = {
+      val capturedTransients = currentTransients(transientHeaderNames)
+      val capturedResponseHeaders = currentResponseHeaders
+      SchedulerContextRestore.onContextSwitch := Some(() => {
+        stashAndRestore(capturedTransients, capturedResponseHeaders)
+      })
+    }
+
+    def addXpackUserAuthenticationHeader(nodeName: String): ThreadContext = {
+      replaceAuthenticationHeader(XPackSecurityAuthenticationHeader.createXpackUserAuthenticationHeader(nodeName))
+    }
+
+    def addSystemAuthenticationHeader(nodeName: String): ThreadContext = {
+      replaceAuthenticationHeader(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
+    }
+
+    private def replaceAuthenticationHeader(header: Header): ThreadContext = {
+      stashAndRestore(currentTransients(nonAuthTransientNames), currentResponseHeaders)
+      threadContext.putHeader(header.name.value.value, header.value.value)
+      threadContext
+    }
+
+    private def currentTransients(names: List[String]): Iterable[(String, AnyRef)] = {
+      names.flatMap(n => Option(threadContext.getTransient[AnyRef](n)).map(n -> _))
+    }
+
+    private def currentResponseHeaders: Iterable[(String, String)] = {
+      JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet
+    }
+
+    private def stashAndRestore(transients: Iterable[(String, AnyRef)],
+                                responseHeaders: Iterable[(String, String)]): Unit = {
+      threadContext.stashContext() // clear thread context (StoredContext intentionally discarded)
+      transients.foreach { case (k, v) => threadContext.putTransient(k, v) }
+      responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+    }
+  }
 }
