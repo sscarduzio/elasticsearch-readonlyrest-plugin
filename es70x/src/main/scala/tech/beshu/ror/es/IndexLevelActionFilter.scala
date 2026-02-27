@@ -38,10 +38,9 @@ import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNo
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
 import tech.beshu.ror.es.utils.ThreadContextOps.*
-import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadContextPropagation, ThreadRepo}
+import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, RorInstanceSupplier}
 
