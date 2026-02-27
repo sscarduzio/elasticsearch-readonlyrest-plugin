@@ -76,6 +76,7 @@ object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
       case "ACTION" => Some(AuditFieldValueDescriptor.Action)
       case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
       case "ACL_HISTORY" => Some(AuditFieldValueDescriptor.AclHistory)
+      case "BLOCKS_HISTORY" => Some(AuditFieldValueDescriptor.BlocksHistory)
       case "PROCESSING_DURATION_MILLIS" => Some(AuditFieldValueDescriptor.ProcessingDurationMillis)
       case "PROCESSING_DURATION_NANOS" => Some(AuditFieldValueDescriptor.ProcessingDurationNanos)
       case "TIMESTAMP" => Some(AuditFieldValueDescriptor.Timestamp)

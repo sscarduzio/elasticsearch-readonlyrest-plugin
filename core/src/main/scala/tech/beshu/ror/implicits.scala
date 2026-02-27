@@ -28,6 +28,8 @@ import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.accesscontrol.blocks.Block.{Name, Policy}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
@@ -363,19 +365,23 @@ trait LogsShowInstances
   }
 
   implicit def blockHistoryShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[BlockHistory[B]] =
-    Show.show[BlockHistory[B]] { r =>
-      val rulesHistoryItemsStr = r
+    Show.show[BlockHistory[B]] { h =>
+      val result = h match {
+        case BlockHistory.Permitted(_, _, _) => "MATCHED"
+        case BlockHistory.Denied(_, denied, _) => s"NOT_MATCHED (${denied.cause.show})"
+      }
+      val rulesHistoryItemsStr = h
         .history
         .map(_.show)
         .mkStringOrEmptyString(" RULES:[", ", ", "]")
-      val resolvedPart = r match {
+      val resolvedPart = h match {
         case BlockHistory.Permitted(_, decision, _) => decision.context.show match {
           case "" => ""
           case nonEmpty => s" RESOLVED:[$nonEmpty]"
         }
         case BlockHistory.Denied(_, _, _) => ""
       }
-      s"""[${r.block.name.show}->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
+      s"""[${h.block.name.show}: $result ->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
     }
 
   implicit val policyShow: Show[Policy] = Show.show {
@@ -385,7 +391,30 @@ trait LogsShowInstances
   implicit val blockShow: Show[Block] = Show.show { b =>
     s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}] }"
   }
+  implicit val deniedCauseShow: Show[Denied.Cause] = Show.show {
+    case Cause.AuthenticationFailed(details) => s"AUTH_FAIL ($details)"
+    case Cause.GroupsAuthorizationFailed(details) => s"GROUPS_AUTH_FAIL ($details)"
+    case Cause.NotAuthorized => "AUTHZ_FAIL"
+    case Cause.ImpersonationNotSupported => "IMPERSONATION_NOT_SUPPORTED"
+    case Cause.ImpersonationNotAllowed => "IMPERSONATION_NOT_ALLOWED"
+    case Cause.IndexNotFound(_) => "IDX_NOT_FOUND"
+    case Cause.AliasNotFound => "ALIAS_NOT_FOUND"
+    case Cause.TemplateNotFound => "TPL_NOT_FOUND"
+  }
 
+  object CauseFormatting {
+
+    def formatGroupedCauses[T : Show](causes: Iterable[(T, Cause)]): String = {
+      val grouped = causes
+        .groupByOrdered { case (_, cause) => cause.show }
+        .map { case (causeStr, entries) =>
+          val keys = entries.map { case (key, _) => key.show }
+          val keysStr = if (keys.size > 1) s"{${keys.mkString(",")}}" else keys.head
+          s"$keysStr:$causeStr"
+        }
+      grouped.mkString("; ")
+    }
+  }
   implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
     case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
       "Cannot use multi value variable in non-array context"

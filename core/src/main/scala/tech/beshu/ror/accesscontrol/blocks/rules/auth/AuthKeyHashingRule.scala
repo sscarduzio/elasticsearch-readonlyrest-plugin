@@ -20,6 +20,7 @@ import cats.Eq
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -31,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Hasher
 
@@ -41,12 +43,24 @@ sealed abstract class AuthKeyHashingRule(override val settings: BasicAuthenticat
     with RequestIdAwareLogging {
 
   override protected def compare(configuredCredentials: HashedCredentials,
-                                 credentials: Credentials): Task[Boolean] = Task {
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task {
     configuredCredentials match {
       case secret: HashedUserAndPassword =>
-        secret === HashedUserAndPassword.from(credentials, hasher)
+        Either.cond(
+          secret == HashedUserAndPassword.from(credentials, hasher),
+          DirectlyLoggedUser(credentials.user), AuthenticationFailed("Invalid username or/and password")
+        )
       case secret: HashedOnlyPassword =>
-        secret === HashedOnlyPassword.from(credentials, hasher)
+        for {
+          _ <- Either.cond(
+            secret.userId == credentials.user,
+            (), AuthenticationFailed("Username mismatch")
+          )
+          _ <- Either.cond(
+            secret == HashedOnlyPassword.from(credentials, hasher),
+            (), AuthenticationFailed("Invalid password")
+          )
+        } yield DirectlyLoggedUser(credentials.user)
     }
   }
 

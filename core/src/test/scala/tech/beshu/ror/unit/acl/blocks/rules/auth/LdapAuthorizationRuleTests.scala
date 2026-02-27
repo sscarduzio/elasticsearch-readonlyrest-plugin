@@ -20,7 +20,6 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -48,7 +47,6 @@ import scala.language.postfixOps
 
 class LdapAuthorizationRuleTests
   extends AnyWordSpec
-    with Inside
     with MockFactory
     with BlockContextAssertion
     with WithDummyRequestIdSupport {
@@ -260,7 +258,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = None,
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("No logged user")
         )
       }
       "user has no group which is permitted" in {
@@ -276,7 +275,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "user current group is not permitted" in {
@@ -288,7 +288,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-          preferredGroupId = Some(GroupId("g3"))
+          preferredGroupId = Some(GroupId("g3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "groups AND logic is used and not all configured groups are matched" in {
@@ -304,7 +305,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "groups NOT_ANY_OF logic is used" when {
@@ -321,7 +323,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g4"))
+            preferredGroupId = Some(GroupId("g4")),
+            denialCause = GroupsAuthorizationFailed("Current group is not allowed")
           )
         }
         "one of the forbidden groups match the LDAP groups" in {
@@ -337,7 +340,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g1"))
+            preferredGroupId = Some(GroupId("g1")),
+            denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
           )
         }
         "all of the forbidden groups match the LDAP groups" in {
@@ -353,7 +357,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g1"))
+            preferredGroupId = Some(GroupId("g1")),
+            denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
           )
         }
       }
@@ -371,7 +376,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g4"))
+            preferredGroupId = Some(GroupId("g4")),
+            denialCause = GroupsAuthorizationFailed("Current group is not allowed")
           )
         }
         "all of the forbidden groups match the LDAP groups" in {
@@ -387,7 +393,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g1"))
+            preferredGroupId = Some(GroupId("g1")),
+            denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
           )
         }
       }
@@ -425,7 +432,8 @@ class LdapAuthorizationRuleTests
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("User has no groups")
             )
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
@@ -447,7 +455,8 @@ class LdapAuthorizationRuleTests
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
             )
           }
           "mocks provider is unavailable" in {
@@ -511,7 +520,7 @@ class LdapAuthorizationRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+                                 denialCause: Cause): Unit =
     assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRuleThrown(settings: LdapAuthorizationRule.Settings,
@@ -525,7 +534,7 @@ class LdapAuthorizationRuleTests
                          impersonation: Impersonation,
                          loggedUser: Option[LoggedUser],
                          preferredGroupId: Option[GroupId],
-                         assertion: RuleCheckAssertion): Unit = {
+                         assertionType: RuleCheckAssertion): Unit = {
     val rule = new LdapAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(preferredGroupId.map(_.toCurrentGroupHeader))
     val blockContext = GeneralIndexRequestBlockContext(
@@ -541,7 +550,7 @@ class LdapAuthorizationRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    rule.checkAndAssert(blockContext, assertion)
+    rule.checkAndAssert(blockContext, assertionType)
   }
 
   private def mockLdapService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) = {

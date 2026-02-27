@@ -56,6 +56,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
             "content" -> "string",
@@ -89,6 +90,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
             "content" -> "string",
@@ -122,6 +124,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "content" -> "string",
           )
         )
@@ -153,6 +156,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
             "content" -> "string",
@@ -186,6 +190,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
           )
@@ -218,6 +223,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
           )
@@ -250,6 +256,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
           )
@@ -282,6 +289,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
           ),
         )
       }
@@ -294,7 +302,13 @@ class SerializerTest extends AnyWordSpec {
     val entryFields = serialized.keySet.asScala.toSet
 
     if (entryFields != expectedFieldsWithTypes.keySet) {
-      fail(s"Serialized event does not contains exactly fields that were expected")
+      val unexpectedFields = entryFields -- expectedFieldsWithTypes.keySet
+      val missingFields = expectedFieldsWithTypes.keySet -- entryFields
+      fail(
+        s"Serialized event does not contain exactly the expected fields." +
+          (if (unexpectedFields.nonEmpty) s" Unexpected fields: ${unexpectedFields.mkString(", ")}." else "") +
+          (if (missingFields.nonEmpty) s" Missing fields: ${missingFields.mkString(", ")}." else "")
+      )
     } else {
       expectedFieldsWithTypes.foreach { case (fieldName, expectedType) =>
         expectedType match {
@@ -308,7 +322,8 @@ class SerializerTest extends AnyWordSpec {
               case s: java.util.Collection[_] => noException should be thrownBy new org.json.JSONArray(s)
               case other => fail(s"Expected '$fieldName' to be JSONArray, but got ${other.getClass.getName}: $other")
             }
-          case other => fail(s"Unknown expected type: $other")
+          case other =>
+            fail(s"Unknown expected type: $other")
         }
       }
     }

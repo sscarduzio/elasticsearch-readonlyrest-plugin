@@ -440,7 +440,8 @@ class JwtAuthRuleTests
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group3"))
+          preferredGroupId = Some(GroupId("group3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "user claim name is defined but userId isn't passed in JWT token claim" in {
@@ -457,7 +458,7 @@ class JwtAuthRuleTests
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
           tokenHeader = bearerHeader(jwt),
-          denialCause = AuthenticationFailed
+          denialCause = AuthenticationFailed("User claim 'userId' not found in JWT")
         )
       }
       "group IDs claim name is defined but groups aren't passed in JWT token claim" in {
@@ -473,7 +474,8 @@ class JwtAuthRuleTests
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
             groupsConfig = GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("Groups claim not found in JWT")
         )
       }
       "group IDs claim path is wrong" in {
@@ -493,7 +495,8 @@ class JwtAuthRuleTests
           configuredGroups = Some(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
           ))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("Groups claim not found in JWT")
         )
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is empty" in {
@@ -513,7 +516,8 @@ class JwtAuthRuleTests
           configuredGroups = Some(GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
           ))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is empty" in {
@@ -533,7 +537,8 @@ class JwtAuthRuleTests
           configuredGroups = Some(GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           ))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "preferred group is not on the permitted groups list" in {
@@ -554,7 +559,8 @@ class JwtAuthRuleTests
             UniqueNonEmptyList.of(GroupId("group2"))
           ))),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group3"))
+          preferredGroupId = Some(GroupId("group3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
     }
@@ -571,7 +577,7 @@ class JwtAuthRuleTests
                                  configuredGroups: Option[GroupsLogic] = None,
                                  tokenHeader: Header,
                                  preferredGroupId: Option[GroupId] = None,
-                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+                                 denialCause: Cause): Unit =
     assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredJwtDef: AuthJwtDef,

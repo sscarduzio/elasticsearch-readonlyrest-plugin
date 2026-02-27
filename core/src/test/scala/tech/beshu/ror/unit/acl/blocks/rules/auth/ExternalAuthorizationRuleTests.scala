@@ -245,7 +245,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("user1"))
           ),
           loggedUser = None,
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("No logged user")
         )
       }
       "user is logged, but his id is not listed on user config list" in {
@@ -258,7 +259,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("user1"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("Logged user not found in allowed users list")
         )
       }
       "authorization service returns empty groups list" in {
@@ -276,7 +278,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("User has no groups")
         )
       }
       "authorization service groups for given user has empty intersection with configured groups" in {
@@ -294,7 +297,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "groups AND logic is used and not all configured groups are matched" in {
@@ -312,7 +316,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "groups NOT_ALL_OF logic is used and all configured groups are matched" in {
@@ -330,7 +335,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "groups NOT_ANY_OF logic is used and one of the configured groups is matched" in {
@@ -348,7 +354,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "groups NOT_ALL_OF logic is used and not eligible preferred group present" in {
@@ -364,8 +371,9 @@ class ExternalAuthorizationRuleTests
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = Some(GroupId("g4"))
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+          preferredGroupId = Some(GroupId("g4")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "groups NOT_ANY_OF logic is used and not eligible preferred group present" in {
@@ -381,8 +389,9 @@ class ExternalAuthorizationRuleTests
             )),
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = Some(GroupId("g4"))
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+          preferredGroupId = Some(GroupId("g4")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "current group is set for a given user but it's not present in intersection groups set" in {
@@ -395,7 +404,8 @@ class ExternalAuthorizationRuleTests
             users = UniqueNonEmptyList.of(User.Id("*"))
           ),
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
-          preferredGroupId = Some(GroupId("g3"))
+          preferredGroupId = Some(GroupId("g3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "user is being impersonated" when {
@@ -418,7 +428,8 @@ class ExternalAuthorizationRuleTests
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("User has no groups")
             )
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
@@ -440,7 +451,8 @@ class ExternalAuthorizationRuleTests
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
             )
           }
           "mocks provider is unavailable" in {
@@ -497,7 +509,7 @@ class ExternalAuthorizationRuleTests
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 denialCause: Cause = GroupsAuthorizationFailed): Unit =
+                                 denialCause: Cause): Unit =
     assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(settings: ExternalAuthorizationRule.Settings,

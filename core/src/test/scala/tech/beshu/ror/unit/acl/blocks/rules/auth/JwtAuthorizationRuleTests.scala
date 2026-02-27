@@ -21,6 +21,7 @@ import io.jsonwebtoken.Jwts
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, SignatureCheckMethod}
@@ -194,7 +195,9 @@ class JwtAuthorizationRuleTests
           configuredGroups = GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group1"))
           )),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("Groups claim not found in JWT")
         )
       }
       "rule groups with 'or' logic are defined and intersection between those groups and JWT ones is empty" in {
@@ -213,7 +216,9 @@ class JwtAuthorizationRuleTests
           configuredGroups = GroupsLogic.AnyOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4"))
           )),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "rule groups with 'and' logic are defined and intersection between those groups and JWT ones is empty" in {
@@ -232,7 +237,9 @@ class JwtAuthorizationRuleTests
           configuredGroups = GroupsLogic.AllOf(GroupIds(
             UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3"))
           )),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "preferred group is not on the permitted groups list" in {
@@ -252,7 +259,8 @@ class JwtAuthorizationRuleTests
             UniqueNonEmptyList.of(GroupId("group2"))
           )),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group3"))
+          preferredGroupId = Some(GroupId("group3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
     }
@@ -268,8 +276,9 @@ class JwtAuthorizationRuleTests
   private def assertNotMatchRule(configuredJwtDef: AuthorizationJwtDef,
                                  configuredGroups: GroupsLogic,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(GroupsAuthorizationFailed))
+                                 preferredGroupId: Option[GroupId],
+                                 denialCause: Cause): Unit =
+    assertRule(configuredJwtDef, configuredGroups, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredJwtDef: AuthorizationJwtDef,
                          configuredGroups: GroupsLogic,
