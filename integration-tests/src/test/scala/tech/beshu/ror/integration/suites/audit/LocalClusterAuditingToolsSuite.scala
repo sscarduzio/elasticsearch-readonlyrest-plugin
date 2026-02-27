@@ -85,10 +85,11 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "username",
                 |  "presented_identity": "username",
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
-                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "matched_block_names": ["Rule 1"],
+                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "blocks_history": [
                 |    {
-                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "forbidden_cause": "AUTH_FAIL (Username mismatch)",
                 |      "block_name": "CONTAINER ADMIN",
                 |      "matched": false
                 |    },
@@ -117,12 +118,13 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "username",
                 |  "presented_identity": "username",
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
+                |  "matched_block_names": ["Rule 1"],
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "blocks_history": [
                 |    {
-                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "forbidden_cause": "AUTH_FAIL (Username mismatch)",
                 |      "block_name": "CONTAINER ADMIN",
                 |      "matched": false
                 |    },
@@ -165,12 +167,13 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "username",
                 |  "presented_identity": "username",
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
+                |  "matched_block_names": ["Rule 1"],
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "blocks_history": [
                 |    {
-                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "forbidden_cause": "AUTH_FAIL (Username mismatch)",
                 |      "block_name": "CONTAINER ADMIN",
                 |      "matched": false
                 |    },
@@ -199,6 +202,7 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "admin",
                 |  "presented_identity": "admin",
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
+                |  "matched_block_names": ["CONTAINER ADMIN"],
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin]]",
@@ -228,6 +232,7 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "admin",
                 |  "presented_identity": "admin",
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
+                |  "matched_block_names": ["CONTAINER ADMIN"],
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin;indices=audit_index]]",
@@ -273,12 +278,13 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "username",
                 |  "presented_identity": "username",
                 |  "block": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
+                |  "matched_block_names": ["Rule 1"],
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
-                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+                |  "acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
                 |  "blocks_history": [
                 |    {
-                |      "forbidden_cause": "AUTH_FAIL(Username mismatch)",
+                |      "forbidden_cause": "AUTH_FAIL (Username mismatch)",
                 |      "block_name": "CONTAINER ADMIN",
                 |      "matched": false
                 |    },
@@ -308,6 +314,7 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "admin",
                 |  "presented_identity": "admin",
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
+                |  "matched_block_names": ["CONTAINER ADMIN"],
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin]]",
@@ -338,6 +345,7 @@ class LocalClusterAuditingToolsSuite
                 |  "logged_user": "admin",
                 |  "presented_identity": "admin",
                 |  "block": "{ name: 'CONTAINER ADMIN', policy: ALLOW, rules: [auth_key] }",
+                |  "matched_block_names": ["CONTAINER ADMIN"],
                 |  "es_node_name": "ROR_SINGLE_1",
                 |  "es_cluster_name": "ROR_SINGLE",
                 |  "acl_history": "[CONTAINER ADMIN: MATCHED -> RULES:[auth_key->true] RESOLVED:[user=admin;indices=audit_index]]",
@@ -464,9 +472,10 @@ class LocalClusterAuditingToolsSuite
               |    "es_node_name": "ROR_SINGLE_1",
               |    "es_task_id": 0,
               |    "ror_involved_indices": ["twitter"],
-              |    "ror_acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL(Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
+              |    "ror_acl_history": "[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (Username mismatch)) -> RULES:[auth_key->false]], [Rule 1: MATCHED -> RULES:[auth_key->true, methods->true, indices->true] RESOLVED:[user=username;indices=twitter]]",
               |    "ror_final_state": "ALLOWED",
-              |    "ror_detailed_reason": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }"
+              |    "ror_detailed_reason": "{ name: 'Rule 1', policy: ALLOW, rules: [auth_key, methods, indices] }",
+              |    "ror_matched_block_names": ["Rule 1"]
               |  }
               |}""".stripMargin
           )
