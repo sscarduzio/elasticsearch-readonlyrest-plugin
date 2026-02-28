@@ -23,6 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
@@ -44,11 +45,17 @@ import scala.language.postfixOps
 class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsUidTests extends UnboundidLdapAuthenticationServiceTests {
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
   override protected val morganUserId: User.Id = User.Id("morgan")
+
+  override protected val noUserDeniedCause: Cause = AuthenticationFailed("User not found in LDAP")
+  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
 }
 
 class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsCnTests extends UnboundidLdapAuthenticationServiceTests {
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
   override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
+
+  override protected val noUserDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
+  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
 }
 
 abstract class UnboundidLdapAuthenticationServiceTests
@@ -63,6 +70,9 @@ abstract class UnboundidLdapAuthenticationServiceTests
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override val container: Container = MultipleContainers(ldapContainer)
+
+  protected def noUserDeniedCause: Cause
+  protected def invalidCredentialsDeniedCause: Cause
 
   override protected def afterAll(): Unit = {
     super.afterAll()
@@ -82,12 +92,12 @@ abstract class UnboundidLdapAuthenticationServiceTests
         "user doesn't exist in LDAP" in {
           createSimpleAuthenticationService()
             .authenticate(User.Id("unknown"), PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(Left(AuthenticationFailed))
+            .runSyncUnsafe() should be(Left(noUserDeniedCause))
         }
         "user has invalid credentials" in {
           createSimpleAuthenticationService()
             .authenticate(morganUserId, PlainTextSecret("invalid_secret"))
-            .runSyncUnsafe() should be(Left(AuthenticationFailed))
+            .runSyncUnsafe() should be(Left(invalidCredentialsDeniedCause))
         }
       }
     }

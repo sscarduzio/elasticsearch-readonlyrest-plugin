@@ -182,7 +182,8 @@ class TokenAuthenticationRuleTests
             )
           ),
           impersonation = Impersonation.Disabled,
-          headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123"))
+          headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123")),
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' missing or invalid")
         )
       }
       "static token is passed in different header than the configured one" in {
@@ -195,7 +196,8 @@ class TokenAuthenticationRuleTests
             )
           ),
           impersonation = Impersonation.Disabled,
-          headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ"))
+          headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ")),
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' missing or invalid")
         )
       }
       "service-token validation fails" in {
@@ -322,6 +324,7 @@ class TokenAuthenticationRuleTests
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
+              denialCause = AuthenticationFailed("Impersonated user does not exist")
             )
           }
         }
@@ -339,7 +342,7 @@ class TokenAuthenticationRuleTests
   private def assertNotMatchRule(settings: TokenAuthenticationRule.Settings,
                                  impersonation: Impersonation,
                                  headers: Set[Header],
-                                 denialCause: Cause = AuthenticationFailed,
+                                 denialCause: Cause,
                                  esServices: EsServices = MockEsServices.dummy): Unit =
     assertRule(settings, impersonation, headers, esServices, RuleCheckAssertion.RuleDenied(denialCause))
 

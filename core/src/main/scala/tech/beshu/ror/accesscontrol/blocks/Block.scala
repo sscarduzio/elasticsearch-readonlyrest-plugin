@@ -80,9 +80,9 @@ class Block(val name: Name,
       .recover { case e =>
         logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
         val cause = rule match {
-          case rule: Rule.AuthenticationRule => Cause.AuthenticationFailed
-          case rule: Rule.AuthorizationRule => Cause.GroupsAuthorizationFailed
-          case rule: Rule.RegularRule => Cause.NotAuthorized
+          case _: Rule.AuthenticationRule => Cause.AuthenticationFailed("Unexpected error")
+          case _: Rule.AuthorizationRule => Cause.GroupsAuthorizationFailed("Unexpected error")
+          case _: Rule.RegularRule => Cause.NotAuthorized
         }
         Decision.Denied[B](cause)
       }

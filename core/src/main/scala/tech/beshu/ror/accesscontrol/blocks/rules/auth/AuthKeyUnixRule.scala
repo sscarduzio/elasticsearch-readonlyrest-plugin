@@ -20,6 +20,7 @@ import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -28,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule.UnixHashed
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
 import tech.beshu.ror.syntax.*
 
@@ -41,9 +43,17 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
   override val name: Rule.Name = AuthKeyUnixRule.Name.name
 
   override protected def compare(configuredCredentials: UnixHashedCredentials,
-                                 credentials: Credentials): Task[Boolean] = Task {
-    configuredCredentials.userId === credentials.user &&
-      configuredCredentials.from(credentials).contains(configuredCredentials)
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task {
+    for {
+      _ <- Either.cond(
+        configuredCredentials.userId == credentials.user,
+        (), AuthenticationFailed("Username mismatch")
+      )
+      _ <- Either.cond(
+        configuredCredentials.from(credentials).contains(configuredCredentials),
+        (), AuthenticationFailed("Invalid password")
+      )
+    } yield DirectlyLoggedUser(credentials.user)
   }
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)

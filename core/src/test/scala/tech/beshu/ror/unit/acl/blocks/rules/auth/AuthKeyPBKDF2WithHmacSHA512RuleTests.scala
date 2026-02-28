@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuthKeyPBKDF2WithHmacSHA512RuleTests
-  extends BasicAuthenticationTestTemplate(supportingImpersonation = false) {
+  extends BasicAuthenticationTestTemplate(supportingImpersonation = false, isUsernameMaskedByRule = true) {
 
   override protected def ruleName: String = classOf[AuthKeyPBKDF2WithHmacSHA512Rule].getSimpleName
 
@@ -38,9 +38,9 @@ class AuthKeyPBKDF2WithHmacSHA512RuleTests
 }
 
 class AuthKeyPBKDF2WithHmacSHA512RuleAltSyntaxTests
-  extends BasicAuthenticationTestTemplate(supportingImpersonation = true) {
+  extends BasicAuthenticationTestTemplate(supportingImpersonation = true, isUsernameMaskedByRule = false) {
 
-  override protected def ruleName: String = classOf[AuthKeyPBKDF2WithHmacSHA512Rule].getSimpleName
+  override protected val ruleName: String = classOf[AuthKeyPBKDF2WithHmacSHA512Rule].getSimpleName
 
   override protected def ruleCreator: Impersonation => BasicAuthenticationRule[_] = impersonation =>
     new AuthKeyPBKDF2WithHmacSHA512Rule(

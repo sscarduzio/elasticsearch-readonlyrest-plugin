@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -41,8 +42,11 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
 
-  override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
-    Either.cond(userMatcher.`match`(user.id), (), ())
+  override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[GroupsAuthorizationFailed, Unit] = {
+    Either.cond(
+      userMatcher.`match`(user.id),
+      (), GroupsAuthorizationFailed(s"Logged user not found in allowed users list")
+    )
   }
 
   override protected def userGroups[B <: BlockContext](blockContext: B,

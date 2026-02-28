@@ -330,8 +330,8 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             inside(userMetadataRequestResult) {
               case f@ForbiddenByMismatched(detailedCauses) =>
                 detailedCauses should be(ListMap(
-                  Block.Name("b2") -> AuthenticationFailed,
-                  Block.Name("b5") -> AuthenticationFailed,
+                  Block.Name("b2") -> AuthenticationFailed("mock failed"),
+                  Block.Name("b5") -> AuthenticationFailed("mock failed"),
                 ))
                 f.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
             }
@@ -846,7 +846,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     override val name: Rule.Name = Rule.Name("auth")
 
     override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-      Task.now(Decision.Denied(AuthenticationFailed))
+      Task.now(Decision.Denied(AuthenticationFailed("mock failed")))
   }
 
   private def mockUserMetadataRequestContext(licenseType: RorKbnLicenseType) = {
