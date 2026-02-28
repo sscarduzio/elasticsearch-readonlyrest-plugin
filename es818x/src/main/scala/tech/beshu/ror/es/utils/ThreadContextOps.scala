@@ -45,8 +45,10 @@ object ThreadContextOps {
     }
 
     private def replaceAuthenticationHeader(header: Header): ThreadContext = {
-      stashAndRestore(currentTransients(nonAuthTransientNames), currentResponseHeaders)
-      threadContext.putHeader(header.name.value.value, header.value.value)
+      val headerName = header.name.value.value
+      val capturedRequestHeaders = currentRequestHeadersExcluding(headerName)
+      stashAndRestore(currentTransients(nonAuthTransientNames), currentResponseHeaders, capturedRequestHeaders)
+      threadContext.putHeader(headerName, header.value.value)
       threadContext
     }
 
@@ -58,11 +60,18 @@ object ThreadContextOps {
       JavaConverters.flattenPair(threadContext.getResponseHeaders).toSet
     }
 
+    private def currentRequestHeadersExcluding(excludedName: String): Iterable[(String, String)] = {
+      import scala.jdk.CollectionConverters.*
+      threadContext.getHeaders.asScala.view.filterNot(_._1 == excludedName)
+    }
+
     private def stashAndRestore(transients: Iterable[(String, AnyRef)],
-                                responseHeaders: Iterable[(String, String)]): Unit = {
+                                responseHeaders: Iterable[(String, String)],
+                                requestHeaders: Iterable[(String, String)] = Iterable.empty): Unit = {
       threadContext.stashContext() // clear thread context (StoredContext intentionally discarded)
       transients.foreach { case (k, v) => threadContext.putTransient(k, v) }
       responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
+      requestHeaders.foreach { case (k, v) => threadContext.putHeader(k, v) }
     }
   }
 }

@@ -63,6 +63,8 @@ final class TokenAuthenticationRule(val settings: Settings,
       case false =>
         val tokenHeaderName = settings.tokenType match {
           case TokenType.StaticToken(tokenDef, _) => tokenDef.headerName
+          case TokenType.ServiceToken(tokenDef) => tokenDef.headerName
+          case TokenType.ApiKey(tokenDef) => tokenDef.headerName
         }
         Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' missing or invalid"))
     }
