@@ -300,7 +300,7 @@ class XpackApiManager(client: RestClient,
     val request = new HttpPost(client.from("/_security/api_key"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
-      s"""{"name": "$keyName", "expiration": "1d"}"""
+      s"""{"name": "$keyName", "expiration": "1d", "role_descriptors": {}}"""
     ))
     request
   }

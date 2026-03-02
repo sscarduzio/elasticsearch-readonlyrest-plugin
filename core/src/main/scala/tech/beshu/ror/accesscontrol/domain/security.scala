@@ -106,6 +106,13 @@ object AuthorizationToken {
         None
     }
   }
+
+  extension (token: AuthorizationToken) {
+    def stringify: String = token.prefix match {
+      case AuthorizationTokenPrefix.Exact(prefix) => s"${prefix.value} ${token.value.value}"
+      case AuthorizationTokenPrefix.NoPrefix => token.value.value
+    }
+  }
 }
 
 sealed trait AuthorizationTokenPrefix

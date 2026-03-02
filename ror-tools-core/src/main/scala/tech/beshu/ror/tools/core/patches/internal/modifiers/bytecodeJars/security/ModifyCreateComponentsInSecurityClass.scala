@@ -17,10 +17,8 @@
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security
 
 import better.files.File
-import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.*
 
 import java.io.InputStream
 
@@ -28,19 +26,29 @@ import java.io.InputStream
   Patches the Security#createComponents method to intercept the ServiceAccountService and ApiKeyService
   instances after they are created, publishing each to its respective bridge class so that the ROR plugin
   can access these X-Pack services across plugin/classloader boundaries.
+
+  Strategy: rename the original public createComponents to internalCreateComponents,
+  then generate a new createComponents wrapper (with the same signature) that calls
+  internalCreateComponents, iterates the returned components, and publishes
+  ServiceAccountService/ApiKeyService instances.
+
+  The descriptor is captured dynamically from the original method, so this works
+  regardless of whether the ES version uses the old multi-parameter signature
+  (ES 8.x: Client, ClusterService, ThreadPool, ...) or the new PluginServices
+  signature (ES 9.x+).
 */
-private[patches] class ModifyCreateComponentsInSecurityClass(esVersion: SemVer)
+private[patches] object ModifyCreateComponentsInSecurityClass
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
       filePathString = "org/elasticsearch/xpack/security/Security.class",
-      processFileContent = doInterceptServiceAccountService
+      processFileContent = doModify
     )
   }
 
-  private def doInterceptServiceAccountService(moduleInputStream: InputStream) = {
+  private def doModify(moduleInputStream: InputStream) = {
     val reader = new ClassReader(moduleInputStream)
     val writer = new ClassWriter(reader, 0)
     reader.accept(new EsClassVisitor(writer), 0)
@@ -50,6 +58,10 @@ private[patches] class ModifyCreateComponentsInSecurityClass(esVersion: SemVer)
   private class EsClassVisitor(writer: ClassWriter)
     extends ClassVisitor(Opcodes.ASM9, writer) {
 
+    private var capturedDescriptor: String = _
+    private var capturedSignature: String = _
+    private var capturedExceptions: Array[String] = _
+
     override def visitMethod(access: Int,
                              name: String,
                              descriptor: String,
@@ -57,954 +69,133 @@ private[patches] class ModifyCreateComponentsInSecurityClass(esVersion: SemVer)
                              exceptions: Array[String]): MethodVisitor = {
       name match {
         case "createComponents" if (access & Opcodes.ACC_PUBLIC) != 0 =>
-          esVersion match {
-            case v if v >= es930 =>
-              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual930(
-                super.visitMethod(access, name, descriptor, signature, exceptions)
-              )
-            case v if v >= es920 =>
-              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual920(
-                super.visitMethod(access, name, descriptor, signature, exceptions)
-              )
-            case v if v >= es910 =>
-              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual910(
-                super.visitMethod(access, name, descriptor, signature, exceptions)
-              )
-            case v if v >= es900 =>
-              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8150(
-                super.visitMethod(access, name, descriptor, signature, exceptions)
-              )
-            case v if v >= es8150 =>
-              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8150(
-                super.visitMethod(access, name, descriptor, signature, exceptions)
-              )
-            case v if v >= es8140 =>
-              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8140(
-                super.visitMethod(access, name, descriptor, signature, exceptions)
-              )
-            case v if v >= es800 =>
-              new InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual800(
-                super.visitMethod(access, name, descriptor, signature, exceptions)
-              )
-            case _ =>
-              super.visitMethod(access, name, descriptor, signature, exceptions)
-          }
+          capturedDescriptor = descriptor
+          capturedSignature = signature
+          capturedExceptions = exceptions
+          super.visitMethod(access, "internalCreateComponents", descriptor, signature, exceptions)
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
-  }
 
-  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual930(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      // try {
-      //   Collection<Object> components = this.createComponents(
-      //     services.client(), services.threadPool(), services.clusterService(),
-      //     services.featureService(), services.resourceWatcherService(),
-      //     services.scriptService(), services.xContentRegistry(), services.environment(),
-      //     services.indexNameExpressionResolver(), services.telemetryProvider(),
-      //     new PersistentTasksService(services.clusterService(), services.threadPool(), services.client()),
-      //     services.linkedProjectConfigService(), services.projectResolver(), services.projectRoutingResolver()
-      //   );
-      //   for (Object c : components) {
-      //     if (c instanceof ServiceAccountService) { ServiceAccountServiceBridge.publish(c); }
-      //     if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
-      //   }
-      //   return components;
-      // } catch (Exception e) {
-      //   throw new IllegalStateException("security initialization failed", e);
-      // }
-      val label0 = new Label()
-      val label1 = new Label()
-      val label2 = new Label()
-      underlying.visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label4 = new Label()
-      underlying.visitLabel(label4)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label5 = new Label()
-      underlying.visitLabel(label5)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label6 = new Label()
-      underlying.visitLabel(label6)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "featureService", "()Lorg/elasticsearch/features/FeatureService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label7 = new Label()
-      underlying.visitLabel(label7)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "resourceWatcherService", "()Lorg/elasticsearch/watcher/ResourceWatcherService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label8 = new Label()
-      underlying.visitLabel(label8)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "scriptService", "()Lorg/elasticsearch/script/ScriptService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label9 = new Label()
-      underlying.visitLabel(label9)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "xContentRegistry", "()Lorg/elasticsearch/xcontent/NamedXContentRegistry;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label10 = new Label()
-      underlying.visitLabel(label10)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "environment", "()Lorg/elasticsearch/env/Environment;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label11 = new Label()
-      underlying.visitLabel(label11)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "indexNameExpressionResolver", "()Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label12 = new Label()
-      underlying.visitLabel(label12)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "telemetryProvider", "()Lorg/elasticsearch/telemetry/TelemetryProvider;", true)
-      underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/persistent/PersistentTasksService")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label13 = new Label()
-      underlying.visitLabel(label13)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/persistent/PersistentTasksService", "<init>", "(Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/client/internal/Client;)V", false)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label14 = new Label()
-      underlying.visitLabel(label14)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "linkedProjectConfigService", "()Lorg/elasticsearch/transport/LinkedProjectConfigService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label15 = new Label()
-      underlying.visitLabel(label15)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "projectResolver", "()Lorg/elasticsearch/cluster/project/ProjectResolver;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label16 = new Label()
-      underlying.visitLabel(label16)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "projectRoutingResolver", "()Lorg/elasticsearch/search/crossproject/ProjectRoutingResolver;", true)
-      val label17 = new Label()
-      underlying.visitLabel(label17)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;Lorg/elasticsearch/persistent/PersistentTasksService;Lorg/elasticsearch/transport/LinkedProjectConfigService;Lorg/elasticsearch/cluster/project/ProjectResolver;Lorg/elasticsearch/search/crossproject/ProjectRoutingResolver;)Ljava/util/Collection;", false)
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label18 = new Label()
-      underlying.visitLabel(label18)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Collection", "iterator", "()Ljava/util/Iterator;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 3)
-      val label19 = new Label()
-      underlying.visitLabel(label19)
-      underlying.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Collection", "java/util/Iterator"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
-      val label20 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label20)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 4)
-      val label21 = new Label()
-      underlying.visitLabel(label21)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
-      val label22 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label22)
-      val label23 = new Label()
-      underlying.visitLabel(label23)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label22)
-      underlying.visitFrame(Opcodes.F_APPEND, 1, Array("java/lang/Object"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
-      val label24 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label24)
-      val label25 = new Label()
-      underlying.visitLabel(label25)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label24)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitJumpInsn(Opcodes.GOTO, label19)
-      underlying.visitLabel(label20)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitLabel(label1)
-      underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitLabel(label2)
-      underlying.visitFrame(Opcodes.F_FULL, 2, Array("org/elasticsearch/xpack/security/Security", "org/elasticsearch/plugins/Plugin$PluginServices"), 1, Array("java/lang/Exception"))
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label26 = new Label()
-      underlying.visitLabel(label26)
-      underlying.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitLdcInsn("security initialization failed")
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
-      underlying.visitInsn(Opcodes.ATHROW)
-      val label27 = new Label()
-      underlying.visitLabel(label27)
-      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label21, label24, 4)
-      underlying.visitLocalVariable("components", "Ljava/util/Collection;", "Ljava/util/Collection<Ljava/lang/Object;>;", label18, label2, 2)
-      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label26, label27, 2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label27, 0)
-      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label27, 1)
-      underlying.visitMaxs(16, 5)
-      underlying.visitEnd()
+    override def visitEnd(): Unit = {
+      if (capturedDescriptor != null) {
+        generateCreateComponentsWrapper(cv, capturedDescriptor, capturedSignature, capturedExceptions)
+      }
+      super.visitEnd()
     }
   }
 
-  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual920(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private def generateCreateComponentsWrapper(cv: ClassVisitor,
+                                              descriptor: String,
+                                              signature: String,
+                                              exceptions: Array[String]): Unit = {
+    val argTypes = Type.getArgumentTypes(descriptor)
+    // slot 0 = this, then one slot per argument (all are object references)
+    val paramSlots = argTypes.length
+    // local variable slots: this(1) + params + components(1) + iterator(1) + element(1)
+    val componentsSlot = paramSlots + 1
+    val iteratorSlot = componentsSlot + 1
+    val elementSlot = iteratorSlot + 1
+    val maxLocals = elementSlot + 1
 
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      // try {
-      //   Collection<Object> components = this.createComponents(
-      //     services.client(), services.threadPool(), services.clusterService(),
-      //     services.featureService(), services.resourceWatcherService(),
-      //     services.scriptService(), services.xContentRegistry(), services.environment(),
-      //     services.indexNameExpressionResolver(), services.telemetryProvider(),
-      //     new PersistentTasksService(services.clusterService(), services.threadPool(), services.client()),
-      //     services.linkedProjectConfigService(), services.projectResolver()
-      //   );
-      //   for (Object c : components) {
-      //     if (c instanceof ServiceAccountService) { ServiceAccountServiceBridge.publish(c); }
-      //     if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
-      //   }
-      //   return components;
-      // } catch (Exception e) {
-      //   throw new IllegalStateException("security initialization failed", e);
-      // }
-      val label0 = new Label()
-      val label1 = new Label()
-      val label2 = new Label()
-      underlying.visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label4 = new Label()
-      underlying.visitLabel(label4)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label5 = new Label()
-      underlying.visitLabel(label5)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label6 = new Label()
-      underlying.visitLabel(label6)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "featureService", "()Lorg/elasticsearch/features/FeatureService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label7 = new Label()
-      underlying.visitLabel(label7)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "resourceWatcherService", "()Lorg/elasticsearch/watcher/ResourceWatcherService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label8 = new Label()
-      underlying.visitLabel(label8)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "scriptService", "()Lorg/elasticsearch/script/ScriptService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label9 = new Label()
-      underlying.visitLabel(label9)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "xContentRegistry", "()Lorg/elasticsearch/xcontent/NamedXContentRegistry;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label10 = new Label()
-      underlying.visitLabel(label10)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "environment", "()Lorg/elasticsearch/env/Environment;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label11 = new Label()
-      underlying.visitLabel(label11)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "indexNameExpressionResolver", "()Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label12 = new Label()
-      underlying.visitLabel(label12)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "telemetryProvider", "()Lorg/elasticsearch/telemetry/TelemetryProvider;", true)
-      underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/persistent/PersistentTasksService")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label13 = new Label()
-      underlying.visitLabel(label13)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/persistent/PersistentTasksService", "<init>", "(Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/client/internal/Client;)V", false)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label14 = new Label()
-      underlying.visitLabel(label14)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "linkedProjectConfigService", "()Lorg/elasticsearch/transport/LinkedProjectConfigService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label15 = new Label()
-      underlying.visitLabel(label15)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "projectResolver", "()Lorg/elasticsearch/cluster/project/ProjectResolver;", true)
-      val label16 = new Label()
-      underlying.visitLabel(label16)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;Lorg/elasticsearch/persistent/PersistentTasksService;Lorg/elasticsearch/transport/LinkedProjectConfigService;Lorg/elasticsearch/cluster/project/ProjectResolver;)Ljava/util/Collection;", false)
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label17 = new Label()
-      underlying.visitLabel(label17)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Collection", "iterator", "()Ljava/util/Iterator;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 3)
-      val label18 = new Label()
-      underlying.visitLabel(label18)
-      underlying.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Collection", "java/util/Iterator"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
-      val label19 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label19)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 4)
-      val label20 = new Label()
-      underlying.visitLabel(label20)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
-      val label21 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label21)
-      val label22 = new Label()
-      underlying.visitLabel(label22)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label21)
-      underlying.visitFrame(Opcodes.F_APPEND, 1, Array("java/lang/Object"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
-      val label23 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label23)
-      val label24 = new Label()
-      underlying.visitLabel(label24)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label23)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitJumpInsn(Opcodes.GOTO, label18)
-      underlying.visitLabel(label19)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitLabel(label1)
-      underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitLabel(label2)
-      underlying.visitFrame(Opcodes.F_FULL, 2, Array("org/elasticsearch/xpack/security/Security", "org/elasticsearch/plugins/Plugin$PluginServices"), 1, Array("java/lang/Exception"))
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label25 = new Label()
-      underlying.visitLabel(label25)
-      underlying.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitLdcInsn("security initialization failed")
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
-      underlying.visitInsn(Opcodes.ATHROW)
-      val label26 = new Label()
-      underlying.visitLabel(label26)
-      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label20, label23, 4)
-      underlying.visitLocalVariable("components", "Ljava/util/Collection;", "Ljava/util/Collection<Ljava/lang/Object;>;", label17, label2, 2)
-      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label25, label26, 2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label26, 0)
-      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label26, 1)
-      underlying.visitMaxs(16, 5)
-      underlying.visitEnd()
+    val mv = cv.visitMethod(
+      Opcodes.ACC_PUBLIC,
+      "createComponents",
+      descriptor,
+      signature,
+      exceptions
+    )
+    mv.visitCode()
+
+    val tryStart = new Label()
+    val tryEnd = new Label()
+    val catchHandler = new Label()
+    val loopStart = new Label()
+    val loopEnd = new Label()
+    val afterServiceAccountCheck = new Label()
+    val afterApiKeyCheck = new Label()
+
+    mv.visitTryCatchBlock(tryStart, tryEnd, catchHandler, "java/lang/Exception")
+
+    // Collection components = this.internalCreateComponents(args...);
+    mv.visitLabel(tryStart)
+    mv.visitVarInsn(Opcodes.ALOAD, 0) // this
+    for (i <- 1 to paramSlots) {
+      mv.visitVarInsn(Opcodes.ALOAD, i)
     }
+    mv.visitMethodInsn(
+      Opcodes.INVOKEVIRTUAL,
+      "org/elasticsearch/xpack/security/Security",
+      "internalCreateComponents",
+      descriptor,
+      false
+    )
+    mv.visitVarInsn(Opcodes.ASTORE, componentsSlot)
+
+    // Iterator iter = components.iterator();
+    mv.visitVarInsn(Opcodes.ALOAD, componentsSlot)
+    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Collection", "iterator", "()Ljava/util/Iterator;", true)
+    mv.visitVarInsn(Opcodes.ASTORE, iteratorSlot)
+
+    // for (Object c : components) {
+    mv.visitLabel(loopStart)
+    mv.visitFrame(Opcodes.F_APPEND, 2, Array[Object]("java/util/Collection", "java/util/Iterator"), 0, null)
+    mv.visitVarInsn(Opcodes.ALOAD, iteratorSlot)
+    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
+    mv.visitJumpInsn(Opcodes.IFEQ, loopEnd)
+    mv.visitVarInsn(Opcodes.ALOAD, iteratorSlot)
+    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
+    mv.visitVarInsn(Opcodes.ASTORE, elementSlot)
+
+    // if (c instanceof ServiceAccountService) { ServiceAccountServiceBridge.publish(c); }
+    mv.visitVarInsn(Opcodes.ALOAD, elementSlot)
+    mv.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
+    mv.visitJumpInsn(Opcodes.IFEQ, afterServiceAccountCheck)
+    mv.visitVarInsn(Opcodes.ALOAD, elementSlot)
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
+
+    // if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
+    mv.visitLabel(afterServiceAccountCheck)
+    mv.visitFrame(Opcodes.F_APPEND, 1, Array[Object]("java/lang/Object"), 0, null)
+    mv.visitVarInsn(Opcodes.ALOAD, elementSlot)
+    mv.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
+    mv.visitJumpInsn(Opcodes.IFEQ, afterApiKeyCheck)
+    mv.visitVarInsn(Opcodes.ALOAD, elementSlot)
+    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
+
+    mv.visitLabel(afterApiKeyCheck)
+    mv.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
+    mv.visitJumpInsn(Opcodes.GOTO, loopStart)
+
+    // return components;
+    mv.visitLabel(loopEnd)
+    mv.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
+    mv.visitVarInsn(Opcodes.ALOAD, componentsSlot)
+    mv.visitLabel(tryEnd)
+    mv.visitInsn(Opcodes.ARETURN)
+
+    // catch (Exception e) { throw new IllegalStateException("security initialization failed", e); }
+    mv.visitLabel(catchHandler)
+    // Build the full frame for the catch handler: this + all parameter types
+    val localTypes: Array[Object] = Array("org/elasticsearch/xpack/security/Security") ++
+      argTypes.map(_.getInternalName)
+    mv.visitFrame(
+      Opcodes.F_FULL,
+      localTypes.length,
+      localTypes,
+      1,
+      Array[Object]("java/lang/Exception")
+    )
+    mv.visitVarInsn(Opcodes.ASTORE, componentsSlot)
+    mv.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
+    mv.visitInsn(Opcodes.DUP)
+    mv.visitLdcInsn("security initialization failed")
+    mv.visitVarInsn(Opcodes.ALOAD, componentsSlot)
+    mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
+    mv.visitInsn(Opcodes.ATHROW)
+
+    mv.visitMaxs(Math.max(4, paramSlots + 2), maxLocals)
+    mv.visitEnd()
   }
-
-  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual910(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      // try {
-      //   Collection<Object> components = this.createComponents(
-      //     services.client(), services.threadPool(), services.clusterService(),
-      //     services.featureService(), services.resourceWatcherService(),
-      //     services.scriptService(), services.xContentRegistry(), services.environment(),
-      //     services.indexNameExpressionResolver(), services.telemetryProvider(),
-      //     new PersistentTasksService(services.clusterService(), services.threadPool(), services.client()),
-      //     services.projectResolver()
-      //   );
-      //   for (Object c : components) {
-      //     if (c instanceof ServiceAccountService) { ServiceAccountServiceBridge.publish(c); }
-      //     if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
-      //   }
-      //   return components;
-      // } catch (Exception e) {
-      //   throw new IllegalStateException("security initialization failed", e);
-      // }
-      val label0 = new Label()
-      val label1 = new Label()
-      val label2 = new Label()
-      underlying.visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label4 = new Label()
-      underlying.visitLabel(label4)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label5 = new Label()
-      underlying.visitLabel(label5)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label6 = new Label()
-      underlying.visitLabel(label6)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "featureService", "()Lorg/elasticsearch/features/FeatureService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label7 = new Label()
-      underlying.visitLabel(label7)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "resourceWatcherService", "()Lorg/elasticsearch/watcher/ResourceWatcherService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label8 = new Label()
-      underlying.visitLabel(label8)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "scriptService", "()Lorg/elasticsearch/script/ScriptService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label9 = new Label()
-      underlying.visitLabel(label9)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "xContentRegistry", "()Lorg/elasticsearch/xcontent/NamedXContentRegistry;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label10 = new Label()
-      underlying.visitLabel(label10)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "environment", "()Lorg/elasticsearch/env/Environment;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label11 = new Label()
-      underlying.visitLabel(label11)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "indexNameExpressionResolver", "()Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label12 = new Label()
-      underlying.visitLabel(label12)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "telemetryProvider", "()Lorg/elasticsearch/telemetry/TelemetryProvider;", true)
-      underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/persistent/PersistentTasksService")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label13 = new Label()
-      underlying.visitLabel(label13)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/persistent/PersistentTasksService", "<init>", "(Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/client/internal/Client;)V", false)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label14 = new Label()
-      underlying.visitLabel(label14)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "projectResolver", "()Lorg/elasticsearch/cluster/project/ProjectResolver;", true)
-      val label15 = new Label()
-      underlying.visitLabel(label15)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;Lorg/elasticsearch/persistent/PersistentTasksService;Lorg/elasticsearch/cluster/project/ProjectResolver;)Ljava/util/Collection;", false)
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label16 = new Label()
-      underlying.visitLabel(label16)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Collection", "iterator", "()Ljava/util/Iterator;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 3)
-      val label17 = new Label()
-      underlying.visitLabel(label17)
-      underlying.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Collection", "java/util/Iterator"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
-      val label18 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label18)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 4)
-      val label19 = new Label()
-      underlying.visitLabel(label19)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
-      val label20 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label20)
-      val label21 = new Label()
-      underlying.visitLabel(label21)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label20)
-      underlying.visitFrame(Opcodes.F_APPEND, 1, Array("java/lang/Object"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
-      val label22 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label22)
-      val label23 = new Label()
-      underlying.visitLabel(label23)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label22)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitJumpInsn(Opcodes.GOTO, label17)
-      underlying.visitLabel(label18)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitLabel(label1)
-      underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitLabel(label2)
-      underlying.visitFrame(Opcodes.F_FULL, 2, Array("org/elasticsearch/xpack/security/Security", "org/elasticsearch/plugins/Plugin$PluginServices"), 1, Array("java/lang/Exception"))
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label24 = new Label()
-      underlying.visitLabel(label24)
-      underlying.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitLdcInsn("security initialization failed")
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
-      underlying.visitInsn(Opcodes.ATHROW)
-      val label25 = new Label()
-      underlying.visitLabel(label25)
-      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label19, label22, 4)
-      underlying.visitLocalVariable("components", "Ljava/util/Collection;", "Ljava/util/Collection<Ljava/lang/Object;>;", label16, label2, 2)
-      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label24, label25, 2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label25, 0)
-      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label25, 1)
-      underlying.visitMaxs(16, 5)
-      underlying.visitEnd()
-    }
-  }
-
-  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8150(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      // try {
-      //   Collection<Object> components = this.createComponents(
-      //     services.client(), services.threadPool(), services.clusterService(),
-      //     services.featureService(), services.resourceWatcherService(),
-      //     services.scriptService(), services.xContentRegistry(), services.environment(),
-      //     services.nodeEnvironment().nodeMetadata(), services.indexNameExpressionResolver(),
-      //     services.telemetryProvider(),
-      //     new PersistentTasksService(services.clusterService(), services.threadPool(), services.client())
-      //   );
-      //   for (Object c : components) {
-      //     if (c instanceof ServiceAccountService) { ServiceAccountServiceBridge.publish(c); }
-      //     if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
-      //   }
-      //   return components;
-      // } catch (Exception e) {
-      //   throw new IllegalStateException("security initialization failed", e);
-      // }
-      val label0 = new Label()
-      val label1 = new Label()
-      val label2 = new Label()
-      underlying.visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label4 = new Label()
-      underlying.visitLabel(label4)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label5 = new Label()
-      underlying.visitLabel(label5)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label6 = new Label()
-      underlying.visitLabel(label6)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "featureService", "()Lorg/elasticsearch/features/FeatureService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label7 = new Label()
-      underlying.visitLabel(label7)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "resourceWatcherService", "()Lorg/elasticsearch/watcher/ResourceWatcherService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label8 = new Label()
-      underlying.visitLabel(label8)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "scriptService", "()Lorg/elasticsearch/script/ScriptService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label9 = new Label()
-      underlying.visitLabel(label9)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "xContentRegistry", "()Lorg/elasticsearch/xcontent/NamedXContentRegistry;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label10 = new Label()
-      underlying.visitLabel(label10)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "environment", "()Lorg/elasticsearch/env/Environment;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label11 = new Label()
-      underlying.visitLabel(label11)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "nodeEnvironment", "()Lorg/elasticsearch/env/NodeEnvironment;", true)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/env/NodeEnvironment", "nodeMetadata", "()Lorg/elasticsearch/env/NodeMetadata;", false)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label12 = new Label()
-      underlying.visitLabel(label12)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "indexNameExpressionResolver", "()Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label13 = new Label()
-      underlying.visitLabel(label13)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "telemetryProvider", "()Lorg/elasticsearch/telemetry/TelemetryProvider;", true)
-      underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/persistent/PersistentTasksService")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label14 = new Label()
-      underlying.visitLabel(label14)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "org/elasticsearch/persistent/PersistentTasksService", "<init>", "(Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/client/internal/Client;)V", false)
-      val label15 = new Label()
-      underlying.visitLabel(label15)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/env/NodeMetadata;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;Lorg/elasticsearch/persistent/PersistentTasksService;)Ljava/util/Collection;", false)
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label16 = new Label()
-      underlying.visitLabel(label16)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Collection", "iterator", "()Ljava/util/Iterator;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 3)
-      val label17 = new Label()
-      underlying.visitLabel(label17)
-      underlying.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Collection", "java/util/Iterator"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
-      val label18 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label18)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 4)
-      val label19 = new Label()
-      underlying.visitLabel(label19)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
-      val label20 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label20)
-      val label21 = new Label()
-      underlying.visitLabel(label21)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label20)
-      underlying.visitFrame(Opcodes.F_APPEND, 1, Array("java/lang/Object"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
-      val label22 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label22)
-      val label23 = new Label()
-      underlying.visitLabel(label23)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label22)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitJumpInsn(Opcodes.GOTO, label17)
-      underlying.visitLabel(label18)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitLabel(label1)
-      underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitLabel(label2)
-      underlying.visitFrame(Opcodes.F_FULL, 2, Array("org/elasticsearch/xpack/security/Security", "org/elasticsearch/plugins/Plugin$PluginServices"), 1, Array("java/lang/Exception"))
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label24 = new Label()
-      underlying.visitLabel(label24)
-      underlying.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitLdcInsn("security initialization failed")
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
-      underlying.visitInsn(Opcodes.ATHROW)
-      val label25 = new Label()
-      underlying.visitLabel(label25)
-      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label19, label22, 4)
-      underlying.visitLocalVariable("components", "Ljava/util/Collection;", "Ljava/util/Collection<Ljava/lang/Object;>;", label16, label2, 2)
-      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label24, label25, 2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label25, 0)
-      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label25, 1)
-      underlying.visitMaxs(17, 5)
-      underlying.visitEnd()
-    }
-  }
-
-  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual8140(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      // try {
-      //   Collection<Object> components = this.createComponents(
-      //     services.client(), services.threadPool(), services.clusterService(),
-      //     services.featureService(), services.resourceWatcherService(),
-      //     services.scriptService(), services.xContentRegistry(), services.environment(),
-      //     services.nodeEnvironment().nodeMetadata(), services.indexNameExpressionResolver(),
-      //     services.telemetryProvider()
-      //   );
-      //   for (Object c : components) {
-      //     if (c instanceof ServiceAccountService) { ServiceAccountServiceBridge.publish(c); }
-      //     if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
-      //   }
-      //   return components;
-      // } catch (Exception e) {
-      //   throw new IllegalStateException("security initialization failed", e);
-      // }
-      val label0 = new Label()
-      val label1 = new Label()
-      val label2 = new Label()
-      underlying.visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label4 = new Label()
-      underlying.visitLabel(label4)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label5 = new Label()
-      underlying.visitLabel(label5)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label6 = new Label()
-      underlying.visitLabel(label6)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "featureService", "()Lorg/elasticsearch/features/FeatureService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label7 = new Label()
-      underlying.visitLabel(label7)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "resourceWatcherService", "()Lorg/elasticsearch/watcher/ResourceWatcherService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label8 = new Label()
-      underlying.visitLabel(label8)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "scriptService", "()Lorg/elasticsearch/script/ScriptService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label9 = new Label()
-      underlying.visitLabel(label9)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "xContentRegistry", "()Lorg/elasticsearch/xcontent/NamedXContentRegistry;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label10 = new Label()
-      underlying.visitLabel(label10)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "environment", "()Lorg/elasticsearch/env/Environment;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label11 = new Label()
-      underlying.visitLabel(label11)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "nodeEnvironment", "()Lorg/elasticsearch/env/NodeEnvironment;", true)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/env/NodeEnvironment", "nodeMetadata", "()Lorg/elasticsearch/env/NodeMetadata;", false)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label12 = new Label()
-      underlying.visitLabel(label12)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "indexNameExpressionResolver", "()Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label13 = new Label()
-      underlying.visitLabel(label13)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "telemetryProvider", "()Lorg/elasticsearch/telemetry/TelemetryProvider;", true)
-      val label14 = new Label()
-      underlying.visitLabel(label14)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/env/NodeMetadata;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;)Ljava/util/Collection;", false)
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label15 = new Label()
-      underlying.visitLabel(label15)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Collection", "iterator", "()Ljava/util/Iterator;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 3)
-      val label16 = new Label()
-      underlying.visitLabel(label16)
-      underlying.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Collection", "java/util/Iterator"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
-      val label17 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label17)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 4)
-      val label18 = new Label()
-      underlying.visitLabel(label18)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
-      val label19 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label19)
-      val label20 = new Label()
-      underlying.visitLabel(label20)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label19)
-      underlying.visitFrame(Opcodes.F_APPEND, 1, Array("java/lang/Object"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
-      val label21 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label21)
-      val label22 = new Label()
-      underlying.visitLabel(label22)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label21)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitJumpInsn(Opcodes.GOTO, label16)
-      underlying.visitLabel(label17)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitLabel(label1)
-      underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitLabel(label2)
-      underlying.visitFrame(Opcodes.F_FULL, 2, Array("org/elasticsearch/xpack/security/Security", "org/elasticsearch/plugins/Plugin$PluginServices"), 1, Array("java/lang/Exception"))
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label23 = new Label()
-      underlying.visitLabel(label23)
-      underlying.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitLdcInsn("security initialization failed")
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
-      underlying.visitInsn(Opcodes.ATHROW)
-      val label24 = new Label()
-      underlying.visitLabel(label24)
-      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label18, label21, 4)
-      underlying.visitLocalVariable("components", "Ljava/util/Collection;", "Ljava/util/Collection<Ljava/lang/Object;>;", label15, label2, 2)
-      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label23, label24, 2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label24, 0)
-      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label24, 1)
-      underlying.visitMaxs(12, 5)
-      underlying.visitEnd()
-    }
-  }
-
-  private class InterceptServiceAccountServiceAndApiKeyServiceInCreateComponentsMethodForEsGreaterOrEqual800(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
-
-    override def visitCode(): Unit = {
-      underlying.visitCode()
-      // try {
-      //   Collection<Object> components = this.createComponents(
-      //     services.client(), services.threadPool(), services.clusterService(),
-      //     services.featureService(), services.resourceWatcherService(),
-      //     services.scriptService(), services.xContentRegistry(), services.environment(),
-      //     services.nodeEnvironment().nodeMetadata(), services.indexNameExpressionResolver(),
-      //     services.telemetryProvider()
-      //   );
-      //   for (Object c : components) {
-      //     if (c instanceof ServiceAccountService) { ServiceAccountServiceBridge.publish(c); }
-      //     if (c instanceof ApiKeyService) { ApiKeyServiceBridge.publish(c); }
-      //   }
-      //   return components;
-      // } catch (Exception e) {
-      //   throw new IllegalStateException("security initialization failed", e);
-      // }
-      val label0 = new Label()
-      val label1 = new Label()
-      val label2 = new Label()
-      underlying.visitTryCatchBlock(label0, label1, label2, "java/lang/Exception")
-      underlying.visitLabel(label0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 0)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label3 = new Label()
-      underlying.visitLabel(label3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "client", "()Lorg/elasticsearch/client/internal/Client;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label4 = new Label()
-      underlying.visitLabel(label4)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "threadPool", "()Lorg/elasticsearch/threadpool/ThreadPool;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label5 = new Label()
-      underlying.visitLabel(label5)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "clusterService", "()Lorg/elasticsearch/cluster/service/ClusterService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label6 = new Label()
-      underlying.visitLabel(label6)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "featureService", "()Lorg/elasticsearch/features/FeatureService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label7 = new Label()
-      underlying.visitLabel(label7)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "resourceWatcherService", "()Lorg/elasticsearch/watcher/ResourceWatcherService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label8 = new Label()
-      underlying.visitLabel(label8)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "scriptService", "()Lorg/elasticsearch/script/ScriptService;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label9 = new Label()
-      underlying.visitLabel(label9)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "xContentRegistry", "()Lorg/elasticsearch/xcontent/NamedXContentRegistry;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label10 = new Label()
-      underlying.visitLabel(label10)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "environment", "()Lorg/elasticsearch/env/Environment;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label11 = new Label()
-      underlying.visitLabel(label11)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "nodeEnvironment", "()Lorg/elasticsearch/env/NodeEnvironment;", true)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/env/NodeEnvironment", "nodeMetadata", "()Lorg/elasticsearch/env/NodeMetadata;", false)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label12 = new Label()
-      underlying.visitLabel(label12)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "indexNameExpressionResolver", "()Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;", true)
-      underlying.visitVarInsn(Opcodes.ALOAD, 1)
-      val label13 = new Label()
-      underlying.visitLabel(label13)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/plugins/Plugin$PluginServices", "telemetryProvider", "()Lorg/elasticsearch/telemetry/TelemetryProvider;", true)
-      val label14 = new Label()
-      underlying.visitLabel(label14)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/xpack/security/Security", "createComponents", "(Lorg/elasticsearch/client/internal/Client;Lorg/elasticsearch/threadpool/ThreadPool;Lorg/elasticsearch/cluster/service/ClusterService;Lorg/elasticsearch/features/FeatureService;Lorg/elasticsearch/watcher/ResourceWatcherService;Lorg/elasticsearch/script/ScriptService;Lorg/elasticsearch/xcontent/NamedXContentRegistry;Lorg/elasticsearch/env/Environment;Lorg/elasticsearch/env/NodeMetadata;Lorg/elasticsearch/cluster/metadata/IndexNameExpressionResolver;Lorg/elasticsearch/telemetry/TelemetryProvider;)Ljava/util/Collection;", false)
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label15 = new Label()
-      underlying.visitLabel(label15)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Collection", "iterator", "()Ljava/util/Iterator;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 3)
-      val label16 = new Label()
-      underlying.visitLabel(label16)
-      underlying.visitFrame(Opcodes.F_APPEND, 2, Array("java/util/Collection", "java/util/Iterator"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true)
-      val label17 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label17)
-      underlying.visitVarInsn(Opcodes.ALOAD, 3)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;", true)
-      underlying.visitVarInsn(Opcodes.ASTORE, 4)
-      val label18 = new Label()
-      underlying.visitLabel(label18)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/service/ServiceAccountService")
-      val label19 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label19)
-      val label20 = new Label()
-      underlying.visitLabel(label20)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ServiceAccountServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label19)
-      underlying.visitFrame(Opcodes.F_APPEND, 1, Array("java/lang/Object"), 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitTypeInsn(Opcodes.INSTANCEOF, "org/elasticsearch/xpack/security/authc/ApiKeyService")
-      val label21 = new Label()
-      underlying.visitJumpInsn(Opcodes.IFEQ, label21)
-      val label22 = new Label()
-      underlying.visitLabel(label22)
-      underlying.visitVarInsn(Opcodes.ALOAD, 4)
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/plugins/ApiKeyServiceBridge", "publish", "(Ljava/lang/Object;)V", false)
-      underlying.visitLabel(label21)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitJumpInsn(Opcodes.GOTO, label16)
-      underlying.visitLabel(label17)
-      underlying.visitFrame(Opcodes.F_CHOP, 1, null, 0, null)
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitLabel(label1)
-      underlying.visitInsn(Opcodes.ARETURN)
-      underlying.visitLabel(label2)
-      underlying.visitFrame(Opcodes.F_FULL, 2, Array("org/elasticsearch/xpack/security/Security", "org/elasticsearch/plugins/Plugin$PluginServices"), 1, Array("java/lang/Exception"))
-      underlying.visitVarInsn(Opcodes.ASTORE, 2)
-      val label23 = new Label()
-      underlying.visitLabel(label23)
-      underlying.visitTypeInsn(Opcodes.NEW, "java/lang/IllegalStateException")
-      underlying.visitInsn(Opcodes.DUP)
-      underlying.visitLdcInsn("security initialization failed")
-      underlying.visitVarInsn(Opcodes.ALOAD, 2)
-      underlying.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "(Ljava/lang/String;Ljava/lang/Throwable;)V", false)
-      underlying.visitInsn(Opcodes.ATHROW)
-      val label24 = new Label()
-      underlying.visitLabel(label24)
-      underlying.visitLocalVariable("c", "Ljava/lang/Object;", null, label18, label21, 4)
-      underlying.visitLocalVariable("components", "Ljava/util/Collection;", "Ljava/util/Collection<Ljava/lang/Object;>;", label15, label2, 2)
-      underlying.visitLocalVariable("e", "Ljava/lang/Exception;", null, label23, label24, 2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/Security;", null, label0, label24, 0)
-      underlying.visitLocalVariable("services", "Lorg/elasticsearch/plugins/Plugin$PluginServices;", null, label0, label24, 1)
-      underlying.visitMaxs(12, 5)
-      underlying.visitEnd()
-    }
-  }
-}
-
-object ModifyCreateComponentsInSecurityClass {
-  def apply(esVersion: SemVer): ModifyCreateComponentsInSecurityClass = new ModifyCreateComponentsInSecurityClass(esVersion)
 }

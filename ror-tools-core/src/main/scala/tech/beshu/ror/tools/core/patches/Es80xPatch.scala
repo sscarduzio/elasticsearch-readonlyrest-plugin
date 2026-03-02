@@ -48,11 +48,11 @@ private[patches] class Es80xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       )),
     ),
     XPackCoreJarPatchCreator(
-      ModifySimpleRoleClass,
+      ModifyRoleClass,
       ModifyApplicationPermissionClass,
     ),
     XPackSecurityJarPatchCreator(
-      ModifyCreateComponentsInSecurityClass(esVersion),
+      ModifyCreateComponentsInSecurityClass,
       CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),

@@ -162,7 +162,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         getResponse.responseJson("api_keys")(0)("id").str should be(apiKeyId)
         getResponse.responseJson("api_keys")(0)("name").str should be("test-get-key")
       }
-      "allow creating and using an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "allow creating and using an API key" excludeES(allEs6x) in {
         val createResponse = adminXpackApiManager.createApiKey("test-agent-key")
         createResponse should have statusCode 200
         createResponse.responseJson("name").str should be("test-agent-key")
@@ -181,7 +181,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val searchAfterInvalidateResponse = agentSearchManager.search(".apm-agent-configuration")
         searchAfterInvalidateResponse should have statusCode 403
       }
-      "allow updating an API key" excludeES(allEs6x, allEs7x, allEs8xBelowEs87x) in {
+      "allow updating an API key" excludeES(allEs6x, allEs7x, allEs8xBelowEs84x) in {
         val createResponse = adminXpackApiManager.createApiKey("test-update-key")
         createResponse should have statusCode 200
         val apiKeyId = createResponse.responseJson("id").str
@@ -194,7 +194,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey"), esVersionUsed)
         agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
       }
-      "allow bulk updating API keys" excludeES(allEs6x, allEs7x, allEs8xBelowEs87x) in {
+      "allow bulk updating API keys" excludeES(allEs6x, allEs7x, allEs8xBelowEs85x) in {
         val createResponse1 = adminXpackApiManager.createApiKey("test-bulk-update-key-1")
         createResponse1 should have statusCode 200
         val createResponse2 = adminXpackApiManager.createApiKey("test-bulk-update-key-2")
@@ -210,7 +210,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey1"), esVersionUsed)
         agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
       }
-      "allow querying API keys" excludeES(allEs6x, allEs7xBelowEs714x) in {
+      "allow querying API keys" excludeES(allEs6x, allEs7xBelowEs715x) in {
         val keyName = "test-query-key"
         val createResponse = adminXpackApiManager.createApiKey(keyName)
         createResponse should have statusCode 200
