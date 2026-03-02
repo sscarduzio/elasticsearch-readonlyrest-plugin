@@ -41,7 +41,19 @@ object ThreadContextOps {
     }
 
     def addSystemAuthenticationHeader(nodeName: String): ThreadContext = {
-      replaceAuthenticationHeader(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
+      putAuthenticationHeaderIfNotPresent(XPackSecurityAuthenticationHeader.createSystemAuthenticationHeader(nodeName))
+    }
+
+    private def putAuthenticationHeaderIfNotPresent(header: Header): ThreadContext = {
+      val headerName = header.name.value.value
+      Option(threadContext.getHeader(headerName)) match {
+        case Some(_) => // header already present, do not overwrite
+        case None =>
+          val capturedRequestHeaders = currentRequestHeadersExcluding(headerName)
+          stashAndRestore(currentTransients(nonAuthTransientNames), currentResponseHeaders, capturedRequestHeaders)
+          threadContext.putHeader(headerName, header.value.value)
+      }
+      threadContext
     }
 
     private def replaceAuthenticationHeader(header: Header): ThreadContext = {

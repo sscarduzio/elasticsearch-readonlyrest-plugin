@@ -65,12 +65,11 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
 
   private def parseApiKey(token: AuthorizationToken): Try[AnyRef] =
     Using(new SecureString(token.value.value.toArray)) { secureString =>
-      val withTypeResult = apiKeyType.flatMap { `type` =>
-        Try(on(apiKeyServiceRef).call("parseApiKey", secureString, `type`).get[AnyRef])
-      }
-      withTypeResult.getOrElse {
-        on(apiKeyServiceRef).call("parseApiKey", secureString).get[AnyRef]
-      }
+      apiKeyType
+        .flatMap { `type` =>
+          Try(on(apiKeyServiceRef).call("parseApiKey", secureString, `type`).get[AnyRef])
+        }
+        .get
     }
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
