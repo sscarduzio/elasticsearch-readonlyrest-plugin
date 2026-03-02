@@ -65,7 +65,7 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]
-    on(apiKeyServiceRef).call("tryAuthenticate", threadPool.getThreadContext, apiKeyCredentials, listener)
+    on(apiKeyServiceRef).call("loadApiKeyAndValidateCredentials", threadPool.getThreadContext, apiKeyCredentials, listener)
     listener
       .result
       .map(isAuthenticated)

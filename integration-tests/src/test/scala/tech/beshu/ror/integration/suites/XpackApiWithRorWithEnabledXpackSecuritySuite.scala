@@ -147,11 +147,11 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       }
     }
     "/_security/api_key endpoints are called" should {
-      "allow granting an API key" excludeES(allEs6x, allEs7xBelowEs77x) in {
+      "allow granting an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
         val response = adminXpackApiManager.grantApiKeyPrivilege("admin", "admin")
         response should have statusCode 200
       }
-      "allow getting an API key by id" excludeES allEs6x in {
+      "allow getting an API key by id" excludeES(allEs6x, allEs7xBelowEs714x) in {
         val createResponse = adminXpackApiManager.createApiKey("test-get-key")
         createResponse should have statusCode 200
         val apiKeyId = createResponse.responseJson("id").str
@@ -162,7 +162,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         getResponse.responseJson("api_keys")(0)("id").str should be(apiKeyId)
         getResponse.responseJson("api_keys")(0)("name").str should be("test-get-key")
       }
-      "allow creating and using an API key" excludeES(allEs6x) in {
+      "allow creating and using an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
         val createResponse = adminXpackApiManager.createApiKey("test-agent-key")
         createResponse should have statusCode 200
         createResponse.responseJson("name").str should be("test-agent-key")
