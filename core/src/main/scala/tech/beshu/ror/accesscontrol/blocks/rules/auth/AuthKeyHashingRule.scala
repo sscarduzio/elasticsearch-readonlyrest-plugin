@@ -60,7 +60,7 @@ sealed abstract class AuthKeyHashingRule(override val settings: BasicAuthenticat
   }
 
   override val eligibleUsers: EligibleUsersSupport = settings.credentials match {
-    case HashedCredentials.HashedUserAndPassword(_) => EligibleUsersSupport.NotAvailable
+    case HashedCredentials.HashedUserAndPassword(_) => EligibleUsersSupport.Available(Set.empty)
     case HashedCredentials.HashedOnlyPassword(userId, _) => EligibleUsersSupport.Available(Set(userId))
   }
 }

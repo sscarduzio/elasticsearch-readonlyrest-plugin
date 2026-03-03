@@ -27,10 +27,8 @@ import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListSt
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -392,9 +390,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
         val localUsers: LocalUsers = {
           val fromUserDefs = localUsersFromUserDefs(userDefs)
-          val fromImpersonatorDefs = localUsersFromImpersonatorDefs(impersonationDefs)
           val fromBlocks = blocksNel.map(_.localUsers).toList
-          (fromBlocks :+ fromUserDefs :+ fromImpersonatorDefs).combineAll
+          (fromBlocks :+ fromUserDefs).combineAll
         }
 
         val rorDependencies = RorDependencies(
@@ -424,36 +421,19 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
     definitions.items
       .flatMap { definition =>
         List(
-          localUsersFromUsernamePatterns(definition.mode, definition.usernames, unknownUsersForWildcardPattern = true),
-          localUsersFromMode(definition.mode)
+          localUsersFromUsernamePatterns(definition.usernames),
+          localUsersFromMode(definition)
         )
       }
       .combineAll
   }
 
-  private def localUsersFromImpersonatorDefs(definitions: Definitions[ImpersonatorDef]) = {
-    definitions.items
-      .map(_.impersonatedUsers.usernames)
-      .map(localUsersFromUsernamePatterns(_, unknownUsersForWildcardPattern = false))
-      .combineAll
-  }
-
-  private def localUsersFromUsernamePatterns(mode: UserDef.Mode,
-                                             userIdPatterns: UserIdPatterns,
-                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
-    withEligibleUsersSupport(mode)(
-      forAvailable = _ => localUsersFromUsernamePatterns(userIdPatterns, unknownUsersForWildcardPattern),
-      forNotAvailable = LocalUsers.empty,
-    )
-  }
-
-  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns,
-                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
+  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns): LocalUsers = {
     userIdPatterns
       .patterns
       .map { userIdPattern =>
         if (userIdPattern.containsWildcard) {
-          LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
+          LocalUsers(users = Set.empty, unknownUsers = true)
         } else {
           LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
         }
@@ -462,24 +442,10 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       .combineAll
   }
 
-  private def localUsersFromMode(mode: UserDef.Mode): LocalUsers = {
-    withEligibleUsersSupport(mode)(
-      forAvailable = LocalUsers(_, unknownUsers = false),
-      forNotAvailable = LocalUsers.empty,
-    )
-  }
-
-  private def withEligibleUsersSupport[T](mode: UserDef.Mode)
-                                         (forAvailable: Set[User.Id] => T,
-                                          forNotAvailable: => T): T = {
-    def result(support: EligibleUsersSupport): T = support match {
-      case EligibleUsersSupport.Available(users) => forAvailable(users)
-      case EligibleUsersSupport.NotAvailable => forNotAvailable
-    }
-    mode match {
-      case Mode.WithoutGroupsMapping(rule, _) => result(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => result(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => result(rule.eligibleUsers)
+  private def localUsersFromMode(userDef: UserDef): LocalUsers = {
+    userDef.authenticationRule.eligibleUsers match {
+      case EligibleUsersSupport.Available(users) => LocalUsers(users, unknownUsers = false)
+      case EligibleUsersSupport.NotAvailable => LocalUsers.empty
     }
   }
 }

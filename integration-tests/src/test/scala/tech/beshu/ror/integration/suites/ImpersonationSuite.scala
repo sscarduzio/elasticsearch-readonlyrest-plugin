@@ -194,7 +194,7 @@ class ImpersonationSuite
           response should have statusCode 200
           response.responseJson("status").str shouldBe "OK"
           response.responseJson("unknown_users").bool shouldBe true
-          response.responseJson("users").arr.toList.map(_.str) shouldBe List("dev1", "gpa_user_1", "dev2", "proxy_user_1")
+          response.responseJson("users").arr.toSet.map(_.str) shouldBe Set("dev1", "gpa_user_1", "dev2", "proxy_user_1")
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -271,7 +271,7 @@ class ImpersonationSuite
           response should have statusCode 200
           response.responseJson("status").str shouldBe "OK"
           response.responseJson("unknown_users").bool shouldBe true
-          response.responseJson("users").arr.toList.map(_.str) shouldBe List("dev1", "gpa_user_1", "dev2", "proxy_user_1")
+          response.responseJson("users").arr.toSet.map(_.str) shouldBe Set("dev1", "gpa_user_1", "dev2", "proxy_user_1")
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")

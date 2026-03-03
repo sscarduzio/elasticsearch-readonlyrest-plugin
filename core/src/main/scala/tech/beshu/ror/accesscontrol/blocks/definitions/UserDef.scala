@@ -43,6 +43,12 @@ final case class UserDef private(override val id: UUID,
       case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings)) =>
         UniqueNonEmptyList.unsafeFrom(mappings.map(_.local))
     }
+
+  def authenticationRule: AuthenticationRule = mode match {
+    case Mode.WithoutGroupsMapping(rule, _) => rule
+    case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => rule
+    case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => rule
+  }
 }
 
 object UserDef {
