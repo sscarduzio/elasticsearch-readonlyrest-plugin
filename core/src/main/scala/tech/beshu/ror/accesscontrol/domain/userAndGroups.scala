@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.Eq
+import cats.{Eq, Monoid}
 import cats.implicits.*
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
@@ -264,5 +266,34 @@ final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
 
 object LocalUsers {
   def empty: LocalUsers = LocalUsers(Set.empty, unknownUsers = false)
+
+  def fromUsernamePatterns(userIdPatterns: UserIdPatterns): LocalUsers = {
+    userIdPatterns
+      .patterns
+      .map { userIdPattern =>
+        if (userIdPattern.containsWildcard) {
+          LocalUsers(users = Set.empty, unknownUsers = true)
+        } else {
+          LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
+        }
+      }
+      .toList
+      .combineAll
+  }
+
+  def fromEligibleUsers[R <: AuthenticationRule](rule: R): LocalUsers = rule.eligibleUsers match {
+    case EligibleUsersSupport.Available(users, unknownUsers) =>
+      LocalUsers(users, unknownUsers = unknownUsers)
+    case EligibleUsersSupport.NotAvailable =>
+      LocalUsers(Set.empty, unknownUsers = true)
+  }
+
+  implicit val localUsersMonoid: Monoid[LocalUsers] = Monoid.instance(
+    emptyValue = LocalUsers.empty,
+    cmb = (e1, e2) => {
+      val withUnknownUsers = e1.unknownUsers || e2.unknownUsers
+      LocalUsers(e1.users ++ e2.users, withUnknownUsers)
+    }
+  )
 }
 

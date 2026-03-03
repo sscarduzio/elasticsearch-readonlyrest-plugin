@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
+import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
@@ -419,32 +419,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private def localUsersFromUserDefs(definitions: Definitions[UserDef]) = {
     definitions.items
-      .flatMap { definition =>
-        List(
-          localUsersFromUsernamePatterns(definition.usernames),
-          localUsersFromMode(definition)
-        )
-      }
-      .combineAll
-  }
-
-  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns): LocalUsers = {
-    userIdPatterns
-      .patterns
-      .map { userIdPattern =>
-        if (userIdPattern.containsWildcard) {
-          LocalUsers(users = Set.empty, unknownUsers = true)
-        } else {
-          LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
-        }
-      }
-      .toList
+      .map(localUsersFromMode)
       .combineAll
   }
 
   private def localUsersFromMode(userDef: UserDef): LocalUsers = {
     userDef.authenticationRule.eligibleUsers match {
-      case EligibleUsersSupport.Available(users) => LocalUsers(users, unknownUsers = false)
+      case EligibleUsersSupport.Available(users, unknownUsers) => LocalUsers(users, unknownUsers)
       case EligibleUsersSupport.NotAvailable => LocalUsers.empty
     }
   }

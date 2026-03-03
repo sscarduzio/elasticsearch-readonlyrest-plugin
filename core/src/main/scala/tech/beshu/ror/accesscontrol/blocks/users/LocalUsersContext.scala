@@ -17,10 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.users
 
 import cats.implicits.*
-import cats.kernel.Monoid
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
@@ -28,8 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
 import tech.beshu.ror.accesscontrol.domain.{GroupsLogic, LocalUsers}
 import tech.beshu.ror.syntax.*
 
@@ -55,7 +50,6 @@ object LocalUsersContext {
     implicit val externalAuthorizationRule: LocalUsersSupport[ExternalAuthorizationRule] = NotAvailableLocalUsers()
     implicit val fieldsRule: LocalUsersSupport[FieldsRule] = NotAvailableLocalUsers()
     implicit val filterRule: LocalUsersSupport[FilterRule] = NotAvailableLocalUsers()
-    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[BaseGroupsRule[GL]] = NotAvailableLocalUsers()
     implicit val headersAndRule: LocalUsersSupport[HeadersAndRule] = NotAvailableLocalUsers()
     implicit val headersOrRule: LocalUsersSupport[HeadersOrRule] = NotAvailableLocalUsers()
     implicit val hostsRule: LocalUsersSupport[HostsRule] = NotAvailableLocalUsers()
@@ -83,40 +77,21 @@ object LocalUsersContext {
     implicit val snapshotsRule: LocalUsersSupport[SnapshotsRule] = NotAvailableLocalUsers()
     implicit val uriRegexRule: LocalUsersSupport[UriRegexRule] = NotAvailableLocalUsers()
     implicit val xForwarderForRule: LocalUsersSupport[XForwardedForRule] = NotAvailableLocalUsers()
+    implicit val usersRule: LocalUsersSupport[UsersRule] = NotAvailableLocalUsers()
 
-    implicit val authKeyRule: LocalUsersSupport[AuthKeyRule] = AvailableLocalUsers[AuthKeyRule](fromEligibleUsers)
-    implicit val authKeyPBKDF2WithHmacSHA512Rule: LocalUsersSupport[AuthKeyPBKDF2WithHmacSHA512Rule] = AvailableLocalUsers[AuthKeyPBKDF2WithHmacSHA512Rule](fromEligibleUsers)
-    implicit val authKeySha1Rule: LocalUsersSupport[AuthKeySha1Rule] = AvailableLocalUsers[AuthKeySha1Rule](fromEligibleUsers)
-    implicit val authKeySha256Rule: LocalUsersSupport[AuthKeySha256Rule] = AvailableLocalUsers[AuthKeySha256Rule](fromEligibleUsers)
-    implicit val authKeySha512Rule: LocalUsersSupport[AuthKeySha512Rule] = AvailableLocalUsers[AuthKeySha512Rule](fromEligibleUsers)
-    implicit val authKeyUnixRule: LocalUsersSupport[AuthKeyUnixRule] = AvailableLocalUsers[AuthKeyUnixRule](fromEligibleUsers)
-    implicit val proxyAuthRule: LocalUsersSupport[ProxyAuthRule] = AvailableLocalUsers[ProxyAuthRule](fromEligibleUsers)
-    implicit val tokenAuthenticationRule: LocalUsersSupport[TokenAuthenticationRule] = AvailableLocalUsers[TokenAuthenticationRule](fromEligibleUsers)
-    implicit val usersRule: LocalUsersSupport[UsersRule] = AvailableLocalUsers[UsersRule] {
-      _.settings.userIds
-        .toList
-        .map {
-          case RuntimeMultiResolvableVariable.AlreadyResolved(users) =>
-            LocalUsers(users.toList.toCovariantSet, unknownUsers = false)
-          case RuntimeMultiResolvableVariable.ToBeResolved(_) =>
-            LocalUsers(Set.empty, unknownUsers = true)
-        }
+    implicit val authKeyRule: LocalUsersSupport[AuthKeyRule] = AvailableLocalUsers[AuthKeyRule](LocalUsers.fromEligibleUsers)
+    implicit val authKeyPBKDF2WithHmacSHA512Rule: LocalUsersSupport[AuthKeyPBKDF2WithHmacSHA512Rule] = AvailableLocalUsers[AuthKeyPBKDF2WithHmacSHA512Rule](LocalUsers.fromEligibleUsers)
+    implicit val authKeySha1Rule: LocalUsersSupport[AuthKeySha1Rule] = AvailableLocalUsers[AuthKeySha1Rule](LocalUsers.fromEligibleUsers)
+    implicit val authKeySha256Rule: LocalUsersSupport[AuthKeySha256Rule] = AvailableLocalUsers[AuthKeySha256Rule](LocalUsers.fromEligibleUsers)
+    implicit val authKeySha512Rule: LocalUsersSupport[AuthKeySha512Rule] = AvailableLocalUsers[AuthKeySha512Rule](LocalUsers.fromEligibleUsers)
+    implicit val authKeyUnixRule: LocalUsersSupport[AuthKeyUnixRule] = AvailableLocalUsers[AuthKeyUnixRule](LocalUsers.fromEligibleUsers)
+    implicit val proxyAuthRule: LocalUsersSupport[ProxyAuthRule] = AvailableLocalUsers[ProxyAuthRule](LocalUsers.fromEligibleUsers)
+    implicit val tokenAuthenticationRule: LocalUsersSupport[TokenAuthenticationRule] = AvailableLocalUsers[TokenAuthenticationRule](LocalUsers.fromEligibleUsers)
+    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[BaseGroupsRule[GL]] = AvailableLocalUsers[BaseGroupsRule[GL]] { rule =>
+      rule.settings.usersDefinitions
+        .map(_.usernames)
+        .map(LocalUsers.fromUsernamePatterns)
         .combineAll
     }
-
-    private def fromEligibleUsers[R <: AuthenticationRule](rule: R): LocalUsers = rule.eligibleUsers match {
-      case EligibleUsersSupport.Available(users) =>
-        LocalUsers(users, unknownUsers = false)
-      case EligibleUsersSupport.NotAvailable =>
-        LocalUsers(Set.empty, unknownUsers = true)
-    }
   }
-
-  implicit val localUsersMonoid: Monoid[LocalUsers] = Monoid.instance(
-    emptyValue = LocalUsers.empty,
-    cmb = (e1, e2) => {
-      val withUnknownUsers = e1.unknownUsers || e2.unknownUsers
-      LocalUsers(e1.users ++ e2.users, withUnknownUsers)
-    }
-  )
 }
