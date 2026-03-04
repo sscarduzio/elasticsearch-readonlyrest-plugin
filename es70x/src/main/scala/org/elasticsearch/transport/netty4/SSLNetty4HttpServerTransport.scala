@@ -18,7 +18,6 @@ package org.elasticsearch.transport.netty4
 
 import io.netty.channel.Channel
 import io.netty.handler.ssl.NotSslRecordException
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.BigArrays
@@ -28,7 +27,7 @@ import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 
 class SSLNetty4HttpServerTransport(settings: Settings,
                                    networkService: NetworkService,

@@ -186,7 +186,7 @@ class IndicesRule(override val settings: Settings,
       case ClusterIndexName.Remote(_, cluster) => Some(cluster)
     }
     val matcher = PatternsMatcher.create(clusterNamesFromIndices)
-    val allowedRemoteClusters = matcher.filter(requestContext.allRemoteClusterNames)
+    val allowedRemoteClusters = matcher.filter(requestContext.esServices.clusterService.allRemoteClusterNames)
     allowedRemoteClusters ++ Option.when(isLocalClusterAllowed)(ClusterName.Full.local).toCovariantSet
   }
 

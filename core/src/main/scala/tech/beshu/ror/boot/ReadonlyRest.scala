@@ -45,9 +45,10 @@ import java.time.Instant
 class ReadonlyRest(coreFactory: CoreFactory,
                    indexDocumentManager: IndexDocumentManager,
                    auditSinkServiceCreator: AuditSinkServiceCreator)
-                  (implicit systemContext: SystemContext,
-                   scheduler: Scheduler)
+                  (implicit systemContext: SystemContext)
   extends RequestIdAwareLogging {
+
+  import systemContext.scheduler
 
   private[boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
@@ -251,8 +252,7 @@ object ReadonlyRest {
   def create(indexContentService: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator,
              env: EsEnv)
-            (implicit scheduler: Scheduler,
-             systemContext: SystemContext): ReadonlyRest = {
+            (implicit systemContext: SystemContext): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
     create(coreFactory, indexContentService, auditSinkServiceCreator)
   }
@@ -260,8 +260,7 @@ object ReadonlyRest {
   def create(coreFactory: CoreFactory,
              indexDocumentManager: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator)
-            (implicit scheduler: Scheduler,
-             systemContext: SystemContext): ReadonlyRest = {
+            (implicit systemContext: SystemContext): ReadonlyRest = {
     new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator)
   }
 }

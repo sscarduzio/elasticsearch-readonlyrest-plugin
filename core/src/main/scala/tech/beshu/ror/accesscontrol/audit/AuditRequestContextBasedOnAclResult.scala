@@ -20,11 +20,11 @@ import cats.Show
 import cats.data.NonEmptyList
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.History
+import tech.beshu.ror.accesscontrol.History.BlockHistory
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
@@ -66,6 +66,17 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
   override val uriPath: String = requestContext.restRequest.path.value.value
   override val matchedBlockNames: Option[List[String]] = matchedBlocks.map(_.map(_.name.value).toList)
   override val history: String = aclProcessingHistory.blocks.map(b => blockHistoryShow(showHeader).show(b)).mkString(", ")
+  override val blocksHistory: Map[String, (Boolean, Option[String])] =
+    aclProcessingHistory.blocks
+      .map { h =>
+        val blockName = h.block.name.value
+        val matchedAndCause = h match {
+          case BlockHistory.Permitted(_, _, _) => true -> None
+          case BlockHistory.Denied(_, denied, _) => false -> Some(denied.cause.show)
+        }
+        blockName -> matchedAndCause
+      }
+      .toMap
   override val content: String = requestContext.restRequest.content
   override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
   override val remoteAddress: String = requestContext.restRequest.remoteAddress match {

@@ -21,7 +21,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName}
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingComponentTemplate
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -32,10 +31,9 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAction.Request,
                                            esContext: EsContext,
-                                           clusterService: RorClusterService,
                                            override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext[PutComponentTemplateAction.Request, AddingComponentTemplate](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   override protected def templateOperationFrom(request: PutComponentTemplateAction.Request): AddingComponentTemplate = {

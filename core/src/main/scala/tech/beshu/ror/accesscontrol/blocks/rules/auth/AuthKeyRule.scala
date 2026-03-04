@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import cats.implicits.*
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
@@ -25,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
 import tech.beshu.ror.syntax.*
 
@@ -36,8 +38,17 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
   override val name: Rule.Name = AuthKeyRule.Name.name
 
   override protected def compare(configuredCredentials: Credentials,
-                                 credentials: Credentials): Task[Boolean] = Task.now {
-    configuredCredentials === credentials
+                                 credentials: Credentials): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task.delay {
+    for {
+      _ <- Either.cond(
+        configuredCredentials.user == credentials.user,
+        (), AuthenticationFailed("Username mismatch")
+      )
+      _ <- Either.cond(
+        configuredCredentials.secret == credentials.secret,
+        (), AuthenticationFailed("Invalid password")
+      )
+    } yield DirectlyLoggedUser(credentials.user)
   }
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)

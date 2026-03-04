@@ -192,4 +192,11 @@ object ClaimsOps {
     final case class SingleValue(value: String) extends CustomClaimValue
     final case class CollectionValue(value: NonEmptyList[String]) extends CustomClaimValue
   }
+
+  extension[T](result: ClaimSearchResult[T]) {
+    def toEither: Either[Unit, T] = result match {
+      case Found(value) => Right(value)
+      case ClaimSearchResult.NotFound => Left(())
+    }
+  }
 }

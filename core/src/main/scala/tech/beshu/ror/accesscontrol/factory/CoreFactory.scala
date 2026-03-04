@@ -48,6 +48,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, G
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -174,11 +175,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             case Some(rules) =>
               Right(rules)
             case None =>
-              Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"No rules defined in block"))))
+              Left(decodingFailureFrom(RulesLevelCreationError(Message(s"No rules defined in block"))))
           }
         }
       case Validated.Invalid(unknownRules) =>
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Unknown rules: ${unknownRules.show}"))))
+        Left(decodingFailureFrom(RulesLevelCreationError(Message(s"Unknown rules: ${unknownRules.show}"))))
     }
   }
 
@@ -247,7 +248,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .remove(Attributes.Block.audit)
               )
             ))
-          block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(DecodingFailureOps.fromError(_))
+          block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
           localUsers = rules.map(localUsersForRule).combineAll,
@@ -289,7 +290,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             policy <- policyType match {
               case "allow" => Right(Block.Policy.Allow)
               case "forbid" => c.downFieldAs[Option[String]]("response_message").map(Block.Policy.Forbid.apply)
-              case unknown => Left(DecodingFailureOps.fromError(unknownTypeError(unknown)))
+              case unknown => Left(decodingFailureFrom(unknownTypeError(unknown)))
             }
           } yield policy
         }
@@ -403,6 +404,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           localUsers = localUsers,
           impersonationWarningsReader = new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
         )
+        import systemContext.scheduler
         val accessControl = new EnabledAccessControlList(
           blocks,
           new AccessControlListStaticContext(

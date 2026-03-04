@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.nio.charset.Charset
@@ -44,7 +45,7 @@ trait ExternalAuthenticationService extends Item {
 }
 object ExternalAuthenticationService {
 
-  type AuthenticationResult = Either[AuthenticationFailed.type, DirectlyLoggedUser]
+  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
 
   final case class Name(value: NonEmptyString)
   object Name {
@@ -74,7 +75,7 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
         Either.cond(
           response.status == successStatusCode,
           DirectlyLoggedUser(credentials.user),
-          AuthenticationFailed
+          AuthenticationFailed(s"Service ${id.show} returned ${response.status.show} instead of ${successStatusCode.show}")
         )
       }
   }
@@ -101,7 +102,7 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
         Either.cond(
           response.status == successStatusCode,
           DirectlyLoggedUser(credentials.user),
-          AuthenticationFailed
+          AuthenticationFailed(s"JWT validation service returned ${response.status.show} instead of ${successStatusCode.show}")
         )
       }
   }

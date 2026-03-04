@@ -20,7 +20,8 @@ import io.jsonwebtoken.Jwts
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
@@ -254,7 +255,8 @@ class RorKbnAuthorizationRuleTests
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt2)
+          tokenHeader = bearerHeader(jwt2),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "token has invalid RS256 signature" in {
@@ -270,7 +272,8 @@ class RorKbnAuthorizationRuleTests
             SignatureCheckMethod.Rsa(pub)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
@@ -289,7 +292,8 @@ class RorKbnAuthorizationRuleTests
               UniqueNonEmptyList.of(GroupId("g1"))
             )
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("Groups claim not found in ROR Kibana token")
         )
       }
       "rule groups are defined with 'or' logic and intersection between those groups and ROR Kbn ones is empty" in {
@@ -308,7 +312,8 @@ class RorKbnAuthorizationRuleTests
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4")),
             )
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "rule groups are defined with 'and' logic and intersection between those groups and ROR Kbn ones is empty" in {
@@ -327,7 +332,8 @@ class RorKbnAuthorizationRuleTests
               UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3")),
             )
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "preferred group is not on the groups list from JWT" in {
@@ -343,7 +349,8 @@ class RorKbnAuthorizationRuleTests
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group5"))
+          preferredGroupId = Some(GroupId("group5")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "preferred group is not on the permitted groups list" in {
@@ -363,7 +370,8 @@ class RorKbnAuthorizationRuleTests
             )
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group5"))
+          preferredGroupId = Some(GroupId("group5")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
     }
@@ -379,8 +387,9 @@ class RorKbnAuthorizationRuleTests
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  groupsLogic: GroupsLogic,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(GroupsAuthorizationFailed))
+                                 preferredGroupId: Option[GroupId] = None,
+                                 denialCause: Cause): Unit =
+    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          groupsLogic: GroupsLogic,

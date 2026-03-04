@@ -113,14 +113,14 @@ class LdapAuthenticationRuleTests
         val service = mock[LdapAuthenticationService]
         (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
           .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-          .returning(Task.now(Left(AuthenticationFailed)))
+          .returning(Task.now(Left(AuthenticationFailed("auth failed"))))
 
         val rule = new LdapAuthenticationRule(
           LdapAuthenticationRule.Settings(service),
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed)
+        rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed("auth failed"))
       }
       "there is no basic auth header" in {
         val requestContext = MockRequestContext.indices
@@ -132,7 +132,7 @@ class LdapAuthenticationRuleTests
           CaseSensitivity.Enabled,
           Impersonation.Disabled
         )
-        rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed)
+        rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed("No basic auth credentials provided"))
       }
       "LDAP service fails" in {
         val requestContext = MockRequestContext.indices.withHeaders(basicAuthHeader("admin:pass"))
@@ -174,7 +174,7 @@ class LdapAuthenticationRuleTests
                 ))
               ))
             )
-            
+
             rule.check(blockContext).runSyncUnsafe() shouldBe Denied(ImpersonationNotAllowed)
           }
           "admin cannot impersonate the given user" in {
@@ -224,7 +224,7 @@ class LdapAuthenticationRuleTests
               ))
             )
 
-            rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed)
+            rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed("Impersonated user does not exist"))
           }
           "mocks provider is unavailable" in {
             val requestContext = MockRequestContext.indices.withHeaders(
@@ -259,14 +259,14 @@ class LdapAuthenticationRuleTests
             val service = mock[LdapAuthenticationService]
             (service.authenticate(_: User.Id, _: PlainTextSecret)(_: RequestId))
               .expects(User.Id("admin"), PlainTextSecret("pass"), *)
-              .returning(Task.now(Left(AuthenticationFailed)))
+              .returning(Task.now(Left(AuthenticationFailed("auth failed"))))
 
             val rule = new LdapAuthenticationRule(
               LdapAuthenticationRule.Settings(service),
               CaseSensitivity.Enabled,
               Impersonation.Disabled
             )
-            rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed)
+            rule.check(blockContext).runSyncUnsafe() shouldBe Denied(AuthenticationFailed("auth failed"))
           }
         }
       }

@@ -23,7 +23,6 @@ import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
@@ -33,7 +32,10 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Sig
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{Exact, bearer}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.{GroupId, GroupIdPattern}
 import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -53,6 +55,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRule, AuthenticationJwtDef] {
+
   override protected def ruleName: String = "jwt_authentication"
 
   override protected def createJwtDef(id: JwtDef.Name,
@@ -70,7 +73,8 @@ class JwtAuthenticationRuleTokenTests extends JwtTokenTests[JwtAuthenticationRul
 
   override protected def expectedCurrentGroup: Option[GroupId] = None
 
-  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed
+  override protected def badJwtRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
+  override protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
 }
 
 class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule, AuthorizationJwtDef] {
@@ -90,7 +94,8 @@ class JwtAuthorizationRuleTokenTests extends JwtTokenTests[JwtAuthorizationRule,
 
   override protected def expectedCurrentGroup: Option[GroupId] = Some(GroupId(nes("group1")))
 
-  override protected def expectedTokenIssueRelatedCause: Cause = GroupsAuthorizationFailed
+  override protected def badJwtRelatedDeniedCauseCreator: String => Cause = GroupsAuthorizationFailed.apply
+  override protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause = GroupsAuthorizationFailed.apply
 }
 
 class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
@@ -115,7 +120,8 @@ class JwtAuthRuleTokenTests extends JwtTokenTests[JwtAuthRule, AuthJwtDef] {
   override protected def expectedCurrentGroup: Option[GroupId] =
     Some(GroupId(nes("group1")))
 
-  override protected def expectedTokenIssueRelatedCause: Cause = AuthenticationFailed
+  override protected def badJwtRelatedDeniedCauseCreator: String => Cause = AuthenticationFailed.apply
+  override protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause = GroupsAuthorizationFailed.apply
 }
 
 trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
@@ -135,7 +141,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
 
   protected def expectedCurrentGroup: Option[GroupId]
 
-  protected def expectedTokenIssueRelatedCause: Cause
+  protected def badJwtRelatedDeniedCauseCreator: String => Cause
+  protected def externalJwtVerifierRelatedDeniedCauseCreator: String => Cause
 
   s"A $ruleName rule using jwt token" should {
     "match" when {
@@ -145,7 +152,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(secret.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -166,7 +173,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Rsa(pub),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -186,7 +193,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.NoCheck(authService(
               rawToken = jwt.stringify(),
               authenticated = Right(DirectlyLoggedUser(User.Id("user")))
@@ -210,7 +217,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         val authService = cachedAuthService(validJwt.stringify(), invalidJwt.stringify())
         val jwtDef = createJwtDef(
           JwtDef.Name("test"),
-          AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+          AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
           SignatureCheckMethod.NoCheck(authService),
           domain.Jwt.ClaimName(jsonPathFrom("userId")),
           GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
@@ -231,7 +238,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         def checkInvalidToken(): Unit = assertNotMatchRule(
           configuredJwtDef = jwtDef,
           tokenHeader = bearerHeader(invalidJwt),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = externalJwtVerifierRelatedDeniedCauseCreator("mocked - auth failed")
         )
 
         checkValidToken()
@@ -248,7 +255,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "Bearer "),
+            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -272,7 +279,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), "MyPrefix "),
+            AuthorizationTokenDef(Header.Name("x-jwt-custom-header"), StrictlyDefined(Exact("MyPrefix"))),
             SignatureCheckMethod.Hmac(key.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
@@ -299,13 +306,13 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(key1.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt2),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("Invalid JWT token")
         )
       }
       "token has invalid RS256 signature" in {
@@ -315,13 +322,13 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Rsa(pub),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("Invalid JWT token")
         )
       }
       "token has no signature but external auth service returns false" in {
@@ -329,16 +336,16 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.NoCheck(authService(
               rawToken = jwt.stringify(),
-              authenticated = Left(AuthenticationFailed)
+              authenticated = Left(AuthenticationFailed("mocked - JWT verification failed"))
             )),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader(jwt),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = externalJwtVerifierRelatedDeniedCauseCreator("mocked - JWT verification failed")
         )
       }
       "token is invalid and cannot be parsed" in {
@@ -346,13 +353,13 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
         assertNotMatchRule(
           configuredJwtDef = createJwtDef(
             JwtDef.Name("test"),
-            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer)),
             SignatureCheckMethod.Hmac(secret.getEncoded),
             domain.Jwt.ClaimName(jsonPathFrom("userId")),
             GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None),
           ),
           tokenHeader = bearerHeader("INVALID_JWT_TOKEN"),
-          denialCause = expectedTokenIssueRelatedCause
+          denialCause = badJwtRelatedDeniedCauseCreator("Invalid JWT token")
         )
       }
     }
@@ -408,7 +415,7 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
       .once()
     (service.authenticate(_: Credentials)(_: RequestId))
       .expects(where { (credentials: Credentials, _) => credentials.secret === PlainTextSecret(NonEmptyString.unsafeFrom(unauthenticatedToken)) })
-      .returning(Task.now(Left(AuthenticationFailed)))
+      .returning(Task.now(Left(AuthenticationFailed("mocked - auth failed"))))
       .once()
     (() => service.id)
       .expects()

@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
+import cats.data.EitherT
 import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod.{Ec, Hmac, NoCheck, Rsa}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.from
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -37,21 +37,20 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
   protected def doPostAuthAction[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF, denialCause: => Denied.Cause): Task[Decision[B]] = {
+  ](blockContext: B, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause): Task[Decision[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     jwt.checkMethod match {
       case NoCheck(service) =>
-        jwtTokenFrom(blockContext, jwt, denialCause) match {
-          case Denied(cause) =>
-            Task.now(Denied(cause))
-          case Permitted(token) =>
-            service
-              .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
-              .map {
-                case Right(_) => Permitted(blockContext)
-                case Left(AuthenticationFailed) => Denied(denialCause)
-              }
-        }
+        val result = for {
+          token <- EitherT.fromEither[Task](extractJwtTokenFromHeader(blockContext, jwt, failedJwtCauseCreator))
+          _ <- checkAuthenticationTokenValidity(service, token, failedJwtCauseCreator)
+        } yield blockContext
+        result
+          .value
+          .map {
+            case Right(blockContext) => Permitted(blockContext)
+            case Left(cause) => Denied(cause)
+          }
       case _ =>
         Task.now(Permitted(blockContext))
     }
@@ -59,26 +58,68 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[
     B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF, denialCause: => Denied.Cause)
-   (operation: Jwt.Payload => Decision[B]): Task[Decision[B]] = Task.delay {
+  ](blockContext: B, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)
+   (operation: Jwt.Payload => Either[Cause, B]): Task[Decision[B]] = Task.delay {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-    for {
-      token <- jwtTokenFrom(blockContext, jwt, denialCause)
-      jwtPayload <- claimsFrom(token, jwt, denialCause)
+    val result = for {
+      token <- extractJwtTokenFromHeader(blockContext, jwt, failedJwtCauseCreator)
+      jwtPayload <- claimsFrom(token, jwt, failedJwtCauseCreator)
       claimProcessingResult <- operation(jwtPayload)
     } yield claimProcessingResult
+    result match {
+      case Right(modifiedBlockContext) => Permitted(modifiedBlockContext)
+      case Left(cause) => Denied(cause)
+    }
   }
 
-  private def jwtTokenFrom[
-    B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF, denialCause: => Denied.Cause): Decision[Jwt.Token] = {
-    implicit val blockContextImpl: B = blockContext
-    blockContext.requestContext.authorizationToken(jwt.authorizationTokenDef) match {
-      case Some(t) =>
-        Decision.Permitted(Jwt.Token(t.value))
-      case None =>
-        logger.debug(s"Authorization header '${jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-        Decision.Denied(denialCause)
+  private def checkAuthenticationTokenValidity(service: ExternalAuthenticationService,
+                                               token: Jwt.Token,
+                                               failedJwtCauseCreator: String => Cause)
+                                              (implicit requestId: RequestId) = EitherT {
+    service
+      .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
+      .map(_.left.map(c => failedJwtCauseCreator(c.details)))
+  }
+
+  private def extractJwtTokenFromHeader[JWT_DEF <: JwtDef](blockContext: BlockContext,
+                                                           jwt: JWT_DEF,
+                                                           failedJwtCauseCreator: String => Cause) = {
+    blockContext
+      .requestContext
+      .authorizationTokenBy(jwt.authorizationTokenDef)
+      .map(h => Jwt.Token(h.value))
+      .toRight(failedJwtCauseCreator("No expected JWT found"))
+  }
+
+  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)
+                                           (implicit requestId: RequestId) = {
+    val parser = jwt.checkMethod match {
+      case NoCheck(_) => Jwts.parser().unsecured().build()
+      case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
+      case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
+      case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
+    }
+
+    def causeFrom(ex: Throwable): Cause = {
+      logBadToken(ex, token)
+      failedJwtCauseCreator(s"Invalid JWT token")
+    }
+
+    jwt.checkMethod match {
+      case NoCheck(_) =>
+        token.value.value.split("\\.").toList match {
+          case fst :: snd :: _ =>
+            Try(parser.parseUnsecuredClaims(s"$fst.$snd.").getPayload)
+              .toEither
+              .fold(ex => Left(causeFrom(ex)), claims => Right(Jwt.Payload(claims)))
+          case _ =>
+            Left(failedJwtCauseCreator("Malformed JWT token structure"))
+        }
+      case Hmac(_) | Rsa(_) | Ec(_) =>
+        Try(parser.parseSignedClaims(token.value.value).getPayload)
+          .toEither
+          .map(Jwt.Payload.apply)
+          .fold(ex => Left(causeFrom(ex)), Right(_))
     }
   }
 
@@ -92,39 +133,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
     else {
       token.show
     }
-    logger.debug(s"[${requestId.show}] JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
-  }
-
-  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, denialCause: => Denied.Cause)
-                                           (implicit requestId: RequestId): Decision[Jwt.Payload] = {
-    val parser = jwt.checkMethod match {
-      case NoCheck(_) => Jwts.parser().unsecured().build()
-      case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
-      case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
-      case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
-    }
-
-    def deny(ex: Throwable): Decision.Denied[Jwt.Payload] = {
-      logBadToken(ex, token)
-      Decision.Denied(denialCause)
-    }
-
-    jwt.checkMethod match {
-      case NoCheck(_) =>
-        token.value.value.split("\\.").toList match {
-          case fst :: snd :: _ =>
-            Try(parser.parseUnsecuredClaims(s"$fst.$snd.").getPayload)
-              .toEither
-              .fold(deny, claims => Decision.Permitted(Jwt.Payload(claims)))
-          case _ =>
-            Decision.Denied(denialCause)
-        }
-      case Hmac(_) | Rsa(_) | Ec(_) =>
-        Try(parser.parseSignedClaims(token.value.value).getPayload)
-          .toEither
-          .map(Jwt.Payload.apply)
-          .fold(deny, Decision.Permitted(_))
-    }
+    logger.debug(s"JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
   }
 
 }

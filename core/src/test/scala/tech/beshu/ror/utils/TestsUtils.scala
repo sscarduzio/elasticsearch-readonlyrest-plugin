@@ -50,6 +50,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, ResponseTransformation, definitions}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -236,7 +239,7 @@ object TestsUtils {
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
@@ -320,13 +323,13 @@ object TestsUtils {
     final case class RuleThrownException(exception: Throwable) extends RuleCheckAssertion
   }
 
-  extension (rule: Rule) {
+  extension(rule: Rule) {
     def checkAndAssert[B <: BlockContext : BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
       import monix.execution.Scheduler.Implicits.global
       val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
       assertion match {
         case RuleCheckAssertion.RulePermitted(blockContextAssertion) =>
-          result.get shouldBe a[Permitted[B]]
+          result.get shouldBe a [Permitted[B]]
           blockContextAssertion(result.get.asInstanceOf[Permitted[B]].context)
         case RuleCheckAssertion.RuleDenied(cause) =>
           result.get should be(Denied(cause))
@@ -335,6 +338,7 @@ object TestsUtils {
       }
     }
   }
+
 
   def headerFrom(nameAndValue: (String, String)): Header = {
     (NonEmptyString.unapply(nameAndValue._1), NonEmptyString.unapply(nameAndValue._2)) match {
@@ -373,10 +377,17 @@ object TestsUtils {
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
   }
 
-  def tokenFrom(value: String): Token = NonEmptyString.from(value) match {
-    case Right(v) => Token(v)
-    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Token")
+  def authorizationTokenFrom(value: String): AuthorizationToken = (for {
+    nes <- NonEmptyString.from(value)
+    token <- AuthorizationToken.from(nes).toRight("Cannot create authorization token")
+  } yield token) match {
+    case Right(v) => v
+    case Left(msg) => throw new IllegalArgumentException(s"Cannot convert $value to AuthorizationToken; $msg")
   }
+
+  def strictlyDefinedBearerTokenDef = AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(bearer))
+
+  def anyTokenDef = AuthorizationTokenDef(Header.Name.authorization, AllowedPrefix.Any)
 
   def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
 

@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, RequestId, User}
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
 private[rules] trait AuthenticationImpersonationSupport extends ImpersonationSupport
 
@@ -128,7 +127,7 @@ private[rules] trait SimpleAuthenticationImpersonationSupport extends Authentica
     exists(theImpersonatedUserId, mocksProvider)
       .map {
         case Exists => Right(())
-        case NotExist => Left(Denied[B](Cause.AuthenticationFailed))
+        case NotExist => Left(Denied[B](Cause.AuthenticationFailed("Impersonated user does not exist")))
         case CannotCheck => Left(Denied[B](Cause.ImpersonationNotSupported))
       }
   }

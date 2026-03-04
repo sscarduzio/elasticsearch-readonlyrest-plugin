@@ -41,7 +41,9 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWi
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
 import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.mocks.*
+import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, clusterIndexName, fullDataStreamName, fullIndexName, fullLocalIndexWithAliases, indexPattern, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -51,38 +53,43 @@ abstract class BaseIndicesRuleTests
 
   protected def assertMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                requestIndices: Set[RequestedIndex[ClusterIndexName]],
-                                               modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
+                                               esServices: Option[EsServices] = None,
                                                modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity,
                                                filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                                allAllowedClusters: Set[ClusterName.Full] = Set(ClusterName.Full.local)): Unit =
-    assertRuleForIndexRequest(configured, requestIndices, isMatched = true, modifyRequestContext, modifyBlockContext, filteredRequestedIndices, allAllowedClusters)
+    assertRuleForIndexRequest(configured, requestIndices, isMatched = true, esServices, modifyBlockContext, filteredRequestedIndices, allAllowedClusters)
 
   protected def assertNotMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                   requestIndices: Set[RequestedIndex[ClusterIndexName]],
-                                                  modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
+                                                  esServices: Option[EsServices] = None,
                                                   modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity,
                                                   allAllowedClusters: Set[ClusterName.Full] = Set(ClusterName.Full.local)): Unit =
-    assertRuleForIndexRequest(configured, requestIndices, isMatched = false, modifyRequestContext, modifyBlockContext, Set.empty, allAllowedClusters)
+    assertRuleForIndexRequest(configured, requestIndices, isMatched = false, esServices, modifyBlockContext, Set.empty, allAllowedClusters)
 
   private def assertRuleForIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                         requestIndices: Set[RequestedIndex[ClusterIndexName]],
                                         isMatched: Boolean,
-                                        modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext,
+                                        esServices: Option[EsServices],
                                         modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext,
                                         filteredRequestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                         allAllowedClusters: Set[ClusterName.Full]): Unit = {
     val rule = createIndicesRule(configuredValues)
-    val requestContext = modifyRequestContext apply MockRequestContext.indices
+    val requestContext = MockRequestContext.indices
       .copy(
         filteredIndices = requestIndices,
         action = Action("indices:data/read/search"),
-        allIndicesAndAliases = Set(
-          fullLocalIndexWithAliases(fullIndexName("test1")),
-          fullLocalIndexWithAliases(fullIndexName("test2")),
-          fullLocalIndexWithAliases(fullIndexName("test3")),
-          fullLocalIndexWithAliases(fullIndexName("test4")),
-          fullLocalIndexWithAliases(fullIndexName("test5"))
-        )
+        esServices = esServices match {
+          case Some(services) => services
+          case None => MockEsServices.`with`(MockEsClusterService(
+            allIndicesAndAliases = Set(
+              fullLocalIndexWithAliases(fullIndexName("test1")),
+              fullLocalIndexWithAliases(fullIndexName("test2")),
+              fullLocalIndexWithAliases(fullIndexName("test3")),
+              fullLocalIndexWithAliases(fullIndexName("test4")),
+              fullLocalIndexWithAliases(fullIndexName("test5"))
+            )
+          ))
+        }
       )
     val blockContext = modifyBlockContext apply GeneralIndexRequestBlockContext(
       block = mock[Block],
@@ -110,41 +117,46 @@ abstract class BaseIndicesRuleTests
 
   protected def assertMatchRuleForMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                     indexPacks: List[Indices],
-                                                    modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity,
+                                                    esServices: Option[EsServices] = None,
                                                     modifyBlockContext: FilterableMultiRequestBlockContext => FilterableMultiRequestBlockContext = identity,
                                                     allowed: List[Indices]): Unit = {
-    assertRuleForMultiForIndexRequest(configured, indexPacks, isMatched = true, modifyRequestContext, modifyBlockContext, allowed)
+    assertRuleForMultiForIndexRequest(configured, indexPacks, isMatched = true, esServices, modifyBlockContext, allowed)
   }
 
   protected def assertNotMatchRuleForMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                        indexPacks: List[Indices],
-                                                       modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity,
+                                                       esServices: Option[EsServices] = None,
                                                        modifyBlockContext: FilterableMultiRequestBlockContext => FilterableMultiRequestBlockContext = identity): Unit = {
-    assertRuleForMultiForIndexRequest(configured, indexPacks, isMatched = false, modifyRequestContext, modifyBlockContext, List.empty)
+    assertRuleForMultiForIndexRequest(configured, indexPacks, isMatched = false, esServices, modifyBlockContext, List.empty)
   }
 
   private def assertRuleForMultiForIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[ClusterIndexName]],
                                                 indexPacks: List[Indices],
                                                 isMatched: Boolean,
-                                                modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext,
+                                                esServices: Option[EsServices],
                                                 modifyBlockContext: FilterableMultiRequestBlockContext => FilterableMultiRequestBlockContext,
                                                 allowed: List[Indices]): Unit = {
     val rule = new IndicesRule(
       settings = IndicesRule.Settings(configuredValues, mustInvolveIndices = false),
       identifierGenerator = RandomBasedUniqueIdentifierGenerator
     )
-    val requestContext = modifyRequestContext apply MockRequestContext.filterableMulti
+    val requestContext = MockRequestContext.filterableMulti
       .copy(
         restRequest = MockRestRequest(method = Method.POST),
         indexPacks = indexPacks,
         action = Action("indices:data/read/mget"),
-        allIndicesAndAliases = Set(
-          fullLocalIndexWithAliases(fullIndexName("test1"), Set.empty),
-          fullLocalIndexWithAliases(fullIndexName("test2"), Set.empty),
-          fullLocalIndexWithAliases(fullIndexName("test3"), Set.empty),
-          fullLocalIndexWithAliases(fullIndexName("test4"), Set.empty),
-          fullLocalIndexWithAliases(fullIndexName("test5"), Set.empty)
-        )
+        esServices = esServices match {
+          case Some(services) => services
+          case None => MockEsServices.`with`(MockEsClusterService(
+            allIndicesAndAliases = Set(
+              fullLocalIndexWithAliases(fullIndexName("test1")),
+              fullLocalIndexWithAliases(fullIndexName("test2")),
+              fullLocalIndexWithAliases(fullIndexName("test3")),
+              fullLocalIndexWithAliases(fullIndexName("test4")),
+              fullLocalIndexWithAliases(fullIndexName("test5"))
+            )
+          ))
+        }
       )
     val blockContext = modifyBlockContext apply FilterableMultiRequestBlockContext(
       block = mock[Block],
@@ -209,12 +221,6 @@ abstract class BaseIndicesRuleTests
     variableCreator
       .createMultiResolvableVariableFrom(value)
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
-  }
-
-  protected implicit class MockTemplateRequestContextOps(underlying: MockTemplateRequestContext) {
-    def addExistingTemplates(template: Template, otherTemplates: Template*): MockTemplateRequestContext = {
-      underlying.copy(allTemplates = underlying.allTemplates + template ++ otherTemplates.toSet)
-    }
   }
 
   private def noTransformation(blockContext: TemplateRequestBlockContext) = {

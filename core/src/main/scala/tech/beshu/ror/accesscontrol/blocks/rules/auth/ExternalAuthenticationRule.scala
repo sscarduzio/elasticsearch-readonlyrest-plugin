@@ -40,7 +40,7 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
   override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed.type, DirectlyLoggedUser]] =
+                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
     settings.service.authenticate(credentials)
 
   override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)

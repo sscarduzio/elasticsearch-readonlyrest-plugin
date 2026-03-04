@@ -17,8 +17,9 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
-import monix.eval.Task
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
+import tech.beshu.ror.mocks.MockEsServices
+import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -32,9 +33,9 @@ trait IndicesRuleRemoteIndexTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
             requestIndices = Set(requestedIndex("e*:*-logs-smg-stats-*")),
-            modifyRequestContext = _.copy(
+            esServices = Some(MockEsServices.`with`(MockEsClusterService(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
-              allRemoteIndicesAndAliases = Task.now(Set(
+              allRemoteIndicesAndAliases = Set(
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
@@ -42,9 +43,9 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              )),
+              ),
               allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
-            ),
+            ))),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
@@ -57,9 +58,9 @@ trait IndicesRuleRemoteIndexTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
             requestIndices = Set(requestedIndex("e*:*-logs-smg-*")),
-            modifyRequestContext = _.copy(
+            esServices = Some(MockEsServices.`with`(MockEsClusterService(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
-              allRemoteIndicesAndAliases = Task.now(Set(
+              allRemoteIndicesAndAliases = Set(
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
@@ -67,9 +68,9 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              )),
+              ),
               allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
-            ),
+            ))),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
@@ -82,9 +83,9 @@ trait IndicesRuleRemoteIndexTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
             requestIndices = Set(requestedIndex("e*:*-logs-smg-stats-2020-03-2*")),
-            modifyRequestContext = _.copy(
+            esServices = Some(MockEsServices.`with`(MockEsClusterService(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
-              allRemoteIndicesAndAliases = Task.now(Set(
+              allRemoteIndicesAndAliases = Set(
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
@@ -93,9 +94,9 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              )),
+              ),
               allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
-            ),
+            ))),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
@@ -108,9 +109,9 @@ trait IndicesRuleRemoteIndexTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("etl*:*-logs-smg-stats-*")),
             requestIndices = Set(requestedIndex("e*:c0*")),
-            modifyRequestContext = _.copy(
+            esServices = Some(MockEsServices.`with`(MockEsClusterService(
               allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"), Set.empty)),
-              allRemoteIndicesAndAliases = Task.now(Set(
+              allRemoteIndicesAndAliases = Set(
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
@@ -118,9 +119,9 @@ trait IndicesRuleRemoteIndexTests {
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
                 fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-              )),
+              ),
               allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
-            ),
+            ))),
             filteredRequestedIndices = Set(
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-27"),
               requestedIndex("etl1:c01-logs-smg-stats-2020-03-28"),
@@ -136,13 +137,13 @@ trait IndicesRuleRemoteIndexTests {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*-logs-smg-stats-*"), indexNameVar("etl*:*-logs-smg-stats-*")),
           requestIndices = Set(requestedIndex("pub*:*logs*")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("clocal-logs-smg-stats-2020-03-27")),
               fullLocalIndexWithAliases(fullIndexName("clocal-logs-smg-stats-2020-03-28")),
               fullLocalIndexWithAliases(fullIndexName("clocal-logs-smg-stats-2020-03-29")),
             ),
-            allRemoteIndicesAndAliases = Task.now(Set(
+            allRemoteIndicesAndAliases = Set(
               fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
               fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
               fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
@@ -150,9 +151,9 @@ trait IndicesRuleRemoteIndexTests {
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-27"),
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-28"),
               fullRemoteIndexWithAliases("other", "c02-logs-smg-stats-2020-03-29")
-            )),
+            ),
             allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
-          ),
+          ))),
           allAllowedClusters = Set(clusterName("etl1"), clusterName("(local)"))
         )
       }

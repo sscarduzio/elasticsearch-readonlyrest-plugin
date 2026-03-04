@@ -66,7 +66,7 @@ class JwtAuthorizationRuleSettingsTests
                  |""".stripMargin,
             assertion = rule => {
               rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+              rule.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
               rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
               rule.settings.groupsLogic should be(GroupsLogic.AnyOf(GroupIds(
@@ -100,7 +100,7 @@ class JwtAuthorizationRuleSettingsTests
                  |""".stripMargin,
             assertion = rule => {
               rule.settings.jwt.id should be(JwtDef.Name("jwt1"))
-              rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+              rule.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
               rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
               rule.settings.groupsLogic should be(GroupsLogic.AllOf(GroupIds(

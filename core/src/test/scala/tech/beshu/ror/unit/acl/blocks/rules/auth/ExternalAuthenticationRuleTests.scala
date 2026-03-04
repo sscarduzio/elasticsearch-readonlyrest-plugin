@@ -130,7 +130,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with Inside with Block
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be (Denied(AuthenticationFailed))
+        result should be (Denied(AuthenticationFailed("mock - auth failed")))
       }
       "user is being impersonated" when {
         "impersonation is enabled" when {
@@ -210,7 +210,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with Inside with Block
 
             val result = rule.check(blockContext).runSyncUnsafe()
 
-            result should be(Denied(AuthenticationFailed))
+            result should be(Denied(AuthenticationFailed("Impersonated user does not exist")))
           }
           "mocks provider is unavailable" in {
             val externalAuthenticationService = mockExternalAuthService(
@@ -261,7 +261,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with Inside with Block
 
             val result = rule.check(blockContext).runSyncUnsafe()
 
-            result should be(Denied(AuthenticationFailed))
+            result should be(Denied(AuthenticationFailed("mock - auth failed")))
           }
         }
       }
@@ -275,7 +275,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with Inside with Block
       override def authenticate(aCredentials: Credentials)
                                (implicit requestId: RequestId): Task[AuthenticationResult] = Task.delay {
         if(credentials == aCredentials) Right(DirectlyLoggedUser(credentials.user))
-        else Left(AuthenticationFailed)
+        else Left(AuthenticationFailed("mock - auth failed"))
       }
 
       override def serviceTimeout: PositiveFiniteDuration = Refined.unsafeApply(5 second)

@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth.{SeparateRules, SingleRule}
@@ -41,16 +41,18 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
         "no group can be resolved" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
-              )),
+              permittedGroupsLogic = resolvableGroupsLogic {
+                implicit val convertible: AlwaysRightConvertible[GroupIdLike] = AlwaysRightConvertible.from(GroupIdLike.from)
+                UniqueNonEmptyList.of(createVariable("group_@{user}").toOption.get)
+              },
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithoutGroupsMapping(authenticationRule.denying, groups("group_user1"))
               ))
             ),
             loggedUser = None,
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("No resolved allowed groups")
           )
         }
         "resolved groups don't contain preferred group" in {
@@ -64,6 +66,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = None,
             preferredGroupId = Some(GroupId("g2")),
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "there is no user definition for given logged user" in {
@@ -77,7 +80,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
             ),
             loggedUser = Some(User.Id("user2")),
             preferredGroupId = None,
-            denialCause = AuthenticationFailed
+            denialCause = GroupsAuthorizationFailed("User 'user2' not in allowed users list")
           )
         }
         "there is no matching auth rule for given user" in {
@@ -90,7 +93,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = Some(User.Id("user1")),
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
@@ -103,7 +107,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = None,
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "one auth rule available is throwing an exception" in {
@@ -116,7 +121,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = Some(User.Id("user1")),
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
       }
@@ -125,7 +131,7 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
+                AlreadyResolved(GroupId("group_user2").nel)
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -133,14 +139,15 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = None,
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("user1:AUTH_FAIL (mocked - authn in auth rule fail)")
           )
         }
         "user cannot be authorized by authentication with authorization rule" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
+                AlreadyResolved(GroupId("group_user2").nel)
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
@@ -154,42 +161,44 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = None,
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (mocked - authz in authz rule fail)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (simple groups mapping matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
+                AlreadyResolved(GroupId("group_user1").nel)
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.permitting(User.Id("user1")),
-                    authorizationRule.permitting(NonEmptyList.of(group("remote_group1")))
+                    authorizationRule.permitting(NonEmptyList.of(group("remote_group_1")))
                   ),
                   noGroupMappingFrom("group_user1")
                 )
               ))
             ),
             loggedUser = None,
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
+                AlreadyResolved(GroupId("group_user3").nel)
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.permitting(User.Id("user1")),
-                    authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
+                    authorizationRule.permitting(NonEmptyList.of(group("remote_group_3")))
                   ),
                   groupMapping(
                     Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_1"))),
@@ -199,21 +208,22 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = None,
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No external groups matched any mapping pattern)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping with wildcard matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
+                AlreadyResolved(GroupId("group_user3").nel)
               )),
               usersDefinitions = NonEmptyList.of(UserDef(
                 usernames = userIdPatterns("user1"),
                 mode = WithGroupsMapping(
                   SeparateRules(
                     authenticationRule.permitting(User.Id("user1")),
-                    authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
+                    authorizationRule.permitting(NonEmptyList.of(group("remote_group_3")))
                   ),
                   groupMapping(
                     Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))),
@@ -223,7 +233,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
               ))
             ),
             loggedUser = None,
-            preferredGroupId = None
+            preferredGroupId = None,
+            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No external groups matched any mapping pattern)")
           )
         }
       }
@@ -245,7 +256,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                   ))
                 ),
                 loggedUser = None,
-                preferredGroupId = None
+                preferredGroupId = None,
+                denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
             "authentication rule matches and case insensitivity is configured" in {
@@ -262,7 +274,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 ),
                 loggedUser = None,
                 preferredGroupId = None,
-                caseSensitivity = CaseSensitivity.Disabled
+                caseSensitivity = CaseSensitivity.Disabled,
+                denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
           }
@@ -280,7 +293,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                   ))
                 ),
                 loggedUser = None,
-                preferredGroupId = None
+                preferredGroupId = None,
+                denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
             "authentication rule matches and and case insensitivity is configured" in {
@@ -297,7 +311,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 ),
                 loggedUser = None,
                 preferredGroupId = None,
-                caseSensitivity = CaseSensitivity.Disabled
+                caseSensitivity = CaseSensitivity.Disabled,
+                denialCause = GroupsAuthorizationFailed("u*:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
           }
@@ -326,7 +341,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                   )
                 ),
                 loggedUser = None,
-                preferredGroupId = Some(GroupId("g1"))
+                preferredGroupId = Some(GroupId("g1")),
+                denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
               )
             }
           }
@@ -353,7 +369,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 )
               ),
               loggedUser = None,
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
           "user can be matched and user can be authorized in external system and locally (advanced groups mapping)" in {
@@ -375,7 +392,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 )
               ),
               loggedUser = None,
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
           "user can be matched and user can be authorized in external system and locally (advanced groups mapping with wildcard)" in {
@@ -397,7 +415,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 )
               ),
               loggedUser = None,
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
         }
@@ -424,7 +443,8 @@ trait BaseGroupsNegativeRuleTests[GL <: NegativeGroupsLogic] extends GroupsRuleT
                 )
               ),
               loggedUser = None,
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("{user2,user1}:GROUPS_AUTH_FAIL (No user's groups allowed)")
             )
           }
         }
