@@ -83,7 +83,7 @@ object ThreadContextOps {
       threadContext.stashContext() // clear thread context (StoredContext intentionally discarded)
       transients.foreach { case (k, v) => threadContext.putTransient(k, v) }
       responseHeaders.foreach { case (k, v) => threadContext.addResponseHeader(k, v) }
-      requestHeaders.foreach { case (k, v) => threadContext.putHeader(k, v) }
+      requestHeaders.foreach { case (k, v) => if (threadContext.getHeader(k) == null) threadContext.putHeader(k, v) }
     }
   }
 }
