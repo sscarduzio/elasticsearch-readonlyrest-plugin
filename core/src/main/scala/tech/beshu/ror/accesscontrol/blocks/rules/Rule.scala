@@ -99,7 +99,7 @@ object Rule {
   object AuthenticationRule {
     sealed trait EligibleUsersSupport
     object EligibleUsersSupport {
-      final case class Available(users: Set[User.Id], unknownUsers: Boolean) extends EligibleUsersSupport
+      final case class Available(users: Set[User.Id]) extends EligibleUsersSupport
       case object NotAvailable extends EligibleUsersSupport
     }
   }

@@ -77,8 +77,8 @@ object LocalUsersContext {
     implicit val snapshotsRule: LocalUsersSupport[SnapshotsRule] = NotAvailableLocalUsers()
     implicit val uriRegexRule: LocalUsersSupport[UriRegexRule] = NotAvailableLocalUsers()
     implicit val xForwarderForRule: LocalUsersSupport[XForwardedForRule] = NotAvailableLocalUsers()
+    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[BaseGroupsRule[GL]] = NotAvailableLocalUsers()
     implicit val usersRule: LocalUsersSupport[UsersRule] = NotAvailableLocalUsers()
-
     implicit val authKeyRule: LocalUsersSupport[AuthKeyRule] = AvailableLocalUsers[AuthKeyRule](LocalUsers.fromEligibleUsers)
     implicit val authKeyPBKDF2WithHmacSHA512Rule: LocalUsersSupport[AuthKeyPBKDF2WithHmacSHA512Rule] = AvailableLocalUsers[AuthKeyPBKDF2WithHmacSHA512Rule](LocalUsers.fromEligibleUsers)
     implicit val authKeySha1Rule: LocalUsersSupport[AuthKeySha1Rule] = AvailableLocalUsers[AuthKeySha1Rule](LocalUsers.fromEligibleUsers)
@@ -87,11 +87,5 @@ object LocalUsersContext {
     implicit val authKeyUnixRule: LocalUsersSupport[AuthKeyUnixRule] = AvailableLocalUsers[AuthKeyUnixRule](LocalUsers.fromEligibleUsers)
     implicit val proxyAuthRule: LocalUsersSupport[ProxyAuthRule] = AvailableLocalUsers[ProxyAuthRule](LocalUsers.fromEligibleUsers)
     implicit val tokenAuthenticationRule: LocalUsersSupport[TokenAuthenticationRule] = AvailableLocalUsers[TokenAuthenticationRule](LocalUsers.fromEligibleUsers)
-    implicit def groupsRule[GL <: GroupsLogic]: LocalUsersSupport[BaseGroupsRule[GL]] = AvailableLocalUsers[BaseGroupsRule[GL]] { rule =>
-      rule.settings.usersDefinitions
-        .map(_.usernames)
-        .map(LocalUsers.fromUsernamePatterns)
-        .combineAll
-    }
   }
 }

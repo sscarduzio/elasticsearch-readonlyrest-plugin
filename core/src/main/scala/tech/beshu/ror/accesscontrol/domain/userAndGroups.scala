@@ -282,8 +282,8 @@ object LocalUsers {
   }
 
   def fromEligibleUsers[R <: AuthenticationRule](rule: R): LocalUsers = rule.eligibleUsers match {
-    case EligibleUsersSupport.Available(users, unknownUsers) =>
-      LocalUsers(users, unknownUsers = unknownUsers)
+    case EligibleUsersSupport.Available(users) =>
+      LocalUsers(users, unknownUsers = false)
     case EligibleUsersSupport.NotAvailable =>
       LocalUsers(Set.empty, unknownUsers = true)
   }

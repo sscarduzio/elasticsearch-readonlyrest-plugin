@@ -41,7 +41,7 @@ final class TokenAuthenticationRule(val settings: Settings,
 
   override val name: Rule.Name = TokenAuthenticationRule.Name.name
 
-  override val eligibleUsers: AuthenticationRule.EligibleUsersSupport = EligibleUsersSupport.Available(Set(settings.user), unknownUsers = false)
+  override val eligibleUsers: AuthenticationRule.EligibleUsersSupport = EligibleUsersSupport.Available(Set(settings.user))
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)
                      (implicit requestId: RequestId): Task[UserExistence] = Task.now {

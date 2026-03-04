@@ -44,7 +44,7 @@ final class ProxyAuthRule(val settings: Settings,
 
   private val userMatcher = PatternsMatcher.create(settings.userIds)
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.Available(settings.userIds.toCovariantSet, unknownUsers = false)
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.Available(settings.userIds.toCovariantSet)
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 

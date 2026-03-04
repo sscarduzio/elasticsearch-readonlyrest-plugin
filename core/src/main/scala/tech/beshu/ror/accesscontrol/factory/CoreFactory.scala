@@ -425,7 +425,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private def localUsersFromMode(userDef: UserDef): LocalUsers = {
     userDef.authenticationRule.eligibleUsers match {
-      case EligibleUsersSupport.Available(users, unknownUsers) => LocalUsers(users, unknownUsers)
+      case EligibleUsersSupport.Available(users) => LocalUsers(users, unknownUsers = false)
       case EligibleUsersSupport.NotAvailable => LocalUsers.empty
     }
   }

@@ -309,7 +309,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
         }
       }
-      "impersonators section defined with users" in {
+      "impersonators section defined with users, that are not present in ACL or in users section" in {
         val settings =
           s"""
              |readonlyrest:
@@ -329,7 +329,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |     users: ["*", "user*"]
              |""".stripMargin
         assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(
-          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user3")
+          User.Id("admin")
         )))
       }
     }
