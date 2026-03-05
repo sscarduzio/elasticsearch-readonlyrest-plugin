@@ -33,7 +33,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class KibanaUserDataRule(override val settings: Settings)
-  extends BaseKibanaRule(settings) {
+  extends BaseKibanaRule2(settings) {
 
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 
