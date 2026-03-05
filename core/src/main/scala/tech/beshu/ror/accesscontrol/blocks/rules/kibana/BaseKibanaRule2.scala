@@ -18,39 +18,115 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.*
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.{ActionCategory, RequestClassifier, ResourceCategory}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
+
+// Permission table (each index in the request is classified independently, all must be permitted):
+//                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
+// admin              | full         | read-only    | full      | full         | full         |
+// rw                 | full         | read-only    | full      | full         | none         |
+// ro                 | read-only*   | read-only    | full      | read-only    | none         |
+// ro_strict/api_only | read-only    | read-only    | none      | read-only    | none         |
+// * non-strict writes allowed (UI state saves)
 
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
 
-  def checkAccess(bc: BlockContext, kibanaIndex: KibanaIndexName): MatchVerdict = {
-    given BlockContext = bc
-
-    if (settings.access === Unrestricted) {
-      return MatchVerdict.Allowed("Unrestricted access configured")
-    }
-
-    val resource = RequestClassifier.classifyResource(bc, kibanaIndex, settings.rorIndex)
-    val action = RequestClassifier.classifyAction(bc)
-    logger.debug(s"Resource: $resource, Action: $action, Access: ${settings.access}")
-
-    val permission = PermissionTable.lookup(settings.access, resource, bc)
-    logger.debug(s"Permission from table: ${permission.label}")
-
-    val nonStrictEligible = resource == ResourceCategory.KibanaIndex &&
-      RequestClassifier.isNonStrictEligible(bc, kibanaIndex)
-
-    val verdict = PermissionEvaluator.evaluate(permission, action, settings.access, resource, nonStrictEligible)
-    logger.debug(s"Verdict: $verdict")
-
-    verdict
-  }
+  import ActionCategory as AC
+  import ResourceCategory as RC
 
   protected def shouldMatch(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
-    checkAccess(bc, kibanaIndex).isAllowed
+    given BlockContext = bc
+    val result = settings.access match {
+      case Unrestricted => true
+      case Admin        => matchesForAdmin(bc, kibanaIndex)
+      case RW           => matchesForRW(bc, kibanaIndex)
+      case RO           => matchesForRO(bc, kibanaIndex)
+      case ROStrict     => matchesForROStrict(bc, kibanaIndex)
+      case ApiOnly      => matchesForROStrict(bc, kibanaIndex)
+    }
+    logger.debug(s"Access: ${settings.access}, result: $result")
+    result
   }
+
+  //                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
+  // admin              | full         | read-only    | full      | full         | full         |
+  private def matchesForAdmin(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
+    val (resources, action) = classify(bc, kibanaIndex)
+    resources.forall {
+      case RC.UserMetadataRequest | RC.DevNullKibana => isRecognized(action)
+      case RC.KibanaIndex | RC.SampleData            => isRecognized(action)
+      case RC.ReportingIndex                         => isRecognized(action)
+      case RC.RorSettingsIndex                       => isRecognized(action)
+      case RC.NoIndices                              => isRecognized(action)
+      case RC.DataIndex if hasAdminPath(bc)          => isRecognized(action)
+      case RC.DataIndex                              => isReadOnly(action)
+    }
+  }
+
+  //                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
+  // rw                 | full         | read-only    | full      | full         | none         |
+  private def matchesForRW(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
+    val (resources, action) = classify(bc, kibanaIndex)
+    resources.forall {
+      case RC.UserMetadataRequest | RC.DevNullKibana => isRecognized(action)
+      case RC.KibanaIndex | RC.SampleData            => isRecognized(action)
+      case RC.ReportingIndex                         => isRecognized(action)
+      case RC.NoIndices                              => isRecognized(action)
+      case RC.RorSettingsIndex                       => false
+      case RC.DataIndex                              => isReadOnly(action)
+    }
+  }
+
+  //                    | kibana_index      | data indices | reporting | cluster mgmt | ROR settings |
+  // ro                 | read-only*        | read-only    | full      | read-only    | none         |
+  // * non-strict writes allowed (UI state saves like short URLs, index patterns)
+  private def matchesForRO(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
+    val (resources, action) = classify(bc, kibanaIndex)
+    resources.forall {
+      case RC.UserMetadataRequest | RC.DevNullKibana => isRecognized(action)
+      case RC.KibanaIndex                            => isReadOnly(action) || isNonStrictWrite(action, bc, kibanaIndex)
+      case RC.SampleData                             => isReadOnly(action)
+      case RC.ReportingIndex                         => isRecognized(action)
+      case RC.NoIndices                              => isReadOnly(action)
+      case RC.RorSettingsIndex                       => false
+      case RC.DataIndex                              => isReadOnly(action)
+    }
+  }
+
+  //                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
+  // ro_strict/api_only | read-only    | read-only    | none      | read-only    | none         |
+  private def matchesForROStrict(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
+    val (resources, action) = classify(bc, kibanaIndex)
+    resources.forall {
+      case RC.UserMetadataRequest | RC.DevNullKibana => isRecognized(action)
+      case RC.KibanaIndex | RC.SampleData            => isReadOnly(action)
+      case RC.ReportingIndex                         => false
+      case RC.NoIndices                              => isReadOnly(action)
+      case RC.RorSettingsIndex                       => false
+      case RC.DataIndex                              => isReadOnly(action)
+    }
+  }
+
+  private def classify(bc: BlockContext, kibanaIndex: KibanaIndexName): (Set[ResourceCategory], ActionCategory) =
+    (
+      RequestClassifier.classifyResources(bc, kibanaIndex, settings.rorIndex),
+      RequestClassifier.classifyAction(bc)
+    )
+
+  private def isRecognized(action: ActionCategory): Boolean =
+    action != AC.Other
+
+  private def isReadOnly(action: ActionCategory): Boolean =
+    action == AC.ReadOnly || action == AC.Cluster
+
+  private def isNonStrictWrite(action: ActionCategory, bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean =
+    (action == AC.ReadWrite || action == AC.IndicesWrite) &&
+      RequestClassifier.isNonStrictEligible(bc, kibanaIndex)
+
+  private def hasAdminPath(bc: BlockContext): Boolean =
+    RequestClassifier.hasAdminHeaderPath(bc, "index_management") ||
+      RequestClassifier.hasAdminHeaderPath(bc, "tags")
 }
