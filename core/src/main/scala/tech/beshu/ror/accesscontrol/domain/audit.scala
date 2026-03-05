@@ -70,10 +70,10 @@ object RorAuditIndexTemplate {
           case Some(kibanaIndexPattern) =>
             Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", ""), kibanaIndexPattern))
           case None =>
-            Left(CreationError.ParsingError(s"Cannot create kibana index pattern for pattern [$pattern]"))
+            Left(CreationError.ParsingError(s"Cannot create an index name from '$pattern'"))
         }
-
-      case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
+      case Failure(ex) =>
+        Left(CreationError.ParsingError(ex.getMessage))
     }
   }
 

@@ -23,6 +23,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json}
 import io.netty.handler.codec.http.HttpResponseStatus
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
@@ -74,16 +75,7 @@ class MainSettingsApi(rorInstance: RorInstance,
     val auditOutputs = sinks.flatMap {
       case AuditSink.Enabled(config) => config match {
         case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
-          logSerializer match {
-            case serializer: EcsV1AuditLogSerializer =>
-              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.EcsV1))
-            case serializer if serializer.getClass.getName.startsWith("tech.beshu.ror.audit.instances") =>
-              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.RorDefault))
-            case serializer if serializer.getClass.getName.startsWith("tech.beshu.ror.requestcontext") =>
-              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.RorDefault))
-            case other =>
-              Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.Custom))
-          }
+          Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.from(logSerializer)))
         case Config.EsIndexBasedSink(_, _, _) =>
           Some(OtherAuditOutput("Remote audit cluster"))
         case Config.EsDataStreamBasedSink(_, ds, _) =>
@@ -241,13 +233,6 @@ object MainSettingsApi {
       object AuditOutput {
         final case class LocalAuditIndex(indexPattern: IndexPattern, schema: AuditIndexSchema) extends AuditOutput
         final case class OtherAuditOutput(description: String) extends AuditOutput
-      }
-
-      sealed trait AuditIndexSchema
-      object AuditIndexSchema {
-        case object RorDefault extends AuditIndexSchema
-        case object EcsV1 extends AuditIndexSchema
-        case object Custom extends AuditIndexSchema
       }
       final case class Failure(message: String) extends ProvideAuditSettings
     }
