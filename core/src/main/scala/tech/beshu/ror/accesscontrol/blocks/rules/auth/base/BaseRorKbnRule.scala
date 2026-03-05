@@ -19,7 +19,9 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 import cats.implicits.toShow
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
@@ -36,34 +38,30 @@ import scala.util.Try
 trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
-                                                        rorKbnDef: RorKbnDef,
-                                                        denialCause: => Denied.Cause)
-                                                       (operation: TokenData => Either[Unit, B]): Decision[B] = {
-    val authHeaderName = Header.Name.authorization
-    implicit val blockContextImpl: B = blockContext
-    blockContext.requestContext.bearerToken.map(h => Jwt.Token(h.value)) match {
-      case None =>
-        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Denied(denialCause)
-      case Some(token) =>
-        implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-        jwtTokenData(token, rorKbnDef) match {
-          case Left(_) =>
-            Denied(denialCause)
-          case Right(tokenData) =>
-            val claimProcessingResult = operation(tokenData)
-            claimProcessingResult match {
-              case Left(_) =>
-                Denied(denialCause)
-              case Right(modifiedBlockContext) =>
-                Permitted(modifiedBlockContext)
-            }
-        }
+                                                        rorKbnDef: RorKbnDef)
+                                                       (operation: TokenData => Either[Cause, B]): Decision[B] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+    val result = for {
+      token <- extractJwtTokenFromHeader(blockContext)
+      tokenData <- jwtTokenDataFrom(token, rorKbnDef)
+      claimProcessingResult <- operation(tokenData)
+    } yield claimProcessingResult
+    result match {
+      case Right(modifiedBlockContext) => Permitted(modifiedBlockContext)
+      case Left(cause) => Denied(cause)
     }
   }
 
-  private def jwtTokenData(token: Jwt.Token, rorKbn: RorKbnDef)
-                          (implicit requestId: RequestId) = {
+  private def extractJwtTokenFromHeader(blockContext: BlockContext) = {
+    blockContext
+      .requestContext
+      .bearerToken
+      .map(h => Jwt.Token(h.value))
+      .toRight(AuthenticationFailed("No bearer token found"))
+  }
+
+  private def jwtTokenDataFrom(token: Jwt.Token, rorKbn: RorKbnDef)
+                              (implicit requestId: RequestId) = {
     claimsFrom(token, rorKbn)
       .map { tokenPayload =>
         TokenData(
@@ -73,6 +71,7 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
           tokenPayload.claims.headerNameClaim(Header.Name.xUserOrigin)
         )
       }
+      .left.map { case () => AuthenticationFailed("Invalid or expired ROR Kibana token") }
   }
 
   private def claimsFrom(token: Jwt.Token, rorKbn: RorKbnDef)

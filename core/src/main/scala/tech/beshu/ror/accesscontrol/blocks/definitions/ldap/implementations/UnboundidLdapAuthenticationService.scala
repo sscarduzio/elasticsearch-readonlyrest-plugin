@@ -48,32 +48,34 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
     )
   }
 
-  private def doAuthenticate(user: User.Id, secret: PlainTextSecret)(implicit requestId: RequestId) = {
+  private def doAuthenticate(user: User.Id, secret: PlainTextSecret)
+                            (implicit requestId: RequestId) = {
     ldapUsersService
       .ldapUserBy(user)
       .flatMap {
         case Some(ldapUser) =>
           ldapAuthenticate(ldapUser, secret)
         case None =>
-          Task.now(Left(AuthenticationFailed))
+          Task.now(Left(AuthenticationFailed("User not found in LDAP")))
       }
   }
 
-  private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret)(implicit requestId: RequestId) = {
+  private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret)
+                              (implicit requestId: RequestId) = {
     logger.debug(s"LDAP simple bind [user DN: ${user.dn.show}]")
     connectionPool
       .asyncBind(new SimpleBindRequest(user.dn.value.value, password.value.value))
       .map(_.getResultCode == ResultCode.SUCCESS)
       .map {
         case true => Right(DirectlyLoggedUser(user.id))
-        case false => Left(AuthenticationFailed)
+        case false => Left(AuthenticationFailed("LDAP bind failed"))
       }
       .onError { case ex =>
         Task(logger.error(s"LDAP authenticate operation failed - cause [${ex.getMessage.show}]", ex))
       }
       .recover {
         case ex: LDAPBindException if ex.getResultCode == ResultCode.INVALID_CREDENTIALS =>
-          Left(AuthenticationFailed)
+          Left(AuthenticationFailed("Invalid LDAP credentials"))
       }
   }
 }

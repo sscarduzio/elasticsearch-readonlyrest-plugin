@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
+import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.ImpersonationNotSupported
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthorizationImpersonationSupport.Groups
@@ -44,7 +44,7 @@ private[auth] trait BaseAuthorizationRule
                                              (implicit requestId: RequestId): Task[UniqueList[Group]]
 
   @nowarn("msg=unused explicit parameter")
-  protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = Right(())
+  protected def loggedUserPreconditionCheck(user: LoggedUser): Either[GroupsAuthorizationFailed, Unit] = Right(())
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     authorize(blockContext)
@@ -54,19 +54,19 @@ private[auth] trait BaseAuthorizationRule
     (blockContext.blockMetadata.loggedUser, impersonation) match {
       case (Some(user@ImpersonatedUser(_, _)), Impersonation.Enabled(ImpersonationSettings(_, mocksProvider))) =>
         loggedUserPreconditionCheck(user) match {
-          case Left(_) => Task.now(reject())
+          case Left(cause) => reject(cause)
           case Right(_) => authorizeImpersonatedUser(blockContext, user, mocksProvider)
         }
       case (Some(ImpersonatedUser(_, _)), Impersonation.Disabled) =>
-        Task.now(Denied(ImpersonationNotSupported))
+        reject(ImpersonationNotSupported)
       case (Some(user@DirectlyLoggedUser(_)), _) =>
         implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
         loggedUserPreconditionCheck(user) match {
-          case Left(_) => Task.now(reject())
+          case Left(cause) => reject(cause)
           case Right(_) => doAuthorizeLoggedUser(blockContext, user)
         }
       case (None, _) =>
-        Task.now(reject())
+        rejectWithGroupsAuthorizationFailure("No logged user")
     }
   }
 
@@ -82,7 +82,7 @@ private[auth] trait BaseAuthorizationRule
           fetchUserGroups = (_, _) => Task.now(mockedGroups)
         )
       case Groups.CannotCheck =>
-        Task.now(Denied(Cause.ImpersonationNotSupported))
+        reject(Cause.ImpersonationNotSupported)
     }
   }
 
@@ -90,8 +90,8 @@ private[auth] trait BaseAuthorizationRule
                                                                              user: LoggedUser)
                                                                             (implicit requestId: RequestId): Task[Decision[B]] = {
     authorizeLoggedUser(
-      blockContext,
-      user,
+      blockContext = blockContext,
+      user = user,
       fetchUserGroups = userGroups
     )
   }
@@ -100,29 +100,52 @@ private[auth] trait BaseAuthorizationRule
                                                                            user: LoggedUser,
                                                                            fetchUserGroups: (B, LoggedUser) => Task[UniqueList[Group]]): Task[Decision[B]] = {
     if (blockContext.isCurrentGroupPotentiallyEligible(groupsLogic)) {
-      fetchUserGroups(blockContext, user)
-        .map(uniqueList => UniqueNonEmptyList.from(uniqueList.toSet))
-        .map {
-          case Some(fetchedUserGroups) if blockContext.isCurrentGroupEligible(GroupIds.from(fetchedUserGroups)) =>
-            calculateAllowedGroupsForUser(fetchedUserGroups) match {
-              case Some(availableGroups) =>
-                Permitted(blockContext.withBlockMetadata(
-                  _.addAvailableGroups(availableGroups)
-                ))
-              case None =>
-                reject()
-            }
-          case None | Some(_) =>
-            reject()
-        }
+      val result = for {
+        userGroups <- nonEmptyUserGroups(fetchUserGroups(blockContext, user))
+        _ <- checkIfCurrentGroupIsEligible(blockContext, userGroups)
+        allowedGroups <- calculateAllowedGroupsForUser(userGroups)
+      } yield {
+        blockContext.withBlockMetadata(
+          _.addAvailableGroups(allowedGroups)
+        )
+      }
+      result.toDecision
     } else {
-      Task.now(reject())
+      rejectWithGroupsAuthorizationFailure("Current group is not allowed")
     }
   }
 
-  private def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]): Option[UniqueNonEmptyList[Group]] = {
-    groupsLogic.availableGroupsFrom(usersGroups)
+  private def nonEmptyUserGroups(fetchUserGroups: => Task[UniqueList[Group]]) = {
+    EitherT
+      .liftF(fetchUserGroups)
+      .subflatMap { groups =>
+        UniqueNonEmptyList
+          .from(groups)
+          .toRight(GroupsAuthorizationFailed("User has no groups"))
+      }
   }
 
-  private def reject[T]() = Decision.Denied[T](Cause.GroupsAuthorizationFailed)
+  private def checkIfCurrentGroupIsEligible(blockContext: BlockContext,
+                                            userGroups: UniqueNonEmptyList[Group]) = {
+    EitherT.cond[Task](
+      blockContext.isCurrentGroupEligible(GroupIds.from(userGroups)),
+      (),
+      GroupsAuthorizationFailed("Current group is not allowed")
+    )
+  }
+
+  private def calculateAllowedGroupsForUser(usersGroups: UniqueNonEmptyList[Group]) = {
+    EitherT.fromEither[Task] {
+      groupsLogic
+        .availableGroupsFrom(usersGroups)
+        .toRight(GroupsAuthorizationFailed("None of the user's groups match the configured groups"))
+    }
+  }
+
+  private def rejectWithGroupsAuthorizationFailure[T](details: String) =
+    reject[T](Cause.GroupsAuthorizationFailed(details))
+
+  private def reject[T](cause: Cause) =
+    Task.now(Decision.Denied[T](cause))
+
 }

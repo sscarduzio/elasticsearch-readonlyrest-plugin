@@ -60,7 +60,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Denied(AuthenticationFailed))
+        result should be(Denied(AuthenticationFailed("Username mismatch")))
       }
     }
     "allow to impersonate user" when {
@@ -151,7 +151,7 @@ class ImpersonationRuleDecoratorTests
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
-        result should be(Denied(AuthenticationFailed))
+        result should be(Denied(AuthenticationFailed("Impersonated user does not exist")))
       }
       "the impersonator tries to impersonate himself" in {
         val requestContext = MockRequestContext.indices.withHeaders(

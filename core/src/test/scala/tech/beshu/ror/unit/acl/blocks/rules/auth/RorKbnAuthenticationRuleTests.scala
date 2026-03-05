@@ -20,6 +20,7 @@ import io.jsonwebtoken.Jwts
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
@@ -138,7 +139,8 @@ class RorKbnAuthenticationRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
-          tokenHeader = bearerHeader(jwt2)
+          tokenHeader = bearerHeader(jwt2),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "token has invalid RS256 signature" in {
@@ -153,7 +155,8 @@ class RorKbnAuthenticationRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "userId isn't passed in JWT token claim" in {
@@ -167,7 +170,8 @@ class RorKbnAuthenticationRuleTests
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("User claim not found in ROR Kibana token")
         )
       }
     }
@@ -181,8 +185,9 @@ class RorKbnAuthenticationRuleTests
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(AuthenticationFailed))
+                                 preferredGroupId: Option[GroupId] = None,
+                                 denialCause: Cause): Unit =
+    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          tokenHeader: Header,

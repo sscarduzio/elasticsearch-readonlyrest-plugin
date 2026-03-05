@@ -20,6 +20,7 @@ import io.jsonwebtoken.Jwts
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
@@ -79,7 +80,9 @@ class JwtAuthenticationRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = domain.Jwt.ClaimName(jsonPathFrom("userId")),
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          preferredGroupId = None,
+          denialCause = AuthenticationFailed("User claim 'userId' not found in JWT")
         )
       }
     }
@@ -93,8 +96,9 @@ class JwtAuthenticationRuleTests
 
   private def assertNotMatchRule(configuredJwtDef: AuthenticationJwtDef,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(AuthenticationFailed))
+                                 preferredGroupId: Option[GroupId],
+                                 denialCause: Cause): Unit =
+    assertRule(configuredJwtDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredJwtDef: AuthenticationJwtDef,
                          tokenHeader: Header,

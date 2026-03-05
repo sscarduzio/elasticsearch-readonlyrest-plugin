@@ -239,7 +239,7 @@ object TestsUtils {
     }
   }
 
-  def mocksProviderForExternalAuthzServiceFrom(map: Map[definitions.ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
+  def mocksProviderForExternalAuthzServiceFrom(map: Map[ExternalGroupsProviderService.Name, Map[User.Id, Set[Group]]]): MocksProvider = {
     new MocksProvider {
       override def ldapServiceWith(id: LdapService.Name)(implicit context: RequestId): Option[LdapServiceMock] = None
 
@@ -323,13 +323,13 @@ object TestsUtils {
     final case class RuleThrownException(exception: Throwable) extends RuleCheckAssertion
   }
 
-  extension (rule: Rule) {
+  extension(rule: Rule) {
     def checkAndAssert[B <: BlockContext : BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
       import monix.execution.Scheduler.Implicits.global
       val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
       assertion match {
         case RuleCheckAssertion.RulePermitted(blockContextAssertion) =>
-          result.get shouldBe a[Permitted[B]]
+          result.get shouldBe a [Permitted[B]]
           blockContextAssertion(result.get.asInstanceOf[Permitted[B]].context)
         case RuleCheckAssertion.RuleDenied(cause) =>
           result.get should be(Denied(cause))
@@ -338,6 +338,7 @@ object TestsUtils {
       }
     }
   }
+
 
   def headerFrom(nameAndValue: (String, String)): Header = {
     (NonEmptyString.unapply(nameAndValue._1), NonEmptyString.unapply(nameAndValue._2)) match {

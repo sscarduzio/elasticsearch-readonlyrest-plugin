@@ -18,14 +18,14 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -94,7 +94,8 @@ class ProxyAuthRuleTests
             UniqueNonEmptyList.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             headerNameFrom("custom-user-auth-header")
           ),
-          headers = Set(headerFrom("custom-user-auth-header" -> "userD"))
+          headers = Set(headerFrom("custom-user-auth-header" -> "userD")),
+          denialCause = AuthenticationFailed("User not found in allowed users list")
         )
       }
       "user id is passed in different header than the configured one" in {
@@ -103,7 +104,8 @@ class ProxyAuthRuleTests
             UniqueNonEmptyList.of(User.Id("userA")),
             headerNameFrom("custom-user-auth-header")
           ),
-          headers = Set(headerFrom("X-Forwarded-User" -> "userD"))
+          headers = Set(headerFrom("X-Forwarded-User" -> "userD")),
+          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' not found")
         )
       }
       "user is being impersonated" when {
@@ -149,7 +151,8 @@ class ProxyAuthRuleTests
                   impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
-              ))
+              )),
+              denialCause = AuthenticationFailed("Impersonated user does not exist")
             )
           }
         }
@@ -166,13 +169,13 @@ class ProxyAuthRuleTests
   private def assertNotMatchRule(settings: ProxyAuthRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  headers: Set[Header],
-                                 denialCause: Cause = AuthenticationFailed): Unit =
+                                 denialCause: Cause): Unit =
     assertRule(settings, impersonation, headers, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(settings: ProxyAuthRule.Settings,
                          impersonation: Impersonation,
                          headers: Set[Header],
-                         assertion: RuleCheckAssertion): Unit = {
+                         assertionType: RuleCheckAssertion): Unit = {
     val rule = new ProxyAuthRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers)
     val blockContext = UserMetadataRequestBlockContext(
@@ -182,7 +185,7 @@ class ProxyAuthRuleTests
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
-    rule.checkAndAssert(blockContext, assertion)
+    rule.checkAndAssert(blockContext, assertionType)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id): BlockContext => Unit =

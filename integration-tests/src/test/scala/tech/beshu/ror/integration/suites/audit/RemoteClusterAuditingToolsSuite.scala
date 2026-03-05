@@ -201,15 +201,15 @@ class RemoteClusterAuditingToolsSuite
 
   private def findAuditEntryWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String) = {
     val foundEntries = findAuditEntriesWithTraceId(auditEntries, traceId)
-    withClue(s"Didn't found expected audit entry with traceId [$traceId] in audit entries ${auditEntries}") {
-      foundEntries.size shouldBe 1
+    withClue(s"Didn't found expected audit entry with traceId [$traceId] in audit entries $auditEntries") {
+      foundEntries.size should be (1)
       foundEntries.head
     }
   }
 
   private def checkNoEntriesWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String): Unit = {
     val foundEntries = findAuditEntriesWithTraceId(auditEntries, traceId)
-    foundEntries.size shouldBe 0
+    foundEntries.size should be (0)
   }
 
   private def findAuditEntriesWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String): List[ujson.Value] = {

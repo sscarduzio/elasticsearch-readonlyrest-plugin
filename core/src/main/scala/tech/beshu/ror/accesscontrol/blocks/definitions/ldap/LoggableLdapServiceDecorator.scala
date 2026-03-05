@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap
 
+import cats.implicits.*
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.domain
@@ -43,7 +44,7 @@ class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticat
         case Success(authenticationResult) =>
           val authenticated = authenticationResult match {
             case Right(_: DirectlyLoggedUser) => true
-            case Left(AuthenticationFailed) => false
+            case Left(_: Cause) => false
           }
           logger.debug(s"User [${user.show}]${if (authenticated) "" else " not"} authenticated by LDAP [${id.show}]")
         case Failure(ex) =>

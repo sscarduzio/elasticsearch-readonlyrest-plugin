@@ -55,7 +55,7 @@ trait LdapAuthenticationService extends LdapService {
   def serviceTimeout: PositiveFiniteDuration
 }
 object LdapAuthenticationService {
-  type AuthenticationResult = Either[AuthenticationFailed.type, DirectlyLoggedUser]
+  type AuthenticationResult = Either[AuthenticationFailed, DirectlyLoggedUser]
 }
 
 sealed trait LdapAuthorizationService extends LdapService {
