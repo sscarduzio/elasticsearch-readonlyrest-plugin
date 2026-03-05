@@ -267,25 +267,11 @@ final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
 object LocalUsers {
   def empty: LocalUsers = LocalUsers(Set.empty, unknownUsers = false)
 
-  def fromUsernamePatterns(userIdPatterns: UserIdPatterns): LocalUsers = {
-    userIdPatterns
-      .patterns
-      .map { userIdPattern =>
-        if (userIdPattern.containsWildcard) {
-          LocalUsers(users = Set.empty, unknownUsers = true)
-        } else {
-          LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
-        }
-      }
-      .toList
-      .combineAll
-  }
-
   def fromEligibleUsers[R <: AuthenticationRule](rule: R): LocalUsers = rule.eligibleUsers match {
     case EligibleUsersSupport.Available(users) =>
       LocalUsers(users, unknownUsers = false)
     case EligibleUsersSupport.NotAvailable =>
-      LocalUsers(Set.empty, unknownUsers = true)
+      LocalUsers.empty
   }
 
   implicit val localUsersMonoid: Monoid[LocalUsers] = Monoid.instance(

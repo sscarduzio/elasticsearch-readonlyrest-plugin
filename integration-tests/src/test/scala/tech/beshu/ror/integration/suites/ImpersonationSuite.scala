@@ -193,7 +193,7 @@ class ImpersonationSuite
           val response = rorApiManager.currentRorLocalUsers
           response should have statusCode 200
           response.responseJson("status").str shouldBe "OK"
-          response.responseJson("unknown_users").bool shouldBe true
+          response.responseJson("unknown_users").bool shouldBe false
           response.responseJson("users").arr.toSet.map(_.str) shouldBe Set("dev1", "gpa_user_1", "dev2", "proxy_user_1")
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
@@ -270,7 +270,7 @@ class ImpersonationSuite
           val response = rorApiManager.currentRorLocalUsers
           response should have statusCode 200
           response.responseJson("status").str shouldBe "OK"
-          response.responseJson("unknown_users").bool shouldBe true
+          response.responseJson("unknown_users").bool shouldBe false
           response.responseJson("users").arr.toSet.map(_.str) shouldBe Set("dev1", "gpa_user_1", "dev2", "proxy_user_1")
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>

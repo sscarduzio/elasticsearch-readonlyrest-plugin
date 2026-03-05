@@ -361,8 +361,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           User.Id("admin")
         )))
       }
-    }
-    "return info that unknown users in settings" when {
       "hashed username and password" in {
         val settings =
           s"""
@@ -375,7 +373,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |  - name: test_block3
              |    auth_key: admin:container
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(User.Id("admin"))))
+        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(User.Id("admin"))))
       }
       "there is some user with hashed credentials" in {
         val settings =
@@ -387,12 +385,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |  - name: test_block2
              |    auth_key: admin:container
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, withUnknownUsers(Set(User.Id("admin"))))
+        assertLocalUsersFromSettings(settings, allUsersResolved(Set(User.Id("admin"))))
       }
     }
   }
-
-  private def withUnknownUsers(users: Set[User.Id]) = LocalUsers(users, unknownUsers = true)
 
   private def allUsersResolved(users: Set[User.Id]) = LocalUsers(users, unknownUsers = false)
 
