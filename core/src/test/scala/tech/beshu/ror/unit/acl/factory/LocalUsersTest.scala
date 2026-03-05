@@ -309,6 +309,35 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
         }
       }
+      "users section defined with wildcard patterns" in {
+        val settings =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key: admin:container
+             |
+             |  users:
+             |  - username: user1
+             |    groups: ["group1", "group3"]
+             |    auth_key: "user1:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group2", "group4"]
+             |    auth_key: "user2:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key: "user4:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |""".stripMargin
+        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(
+          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
+        )))
+      }
       "impersonators section defined with users, that are not present in ACL or in users section" in {
         val settings =
           s"""
@@ -359,35 +388,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |    auth_key: admin:container
              |""".stripMargin
         assertLocalUsersFromSettings(settings, withUnknownUsers(Set(User.Id("admin"))))
-      }
-      "users section defined with wildcard patterns" in {
-        val settings =
-          s"""
-             |readonlyrest:
-             |  access_control_rules:
-             |  - name: test_block1
-             |    auth_key: admin:container
-             |
-             |  users:
-             |  - username: user1
-             |    groups: ["group1", "group3"]
-             |    auth_key: "user1:pass"
-             |
-             |  - username: "*"
-             |    groups: ["group2", "group4"]
-             |    auth_key: "user2:pass"
-             |
-             |  - username: "*"
-             |    groups: ["group5", "group6"]
-             |    auth_key: "user4:pass"
-             |
-             |  - username: "*"
-             |    groups: ["group5", "group6"]
-             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
-             |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(
-          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
-        )))
       }
     }
   }
