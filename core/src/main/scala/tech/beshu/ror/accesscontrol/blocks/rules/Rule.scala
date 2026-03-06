@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.Show
+import cats.{Monoid, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
@@ -101,6 +101,18 @@ object Rule {
     object EligibleUsersSupport {
       final case class Available(users: Set[User.Id]) extends EligibleUsersSupport
       case object NotAvailable extends EligibleUsersSupport
+
+      implicit val eligibleUsersSupportMonoid: Monoid[EligibleUsersSupport] = Monoid.instance(
+        emptyValue = EligibleUsersSupport.NotAvailable,
+        cmb = (s1, s2) => {
+          (s1, s2) match {
+            case (EligibleUsersSupport.NotAvailable, elem) => elem
+            case (acc@EligibleUsersSupport.Available(_), EligibleUsersSupport.NotAvailable) => acc
+            case (EligibleUsersSupport.Available(accUsers), EligibleUsersSupport.Available(elemUsers)) =>
+              EligibleUsersSupport.Available(accUsers ++ elemUsers)
+          }
+        }
+      )
     }
   }
 

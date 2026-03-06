@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -136,14 +135,12 @@ object Block {
 
   final case class RuleDefinition[T <: Rule](rule: T,
                                              variableUsage: VariableUsage[T],
-                                             localUsersSupport: LocalUsersSupport[T],
                                              impersonationWarnings: ImpersonationWarningSupport[T])
   object RuleDefinition {
-    def create[T <: Rule : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport](rule: T): RuleDefinition[T] = {
+    def create[T <: Rule : VariableUsage : ImpersonationWarningSupport](rule: T): RuleDefinition[T] = {
       new RuleDefinition(
         rule,
         implicitly[VariableUsage[T]],
-        implicitly[LocalUsersSupport[T]],
         implicitly[ImpersonationWarningSupport[T]]
       )
     }

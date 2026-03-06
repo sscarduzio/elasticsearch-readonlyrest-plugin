@@ -27,14 +27,10 @@ import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListSt
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
@@ -253,7 +249,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
-          localUsers = rules.map(localUsersForRule).combineAll,
+          localUsers = rules.map(_.rule).map(LocalUsers.from).combineAll,
           impersonationWarnings = new BlockImpersonationWarningsReader(block.name, rules)
         )
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
@@ -306,13 +302,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         case Some(f) if f.isObject => extendedPolicyDecoder(c)
         case Some(_) | None => Left(DecodingFailure("Malformed block policy type", c.history))
       }
-    }
-  }
-
-  private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {
-    rule.localUsersSupport match {
-      case users: LocalUsersSupport.AvailableLocalUsers[R] => users.definedLocalUsers(rule.rule)
-      case LocalUsersSupport.NotAvailableLocalUsers() => LocalUsers.empty
     }
   }
 
@@ -393,9 +382,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
         val localUsers: LocalUsers = {
           val fromUserDefs = localUsersFromUserDefs(userDefs)
-          val fromImpersonatorDefs = localUsersFromImpersonatorDefs(impersonationDefs)
           val fromBlocks = blocksNel.map(_.localUsers).toList
-          (fromBlocks :+ fromUserDefs :+ fromImpersonatorDefs).combineAll
+          (fromBlocks :+ fromUserDefs).combineAll
         }
 
         val rorDependencies = RorDependencies(
@@ -424,49 +412,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private def localUsersFromUserDefs(definitions: Definitions[UserDef]) = {
     definitions.items
-      .flatMap { definition =>
-        List(
-          localUsersFromUsernamePatterns(definition.usernames, unknownUsersForWildcardPattern = true),
-          localUsersFromMode(definition.mode)
-        )
-      }
+      .map(_.authenticationRule)
+      .map(LocalUsers.from)
       .combineAll
   }
 
-  private def localUsersFromImpersonatorDefs(definitions: Definitions[ImpersonatorDef]) = {
-    definitions.items
-      .map(_.impersonatedUsers.usernames)
-      .map(localUsersFromUsernamePatterns(_, unknownUsersForWildcardPattern = false))
-      .combineAll
-  }
-
-  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns,
-                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
-    userIdPatterns
-      .patterns
-      .map { userIdPattern =>
-        if (userIdPattern.containsWildcard) {
-          LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
-        } else {
-          LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
-        }
-      }
-      .toList
-      .combineAll
-  }
-
-  private def localUsersFromMode(mode: UserDef.Mode): LocalUsers = {
-    def localUsersFor(support: EligibleUsersSupport) = support match {
-      case EligibleUsersSupport.Available(users) => LocalUsers(users, unknownUsers = false)
-      case EligibleUsersSupport.NotAvailable => LocalUsers.empty
-    }
-
-    mode match {
-      case Mode.WithoutGroupsMapping(rule, _) => localUsersFor(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => localUsersFor(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => localUsersFor(rule.eligibleUsers)
-    }
-  }
 }
 
 object RawRorSettingsBasedCoreFactory {

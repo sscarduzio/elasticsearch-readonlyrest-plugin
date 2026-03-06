@@ -205,9 +205,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
           inside(createCore(settings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
-              core.dependencies.localUsers should be(allUsersResolved(Set(
-                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
-              )))
+              core.dependencies.localUsers should be(allUsersResolved(Set(User.Id("admin"))))
           }
         }
         "ror_kbn_auth rule used" in {
@@ -256,7 +254,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
               core.dependencies.localUsers should be(allUsersResolved(Set(
-                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
+                User.Id("admin")
               )))
           }
         }
@@ -306,61 +304,10 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
             case Right(core) =>
               core.dependencies.localUsers should be(allUsersResolved(Set(
-                User.Id("admin"), User.Id("cartman"), User.Id("Bìlbö Bággįnš"), User.Id("bong"), User.Id("morgan")
+                User.Id("admin")
               )))
           }
         }
-      }
-      "impersonators section defined with users" in {
-        val settings =
-          s"""
-             |readonlyrest:
-             |  access_control_rules:
-             |  - name: test_block1
-             |    auth_key: admin:container
-             |
-             |  impersonation:
-             |   - impersonator: devAdmin
-             |     auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
-             |     users: ["user3"]
-             |   - impersonator: devAdmin2
-             |     auth_key: devAdmin2:pass
-             |     users: ["user1", "user2"]
-             |   - impersonator: devAdmin3
-             |     auth_key: devAdmin3:pass
-             |     users: ["*", "user*"]
-             |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(
-          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user3")
-        )))
-      }
-    }
-    "return info that unknown users in settings" when {
-      "hashed username and password" in {
-        val settings =
-          s"""
-             |readonlyrest:
-             |  access_control_rules:
-             |  - name: test_block1
-             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
-             |  - name: test_block2
-             |    auth_key_sha256: "bdf2f78928097ae90a029c33fe06a83e3a572cb48371fb2de290d1c2ffee010b"
-             |  - name: test_block3
-             |    auth_key: admin:container
-             |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(User.Id("admin"))))
-      }
-      "there is some user with hashed credentials" in {
-        val settings =
-          s"""
-             |readonlyrest:
-             |  access_control_rules:
-             |  - name: test_block1
-             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
-             |  - name: test_block2
-             |    auth_key: admin:container
-             |""".stripMargin
-        assertLocalUsersFromSettings(settings, withUnknownUsers(Set(User.Id("admin"))))
       }
       "users section defined with wildcard patterns" in {
         val settings =
@@ -387,14 +334,61 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |    groups: ["group5", "group6"]
              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(
+        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(
           User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
         )))
       }
+      "impersonators section defined with users, that are not present in ACL or in users section" in {
+        val settings =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key: admin:container
+             |
+             |  impersonation:
+             |   - impersonator: devAdmin
+             |     auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |     users: ["user3"]
+             |   - impersonator: devAdmin2
+             |     auth_key: devAdmin2:pass
+             |     users: ["user1", "user2"]
+             |   - impersonator: devAdmin3
+             |     auth_key: devAdmin3:pass
+             |     users: ["*", "user*"]
+             |""".stripMargin
+        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(
+          User.Id("admin")
+        )))
+      }
+      "hashed username and password" in {
+        val settings =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |  - name: test_block2
+             |    auth_key_sha256: "bdf2f78928097ae90a029c33fe06a83e3a572cb48371fb2de290d1c2ffee010b"
+             |  - name: test_block3
+             |    auth_key: admin:container
+             |""".stripMargin
+        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(User.Id("admin"))))
+      }
+      "there is some user with hashed credentials" in {
+        val settings =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |  - name: test_block2
+             |    auth_key: admin:container
+             |""".stripMargin
+        assertLocalUsersFromSettings(settings, allUsersResolved(Set(User.Id("admin"))))
+      }
     }
   }
-
-  private def withUnknownUsers(users: Set[User.Id]) = LocalUsers(users, unknownUsers = true)
 
   private def allUsersResolved(users: Set[User.Id]) = LocalUsers(users, unknownUsers = false)
 

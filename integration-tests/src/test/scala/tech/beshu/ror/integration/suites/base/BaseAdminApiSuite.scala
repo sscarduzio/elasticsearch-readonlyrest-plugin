@@ -546,8 +546,8 @@ trait BaseAdminApiSuite
             val response = rorApiManager.currentRorLocalUsers
             response should have statusCode 200
             response.responseJson("status").str should be("OK")
-            (response.responseJson("unknown_users").bool, response.responseJson("users").arr.toList.map(_.str)) should
-              be(false, List("dev1")) // admin is filtered out
+            (response.responseJson("unknown_users").bool, response.responseJson("users").arr.toSet.map(_.str)) should
+              be(false, Set("dev1")) // admin is filtered out
           }
         }
       }
