@@ -7,6 +7,7 @@
     </appender>
 
     <logger name="org.testcontainers" level="INFO"/>
+    <logger name="tc" level="DEBUG"/>
     <logger name="tech.beshu.ror.utils.containers.EsWithoutSecurityPluginContainer$" level="WARN"/>
     <logger name="org.apache.http" level="WARN"/>
     <logger name="com.github.dockerjava" level="WARN"/>

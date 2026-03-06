@@ -51,8 +51,11 @@ final class TokenAuthenticationRule(val settings: Settings,
   }
 
   override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val verification = settings.tokenType match {
       case tokenType: TokenType.StaticToken => authenticateWithStaticToken(blockContext, tokenType)
+      case tokenType: TokenType.ServiceToken => authenticateWithServiceToken(blockContext, tokenType)
+      case tokenType: TokenType.ApiKey => authenticateWithApiKey(blockContext, tokenType)
     }
     verification.map {
       case true =>
@@ -60,6 +63,8 @@ final class TokenAuthenticationRule(val settings: Settings,
       case false =>
         val tokenHeaderName = settings.tokenType match {
           case TokenType.StaticToken(tokenDef, _) => tokenDef.headerName
+          case TokenType.ServiceToken(tokenDef) => tokenDef.headerName
+          case TokenType.ApiKey(tokenDef) => tokenDef.headerName
         }
         Denied(Cause.AuthenticationFailed(s"Token header '${tokenHeaderName.show}' missing or invalid"))
     }
@@ -71,6 +76,24 @@ final class TokenAuthenticationRule(val settings: Settings,
         .authorizationTokenBy(tokenType.tokenDef)
         .contains(tokenType.token)
     }
+
+  private def authenticateWithServiceToken(blockContext: BlockContext, tokenType: TokenType.ServiceToken)
+                                          (implicit requestId: RequestId) = {
+    val requestContext = blockContext.requestContext
+    requestContext
+      .authorizationTokenBy(tokenType.tokenDef)
+      .map(token => requestContext.esServices.serviceAccountTokenService.validateToken(token))
+      .getOrElse(Task.now(false))
+  }
+
+  private def authenticateWithApiKey(blockContext: BlockContext, tokenType: TokenType.ApiKey)
+                                    (implicit requestId: RequestId) = {
+    val requestContext = blockContext.requestContext
+    requestContext
+      .authorizationTokenBy(tokenType.tokenDef)
+      .map(token => requestContext.esServices.apiKeyService.validateToken(token))
+      .getOrElse(Task.now(false))
+  }
 }
 
 object TokenAuthenticationRule {
@@ -82,6 +105,8 @@ object TokenAuthenticationRule {
   object Settings {
     sealed trait TokenType
     object TokenType {
+      final case class ServiceToken(tokenDef: AuthorizationTokenDef) extends TokenType
+      final case class ApiKey(tokenDef: AuthorizationTokenDef) extends TokenType
       final case class StaticToken(tokenDef: AuthorizationTokenDef, token: AuthorizationToken) extends TokenType
     }
   }
