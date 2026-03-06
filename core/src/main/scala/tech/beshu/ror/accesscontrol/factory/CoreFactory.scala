@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
@@ -250,7 +249,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
-          localUsers = rules.map(localUsersForRule).combineAll,
+          localUsers = rules.map(_.rule).map(LocalUsers.from).combineAll,
           impersonationWarnings = new BlockImpersonationWarningsReader(block.name, rules)
         )
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
@@ -303,13 +302,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         case Some(f) if f.isObject => extendedPolicyDecoder(c)
         case Some(_) | None => Left(DecodingFailure("Malformed block policy type", c.history))
       }
-    }
-  }
-
-  private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {
-    rule.rule match {
-      case authentication: AuthenticationRule => LocalUsers.fromEligibleUsers(authentication)
-      case _ => LocalUsers.empty
     }
   }
 
@@ -421,7 +413,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
   private def localUsersFromUserDefs(definitions: Definitions[UserDef]) = {
     definitions.items
       .map(_.authenticationRule)
-      .map(LocalUsers.fromEligibleUsers)
+      .map(LocalUsers.from)
       .combineAll
   }
 

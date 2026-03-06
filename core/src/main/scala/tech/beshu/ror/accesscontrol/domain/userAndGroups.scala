@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.{Eq, Monoid}
 import cats.implicits.*
+import cats.{Eq, Monoid}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -164,6 +165,7 @@ object GroupsLogic {
     implicit val anyOfCreator: Creator[AnyOf] = (groupIds: GroupIds) => AnyOf.apply(groupIds)
     implicit val notAllOfCreator: Creator[NotAllOf] = (groupIds: GroupIds) => NotAllOf.apply(groupIds)
     implicit val notAnyOfCreator: Creator[NotAnyOf] = (groupIds: GroupIds) => NotAnyOf.apply(groupIds)
+
     def apply[GL <: GroupsLogic](implicit creator: Creator[GL]): Creator[GL] = creator
   }
 
@@ -267,11 +269,16 @@ final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
 object LocalUsers {
   def empty: LocalUsers = LocalUsers(Set.empty, unknownUsers = false)
 
-  def fromEligibleUsers[R <: AuthenticationRule](rule: R): LocalUsers = rule.eligibleUsers match {
-    case EligibleUsersSupport.Available(users) =>
-      LocalUsers(users, unknownUsers = false)
-    case EligibleUsersSupport.NotAvailable =>
-      LocalUsers.empty
+  def from(rule: Rule): LocalUsers = {
+    rule match {
+      case authentication: AuthenticationRule => authentication.eligibleUsers match {
+        case EligibleUsersSupport.Available(users) =>
+          LocalUsers(users, unknownUsers = false)
+        case EligibleUsersSupport.NotAvailable =>
+          LocalUsers.empty
+      }
+      case _ => LocalUsers.empty
+    }
   }
 
   implicit val localUsersMonoid: Monoid[LocalUsers] = Monoid.instance(
