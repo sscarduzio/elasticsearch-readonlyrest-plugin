@@ -611,6 +611,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
                   |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
+                  |    "presented_identity" : "basic auth user",
                   |    "ror_final_state" : "FORBIDDEN",
                   |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
@@ -689,6 +690,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
                   |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
+                  |    "presented_identity" : "basic auth user",
                   |    "ror_final_state" : "FORBIDDEN",
                   |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
@@ -766,6 +768,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
                   |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
+                  |    "presented_identity" : "basic auth user",
                   |    "ror_final_state" : "FORBIDDEN",
                   |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
@@ -2216,7 +2219,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     private def circeJsonE: Either[String, Json] =
       parser.parse(jsonObject.toString(0)).left.map(_.getMessage)
   }
-
 
 }
 

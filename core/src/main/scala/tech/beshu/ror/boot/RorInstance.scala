@@ -21,6 +21,7 @@ import cats.syntax.either.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.RorDependencies
@@ -118,6 +119,10 @@ class RorInstance private(boot: ReadonlyRest,
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
+  def auditSettings: Option[AuditingTool.AuditSettings] = {
+    theMainSettingsEngine.engine.flatMap(_.core.auditingSettings)
+  }
+
   def stop(): Task[Unit] = {
     implicit val requestId: RequestId = RequestId("ES sigterm")
     for {
@@ -129,7 +134,7 @@ class RorInstance private(boot: ReadonlyRest,
     } yield ()
   }
 
-  private [boot] def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
+  private[boot] def tryMainEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
     withGuard(mainReloadInProgress) {
       theMainSettingsEngine
         .reloadEngineUsingIndexSettingsWithoutPermit()(requestId)
@@ -138,7 +143,7 @@ class RorInstance private(boot: ReadonlyRest,
     }
   }
 
-  private [boot] def tryTestEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
+  private[boot] def tryTestEngineReload(requestId: RequestId): Task[Either[ScheduledReloadError, Unit]] = {
     withGuard(testReloadInProgress) {
       theTestSettingsEngine
         .reloadEngineUsingIndexSettingsWithoutPermit()(requestId)

@@ -18,12 +18,12 @@ package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.MainSettingsApi
-import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest
+import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 
 class RRAdminRequest(adminApiRequest: MainSettingsApi.MainSettingsRequest,
                      esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
@@ -37,18 +37,7 @@ class RRAdminRequest(adminApiRequest: MainSettingsApi.MainSettingsRequest,
 object RRAdminRequest {
 
   def createFrom(request: RestRequest): RRAdminRequest = {
-    val requestType = (request.uri().removeTrailingSlashIfPresent(), request.method()) match {
-      case (constants.FORCE_RELOAD_SETTINGS_PATH, POST) =>
-        MainSettingsApi.MainSettingsRequest.Type.ForceReload
-      case (constants.PROVIDE_FILE_SETTINGS_PATH, GET) =>
-        MainSettingsApi.MainSettingsRequest.Type.ProvideFileSettings
-      case (constants.PROVIDE_INDEX_SETTINGS_PATH, GET) =>
-        MainSettingsApi.MainSettingsRequest.Type.ProvideIndexSettings
-      case (constants.UPDATE_INDEX_SETTINGS_PATH, POST) =>
-        MainSettingsApi.MainSettingsRequest.Type.UpdateIndexSettings
-      case (unknownUri, unknownMethod) =>
-        throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
-    }
+    val requestType = MainSettingsRequest.from(request.uri(), Method.fromStringUnsafe(request.method().name()))
     new RRAdminRequest(
       new MainSettingsApi.MainSettingsRequest(requestType, request.content.utf8ToString),
       request
