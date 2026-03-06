@@ -26,14 +26,13 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexPattern, RequestId}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.{LocalAuditIndex, OtherAuditOutput}
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.{AuditIndexSchema, AuditOutput}
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -75,7 +74,7 @@ class MainSettingsApi(rorInstance: RorInstance,
     val auditOutputs = sinks.flatMap {
       case AuditSink.Enabled(config) => config match {
         case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
-          Some(LocalAuditIndex(rorAuditIndexTemplate.kibanaIndexPattern, AuditIndexSchema.from(logSerializer)))
+          Some(LocalAuditIndex(rorAuditIndexTemplate.rorAuditIndexPattern, AuditIndexSchema.from(logSerializer)))
         case Config.EsIndexBasedSink(_, _, _) =>
           Some(OtherAuditOutput("Remote audit cluster"))
         case Config.EsDataStreamBasedSink(_, ds, _) =>

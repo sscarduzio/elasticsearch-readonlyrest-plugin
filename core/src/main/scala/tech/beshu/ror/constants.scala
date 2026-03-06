@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror
 
+import tech.beshu.ror.utils.RefinedUtils.nes
+
 import scala.collection.mutable.Set as MutableSet
 
 object constants {
@@ -52,6 +54,6 @@ object constants {
     "_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index"
   )
 
-  val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd"
+  val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = nes("'readonlyrest_audit-'yyyy-MM-dd")
 
 }

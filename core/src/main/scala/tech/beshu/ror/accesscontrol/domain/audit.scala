@@ -26,7 +26,7 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.utils.KibanaIndexPattern
+import tech.beshu.ror.utils.WildcardBasedIndexPattern
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.format.DateTimeFormatter
@@ -37,7 +37,7 @@ import scala.util.{Failure, Success, Try}
 
 final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
                                           rawPattern: String,
-                                          val kibanaIndexPattern: IndexPattern) {
+                                          val rorAuditIndexPattern: IndexPattern) {
 
   def indexName(instant: Instant): IndexName.Full = {
     IndexName.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
@@ -61,16 +61,23 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
 object RorAuditIndexTemplate {
   val default: RorAuditIndexTemplate = from(constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
 
-  def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
+  def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
+    NonEmptyString.from(pattern) match {
+      case Right(nonEmptyPattern) =>
+        from(nonEmptyPattern)
+      case Left(value) =>
+        Left(CreationError.ParsingError(s"The index name template cannot be empty"))
+    }
+  }
 
-  def from(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
-    Try(DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.of("UTC"))) match {
+  def from(pattern: NonEmptyString): Either[CreationError, RorAuditIndexTemplate] = {
+    Try(DateTimeFormatter.ofPattern(pattern.value).withZone(ZoneId.of("UTC"))) match {
       case Success(formatter) =>
-        KibanaIndexPattern.fromDateTimeIndexPattern(pattern) match {
-          case Some(kibanaIndexPattern) =>
-            Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", ""), kibanaIndexPattern))
-          case None =>
-            Left(CreationError.ParsingError(s"Cannot create an index name from '$pattern'"))
+        WildcardBasedIndexPattern.fromDateTimePatternString(pattern) match {
+          case Left(errorMessage) =>
+            Left(CreationError.ParsingError(errorMessage))
+          case Right(kibanaIndexPattern) =>
+            Right(new RorAuditIndexTemplate(formatter, pattern.value.replaceAll("'", ""), kibanaIndexPattern))
         }
       case Failure(ex) =>
         Left(CreationError.ParsingError(ex.getMessage))
