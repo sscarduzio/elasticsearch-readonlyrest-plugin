@@ -45,19 +45,24 @@ private class ServiceAccountTokenServiceRefAvailable(serviceAccountServiceRef: A
   override def validateToken(token: AuthorizationToken)
                             (implicit requestId: RequestId): Task[Boolean] = {
     parseToken(token) match {
-      case Success(serviceAccountToken) =>
+      case Success(Some(serviceAccountToken)) =>
         authenticateToken(serviceAccountToken)
+      case Success(None) =>
+        logger.warn("Token cannot be parsed as ServiceAccountToken")
+        Task.now(false)
       case Failure(ex) =>
         logger.warn("Token cannot be parsed as ServiceAccountToken", ex)
         Task.now(false)
     }
   }
 
-  private def parseToken(token: AuthorizationToken): Try[AnyRef] =
+  private def parseToken(token: AuthorizationToken): Try[Option[AnyRef]] =
     Using(new SecureString(token.value.value.toArray)) { secureString =>
-      on(serviceAccountServiceRef)
-        .call("tryParseToken", secureString)
-        .get[AnyRef]
+      Option {
+        on(serviceAccountServiceRef)
+          .call("tryParseToken", secureString)
+          .get[AnyRef]
+      }
     }
 
   private def authenticateToken(serviceAccountToken: AnyRef): Task[Boolean] = {

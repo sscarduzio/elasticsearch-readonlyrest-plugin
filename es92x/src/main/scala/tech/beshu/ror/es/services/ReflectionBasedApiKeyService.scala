@@ -55,19 +55,22 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
   override def validateToken(token: AuthorizationToken)
                             (implicit requestId: RequestId): Task[Boolean] = {
     parseApiKey(token) match {
-      case Success(apiKey) =>
+      case Success(Some(apiKey)) =>
         authenticateApiKey(apiKey)
+      case Success(None) =>
+        logger.warn("Token cannot be parsed as ApiKey")
+        Task.now(false)
       case Failure(ex) =>
         logger.warn("Token cannot be parsed as ApiKey", ex)
         Task.now(false)
     }
   }
 
-  private def parseApiKey(token: AuthorizationToken): Try[AnyRef] =
+  private def parseApiKey(token: AuthorizationToken): Try[Option[AnyRef]] =
     Using(new SecureString(token.value.value.toArray)) { secureString =>
       apiKeyType
         .flatMap { `type` =>
-          Try(on(apiKeyServiceRef).call("parseApiKey", secureString, null, `type`).get[AnyRef])
+          Try(Option(on(apiKeyServiceRef).call("parseApiKey", secureString, null, `type`).get[AnyRef]))
         }
         .get
     }

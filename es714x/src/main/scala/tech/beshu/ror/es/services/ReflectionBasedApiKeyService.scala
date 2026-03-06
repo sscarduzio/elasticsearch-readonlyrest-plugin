@@ -48,19 +48,21 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
   override def validateToken(token: AuthorizationToken)
                             (implicit requestId: RequestId): Task[Boolean] = {
     parseApiKey(token) match {
-      case Success(apiKey) =>
+      case Success(Some(apiKey)) =>
         authenticateApiKey(apiKey)
+      case Success(None) =>
+        logger.warn("Token cannot be parsed as ApiKey")
+        Task.now(false)
       case Failure(ex) =>
         logger.warn("Token cannot be parsed as ApiKey", ex)
         Task.now(false)
     }
   }
 
-  private def parseApiKey(token: AuthorizationToken): Try[AnyRef] = Try {
+  private def parseApiKey(token: AuthorizationToken): Try[Option[AnyRef]] = Try {
     val tempContext = new ThreadContext(Settings.EMPTY)
     tempContext.putHeader("Authorization", token.stringify)
     Option(on(apiKeyServiceRef).call("getCredentialsFromHeader", tempContext).get[AnyRef])
-      .getOrElse(throw new IllegalStateException("ApiKeyService returned null credentials"))
   }
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
