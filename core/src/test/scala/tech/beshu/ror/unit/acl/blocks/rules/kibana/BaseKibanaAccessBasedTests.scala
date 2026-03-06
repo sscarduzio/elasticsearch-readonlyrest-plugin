@@ -386,6 +386,175 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         }
       }
     }
+    "Admin access is configured" when {
+      "admin action with no indices should match" in {
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(KibanaAccess.Admin),
+          Action("cluster:internal_ror/user_metadata/get"),
+          requestedIndices = Set.empty,
+          uriPath = Some(UriPath.from("/_readonlyrest/metadata/current_user"))
+        )()
+      }
+      "admin action targeting ROR index should match" in {
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(KibanaAccess.Admin),
+          Action("indices:data/write/index"),
+          requestedIndices = Set(RequestedIndex(Local(rorIndex), excluded = false)),
+          uriPath = Some(UriPath.from("/.readonlyrest/_doc/1"))
+        )()
+      }
+      "admin action with index_management kibana request path header should match" in {
+        assertMatchRuleUsingIndicesRequestWithHeaders(
+          settingsOf(KibanaAccess.Admin),
+          Action("indices:admin/delete"),
+          requestedIndices = Set(requestedIndex("some_index")),
+          uriPath = Some(UriPath.from("/some_index")),
+          extraHeaders = Set(new Header(Header.Name.kibanaRequestPath, unsafeNes("api/index_management/indices")))
+        )()
+      }
+      "admin action with tags kibana request path header should match" in {
+        assertMatchRuleUsingIndicesRequestWithHeaders(
+          settingsOf(KibanaAccess.Admin),
+          Action("indices:admin/delete"),
+          requestedIndices = Set(requestedIndex("some_index")),
+          uriPath = Some(UriPath.from("/some_index")),
+          extraHeaders = Set(new Header(Header.Name.kibanaRequestPath, unsafeNes("api/tags/some_tag")))
+        )()
+      }
+      "RO action should still match" in {
+        roActionPatternsMatcher.patterns.map(Action.apply).take(1).foreach { action =>
+          assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), action)()
+        }
+      }
+      "non-admin action targeting non-kibana, non-ror index should not match" in {
+        assertNotMatchRuleUsingIndicesRequest(
+          settingsOf(KibanaAccess.Admin),
+          Action("indices:some/unknown/action"),
+          requestedIndices = Set(requestedIndex("some_random_index")),
+        )
+      }
+    }
+    "ROStrict access is configured" when {
+      "cluster action should still match (cluster actions are always allowed)" in {
+        clusterActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
+          assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action)()
+        }
+      }
+      "RW action on kibana index should not match" in {
+        rwActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
+          assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(requestedIndex(".kibana")))
+        }
+      }
+      "non-strict write operations on kibana index should not match" in {
+        assertNotMatchRuleUsingIndicesRequest(
+          settings = settingsOf(ROStrict),
+          action = Action("indices:data/write/index"),
+          requestedIndices = Set(requestedIndex(".kibana")),
+        )
+      }
+    }
+    "DevNull kibana index (.kibana-devnull) is targeted" when {
+      "any action should match for any access level" in {
+        Seq(ROStrict, RO, RW, KibanaAccess.Admin, Unrestricted).foreach { access =>
+          assertMatchRuleUsingIndicesRequest(
+            settingsOf(access),
+            Action("indices:data/write/index"),
+            requestedIndices = Set(requestedIndex(".kibana-devnull")),
+            uriPath = Some(UriPath.from("/.kibana-devnull/_doc/1"))
+          )()
+        }
+      }
+    }
+    "User metadata request path is used" when {
+      "any access level should match" in {
+        Seq(ROStrict, RO, RW, KibanaAccess.Admin, Unrestricted).foreach { access =>
+          assertMatchRuleUsingIndicesRequest(
+            settingsOf(access),
+            Action("indices:data/read/search"),
+            requestedIndices = Set.empty,
+            uriPath = Some(UriPath.from("/_readonlyrest/metadata/current_user"))
+          )()
+        }
+      }
+    }
+    "Kibana sample data index is used" when {
+      "RW access with kibana_sample_data_ prefixed index should match" in {
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW),
+          Action("indices:data/write/index"),
+          requestedIndices = Set(requestedIndex("kibana_sample_data_flights")),
+          uriPath = Some(UriPath.from("/kibana_sample_data_flights/_doc/1"))
+        ) {
+          assertBlockContext(_)(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
+              access = RW,
+              index = Some(kibanaIndexName(".kibana"))
+            )),
+            indices = Set(requestedIndex("kibana_sample_data_flights"))
+          )
+        }
+      }
+      "RO access with kibana_sample_data_ prefixed index should not match" in {
+        assertNotMatchRuleUsingIndicesRequest(
+          settingsOf(RO),
+          Action("indices:data/write/index"),
+          requestedIndices = Set(requestedIndex("kibana_sample_data_flights")),
+        )
+      }
+    }
+    "indices:data/write action on kibana index" when {
+      "RW access with a generic write action should match" in {
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW),
+          Action("indices:data/write/reindex"),
+          requestedIndices = Set(requestedIndex(".kibana")),
+          uriPath = Some(UriPath.from("/.kibana/_doc/1"))
+        ) {
+          assertBlockContext(_)(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
+              access = RW,
+              index = Some(kibanaIndexName(".kibana"))
+            )),
+            indices = Set(requestedIndex(".kibana"))
+          )
+        }
+      }
+    }
+    "Empty indices with RW action" when {
+      "RW access should match" in {
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(RW),
+          Action("indices:data/write/bulk"),
+          requestedIndices = Set.empty,
+          uriPath = Some(UriPath.from("/_bulk"))
+        ) {
+          assertBlockContext(_)(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
+              access = RW,
+              index = Some(kibanaIndexName(".kibana"))
+            )),
+          )
+        }
+      }
+      "RO access should not match" in {
+        assertNotMatchRuleUsingIndicesRequest(
+          settingsOf(RO),
+          Action("indices:data/write/bulk"),
+          requestedIndices = Set.empty,
+        )
+      }
+    }
+    "Unknown action with unknown index" when {
+      "should not match for any non-Unrestricted access" in {
+        Seq(ROStrict, RO, RW).foreach { access =>
+          assertNotMatchRuleUsingIndicesRequest(
+            settingsOf(access),
+            Action("indices:some/completely/unknown"),
+            requestedIndices = Set(requestedIndex("random_index")),
+          )
+        }
+      }
+    }
   }
 
   private def testNonStrictOperations(customKibanaIndex: KibanaIndexName, action: Action, uriPath: UriPath): Unit = {
@@ -436,6 +605,14 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                                 (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, customKibanaIndex)) =
     assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, Some(blockContextAssertion))
 
+  private def assertMatchRuleUsingIndicesRequestWithHeaders(settings: SETTINGS,
+                                                             action: Action,
+                                                             requestedIndices: Set[RequestedIndex[ClusterIndexName]],
+                                                             uriPath: Option[UriPath],
+                                                             extraHeaders: Set[Header])
+                                                            (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, None)) =
+    assertRuleUsingIndicesRequest(settings, action, None, requestedIndices, uriPath, Some(blockContextAssertion), extraHeaders)
+
   private def assertMatchRuleUsingDataStreamsRequest(settings: SETTINGS,
                                                      action: Action,
                                                      requestedDataStreams: Set[DataStreamName],
@@ -455,9 +632,10 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                             customKibanaIndex: Option[KibanaIndexName],
                                             requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                             uriPath: Option[UriPath],
-                                            blockContextAssertion: Option[BlockContext => Unit]) = {
+                                            blockContextAssertion: Option[BlockContext => Unit],
+                                            extraHeaders: Set[Header] = Set.empty) = {
     val requestContext = MockRequestContext.indices.copy(
-      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined"))),
+      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined")), allHeaders = extraHeaders),
       action = action,
       filteredIndices = requestedIndices,
     )
