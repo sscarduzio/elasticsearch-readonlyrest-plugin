@@ -25,8 +25,8 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.NonEmptyStringUtils.*
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.utils.WildcardBasedIndexPattern
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.format.DateTimeFormatter
@@ -61,26 +61,29 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
 object RorAuditIndexTemplate {
   val default: RorAuditIndexTemplate = from(constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
 
-  def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
-    NonEmptyString.from(pattern) match {
-      case Right(nonEmptyPattern) =>
-        from(nonEmptyPattern)
-      case Left(value) =>
-        Left(CreationError.ParsingError(s"The index name template cannot be empty"))
+  def from(pattern: NonEmptyString): Either[CreationError, RorAuditIndexTemplate] = {
+    for {
+      formatter <- formatterOfPattern(pattern)
+      rawPattern = pattern.value.replaceAll("'", "")
+      rorAuditIndex <- rorAuditIndexPattern(pattern)
+    } yield new RorAuditIndexTemplate(formatter, rawPattern, rorAuditIndex)
+  }
+
+  private def formatterOfPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, DateTimeFormatter] = {
+    Try(DateTimeFormatter.ofPattern(pattern.value).withZone(ZoneId.of("UTC"))) match {
+      case Success(formatter) => Right(formatter)
+      case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
     }
   }
 
-  def from(pattern: NonEmptyString): Either[CreationError, RorAuditIndexTemplate] = {
-    Try(DateTimeFormatter.ofPattern(pattern.value).withZone(ZoneId.of("UTC"))) match {
-      case Success(formatter) =>
-        WildcardBasedIndexPattern.fromDateTimePatternString(pattern) match {
-          case Left(errorMessage) =>
-            Left(CreationError.ParsingError(errorMessage))
-          case Right(kibanaIndexPattern) =>
-            Right(new RorAuditIndexTemplate(formatter, pattern.value.replaceAll("'", ""), kibanaIndexPattern))
-        }
-      case Failure(ex) =>
-        Left(CreationError.ParsingError(ex.getMessage))
+  private def rorAuditIndexPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, IndexPattern] = {
+    pattern.replaceDateTimePatternWithWildcard match {
+      case Left(DateTimePatternReplacementError.IncompleteStringLiteralPresent) =>
+        Left(CreationError.ParsingError("Incomplete string literal is present in index name pattern"))
+      case Left(DateTimePatternReplacementError.PatternResolvingResultsInEmptyString) =>
+        Left(CreationError.ParsingError("The index name pattern is empty or contains only whitespaces"))
+      case Right(validIndexPatternNes) =>
+        Right(IndexPattern.fromNes(validIndexPatternNes))
     }
   }
 

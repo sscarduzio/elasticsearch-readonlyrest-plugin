@@ -18,20 +18,20 @@ package tech.beshu.ror.utils
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.IndexPattern
 
 import scala.annotation.tailrec
+import scala.language.implicitConversions
 
-object WildcardBasedIndexPattern {
+object NonEmptyStringUtils {
 
   import Token.*
 
-  def fromDateTimePatternString(dateTimeIndexPattern: NonEmptyString): Either[String, IndexPattern] = {
-    val tokenized = tokenize(dateTimeIndexPattern.toNel)
-    val collapsed = collapse(tokenized)
-    val rendered = render(collapsed)
-    rendered.map(IndexPattern.fromNes)
-  }
+  extension (nes: NonEmptyString)
+    def replaceDateTimePatternWithWildcard: Either[DateTimePatternReplacementError, NonEmptyString] = {
+      val tokenized = tokenize(nes.toNel)
+      val collapsed = collapse(tokenized)
+      render(collapsed)
+    }
 
   private def tokenize(chars: NonEmptyList[Char]): NonEmptyList[Token] = {
 
@@ -99,8 +99,8 @@ object WildcardBasedIndexPattern {
     loop(tail, acc, inDateSegment)
   }
 
-  private def render(tokens: NonEmptyList[Token]): Either[String, NonEmptyString] = {
-    val resolvedPattern = tokens.toList.foldLeft(Right(""): Either[String, String]) { (acc, token) =>
+  private def render(tokens: NonEmptyList[Token]): Either[DateTimePatternReplacementError, NonEmptyString] = {
+    val resolvedPattern = tokens.toList.foldLeft(Right(""): Either[DateTimePatternReplacementError, String]) { (acc, token) =>
       for {
         s <- acc
         t <- token match {
@@ -108,25 +108,31 @@ object WildcardBasedIndexPattern {
           case DatePart => Right("*")
           case Literal(ch) => Right(ch.toString)
           case Empty => Right("")
-          case IncompleteStringLiteral => Left("Incomplete string literal in pattern")
+          case IncompleteStringLiteral => Left(DateTimePatternReplacementError.IncompleteStringLiteralPresent)
         }
       } yield s + t
     }
     resolvedPattern.flatMap { str =>
       NonEmptyString.from(str).toOption match {
         case None =>
-          Left("The index name pattern is empty after pattern resolving")
+          Left(DateTimePatternReplacementError.PatternResolvingResultsInEmptyString)
+        case Some(nonEmptyPattern) if nonEmptyPattern.value.trim.isEmpty =>
+          Left(DateTimePatternReplacementError.PatternResolvingResultsInEmptyString)
         case Some(nonEmptyPattern) =>
-          if (nonEmptyPattern.value.trim.isEmpty) {
-            Left("The index name pattern contains only whitespace after pattern resolving")
-          } else {
-            Right(nonEmptyPattern)
-          }
+          Right(nonEmptyPattern)
       }
     }
   }
 
   private val dateLetters: Set[Char] = "GyYuUQqMLlwWdDFgEecabBhHKkksSzZXVO".toSet
+
+  extension (nes: NonEmptyString)
+    private def toNel: NonEmptyList[Char] =
+      NonEmptyList.fromListUnsafe(nes.value.toList)
+
+  extension (nel: NonEmptyList[Char])
+    private def toNonEmptyString: NonEmptyString =
+      NonEmptyString.unsafeFrom(nel.toList.mkString)
 
   private sealed trait Token
 
@@ -142,12 +148,12 @@ object WildcardBasedIndexPattern {
     case object IncompleteStringLiteral extends Token
   }
 
-  extension (nes: NonEmptyString)
-    private def toNel: NonEmptyList[Char] =
-      NonEmptyList.fromListUnsafe(nes.value.toList)
+  sealed trait DateTimePatternReplacementError
 
-  extension (nel: NonEmptyList[Char])
-    private def toNonEmptyString: NonEmptyString =
-      NonEmptyString.unsafeFrom(nel.toList.mkString)
+  object DateTimePatternReplacementError {
+    case object IncompleteStringLiteralPresent extends DateTimePatternReplacementError
+
+    case object PatternResolvingResultsInEmptyString extends DateTimePatternReplacementError
+  }
 
 }
