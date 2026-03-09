@@ -74,7 +74,7 @@ object KibanaActionMatchers {
     ).map(Action.apply)
   }
 
-  // Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
+  // todo: Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
   val adminActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     RorAction.adminActions ++
       Set(
@@ -110,6 +110,7 @@ object KibanaActionMatchers {
     Action("indices:data/write/*"), Action("indices:admin/template/put")
   ))
 
+  // todo: remove
   val indicesWriteAction: PatternsMatcher[Action] = PatternsMatcher.create(Set(Action("indices:data/write/*")))
 
   val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(

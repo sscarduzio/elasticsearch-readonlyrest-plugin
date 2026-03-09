@@ -44,16 +44,10 @@ object KibanaAccessPermissions {
 
   sealed trait ActionCategory
   object ActionCategory {
-    // ES index-level read actions (indices:data/read/*, indices:admin/mappings/get*, indices:monitor/*, etc.)
-    case object ReadOnly extends ActionCategory
-    // ES cluster-level read/monitoring actions (cluster:monitor/*, cluster:*/xpack/*, etc.). NOT "cluster management" from the permission table.
     case object ClusterMonitor extends ActionCategory
-    // ES write + index admin + some cluster admin actions (indices:data/write/*, indices:admin/create, cluster:admin/settings/*, etc.)
+    case object ReadOnly extends ActionCategory
     case object ReadWrite extends ActionCategory
-    // ROR internal admin actions only (cluster:internal_ror/*). NOT ES indices:admin/* actions.
-    case object Admin extends ActionCategory
-    // Raw indices:data/write/* actions
-    case object IndicesWrite extends ActionCategory
+    case object RorAdmin extends ActionCategory
     case object Other extends ActionCategory
   }
 
@@ -75,11 +69,10 @@ object KibanaAccessPermissions {
 
     def classifyAction(bc: BlockContext): ActionCategory = {
       bc.requestContext.action match {
-        case _: RorAction.AdminRorAction => ActionCategory.Admin
+        case _: RorAction.AdminRorAction => ActionCategory.RorAdmin
         case action if clusterActionPatternsMatcher.`match`(action) => ActionCategory.ClusterMonitor
         case action if roActionPatternsMatcher.`match`(action) => ActionCategory.ReadOnly
         case action if rwActionPatternsMatcher.`match`(action) => ActionCategory.ReadWrite
-        case action if indicesWriteAction.`match`(action) => ActionCategory.IndicesWrite
         case _ => ActionCategory.Other
       }
     }
