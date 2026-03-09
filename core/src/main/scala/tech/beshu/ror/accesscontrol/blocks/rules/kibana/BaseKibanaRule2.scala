@@ -27,10 +27,10 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 //
 // Access level       | Indices                                           | Cluster mgmt | ROR settings |
 //                    | kibana indices | reporting indices | data indices |              |              |
-// admin              | full           | full              | read-only    | full         | full         |
-// rw                 | full           | full              | read-only    | full         | none         |
-// ro                 | read-only*     | full              | read-only    | read-only    | none         |
-// ro_strict/api_only | read-only      | none              | read-only    | read-only    | none         |A
+// admin              | full           | full              | read-only    | read-only    | full         |
+// rw                 | full           | full              | read-only    | read-only    | none         |
+// ro                 | full           | full              | read-only    | none         | none         |
+// ro_strict/api_only | read-only      | none              | read-only    | none         | none         |
 // * non-strict writes allowed (UI state saves)
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
