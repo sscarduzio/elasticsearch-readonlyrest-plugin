@@ -31,14 +31,16 @@ object KibanaAccessPermissions {
 
   sealed trait ResourceCategory
   object ResourceCategory {
-    case object KibanaIndex extends ResourceCategory
-    case object ReportingIndex extends ResourceCategory
-    case object DataIndex extends ResourceCategory
-    case object SampleData extends ResourceCategory
-    case object RorSettingsIndex extends ResourceCategory
+    sealed trait IndexResource extends ResourceCategory
+    sealed trait KibanaRelatedResource extends IndexResource
+    case object KibanaIndex extends KibanaRelatedResource
+    case object ReportingIndex extends KibanaRelatedResource
+    case object SampleData extends KibanaRelatedResource
+    case object DevNullKibana extends KibanaRelatedResource
+    case object DataIndex extends IndexResource
+    case object RorSettingsIndex extends IndexResource
     case object NoIndices extends ResourceCategory
     case object UserMetadataRequest extends ResourceCategory
-    case object DevNullKibana extends ResourceCategory
   }
 
   sealed trait ActionCategory

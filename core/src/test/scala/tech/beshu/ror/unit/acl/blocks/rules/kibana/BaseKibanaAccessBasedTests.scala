@@ -403,23 +403,27 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           uriPath = Some(UriPath.from("/.readonlyrest/_doc/1"))
         )()
       }
-      "action with index_management kibana request path header should match" in {
-        assertMatchRuleUsingIndicesRequestWithHeaders(
+      "unrecognized ES admin action with index_management header should not match" in {
+        assertRuleUsingIndicesRequest(
           settingsOf(KibanaAccess.Admin),
           Action("indices:admin/delete"),
+          customKibanaIndex = None,
           requestedIndices = Set(requestedIndex("some_index")),
           uriPath = Some(UriPath.from("/some_index")),
+          blockContextAssertion = None,
           extraHeaders = Set(new Header(Header.Name.kibanaRequestPath, unsafeNes("api/index_management/indices")))
-        )()
+        )
       }
-      "admin action with tags kibana request path header should match" in {
-        assertMatchRuleUsingIndicesRequestWithHeaders(
+      "unrecognized ES admin action with tags header should not match" in {
+        assertRuleUsingIndicesRequest(
           settingsOf(KibanaAccess.Admin),
           Action("indices:admin/delete"),
+          customKibanaIndex = None,
           requestedIndices = Set(requestedIndex("some_index")),
           uriPath = Some(UriPath.from("/some_index")),
+          blockContextAssertion = None,
           extraHeaders = Set(new Header(Header.Name.kibanaRequestPath, unsafeNes("api/tags/some_tag")))
-        )()
+        )
       }
       "RO action should still match" in {
         roActionPatternsMatcher.patterns.map(Action.apply).take(1).foreach { action =>
@@ -605,13 +609,6 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                                 (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, customKibanaIndex)) =
     assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, Some(blockContextAssertion))
 
-  private def assertMatchRuleUsingIndicesRequestWithHeaders(settings: SETTINGS,
-                                                             action: Action,
-                                                             requestedIndices: Set[RequestedIndex[ClusterIndexName]],
-                                                             uriPath: Option[UriPath],
-                                                             extraHeaders: Set[Header])
-                                                            (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, None)) =
-    assertRuleUsingIndicesRequest(settings, action, None, requestedIndices, uriPath, Some(blockContextAssertion), extraHeaders)
 
   private def assertMatchRuleUsingDataStreamsRequest(settings: SETTINGS,
                                                      action: Action,

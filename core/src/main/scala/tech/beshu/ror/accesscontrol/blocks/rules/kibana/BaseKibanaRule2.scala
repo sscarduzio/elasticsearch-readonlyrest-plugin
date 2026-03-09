@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 // admin              | full           | full              | read-only    | full         | full         |
 // rw                 | full           | full              | read-only    | full         | none         |
 // ro                 | read-only*     | full              | read-only    | read-only    | none         |
-// ro_strict/api_only | read-only      | none              | read-only    | read-only    | none         |
+// ro_strict/api_only | read-only      | none              | read-only    | read-only    | none         |A
 // * non-strict writes allowed (UI state saves)
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
