@@ -194,12 +194,12 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private given Decoder[RorAuditIndexTemplate] =
     SyncDecoderCreator
-      .from(Decoder.decodeString.emap(NonEmptyString.from))
+      .from(nonEmptyStringDecoder)
       .emapE { patternNes =>
         RorAuditIndexTemplate.from(patternNes).left.map {
           case CreationError.ParsingError(msg) =>
             auditSettingsError(
-              s"Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
+              s"Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternNes.show} error: ${msg.show}"
             )
         }
       }
