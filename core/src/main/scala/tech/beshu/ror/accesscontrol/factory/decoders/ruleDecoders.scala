@@ -219,7 +219,7 @@ object ruleDecoders {
                                     userIdPatterns: UserIdPatterns,
                                     globalSettings: GlobalSettings) = {
     rule.eligibleUsers match {
-      case EligibleUsersSupport.Available(users) =>
+      case EligibleUsersSupport.Available(users, false) =>
         implicit val userIdCaseSensitivity: CaseSensitivity = globalSettings.userIdCaseSensitivity
         val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
         if (users.exists(matcher.`match`)) {
@@ -229,7 +229,7 @@ object ruleDecoders {
             s"Users [${users.show}] are allowed to be authenticated by rule [${rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."
           )
         }
-      case EligibleUsersSupport.NotAvailable =>
+      case EligibleUsersSupport.Available(_, true) | EligibleUsersSupport.NotAvailable =>
         Right(())
     }
   }

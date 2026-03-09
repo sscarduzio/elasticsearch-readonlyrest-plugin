@@ -58,7 +58,7 @@ final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[
   }
 
   override val eligibleUsers: EligibleUsersSupport =
-    EligibleUsersSupport.Available(Set(settings.credentials.user))
+    EligibleUsersSupport.Available(Set(settings.credentials.user), unknownUsers = false)
 }
 
 object AuthKeyRule {

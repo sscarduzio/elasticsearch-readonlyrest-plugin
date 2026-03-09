@@ -140,7 +140,35 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         )
       }
       "users section defined without wildcard patterns" when {
-        "auth_key rules used" in {
+        "auth_key rules used (groups rule present, local users from users section returned)" in {
+          val settings =
+            s"""
+               |readonlyrest:
+               |  access_control_rules:
+               |  - name: test_block1
+               |    auth_key: admin:container
+               |  - name: test_block2
+               |    groups_any_of: ["group1"]
+               |
+               |  users:
+               |  - username: user1
+               |    groups: ["group1", "group3"]
+               |    auth_key: "user1:pass"
+               |
+               |  - username: user2
+               |    groups: ["group2", "group4"]
+               |    auth_key: "user2:pass"
+               |
+               |  - username: user4
+               |    groups: ["group5", "group6"]
+               |    auth_key: "user4:pass"
+               |""".stripMargin
+
+          assertLocalUsersFromSettings(settings, allUsersResolved(Set(
+            User.Id("user1"), User.Id("user2"), User.Id("user4"), User.Id("admin")
+          )))
+        }
+        "auth_key rules used (groups rule not present, local users from users section not returned)" in {
           val settings =
             s"""
                |readonlyrest:
@@ -162,9 +190,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |    auth_key: "user4:pass"
                |""".stripMargin
 
-          assertLocalUsersFromSettings(settings, allUsersResolved(Set(
-            User.Id("user1"), User.Id("user2"), User.Id("user4"), User.Id("admin")
-          )))
+          assertLocalUsersFromSettings(settings, allUsersResolved(Set(User.Id("admin"))))
         }
         "ldap_authentication rule used" in {
           val settings = rorSettingsFromUnsafe {
@@ -309,7 +335,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
         }
       }
-      "users section defined with wildcard patterns" in {
+      "users section defined with wildcard patterns (groups rule not present, local users from users section not returned)" in {
         val settings =
           s"""
              |readonlyrest:
@@ -334,9 +360,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |    groups: ["group5", "group6"]
              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(
-          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
-        )))
+        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(User.Id("admin"))))
       }
       "impersonators section defined with users, that are not present in ACL or in users section" in {
         val settings =
@@ -361,6 +385,8 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           User.Id("admin")
         )))
       }
+    }
+    "return info that unknown users in settings" when {
       "hashed username and password" in {
         val settings =
           s"""
@@ -373,7 +399,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |  - name: test_block3
              |    auth_key: admin:container
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = allUsersResolved(Set(User.Id("admin"))))
+        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(User.Id("admin"))))
       }
       "there is some user with hashed credentials" in {
         val settings =
@@ -385,10 +411,43 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |  - name: test_block2
              |    auth_key: admin:container
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, allUsersResolved(Set(User.Id("admin"))))
+        assertLocalUsersFromSettings(settings, withUnknownUsers(Set(User.Id("admin"))))
+      }
+      "users section defined with wildcard patterns (groups rule present, local users from users section returned)" in {
+        val settings =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key: admin:container
+             |  - name: test_block2
+             |    groups_any_of: ["group1"]
+             |
+             |  users:
+             |  - username: user1
+             |    groups: ["group1", "group3"]
+             |    auth_key: "user1:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group2", "group4"]
+             |    auth_key: "user2:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key: "user4:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |""".stripMargin
+        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(Set(
+          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
+        )))
       }
     }
   }
+
+  private def withUnknownUsers(users: Set[User.Id]) = LocalUsers(users, unknownUsers = true)
 
   private def allUsersResolved(users: Set[User.Id]) = LocalUsers(users, unknownUsers = false)
 

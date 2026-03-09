@@ -272,8 +272,8 @@ object LocalUsers {
   def from(rule: Rule): LocalUsers = {
     rule match {
       case authentication: AuthenticationRule => authentication.eligibleUsers match {
-        case EligibleUsersSupport.Available(users) =>
-          LocalUsers(users, unknownUsers = false)
+        case EligibleUsersSupport.Available(users, unknownUsers) =>
+          LocalUsers(users, unknownUsers)
         case EligibleUsersSupport.NotAvailable =>
           LocalUsers.empty
       }

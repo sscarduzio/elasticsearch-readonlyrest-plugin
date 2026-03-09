@@ -63,7 +63,7 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
   }
 
   override val eligibleUsers: EligibleUsersSupport =
-    EligibleUsersSupport.Available(Set(settings.credentials.userId))
+    EligibleUsersSupport.Available(Set(settings.credentials.userId), unknownUsers = false)
 }
 
 object AuthKeyUnixRule {

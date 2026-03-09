@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListSt
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -380,11 +379,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
-        val localUsers: LocalUsers = {
-          val fromUserDefs = localUsersFromUserDefs(userDefs)
-          val fromBlocks = blocksNel.map(_.localUsers).toList
-          (fromBlocks :+ fromUserDefs).combineAll
-        }
+        val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
 
         val rorDependencies = RorDependencies(
           services = RorDependencies.Services(
@@ -408,13 +403,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       }
       decoder.apply(c)
     }
-  }
-
-  private def localUsersFromUserDefs(definitions: Definitions[UserDef]) = {
-    definitions.items
-      .map(_.authenticationRule)
-      .map(LocalUsers.from)
-      .combineAll
   }
 
 }
