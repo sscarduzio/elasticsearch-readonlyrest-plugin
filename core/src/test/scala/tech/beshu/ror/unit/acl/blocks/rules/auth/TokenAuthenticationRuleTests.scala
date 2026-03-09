@@ -183,7 +183,7 @@ class TokenAuthenticationRuleTests
           ),
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123")),
-          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' is invalid")
         )
       }
       "static token is passed in different header than the configured one" in {
@@ -197,7 +197,7 @@ class TokenAuthenticationRuleTests
           ),
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ")),
-          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' is missing")
         )
       }
       "service-token validation fails" in {
@@ -209,7 +209,7 @@ class TokenAuthenticationRuleTests
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("Authorization" -> "Bearer svc-token")),
           esServices = MockEsServices.`with`(new MockServiceAccountTokenService(false)),
-          denialCause = AuthenticationFailed("Token header 'Authorization' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
         )
       }
       "service-token header is absent" in {
@@ -220,7 +220,7 @@ class TokenAuthenticationRuleTests
           ),
           impersonation = Impersonation.Disabled,
           headers = Set.empty,
-          denialCause = AuthenticationFailed("Token header 'Authorization' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'Authorization' is missing")
         )
       }
       "service-token header has wrong prefix" in {
@@ -231,7 +231,7 @@ class TokenAuthenticationRuleTests
           ),
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("Authorization" -> "Api svc-token")),
-          denialCause = AuthenticationFailed("Token header 'Authorization' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
         )
       }
       "api-key validation fails" in {
@@ -243,7 +243,7 @@ class TokenAuthenticationRuleTests
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("Authorization" -> "Api api-key-value")),
           esServices = MockEsServices.`with`(new MockApiKeyService(false)),
-          denialCause = AuthenticationFailed("Token header 'Authorization' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
         )
       }
       "api-key header is absent" in {
@@ -254,7 +254,7 @@ class TokenAuthenticationRuleTests
           ),
           impersonation = Impersonation.Disabled,
           headers = Set.empty,
-          denialCause = AuthenticationFailed("Token header 'Authorization' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'Authorization' is missing")
         )
       }
       "api-key header has wrong prefix" in {
@@ -265,7 +265,7 @@ class TokenAuthenticationRuleTests
           ),
           impersonation = Impersonation.Disabled,
           headers = Set(headerFrom("Authorization" -> "Bearer api-key-value")),
-          denialCause = AuthenticationFailed("Token header 'Authorization' missing or invalid")
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
         )
       }
       "user is being impersonated" when {

@@ -59,7 +59,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
+import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
@@ -434,6 +434,10 @@ object TestsUtils {
     clusterName = "testEsCluster",
     nodeName = "testEsNode"
   )
+
+  def defaultEsEnv(): EsEnv = {
+    EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
+  }
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 

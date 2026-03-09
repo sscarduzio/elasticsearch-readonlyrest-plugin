@@ -72,8 +72,7 @@ private class ApiKeyServiceRefAvailable(apiKeyServiceRef: Any,
         .flatMap { `type` =>
           Try(Option(on(apiKeyServiceRef).call("parseApiKey", secureString, `type`).get[AnyRef]))
         }
-        .get
-    }
+    }.flatten
 
   private def authenticateApiKey(apiKeyCredentials: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]

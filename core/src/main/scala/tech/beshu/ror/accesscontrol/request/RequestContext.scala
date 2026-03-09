@@ -28,8 +28,8 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
+import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{InvalidValue, MissingHeader}
 import tech.beshu.ror.es.EsServices
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -211,18 +211,18 @@ object RequestContext extends RequestIdAwareLogging {
 
     def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
 
-    def bearerToken: Option[AuthorizationToken] = authorizationTokenBy(
+    def bearerToken: Either[AuthorizationTokenRetrievingError, AuthorizationToken] = authorizationTokenBy(
       AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
     )
 
-    def authorizationTokenBy(config: AuthorizationTokenDef): Option[AuthorizationToken] = {
+    def authorizationTokenBy(config: AuthorizationTokenDef): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
       for {
-        tokenHeader <- findHeader(config.headerName)
-        authorizationToken <- AuthorizationToken.from(tokenHeader.value)
+        tokenHeader <- findHeader(config.headerName).toRight(MissingHeader)
+        authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
         _ <- config.allowedPrefix match {
-          case AllowedPrefix.Any => Some(())
-          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Some(())
-          case AllowedPrefix.StrictlyDefined(_) => None
+          case AllowedPrefix.Any => Right(())
+          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Right(())
+          case AllowedPrefix.StrictlyDefined(_) => Left(InvalidValue)
         }
       } yield authorizationToken
 
@@ -230,5 +230,11 @@ object RequestContext extends RequestIdAwareLogging {
 
     private def findHeader(name: Header.Name) =
       requestContext.restRequest.allHeaders.find(_.name === name)
+  }
+
+  sealed trait AuthorizationTokenRetrievingError
+  object AuthorizationTokenRetrievingError {
+    case object MissingHeader extends AuthorizationTokenRetrievingError
+    case object InvalidValue extends AuthorizationTokenRetrievingError
   }
 }
