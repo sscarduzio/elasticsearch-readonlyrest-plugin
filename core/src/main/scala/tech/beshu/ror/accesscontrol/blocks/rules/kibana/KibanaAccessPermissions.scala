@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
+import tech.beshu.ror.accesscontrol.matchers.ActionMatchers
 import tech.beshu.ror.implicits.*
 
 import java.util.regex.Pattern
@@ -44,9 +45,11 @@ object KibanaAccessPermissions {
 
   sealed trait ActionCategory
   object ActionCategory {
-    case object ClusterMonitor extends ActionCategory
+    // ES read actions: indices:data/read/*, indices:admin/*/get, indices:monitor/*, cluster:monitor/*, etc.
     case object ReadOnly extends ActionCategory
+    // ES write actions: indices:data/write/*, indices:admin/create, cluster:admin/settings/*, etc.
     case object ReadWrite extends ActionCategory
+    // ROR internal admin actions only (cluster:internal_ror/*)
     case object RorAdmin extends ActionCategory
     case object Other extends ActionCategory
   }
@@ -70,9 +73,8 @@ object KibanaAccessPermissions {
     def classifyAction(bc: BlockContext): ActionCategory = {
       bc.requestContext.action match {
         case _: RorAction.AdminRorAction => ActionCategory.RorAdmin
-        case action if clusterActionPatternsMatcher.`match`(action) => ActionCategory.ClusterMonitor
-        case action if roActionPatternsMatcher.`match`(action) => ActionCategory.ReadOnly
-        case action if rwActionPatternsMatcher.`match`(action) => ActionCategory.ReadWrite
+        case action if ActionMatchers.readActionPatternsMatcher.`match`(action) => ActionCategory.ReadOnly
+        case action if ActionMatchers.writeActionPatternsMatcher.`match`(action) => ActionCategory.ReadWrite
         case _ => ActionCategory.Other
       }
     }

@@ -21,12 +21,11 @@ import cats.implicits.*
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.matchers.ActionMatchers
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{InvalidValue, MissingHeader}
 import tech.beshu.ror.es.EsServices
@@ -69,7 +68,7 @@ trait RequestContext {
   def esServices: EsServices
 
   lazy val isReadOnlyRequest: Boolean =
-    RequestContext.readActionPatternsMatcher.`match`(action)
+    ActionMatchers.readActionPatternsMatcher.`match`(action)
 
   def isCompositeRequest: Boolean
 
@@ -125,62 +124,6 @@ object RequestContext extends RequestIdAwareLogging {
     }
   }
 
-  private val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
-    Set(
-      RorAction.RorUserMetadataAction.value,
-      "cluster:monitor/*",
-      "cluster:*get*",
-      "cluster:admin/*/get",
-      "cluster:admin/*/status",
-      "cluster:admin/*/verify",
-      "cluster:admin/idp/saml/metadata",
-      "cluster:admin/ingest/pipeline/simulate",
-      "cluster:admin/slm/stats",
-      "cluster:admin/transform/node_stats",
-      "cluster:admin/transform/preview",
-      "cluster:admin/xpack/application/*/get",
-      "cluster:admin/xpack/application/search_application/list",
-      "cluster:admin/xpack/application/search_application/render_query",
-      "cluster:admin/xpack/connector/list",
-      "cluster:admin/xpack/connector/sync_job/list",
-      "cluster:admin/xpack/deprecation/info",
-      "cluster:admin/xpack/deprecation/nodes/info",
-      "cluster:admin/xpack/license/basic_status",
-      "cluster:admin/xpack/license/trial_status",
-      "cluster:admin/xpack/ml/data_frame/analytics/explain",
-      "cluster:admin/xpack/ml/data_frame/analytics/preview",
-      "cluster:admin/xpack/ml/datafeeds/preview",
-      "cluster:admin/xpack/query_rules/list",
-      "cluster:admin/xpack/security/api_key/query",
-      "cluster:admin/xpack/security/user/list_privileges",
-      "cluster:admin/xpack/searchable_snapshots/cache/stats",
-      "cluster:admin/xpack/security/*/get",
-      "cluster:admin/xpack/security/*/query",
-      "cluster:monitor/async_search/status",
-      "indices:admin/*/explain",
-      "indices:admin/*/get",
-      "indices:admin/aliases/exists",
-      "indices:admin/aliases/get",
-      "indices:admin/analyze",
-      "indices:admin/exists*",
-      "indices:admin/get*",
-      "indices:admin/index_template/simulate",
-      "indices:admin/index_template/simulate_index",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
-      "indices:admin/migration/reindex_status",
-      "indices:admin/refresh*",
-      "indices:admin/search/search_shards",
-      "indices:admin/template/get",
-      "indices:admin/types/exists",
-      "indices:admin/validate/*",
-      "indices:data/read/*",
-      "indices:admin/index_template/get",
-      "indices:admin/resolve/*",
-      "indices:admin/xpack/rollup/search",
-      "indices:monitor/*",
-    ).map(Action.apply)
-  }
 
   extension (requestContext: RequestContext) {
 

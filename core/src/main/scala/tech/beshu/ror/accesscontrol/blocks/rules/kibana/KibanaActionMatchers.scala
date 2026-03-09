@@ -24,6 +24,7 @@ import tech.beshu.ror.utils.RefinedUtils.*
 
 object KibanaActionMatchers {
 
+  // Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
   val roActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       "indices:admin/exists",
@@ -44,6 +45,7 @@ object KibanaActionMatchers {
     ).map(Action.apply)
   }
 
+  // Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
   val rwActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     RorAction.writeActions ++
       Set(
@@ -64,6 +66,7 @@ object KibanaActionMatchers {
       ).map(Action.apply)
   }
 
+  // Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
   val clusterActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       "cluster:monitor/*",
@@ -74,7 +77,7 @@ object KibanaActionMatchers {
     ).map(Action.apply)
   }
 
-  // todo: Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
+  // Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
   val adminActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     RorAction.adminActions ++
       Set(
@@ -116,6 +119,7 @@ object KibanaActionMatchers {
   val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(
     Set(Local(IndexName.Pattern.unsafeFromNes(nes("kibana_sample_data_*"))))
   )
+
   val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(
     Set(DataStreamName.Pattern.fromNes(nes("kibana_sample_data_*")))
   )

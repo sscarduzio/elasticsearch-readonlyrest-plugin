@@ -129,5 +129,5 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     RequestClassifier.classifyResources(bc, kibanaIndex, settings.rorIndex)
 
   private def isReadOnly(action: ActionCategory): Boolean =
-    action == AC.ReadOnly || action == AC.ClusterMonitor
+    action == AC.ReadOnly
 }
