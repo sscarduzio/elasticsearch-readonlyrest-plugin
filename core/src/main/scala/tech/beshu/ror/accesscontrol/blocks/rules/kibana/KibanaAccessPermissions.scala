@@ -20,6 +20,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.implicits.*
 
@@ -71,13 +72,14 @@ object KibanaAccessPermissions {
     }
 
     def classifyAction(bc: BlockContext): ActionCategory = {
-      val action = bc.requestContext.action
-      if (roActionPatternsMatcher.`match`(action)) ActionCategory.ReadOnly
-      else if (clusterActionPatternsMatcher.`match`(action)) ActionCategory.Cluster
-      else if (rwActionPatternsMatcher.`match`(action)) ActionCategory.ReadWrite
-      else if (adminActionPatternsMatcher.`match`(action)) ActionCategory.Admin
-      else if (indicesWriteAction.`match`(action)) ActionCategory.IndicesWrite
-      else ActionCategory.Other
+      bc.requestContext.action match {
+        case _: RorAction.AdminRorAction => ActionCategory.Admin
+        case action if clusterActionPatternsMatcher.`match`(action) => ActionCategory.Cluster
+        case action if roActionPatternsMatcher.`match`(action) => ActionCategory.ReadOnly
+        case action if rwActionPatternsMatcher.`match`(action) => ActionCategory.ReadWrite
+        case action if indicesWriteAction.`match`(action) => ActionCategory.IndicesWrite
+        case _ => ActionCategory.Other
+      }
     }
 
     def isNonStrictEligible(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {

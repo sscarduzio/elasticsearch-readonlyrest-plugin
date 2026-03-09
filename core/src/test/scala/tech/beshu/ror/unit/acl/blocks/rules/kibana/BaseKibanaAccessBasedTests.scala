@@ -387,7 +387,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       }
     }
     "Admin access is configured" when {
-      "admin action with no indices should match" in {
+      "ROR admin action with no indices should match" in {
         assertMatchRuleUsingIndicesRequest(
           settingsOf(KibanaAccess.Admin),
           Action("cluster:internal_ror/user_metadata/get"),
@@ -395,7 +395,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           uriPath = Some(UriPath.from("/_readonlyrest/metadata/current_user"))
         )()
       }
-      "admin action targeting ROR index should match" in {
+      "action targeting ROR index should match" in {
         assertMatchRuleUsingIndicesRequest(
           settingsOf(KibanaAccess.Admin),
           Action("indices:data/write/index"),
@@ -403,7 +403,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           uriPath = Some(UriPath.from("/.readonlyrest/_doc/1"))
         )()
       }
-      "admin action with index_management kibana request path header should match" in {
+      "action with index_management kibana request path header should match" in {
         assertMatchRuleUsingIndicesRequestWithHeaders(
           settingsOf(KibanaAccess.Admin),
           Action("indices:admin/delete"),

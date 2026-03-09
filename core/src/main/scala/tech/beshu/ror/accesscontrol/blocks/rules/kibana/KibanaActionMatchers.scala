@@ -74,10 +74,10 @@ object KibanaActionMatchers {
     ).map(Action.apply)
   }
 
+  // todo: remove
   val adminActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     RorAction.adminActions ++
       Set(
-        "cluster:internal_ror/*",
         "indices:data/write/*", // <-- DEPRECATED!
         "indices:admin/create",
         "indices:admin/create_index",

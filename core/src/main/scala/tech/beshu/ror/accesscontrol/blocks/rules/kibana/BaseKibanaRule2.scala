@@ -24,13 +24,14 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 // Permission table (each index in the request is classified independently, all must be permitted):
-//                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
-// admin              | full         | read-only    | full      | full         | full         |
-// rw                 | full         | read-only    | full      | full         | none         |
-// ro                 | read-only*   | read-only    | full      | read-only    | none         |
-// ro_strict/api_only | read-only    | read-only    | none      | read-only    | none         |
+//
+// Access level       | Indices                                           | Cluster mgmt | ROR settings |
+//                    | kibana indices | reporting indices | data indices |              |              |
+// admin              | full           | full              | read-only    | full         | full         |
+// rw                 | full           | full              | read-only    | full         | none         |
+// ro                 | read-only*     | full              | read-only    | read-only    | none         |
+// ro_strict/api_only | read-only      | none              | read-only    | read-only    | none         |
 // * non-strict writes allowed (UI state saves)
-
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
 
@@ -39,79 +40,91 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
 
   protected def shouldMatch(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
     given BlockContext = bc
+
     val action = RequestClassifier.classifyAction(bc)
-    if (action == AC.Other) {
-      logger.debug(s"Access: ${settings.access}, result: false (unrecognized action)")
-      return false
-    }
-    val result = settings.access match {
-      case Unrestricted => true
-      case Admin        => matchesForAdmin(bc, kibanaIndex, action)
-      case RW           => matchesForRW(bc, kibanaIndex, action)
-      case RO           => matchesForRO(bc, kibanaIndex, action)
-      case ROStrict     => matchesForROStrict(bc, kibanaIndex, action)
-      case ApiOnly      => matchesForROStrict(bc, kibanaIndex, action)
+    val result = (settings.access, action) match {
+      case (Unrestricted, _) => true
+      case (_, AC.Other) => false
+      case (Admin, _) => matchesForAdmin(bc, kibanaIndex, action)
+      case (RW, _) => matchesForRW(bc, kibanaIndex, action)
+      case (RO, _) => matchesForRO(bc, kibanaIndex, action)
+      case (ROStrict, _) | (ApiOnly, _) => matchesForROStrict(bc, kibanaIndex, action)
     }
     logger.debug(s"Access: ${settings.access}, result: $result")
     result
   }
 
-  //                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
-  // admin              | full         | read-only    | full      | full         | full         |
+  //                    | kibana indices | reporting | data indices          | cluster mgmt | ROR settings |
+  // admin              | full           | full      | read-only (admin:full)| full         | full         |
   private def matchesForAdmin(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
       case RC.UserMetadataRequest | RC.DevNullKibana => true
-      case RC.KibanaIndex | RC.SampleData            => true
+      // indices
+      case RC.KibanaIndex                            => true
       case RC.ReportingIndex                         => true
-      case RC.RorSettingsIndex                       => true
-      case RC.NoIndices                              => true
+      case RC.SampleData                             => true
       case RC.DataIndex if hasAdminPath(bc)          => true
       case RC.DataIndex                              => isReadOnly(action)
+      // cluster mgmt
+      case RC.NoIndices                              => true
+      // ROR settings
+      case RC.RorSettingsIndex                       => true
     }
   }
 
-  //                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
-  // rw                 | full         | read-only    | full      | full         | none         |
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // rw                 | full           | full      | read-only    | full         | none         |
   private def matchesForRW(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
       case RC.UserMetadataRequest | RC.DevNullKibana => true
-      case RC.KibanaIndex | RC.SampleData            => true
+      // indices
+      case RC.KibanaIndex                            => true
       case RC.ReportingIndex                         => true
-      case RC.NoIndices                              => true
-      case RC.RorSettingsIndex                       => false
+      case RC.SampleData                             => true
       case RC.DataIndex                              => isReadOnly(action)
+      // cluster mgmt
+      case RC.NoIndices                              => true
+      // ROR settings
+      case RC.RorSettingsIndex                       => false
     }
   }
 
-  //                    | kibana_index      | data indices | reporting | cluster mgmt | ROR settings |
-  // ro                 | read-only*        | read-only    | full      | read-only    | none         |
-  // * non-strict writes allowed (UI state saves like short URLs, index patterns)
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // ro                 | read-only*     | full      | read-only    | read-only    | none         |
+  // * non-strict writes allowed (UI state saves)
   private def matchesForRO(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
       case RC.UserMetadataRequest | RC.DevNullKibana => true
+      // indices
       case RC.KibanaIndex                            => isReadOnly(action) || isNonStrictWrite(action, bc, kibanaIndex)
-      case RC.SampleData                             => isReadOnly(action)
       case RC.ReportingIndex                         => true
-      case RC.NoIndices                              => isReadOnly(action)
-      case RC.RorSettingsIndex                       => false
+      case RC.SampleData                             => isReadOnly(action)
       case RC.DataIndex                              => isReadOnly(action)
+      // cluster mgmt
+      case RC.NoIndices                              => isReadOnly(action)
+      // ROR settings
+      case RC.RorSettingsIndex                       => false
     }
   }
 
-  //                    | kibana_index | data indices | reporting | cluster mgmt | ROR settings |
-  // ro_strict/api_only | read-only    | read-only    | none      | read-only    | none         |
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // ro_strict/api_only | read-only      | none      | read-only    | read-only    | none         |
   private def matchesForROStrict(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
       case RC.UserMetadataRequest | RC.DevNullKibana => true
-      case RC.KibanaIndex | RC.SampleData            => isReadOnly(action)
+      // indices
+      case RC.KibanaIndex                            => isReadOnly(action)
       case RC.ReportingIndex                         => false
-      case RC.NoIndices                              => isReadOnly(action)
-      case RC.RorSettingsIndex                       => false
+      case RC.SampleData                             => isReadOnly(action)
       case RC.DataIndex                              => isReadOnly(action)
+      // cluster mgmt
+      case RC.NoIndices                              => isReadOnly(action)
+      // ROR settings
+      case RC.RorSettingsIndex                       => false
     }
   }
 
