@@ -39,8 +39,7 @@ object KibanaAccessPermissions {
     case object DevNullKibana extends KibanaRelatedResource
     case object DataIndex extends IndexResource
     case object RorSettingsIndex extends IndexResource
-    // Requests targeting no specific indices. Maps to the "Cluster mgmt" column in the permission table.
-    case object NoIndices extends ResourceCategory
+    case object NonIndexResource extends ResourceCategory
   }
 
   sealed trait ActionCategory
@@ -67,7 +66,7 @@ object KibanaAccessPermissions {
       val dataStreams = bc.dataStreams
 
       if (indices.isEmpty && dataStreams.isEmpty)
-        return Set(ResourceCategory.NoIndices)
+        return Set(ResourceCategory.NonIndexResource)
 
       val indexCategories = indices.map(i => classifyIndex(i.name, kibanaIndex, rorIndex))
       val streamCategories = dataStreams.map(ds => classifyDataStream(ds))

@@ -65,7 +65,7 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
       case RC.SampleData                             => true
       case RC.DataIndex                              => isReadOnly(action)
       // cluster mgmt
-      case RC.NoIndices                              => isReadOnly(action)
+      case RC.NonIndexResource                              => isReadOnly(action)
       // ROR settings
       case RC.RorSettingsIndex                       => true
     }
@@ -83,7 +83,7 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
       case RC.SampleData                             => true
       case RC.DataIndex                              => isReadOnly(action)
       // cluster mgmt
-      case RC.NoIndices                              => isReadOnly(action)
+      case RC.NonIndexResource                              => isReadOnly(action)
       // ROR settings
       case RC.RorSettingsIndex                       => false
     }
@@ -101,7 +101,7 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
       case RC.SampleData                             => isReadOnly(action)
       case RC.DataIndex                              => isReadOnly(action)
       // cluster mgmt
-      case RC.NoIndices                              => false
+      case RC.NonIndexResource                              => false
       // ROR settings
       case RC.RorSettingsIndex                       => false
     }
@@ -119,7 +119,7 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
       case RC.SampleData                             => isReadOnly(action)
       case RC.DataIndex                              => isReadOnly(action)
       // cluster mgmt
-      case RC.NoIndices                              => false
+      case RC.NonIndexResource                              => false
       // ROR settings
       case RC.RorSettingsIndex                       => false
     }
