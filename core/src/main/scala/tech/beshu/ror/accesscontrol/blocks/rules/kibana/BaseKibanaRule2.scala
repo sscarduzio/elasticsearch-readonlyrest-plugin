@@ -31,7 +31,6 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 // rw                 | full           | full              | read-only    | read-only    | none         |
 // ro                 | full           | full              | read-only    | none         | none         |
 // ro_strict/api_only | read-only      | none              | read-only    | none         | none         |
-// * non-strict writes allowed (UI state saves)
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
 
@@ -54,56 +53,36 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     result
   }
 
-  //                    | kibana indices | reporting | data indices          | cluster mgmt | ROR settings |
-  // admin              | full           | full      | read-only (admin:full)| full         | full         |
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // admin              | full           | full      | read-only    | read-only    | full         |
   private def matchesForAdmin(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
-      case RC.UserMetadataRequest | RC.DevNullKibana => true
+      case RC.DevNullKibana                          => true
       // indices
       case RC.KibanaIndex                            => true
       case RC.ReportingIndex                         => true
       case RC.SampleData                             => true
-      case RC.DataIndex if hasAdminPath(bc)          => true
       case RC.DataIndex                              => isReadOnly(action)
       // cluster mgmt
-      case RC.NoIndices                              => true
+      case RC.NoIndices                              => isReadOnly(action)
       // ROR settings
       case RC.RorSettingsIndex                       => true
     }
   }
 
   //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // rw                 | full           | full      | read-only    | full         | none         |
+  // rw                 | full           | full      | read-only    | read-only    | none         |
   private def matchesForRW(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
-      case RC.UserMetadataRequest | RC.DevNullKibana => true
+      case RC.DevNullKibana                          => true
       // indices
       case RC.KibanaIndex                            => true
       case RC.ReportingIndex                         => true
       case RC.SampleData                             => true
       case RC.DataIndex                              => isReadOnly(action)
       // cluster mgmt
-      case RC.NoIndices                              => true
-      // ROR settings
-      case RC.RorSettingsIndex                       => false
-    }
-  }
-
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // ro                 | read-only*     | full      | read-only    | read-only    | none         |
-  // * non-strict writes allowed (UI state saves)
-  private def matchesForRO(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
-    val resources = classifyResources(bc, kibanaIndex)
-    resources.forall {
-      case RC.UserMetadataRequest | RC.DevNullKibana => true
-      // indices
-      case RC.KibanaIndex                            => isReadOnly(action) || isNonStrictWrite(action, bc, kibanaIndex)
-      case RC.ReportingIndex                         => true
-      case RC.SampleData                             => isReadOnly(action)
-      case RC.DataIndex                              => isReadOnly(action)
-      // cluster mgmt
       case RC.NoIndices                              => isReadOnly(action)
       // ROR settings
       case RC.RorSettingsIndex                       => false
@@ -111,18 +90,36 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   }
 
   //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // ro_strict/api_only | read-only      | none      | read-only    | read-only    | none         |
+  // ro                 | full           | full      | read-only    | none         | none         |
+  private def matchesForRO(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
+    val resources = classifyResources(bc, kibanaIndex)
+    resources.forall {
+      case RC.DevNullKibana                          => true
+      // indices
+      case RC.KibanaIndex                            => true
+      case RC.ReportingIndex                         => true
+      case RC.SampleData                             => isReadOnly(action)
+      case RC.DataIndex                              => isReadOnly(action)
+      // cluster mgmt
+      case RC.NoIndices                              => false
+      // ROR settings
+      case RC.RorSettingsIndex                       => false
+    }
+  }
+
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // ro_strict/api_only | read-only      | none      | read-only    | none         | none         |
   private def matchesForROStrict(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
-      case RC.UserMetadataRequest | RC.DevNullKibana => true
+      case RC.DevNullKibana                          => true
       // indices
       case RC.KibanaIndex                            => isReadOnly(action)
       case RC.ReportingIndex                         => false
       case RC.SampleData                             => isReadOnly(action)
       case RC.DataIndex                              => isReadOnly(action)
       // cluster mgmt
-      case RC.NoIndices                              => isReadOnly(action)
+      case RC.NoIndices                              => false
       // ROR settings
       case RC.RorSettingsIndex                       => false
     }
@@ -132,13 +129,5 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     RequestClassifier.classifyResources(bc, kibanaIndex, settings.rorIndex)
 
   private def isReadOnly(action: ActionCategory): Boolean =
-    action == AC.ReadOnly || action == AC.Cluster
-
-  private def isNonStrictWrite(action: ActionCategory, bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean =
-    (action == AC.ReadWrite || action == AC.IndicesWrite) &&
-      RequestClassifier.isNonStrictEligible(bc, kibanaIndex)
-
-  private def hasAdminPath(bc: BlockContext): Boolean =
-    RequestClassifier.hasAdminHeaderPath(bc, "index_management") ||
-      RequestClassifier.hasAdminHeaderPath(bc, "tags")
+    action == AC.ReadOnly || action == AC.ClusterMonitor
 }

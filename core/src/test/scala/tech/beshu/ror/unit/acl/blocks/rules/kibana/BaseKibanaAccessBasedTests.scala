@@ -55,21 +55,29 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     }
     "RO action is passed" in {
       roActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
-        assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action)()
-        assertMatchRuleUsingIndicesRequest(settingsOf(RO), action)()
+        assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set.empty)
+        assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set.empty)
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action)()
       }
     }
     "CLUSTER action is passed" in {
       clusterActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
-        assertMatchRuleUsingIndicesRequest(settingsOf(RO), action)()
+        assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set.empty)
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action)()
       }
     }
     "RW action is passed" in {
       rwActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
         assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(requestedIndex(".kibana")))
-        assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(requestedIndex(".kibana")))
+        assertMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(requestedIndex(".kibana"))) {
+          assertBlockContext(_)(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
+              access = RO,
+              index = Some(kibanaIndexName(".kibana"))
+            )),
+            indices = Set(requestedIndex(".kibana"))
+          )
+        }
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(requestedIndex(".kibana"))) {
           assertBlockContext(_)(
             kibanaPolicy = Some(KibanaPolicy.default.copy(
@@ -118,12 +126,20 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           customKibanaIndex = Some(customKibanaIndex),
           requestedIndices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false))
         )
-        assertNotMatchRuleUsingIndicesRequest(
+        assertMatchRuleUsingIndicesRequest(
           settingsOf(RO, Some(customKibanaIndex)),
           action,
           customKibanaIndex = Some(customKibanaIndex),
           requestedIndices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false))
-        )
+        ) {
+          assertBlockContext(_)(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
+              access = RO,
+              index = Some(customKibanaIndex)
+            )),
+            indices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false))
+          )
+        }
         assertMatchRuleUsingIndicesRequest(
           settingsOf(RW, Some(customKibanaIndex)),
           action,
@@ -224,11 +240,19 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         requestedIndices = Set.empty,
         uriPath = Some(UriPath.from("/_cluster/settings"))
       )
-      assertMatchRuleUsingIndicesRequest(
+      assertNotMatchRuleUsingIndicesRequest(
         settingsOf(RW),
         Action("cluster:admin/settings/update"),
         requestedIndices = Set.empty,
         uriPath = Some(UriPath.from("/_cluster/settings"))
+      )
+    }
+    "X-Pack cluster settings update" in {
+      assertMatchRuleUsingIndicesRequest(
+        settingsOf(RW),
+        Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"),
+        requestedIndices = Set.empty,
+        uriPath = Some(UriPath.from("/_ccr/auto_follow"))
       ) {
         assertBlockContext(_)(
           kibanaPolicy = Some(KibanaPolicy.default.copy(
@@ -237,26 +261,12 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           )),
         )
       }
-    }
-    "X-Pack cluster settings update" in {
-      def assertMatchClusterRule(access: KibanaAccess) = {
-        assertMatchRuleUsingIndicesRequest(
-          settingsOf(access),
-          Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"),
-          requestedIndices = Set.empty,
-          uriPath = Some(UriPath.from("/_ccr/auto_follow"))
-        ) {
-          assertBlockContext(_)(
-            kibanaPolicy = Some(KibanaPolicy.default.copy(
-              access = access,
-              index = Some(kibanaIndexFrom(None))
-            )),
-          )
-        }
-      }
-
-      assertMatchClusterRule(RW)
-      assertMatchClusterRule(RO)
+      assertNotMatchRuleUsingIndicesRequest(
+        settingsOf(RO),
+        Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"),
+        requestedIndices = Set.empty,
+        uriPath = Some(UriPath.from("/_ccr/auto_follow"))
+      )
     }
     "ROR action is used" when {
       "it's current user metadata request action" in {
@@ -439,9 +449,9 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       }
     }
     "ROStrict access is configured" when {
-      "cluster action should still match (cluster actions are always allowed)" in {
+      "cluster action should not match (no cluster mgmt access)" in {
         clusterActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
-          assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action)()
+          assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set.empty)
         }
       }
       "RW action on kibana index should not match" in {
@@ -465,18 +475,6 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
             Action("indices:data/write/index"),
             requestedIndices = Set(requestedIndex(".kibana-devnull")),
             uriPath = Some(UriPath.from("/.kibana-devnull/_doc/1"))
-          )()
-        }
-      }
-    }
-    "User metadata request path is used" when {
-      "any access level should match" in {
-        Seq(ROStrict, RO, RW, KibanaAccess.Admin, Unrestricted).foreach { access =>
-          assertMatchRuleUsingIndicesRequest(
-            settingsOf(access),
-            Action("indices:data/read/search"),
-            requestedIndices = Set.empty,
-            uriPath = Some(UriPath.from("/_readonlyrest/metadata/current_user"))
           )()
         }
       }
@@ -525,20 +523,12 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       }
     }
     "Empty indices with RW action" when {
-      "RW access should match" in {
-        assertMatchRuleUsingIndicesRequest(
+      "RW access should not match (write action on no-indices is denied)" in {
+        assertNotMatchRuleUsingIndicesRequest(
           settingsOf(RW),
           Action("indices:data/write/bulk"),
           requestedIndices = Set.empty,
-          uriPath = Some(UriPath.from("/_bulk"))
-        ) {
-          assertBlockContext(_)(
-            kibanaPolicy = Some(KibanaPolicy.default.copy(
-              access = RW,
-              index = Some(kibanaIndexName(".kibana"))
-            )),
-          )
-        }
+        )
       }
       "RO access should not match" in {
         assertNotMatchRuleUsingIndicesRequest(

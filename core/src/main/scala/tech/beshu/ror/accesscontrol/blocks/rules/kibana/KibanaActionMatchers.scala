@@ -74,7 +74,7 @@ object KibanaActionMatchers {
     ).map(Action.apply)
   }
 
-  // todo: remove
+  // Only used by legacy BaseKibanaRule (v1). Remove when BaseKibanaRule is removed.
   val adminActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     RorAction.adminActions ++
       Set(
