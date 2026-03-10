@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror
 
+import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.utils.RefinedUtils.nes
 
 import scala.collection.mutable.Set as MutableSet
@@ -56,4 +57,9 @@ object constants {
 
   val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = nes("'readonlyrest_audit-'yyyy-MM-dd")
 
+  object EsFeatureVersions {
+    val dataStreamSupport = EsVersion(7, 9, 0)
+    val serviceAccountTokenServiceSupport = EsVersion(7, 14, 0)
+    val apiKeyServiceSupport = EsVersion(7, 14, 0)
+  }
 }

@@ -40,6 +40,7 @@ import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
+import tech.beshu.ror.constants.EsFeatureVersions
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -518,12 +519,12 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     case object Log extends AuditSinkType
 
     def from(value: String, esVersion: EsVersion): Either[AuditingSettingsCreationError, AuditSinkType] = value match {
-      case "data_stream" if esVersion >= dataStreamSupportEsVersion =>
+      case "data_stream" if esVersion >= EsFeatureVersions.dataStreamSupport =>
         AuditSinkType.DataStream.asRight
       case "data_stream" =>
         Left(AuditingSettingsCreationError(Reason.Message(
-          s"Data stream audit output is supported from Elasticsearch version ${dataStreamSupportEsVersion.formatted}, " +
-            s"but your version is ${esVersion.formatted}. Use 'index' type or upgrade to ${dataStreamSupportEsVersion.formatted} or later."
+          s"Data stream audit output is supported from Elasticsearch version ${EsFeatureVersions.dataStreamSupport.formatted}, " +
+            s"but your version is ${esVersion.formatted}. Use 'index' type or upgrade to ${EsFeatureVersions.dataStreamSupport.formatted} or later."
         )))
       case "index" =>
         AuditSinkType.Index.asRight
@@ -533,7 +534,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         unsupportedOutputTypeError(
           unsupportedType = other,
           supportedTypes =
-            if (esVersion >= dataStreamSupportEsVersion) {
+            if (esVersion >= EsFeatureVersions.dataStreamSupport) {
               NonEmptyList.of("data_stream", "index", "log")
             } else {
               NonEmptyList.of("index", "log")
@@ -554,8 +555,6 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         .emapE(AuditSinkType.from(_, esVersion))
         .decoder
     }
-
-    private val dataStreamSupportEsVersion = EsVersion(7, 9, 0)
   }
 
   private object DeprecatedAuditSettingsDecoder {

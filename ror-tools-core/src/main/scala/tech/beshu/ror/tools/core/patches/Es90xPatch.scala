@@ -21,12 +21,12 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.{ModifyRestHasPrivilegesActionClass, ModifyTransportHasPrivilegesActionClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, ModifyRepositoriesServiceClass}
 import tech.beshu.ror.tools.core.utils.EsUtil.{es902, es903}
 
 import scala.language.postfixOps
@@ -35,6 +35,8 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
     ElasticsearchJarPatchCreator(
       OpenModule,
+      CreateApiKeyServiceBridgeClass,
+      CreateServiceAccountServiceBridgeClass,
       ModifyRepositoriesServiceClass(esVersion)
     ),
     EntitlementJarPatchCreator(
@@ -50,7 +52,9 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     ),
     XPackCoreJarPatchCreator(
       OpenModule,
+      ModifyApplicationPermissionClass,
       ModifyAsyncSearchSecurityClass,
+      ModifySimpleRoleClass,
       ModifySecurityContextClass,
     ),
     XPackSecurityJarPatchCreator(
@@ -58,9 +62,11 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
       CreateRorAuthorizationInfoProviderClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
+      ModifyCreateComponentsInSecurityClass,
       ModifyRBACEngineClass,
       ModifyRestHasPrivilegesActionClass,
       ModifySecurityClass,
+      ModifyTransportHasPrivilegesActionClass,
     ),
     XPackIlmJarPatchCreator(
       OpenModule

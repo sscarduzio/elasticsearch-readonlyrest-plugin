@@ -16,4 +16,6 @@
  */
 package tech.beshu.ror.es
 
-class EsServices(val clusterService: EsClusterService)
+class EsServices(val clusterService: EsClusterService,
+                 val serviceAccountTokenService: ServiceAccountTokenService,
+                 val apiKeyService: ApiKeyService)

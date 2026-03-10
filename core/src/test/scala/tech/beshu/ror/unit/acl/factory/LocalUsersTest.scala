@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import better.files.File
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -26,7 +25,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorSettingsIndex, User}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -422,8 +420,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
   private val factory = {
     implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
-    new RawRorSettingsBasedCoreFactory(esEnv)
+    new RawRorSettingsBasedCoreFactory(defaultEsEnv())
   }
 
 }

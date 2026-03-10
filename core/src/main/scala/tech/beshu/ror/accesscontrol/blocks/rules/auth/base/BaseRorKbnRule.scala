@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckM
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -54,10 +55,12 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   private def extractJwtTokenFromHeader(blockContext: BlockContext) = {
     blockContext
-      .requestContext
-      .bearerToken
-      .map(h => Jwt.Token(h.value))
-      .toRight(AuthenticationFailed("No bearer token found"))
+      .requestContext.bearerToken
+      .map(t => Jwt.Token(t.value))
+      .left.map {
+        case AuthorizationTokenRetrievingError.MissingHeader => AuthenticationFailed("'Authorization' header is missing")
+        case AuthorizationTokenRetrievingError.InvalidValue => AuthenticationFailed("'Authorization' header does not contain a valid Bearer token")
+      }
   }
 
   private def jwtTokenDataFrom(token: Jwt.Token, rorKbn: RorKbnDef)
