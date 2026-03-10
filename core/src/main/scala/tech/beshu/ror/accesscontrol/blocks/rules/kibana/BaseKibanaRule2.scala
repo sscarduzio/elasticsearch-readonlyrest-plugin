@@ -25,12 +25,13 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 // Permission table (each index in the request is classified independently, all must be permitted):
 //
-// Access level       | Indices                                           | Actions                     |
-//                    | kibana indices | reporting indices | data indices | Cluster mgmt | ROR admin    |
-// admin              | full           | full              | read-only    | read-only    | full         |
-// rw                 | full           | full              | read-only    | read-only    | none         |
-// ro                 | full           | full              | read-only    | none         | none         |
-// ro_strict/api_only | read-only      | none              | read-only    | none         | none         |
+// Access level       | Actions                                                                                     |
+//                    | ROR admin | Cluster mgmt | Involving indices                                  | Other known |
+//                    |           |              | kibana indices | reporting indices | data indices  |             |
+// admin              | full      | read-only    | full           | full              | read-only     | read-only   |
+// rw                 | none      | read-only    | full           | full              | read-only     | read-only   |
+// ro                 | none      | none         | full           | full              | read-only     | read-only   |
+// ro_strict/api_only | none      | none         | read-only      | none              | read-only     | read-only   | 
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
 
@@ -52,8 +53,6 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     result
   }
 
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // admin              | full           | full      | read-only    | read-only    | full         |
   private def matchesForAdmin(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
@@ -64,8 +63,6 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     }
   }
 
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // rw                 | full           | full      | read-only    | read-only    | none         |
   private def matchesForRW(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
@@ -82,8 +79,6 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     }
   }
 
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // ro                 | full           | full      | read-only    | none         | none         |
   private def matchesForRO(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
@@ -100,8 +95,6 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     }
   }
 
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // ro_strict/api_only | read-only      | none      | read-only    | none         | none         |
   private def matchesForROStrict(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
