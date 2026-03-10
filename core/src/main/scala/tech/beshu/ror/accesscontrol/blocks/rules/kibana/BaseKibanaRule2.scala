@@ -17,10 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.{ActionCategory, RequestClassifier, ResourceCategory}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.ActionCategory.ClusterManagement
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.{ActionCategory, RequestClassifier, ActionCategory as AC}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
+import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 // Permission table (each index in the request is classified independently, all must be permitted):
@@ -31,11 +35,9 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 // admin              | full      | read-only    | full           | full              | read-only     | read-only   |
 // rw                 | none      | read-only    | full           | full              | read-only     | read-only   |
 // ro                 | none      | none         | full           | full              | read-only     | read-only   |
-// ro_strict/api_only | none      | none         | read-only      | none              | read-only     | read-only   | 
+// ro_strict/api_only | none      | none         | read-only      | none              | read-only     | read-only   |
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
-
-  import ActionCategory as AC
 
   protected def shouldMatch(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
     given BlockContext = bc
@@ -43,7 +45,7 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     val action = RequestClassifier.classifyAction(bc)
     val result = (settings.access, action) match {
       case (Unrestricted, _) => true
-      case (_, AC.Other) => false
+      case (_, ActionCategory.Other) => false // todo:
       case (Admin, _) => matchesForAdmin(bc, kibanaIndex, action)
       case (RW, _) => matchesForRW(bc, kibanaIndex, action)
       case (RO, _) => matchesForRO(bc, kibanaIndex, action)
@@ -54,6 +56,14 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
   }
 
   private def matchesForAdmin(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
+    action match {
+      case ActionCategory.RorAdmin => true
+      case ClusterManagement.Read => true
+      case ClusterManagement.Write => false
+      case management: ActionCategory.NonClusterManagement =>
+        management ma
+      case ActionCategory.Other => ???
+    }
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
       case _: ResourceCategory.KibanaRelatedResource => true
@@ -63,6 +73,8 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     }
   }
 
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // rw                 | full           | full      | read-only    | read-only    | none         |
   private def matchesForRW(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
@@ -79,6 +91,8 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     }
   }
 
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // ro                 | full           | full      | read-only    | none         | none         |
   private def matchesForRO(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {
@@ -95,6 +109,8 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
     }
   }
 
+  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
+  // ro_strict/api_only | read-only      | none      | read-only    | none         | none         |
   private def matchesForROStrict(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
     val resources = classifyResources(bc, kibanaIndex)
     resources.forall {

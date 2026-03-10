@@ -24,73 +24,49 @@ import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.accesscontrol.matchers.ActionMatchers
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
 
 import java.util.regex.Pattern
 import scala.util.Try
 
 object KibanaAccessPermissions {
 
-  sealed trait ResourceCategory
-  object ResourceCategory {
-    sealed trait IndexResource extends ResourceCategory
-    sealed trait KibanaRelatedResource extends IndexResource
-    case object KibanaIndex extends KibanaRelatedResource
-    case object ReportingIndex extends KibanaRelatedResource
-    case object SampleData extends KibanaRelatedResource
-    case object DevNullKibana extends KibanaRelatedResource
-    case object DataIndex extends IndexResource
-    case object RorSettingsIndex extends IndexResource
-    case object NonIndexResource extends ResourceCategory
-  }
-
   sealed trait ActionCategory
   object ActionCategory {
 
-    sealed trait ReadOnly extends ActionCategory
-    object ReadOnly {
-      case object NonClusterRelated extends ReadOnly
-      case object ClusterRelated extends ReadOnly
-    }
-
-    sealed trait ReadWrite extends ActionCategory
-    object ReadWrite {
-      case object NonClusterRelated extends ReadWrite
-      case object ClusterRelated extends ReadWrite
-    }
-
     case object RorAdmin extends ActionCategory
+
+    sealed trait ClusterManagement extends ActionCategory
+    object ClusterManagement {
+      case object Read extends ClusterManagement
+      case object Write extends ClusterManagement
+    }
+
+    trait NonClusterManagement extends ActionCategory
+    object NonClusterManagement {
+      final case class Read(indices: Set[RequestedIndex[ClusterIndexName]],
+                            dataStreams: Set[DataStreamName]) extends NonClusterManagement
+      final case class Write(indices: Set[RequestedIndex[ClusterIndexName]],
+                             dataStreams: Set[DataStreamName]) extends NonClusterManagement
+    }
 
     case object Other extends ActionCategory
   }
 
   object RequestClassifier {
 
-    def classifyResources(bc: BlockContext,
-                          kibanaIndex: KibanaIndexName,
-                          rorIndex: RorSettingsIndex): Set[ResourceCategory] = {
-      val indices = bc.indices
-      val dataStreams = bc.dataStreams
-
-      if (indices.isEmpty && dataStreams.isEmpty)
-        return Set(ResourceCategory.NonIndexResource)
-
-      val indexCategories = indices.map(i => classifyIndex(i.name, kibanaIndex, rorIndex))
-      val streamCategories = dataStreams.map(ds => classifyDataStream(ds))
-      (indexCategories ++ streamCategories).toSet
-    }
-
     def classifyAction(bc: BlockContext): ActionCategory = {
       bc.requestContext.action match {
         case _: RorAction.AdminRorAction =>
           ActionCategory.RorAdmin
         case action if ActionMatchers.readNonClusterManagementActionPatternsMatcher.`match`(action) =>
-          ActionCategory.ReadOnly.NonClusterRelated
+          ActionCategory.NonClusterManagement.Read(bc.indices, bc.dataStreams)
         case action if ActionMatchers.readClusterManagementMatcher.`match`(action) =>
-          ActionCategory.ReadOnly.ClusterRelated
+          ActionCategory.ClusterManagement.Read
         case action if ActionMatchers.writeNonClusterManagementActionPatternsMatcher.`match`(action) =>
-          ActionCategory.ReadWrite.NonClusterRelated
+          ActionCategory.NonClusterManagement.Write(bc.indices, bc.dataStreams)
         case action if ActionMatchers.writeClusterManagementMatcher.`match`(action) =>
-          ActionCategory.ReadWrite.ClusterRelated
+          ActionCategory.ClusterManagement.Write
         case _ =>
           ActionCategory.Other
       }
@@ -107,39 +83,12 @@ object KibanaAccessPermissions {
       pathMatch && nonStrictActions.`match`(action)
     }
 
-    def isClusterManagementAction(bc: BlockContext): Boolean = {
-      ActionMatchers.readClusterManagementMatcher.`match`(bc.requestContext.action)
-    }
-
     def hasAdminHeaderPath(bc: BlockContext, pathPart: String): Boolean = {
       bc.requestContext
         .restRequest
         .allHeaders
         .find(_.name === Header.Name.kibanaRequestPath)
         .exists(_.value.value.contains(s"/$pathPart/"))
-    }
-
-    private def classifyIndex(indexName: ClusterIndexName,
-                              kibanaIndex: KibanaIndexName,
-                              rorIndex: RorSettingsIndex): ResourceCategory = {
-      if (indexName == devNullKibana.underlying) ResourceCategory.DevNullKibana
-      else if (kibanaSampleDataIndexMatcher.`match`(indexName)) ResourceCategory.SampleData
-      else if (indexName == rorIndex.toLocal) ResourceCategory.RorSettingsIndex
-      else if (isReportingIndex(indexName, kibanaIndex)) ResourceCategory.ReportingIndex
-      else if (indexName.isRelatedToKibanaIndex(kibanaIndex)) ResourceCategory.KibanaIndex
-      else ResourceCategory.DataIndex
-    }
-
-    private def classifyDataStream(ds: DataStreamName): ResourceCategory = {
-      if (kibanaSampleDataStreamMatcher.`match`(ds)) ResourceCategory.SampleData
-      else ResourceCategory.DataIndex
-    }
-
-    private def isReportingIndex(indexName: ClusterIndexName, kibanaIndex: KibanaIndexName): Boolean = {
-      val kibanaStr = kibanaIndex.stringify
-      val indexStr = indexName.stringify
-      indexStr.startsWith(s"$kibanaStr-reporting-") ||
-        indexStr.startsWith(s".ds-$kibanaStr-reporting-")
     }
   }
 }
