@@ -30,7 +30,7 @@ import java.util.Base64
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
   override implicit lazy val rorSettingsFileName: String =
-    if(Version.greaterOrEqualThan(esVersionUsed, 7, 14, 0)) "/xpack_api/readonlyrest_without_ror_ssl_es714+yum,k.yml"
+    if(Version.greaterOrEqualThan(esVersionUsed, 7, 14, 0)) "/xpack_api/readonlyrest_without_ror_ssl_es714+.yml"
     else "/xpack_api/readonlyrest_without_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType =
