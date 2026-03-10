@@ -38,11 +38,10 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
 import tech.beshu.ror.es.services.*
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
-import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadContextPropagation, ThreadRepo, XContentJsonParserFactory}
+import tech.beshu.ror.es.utils.ThreadContextOps.*
+import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo, XContentJsonParserFactory}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, RorInstanceSupplier}
 
@@ -87,7 +86,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       repositoriesServiceSupplier,
       client,
       threadPool
-    )
+    ),
+    serviceAccountTokenService = new ReflectionBasedServiceAccountTokenService(),
+    apiKeyService = new ReflectionBasedApiKeyService(threadPool)
   )
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     clusterService.getSettings,
@@ -193,7 +194,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleRequest(engines: Engines, esContext: EsContext): Unit = {
-    ThreadContextPropagation.capture(threadPool.getThreadContext)
+    threadPool.getThreadContext.setupContextPropagation()
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {

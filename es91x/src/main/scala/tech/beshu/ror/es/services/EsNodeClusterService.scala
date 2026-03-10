@@ -58,12 +58,12 @@ import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 class EsNodeClusterService(nodeName: String,
-                                     clusterService: ClusterService,
-                                     remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
-                                     repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
-                                     nodeClient: NodeClient,
-                                     threadPool: ThreadPool)
-                                    (implicit val scheduler: Scheduler)
+                           clusterService: ClusterService,
+                           remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+                           repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
+                           nodeClient: NodeClient,
+                           threadPool: ThreadPool)
+                          (implicit val scheduler: Scheduler)
   extends EsClusterService
     with RequestIdAwareLogging {
 

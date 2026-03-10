@@ -45,6 +45,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 
 object ruleDecoders {
@@ -52,7 +53,8 @@ object ruleDecoders {
   def ruleDecoderBy(name: Rule.Name,
                     definitions: DefinitionsPack,
                     globalSettings: GlobalSettings,
-                    mocksProvider: MocksProvider)
+                    mocksProvider: MocksProvider,
+                    esEnv: EsEnv)
                    (implicit systemContext: SystemContext): Option[RuleDecoder[Rule]] = {
     val variableCreator = new RuntimeResolvableVariableCreator(
       TransformationCompiler.withAliases(
@@ -112,7 +114,8 @@ object ruleDecoders {
         definitions.ldaps,
         Some(definitions.impersonators),
         mocksProvider,
-        globalSettings
+        globalSettings,
+        esEnv
       )
     }
     optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
@@ -127,7 +130,8 @@ object ruleDecoders {
                                             ldapServiceDefinitions: Definitions[LdapService],
                                             impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                             mocksProvider: MocksProvider,
-                                            globalSettings: GlobalSettings): Option[RuleDecoder[Rule]] = {
+                                            globalSettings: GlobalSettings,
+                                            esEnv: EsEnv): Option[RuleDecoder[Rule]] = {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
         Some(new ExternalAuthorizationRuleDecoder(externalGroupsProviderServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
@@ -158,7 +162,8 @@ object ruleDecoders {
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
-          globalSettings
+          globalSettings,
+          esEnv
         )
     }
     optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
@@ -170,7 +175,8 @@ object ruleDecoders {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
-                                  globalSettings: GlobalSettings): Option[RuleDecoder[AuthenticationRule]] = {
+                                  globalSettings: GlobalSettings,
+                                  esEnv: EsEnv): Option[RuleDecoder[AuthenticationRule]] = {
     val optionalRuleDecoder = name match {
       case AuthKeyRule.Name.name =>
         Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
@@ -191,7 +197,7 @@ object ruleDecoders {
       case ProxyAuthRule.Name.name =>
         Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case TokenAuthenticationRule.Name.name =>
-        Some(new TokenAuthenticationRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
+        Some(new TokenAuthenticationRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings, esEnv))
       case _ => None
     }
     optionalRuleDecoder
