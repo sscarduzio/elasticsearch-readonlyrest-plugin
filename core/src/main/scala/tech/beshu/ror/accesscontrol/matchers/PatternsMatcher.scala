@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.matchers
 
 import cats.Show
+import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.syntax.*
 
@@ -44,6 +45,9 @@ object PatternsMatcher {
 
   def create[T : Matchable](values: Iterable[T]): PatternsMatcher[T] =
     new GlobPatternsMatcher[T](values)
+
+  def from[T](p: PatternsMatcher[T], rest: PatternsMatcher[T]*): PatternsMatcher[T] =
+    new CombinedPatternsMatcher[T](NonEmptyList(p, rest.toList))
 
   trait Matchable[T] extends Show[T] {
     def caseSensitivity: CaseSensitivity

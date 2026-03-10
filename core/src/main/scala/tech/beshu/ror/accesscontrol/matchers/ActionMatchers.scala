@@ -23,7 +23,37 @@ object ActionMatchers {
 
   // ES read-only action patterns: data reads, index metadata reads, cluster monitoring, and
   // cluster:admin actions that are effectively read-only (get, list, stats, preview, etc.)
-  val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+  val readNonClusterManagementActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "indices:admin/*/explain",
+      "indices:admin/*/get",
+      "indices:admin/aliases/exists",
+      "indices:admin/aliases/get",
+      "indices:admin/analyze",
+      "indices:admin/exists*",
+      "indices:admin/get*",
+      "indices:admin/index_template/simulate",
+      "indices:admin/index_template/simulate_index",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/mappings/get*",
+      "indices:admin/migration/reindex_status",
+      "indices:admin/refresh*",
+      "indices:admin/search/search_shards",
+      "indices:admin/template/get*",
+      "indices:admin/types/exists",
+      "indices:admin/validate/*",
+      "indices:data/read/*",
+      "indices:admin/index_template/get",
+      "indices:admin/resolve/*",
+      "indices:admin/xpack/rollup/search",
+      "indices:monitor/*",
+    ).map(Action.apply)
+  }
+
+  // Cluster management (Stack Management) actions: all cluster:admin/* operations.
+  // Includes ILM, ingest pipelines, snapshots, transforms, security, license management, etc.
+  // Does NOT include cluster:monitor/* (basic monitoring/health).
+  val readClusterManagementMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       "cluster:monitor/*",
       "cluster:*get*",
@@ -55,34 +85,21 @@ object ActionMatchers {
       "cluster:admin/xpack/security/*/query",
       "cluster:admin/xpack/*/resolve",
       "cluster:monitor/async_search/status",
-      "indices:admin/*/explain",
-      "indices:admin/*/get",
-      "indices:admin/aliases/exists",
-      "indices:admin/aliases/get",
-      "indices:admin/analyze",
-      "indices:admin/exists*",
-      "indices:admin/get*",
-      "indices:admin/index_template/simulate",
-      "indices:admin/index_template/simulate_index",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
-      "indices:admin/migration/reindex_status",
-      "indices:admin/refresh*",
-      "indices:admin/search/search_shards",
-      "indices:admin/template/get*",
-      "indices:admin/types/exists",
-      "indices:admin/validate/*",
-      "indices:data/read/*",
-      "indices:admin/index_template/get",
-      "indices:admin/resolve/*",
-      "indices:admin/xpack/rollup/search",
-      "indices:monitor/*",
+//      "cluster:monitor/*",
+//      "cluster:*/xpack/*",
+//      //"indices:admin/template/get*",
+//      "cluster:*/info",
+//      "cluster:*/get"
     ).map(Action.apply)
   }
 
+  val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.from(
+    readNonClusterManagementActionPatternsMatcher, readClusterManagementMatcher
+  )
+
   // ES write action patterns: data writes, index admin mutations, some cluster admin mutations.
   // Includes ROR internal write actions.
-  val writeActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+  val writeNonClusterManagementActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     RorAction.writeActions ++
       Set(
         "indices:admin/create",
@@ -90,11 +107,22 @@ object ActionMatchers {
         "indices:admin/mapping/put",
         "indices:data/write/*",
         "indices:admin/template/*",
-        "cluster:admin/settings/*",
         "indices:admin/aliases/*",
         "indices:admin/data_stream/*",
         "indices:admin/index_template/*",
+      ).map(Action.apply)
+  }
+
+  val writeClusterManagementMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    RorAction.writeActions ++
+      Set(
+        "cluster:admin/settings/*",
         "cluster:admin/component_template/*",
       ).map(Action.apply)
   }
+
+  val writeActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.from(
+    writeNonClusterManagementActionPatternsMatcher, writeClusterManagementMatcher
+  )
+
 }

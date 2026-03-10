@@ -45,12 +45,21 @@ object KibanaAccessPermissions {
 
   sealed trait ActionCategory
   object ActionCategory {
-    // ES read actions: indices:data/read/*, indices:admin/*/get, indices:monitor/*, cluster:monitor/*, etc.
-    case object ReadOnly extends ActionCategory
-    // ES write actions: indices:data/write/*, indices:admin/create, cluster:admin/settings/*, etc.
-    case object ReadWrite extends ActionCategory
-    // ROR internal admin actions only (cluster:internal_ror/*)
+
+    sealed trait ReadOnly extends ActionCategory
+    object ReadOnly {
+      case object NonClusterRelated extends ReadOnly
+      case object ClusterRelated extends ReadOnly
+    }
+
+    sealed trait ReadWrite extends ActionCategory
+    object ReadWrite {
+      case object NonClusterRelated extends ReadWrite
+      case object ClusterRelated extends ReadWrite
+    }
+
     case object RorAdmin extends ActionCategory
+
     case object Other extends ActionCategory
   }
 
@@ -72,10 +81,18 @@ object KibanaAccessPermissions {
 
     def classifyAction(bc: BlockContext): ActionCategory = {
       bc.requestContext.action match {
-        case _: RorAction.AdminRorAction => ActionCategory.RorAdmin
-        case action if ActionMatchers.readActionPatternsMatcher.`match`(action) => ActionCategory.ReadOnly
-        case action if ActionMatchers.writeActionPatternsMatcher.`match`(action) => ActionCategory.ReadWrite
-        case _ => ActionCategory.Other
+        case _: RorAction.AdminRorAction =>
+          ActionCategory.RorAdmin
+        case action if ActionMatchers.readNonClusterManagementActionPatternsMatcher.`match`(action) =>
+          ActionCategory.ReadOnly.NonClusterRelated
+        case action if ActionMatchers.readClusterManagementMatcher.`match`(action) =>
+          ActionCategory.ReadOnly.ClusterRelated
+        case action if ActionMatchers.writeNonClusterManagementActionPatternsMatcher.`match`(action) =>
+          ActionCategory.ReadWrite.NonClusterRelated
+        case action if ActionMatchers.writeClusterManagementMatcher.`match`(action) =>
+          ActionCategory.ReadWrite.ClusterRelated
+        case _ =>
+          ActionCategory.Other
       }
     }
 
@@ -88,6 +105,10 @@ object KibanaAccessPermissions {
       )).toOption
       val pathMatch = nonStrictAllowedPaths.exists(_.matcher(path.value.value).find())
       pathMatch && nonStrictActions.`match`(action)
+    }
+
+    def isClusterManagementAction(bc: BlockContext): Boolean = {
+      ActionMatchers.readClusterManagementMatcher.`match`(bc.requestContext.action)
     }
 
     def hasAdminHeaderPath(bc: BlockContext, pathPart: String): Boolean = {

@@ -48,15 +48,24 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       val anyActions = Set("xyz") ++
         adminActionPatternsMatcher.patterns ++
         ActionMatchers.writeActionPatternsMatcher.patterns ++
-        ActionMatchers.readActionPatternsMatcher.patterns
+        ActionMatchers.readNonClusterManagementActionPatternsMatcher.patterns
       anyActions.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(Unrestricted), action)()
       }
     }
-    "ReadOnly action is passed with no indices (cluster mgmt)" in {
-      ActionMatchers.readActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
+    "ReadOnly action is passed with no indices" in {
+      val allReadActions = ActionMatchers.readNonClusterManagementActionPatternsMatcher.patterns.map(Action.apply)
+      val (clusterMgmtActions, nonClusterMgmtActions) = allReadActions.partition(a => ActionMatchers.readClusterManagementMatcher.`match`(a))
+      // Cluster management reads (cluster:admin/*): blocked for RO/ROStrict, allowed for RW
+      clusterMgmtActions.foreach { action =>
         assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set.empty)
         assertNotMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set.empty)
+        assertMatchRuleUsingIndicesRequest(settingsOf(RW), action)()
+      }
+      // Non-management reads (cluster:monitor/*, indices:data/read/*, etc.): allowed for all
+      nonClusterMgmtActions.foreach { action =>
+        assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set.empty)()
+        assertMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set.empty)()
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action)()
       }
     }
@@ -84,7 +93,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       }
     }
     "RO action is passed with other indices" in {
-      ActionMatchers.readActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
+      ActionMatchers.readNonClusterManagementActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(requestedIndex("xxx")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(requestedIndex("xxx")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(requestedIndex("xxx")))()
@@ -98,7 +107,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       }
     }
     "RO action is passed with mixed indices" in {
-      ActionMatchers.readActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
+      ActionMatchers.readNonClusterManagementActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
         assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set(requestedIndex("xxx"), requestedIndex(".kibana")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RO), action, requestedIndices = Set(requestedIndex("xxx"), requestedIndex(".kibana")))()
         assertMatchRuleUsingIndicesRequest(settingsOf(RW), action, requestedIndices = Set(requestedIndex("xxx"), requestedIndex(".kibana")))()
@@ -430,7 +439,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         )
       }
       "RO action should still match" in {
-        ActionMatchers.readActionPatternsMatcher.patterns.map(Action.apply).take(1).foreach { action =>
+        ActionMatchers.readNonClusterManagementActionPatternsMatcher.patterns.map(Action.apply).take(1).foreach { action =>
           assertMatchRuleUsingIndicesRequest(settingsOf(KibanaAccess.Admin), action)()
         }
       }
@@ -443,9 +452,18 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
       }
     }
     "ROStrict access is configured" when {
-      "cluster action should not match (no cluster mgmt access)" in {
-        ActionMatchers.readActionPatternsMatcher.patterns.map(Action.apply).foreach { action =>
+      "cluster management action should not match (no cluster mgmt access)" in {
+        val clusterMgmtActions = ActionMatchers.readNonClusterManagementActionPatternsMatcher.patterns.map(Action.apply)
+          .filter(a => ActionMatchers.readClusterManagementMatcher.`match`(a))
+        clusterMgmtActions.foreach { action =>
           assertNotMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set.empty)
+        }
+      }
+      "non-management cluster reads should match (monitoring allowed)" in {
+        val nonMgmtActions = ActionMatchers.readNonClusterManagementActionPatternsMatcher.patterns.map(Action.apply)
+          .filterNot(a => ActionMatchers.readClusterManagementMatcher.`match`(a))
+        nonMgmtActions.foreach { action =>
+          assertMatchRuleUsingIndicesRequest(settingsOf(ROStrict), action, requestedIndices = Set.empty)()
         }
       }
       "RW action on kibana index should not match" in {

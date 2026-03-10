@@ -68,7 +68,7 @@ trait RequestContext {
   def esServices: EsServices
 
   lazy val isReadOnlyRequest: Boolean =
-    ActionMatchers.readActionPatternsMatcher.`match`(action)
+    ActionMatchers.readNonClusterManagementActionPatternsMatcher.`match`(action)
 
   def isCompositeRequest: Boolean
 
