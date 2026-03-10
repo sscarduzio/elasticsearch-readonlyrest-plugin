@@ -199,7 +199,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         RorAuditIndexTemplate.from(patternNes).left.map {
           case CreationError.ParsingError(msg) =>
             auditSettingsError(
-              s"Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternNes.show} error: ${msg.show}"
+              s"Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: ${patternNes.show} error: ${msg.show}"
             )
         }
       }

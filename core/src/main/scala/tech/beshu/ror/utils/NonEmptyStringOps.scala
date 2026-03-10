@@ -22,7 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
-object NonEmptyStringUtils {
+object NonEmptyStringOps {
 
   import Token.*
 

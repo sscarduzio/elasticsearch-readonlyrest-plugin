@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.NonEmptyStringUtils.*
+import tech.beshu.ror.utils.NonEmptyStringOps.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 
 class DateTimePatternWildcardReplacementUtilTests extends AnyWordSpec {

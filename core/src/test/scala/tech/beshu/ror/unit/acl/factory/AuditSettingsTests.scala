@@ -1358,7 +1358,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage = "Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list (array syntax)" in {
@@ -1977,7 +1977,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage = "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
@@ -2019,7 +2019,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage = "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
