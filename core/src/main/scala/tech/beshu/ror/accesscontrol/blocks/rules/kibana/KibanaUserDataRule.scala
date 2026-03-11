@@ -18,10 +18,11 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule2.ContextBasedIndices
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
@@ -38,10 +39,9 @@ class KibanaUserDataRule(override val settings: Settings)
   override val name: Rule.Name = KibanaUserDataRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
-    if (shouldMatch(blockContext, resolveKibanaIndex(blockContext)))
-      matched(blockContext)
-    else
-      Denied[B](Cause.NotAuthorized)
+    implicit val contextBasedIndices: ContextBasedIndices = ContextBasedIndices(resolveKibanaIndex(blockContext), settings.rorIndex)
+    if (shouldMatch(blockContext)) matched(blockContext)
+    else Denied[B](Cause.NotAuthorized)
   }
 
   private def matched[B <: BlockContext : BlockContextUpdater](blockContext: B): Permitted[B] = {
@@ -136,6 +136,6 @@ object KibanaUserDataRule {
                             appsToHide: Set[KibanaApp],
                             allowedApiPaths: Set[KibanaAllowedApiPath],
                             genericMetadata: Option[ResolvableJsonRepresentation],
-                            override val rorIndex: RorSettingsIndex)
-    extends BaseKibanaRule.Settings(access, rorIndex)
+                            rorIndex: RorSettingsIndex)
+    extends BaseKibanaRule2.Settings(access)
 }

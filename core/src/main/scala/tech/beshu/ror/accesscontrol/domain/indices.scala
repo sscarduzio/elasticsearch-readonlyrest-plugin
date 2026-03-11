@@ -22,7 +22,6 @@ import cats.implicits.*
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import better.files.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
@@ -34,8 +33,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.concurrent.ExecutionContext.global
 import scala.language.postfixOps
-import scala.util.matching.Regex
 import scala.util.Random
+import scala.util.matching.Regex
 
 sealed trait IndexName
 object IndexName {
@@ -76,6 +75,7 @@ object IndexName {
 final case class KibanaIndexName(underlying: ClusterIndexName.Local)
 object KibanaIndexName {
 
+  // todo: remove
   val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
   val default: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana"))))
 
@@ -85,27 +85,38 @@ object KibanaIndexName {
       .maximumSize(1000)
       .build[KibanaIndexName, Vector[Regex]]()
 
-  private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = Vector(
-   s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
-    s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_8.0.0_001
+  private val kibanaReportingIndicesRegexesCache: Cache[KibanaIndexName, Vector[Regex]] =
+      Caffeine.newBuilder()
+        .executor(global)
+        .maximumSize(1000)
+        .build[KibanaIndexName, Vector[Regex]]()
+
+  private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) =
+    createKibanaReportingRelatedIndicesRegexes(kibanaIndex) ++ Vector(
+      s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
+      s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_8.0.0_001
+      s"""^${kibanaIndex.stringify}_alerting_cases$$""".r, // eg. .kibana_alerting_cases
+      s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_alerting_cases_8.8.0
+      s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_alerting_cases_8.11.3_001
+      s"""^${kibanaIndex.stringify}_analytics$$""".r, // eg. .kibana_analytics
+      s"""^${kibanaIndex.stringify}_analytics_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_analytics_8.0.0
+      s"""^${kibanaIndex.stringify}_ingest$$""".r, // eg. .kibana_ingest
+      s"""^${kibanaIndex.stringify}_ingest_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_ingest_8.0.0
+      s"""^${kibanaIndex.stringify}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
+      s"""^${kibanaIndex.stringify}_security_solution$$""".r, // eg. .kibana_security_solution
+      s"""^${kibanaIndex.stringify}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
+      s"""^${kibanaIndex.stringify}_search_solution$$""".r, // eg. .kibana_search_solution
+      s"""^${kibanaIndex.stringify}_search_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana__search_solution_9.1.0
+      s"""^${kibanaIndex.stringify}_task_manager$$""".r, // eg. .kibana_task_manager
+      s"""^${kibanaIndex.stringify}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
+      s"""^${kibanaIndex.stringify}_usage_counters$$""".r, // eg. .kibana_usage_counters
+      s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
+      """^\\.kibana-devnull$$""".r
+    )
+
+  private def createKibanaReportingRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = Vector(
     s"""^\\.kibana-reporting-${kibanaIndex.stringify}$$""".r, // eg. .kibana_reporting-.kibana
     s"""^\\.ds-\\.kibana-reporting-${kibanaIndex.stringify}-\\d{4}\\.\\d{2}\\.\\d{2}-\\d+$$""".r, // eg. .ds-.kibana_reporting-.kibana-2025.01.01-000001
-    s"""^${kibanaIndex.stringify}_alerting_cases$$""".r, // eg. .kibana_alerting_cases
-    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_alerting_cases_8.8.0
-    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_alerting_cases_8.11.3_001
-    s"""^${kibanaIndex.stringify}_analytics$$""".r, // eg. .kibana_analytics
-    s"""^${kibanaIndex.stringify}_analytics_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_analytics_8.0.0
-    s"""^${kibanaIndex.stringify}_ingest$$""".r, // eg. .kibana_ingest
-    s"""^${kibanaIndex.stringify}_ingest_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_ingest_8.0.0
-    s"""^${kibanaIndex.stringify}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
-    s"""^${kibanaIndex.stringify}_security_solution$$""".r, // eg. .kibana_security_solution
-    s"""^${kibanaIndex.stringify}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
-    s"""^${kibanaIndex.stringify}_search_solution$$""".r, // eg. .kibana_search_solution
-    s"""^${kibanaIndex.stringify}_search_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana__search_solution_9.1.0
-    s"""^${kibanaIndex.stringify}_task_manager$$""".r, // eg. .kibana_task_manager
-    s"""^${kibanaIndex.stringify}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
-    s"""^${kibanaIndex.stringify}_usage_counters$$""".r, // eg. .kibana_usage_counters
-    s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
   )
 
   private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
@@ -117,8 +128,16 @@ object KibanaIndexName {
       }
   }
 
+  private def getKibanaReportingRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
+    Option(kibanaReportingIndicesRegexesCache.getIfPresent(kibanaIndex))
+      .getOrElse {
+        val kibanaIndicesRegexes = createKibanaReportingRelatedIndicesRegexes(kibanaIndex)
+        kibanaReportingIndicesRegexesCache.put(kibanaIndex, kibanaIndicesRegexes)
+        kibanaIndicesRegexes
+      }
+  }
 
-  implicit class IsRelatedToKibanaIndex(val indexName: ClusterIndexName) extends AnyVal {
+  implicit class IsRelated(val indexName: ClusterIndexName) extends AnyVal {
     def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {
       if (indexName == kibanaIndex.underlying) {
         true
@@ -126,6 +145,11 @@ object KibanaIndexName {
         getKibanaRelatedIndicesRegexes(kibanaIndex)
           .exists(_.matches(indexName.stringify))
       }
+    }
+
+    def isRelatedToReportingIndex(kibanaIndex: KibanaIndexName): Boolean = {
+      getKibanaReportingRelatedIndicesRegexes(kibanaIndex)
+        .exists(_.matches(indexName.stringify))
     }
   }
 
@@ -434,7 +458,7 @@ object ClusterIndexName {
     }
   }
 
-  implicit class IndicesFilteredBy[T <: ClusterIndexName](indices: Iterable[T]) extends AnyVal {
+  implicit class IndicesFilteredBy[T <: ClusterIndexName](val indices: Iterable[T]) extends AnyVal {
 
     def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
       val (excluded, included) = requestedIndices.toSet.partition(_.excluded)

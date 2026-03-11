@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.BaseKibanaRule2.ContextBasedIndices
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.{ActionCategory, RequestClassifier}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.domain.*
@@ -34,18 +35,20 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 // rw                 | none      | read-only    | full           | full              | read-only     | read-only   |
 // ro                 | none      | none         | full           | full              | read-only     | read-only   |
 // ro_strict/api_only | none      | none         | read-only      | none              | read-only     | read-only   |
-abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
+abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
 
-  protected def shouldMatch(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
+  protected def shouldMatch(bc: BlockContext)
+                           (implicit contextBasedIndices: ContextBasedIndices): Boolean = {
     given BlockContext = bc
+
     val action = RequestClassifier.classifyAction(bc)
     val result = settings.access match {
       case Unrestricted => true
-      case Admin => matchesForAdmin(action, kibanaIndex)
-      case RW => matchesForRW(action, kibanaIndex)
-      case RO => matchesForRO(action, kibanaIndex)
-      case ROStrict | ApiOnly => matchesForROStrict(action, kibanaIndex)
+      case Admin => matchesForAdmin(action)
+      case RW => matchesForRW(action)
+      case RO => matchesForRO(action)
+      case ROStrict | ApiOnly => matchesForROStrict(action)
     }
     logger.debug(s"Access: ${settings.access}, action: $action, result: $result")
     result
@@ -53,87 +56,93 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
 
   //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
   // admin              | full      | read-only    | full       | full      | ro       | ro          |
-  private def matchesForAdmin(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+  private def matchesForAdmin(action: ActionCategory)
+                             (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => true
     case ActionCategory.ClusterManagement.Read => true
     case ActionCategory.ClusterManagement.Write => false
-    case ncm: ActionCategory.NonClusterManagement =>
-      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = true, sampleDataFull = true, reportingFull = true, rorSettings = true)
+    case actionCategory: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = true)
     case ActionCategory.Other => false
   }
 
   //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
   // rw                 | none      | read-only    | full       | full      | ro       | ro          |
-  private def matchesForRW(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+  private def matchesForRW(action: ActionCategory)
+                          (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
     case ActionCategory.ClusterManagement.Read => true
     case ActionCategory.ClusterManagement.Write => false
-    case ncm: ActionCategory.NonClusterManagement =>
-      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = true, sampleDataFull = true, reportingFull = true, rorSettings = false)
+    case actionCategory: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = false)
     case ActionCategory.Other => false
   }
 
   //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
   // ro                 | none      | none         | full       | full      | ro       | ro          |
-  private def matchesForRO(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+  private def matchesForRO(action: ActionCategory)
+                          (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
     case _: ActionCategory.ClusterManagement => false
-    case ncm: ActionCategory.NonClusterManagement =>
-      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = true, sampleDataFull = false, reportingFull = true, rorSettings = false)
+    case actionCategory: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = false)
     case ActionCategory.Other => false
   }
 
   //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
   // ro_strict/api_only | none      | none         | ro         | none      | ro       | ro          |
-  private def matchesForROStrict(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+  private def matchesForROStrict(action: ActionCategory)
+                                (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
     case _: ActionCategory.ClusterManagement => false
-    case ncm: ActionCategory.NonClusterManagement =>
-      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = false, sampleDataFull = false, reportingFull = false, rorSettings = false)
+    case actionCategory: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(actionCategory, kibanaFull = false, reportingFull = false, rorSettings = false)
     case ActionCategory.Other => false
   }
 
-  private def allIndicesPermitted(ncm: ActionCategory.NonClusterManagement,
-                                  kibanaIndex: KibanaIndexName,
+  private def allIndicesPermitted(actionCategory: ActionCategory.NonClusterManagement,
                                   kibanaFull: Boolean,
-                                  sampleDataFull: Boolean,
                                   reportingFull: Boolean,
-                                  rorSettings: Boolean): Boolean = {
-    val (indices, dataStreams, isRead) = ncm match {
+                                  rorSettings: Boolean)
+                                 (implicit contextBasedIndices: ContextBasedIndices): Boolean = {
+    val (indices, dataStreams, isRead) = actionCategory match {
       case ActionCategory.NonClusterManagement.Read(idx, ds) => (idx, ds, true)
       case ActionCategory.NonClusterManagement.Write(idx, ds) => (idx, ds, false)
     }
-    if (indices.isEmpty && dataStreams.isEmpty)
-      return isRead // no indices: treat as "other known" — read-only
-
-    indices.forall(i => isIndexPermitted(i.name, kibanaIndex, isRead, kibanaFull, sampleDataFull, reportingFull, rorSettings)) &&
-      dataStreams.forall(ds => isDataStreamPermitted(ds, isRead, sampleDataFull))
+    if (indices.isEmpty && dataStreams.isEmpty) {
+      isRead // no indices: treat as "other known" — read-only
+    } else {
+      indices.forall { index =>
+        isIndexPermitted(index.name, isRead, kibanaFull, reportingFull, rorSettings)
+      } && dataStreams.forall { dataStreamName =>
+        isDataStreamPermitted(dataStreamName, isRead, kibanaFull)
+      }
+    }
   }
 
   private def isIndexPermitted(indexName: ClusterIndexName,
-                               kibanaIndex: KibanaIndexName,
                                isRead: Boolean,
-                               kibanaFull: Boolean,
-                               sampleDataFull: Boolean,
+                               kibanaRelatedFull: Boolean,
                                reportingFull: Boolean,
-                               rorSettings: Boolean): Boolean = {
-    if (indexName == devNullKibana.underlying) true
-    else if (indexName == settings.rorIndex.toLocal) rorSettings
-    else if (isReportingIndex(indexName, kibanaIndex)) reportingFull
-    else if (kibanaSampleDataIndexMatcher.`match`(indexName)) sampleDataFull || isRead
-    else if (indexName.isRelatedToKibanaIndex(kibanaIndex)) kibanaFull || isRead
+                               rorSettings: Boolean)
+                              (implicit contextBasedIndices: ContextBasedIndices): Boolean = {
+    if (indexName == contextBasedIndices.rorIndex.toLocal) rorSettings
+    else if (indexName.isRelatedToReportingIndex(contextBasedIndices.kibanaIndex)) reportingFull
+    else if (indexName.isRelatedToKibanaIndex(contextBasedIndices.kibanaIndex)) kibanaRelatedFull || isRead
+    else if (kibanaSampleDataIndexMatcher.`match`(indexName)) kibanaRelatedFull || isRead
     else isRead // data index: read-only
   }
 
-  private def isDataStreamPermitted(ds: DataStreamName, isRead: Boolean, sampleDataFull: Boolean): Boolean = {
-    if (kibanaSampleDataStreamMatcher.`match`(ds)) sampleDataFull || isRead
+  private def isDataStreamPermitted(dataStreamName: DataStreamName, isRead: Boolean, kibanaRelatedFull: Boolean): Boolean = {
+    if (kibanaSampleDataStreamMatcher.`match`(dataStreamName)) kibanaRelatedFull || isRead
     else isRead // data stream: read-only
   }
+}
 
-  private def isReportingIndex(indexName: ClusterIndexName, kibanaIndex: KibanaIndexName): Boolean = {
-    val kibanaStr = kibanaIndex.stringify
-    val indexStr = indexName.stringify
-    indexStr.startsWith(s".kibana-reporting-$kibanaStr") ||
-      indexStr.startsWith(s".ds-.kibana-reporting-$kibanaStr")
-  }
+object BaseKibanaRule2 {
+  final case class ContextBasedIndices(kibanaIndex: KibanaIndexName,
+                                       rorIndex: RorSettingsIndex)
+
+  abstract class Settings(val access: KibanaAccess)
+
 }

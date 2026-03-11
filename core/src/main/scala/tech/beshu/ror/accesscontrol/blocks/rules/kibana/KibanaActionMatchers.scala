@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
 import tech.beshu.ror.accesscontrol.domain.{Action, ClusterIndexName, DataStreamName, IndexName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.utils.RefinedUtils.*
@@ -116,11 +115,13 @@ object KibanaActionMatchers {
   // todo: remove
   val indicesWriteAction: PatternsMatcher[Action] = PatternsMatcher.create(Set(Action("indices:data/write/*")))
 
-  val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(
-    Set(Local(IndexName.Pattern.unsafeFromNes(nes("kibana_sample_data_*"))))
-  )
+  val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(Set(
+    ClusterIndexName.Local(IndexName.Full(nes("kibana_sample_data_flights"))),
+    ClusterIndexName.Local(IndexName.Full(nes("kibana_sample_data_ecommerce"))),
+    ClusterIndexName.Local(IndexName.Pattern.unsafeFromNes(nes(".ds-kibana_sample_data_logs-*"))),
+  ))
 
-  val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(
-    Set(DataStreamName.Pattern.fromNes(nes("kibana_sample_data_*")))
-  )
+  val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(Set(
+    DataStreamName.Full.fromNes(nes("kibana_sample_data_logs"))
+  ))
 }

@@ -481,13 +481,19 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
     }
     "DevNull kibana index (.kibana-devnull) is targeted" when {
       "any action should match for any access level" in {
-        Seq(ROStrict, RO, RW, KibanaAccess.Admin, Unrestricted).foreach { access =>
-          assertMatchRuleUsingIndicesRequest(
+        // .kibana-devnull is treated as a regular data index (read-only), so only Unrestricted allows writes
+        assertMatchRuleUsingIndicesRequest(
+          settingsOf(Unrestricted),
+          Action("indices:data/write/index"),
+          requestedIndices = Set(requestedIndex(".kibana-devnull")),
+          uriPath = Some(UriPath.from("/.kibana-devnull/_doc/1"))
+        )()
+        Seq(ROStrict, RO, RW, KibanaAccess.Admin).foreach { access =>
+          assertNotMatchRuleUsingIndicesRequest(
             settingsOf(access),
             Action("indices:data/write/index"),
             requestedIndices = Set(requestedIndex(".kibana-devnull")),
-            uriPath = Some(UriPath.from("/.kibana-devnull/_doc/1"))
-          )()
+          )
         }
       }
     }
@@ -508,12 +514,21 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
           )
         }
       }
-      "RO access with kibana_sample_data_ prefixed index should not match" in {
-        assertNotMatchRuleUsingIndicesRequest(
+      "RO access with kibana_sample_data_ prefixed index should match (kibana-related full access)" in {
+        assertMatchRuleUsingIndicesRequest(
           settingsOf(RO),
           Action("indices:data/write/index"),
           requestedIndices = Set(requestedIndex("kibana_sample_data_flights")),
-        )
+          uriPath = Some(UriPath.from("/kibana_sample_data_flights/_doc/1"))
+        ) {
+          assertBlockContext(_)(
+            kibanaPolicy = Some(KibanaPolicy.default.copy(
+              access = RO,
+              index = Some(kibanaIndexName(".kibana"))
+            )),
+            indices = Set(requestedIndex("kibana_sample_data_flights"))
+          )
+        }
       }
     }
     "indices:data/write action on kibana index" when {
