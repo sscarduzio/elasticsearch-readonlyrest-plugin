@@ -468,6 +468,7 @@ class LocalClusterAuditingToolsSuite
               |  },
               |  "url": { "path": "/twitter/" },
               |  "labels": {
+              |    "presented_identity": "username",
               |    "es_cluster_name": "ROR_SINGLE",
               |    "es_node_name": "ROR_SINGLE_1",
               |    "es_task_id": 0,

@@ -228,6 +228,47 @@ paths:
                   $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
                 RorFailedToStartResponseExample:
                   $ref: "#/components/examples/RorFailedToStartResponseExample"
+  /_readonlyrest/admin/config/audit:
+    get:
+      summary: Getting the current configuration of audit outputs
+      description: The endpoint can be used to fetch currently configured ROR audit outputs.
+      tags:
+        - Audit Settings
+      parameters:
+        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
+      responses:
+        200:
+          description: Contains info about ROR audit outputs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchCurrentAuditConfigurationResponse'
+              examples:
+                FetchCurrentAuditConfigurationSuccessExample:
+                  $ref: "#/components/examples/FetchCurrentAuditConfigurationSuccessExample"
+                FetchCurrentAuditConfigurationFailureExample:
+                  $ref: "#/components/examples/FetchCurrentAuditConfigurationFailureExample"
+        403:
+          description: The request was forbidden by ROR's ACL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenRorResponse'
+              examples:
+                NoAclBlockWasMatchedForbiddenResponseExample:
+                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
+                ForbidBlockMatchedResponseExample:
+                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
+                TestSettingsNotConfiguredForbiddenResponseExample:
+                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
+                ImpersonationNotSupportedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
+                ImpersonationNotAllowedResponseExample:
+                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
+                RorIsNotStartedYetResponseExample:
+                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
+                RorFailedToStartResponseExample:
+                  $ref: "#/components/examples/RorFailedToStartResponseExample"
   /_readonlyrest/admin/refreshconfig:
     post:
       summary: Force reloading in-index defined Main Settings
@@ -933,6 +974,80 @@ components:
           description: ROR main settings YAML
 
     GetFileMainSettingsFailureResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          description: "Failed status"
+          enum:
+            - ko
+        message:
+          type: string
+          description: Human readable message
+
+    FetchCurrentAuditConfigurationResponse:
+      oneOf:
+        - $ref: '#/components/schemas/FetchCurrentAuditConfigurationSuccessResponse'
+        - $ref: '#/components/schemas/FetchCurrentAuditConfigurationFailureResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          ok: '#/components/schemas/FetchCurrentAuditConfigurationSuccessResponse'
+          ko: '#/components/schemas/FetchCurrentAuditConfigurationFailureResponse'
+
+    FetchCurrentAuditConfigurationSuccessResponse:
+      type: object
+      required:
+        - status
+        - local_audit_indexes
+        - other_audit_outputs
+      properties:
+        status:
+          type: string
+          description: "Success status"
+          enum:
+            - ok
+        local_audit_indexes:
+          description: Local audit indexes used for ROR audit
+          type: array
+          items:
+            $ref: '#/components/schemas/LocalAuditIndex'
+        other_audit_outputs:
+          description: Other audit outputs (remote indexes and loggers)
+          type: array
+          items:
+            $ref: '#/components/schemas/OtherAuditOutput'
+
+    LocalAuditIndex:
+      description: "Represents the local index that is used for ROR audit"
+      type: object
+      required:
+        - index_pattern
+        - schema
+      properties:
+        index_pattern:
+          type: string
+          description: Audit index name pattern
+        schema:
+          enum:
+            - rorDefault
+            - ecsV1
+            - custom
+
+    OtherAuditOutput:
+      description: "Represents audit output other than local index (remote index or logger)"
+      type: object
+      required:
+        - description
+      properties:
+        index_pattern:
+          type: string
+          description: Audit index name pattern
+
+    FetchCurrentAuditConfigurationFailureResponse:
       type: object
       required:
         - status
@@ -1764,6 +1879,24 @@ components:
 
     GetFileMainSettingsFailureExample:
       summary: Cannot get file defined Main Settings
+      value:
+        status: ko
+        message: "Settings content is malformed"
+
+    FetchCurrentAuditConfigurationSuccessExample:
+      summary: Successfully fetched configuration of audit outputs
+      value:
+        status: ok
+        local_audit_indexes:
+          - index_pattern: custom_template_*
+            schema: rorDefault
+          - index_pattern: readonlyrest_audit-*
+            schema: ecsV1
+        other_audit_outputs:
+          - description: Logger with name [readonlyrest_audit]
+
+    FetchCurrentAuditConfigurationFailureExample:
+      summary: Cannot get audit settings
       value:
         status: ko
         message: "Settings content is malformed"

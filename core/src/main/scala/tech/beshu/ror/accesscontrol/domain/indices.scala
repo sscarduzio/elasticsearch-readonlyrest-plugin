@@ -47,25 +47,32 @@ object IndexName {
   object Full {
     def fromString(value: String): Option[Full] =
       NonEmptyString.unapply(value).map(Full.apply)
+
+    def fromNes(value: NonEmptyString): Full =
+      Full(value)
   }
 
   final case class Pattern private(name: NonEmptyString)
     extends IndexName
   object Pattern {
     def fromString(value: String): Option[Pattern] =
-      NonEmptyString
-        .unapply(value)
-        .flatMap {
-          case str if str.value == "_all" => Some(IndexName.wildcard)
-          case str if str.contains("*") => Some(IndexName.Pattern(NonEmptyString.unsafeFrom(str)))
-          case _ => None
-        }
+      NonEmptyString.unapply(value).flatMap(fromNes)
+
+    def fromNes(value: NonEmptyString): Option[Pattern] =
+      value match {
+        case str if str.value == "_all" => Some(IndexName.wildcard)
+        case str if str.contains("*") => Some(IndexName.Pattern(value))
+        case _ => None
+      }
 
     def unsafeFromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
 
   def fromString(value: String): Option[IndexName] =
     IndexName.Pattern.fromString(value) orElse IndexName.Full.fromString(value)
+
+  def fromNes(value: NonEmptyString): IndexName =
+    IndexName.Pattern.fromString(value).getOrElse(IndexName.Full.fromNes(value))
 
   implicit val matchableIndexName: Matchable[IndexName] = Matchable.matchable {
     case IndexName.Full(name) => name
@@ -202,6 +209,10 @@ object ClusterIndexName {
         .map(Local.apply)
     }
 
+    def fromNes(value: NonEmptyString): ClusterIndexName.Local = {
+      Local(IndexName.fromNes(value))
+    }
+
     def randomNonexistentIndex(prefix: String = ""): ClusterIndexName.Local = fromString {
       val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i.value}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
       if (prefix.contains("*")) s"$nonexistentIndex*"
@@ -220,16 +231,22 @@ object ClusterIndexName {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
 
+        def fromNes(value: NonEmptyString): Full =
+          Full(value)
+
         val local: Full = Full(NonEmptyString.unsafeFrom("(local)"))
       }
 
       final case class Pattern private(value: NonEmptyString) extends ClusterName
       object Pattern {
-        def fromString(value: String): Option[Pattern] =
-          NonEmptyString.unapply(value).flatMap {
-            case str if str.contains("*") => Some(ClusterName.Pattern(NonEmptyString.unsafeFrom(str)))
-            case _ => None
-          }
+        def fromString(value: String): Option[Pattern] = {
+          NonEmptyString.unapply(value).flatMap(fromNes)
+        }
+
+        def fromNes(value: NonEmptyString): Option[Pattern] = value match {
+          case str if str.contains("*") => Some(ClusterName.Pattern(str))
+          case _ => None
+        }
 
         def unsafeFromNes(value: NonEmptyString): Pattern = {
           Pattern(value)
@@ -238,6 +255,10 @@ object ClusterIndexName {
 
       def fromString(value: String): Option[ClusterName] = {
         Pattern.fromString(value) orElse Full.fromString(value)
+      }
+
+      def fromNes(value: NonEmptyString): ClusterName = {
+        Pattern.fromNes(value).getOrElse(Full.fromNes(value))
       }
 
       val wildcard: ClusterName.Pattern = Pattern.unsafeFromNes(nes("*"))
@@ -275,6 +296,10 @@ object ClusterIndexName {
 
   def fromString(value: String): Option[ClusterIndexName] = {
     Remote.fromString(value) orElse Local.fromString(value)
+  }
+
+  def fromNes(value: NonEmptyString): ClusterIndexName = {
+    Remote.fromString(value).getOrElse(Local.fromNes(value))
   }
 
   def unsafeFromString(value: String): ClusterIndexName =
@@ -484,6 +509,10 @@ object IndexPattern {
 
   def fromString(value: String): Option[IndexPattern] =
     ClusterIndexName.fromString(value).map(IndexPattern.apply)
+
+  def fromNes(value: NonEmptyString): IndexPattern =
+    IndexPattern(ClusterIndexName.fromNes(value))
+
 }
 
 final case class AliasPlaceholder private(alias: ClusterIndexName) extends AnyVal {

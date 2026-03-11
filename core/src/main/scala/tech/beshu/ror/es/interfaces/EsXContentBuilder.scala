@@ -14,22 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.interfaces
 
-import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentBuilder}
-import org.elasticsearch.rest.RestStatus
-import tech.beshu.ror.api.MainSettingsApi
-import tech.beshu.ror.api.MainSettingsApi.*
-
-class RRAdminResponse(response: MainSettingsApi.MainSettingsResponse)
-  extends ActionResponse with StatusToXContentObject {
-
-  override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    response.buildJson(builder.map)
-    builder
-  }
-
-  override def status(): RestStatus = RestStatus.fromCode(response.httpStatus.code())
-
+@FunctionalInterface
+trait EsXContentBuilder {
+  def build(map: java.util.Map[String, Any]): Unit
 }

@@ -195,17 +195,14 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private given Decoder[RorAuditIndexTemplate] =
     SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emapE { patternStr =>
-        RorAuditIndexTemplate
-          .from(patternStr)
-          .left
-          .map {
-            case CreationError.ParsingError(msg) =>
-              auditSettingsError(
-                s"Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
-              )
-          }
+      .from(nonEmptyStringDecoder)
+      .emapE { patternNes =>
+        RorAuditIndexTemplate.from(patternNes).left.map {
+          case CreationError.ParsingError(msg) =>
+            auditSettingsError(
+              s"Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: ${patternNes.show} error: ${msg.show}"
+            )
+        }
       }
       .decoder
 
@@ -347,16 +344,18 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     Try {
       serializer match {
         case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
-          Some(serializer)
+          Some((serializer, serializer.getClass.getName))
         case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
-          Some(new EnvironmentAwareAuditLogSerializerAdapter(serializer))
+          Some((new EnvironmentAwareAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
+        case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] if fullClassName.startsWith("tech.beshu.ror.requestcontext") =>
+          Some((new DeprecatedAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
         case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
-          Some(new DeprecatedAuditLogSerializerAdapter(serializer))
+          Some((new DeprecatedAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
         case _ => None
       }
     } match {
-      case Success(Some(customSerializer)) =>
-        noRequestIdLogger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
+      case Success(Some((customSerializer, name))) =>
+        noRequestIdLogger.info(s"Using custom serializer: $name")
         Right(customSerializer)
       case Success(None) => Left(auditSettingsError(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}"))
       case Failure(ex) => Left(auditSettingsError(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}"))
