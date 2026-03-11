@@ -50,7 +50,13 @@ object KibanaAccessPermissions {
                              dataStreams: Set[DataStreamName]) extends NonClusterManagement
     }
 
-    case object Other extends ActionCategory
+    sealed trait Other extends ActionCategory
+    object Other {
+      case object Read extends Other
+      case object Write extends Other
+    }
+
+    case object Unknown extends ActionCategory
   }
 
   object RequestClassifier {
@@ -67,8 +73,12 @@ object KibanaAccessPermissions {
           ActionCategory.NonClusterManagement.Write(bc.indices, bc.dataStreams)
         case action if ActionMatchers.writeClusterManagementMatcher.`match`(action) =>
           ActionCategory.ClusterManagement.Write
+        case action if ActionMatchers.otherKnownReadActionPatternsMatcher.`match`(action) =>
+          ActionCategory.Other.Read
+        case action if ActionMatchers.otherKnownWriteActionPatternsMatcher.`match`(action) =>
+          ActionCategory.Other.Write
         case _ =>
-          ActionCategory.Other
+          ActionCategory.Unknown
       }
     }
 

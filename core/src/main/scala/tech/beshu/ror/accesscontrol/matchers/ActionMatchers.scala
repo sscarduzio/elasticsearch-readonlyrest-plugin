@@ -21,8 +21,6 @@ import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 object ActionMatchers {
 
-  // ES read-only action patterns: data reads, index metadata reads, cluster monitoring, and
-  // cluster:admin actions that are effectively read-only (get, list, stats, preview, etc.)
   val readNonClusterManagementActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       "indices:admin/*/explain",
@@ -50,9 +48,6 @@ object ActionMatchers {
     ).map(Action.apply)
   }
 
-  // Cluster management (Stack Management) actions: all cluster:admin/* operations.
-  // Includes ILM, ingest pipelines, snapshots, transforms, security, license management, etc.
-  // Does NOT include cluster:monitor/* (basic monitoring/health).
   val readClusterManagementMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       "cluster:monitor/*",
@@ -85,11 +80,6 @@ object ActionMatchers {
       "cluster:admin/xpack/security/*/query",
       "cluster:admin/xpack/*/resolve",
       "cluster:monitor/async_search/status",
-//      "cluster:monitor/*",
-//      "cluster:*/xpack/*",
-//      //"indices:admin/template/get*",
-//      "cluster:*/info",
-//      "cluster:*/get"
     ).map(Action.apply)
   }
 
@@ -97,8 +87,6 @@ object ActionMatchers {
     readNonClusterManagementActionPatternsMatcher, readClusterManagementMatcher
   )
 
-  // ES write action patterns: data writes, index admin mutations, some cluster admin mutations.
-  // Includes ROR internal write actions.
   val writeNonClusterManagementActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     RorAction.writeActions ++
       Set(
@@ -124,5 +112,25 @@ object ActionMatchers {
   val writeActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.from(
     writeNonClusterManagementActionPatternsMatcher, writeClusterManagementMatcher
   )
+
+  val otherKnownReadActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "cluster:admin/*/validate",
+      "cluster:admin/*/validate/*",
+      "cluster:admin/*/prevalidate_*",
+      "cluster:admin/*/estimate_*",
+      "cluster:admin/*/prepare",
+      "cluster:admin/xpack/security/*/has_privileges",
+      "cluster:admin/xpack/security/*/suggest",
+      "cluster:admin/xpack/security/*/authenticate",
+    ).map(Action.apply)
+  }
+
+  val otherKnownWriteActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+    Set(
+      "cluster:admin/*",
+      "indices:admin/*",
+    ).map(Action.apply)
+  }
 
 }
