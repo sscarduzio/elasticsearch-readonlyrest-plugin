@@ -17,10 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.ActionCategory.ClusterManagement
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.{ActionCategory, RequestClassifier, ActionCategory as AC}
+import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessPermissions.{ActionCategory, RequestClassifier}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaActionMatchers.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
@@ -41,98 +39,101 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule.Settings)
 
   protected def shouldMatch(bc: BlockContext, kibanaIndex: KibanaIndexName): Boolean = {
     given BlockContext = bc
-
     val action = RequestClassifier.classifyAction(bc)
-    val result = (settings.access, action) match {
-      case (Unrestricted, _) => true
-      case (_, ActionCategory.Other) => false // todo:
-      case (Admin, _) => matchesForAdmin(bc, kibanaIndex, action)
-      case (RW, _) => matchesForRW(bc, kibanaIndex, action)
-      case (RO, _) => matchesForRO(bc, kibanaIndex, action)
-      case (ROStrict, _) | (ApiOnly, _) => matchesForROStrict(bc, kibanaIndex, action)
+    val result = settings.access match {
+      case Unrestricted => true
+      case Admin => matchesForAdmin(action, kibanaIndex)
+      case RW => matchesForRW(action, kibanaIndex)
+      case RO => matchesForRO(action, kibanaIndex)
+      case ROStrict | ApiOnly => matchesForROStrict(action, kibanaIndex)
     }
-    logger.debug(s"Access: ${settings.access}, result: $result")
+    logger.debug(s"Access: ${settings.access}, action: $action, result: $result")
     result
   }
 
-  private def matchesForAdmin(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
-    action match {
-      case ActionCategory.RorAdmin => true
-      case ClusterManagement.Read => true
-      case ClusterManagement.Write => false
-      case management: ActionCategory.NonClusterManagement =>
-        management ma
-      case ActionCategory.Other => ???
-    }
-    val resources = classifyResources(bc, kibanaIndex)
-    resources.forall {
-      case _: ResourceCategory.KibanaRelatedResource => true
-      case ResourceCategory.DataIndex => isReadOnly(action)
-      case ResourceCategory.NonIndexResource => isReadOnly(action)
-      case ResourceCategory.RorSettingsIndex => true
-    }
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
+  // admin              | full      | read-only    | full       | full      | ro       | ro          |
+  private def matchesForAdmin(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+    case ActionCategory.RorAdmin => true
+    case ActionCategory.ClusterManagement.Read => true
+    case ActionCategory.ClusterManagement.Write => false
+    case ncm: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = true, sampleDataFull = true, reportingFull = true, rorSettings = true)
+    case ActionCategory.Other => false
   }
 
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // rw                 | full           | full      | read-only    | read-only    | none         |
-  private def matchesForRW(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
-    val resources = classifyResources(bc, kibanaIndex)
-    resources.forall {
-      case ResourceCategory.DevNullKibana => true
-      // indices
-      case ResourceCategory.KibanaIndex => true
-      case ResourceCategory.ReportingIndex => true
-      case ResourceCategory.SampleData => true
-      case ResourceCategory.DataIndex => isReadOnly(action)
-      // cluster mgmt
-      case ResourceCategory.NonIndexResource => isReadOnly(action)
-      // ROR settings
-      case ResourceCategory.RorSettingsIndex => false
-    }
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
+  // rw                 | none      | read-only    | full       | full      | ro       | ro          |
+  private def matchesForRW(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+    case ActionCategory.RorAdmin => false
+    case ActionCategory.ClusterManagement.Read => true
+    case ActionCategory.ClusterManagement.Write => false
+    case ncm: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = true, sampleDataFull = true, reportingFull = true, rorSettings = false)
+    case ActionCategory.Other => false
   }
 
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // ro                 | full           | full      | read-only    | none         | none         |
-  private def matchesForRO(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
-    val resources = classifyResources(bc, kibanaIndex)
-    resources.forall {
-      case ResourceCategory.DevNullKibana => true
-      // indices
-      case ResourceCategory.KibanaIndex => true
-      case ResourceCategory.ReportingIndex => true
-      case ResourceCategory.SampleData => isReadOnly(action)
-      case ResourceCategory.DataIndex => isReadOnly(action)
-      // cluster: allow monitoring reads, block management actions
-      case ResourceCategory.NonIndexResource => isReadOnly(action) && !isClusterManagement(bc)
-      // ROR settings
-      case ResourceCategory.RorSettingsIndex => false
-    }
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
+  // ro                 | none      | none         | full       | full      | ro       | ro          |
+  private def matchesForRO(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+    case ActionCategory.RorAdmin => false
+    case _: ActionCategory.ClusterManagement => false
+    case ncm: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = true, sampleDataFull = false, reportingFull = true, rorSettings = false)
+    case ActionCategory.Other => false
   }
 
-  //                    | kibana indices | reporting | data indices | cluster mgmt | ROR settings |
-  // ro_strict/api_only | read-only      | none      | read-only    | none         | none         |
-  private def matchesForROStrict(bc: BlockContext, kibanaIndex: KibanaIndexName, action: ActionCategory): Boolean = {
-    val resources = classifyResources(bc, kibanaIndex)
-    resources.forall {
-      case ResourceCategory.DevNullKibana => true
-      // indices
-      case ResourceCategory.KibanaIndex => isReadOnly(action)
-      case ResourceCategory.ReportingIndex => false
-      case ResourceCategory.SampleData => isReadOnly(action)
-      case ResourceCategory.DataIndex => isReadOnly(action)
-      // cluster: allow monitoring reads, block management actions
-      case ResourceCategory.NonIndexResource => isReadOnly(action) && !isClusterManagement(bc)
-      // ROR settings
-      case ResourceCategory.RorSettingsIndex => false
-    }
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known |
+  // ro_strict/api_only | none      | none         | ro         | none      | ro       | ro          |
+  private def matchesForROStrict(action: ActionCategory, kibanaIndex: KibanaIndexName): Boolean = action match {
+    case ActionCategory.RorAdmin => false
+    case _: ActionCategory.ClusterManagement => false
+    case ncm: ActionCategory.NonClusterManagement =>
+      allIndicesPermitted(ncm, kibanaIndex, kibanaFull = false, sampleDataFull = false, reportingFull = false, rorSettings = false)
+    case ActionCategory.Other => false
   }
 
-  private def classifyResources(bc: BlockContext, kibanaIndex: KibanaIndexName): Set[ResourceCategory] =
-    RequestClassifier.classifyResources(bc, kibanaIndex, settings.rorIndex)
+  private def allIndicesPermitted(ncm: ActionCategory.NonClusterManagement,
+                                  kibanaIndex: KibanaIndexName,
+                                  kibanaFull: Boolean,
+                                  sampleDataFull: Boolean,
+                                  reportingFull: Boolean,
+                                  rorSettings: Boolean): Boolean = {
+    val (indices, dataStreams, isRead) = ncm match {
+      case ActionCategory.NonClusterManagement.Read(idx, ds) => (idx, ds, true)
+      case ActionCategory.NonClusterManagement.Write(idx, ds) => (idx, ds, false)
+    }
+    if (indices.isEmpty && dataStreams.isEmpty)
+      return isRead // no indices: treat as "other known" — read-only
 
-  private def isReadOnly(action: ActionCategory): Boolean =
-    action == AC.ReadOnly
+    indices.forall(i => isIndexPermitted(i.name, kibanaIndex, isRead, kibanaFull, sampleDataFull, reportingFull, rorSettings)) &&
+      dataStreams.forall(ds => isDataStreamPermitted(ds, isRead, sampleDataFull))
+  }
 
-  private def isClusterManagement(bc: BlockContext): Boolean =
-    RequestClassifier.isClusterManagementAction(bc)
+  private def isIndexPermitted(indexName: ClusterIndexName,
+                               kibanaIndex: KibanaIndexName,
+                               isRead: Boolean,
+                               kibanaFull: Boolean,
+                               sampleDataFull: Boolean,
+                               reportingFull: Boolean,
+                               rorSettings: Boolean): Boolean = {
+    if (indexName == devNullKibana.underlying) true
+    else if (indexName == settings.rorIndex.toLocal) rorSettings
+    else if (isReportingIndex(indexName, kibanaIndex)) reportingFull
+    else if (kibanaSampleDataIndexMatcher.`match`(indexName)) sampleDataFull || isRead
+    else if (indexName.isRelatedToKibanaIndex(kibanaIndex)) kibanaFull || isRead
+    else isRead // data index: read-only
+  }
+
+  private def isDataStreamPermitted(ds: DataStreamName, isRead: Boolean, sampleDataFull: Boolean): Boolean = {
+    if (kibanaSampleDataStreamMatcher.`match`(ds)) sampleDataFull || isRead
+    else isRead // data stream: read-only
+  }
+
+  private def isReportingIndex(indexName: ClusterIndexName, kibanaIndex: KibanaIndexName): Boolean = {
+    val kibanaStr = kibanaIndex.stringify
+    val indexStr = indexName.stringify
+    indexStr.startsWith(s".kibana-reporting-$kibanaStr") ||
+      indexStr.startsWith(s".ds-.kibana-reporting-$kibanaStr")
+  }
 }
