@@ -115,13 +115,15 @@ object KibanaActionMatchers {
   // todo: remove
   val indicesWriteAction: PatternsMatcher[Action] = PatternsMatcher.create(Set(Action("indices:data/write/*")))
 
+  // todo: move
   val kibanaSampleDataIndexMatcher: PatternsMatcher[ClusterIndexName] = PatternsMatcher.create(Set(
     ClusterIndexName.Local(IndexName.Full(nes("kibana_sample_data_flights"))),
     ClusterIndexName.Local(IndexName.Full(nes("kibana_sample_data_ecommerce"))),
     ClusterIndexName.Local(IndexName.Pattern.unsafeFromNes(nes(".ds-kibana_sample_data_logs-*"))),
   ))
 
+  // todo: move
   val kibanaSampleDataStreamMatcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(Set(
-    DataStreamName.Full.fromNes(nes("kibana_sample_data_logs"))
+    DataStreamName.Full.fromNes(nes("kibana_sample_data_logs")),
   ))
 }

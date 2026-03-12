@@ -28,13 +28,13 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 // Permission table (each index in the request is classified independently, all must be permitted):
 //
-// Access level       | Actions                                                                                                  |
-//                    | ROR admin | Cluster mgmt | Involving indices                                  | Other known | Unknown |
-//                    |           |              | kibana indices | reporting indices | data indices  |             |         |
-// admin              | full      | read-only    | full           | full              | read-only     | read-only   | none    |
-// rw                 | none      | read-only    | full           | full              | read-only     | read-only   | none    |
-// ro                 | none      | none         | full           | full              | read-only     | read-only   | none    |
-// ro_strict/api_only | none      | none         | read-only      | none              | read-only     | read-only   | none    |
+// Access level       | Actions                                                                                     |
+//                    | ROR admin | Cluster mgmt | Involving indices                                  | Unknown    |
+//                    |           |              | kibana indices | reporting indices | data indices  |            |
+// admin              | full      | read-only    | full           | full              | read-only     | none       |
+// rw                 | none      | read-only    | full           | full              | read-only     | none       |
+// ro                 | none      | none         | full           | full              | read-only     | none       |
+// ro_strict/api_only | none      | none         | read-only      | none              | read-only     | none       |
 abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
   extends RegularRule with KibanaRelatedRule with RequestIdAwareLogging {
 
@@ -54,8 +54,8 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
     result
   }
 
-  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known | Unknown |
-  // admin              | full      | read-only    | full       | full      | ro       | ro          | none    |
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Unknown |
+  // admin              | full      | read-only    | full       | full      | ro       | none    |
   private def matchesForAdmin(action: ActionCategory)
                              (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => true
@@ -63,13 +63,11 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
     case ActionCategory.ClusterManagement.Write => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = true)
-    case ActionCategory.Other.Read => true
-    case ActionCategory.Other.Write => false
     case ActionCategory.Unknown => false
   }
 
-  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known | Unknown |
-  // rw                 | none      | read-only    | full       | full      | ro       | ro          | none    |
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Unknown |
+  // rw                 | none      | read-only    | full       | full      | ro       | none    |
   private def matchesForRW(action: ActionCategory)
                           (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
@@ -77,34 +75,28 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
     case ActionCategory.ClusterManagement.Write => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = false)
-    case ActionCategory.Other.Read => true
-    case ActionCategory.Other.Write => false
     case ActionCategory.Unknown => false
   }
 
-  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known | Unknown |
-  // ro                 | none      | none         | full       | full      | ro       | ro          | none    |
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Unknown |
+  // ro                 | none      | none         | full       | full      | ro       | none    |
   private def matchesForRO(action: ActionCategory)
                           (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
     case _: ActionCategory.ClusterManagement => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = false)
-    case ActionCategory.Other.Read => true
-    case ActionCategory.Other.Write => false
     case ActionCategory.Unknown => false
   }
 
-  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Other known | Unknown |
-  // ro_strict/api_only | none      | none         | ro         | none      | ro       | ro          | none    |
+  //                    | ROR admin | Cluster mgmt | kibana idx | reporting | data idx | Unknown |
+  // ro_strict/api_only | none      | none         | ro         | none      | ro       | none    |
   private def matchesForROStrict(action: ActionCategory)
                                 (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
     case _: ActionCategory.ClusterManagement => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = false, reportingFull = false, rorSettings = false)
-    case ActionCategory.Other.Read => true
-    case ActionCategory.Other.Write => false
     case ActionCategory.Unknown => false
   }
 
@@ -142,7 +134,8 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
   }
 
   private def isDataStreamPermitted(dataStreamName: DataStreamName, isRead: Boolean, kibanaRelatedFull: Boolean): Boolean = {
-    if (kibanaSampleDataStreamMatcher.`match`(dataStreamName)) kibanaRelatedFull || isRead
+    if (dataStreamName.isRelatedToKibanaIndex()) kibanaRelatedFull || isRead
+    else if (kibanaSampleDataStreamMatcher.`match`(dataStreamName)) kibanaRelatedFull || isRead
     else isRead // data stream: read-only
   }
 }

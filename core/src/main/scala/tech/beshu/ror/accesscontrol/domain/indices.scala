@@ -111,8 +111,15 @@ object KibanaIndexName {
       s"""^${kibanaIndex.stringify}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
       s"""^${kibanaIndex.stringify}_usage_counters$$""".r, // eg. .kibana_usage_counters
       s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
-      """^\\.kibana-devnull$$""".r
+      """^\\.kibana-devnull$$""".r,
+      """^\\.ds-\\.kibana-event-log-ds-\\d+\\.\\d+\\.\\d+-\\d+$$""".r,
     )
+
+  private val kibanaRelatedDataSteamRegexes = {
+    Vector(
+      """^\\.kibana-event-log-ds$$""".r
+    )
+  }
 
   private def createKibanaReportingRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = Vector(
     s"""^\\.kibana-reporting-${kibanaIndex.stringify}$$""".r, // eg. .kibana_reporting-.kibana
@@ -137,7 +144,7 @@ object KibanaIndexName {
       }
   }
 
-  implicit class IsRelated(val indexName: ClusterIndexName) extends AnyVal {
+  implicit class IndexIsRelated(val indexName: ClusterIndexName) extends AnyVal {
     def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {
       if (indexName == kibanaIndex.underlying) {
         true
@@ -150,6 +157,12 @@ object KibanaIndexName {
     def isRelatedToReportingIndex(kibanaIndex: KibanaIndexName): Boolean = {
       getKibanaReportingRelatedIndicesRegexes(kibanaIndex)
         .exists(_.matches(indexName.stringify))
+    }
+  }
+
+  implicit class DataStreamIsRelated(val dataStreamName: DataStreamName) extends AnyVal {
+    def isRelatedToKibanaIndex(): Boolean = {
+      kibanaRelatedDataSteamRegexes.exists(_.matches(dataStreamName.stringify))
     }
   }
 
