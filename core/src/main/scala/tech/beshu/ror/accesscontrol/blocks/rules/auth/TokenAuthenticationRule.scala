@@ -22,8 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseAuthenticationRule
@@ -31,6 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Imperso
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.Known
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -42,7 +42,7 @@ final class TokenAuthenticationRule(val settings: Settings,
 
   override val name: Rule.Name = TokenAuthenticationRule.Name.name
 
-  override val eligibleUsers: AuthenticationRule.EligibleUsersSupport = EligibleUsersSupport.Available(Set(settings.user), unknownUsers = false)
+  override val localUsers: LocalUsers = LocalUsers.Available(Known(settings.user))
 
   override def exists(user: User.Id, mocksProvider: MocksProvider)
                      (implicit requestId: RequestId): Task[UserExistence] = Task.now {

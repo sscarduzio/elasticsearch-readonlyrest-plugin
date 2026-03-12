@@ -21,7 +21,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
@@ -32,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, LocalUsers, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
@@ -45,6 +44,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.*
 import tech.beshu.ror.implicits.*
 
 object ruleDecoders {
@@ -218,18 +218,18 @@ object ruleDecoders {
   private def checkUsersEligibility(rule: AuthenticationRule,
                                     userIdPatterns: UserIdPatterns,
                                     globalSettings: GlobalSettings) = {
-    rule.eligibleUsers match {
-      case EligibleUsersSupport.Available(users, false) =>
+    rule.localUsers match {
+      case LocalUsers.Available(Known(users)) =>
         implicit val userIdCaseSensitivity: CaseSensitivity = globalSettings.userIdCaseSensitivity
         val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
-        if (users.exists(matcher.`match`)) {
+        if (users.toList.exists(matcher.`match`)) {
           Right(())
         } else {
           Left(
             s"Users [${users.show}] are allowed to be authenticated by rule [${rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."
           )
         }
-      case EligibleUsersSupport.Available(_, true) | EligibleUsersSupport.NotAvailable =>
+      case LocalUsers.Available(KnownAndUnknown(_)) | LocalUsers.Available(Unknown) | LocalUsers.NotAvailable =>
         Right(())
     }
   }

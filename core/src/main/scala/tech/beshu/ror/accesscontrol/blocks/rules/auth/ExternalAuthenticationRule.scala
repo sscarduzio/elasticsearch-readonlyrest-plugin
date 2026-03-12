@@ -22,13 +22,12 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationF
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseBasicAuthAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, LocalUsers, RequestId, User}
 
 final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings,
                                        override implicit val userIdCaseSensitivity: CaseSensitivity,
@@ -37,7 +36,7 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
 
   override val name: Rule.Name = ExternalAuthenticationRule.Name.name
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+  override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
   override protected def authenticateUsing(credentials: Credentials)
                                           (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =

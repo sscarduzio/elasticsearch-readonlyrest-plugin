@@ -248,7 +248,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
-          localUsers = rules.map(_.rule).map(LocalUsers.from).combineAll,
+          localUsers = LocalUsers.from(block),
           impersonationWarnings = new BlockImpersonationWarningsReader(block.name, rules)
         )
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))

@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.{Monoid, Show}
+import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LocalUsers}
 import tech.beshu.ror.accesscontrol.utils.TaskDecisionOps.*
 import tech.beshu.ror.syntax.*
 
@@ -78,7 +78,7 @@ object Rule {
   trait AuthenticationRule extends Rule {
     this: AuthenticationImpersonationSupport =>
 
-    def eligibleUsers: AuthenticationRule.EligibleUsersSupport
+    def localUsers: LocalUsers
     implicit def userIdCaseSensitivity: CaseSensitivity
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
@@ -95,25 +95,6 @@ object Rule {
     @nowarn("msg=unused implicit parameter")
     protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.now(Permitted(blockContext))
-  }
-  object AuthenticationRule {
-    sealed trait EligibleUsersSupport
-    object EligibleUsersSupport {
-      final case class Available(users: Set[User.Id], unknownUsers: Boolean) extends EligibleUsersSupport
-      case object NotAvailable extends EligibleUsersSupport
-
-      implicit val eligibleUsersSupportMonoid: Monoid[EligibleUsersSupport] = Monoid.instance(
-        emptyValue = EligibleUsersSupport.NotAvailable,
-        cmb = (s1, s2) => {
-          (s1, s2) match {
-            case (EligibleUsersSupport.NotAvailable, elem) => elem
-            case (acc@EligibleUsersSupport.Available(_, _), EligibleUsersSupport.NotAvailable) => acc
-            case (EligibleUsersSupport.Available(accUsers, accUnknown), EligibleUsersSupport.Available(elemUsers, elemUnknown)) =>
-              EligibleUsersSupport.Available(accUsers ++ elemUsers, accUnknown || elemUnknown)
-          }
-        }
-      )
-    }
   }
 
   trait AuthorizationRule extends Rule {

@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings as GroupsRulesSettings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
@@ -123,7 +122,7 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
     def permitting(user: User.Id): AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
-      override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+      override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
@@ -132,7 +131,7 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
     val denying: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
-      override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+      override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(AuthenticationFailed("mocked - authn in authn rule fail")))
@@ -141,7 +140,7 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
     val throwing: AuthenticationRule = new AuthenticationRule with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-throwing")
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
-      override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+      override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.raiseError(new Exception("Sth went wrong"))
@@ -173,7 +172,7 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
     def permitting(user: User.Id, groups: NonEmptyList[Group]): AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-fulfilling")
 
-      override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+      override val localUsers: LocalUsers = LocalUsers.NotAvailable
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
@@ -190,7 +189,7 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
     val denying: AuthRule = new AuthRule with AuthenticationRule with AuthorizationRule with AuthorizationImpersonationCustomSupport with AuthenticationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
-      override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+      override val localUsers: LocalUsers = LocalUsers.NotAvailable
       override implicit val userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Enabled
 
       override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
