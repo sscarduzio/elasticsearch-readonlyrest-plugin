@@ -52,14 +52,14 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, R
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
-import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{api, bearer}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.es.{EsNodeSettings, EsVersion}
+import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
@@ -389,6 +389,8 @@ object TestsUtils {
 
   def anyTokenDef = AuthorizationTokenDef(Header.Name.authorization, AllowedPrefix.Any)
 
+  def apiKeyDef = AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(api))
+
   def jsonPathFrom(value: String): JsonPath = JsonPath(value).get
 
   def urlFrom(value: String): Url = Url.parseTry(value) match {
@@ -432,6 +434,10 @@ object TestsUtils {
     clusterName = "testEsCluster",
     nodeName = "testEsNode"
   )
+
+  def defaultEsEnv(): EsEnv = {
+    EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
+  }
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
 

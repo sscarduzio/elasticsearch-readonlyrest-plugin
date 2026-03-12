@@ -106,6 +106,13 @@ object AuthorizationToken {
         None
     }
   }
+
+  extension (token: AuthorizationToken) {
+    def stringify: String = token.prefix match {
+      case AuthorizationTokenPrefix.Exact(prefix) => s"${prefix.value} ${token.value.value}"
+      case AuthorizationTokenPrefix.NoPrefix => token.value.value
+    }
+  }
 }
 
 sealed trait AuthorizationTokenPrefix
@@ -114,6 +121,7 @@ object AuthorizationTokenPrefix {
   case object NoPrefix extends AuthorizationTokenPrefix
 
   val bearer = AuthorizationTokenPrefix.Exact(nes("Bearer"))
+  val api = AuthorizationTokenPrefix.Exact(nes("ApiKey"))
 
   implicit val eq: Eq[AuthorizationTokenPrefix] = Eq.instance((x, y) => (x, y) match {
     case (Exact(a), Exact(b)) => a.value.toLowerCase(Locale.US) === b.value.toLowerCase(Locale.US)

@@ -23,6 +23,7 @@ import tech.beshu.ror.tools.core.patches.base.EsPatchExecutor
 import tech.beshu.ror.tools.core.utils.*
 import tech.beshu.ror.tools.core.utils.InOut.ConsoleInOut
 
+import java.io.{PrintWriter, StringWriter}
 import scala.util.{Failure, Success, Try}
 
 object RorToolsApp extends RorTools {
@@ -94,10 +95,10 @@ trait RorTools {
       }
     } match {
       case Failure(ex: RorToolsException) =>
-        inOut.println(s"ERROR: ${ex.getMessage}\n${ex.printStackTrace()}")
+        inOut.println(s"ERROR: ${ex.getMessage}\n${stackTraceToString(ex)}")
         Result.Failure
       case Failure(ex: Throwable) =>
-        inOut.println(s"UNEXPECTED ERROR: ${ex.getMessage}\n${ex.printStackTrace()}")
+        inOut.println(s"UNEXPECTED ERROR: ${ex.getMessage}\n${stackTraceToString(ex)}")
         Result.Failure
       case Success(result) =>
         result
@@ -178,6 +179,12 @@ trait RorTools {
 
   private def esDirectoryFrom(esPath: Option[os.Path]) = {
     esPath.map(EsDirectory.from).getOrElse(EsDirectory.default)
+  }
+
+  private def stackTraceToString(ex: Throwable): String = {
+    val sw = new StringWriter()
+    ex.printStackTrace(new PrintWriter(sw))
+    sw.toString
   }
 
   private def failureCausedByRorToolsError(error: RorToolsError)

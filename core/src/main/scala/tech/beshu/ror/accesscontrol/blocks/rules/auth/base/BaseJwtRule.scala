@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMeth
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -88,7 +89,10 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       .requestContext
       .authorizationTokenBy(jwt.authorizationTokenDef)
       .map(h => Jwt.Token(h.value))
-      .toRight(failedJwtCauseCreator("No expected JWT found"))
+      .left.map {
+        case AuthorizationTokenRetrievingError.MissingHeader => failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' is missing")
+        case AuthorizationTokenRetrievingError.InvalidValue => failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' has an invalid or unrecognized token format")
+      }
   }
 
   private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)

@@ -148,14 +148,15 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings,
-                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
+                              mocksProvider: MocksProvider,
+                              esEnv: EsEnv): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider).map {
+          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider, esEnv).map {
             case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
             case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
             case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
@@ -183,12 +184,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
                                         globalSettings: GlobalSettings,
-                                        mocksProvider: MocksProvider): State[ACursor, RuleDecodingResult] = {
+                                        mocksProvider: MocksProvider,
+                                        esEnv: EsEnv): State[ACursor, RuleDecodingResult] = {
     State(cursor => {
       if (!cursor.keys.toList.flatten.contains(name)) {
         (cursor, RuleDecodingResult.Skipped)
       } else {
-        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider) match {
+        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider, esEnv) match {
           case Some(decoder) =>
             decoder.tryDecode(cursor) match {
               case Right(RuleDecoder.Result(rule, unconsumedCursor)) =>
@@ -205,7 +207,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private def blockDecoder(definitions: DefinitionsPack,
                            globalSettings: GlobalSettings,
-                           mocksProvider: MocksProvider)
+                           mocksProvider: MocksProvider,
+                           esEnv: EsEnv)
                           (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
@@ -234,7 +237,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
           audit <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
-          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider)
+          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, esEnv)
             .toSyncDecoder
             .decoder
             .tryDecode(c.withFocus(
@@ -326,7 +329,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(using ldapConnectionPoolProvider, systemContext.clock)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
-          globalSettings, authenticationServices, authProxies, ldapServices, mocksProvider
+          globalSettings, authenticationServices, authProxies, ldapServices, mocksProvider, esEnv
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(
@@ -338,7 +341,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           ldapServices,
           Some(impersonationDefs),
           mocksProvider,
-          globalSettings
+          globalSettings,
+          esEnv
         ))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocksNel <- {
@@ -358,6 +362,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
               ),
               globalSettings,
               mocksProvider,
+              esEnv
             )
           }
           DecoderHelpers

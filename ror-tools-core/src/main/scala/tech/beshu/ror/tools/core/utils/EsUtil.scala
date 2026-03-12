@@ -48,6 +48,7 @@ object EsUtil {
   val es71713: SemVer = SemVer.unsafeParse("7.17.13")
   val es7160: SemVer = SemVer.unsafeParse("7.16.0")
   val es7150: SemVer = SemVer.unsafeParse("7.15.0")
+  val es7140: SemVer = SemVer.unsafeParse("7.14.0")
   val es7110: SemVer = SemVer.unsafeParse("7.11.0")
   val es790: SemVer = SemVer.unsafeParse("7.9.0")
   val es780: SemVer = SemVer.unsafeParse("7.8.0")

@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.es.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
-import tech.beshu.ror.es.{EsClusterService, EsServices}
+import tech.beshu.ror.es.{ApiKeyService, EsClusterService, EsServices, ServiceAccountTokenService}
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*
@@ -337,11 +337,19 @@ final case class MockRestRequest(override val method: Method = Method.GET,
 object MockEsServices {
 
   val dummy = new EsServices(
-    clusterService = new MockEsClusterService()
+    clusterService = new MockEsClusterService(),
+    serviceAccountTokenService = new MockServiceAccountTokenService(false),
+    apiKeyService = new MockApiKeyService(false)
   )
 
   def `with`(esClusterService: MockEsClusterService): EsServices =
-    new EsServices(esClusterService)
+    new EsServices(esClusterService, dummy.serviceAccountTokenService, dummy.apiKeyService)
+
+  def `with`(serviceAccountTokenService: ServiceAccountTokenService): EsServices =
+    new EsServices(dummy.clusterService, serviceAccountTokenService, dummy.apiKeyService)
+
+  def `with`(apiKeyService: ApiKeyService): EsServices =
+    new EsServices(dummy.clusterService, dummy.serviceAccountTokenService, apiKeyService)
 
   class MockEsClusterService(override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
                              val allRemoteIndicesAndAliases: Set[FullRemoteIndexWithAliases] = Set.empty,
@@ -375,5 +383,15 @@ object MockEsServices {
     override def verifyDocumentsAccessibility(documents: NonEmptyList[Document], filter: Filter)
                                              (implicit id: RequestContext.Id): Task[DocumentsAccessibility] =
       Task.now(Map.empty)
+  }
+
+  class MockServiceAccountTokenService(validationResult: Boolean) extends ServiceAccountTokenService {
+    override def validateToken(token: AuthorizationToken)
+                              (implicit requestId: RequestId): Task[Boolean] = Task.now(validationResult)
+  }
+
+  class MockApiKeyService(validationResult: Boolean) extends ApiKeyService {
+    override def validateToken(token: AuthorizationToken)
+                              (implicit requestId: RequestId): Task[Boolean] = Task.now(validationResult)
   }
 }

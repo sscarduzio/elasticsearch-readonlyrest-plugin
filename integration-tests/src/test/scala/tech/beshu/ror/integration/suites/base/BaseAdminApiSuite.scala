@@ -971,7 +971,7 @@ trait BaseAdminApiSuite
           }
         }
         "return index settings" when {
-          "only main settings in the index" in {
+          "only main settings in the index, audit is configured" in {
             def forceReloadMainSettings(mainSettingsYaml: String) = {
               updateRorMainSettings(rorClients.head, mainSettingsYaml)
               assertSettingsInIndex(expectedSettings = mainSettingsYaml)
@@ -987,9 +987,12 @@ trait BaseAdminApiSuite
             val settings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation.yml")
             forceReloadMainSettings(settings)
 
-            rorClients.foreach { rorApiManager =>
-              assertInIndexSettingsPresent(rorApiManager, settings)
-              assertTestSettingsNotConfigured(rorApiManager)
+            eventually {
+              rorClients.foreach { rorApiManager =>
+                assertInIndexSettingsPresent(rorApiManager, settings)
+                assertAuditConfig(rorApiManager)
+                assertTestSettingsNotConfigured(rorApiManager)
+              }
             }
           }
           "main and test settings in the index" in {
@@ -1128,6 +1131,25 @@ trait BaseAdminApiSuite
     result should have statusCode 200
     result.responseJson("status").str should be("ok")
     result.responseJson("message").str should be(settings)
+  }
+
+  private def assertAuditConfig(rorApiManager: RorApiManager) = {
+    val getIndexConfigResult = rorApiManager.fetchCurrentAuditConfiguration
+    getIndexConfigResult should have statusCode 200
+    getIndexConfigResult.responseJson should be(ujson.read(
+      """
+        |{
+        |  "status":"ok",
+        |  "local_audit_indexes": [
+        |    {"index_pattern": "custom_template_*", "schema":"rorDefault"},
+        |    {"index_pattern": "readonlyrest_audit-*", "schema":"ecsV1"}
+        |  ],
+        |  "other_audit_outputs": [
+        |    {"description": "Logger with name [readonlyrest_audit]"}
+        |  ]
+        |}
+        |""".stripMargin
+    ))
   }
 
   private def assertTestSettingsNotConfigured(rorApiManager: RorApiManager) = {

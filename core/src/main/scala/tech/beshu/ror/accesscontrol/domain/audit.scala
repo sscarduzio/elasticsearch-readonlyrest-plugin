@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.NonEmptyStringOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -35,7 +36,8 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
-                                          rawPattern: String) {
+                                          rawPattern: String,
+                                          val rorAuditIndexPattern: IndexPattern) {
 
   def indexName(instant: Instant): IndexName.Full = {
     IndexName.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
@@ -59,12 +61,29 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
 object RorAuditIndexTemplate {
   val default: RorAuditIndexTemplate = from(constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
 
-  def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
+  def from(pattern: NonEmptyString): Either[CreationError, RorAuditIndexTemplate] = {
+    for {
+      formatter <- formatterOfPattern(pattern)
+      rawPattern = pattern.value.replaceAll("'", "")
+      rorAuditIndex <- rorAuditIndexPattern(pattern)
+    } yield new RorAuditIndexTemplate(formatter, rawPattern, rorAuditIndex)
+  }
 
-  def from(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
-    Try(DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.of("UTC"))) match {
-      case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", "")))
+  private def formatterOfPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, DateTimeFormatter] = {
+    Try(DateTimeFormatter.ofPattern(pattern.value).withZone(ZoneId.of("UTC"))) match {
+      case Success(formatter) => Right(formatter)
       case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
+    }
+  }
+
+  private def rorAuditIndexPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, IndexPattern] = {
+    pattern.replaceDateTimePatternWithWildcard match {
+      case Left(DateTimePatternReplacementError.IncompleteStringLiteralPresent) =>
+        Left(CreationError.ParsingError("Incomplete string literal is present in index name pattern"))
+      case Left(DateTimePatternReplacementError.PatternResolvingResultsInEmptyString) =>
+        Left(CreationError.ParsingError("The index name pattern is empty or contains only whitespaces"))
+      case Right(validIndexPatternNes) =>
+        Right(IndexPattern.fromNes(validIndexPatternNes))
     }
   }
 

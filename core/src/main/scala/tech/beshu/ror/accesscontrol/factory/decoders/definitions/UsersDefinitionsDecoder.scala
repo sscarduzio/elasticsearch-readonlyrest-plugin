@@ -44,6 +44,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.failed
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -60,7 +61,8 @@ object UsersDefinitionsDecoder {
                ldapServiceDefinitions: Definitions[LdapService],
                impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                mocksProvider: MocksProvider,
-               globalSettings: GlobalSettings): ADecoder[Id, Definitions[UserDef]] = {
+               globalSettings: GlobalSettings,
+               esEnv: EsEnv): ADecoder[Id, Definitions[UserDef]] = {
     implicit val userDefDecoder: SyncDecoder[UserDef] =
       SyncDecoderCreator
         .instance { c =>
@@ -79,7 +81,8 @@ object UsersDefinitionsDecoder {
                 ldapServiceDefinitions,
                 impersonatorsDefinitions,
                 mocksProvider,
-                globalSettings
+                globalSettings,
+                esEnv
               )
               rulesDecoder.tryDecode(c.withoutKeys(Set(usernameKey, groupsKey)))
             }
@@ -107,7 +110,8 @@ object UsersDefinitionsDecoder {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
-                                  globalSettings: GlobalSettings): Decoder[List[Rule]] = Decoder.instance { c =>
+                                  globalSettings: GlobalSettings,
+                                  esEnv: EsEnv): Decoder[List[Rule]] = Decoder.instance { c =>
     type RuleDecoders = List[RuleDecoder[Rule]]
     val ruleNames = c.keys.toList.flatten.map(Rule.Name.apply)
     val ruleDecoders = ruleNames.foldLeft(Either.right[Message, RuleDecoders](List.empty)) {
@@ -123,7 +127,8 @@ object UsersDefinitionsDecoder {
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
-          globalSettings
+          globalSettings,
+          esEnv
         ) match {
           case Some(ruleDecoder) => Right(ruleDecoder :: decoders)
           case None => Left(Message(s"Unknown rule '${ruleName.show}' in users definitions section"))
