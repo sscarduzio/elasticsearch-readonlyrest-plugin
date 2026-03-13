@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRe
 import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationSupport, AuthorizationImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LocalUsers}
 import tech.beshu.ror.accesscontrol.utils.TaskDecisionOps.*
 import tech.beshu.ror.syntax.*
 
@@ -78,7 +78,7 @@ object Rule {
   trait AuthenticationRule extends Rule {
     this: AuthenticationImpersonationSupport =>
 
-    def eligibleUsers: AuthenticationRule.EligibleUsersSupport
+    def localUsers: LocalUsers
     implicit def userIdCaseSensitivity: CaseSensitivity
 
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
@@ -95,13 +95,6 @@ object Rule {
     @nowarn("msg=unused implicit parameter")
     protected def postAuthenticateAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.now(Permitted(blockContext))
-  }
-  object AuthenticationRule {
-    sealed trait EligibleUsersSupport
-    object EligibleUsersSupport {
-      final case class Available(users: Set[User.Id]) extends EligibleUsersSupport
-      case object NotAvailable extends EligibleUsersSupport
-    }
   }
 
   trait AuthorizationRule extends Rule {

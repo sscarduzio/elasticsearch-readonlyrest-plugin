@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseComposedAuthenticationAndAuthorizationRule, BaseJwtRule}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
@@ -38,7 +37,7 @@ final class JwtAuthRule(val authentication: JwtAuthenticationRule,
 
   override val name: Rule.Name = JwtAuthRule.Name.name
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+  override val localUsers: LocalUsers = LocalUsers.NotAvailable
   override val userIdCaseSensitivity: CaseSensitivity = authentication.userIdCaseSensitivity
 }
 

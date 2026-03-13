@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import cats.data.{EitherT, NonEmptyList}
+import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
@@ -27,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.{GroupMappings, M
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.*
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableGroupsLogic
@@ -46,7 +46,11 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     with AuthorizationImpersonationCustomSupport
     with RequestIdAwareLogging {
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+  override val localUsers: LocalUsers =
+    settings
+      .usersDefinitions.toList
+      .map(_.authenticationRule.localUsers)
+      .combineAll
 
   private val matchers = settings
     .usersDefinitions.toList

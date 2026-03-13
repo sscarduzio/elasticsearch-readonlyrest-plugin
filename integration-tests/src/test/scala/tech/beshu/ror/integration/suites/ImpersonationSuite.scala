@@ -157,7 +157,7 @@ class ImpersonationSuite
         }
       }
       "is supported" - {
-        "when ldap service used in rule is mocked" in {
+        "when ldap service used in rule is mocked, the list of local users does not contain LDAP users" in {
           rorApiManager
             .configureImpersonationMocks(ujson.read(
               s"""
@@ -189,6 +189,12 @@ class ImpersonationSuite
                  |""".stripMargin
             ))
             .forceOkStatus()
+
+          val response = rorApiManager.currentRorLocalUsers
+          response should have statusCode 200
+          response.responseJson("status").str shouldBe "OK"
+          response.responseJson("unknown_users").bool shouldBe true
+          response.responseJson("users").arr.toSet.map(_.str) shouldBe Set("dev1", "gpa_user_1", "dev2", "proxy_user_1")
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ldap_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")
@@ -239,7 +245,7 @@ class ImpersonationSuite
         }
       }
       "is supported" - {
-        "when external auth service used in rule is mocked" in {
+        "when external auth service used in rule is mocked, the list of local users does not contain external auth users" in {
           rorApiManager
             .configureImpersonationMocks(ujson.read(
               s"""
@@ -260,6 +266,12 @@ class ImpersonationSuite
                  |""".stripMargin
             ))
             .forceOkStatus()
+
+          val response = rorApiManager.currentRorLocalUsers
+          response should have statusCode 200
+          response.responseJson("status").str shouldBe "OK"
+          response.responseJson("unknown_users").bool shouldBe true
+          response.responseJson("users").arr.toSet.map(_.str) shouldBe Set("dev1", "gpa_user_1", "dev2", "proxy_user_1")
 
           impersonatingSearchManagers("admin1", "pass", impersonatedUser = "ext_user_1").foreach { searchManager =>
             val result = searchManager.search("test3_index")

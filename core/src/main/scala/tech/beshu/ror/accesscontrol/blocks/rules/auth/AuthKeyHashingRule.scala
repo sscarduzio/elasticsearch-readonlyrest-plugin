@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationF
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
@@ -32,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRu
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Hasher
@@ -73,9 +73,9 @@ sealed abstract class AuthKeyHashingRule(override val settings: BasicAuthenticat
     }
   }
 
-  override val eligibleUsers: EligibleUsersSupport = settings.credentials match {
-    case HashedCredentials.HashedUserAndPassword(_) => EligibleUsersSupport.NotAvailable
-    case HashedCredentials.HashedOnlyPassword(userId, _) => EligibleUsersSupport.Available(Set(userId))
+  override val localUsers: LocalUsers = settings.credentials match {
+    case HashedCredentials.HashedUserAndPassword(_) => LocalUsers.Available(Unknown)
+    case HashedCredentials.HashedOnlyPassword(userId, _) => LocalUsers.Available(Known(userId))
   }
 }
 

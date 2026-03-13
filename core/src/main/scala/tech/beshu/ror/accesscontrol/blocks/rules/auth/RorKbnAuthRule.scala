@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseComposedAuthenticationAndAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.*
@@ -28,7 +27,7 @@ final class RorKbnAuthRule(val authentication: RorKbnAuthenticationRule,
 
   override val name: Rule.Name = RorKbnAuthRule.Name.name
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+  override val localUsers: LocalUsers = LocalUsers.NotAvailable
   override val userIdCaseSensitivity: CaseSensitivity = authentication.userIdCaseSensitivity
 }
 

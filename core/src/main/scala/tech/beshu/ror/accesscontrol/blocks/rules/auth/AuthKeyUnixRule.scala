@@ -23,14 +23,14 @@ import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
+import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.Known
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, LocalUsers, RequestId, User}
 import tech.beshu.ror.syntax.*
 
 import java.util.regex.Pattern
@@ -62,8 +62,7 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
     else UserExistence.NotExist
   }
 
-  override val eligibleUsers: EligibleUsersSupport =
-    EligibleUsersSupport.Available(Set(settings.credentials.userId))
+  override val localUsers: LocalUsers = LocalUsers.Available(Known(settings.credentials.userId))
 }
 
 object AuthKeyUnixRule {

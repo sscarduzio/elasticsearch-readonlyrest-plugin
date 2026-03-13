@@ -17,9 +17,9 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseComposedAuthenticationAndAuthorizationRule
-import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LocalUsers}
 
 final class LdapAuthRule(val authentication: LdapAuthenticationRule,
                          val authorization: LdapAuthorizationRule)
@@ -28,7 +28,7 @@ final class LdapAuthRule(val authentication: LdapAuthenticationRule,
   override val name: Rule.Name = LdapAuthRule.Name.name
 
   override val userIdCaseSensitivity: CaseSensitivity = authentication.userIdCaseSensitivity
-  override val eligibleUsers: AuthenticationRule.EligibleUsersSupport = authentication.eligibleUsers
+  override val localUsers: LocalUsers = authentication.localUsers
 }
 
 object LdapAuthRule {

@@ -29,7 +29,7 @@ final case class RorDependencies(services: RorDependencies.Services,
                                  impersonationWarningsReader: ImpersonationWarningsReader)
 
 object RorDependencies {
-  def noOp: RorDependencies = RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader)
+  def noOp: RorDependencies = RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader)
 
   final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
                             externalGroupsProviderServices: Seq[ExternalGroupsProviderService#Id],

@@ -1409,7 +1409,7 @@ class ReadonlyRestStartingTests
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader),
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(AuditingTool.AuditSettings(
             NonEmptyList.of(
               AuditSink.Enabled(dataStreamSinkConfig1),
