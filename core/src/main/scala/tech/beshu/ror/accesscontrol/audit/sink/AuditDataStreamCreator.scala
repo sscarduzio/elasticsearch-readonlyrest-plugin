@@ -21,7 +21,6 @@ import cats.data.{NonEmptyList, Validated}
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
 import tech.beshu.ror.es.DataStreamService
@@ -29,10 +28,12 @@ import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.es.DataStreamService.{DataStreamSettings, DataStreamSetupResult}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.TimeUnit
+import scala.collection.parallel.CollectionConverters.*
 
-final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) extends RequestIdAwareLogging {
+final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService], ignoreEsConnectivityProblems: Boolean) extends RequestIdAwareLogging {
 
   def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Either[NonEmptyList[ErrorMessage], Unit]] = {
     services
@@ -42,16 +43,25 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
       .map(_.map(_.leftMap(NonEmptyList.one)).combineAll.toEither)
   }
 
+  def close(): Unit = {
+    services.toList.par.foreach(_.close())
+  }
+
   private def createIfNotExists(service: DataStreamService, dataStreamName: RorAuditDataStream): Task[Validated[ErrorMessage, Unit]] = {
     service
       .checkDataStreamExists(dataStreamName.dataStream)
+      .attempt
       .flatMap {
-        case true =>
-          Task.delay(noRequestIdLogger.info(s"Data stream ${dataStreamName.dataStream.show} already exists"))
+        case Right(true) =>
+          Task.delay(noRequestIdLogger.info(s"Data stream ${dataStreamName.dataStream.show} already exists."))
             .as(Valid(()))
-        case false =>
+        case Right(false) =>
           val settings = defaultSettingsFor(dataStreamName.dataStream)
           setupDataStream(service, settings)
+        case Left(ex) =>
+          val errorMessage = s"Unable to determine if data stream ${dataStreamName.dataStream.show} exists."
+          Task.delay(noRequestIdLogger.info(errorMessage, ex))
+            .as(Validated.cond(ignoreEsConnectivityProblems, (), ErrorMessage(errorMessage)))
       }
   }
 

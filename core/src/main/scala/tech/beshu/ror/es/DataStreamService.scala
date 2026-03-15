@@ -44,6 +44,9 @@ trait DataStreamService {
     } yield DataStreamSetupResult.Success
   }.merge
 
+  // default implementation will be removed after porting changes to other ES modules
+  def close(): Unit = ()
+
   protected def createDataStream(dataStreamName: DataStreamName.Full): Task[CreationResult]
 
   protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean]

@@ -103,5 +103,5 @@ final class NodeClientBasedAuditSinkService(client: NodeClient,
   }
 
   override val dataStreamCreator: AuditDataStreamCreator =
-    AuditDataStreamCreator(NonEmptyList.one(new EsDataStreamService(client, jsonParserFactory)))
+    AuditDataStreamCreator(NonEmptyList.one(new EsDataStreamService(client, jsonParserFactory)), true)
 }

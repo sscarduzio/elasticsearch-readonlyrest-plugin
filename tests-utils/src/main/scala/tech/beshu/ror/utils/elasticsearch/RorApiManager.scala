@@ -264,6 +264,22 @@ class RorApiManager(client: RestClient,
       }
     }
 
+    def forceOKWithFailure(failureMessage: String): this.type = {
+      force()
+      if (businessStatus === "KO" && message.contains(failureMessage)) {
+        this
+      } else {
+        throw new IllegalStateException(
+          s"""
+             |Expected business status 'ko' with message containing '$failureMessage', but got:"
+             |
+             |HTTP $responseCode
+             |${responseJson.toString()}
+             |""".stripMargin
+        )
+      }
+    }
+
     private def isSettingsAlreadyLoaded = {
       businessStatus == "KO" && message.contains("already loaded")
     }
