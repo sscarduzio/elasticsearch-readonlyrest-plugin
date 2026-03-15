@@ -21,6 +21,7 @@ import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.*
+import tech.beshu.ror.utils.containers.ContainerOps.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.NoSecurityCluster
 import tech.beshu.ror.utils.containers.dependencies.*
@@ -106,78 +107,195 @@ class RemoteClusterAuditingToolsSuite
 
   // This test suite does not execute on Windows: there is currently no Windows version of ToxiproxyContainer
   ignoreOnWindows {
-    "Should report audit events in round-robin mode, even when some nodes are unreachable" in {
-      rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOKStatusOrSettingsAlreadyLoaded()
-      val auditNode1 = proxiedContainers(0)
-      val auditNode2 = proxiedContainers(1)
+    "ROR remote audit cluster mode" should {
+      "report audit events in round-robin mode, even when some nodes are unreachable" in {
+        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOKStatusOrSettingsAlreadyLoaded()
+        val auditNode1 = proxiedContainers(0)
+        val auditNode2 = proxiedContainers(1)
 
-      def auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds: List[String]): Unit = {
-        forEachAuditManager { adminAuditManager =>
-          eventually {
-            val auditEntries = adminAuditManager.getEntries.force().jsons
-            traceIds.foreach { traceId =>
-              val entry = findAuditEntryWithTraceId(auditEntries, traceId)
-              assertForEveryAuditEntry(entry)
+        def auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds: List[String]): Unit = {
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.force().jsons
+              traceIds.foreach { traceId =>
+                val entry = findAuditEntryWithTraceId(auditEntries, traceId)
+                assertForEveryAuditEntry(entry)
+              }
             }
           }
         }
-      }
 
-      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate())}
+        adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate()) }
 
-      forEachAuditManager { adminAuditManager =>
-        eventually {
-          adminAuditManager.hasNoEntries
-        }
-      }
-
-      val traceIds1 = queryTweeterIndexWithRandomTraceId(times = 1)
-      auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds1)
-
-      auditNode1.disableNetwork()
-
-      val traceIds2 = queryTweeterIndexWithRandomTraceId(times = 2)
-      auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds2)
-
-      auditNode2.disableNetwork()
-
-      // all nodes disabled
-      Thread.sleep(3000)
-
-      val traceIds3 = queryTweeterIndexWithRandomTraceId(times = 3)
-
-      Thread.sleep(10000)
-
-      // events sent when all nodes are out will be lost
-      forEachAuditManager { adminAuditManager =>
-        eventually {
-          val auditEntries = adminAuditManager.getEntries.force().jsons
-
-          traceIds3.foreach { traceId =>
-            checkNoEntriesWithTraceId(auditEntries, traceId)
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            adminAuditManager.hasNoEntries
           }
+        }
 
-          val expectedEntriesCount = List.concat(traceIds1, traceIds2).size
-          auditEntries.size shouldEqual expectedEntriesCount
+        val traceIds1 = queryTweeterIndexWithRandomTraceId(times = 1)
+        auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds1)
+
+        auditNode1.disableNetwork()
+
+        val traceIds2 = queryTweeterIndexWithRandomTraceId(times = 2)
+        auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds2)
+
+        auditNode2.disableNetwork()
+
+        // all nodes disabled
+        Thread.sleep(3000)
+
+        val traceIds3 = queryTweeterIndexWithRandomTraceId(times = 3)
+
+        Thread.sleep(10000)
+
+        // events sent when all nodes are out will be lost
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+
+            traceIds3.foreach { traceId =>
+              checkNoEntriesWithTraceId(auditEntries, traceId)
+            }
+
+            val expectedEntriesCount = List.concat(traceIds1, traceIds2).size
+            auditEntries.size shouldEqual expectedEntriesCount
+          }
+        }
+
+        auditNode1.enableNetwork()
+
+        val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
+
+        val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+
+            allExpectedTraceIds.foreach { traceId =>
+              val entry = findAuditEntryWithTraceId(auditEntries, traceId)
+              assertForEveryAuditEntry(entry)
+            }
+
+            auditEntries.size shouldEqual allExpectedTraceIds.size
+          }
         }
       }
+      "report audit events in failover mode, even when some nodes are unreachable" in {
+        val configWithAuditFailover = baseRorSettingsYaml.replaceAll("round-robin", "failover")
+        assert(configWithAuditFailover != baseRorSettingsYaml) // make sure changes applied
 
-      auditNode1.enableNetwork()
+        rorApiManager.updateRorInIndexSettings(configWithAuditFailover).forceOKStatusOrSettingsAlreadyLoaded()
+        val auditNode1 = proxiedContainers(0)
+        val auditNode2 = proxiedContainers(1)
 
-      val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
-
-      val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
-      forEachAuditManager { adminAuditManager =>
-        eventually {
-          val auditEntries = adminAuditManager.getEntries.force().jsons
-
-          allExpectedTraceIds.foreach { traceId =>
-            val entry = findAuditEntryWithTraceId(auditEntries, traceId)
-            assertForEveryAuditEntry(entry)
+        def auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds: List[String]): Unit = {
+          forEachAuditManager { adminAuditManager =>
+            eventually {
+              val auditEntries = adminAuditManager.getEntries.force().jsons
+              traceIds.foreach { traceId =>
+                val entry = findAuditEntryWithTraceId(auditEntries, traceId)
+                assertForEveryAuditEntry(entry)
+              }
+            }
           }
-
-          auditEntries.size shouldEqual allExpectedTraceIds.size
         }
+
+        adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate()) }
+
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            adminAuditManager.hasNoEntries
+          }
+        }
+
+        val traceIds1 = queryTweeterIndexWithRandomTraceId(times = 1)
+        auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds1)
+
+        auditNode1.disableNetwork()
+
+        val traceIds2 = queryTweeterIndexWithRandomTraceId(times = 2)
+        auditEntriesShouldContainEntriesWithGivenTraceIds(traceIds2)
+
+        auditNode2.disableNetwork()
+
+        // all nodes disabled
+        Thread.sleep(3000)
+
+        val traceIds3 = queryTweeterIndexWithRandomTraceId(times = 3)
+
+        Thread.sleep(10000)
+
+        // events sent when all nodes are out will be lost
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+
+            traceIds3.foreach { traceId =>
+              checkNoEntriesWithTraceId(auditEntries, traceId)
+            }
+
+            val expectedEntriesCount = List.concat(traceIds1, traceIds2).size
+            auditEntries.size shouldEqual expectedEntriesCount
+          }
+        }
+
+        auditNode1.enableNetwork()
+
+        val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
+
+        val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
+        forEachAuditManager { adminAuditManager =>
+          eventually {
+            val auditEntries = adminAuditManager.getEntries.force().jsons
+
+            allExpectedTraceIds.foreach { traceId =>
+              val entry = findAuditEntryWithTraceId(auditEntries, traceId)
+              assertForEveryAuditEntry(entry)
+            }
+
+            auditEntries.size shouldEqual allExpectedTraceIds.size
+          }
+        }
+      }
+      "reload audit settings when one node is unreachable and ignore_es_connectivity_problems is enabled" in {
+        val auditNode1 = proxiedContainers(0)
+        val auditNode2 = proxiedContainers(1)
+
+        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOKStatusOrSettingsAlreadyLoaded()
+
+        auditNode1.disableNetwork()
+        auditNode2.disableNetwork()
+
+        val updatedConfig: String = configWithReplacements(
+          config = baseRorSettingsYaml,
+          replacements = Map("ignore_es_connectivity_problems: false" -> "ignore_es_connectivity_problems: true")
+        )
+
+        rorApiManager.updateRorInIndexSettings(updatedConfig).forceOKStatusOrSettingsAlreadyLoaded()
+      }
+      "fail to reload audit settings when one node is unreachable and ignore_es_connectivity_problems is disabled" in {
+        val auditNode1 = proxiedContainers(0)
+        val auditNode2 = proxiedContainers(1)
+        auditNode1.enableNetwork()
+        auditNode2.enableNetwork()
+        // assert config is valid
+        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml.prependedAll("#yaml-comment\n")).forceOKStatusOrSettingsAlreadyLoaded()
+
+        auditNode1.disableNetwork()
+        auditNode2.disableNetwork()
+
+        val auditSinksCount = if (isDataStreamSupported) 2 else 1
+
+        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml)
+          .forceOKWithFailure(
+            List.fill(auditSinksCount) {
+              s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. Details: " +
+                s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}," +
+                s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode2)}"
+            }.mkString(",\n")
+          )
       }
     }
   }
@@ -219,5 +337,16 @@ class RemoteClusterAuditingToolsSuite
 
   private def traceIdHeaderName(traceId: String) = s"test-trace-id-$traceId"
 
+  private def configWithReplacements(config: String, replacements: Map[String, String]) = {
+    val newConfig = replacements.foldLeft(config) { case (config, (key, value)) =>
+      config.replaceAll(key, value)
+    }
+    newConfig should not equal config
+    newConfig
+  }
+
+  private def auditNodeAddressFromConfig(proxyContainer: ToxiproxyContainer[_]) = {
+    s"http://${proxyContainer.ipAddressFromFirstNetwork.get}:${ToxiproxyContainer.proxiedPort}"
+  }
 
 }

@@ -183,6 +183,7 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
     )
   }
 
+  override def close(): Unit = client.close()
 
   private def execute[A](value: => Task[A]) = Task(value).flatten
 

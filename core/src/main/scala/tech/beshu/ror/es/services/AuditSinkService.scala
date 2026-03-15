@@ -33,4 +33,8 @@ trait DataStreamBasedAuditSinkService extends AuditSinkService {
             (implicit requestId: RequestId): Unit
 
   def dataStreamCreator: AuditDataStreamCreator
+
+  override def close(): Unit = {
+    dataStreamCreator.close()
+  }
 }

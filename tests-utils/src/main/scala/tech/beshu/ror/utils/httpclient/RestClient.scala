@@ -25,8 +25,7 @@ import org.apache.http.client.methods.{CloseableHttpResponse, HttpUriRequest}
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.config.SocketConfig
 import org.apache.http.conn.HttpHostConnectException
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory
-import org.apache.http.conn.ssl.NoopHostnameVerifier
+import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory}
 import org.apache.http.impl.auth.BasicScheme
 import org.apache.http.impl.client.{HttpClientBuilder, HttpClients, StandardHttpRequestRetryHandler}
 import org.apache.http.message.BasicHeader
