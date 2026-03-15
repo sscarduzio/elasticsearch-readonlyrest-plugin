@@ -2070,8 +2070,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private lazy val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-
   private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val systemContext: SystemContext = SystemContext.default
     val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, defaultTestEsNodeSettings)

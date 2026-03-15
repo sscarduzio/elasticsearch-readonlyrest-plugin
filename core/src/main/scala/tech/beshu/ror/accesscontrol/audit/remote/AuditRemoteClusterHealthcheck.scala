@@ -26,7 +26,8 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, NodeCredentials, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
