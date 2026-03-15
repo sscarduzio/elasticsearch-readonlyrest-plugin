@@ -18,7 +18,7 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import cats.effect.Resource
-import cats.implicits.toTraverseOps
+import cats.implicits.*
 import monix.eval.Task
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
@@ -120,6 +120,16 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
     }
   }
 
+  private def createService(remoteCluster: AuditCluster.RemoteAuditCluster,
+                            client: MultiNodeRestClient,
+                            httpHosts: NonEmptyList[HttpHost]) = {
+    new RestClientAuditSinkService(
+      client = client,
+      inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
+      dataStreamCreator = createAuditSinkCreator(httpHosts, remoteCluster)
+    )
+  }
+
   private def createAuditSinkCreator(hosts: NonEmptyList[HttpHost], remoteCluster: AuditCluster.RemoteAuditCluster) = {
     hosts
       .map { host =>
@@ -130,16 +140,6 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
         _.map(client => new RestClientDataStreamService(client))
       }
       .map(AuditDataStreamCreator.remote(_, remoteCluster.ignoreClusterConnectivityProblems))
-  }
-
-  private def createService(remoteCluster: AuditCluster.RemoteAuditCluster,
-                            client: MultiNodeRestClient,
-                            httpHosts: NonEmptyList[HttpHost]) = {
-    new RestClientAuditSinkService(
-      client = client,
-      inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
-      dataStreamCreator = createAuditSinkCreator(httpHosts, remoteCluster)
-    )
   }
 
   private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster, hosts: NonEmptyList[HttpHost]): RestClient = {
