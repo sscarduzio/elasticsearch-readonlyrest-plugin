@@ -901,6 +901,36 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 )
               )
             }
+            "ignore_es_connectivity_problems flag is set" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |readonlyrest:
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster:
+                  |        nodes: ["1.1.1.1", "2.2.2.2", "3.3.3.3"]
+                  |        mode: round-robin
+                  |        ignore_es_connectivity_problems: true
+                  |
+                """.stripMargin
+              )
+              assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = RemoteAuditCluster(
+                  nodes = UniqueNonEmptyList.of(
+                    AuditClusterNode(Uri.parse("1.1.1.1")),
+                    AuditClusterNode(Uri.parse("2.2.2.2")),
+                    AuditClusterNode(Uri.parse("3.3.3.3"))
+                  ),
+                  mode = ClusterMode.RoundRobin,
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = true
+                )
+              )
+            }
           }
           "all audit settings are custom" in {
             val settings = rorSettingsWithAuditUnsafe(

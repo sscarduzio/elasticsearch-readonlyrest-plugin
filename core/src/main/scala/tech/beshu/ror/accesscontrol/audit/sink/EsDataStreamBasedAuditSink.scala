@@ -69,7 +69,7 @@ object EsDataStreamBasedAuditSink {
   private def createRorAuditDataStreamIfNotExists(rorAuditDataStream: RorAuditDataStream,
                                                   auditSinkService: DataStreamBasedAuditSinkService,
                                                   auditCluster: AuditCluster) = {
-    EitherT(auditSinkService.dataStreamCreator.createIfNotExists(rorAuditDataStream))
+    EitherT(auditSinkService.dataStreamCreator.use(_.createIfNotExists(rorAuditDataStream)))
       .leftMap(errorMessages => CreationError(errorMessages, auditCluster))
   }
 

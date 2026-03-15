@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.boot
 
 import better.files.File
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import cats.implicits.*
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer}
 import eu.timepit.refined.types.string.NonEmptyString
@@ -1750,7 +1751,7 @@ class ReadonlyRestStartingTests
     (() => dataStreamAuditSink.dataStreamCreator)
       .expects()
       .once()
-      .returns(new AuditDataStreamCreator(NonEmptyList.of(dataStreamService), ignoreEsConnectivityProblems = true))
+      .returns(Resource.pure(AuditDataStreamCreator.local(dataStreamService)))
     dataStreamAuditSink
   }
 

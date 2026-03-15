@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.logging
 
 import better.files.*
 import cats.data.{NonEmptyList, NonEmptySet}
+import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
@@ -316,7 +317,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     val mockedService = mock[DataStreamBasedAuditSinkService]
     (() => mockedService.dataStreamCreator)
       .expects()
-      .returns(AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService), true))
+      .returns(Resource.pure(AuditDataStreamCreator.local(mockedDataStreamService)))
 
     mockedService
   }

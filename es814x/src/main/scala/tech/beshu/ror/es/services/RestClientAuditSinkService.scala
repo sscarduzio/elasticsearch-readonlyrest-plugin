@@ -17,6 +17,9 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
+import cats.implicits.toTraverseOps
+import monix.eval.Task
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
 import org.apache.http.client.config.RequestConfig
@@ -35,7 +38,9 @@ import java.security.cert.X509Certificate
 import java.util.concurrent.Semaphore
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 
-final class RestClientAuditSinkService private(client: MultiNodeRestClient, inFlightRequestSemaphore: Semaphore, override val dataStreamCreator: AuditDataStreamCreator)
+final class RestClientAuditSinkService private(client: MultiNodeRestClient,
+                                               inFlightRequestSemaphore: Semaphore,
+                                               override val dataStreamCreator: Resource[Task, AuditDataStreamCreator])
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with RequestIdAwareLogging {
@@ -51,7 +56,6 @@ final class RestClientAuditSinkService private(client: MultiNodeRestClient, inFl
   }
 
   override def close(): Unit = {
-    super.close()
     client.close()
   }
 
@@ -108,28 +112,37 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
       case ClusterMode.RoundRobin =>
         val restClient = createRestClient(remoteCluster, hosts)
         val clusterAwareClient = new RoundRobinClient(restClient)
-        // before routing requests between different nodes, we need to set up the datastream on each node, and we cannot reuse rest-client with round-robin mode
-        val clientsPerNode = hosts.map(host => createRestClient(remoteCluster, NonEmptyList.one(host)))
-        createService(remoteCluster, clusterAwareClient, clientsPerNode)
+        createService(remoteCluster, clusterAwareClient, hosts)
       case ClusterMode.Failover =>
         val clientsPerNode = hosts.map(host => createRestClient(remoteCluster, NonEmptyList.one(host)))
         val clusterAwareClient = FailoverClient.create(clientsPerNode)
-        createService(remoteCluster, clusterAwareClient, clientsPerNode)
+        createService(remoteCluster, clusterAwareClient, hosts)
     }
+  }
+
+  private def createAuditSinkCreator(hosts: NonEmptyList[HttpHost], remoteCluster: AuditCluster.RemoteAuditCluster) = {
+    hosts
+      .map { host =>
+        Resource.make(Task.delay(createRestClient(remoteCluster, NonEmptyList.one(host))))(client => Task.delay(client.close()))
+      }
+      .sequence
+      .map {
+        _.map(client => new RestClientDataStreamService(client))
+      }
+      .map(AuditDataStreamCreator.remote(_, remoteCluster.ignoreClusterConnectivityProblems))
   }
 
   private def createService(remoteCluster: AuditCluster.RemoteAuditCluster,
                             client: MultiNodeRestClient,
-                            clientsPerNode: NonEmptyList[RestClient]) = {
-    val auditDataStreamCreator = new AuditDataStreamCreator(clientsPerNode.map(new RestClientDataStreamService(_)), true)
+                            httpHosts: NonEmptyList[HttpHost]) = {
     new RestClientAuditSinkService(
       client = client,
       inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
-      dataStreamCreator = auditDataStreamCreator
+      dataStreamCreator = createAuditSinkCreator(httpHosts, remoteCluster)
     )
   }
 
-  private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster, hosts: NonEmptyList[HttpHost]) = {
+  private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster, hosts: NonEmptyList[HttpHost]): RestClient = {
     val credentials =
       remoteCluster
         .credentials
