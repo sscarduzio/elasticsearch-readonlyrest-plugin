@@ -286,15 +286,12 @@ class RemoteClusterAuditingToolsSuite
         auditNode1.disableNetwork()
         auditNode2.disableNetwork()
 
-        val auditSinksCount = if (isDataStreamSupported) 2 else 1
-
         rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml)
           .forceOKWithFailure(
-            List.fill(auditSinksCount) {
-              s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. Details: " +
-                s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}," +
-                s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode2)}"
-            }.mkString(",\n")
+            s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
+              s"Details: No health node detected in remote cluster. " +
+              s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}, " +
+              s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode2)}"
           )
       }
     }

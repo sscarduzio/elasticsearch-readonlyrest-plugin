@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -253,6 +254,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       .expects(RorAuditDataStream.default.dataStream)
       .returning(Task.now(true))
 
-    override def dataStreamCreator: AuditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService), true)
+    override def dataStreamCreator: Resource[Task, AuditDataStreamCreator] = Resource.pure {
+      AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService), true)
+    }
   }
 }

@@ -43,10 +43,6 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService], ig
       .map(_.map(_.leftMap(NonEmptyList.one)).combineAll.toEither)
   }
 
-  def close(): Unit = {
-    services.toList.par.foreach(_.close())
-  }
-
   private def createIfNotExists(service: DataStreamService, dataStreamName: RorAuditDataStream): Task[Validated[ErrorMessage, Unit]] = {
     service
       .checkDataStreamExists(dataStreamName.dataStream)
@@ -144,5 +140,13 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService], ig
 }
 
 object AuditDataStreamCreator {
+
+  def local(service: DataStreamService): AuditDataStreamCreator =
+    AuditDataStreamCreator(NonEmptyList.one(service), ignoreEsConnectivityProblems = false)
+
+  def remote(services: NonEmptyList[DataStreamService], ignoreClusterConnectivityProblems: Boolean): AuditDataStreamCreator = {
+    AuditDataStreamCreator(services, ignoreClusterConnectivityProblems)
+  }
+
   final case class ErrorMessage(message: String) extends AnyVal
 }
