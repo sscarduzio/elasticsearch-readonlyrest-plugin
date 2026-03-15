@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -31,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testEsNodeSettings}
@@ -203,7 +204,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamBasedAuditSinkService
 
         override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
-      }
+      },
+      httpClientsFactory = MockHttpClientsFactory,
     ).runSyncUnsafe().toOption.flatten.get
     new AccessControlListLoggingDecorator(acl, Some(auditingTool))
   }
@@ -252,6 +254,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       .expects(RorAuditDataStream.default.dataStream)
       .returning(Task.now(true))
 
-    override def dataStreamCreator: AuditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService))
+    override def dataStreamCreator: Resource[Task, AuditDataStreamCreator] = Resource.pure {
+      AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService), true)
+    }
   }
 }

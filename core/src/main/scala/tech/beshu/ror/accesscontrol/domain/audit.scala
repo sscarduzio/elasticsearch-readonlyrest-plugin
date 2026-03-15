@@ -20,7 +20,7 @@ import cats.Show
 import cats.data.Validated
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import io.lemonlabs.uri.Uri
+import io.lemonlabs.uri.{Uri, Url}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.constants
 import tech.beshu.ror.implicits.*
@@ -28,6 +28,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyStringOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList.*
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneId}
@@ -155,7 +156,8 @@ object AuditCluster {
   case object LocalAuditCluster extends AuditCluster
   final case class RemoteAuditCluster(nodes: UniqueNonEmptyList[AuditClusterNode],
                                       mode: ClusterMode,
-                                      credentials: Option[NodeCredentials]) extends AuditCluster {
+                                      credentials: Option[NodeCredentials],
+                                      ignoreClusterConnectivityProblems: Boolean) extends AuditCluster {
     def requestTimeout: FiniteDuration = 30.seconds
     def connectionTimeout: FiniteDuration = 1.seconds
     def connectionRequestTimeout: FiniteDuration = 10.seconds
@@ -168,6 +170,8 @@ object AuditCluster {
     def port: Int = uri.toUrl.port.getOrElse(9200)
 
     def scheme: String = uri.schemeOption.getOrElse("http")
+
+    def toUrl: Url = uri.toUrl.withScheme(scheme).withHost(hostname).withPort(port)
 
     def credentials: Option[NodeCredentials] = {
       for {
@@ -182,6 +186,7 @@ object AuditCluster {
   sealed trait ClusterMode
   object ClusterMode {
     case object RoundRobin extends ClusterMode
+    case object Failover extends ClusterMode
   }
 }
 

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.services
 
+import cats.data.NonEmptyList
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
 import org.apache.http.client.config.RequestConfig
@@ -24,7 +25,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
-import tech.beshu.ror.accesscontrol.domain.AuditCluster.ClusterMode
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RequestId}
 import tech.beshu.ror.es.IndexBasedAuditSinkService
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -33,7 +34,7 @@ import java.security.cert.X509Certificate
 import java.util.concurrent.Semaphore
 import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 
-final class RestClientAuditSinkService private(client: RestClient, inFlightRequestSemaphore: Semaphore)
+final class RestClientAuditSinkService private(client: MultiNodeRestClient, inFlightRequestSemaphore: Semaphore)
   extends IndexBasedAuditSinkService
     with RequestIdAwareLogging {
 
@@ -94,27 +95,35 @@ final class RestClientAuditSinkService private(client: RestClient, inFlightReque
 object RestClientAuditSinkService extends RequestIdAwareLogging {
 
   def create(remoteCluster: AuditCluster.RemoteAuditCluster): RestClientAuditSinkService = {
+    val hosts = remoteCluster.nodes.toNonEmptyList.map(toHttpHost)
     remoteCluster.mode match {
       case ClusterMode.RoundRobin =>
-        new RestClientAuditSinkService(
-          client = createRestClient(remoteCluster),
-          inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests)
-        )
+        val restClient = createRestClient(remoteCluster, hosts)
+        val clusterAwareClient = new RoundRobinClient(restClient)
+        createService(remoteCluster, clusterAwareClient)
+      case ClusterMode.Failover =>
+        val clientsPerNode = hosts.map(host => createRestClient(remoteCluster, NonEmptyList.one(host)))
+        val clusterAwareClient = FailoverClient.create(clientsPerNode)
+        createService(remoteCluster, clusterAwareClient)
     }
   }
 
-  private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster) = {
-    val hosts = remoteCluster.nodes.map { node =>
-      new HttpHost(node.hostname, node.port, node.scheme)
-    }
+  private def createService(remoteCluster: AuditCluster.RemoteAuditCluster,
+                            client: MultiNodeRestClient) = {
+    new RestClientAuditSinkService(
+      client = client,
+      inFlightRequestSemaphore = new Semaphore(remoteCluster.maxInflightRequests),
+    )
+  }
 
+  private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster, hosts: NonEmptyList[HttpHost]): RestClient = {
     val credentials =
       remoteCluster
         .credentials
         .map(c => new UsernamePasswordCredentials(c.username.value, c.password.value))
 
     RestClient
-      .builder(hosts.toSeq: _*)
+      .builder(hosts.toList: _*)
       .setHttpClientConfigCallback(
         (httpClientBuilder: HttpAsyncClientBuilder) => {
           val configurations = configureRequestConfig(remoteCluster) andThen configureCredentials(credentials) andThen configureSsl()
@@ -172,5 +181,9 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
     override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def getAcceptedIssuers: Array[X509Certificate] = null
+  }
+
+  private def toHttpHost(node: AuditClusterNode) = {
+    new HttpHost(node.hostname, node.port, node.scheme)
   }
 }
