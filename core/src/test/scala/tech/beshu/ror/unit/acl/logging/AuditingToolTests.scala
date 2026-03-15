@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.logging
 
 import better.files.*
 import cats.data.{NonEmptyList, NonEmptySet}
+import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
@@ -44,7 +45,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -73,7 +74,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                   override def index(cluster: AuditCluster): IndexBasedAuditSinkService =
                     mock[IndexBasedAuditSinkService]
-                }
+                },
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -91,7 +93,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                   override def index(cluster: AuditCluster): IndexBasedAuditSinkService =
                     mock[IndexBasedAuditSinkService]
-                }
+                },
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -123,7 +126,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
                   override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
-                }
+                },
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -151,7 +155,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
                   override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
-                }
+                },
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -205,7 +210,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
                   override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
-                }
+                },
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -240,7 +246,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamAuditSink
 
                   override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
-                }
+                },
+                httpClientsFactory = MockHttpClientsFactory
               )
               .runSyncUnsafe()
               .toOption
@@ -278,7 +285,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   mock[DataStreamBasedAuditSinkService]
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
-              }
+              },
+              httpClientsFactory = MockHttpClientsFactory
             )
             .runSyncUnsafe()
             .toOption
@@ -311,7 +319,8 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 mock[DataStreamBasedAuditSinkService]
 
               override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
-            }
+            },
+            httpClientsFactory = MockHttpClientsFactory
           )
           .runSyncUnsafe()
         creationResult should be(Right(None))
@@ -385,7 +394,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     val mockedService = mock[DataStreamBasedAuditSinkService]
     (() => mockedService.dataStreamCreator)
       .expects()
-      .returns(AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService)))
+      .returns(Resource.pure(AuditDataStreamCreator.local(mockedDataStreamService)))
 
     mockedService
   }

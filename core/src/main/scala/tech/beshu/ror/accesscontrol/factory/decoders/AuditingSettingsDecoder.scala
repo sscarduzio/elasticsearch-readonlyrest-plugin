@@ -521,7 +521,9 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         .from(Decoder.decodeString)
         .emapE[ClusterMode] {
           case "round-robin" => Right(ClusterMode.RoundRobin)
-          case other => Left(auditSettingsError(s"Unknown cluster mode [$other], allowed values are: [round-robin]"))
+          case "failover"    => Right(ClusterMode.Failover)
+          case other         =>
+            Left(auditSettingsError(s"Unknown cluster mode [$other], allowed values are: [round-robin,failover]"))
         }
         .decoder
 
@@ -570,7 +572,12 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           clusterNodes <- c.as[UniqueNonEmptyList[AuditClusterNode]]
           maybeCredentials <- clusterCredentialsFromNodesUris(clusterNodes)
             .leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-        } yield AuditCluster.RemoteAuditCluster(clusterNodes, ClusterMode.RoundRobin, maybeCredentials)
+        } yield AuditCluster.RemoteAuditCluster(
+          nodes = clusterNodes,
+          mode = ClusterMode.RoundRobin,
+          credentials = maybeCredentials,
+          ignoreClusterConnectivityProblems = false
+        )
       case c =>
         // extended syntax
         val usernameKey = "username"
@@ -592,7 +599,13 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
                 Left(auditSettingsError(s"Audit output configuration is missing the ‘$usernameKey’ field."))
             }
           }.leftMap(error => DecodingFailure(AclCreationErrorCoders.stringify(error), Nil))
-        } yield AuditCluster.RemoteAuditCluster(clusterNodes, mode, maybeCredentials)
+          maybeIgnoreProblems <- c.downFieldAs[Option[Boolean]]("ignore_es_connectivity_problems")
+        } yield AuditCluster.RemoteAuditCluster(
+          clusterNodes,
+          mode,
+          maybeCredentials,
+          maybeIgnoreProblems.getOrElse(false)
+        )
     }
   }
 

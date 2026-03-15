@@ -38,7 +38,11 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
     services.toList
       .map(createIfNotExists(_, dataStreamName))
       .sequence
-      .map(_.map(_.leftMap(NonEmptyList.one)).combineAll.toEither)
+      .map { results =>
+        val (errors, successes) = results.map(_.toEither).separate
+        if (successes.nonEmpty) Right(())
+        else Left(NonEmptyList.fromListUnsafe(errors))
+      }
   }
 
   private def createIfNotExists(
@@ -47,14 +51,20 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
   ): Task[Validated[ErrorMessage, Unit]] = {
     service
       .checkDataStreamExists(dataStreamName.dataStream)
+      .attempt
       .flatMap {
-        case true =>
+        case Right(true) =>
           Task
-            .delay(noRequestIdLogger.info(s"Data stream ${dataStreamName.dataStream.show} already exists"))
+            .delay(noRequestIdLogger.info(s"Data stream ${dataStreamName.dataStream.show} already exists."))
             .as(Valid(()))
-        case false =>
+        case Right(false) =>
           val settings = defaultSettingsFor(dataStreamName.dataStream)
           setupDataStream(service, settings)
+        case Left(ex) =>
+          val errorMessage = s"Unable to determine if data stream ${dataStreamName.dataStream.show} exists."
+          Task
+            .delay(noRequestIdLogger.error(errorMessage, ex))
+            .as(ErrorMessage(errorMessage).invalid)
       }
   }
 
@@ -152,5 +162,12 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
 }
 
 object AuditDataStreamCreator {
+
+  def local(service: DataStreamService): AuditDataStreamCreator =
+    new AuditDataStreamCreator(NonEmptyList.one(service))
+
+  def remote(services: NonEmptyList[DataStreamService]): AuditDataStreamCreator =
+    new AuditDataStreamCreator(services)
+
   final case class ErrorMessage(message: String) extends AnyVal
 }
