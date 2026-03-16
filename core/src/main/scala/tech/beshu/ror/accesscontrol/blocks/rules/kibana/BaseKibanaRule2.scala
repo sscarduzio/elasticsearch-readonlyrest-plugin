@@ -59,8 +59,8 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
   private def matchesForAdmin(action: ActionCategory)
                              (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => true
-    case ActionCategory.ClusterManagement.Read => true
-    case ActionCategory.ClusterManagement.Write => false
+//    case ActionCategory.ClusterManagement.Read => true
+//    case ActionCategory.ClusterManagement.Write => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = true)
     case ActionCategory.Unknown => false
@@ -71,8 +71,8 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
   private def matchesForRW(action: ActionCategory)
                           (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
-    case ActionCategory.ClusterManagement.Read => true
-    case ActionCategory.ClusterManagement.Write => false
+//    case ActionCategory.ClusterManagement.Read => true
+//    case ActionCategory.ClusterManagement.Write => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = false)
     case ActionCategory.Unknown => false
@@ -83,7 +83,7 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
   private def matchesForRO(action: ActionCategory)
                           (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
-    case _: ActionCategory.ClusterManagement => false
+//    case _: ActionCategory.ClusterManagement => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = true, reportingFull = true, rorSettings = false)
     case ActionCategory.Unknown => false
@@ -94,7 +94,7 @@ abstract class BaseKibanaRule2(val settings: BaseKibanaRule2.Settings)
   private def matchesForROStrict(action: ActionCategory)
                                 (implicit contextBasedIndices: ContextBasedIndices): Boolean = action match {
     case ActionCategory.RorAdmin => false
-    case _: ActionCategory.ClusterManagement => false
+//    case _: ActionCategory.ClusterManagement => false
     case actionCategory: ActionCategory.NonClusterManagement =>
       allIndicesPermitted(actionCategory, kibanaFull = false, reportingFull = false, rorSettings = false)
     case ActionCategory.Unknown => false

@@ -36,11 +36,11 @@ object KibanaAccessPermissions {
 
     case object RorAdmin extends ActionCategory
 
-    sealed trait ClusterManagement extends ActionCategory
-    object ClusterManagement {
-      case object Read extends ClusterManagement
-      case object Write extends ClusterManagement
-    }
+//    sealed trait ClusterManagement extends ActionCategory
+//    object ClusterManagement {
+//      case object Read extends ClusterManagement
+//      case object Write extends ClusterManagement
+//    }
 
     trait NonClusterManagement extends ActionCategory
     object NonClusterManagement {
@@ -61,12 +61,12 @@ object KibanaAccessPermissions {
           ActionCategory.RorAdmin
         case action if ActionMatchers.readNonClusterManagementActionPatternsMatcher.`match`(action) =>
           ActionCategory.NonClusterManagement.Read(bc.indices, bc.dataStreams)
-        case action if ActionMatchers.readClusterManagementMatcher.`match`(action) =>
-          ActionCategory.ClusterManagement.Read
+//        case action if ActionMatchers.readClusterManagementMatcher.`match`(action) =>
+//          ActionCategory.ClusterManagement.Read
         case action if ActionMatchers.writeNonClusterManagementActionPatternsMatcher.`match`(action) =>
           ActionCategory.NonClusterManagement.Write(bc.indices, bc.dataStreams)
-        case action if ActionMatchers.writeClusterManagementMatcher.`match`(action) =>
-          ActionCategory.ClusterManagement.Write
+//        case action if ActionMatchers.writeClusterManagementMatcher.`match`(action) =>
+//          ActionCategory.ClusterManagement.Write
         case _ =>
           ActionCategory.Unknown
       }
