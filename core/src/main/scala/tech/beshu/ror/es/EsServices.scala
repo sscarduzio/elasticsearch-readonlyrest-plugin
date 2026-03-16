@@ -19,3 +19,11 @@ package tech.beshu.ror.es
 class EsServices(val clusterService: EsClusterService,
                  val serviceAccountTokenService: ServiceAccountTokenService,
                  val apiKeyService: ApiKeyService)
+object EsServices {
+
+  def createMemoizableFrom(esServices: EsServices): EsServices = new EsServices(
+    new CacheableEsClusterServiceDecorator(esServices.clusterService),
+    esServices.serviceAccountTokenService,
+    esServices.apiKeyService
+  )
+}
