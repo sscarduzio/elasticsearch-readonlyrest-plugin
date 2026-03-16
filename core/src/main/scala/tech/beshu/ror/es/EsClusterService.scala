@@ -22,49 +22,50 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.EsClusterService.*
 import tech.beshu.ror.syntax.*
 
 trait EsClusterService {
 
-  def allRemoteClusterNames: Set[ClusterName.Full]
+  def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full]
 
-  def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid]
+  def indexOrAliasUuids(indexOrAlias: IndexOrAlias)
+                       (implicit id: RequestId): Set[IndexUuid]
 
-  def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
+  def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases]
 
-  def allRemoteIndicesAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteIndexWithAliases]]
+  def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]]
 
-  def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases]
+  def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases]
 
-  def allRemoteDataStreamsAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteDataStreamWithAliases]]
+  def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]]
 
-  final def allTemplates: Set[Template] = {
+  final def allTemplates(implicit id: RequestId): Set[Template] = {
     legacyTemplates ++ indexTemplates ++ componentTemplates
   }
 
-  def legacyTemplates: Set[Template.LegacyTemplate]
+  def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate]
 
-  def indexTemplates: Set[Template.IndexTemplate]
+  def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate]
 
-  def componentTemplates: Set[Template.ComponentTemplate]
+  def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate]
 
-  def allSnapshots(implicit id: RequestContext.Id): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]
+  def allSnapshots(implicit id: RequestId): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]
 
   def snapshotIndices(repositoryName: RepositoryName.Full,
                       snapshotName: SnapshotName.Full)
-                     (implicit id: RequestContext.Id): Task[Set[ClusterIndexName]]
+                     (implicit id: RequestId): Task[Set[ClusterIndexName]]
 
   def verifyDocumentAccessibility(document: Document,
                                   filter: Filter)
-                                 (implicit id: RequestContext.Id): Task[DocumentAccessibility]
+                                 (implicit id: RequestId): Task[DocumentAccessibility]
 
   def verifyDocumentsAccessibility(documents: NonEmptyList[Document],
                                    filter: Filter)
-                                  (implicit id: RequestContext.Id): Task[DocumentsAccessibility]
+                                  (implicit id: RequestId): Task[DocumentsAccessibility]
 
-  def expandLocalIndices(indices: Set[ClusterIndexName]): Set[ClusterIndexName] = {
+  def expandLocalIndices(indices: Set[ClusterIndexName])
+                        (implicit id: RequestId): Set[ClusterIndexName] = {
     val all: Set[ClusterIndexName] = allIndicesAndAliases.flatMap(_.all)
     PatternsMatcher.create(indices).filter(all)
   }

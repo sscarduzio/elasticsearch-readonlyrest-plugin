@@ -22,15 +22,14 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
+import tech.beshu.ror.accesscontrol.utils.AsyncCacheableActionWithKeyMappingAndTimeout
 import tech.beshu.ror.utils.DurationOps.*
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
+class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 
   "A cache" should {
     "call provider only once and then cache the result" in {
@@ -87,7 +86,7 @@ class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory wi
 
   private def createTestCacheInstance(dataProvider: ExternalDataProvider,
                                       ttl: FiniteDuration = 10 seconds) = {
-    new CacheableActionWithKeyMapping[String, String, Int](
+    new AsyncCacheableActionWithKeyMappingAndTimeout[String, String, Int](
       ttl.toRefinedPositiveUnsafe,
       (str, _) => dataProvider.getBy(str),
       identity
