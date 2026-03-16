@@ -1144,6 +1144,9 @@ trait BaseAdminApiSuite
         |    {"index_pattern": "custom_template_*", "schema":"rorDefault"},
         |    {"index_pattern": "readonlyrest_audit-*", "schema":"ecsV1"}
         |  ],
+        |  "local_data_streams": [
+        |    {"name": "custom_audit_data_stream", "schema":"ecsV1"}
+        |  ],
         |  "other_audit_outputs": [
         |    {"description": "Logger with name [readonlyrest_audit]"}
         |  ]
