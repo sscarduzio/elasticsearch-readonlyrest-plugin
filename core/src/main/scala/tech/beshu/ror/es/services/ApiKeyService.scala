@@ -33,6 +33,6 @@ class CacheableApiKeyServiceDecorator(underlying: ApiKeyService) extends ApiKeyS
   )
 
   override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] =
+                             (implicit requestId: RequestId): Task[Boolean] =
     cacheableValidateToken.call(token)
 }
