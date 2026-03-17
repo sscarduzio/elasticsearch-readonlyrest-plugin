@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.implicits.*
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.numeric.PosInt
 import eu.timepit.refined.types.string.NonEmptyString

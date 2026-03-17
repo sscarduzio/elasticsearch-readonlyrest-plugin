@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetad
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.es.services.{ApiKeyService, EsClusterService, ServiceAccountTokenService}
 import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
-import tech.beshu.ror.es.{EsServices}
+import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*
@@ -362,46 +362,46 @@ object MockEsServices {
               componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
               allRemoteClusterNames: Set[ClusterName.Full] = Set.empty): MockEsClusterService =
       new MockEsClusterService(
-        _allIndicesAndAliases = allIndicesAndAliases,
-        _allRemoteIndicesAndAliases = allRemoteIndicesAndAliases,
-        _allDataStreamsAndAliases = allDataStreamsAndAliases,
-        _allRemoteDataStreamsAndAliases = allRemoteDataStreamsAndAliases,
-        _legacyTemplates = legacyTemplates,
-        _indexTemplates = indexTemplates,
-        _componentTemplates = componentTemplates,
-        _allRemoteClusterNames = allRemoteClusterNames
+        allIndicesAndAliases = allIndicesAndAliases,
+        allRemoteIndicesAndAliases = allRemoteIndicesAndAliases,
+        allDataStreamsAndAliases = allDataStreamsAndAliases,
+        allRemoteDataStreamsAndAliases = allRemoteDataStreamsAndAliases,
+        legacyTemplates = legacyTemplates,
+        indexTemplates = indexTemplates,
+        componentTemplates = componentTemplates,
+        allRemoteClusterNames = allRemoteClusterNames
       )
   }
 
-  class MockEsClusterService(private val _allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
-                             private val _allRemoteIndicesAndAliases: Set[FullRemoteIndexWithAliases] = Set.empty,
-                             private val _allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
-                             private val _allRemoteDataStreamsAndAliases: Set[FullRemoteDataStreamWithAliases] = Set.empty,
-                             private val _legacyTemplates: Set[Template.LegacyTemplate] = Set.empty,
-                             private val _indexTemplates: Set[Template.IndexTemplate] = Set.empty,
-                             private val _componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
-                             private val _allRemoteClusterNames: Set[ClusterName.Full] = Set.empty)
+  class MockEsClusterService(private val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                             private val allRemoteIndicesAndAliases: Set[FullRemoteIndexWithAliases] = Set.empty,
+                             private val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
+                             private val allRemoteDataStreamsAndAliases: Set[FullRemoteDataStreamWithAliases] = Set.empty,
+                             private val legacyTemplates: Set[Template.LegacyTemplate] = Set.empty,
+                             private val indexTemplates: Set[Template.IndexTemplate] = Set.empty,
+                             private val componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
+                             private val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty)
     extends EsClusterService {
 
-    override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = _allIndicesAndAliases
+    override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = allIndicesAndAliases
 
-    override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] = _allDataStreamsAndAliases
+    override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] = allDataStreamsAndAliases
 
-    override def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate] = _legacyTemplates
+    override def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate] = legacyTemplates
 
-    override def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate] = _indexTemplates
+    override def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate] = indexTemplates
 
-    override def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate] = _componentTemplates
+    override def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate] = componentTemplates
 
-    override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = _allRemoteClusterNames
+    override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = allRemoteClusterNames
 
     override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(implicit id: RequestId): Set[IndexUuid] = Set.empty
 
     override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] =
-      Task.now(_allRemoteIndicesAndAliases)
+      Task.now(allRemoteIndicesAndAliases)
 
     override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
-      Task.now(_allRemoteDataStreamsAndAliases)
+      Task.now(allRemoteDataStreamsAndAliases)
 
     override def allSnapshots(implicit id: RequestId): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] =
       Map.empty

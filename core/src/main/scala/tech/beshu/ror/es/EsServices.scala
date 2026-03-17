@@ -23,7 +23,7 @@ class EsServices(val clusterService: EsClusterService,
                  val apiKeyService: ApiKeyService)
 object EsServices {
 
-  def createMemoizableFrom(esServices: EsServices): EsServices = new EsServices(
+  def withCaching(esServices: EsServices): EsServices = new EsServices(
     new CacheableEsClusterServiceDecorator(esServices.clusterService),
     new CacheableServiceAccountTokenServiceDecorator(esServices.serviceAccountTokenService),
     new CacheableApiKeyServiceDecorator(esServices.apiKeyService)
