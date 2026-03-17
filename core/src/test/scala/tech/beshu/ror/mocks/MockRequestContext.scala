@@ -32,8 +32,9 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
-import tech.beshu.ror.es.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
-import tech.beshu.ror.es.{ApiKeyService, EsClusterService, EsServices, ServiceAccountTokenService}
+import tech.beshu.ror.es.services.{ApiKeyService, EsClusterService, ServiceAccountTokenService}
+import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
+import tech.beshu.ror.es.{EsServices}
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*

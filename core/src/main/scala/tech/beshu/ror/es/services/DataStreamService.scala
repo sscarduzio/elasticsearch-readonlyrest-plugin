@@ -14,16 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.services
 
+import cats.implicits.*
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.numeric.PosInt
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
-import tech.beshu.ror.es.DataStreamService.CreationResult.*
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings, DataStreamSetupResult}
+import tech.beshu.ror.es.services.DataStreamService.*
+import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
+import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.retryBackoffEither

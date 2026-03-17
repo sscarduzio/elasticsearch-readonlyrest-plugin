@@ -20,9 +20,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.elasticsearch.client.{Request, Response, ResponseException, RestClient}
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
-import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import DataStreamService.DataStreamSettings.*
+import DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.RestResponseOps.*
 

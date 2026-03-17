@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import monix.eval.Task
@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.utils.{AsyncCacheableAction, SyncCacheableAction}
-import tech.beshu.ror.es.EsClusterService.*
+import tech.beshu.ror.es.services.EsClusterService.*
 import tech.beshu.ror.syntax.*
 
 class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends EsClusterService {
@@ -130,20 +130,4 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
                                             filter: Filter)
                                            (implicit id: RequestId): Task[DocumentsAccessibility] =
     cacheableVerifyDocumentsAccessibility.call((documents, filter))
-
-  def invalidateAll(): Unit = {
-    cacheableAllRemoteClusterNames.invalidateAll()
-    cacheableAllIndicesAndAliases.invalidateAll()
-    cacheableAllDataStreamsAndAliases.invalidateAll()
-    cacheableLegacyTemplates.invalidateAll()
-    cacheableIndexTemplates.invalidateAll()
-    cacheableComponentTemplates.invalidateAll()
-    cacheableIndexOrAliasUuids.invalidateAll()
-    cacheableAllSnapshots.invalidateAll()
-    cacheableAllRemoteIndicesAndAliases.invalidateAll()
-    cacheableAllRemoteDataStreamsAndAliases.invalidateAll()
-    cacheableSnapshotIndices.invalidateAll()
-    cacheableVerifyDocumentAccessibility.invalidateAll()
-    cacheableVerifyDocumentsAccessibility.invalidateAll()
-  }
 }

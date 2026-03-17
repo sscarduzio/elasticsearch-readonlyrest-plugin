@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es
 
+import tech.beshu.ror.es.services.{ApiKeyService, CacheableEsClusterServiceDecorator, EsClusterService, ServiceAccountTokenService}
+
 class EsServices(val clusterService: EsClusterService,
                  val serviceAccountTokenService: ServiceAccountTokenService,
                  val apiKeyService: ApiKeyService)

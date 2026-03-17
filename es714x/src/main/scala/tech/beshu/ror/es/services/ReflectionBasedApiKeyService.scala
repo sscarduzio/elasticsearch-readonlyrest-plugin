@@ -23,7 +23,6 @@ import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
-import tech.beshu.ror.es.ApiKeyService
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.utils.{AccessControllerHelper, RequestIdAwareLogging}
 

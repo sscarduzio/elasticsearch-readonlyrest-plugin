@@ -159,7 +159,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               request,
               rorActionListener,
               chain,
-              esServices
+              EsServices.createMemoizableFrom(esServices),
             )
           )
         } recover {

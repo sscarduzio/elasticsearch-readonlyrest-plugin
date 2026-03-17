@@ -19,8 +19,8 @@ package tech.beshu.ror.settings.ror.source
 import io.circe.Codec
 import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
-import tech.beshu.ror.es.IndexDocumentManager
 import MainSettingsIndexSource.Const
+import tech.beshu.ror.es.services.IndexDocumentManager
 
 class MainSettingsIndexSource private(indexDocumentManager: IndexDocumentManager,
                                       settingsIndex: RorSettingsIndex)

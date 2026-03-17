@@ -36,7 +36,8 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsFil
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.RorInstance.TestSettings
-import tech.beshu.ror.es.{EsEnv, IndexDocumentManager}
+import tech.beshu.ror.es.{EsEnv}
+import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings

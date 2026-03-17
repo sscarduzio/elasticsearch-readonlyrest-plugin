@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.services
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
 
-trait ServiceAccountTokenService {
+trait ApiKeyService {
 
   def validateToken(token: AuthorizationToken)
                    (implicit requestId: RequestId): Task[Boolean]

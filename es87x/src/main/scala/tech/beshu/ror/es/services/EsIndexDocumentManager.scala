@@ -29,8 +29,7 @@ import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.boot.RorSchedulers
-import tech.beshu.ror.es.IndexDocumentManager
-import tech.beshu.ror.es.IndexDocumentManager.*
+import IndexDocumentManager.*
 import tech.beshu.ror.implicits.*
 
 import scala.annotation.unused

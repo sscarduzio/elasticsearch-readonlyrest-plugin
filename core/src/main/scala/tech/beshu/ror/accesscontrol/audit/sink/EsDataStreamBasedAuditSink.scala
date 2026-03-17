@@ -21,7 +21,7 @@ import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId, RorAuditDataStream}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.DataStreamBasedAuditSinkService
+import tech.beshu.ror.es.services.DataStreamBasedAuditSinkService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value
 
