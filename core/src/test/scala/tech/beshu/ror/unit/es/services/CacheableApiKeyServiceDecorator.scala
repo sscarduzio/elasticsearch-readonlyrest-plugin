@@ -14,18 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.unit.es.services
 
-import tech.beshu.ror.es.services.*
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.wordspec.AnyWordSpec
 
-class EsServices(val clusterService: EsClusterService,
-                 val serviceAccountTokenService: ServiceAccountTokenService,
-                 val apiKeyService: ApiKeyService)
-object EsServices {
+class CacheableApiKeyServiceDecorator
+  extends AnyWordSpec
+    with MockFactory {
 
-  def createMemoizableFrom(esServices: EsServices): EsServices = new EsServices(
-    new CacheableEsClusterServiceDecorator(esServices.clusterService),
-    new CacheableServiceAccountTokenServiceDecorator(esServices.serviceAccountTokenService),
-    new CacheableApiKeyServiceDecorator(esServices.apiKeyService)
-  )
 }
