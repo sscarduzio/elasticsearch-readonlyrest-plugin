@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.services
 
-import DataStreamService.DataStreamSettings.*
+import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import ujson.{Obj, Value}
 
