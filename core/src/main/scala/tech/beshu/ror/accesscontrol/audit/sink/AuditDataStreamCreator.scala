@@ -24,9 +24,9 @@ import monix.eval.Task
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
-import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
-import tech.beshu.ror.es.DataStreamService.{DataStreamSettings, DataStreamSetupResult}
+import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
+import tech.beshu.ror.es.services.DataStreamService.{DataStreamSettings, DataStreamSetupResult}
+import tech.beshu.ror.es.services.DataStreamService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.*
 

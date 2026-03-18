@@ -32,8 +32,9 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
-import tech.beshu.ror.es.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
-import tech.beshu.ror.es.{ApiKeyService, EsClusterService, EsServices, ServiceAccountTokenService}
+import tech.beshu.ror.es.services.{ApiKeyService, EsClusterService, ServiceAccountTokenService}
+import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
+import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.MockRequestContext.roAction
 import tech.beshu.ror.syntax.*
@@ -351,37 +352,70 @@ object MockEsServices {
   def `with`(apiKeyService: ApiKeyService): EsServices =
     new EsServices(dummy.clusterService, dummy.serviceAccountTokenService, apiKeyService)
 
-  class MockEsClusterService(override val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
-                             val allRemoteIndicesAndAliases: Set[FullRemoteIndexWithAliases] = Set.empty,
-                             override val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
-                             val allRemoteDataStreamsAndAliases: Set[FullRemoteDataStreamWithAliases] = Set.empty,
-                             override val legacyTemplates: Set[Template.LegacyTemplate] = Set.empty,
-                             override val indexTemplates: Set[Template.IndexTemplate] = Set.empty,
-                             override val componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
-                             override val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty)
+  object MockEsClusterService {
+    def apply(allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+              allRemoteIndicesAndAliases: Set[FullRemoteIndexWithAliases] = Set.empty,
+              allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
+              allRemoteDataStreamsAndAliases: Set[FullRemoteDataStreamWithAliases] = Set.empty,
+              legacyTemplates: Set[Template.LegacyTemplate] = Set.empty,
+              indexTemplates: Set[Template.IndexTemplate] = Set.empty,
+              componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
+              allRemoteClusterNames: Set[ClusterName.Full] = Set.empty): MockEsClusterService =
+      new MockEsClusterService(
+        allIndicesAndAliases = allIndicesAndAliases,
+        allRemoteIndicesAndAliases = allRemoteIndicesAndAliases,
+        allDataStreamsAndAliases = allDataStreamsAndAliases,
+        allRemoteDataStreamsAndAliases = allRemoteDataStreamsAndAliases,
+        legacyTemplates = legacyTemplates,
+        indexTemplates = indexTemplates,
+        componentTemplates = componentTemplates,
+        allRemoteClusterNames = allRemoteClusterNames
+      )
+  }
+
+  class MockEsClusterService(private val allIndicesAndAliases: Set[FullLocalIndexWithAliases] = Set.empty,
+                             private val allRemoteIndicesAndAliases: Set[FullRemoteIndexWithAliases] = Set.empty,
+                             private val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = Set.empty,
+                             private val allRemoteDataStreamsAndAliases: Set[FullRemoteDataStreamWithAliases] = Set.empty,
+                             private val legacyTemplates: Set[Template.LegacyTemplate] = Set.empty,
+                             private val indexTemplates: Set[Template.IndexTemplate] = Set.empty,
+                             private val componentTemplates: Set[Template.ComponentTemplate] = Set.empty,
+                             private val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty)
     extends EsClusterService {
 
-    override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = Set.empty
+    override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = allIndicesAndAliases
 
-    override def allRemoteIndicesAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteIndexWithAliases]] =
+    override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] = allDataStreamsAndAliases
+
+    override def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate] = legacyTemplates
+
+    override def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate] = indexTemplates
+
+    override def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate] = componentTemplates
+
+    override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = allRemoteClusterNames
+
+    override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(implicit id: RequestId): Set[IndexUuid] = Set.empty
+
+    override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] =
       Task.now(allRemoteIndicesAndAliases)
 
-    override def allRemoteDataStreamsAndAliases(implicit id: RequestContext.Id): Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
+    override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
       Task.now(allRemoteDataStreamsAndAliases)
 
-    override def allSnapshots(implicit id: RequestContext.Id): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] =
+    override def allSnapshots(implicit id: RequestId): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] =
       Map.empty
 
     override def snapshotIndices(repositoryName: RepositoryName.Full, snapshotName: SnapshotName.Full)
-                                (implicit id: RequestContext.Id): Task[Set[ClusterIndexName]] =
+                                (implicit id: RequestId): Task[Set[ClusterIndexName]] =
       Task.now(Set.empty)
 
     override def verifyDocumentAccessibility(document: Document, filter: Filter)
-                                            (implicit id: RequestContext.Id): Task[DocumentAccessibility] =
+                                            (implicit id: RequestId): Task[DocumentAccessibility] =
       Task.now(Accessible)
 
     override def verifyDocumentsAccessibility(documents: NonEmptyList[Document], filter: Filter)
-                                             (implicit id: RequestContext.Id): Task[DocumentsAccessibility] =
+                                             (implicit id: RequestId): Task[DocumentsAccessibility] =
       Task.now(Map.empty)
   }
 

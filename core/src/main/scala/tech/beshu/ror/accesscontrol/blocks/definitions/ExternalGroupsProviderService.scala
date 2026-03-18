@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.accesscontrol.utils.CacheableAction
+import tech.beshu.ror.accesscontrol.utils.AsyncCacheableActionWithTimeout
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
@@ -210,7 +210,7 @@ final class CacheableExternalGroupsProviderServiceDecorator(val underlying: Exte
                                                             val ttl: PositiveFiniteDuration)
   extends ExternalGroupsProviderService {
 
-  private val cacheableGrantsFor = new CacheableAction[User.Id, UniqueList[Group]](ttl,
+  private val cacheableGrantsFor = new AsyncCacheableActionWithTimeout[User.Id, UniqueList[Group]](ttl,
     (userId, requestId) => underlying.groupsFor(userId)(requestId))
 
   override val id: ExternalGroupsProviderService#Id = underlying.id

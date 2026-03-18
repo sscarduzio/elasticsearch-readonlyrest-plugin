@@ -34,7 +34,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
-import tech.beshu.ror.es.{EsEnv, IndexDocumentManager}
+import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, TestRorSettings}

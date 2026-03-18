@@ -41,9 +41,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.EsClusterService
-import tech.beshu.ror.es.EsClusterService.*
+import tech.beshu.ror.es.services.EsClusterService.*
 import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
 import tech.beshu.ror.es.utils.ClusterStateMetadataOps.toOps
@@ -69,7 +67,7 @@ class EsNodeClusterService(nodeName: String,
 
   import EsNodeClusterService.*
 
-  override def allRemoteClusterNames: Set[ClusterName.Full] = {
+  override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         remoteClusterService
@@ -81,17 +79,18 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
+  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)
+                                (implicit id: RequestId): Set[IndexUuid] = {
     val lookups = clusterService.state.metadata.projects().values().asScala.map(_.getIndicesLookup)
     lookups.flatMap(_.get(indexOrAlias.stringify).getIndices.asScala.map(_.getUUID)).toCovariantSet
   }
 
-  override def allIndicesAndAliases: Set[FullLocalIndexWithAliases] = {
+  override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = {
     val projectsMetadata = clusterService.state.metadata.projects().values().asScala
     projectsMetadata.flatMap(extractIndicesAndAliasesFrom).toCovariantSet
   }
 
-  override def allRemoteIndicesAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteIndexWithAliases]] = {
+  override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         provideAllRemoteIndices(remoteClusterService)
@@ -100,12 +99,12 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  override def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] = {
+  override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] = {
     val projectsMetadata = clusterService.state.metadata.projects().values().asScala
     projectsMetadata.flatMap(extractDataStreamsAndAliases).toCovariantSet
   }
 
-  override def allRemoteDataStreamsAndAliases(implicit id: RequestContext.Id): Task[Set[FullRemoteDataStreamWithAliases]] =
+  override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] =
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         provideAllRemoteDataStreams(remoteClusterService)
@@ -113,7 +112,7 @@ class EsNodeClusterService(nodeName: String,
         Task.now(Set.empty)
     }
 
-  override def legacyTemplates: Set[Template.LegacyTemplate] = {
+  override def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate] = {
     clusterService
       .state.metadata()
       .allTemplatesMetadata
@@ -127,7 +126,7 @@ class EsNodeClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  override def indexTemplates: Set[Template.IndexTemplate] = {
+  override def indexTemplates(implicit id: RequestId): Set[Template.IndexTemplate] = {
     clusterService
       .state.metadata()
       .allTemplatesV2Metadata
@@ -142,7 +141,7 @@ class EsNodeClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  override def componentTemplates: Set[Template.ComponentTemplate] = {
+  override def componentTemplates(implicit id: RequestId): Set[Template.ComponentTemplate] = {
     clusterService
       .state.metadata()
       .allComponentTemplatesMetadata
@@ -155,13 +154,13 @@ class EsNodeClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  override def allSnapshots(implicit id: RequestContext.Id): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
+  override def allSnapshots(implicit id: RequestId): Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]] = {
     determineAllSnapshots().view.mapValues(_.map(_.map(_.name))).toMap
   }
 
   override def snapshotIndices(repositoryName: RepositoryName.Full,
                                snapshotName: SnapshotName.Full)
-                              (implicit id: RequestContext.Id): Task[Set[ClusterIndexName]] = {
+                              (implicit id: RequestId): Task[Set[ClusterIndexName]] = {
     determineAllSnapshots().get(repositoryName) match {
       case Some(getSnapshots) =>
         val snapshotNameMatcher = PatternsMatcher.create((snapshotName: SnapshotName) :: Nil)
@@ -205,7 +204,7 @@ class EsNodeClusterService(nodeName: String,
 
   override def verifyDocumentAccessibility(document: Document,
                                            filter: Filter)
-                                          (implicit id: RequestContext.Id): Task[DocumentAccessibility] = {
+                                          (implicit id: RequestId): Task[DocumentAccessibility] = {
     createSearchRequest(filter, document)
       .call(extractAccessibilityFrom)
       .onErrorRecover {
@@ -217,7 +216,7 @@ class EsNodeClusterService(nodeName: String,
 
   override def verifyDocumentsAccessibility(documents: NonEmptyList[Document],
                                             filter: Filter)
-                                           (implicit id: RequestContext.Id): Task[DocumentsAccessibility] = {
+                                           (implicit id: RequestId): Task[DocumentsAccessibility] = {
     createMultiSearchRequest(filter, documents)
       .call(extractResultsFromSearchResponse)
       .onErrorRecover {

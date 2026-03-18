@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.services
 
 import io.circe.Json
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
-import tech.beshu.ror.es.IndexDocumentManager.{ReadError, WriteError}
+import tech.beshu.ror.es.services.IndexDocumentManager.{ReadError, WriteError}
 
 trait IndexDocumentManager {
   def documentAsJson(index: IndexName.Full, id: String)
