@@ -36,6 +36,7 @@ object KibanaActionMatchers {
       "indices:admin/resolve/*",
       "indices:admin/aliases/get",
       "indices:admin/data_stream/get",
+      "indices:admin/data_stream/lifecycle/get",
       "cluster:admin/component_template/get",
       "indices:admin/index_template/get",
       "indices:admin/*/explain",
