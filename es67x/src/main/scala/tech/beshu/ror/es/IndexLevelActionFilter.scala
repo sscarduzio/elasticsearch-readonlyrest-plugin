@@ -160,7 +160,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
               request,
               rorActionListener,
               chain,
-              esServices
+              EsServices.withCaching(esServices),
             )
           )
         } recover {

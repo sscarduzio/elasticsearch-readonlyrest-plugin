@@ -18,7 +18,6 @@ package tech.beshu.ror.es.services
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
-import tech.beshu.ror.es.ApiKeyService
 
 object NotAvailableApiKeyService extends ApiKeyService {
 

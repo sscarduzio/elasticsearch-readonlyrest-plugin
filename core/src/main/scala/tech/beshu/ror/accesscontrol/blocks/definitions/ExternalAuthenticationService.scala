@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
+import tech.beshu.ror.accesscontrol.utils.AsyncCacheableActionWithKeyMappingAndTimeout
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -113,7 +113,7 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
   extends ExternalAuthenticationService {
 
   private val cacheableAuthentication =
-    new CacheableActionWithKeyMapping[Credentials, HashedUserCredentials, AuthenticationResult](
+    new AsyncCacheableActionWithKeyMappingAndTimeout[Credentials, HashedUserCredentials, AuthenticationResult](
       ttl,
       (credentials, requestId) => authenticateAction(credentials)(requestId),
       hashCredential

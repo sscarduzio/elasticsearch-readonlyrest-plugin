@@ -20,7 +20,7 @@ import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.IndexBasedAuditSinkService
+import tech.beshu.ror.es.services.IndexBasedAuditSinkService
 
 import java.time.Clock
 

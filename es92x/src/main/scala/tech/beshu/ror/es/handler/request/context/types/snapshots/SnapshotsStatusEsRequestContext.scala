@@ -183,6 +183,7 @@ object SnapshotsStatusEsRequestContext {
              esContext: EsContext,
              threadPool: ThreadPool)
             (implicit id: RequestContext.Id): Task[SnapshotsStatusEsRequestContext] = {
+    given RequestId = id.toRequestId
     esContext.esServices.clusterService.allSnapshots
       .map { case (repository, getSnapshots) => getSnapshots.map((repository, _)) }
       .toList.sequence
