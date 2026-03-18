@@ -26,9 +26,10 @@ trait ServiceAccountTokenService {
                    (implicit requestId: RequestId): Task[Boolean]
 }
 
-class CacheableServiceAccountTokenServiceDecorator(underlying: ServiceAccountTokenService) extends ServiceAccountTokenService {
+class CacheableServiceAccountTokenServiceDecorator(underlying: ServiceAccountTokenService)
+  extends ServiceAccountTokenService {
 
-  private val cacheableValidateToken = new AsyncCacheableAction[AuthorizationToken, Boolean](
+  private lazy val cacheableValidateToken = new AsyncCacheableAction[AuthorizationToken, Boolean](
     action = (token, requestId) => underlying.validateToken(token)(requestId)
   )
 

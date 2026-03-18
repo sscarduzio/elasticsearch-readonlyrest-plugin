@@ -81,59 +81,59 @@ object EsClusterService {
 
 class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends EsClusterService {
 
-  private val cacheableAllRemoteClusterNames = new SyncCacheableAction[Unit, Set[ClusterName.Full]](
+  private lazy val cacheableAllRemoteClusterNames = new SyncCacheableAction[Unit, Set[ClusterName.Full]](
     action = (_, id) => underlying.allRemoteClusterNames(id)
   )
 
-  private val cacheableAllIndicesAndAliases = new SyncCacheableAction[Unit, Set[FullLocalIndexWithAliases]](
+  private lazy val cacheableAllIndicesAndAliases = new SyncCacheableAction[Unit, Set[FullLocalIndexWithAliases]](
     action = (_, id) => underlying.allIndicesAndAliases(id)
   )
 
-  private val cacheableAllDataStreamsAndAliases = new SyncCacheableAction[Unit, Set[FullLocalDataStreamWithAliases]](
+  private lazy val cacheableAllDataStreamsAndAliases = new SyncCacheableAction[Unit, Set[FullLocalDataStreamWithAliases]](
     action = (_, id) => underlying.allDataStreamsAndAliases(id)
   )
 
-  private val cacheableLegacyTemplates = new SyncCacheableAction[Unit, Set[Template.LegacyTemplate]](
+  private lazy val cacheableLegacyTemplates = new SyncCacheableAction[Unit, Set[Template.LegacyTemplate]](
     action = (_, id) => underlying.legacyTemplates(id)
   )
 
-  private val cacheableIndexTemplates = new SyncCacheableAction[Unit, Set[Template.IndexTemplate]](
+  private lazy val cacheableIndexTemplates = new SyncCacheableAction[Unit, Set[Template.IndexTemplate]](
     action = (_, id) => underlying.indexTemplates(id)
   )
 
-  private val cacheableComponentTemplates = new SyncCacheableAction[Unit, Set[Template.ComponentTemplate]](
+  private lazy val cacheableComponentTemplates = new SyncCacheableAction[Unit, Set[Template.ComponentTemplate]](
     action = (_, id) => underlying.componentTemplates(id)
   )
 
-  private val cacheableIndexOrAliasUuids = new SyncCacheableAction[IndexOrAlias, Set[IndexUuid]](
+  private lazy val cacheableIndexOrAliasUuids = new SyncCacheableAction[IndexOrAlias, Set[IndexUuid]](
     action = (indexOrAlias, id) => underlying.indexOrAliasUuids(indexOrAlias)(id)
   )
 
-  private val cacheableAllSnapshots = new SyncCacheableAction[Unit, Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]](
+  private lazy val cacheableAllSnapshots = new SyncCacheableAction[Unit, Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]](
     action = (_, id) => underlying.allSnapshots(id)
   )
 
-  private val cacheableAllRemoteIndicesAndAliases = new AsyncCacheableAction[Unit, Set[FullRemoteIndexWithAliases]](
+  private lazy val cacheableAllRemoteIndicesAndAliases = new AsyncCacheableAction[Unit, Set[FullRemoteIndexWithAliases]](
     action = (_, requestId) => underlying.allRemoteIndicesAndAliases(requestId)
   )
 
-  private val cacheableAllRemoteDataStreamsAndAliases = new AsyncCacheableAction[Unit, Set[FullRemoteDataStreamWithAliases]](
+  private lazy val cacheableAllRemoteDataStreamsAndAliases = new AsyncCacheableAction[Unit, Set[FullRemoteDataStreamWithAliases]](
     action = (_, requestId) => underlying.allRemoteDataStreamsAndAliases(requestId)
   )
 
-  private val cacheableSnapshotIndices = new AsyncCacheableAction[(RepositoryName.Full, SnapshotName.Full), Set[ClusterIndexName]](
+  private lazy val cacheableSnapshotIndices = new AsyncCacheableAction[(RepositoryName.Full, SnapshotName.Full), Set[ClusterIndexName]](
     action = {
       case ((repoName, snapName), requestId) => underlying.snapshotIndices(repoName, snapName)(requestId)
     }
   )
 
-  private val cacheableVerifyDocumentAccessibility = new AsyncCacheableAction[(Document, Filter), DocumentAccessibility](
+  private lazy val cacheableVerifyDocumentAccessibility = new AsyncCacheableAction[(Document, Filter), DocumentAccessibility](
     action = {
       case ((document, filter), requestId) => underlying.verifyDocumentAccessibility(document, filter)(requestId)
     }
   )
 
-  private val cacheableVerifyDocumentsAccessibility = new AsyncCacheableAction[(NonEmptyList[Document], Filter), DocumentsAccessibility](
+  private lazy val cacheableVerifyDocumentsAccessibility = new AsyncCacheableAction[(NonEmptyList[Document], Filter), DocumentsAccessibility](
     action = {
       case ((documents, filter), requestId) => underlying.verifyDocumentsAccessibility(documents, filter)(requestId)
     }

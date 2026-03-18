@@ -150,8 +150,8 @@ class SyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDura
 
 object CacheableActionCaffeineOps {
 
-  extension [K1, V1](builder: Caffeine[K1, V1]) {
-    def withOptionalTtl(ttl: Option[PositiveFiniteDuration]): Caffeine[K1, V1] = {
+  extension [K, V](builder: Caffeine[K, V]) {
+    def withOptionalTtl(ttl: Option[PositiveFiniteDuration]): Caffeine[K, V] = {
       ttl.foreach(t => builder.expireAfterWrite(t.value.toMillis, TimeUnit.MILLISECONDS))
       builder
     }
