@@ -48,7 +48,6 @@ import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTempla
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutIndexTemplateRequest, TransportPutComposableIndexTemplateAction}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.datastreams.*
-import org.elasticsearch.action.datastreams.lifecycle.*
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
