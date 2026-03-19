@@ -275,19 +275,21 @@ object DataStreamName {
     }
   }
 
-  def toString(dataStreamName: DataStreamName): String = dataStreamName match {
-    case Full(name) => name.value
-    case Pattern(namePattern) => namePattern.value
-    case All => "_all"
-    case Wildcard => "*"
-  }
-
   implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
   implicit val matchableDataStreamName: Matchable[DataStreamName] = Matchable.matchable {
     case Full(name) => name.value
     case Pattern(namePattern) => namePattern.value
     case All => "*"
     case Wildcard => "*"
+  }
+
+  implicit class Stringify(val dataStreamName: DataStreamName) extends AnyVal {
+    def stringify: String = dataStreamName match {
+      case Full(name) => name.value
+      case Pattern(namePattern) => namePattern.value
+      case All => "_all"
+      case Wildcard => "*"
+    }
   }
 
   implicit class OrWildcardWhenEmpty(val dataSteams: Set[DataStreamName]) extends AnyVal {

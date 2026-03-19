@@ -49,6 +49,6 @@ class DeleteDataStreamEsRequestContext(actionRequest: DeleteDataStreamAction.Req
   }
 
   private def setDataStreamNames(dataStreams: Set[DataStreamName]): Unit = {
-    actionRequest.indices(dataStreams.map(DataStreamName.toString).toList: _*) // method is named indices but it sets data streams
+    actionRequest.indices(dataStreams.map(_.stringify).toList: _*) // method is named indices but it sets data streams
   }
 }
