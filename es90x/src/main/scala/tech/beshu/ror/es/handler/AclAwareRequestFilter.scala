@@ -48,6 +48,7 @@ import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTempla
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutIndexTemplateRequest, TransportPutComposableIndexTemplateAction}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.datastreams.*
+import org.elasticsearch.action.datastreams.lifecycle.*
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
@@ -182,6 +183,8 @@ class AclAwareRequestFilter(settings: Settings,
         regularRequestHandler.handle(new DeleteDataStreamEsRequestContext(request, esContext, threadPool))
       case request: GetDataStreamAction.Request =>
         regularRequestHandler.handle(new GetDataStreamEsRequestContext(request, esContext, threadPool))
+      case request: GetDataStreamLifecycleAction.Request =>
+        regularRequestHandler.handle(new GetDataStreamLifecycleEsRequestContext(request, esContext, threadPool))
       case request: MigrateToDataStreamAction.Request =>
         regularRequestHandler.handle(new MigrateToDataStreamEsRequestContext(request, esContext, threadPool))
       case request: ModifyDataStreamsAction.Request =>

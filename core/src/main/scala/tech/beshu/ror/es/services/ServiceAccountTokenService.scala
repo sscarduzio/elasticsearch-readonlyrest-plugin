@@ -14,13 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.services
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
+import tech.beshu.ror.accesscontrol.utils.AsyncCacheableAction
 
 trait ServiceAccountTokenService {
 
   def validateToken(token: AuthorizationToken)
                    (implicit requestId: RequestId): Task[Boolean]
+}
+
+class CacheableServiceAccountTokenServiceDecorator(underlying: ServiceAccountTokenService)
+  extends ServiceAccountTokenService {
+
+  private lazy val cacheableValidateToken = new AsyncCacheableAction[AuthorizationToken, Boolean](
+    action = (token, requestId) => underlying.validateToken(token)(requestId)
+  )
+
+  override def validateToken(token: AuthorizationToken)
+                            (implicit requestId: RequestId): Task[Boolean] =
+    cacheableValidateToken.call(token)
 }

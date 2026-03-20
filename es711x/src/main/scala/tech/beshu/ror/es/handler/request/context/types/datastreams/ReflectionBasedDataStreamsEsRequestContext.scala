@@ -56,7 +56,7 @@ object ReflectionBasedDataStreamsEsRequestContext {
     ReflecUtils.setIndices(
       actionRequest,
       Sets.newHashSet(dataStreamsFieldName),
-      dataStreams.map(DataStreamName.toString).toSet.asJava
+      dataStreams.map(_.stringify).toSet.asJava
     )
   }
 

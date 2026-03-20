@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.ProcessResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
@@ -52,6 +52,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
         processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices, determinedKibanaIndex)
       case (None, None) =>
         val clusterService = requestContext.esServices.clusterService
+        given RequestId = requestContext.id.toRequestId
         if (clusterService.allIndicesAndAliases.nonEmpty || clusterService.allDataStreamsAndAliases.nonEmpty) {
           Task.now(ProcessResult.Ok(
             allAllowedIndices.map(RequestedIndex(_, excluded = false))

@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
@@ -176,6 +176,7 @@ class IndicesRule(override val settings: Settings,
 
   private def getAllowedClusterNames(requestContext: RequestContext,
                                      allAllowedIndices: Set[ClusterIndexName]): Set[ClusterName.Full] = {
+    given RequestId = requestContext.id.toRequestId
     def isLocalClusterAllowed: Boolean = allAllowedIndices.exists {
       case ClusterIndexName.Local(_) => true
       case ClusterIndexName.Remote(_, _) => false
