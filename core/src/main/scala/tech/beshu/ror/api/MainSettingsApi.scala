@@ -31,8 +31,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.api.MainSettingsApi.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsRequest.Type
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.*
-import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.*
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput
+import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse.ProvideAuditSettings.AuditOutput.*
 import tech.beshu.ror.boot.RorInstance.IndexSettingsReloadWithUpdateError.{IndexSettingsSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
@@ -75,12 +75,12 @@ class MainSettingsApi(rorInstance: RorInstance,
       case AuditSink.Enabled(config) => config match {
         case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
           Some(LocalAuditIndex(rorAuditIndexTemplate.rorAuditIndexPattern, AuditIndexSchema.from(logSerializer)))
-        case Config.EsIndexBasedSink(_, _, _) =>
+        case Config.EsIndexBasedSink(_, _, _: AuditCluster.RemoteAuditCluster) =>
           Some(OtherAuditOutput("Remote audit cluster"))
         case Config.EsDataStreamBasedSink(logSerializer, ds, AuditCluster.LocalAuditCluster) =>
           Some(LocalDataStream(ds.dataStream, AuditIndexSchema.from(logSerializer)))
-        case Config.EsDataStreamBasedSink(_, ds, _) =>
-          Some(OtherAuditOutput(s"Remote ${ds.dataStream.show} data stream"))
+        case Config.EsDataStreamBasedSink(_, ds, _: AuditCluster.RemoteAuditCluster) =>
+          Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
         case Config.LogBasedSink(_, loggerName) =>
           Some(OtherAuditOutput(s"Logger with name [${loggerName.value.value}]"))
       }
@@ -347,13 +347,13 @@ object MainSettingsApi {
         "status" -> status.asJson,
         "local_audit_indexes" -> localAuditIndexes.map { index =>
           Json.obj(
-            "index_pattern" -> index.indexPattern.show.asJson,
+            "index_pattern" -> index.indexPattern.value.stringify.asJson,
             "schema" -> index.schema.asJson,
           )
         }.asJson,
         "local_data_streams" -> localDataStreams.map { index =>
           Json.obj(
-            "name" -> index.name.show.asJson,
+            "name" -> index.name.value.value.asJson,
             "schema" -> index.schema.asJson,
           )
         }.asJson,
@@ -368,9 +368,9 @@ object MainSettingsApi {
 
   private implicit val schemaEncoder: Encoder[AuditIndexSchema] = {
     Encoder.encodeString.contramap {
-        case AuditIndexSchema.RorDefault => "rorDefault"
-        case AuditIndexSchema.EcsV1 => "ecsV1"
-        case AuditIndexSchema.Custom => "custom"
+      case AuditIndexSchema.RorDefault => "rorDefault"
+      case AuditIndexSchema.EcsV1 => "ecsV1"
+      case AuditIndexSchema.Custom => "custom"
     }
   }
 }
