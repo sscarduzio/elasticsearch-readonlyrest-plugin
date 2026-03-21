@@ -1003,6 +1003,7 @@ components:
       required:
         - status
         - local_audit_indexes
+        - local_data_streams
         - other_audit_outputs
       properties:
         status:
@@ -1015,6 +1016,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LocalAuditIndex'
+        local_data_streams:
+          description: Local data streams used for ROR audit
+          type: array
+          items:
+            $ref: '#/components/schemas/LocalDataStream'
         other_audit_outputs:
           description: Other audit outputs (remote indexes and loggers)
           type: array
@@ -1037,15 +1043,31 @@ components:
             - ecsV1
             - custom
 
+    LocalDataStream:
+      description: "Represents the local data stream that is used for ROR audit"
+      type: object
+      required:
+        - name
+        - schema
+      properties:
+        name:
+          type: string
+          description: Data stream name
+        schema:
+          enum:
+            - rorDefault
+            - ecsV1
+            - custom
+
     OtherAuditOutput:
       description: "Represents audit output other than local index (remote index or logger)"
       type: object
       required:
         - description
       properties:
-        index_pattern:
+        description:
           type: string
-          description: Audit index name pattern
+          description: Description of an other audit output
 
     FetchCurrentAuditConfigurationFailureResponse:
       type: object
@@ -1891,6 +1913,11 @@ components:
           - index_pattern: custom_template_*
             schema: rorDefault
           - index_pattern: readonlyrest_audit-*
+            schema: ecsV1
+        local_data_streams:
+          - name: custom_template_data_stream
+            schema: rorDefault
+          - name: readonlyrest_audit
             schema: ecsV1
         other_audit_outputs:
           - description: Logger with name [readonlyrest_audit]
