@@ -78,7 +78,7 @@ object ruleDecoders {
         implicit val ruleNameForDecoder: RuleName[BaseGroupsRule[GroupsLogic]] = new RuleName[BaseGroupsRule[GroupsLogic]] {
           override val name: Rule.Name = ruleName
         }
-        Some(new GroupsRuleDecoder(definitions.users, globalSettings, variableCreator))
+        Some(new GroupsRuleDecoder(definitions.users.provide, globalSettings, variableCreator))
       case ActionsRule.Name.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
       case DataStreamsRule.Name.name => Some(new DataStreamsRuleDecoder(variableCreator))

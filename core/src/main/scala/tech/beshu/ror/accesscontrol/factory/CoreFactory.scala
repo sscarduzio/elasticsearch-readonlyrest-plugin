@@ -344,6 +344,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           globalSettings,
           esEnv
         ))
+        usersDefsProvider = new DefinitionsProvider(userDefs)
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocksNel <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
@@ -351,7 +352,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             blockDecoder(
               DefinitionsPack(
                 proxies = authProxies,
-                users = userDefs,
+                users = usersDefsProvider,
                 authenticationServices = authenticationServices,
                 externalGroupsProviderServices = externalGroupsProviderServices,
                 jwts = jwtDefs,
@@ -370,14 +371,18 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             .emapE {
               case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl.show} section found")))
               case FieldListValue(blocks) =>
-                NonEmptyList.fromList(blocks) match {
-                  case None =>
-                    Left(BlocksLevelCreationError(Message(s"${Attributes.acl.show} defined, but no block found")))
-                  case Some(neBlocks) =>
-                    neBlocks.map(_.block.name).toList.findDuplicates match {
-                      case Nil => Right(neBlocks)
-                      case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.show}")))
-                    }
+                if (usersDefsProvider.nonEmpty && usersDefsProvider.definitionsHaveNotBeenUsed) {
+                  Left(BlocksLevelCreationError(Message("The users config section defined, but there is no groups rule.")))
+                } else {
+                  NonEmptyList.fromList(blocks) match {
+                    case None =>
+                      Left(BlocksLevelCreationError(Message(s"${Attributes.acl.show} defined, but no block found")))
+                    case Some(neBlocks) =>
+                      neBlocks.map(_.block.name).toList.findDuplicates match {
+                        case Nil => Right(neBlocks)
+                        case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.show}")))
+                      }
+                  }
                 }
             }
         }
