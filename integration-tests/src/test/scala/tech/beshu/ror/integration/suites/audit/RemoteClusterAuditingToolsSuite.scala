@@ -284,6 +284,23 @@ class RemoteClusterAuditingToolsSuite
         rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml.prependedAll("#yaml-comment\n")).forceOKStatusOrSettingsAlreadyLoaded()
 
         auditNode1.disableNetwork()
+
+        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml)
+          .forceOKWithFailure(
+            s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
+              s"Details: " +
+              s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}"
+          )
+      }
+      "fail to reload audit settings when all nodes are unreachable and ignore_es_connectivity_problems is disabled" in {
+        val auditNode1 = proxiedContainers(0)
+        val auditNode2 = proxiedContainers(1)
+        auditNode1.enableNetwork()
+        auditNode2.enableNetwork()
+        // assert config is valid
+        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml.prependedAll("#yaml-comment\n")).forceOKStatusOrSettingsAlreadyLoaded()
+
+        auditNode1.disableNetwork()
         auditNode2.disableNetwork()
 
         rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml)

@@ -47,19 +47,19 @@ final class AuditRemoteClusterHealthcheck(httpClientsFactory: HttpClientsFactory
     val auditClusterNodes = cluster.nodes.toNonEmptyList
     createHttpClient(auditClusterNodes)
       .use { httpClient =>
-        Task.parTraverseUnordered(auditClusterNodes.toList) { node =>
+        Task.parTraverseUnordered(auditClusterNodes.toList.zipWithIndex) { case (node, idx) =>
           withRetries(getNodeInfo(cluster, httpClient, node))
-            .map(response => (node, response))
+            .map(response => (response, idx))
         }
       }
       .map { auditNodesInfo =>
         val (maybeConnectionErrors, maybeAuditNodeInfos) = {
           auditNodesInfo
             .sortBy { // sorting to have deterministic ordering of errors
-              case (node, _) => node.toUrl.toString
+              case (_, idx) => idx
             }
             .partitionMap {
-              case (node, response) => response
+              case (response, idx) => response
             }
             .bimap(NonEmptyList.fromList, NonEmptyList.fromList)
         }
