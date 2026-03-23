@@ -24,13 +24,13 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestId, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.EsClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
+import tech.beshu.ror.es.services.EsClusterService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -115,6 +115,7 @@ object RestoreSnapshotEsRequestContext {
              esContext: EsContext,
              threadPool: ThreadPool)
             (implicit id: RequestContext.Id): Task[RestoreSnapshotEsRequestContext] = {
+    given RequestId = id.toRequestId
     for {
       requestedRepository <- Task(repositoryFrom(actionRequest))
       requestedSnapshot <- Task(snapshotFrom(actionRequest))
@@ -155,7 +156,7 @@ object RestoreSnapshotEsRequestContext {
                                    repository: RepositoryName.Full,
                                    snapshot: SnapshotName.Full,
                                    clusterService: EsClusterService)
-                                  (implicit rid: RequestContext.Id) = {
+                                  (implicit rid: RequestId) = {
     clusterService
       .snapshotIndices(repository, snapshot)
       .map(_.filterBy(indicesFrom(request)))

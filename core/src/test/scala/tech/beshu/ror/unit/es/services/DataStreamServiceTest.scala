@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.es
+package tech.beshu.ror.unit.es.services
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
@@ -26,9 +26,9 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator.ErrorMessage
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, RorAuditDataStream, TemplateName}
-import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.CreationResult.*
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.DataStreamService
+import tech.beshu.ror.es.services.DataStreamService.CreationResult.*
+import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
 
 import scala.concurrent.duration.DurationInt
 
@@ -60,7 +60,7 @@ class DataStreamServiceTest
         val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
         val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-        result shouldBe Right(())
+        result should be (Right(()))
       }
       "attempt to create data stream with success" when {
         "all resources available immediately" in {
@@ -79,7 +79,7 @@ class DataStreamServiceTest
           val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
           val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-          result shouldBe Right(())
+          result should be (Right(()))
         }
         "lifecycle policy test" in {
           def createDataStreamService(indexLifecycleManagementMocks: Seq[MockFun]): DataStreamService = createMockedDataStreamService(
@@ -134,7 +134,7 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Right(())
+            result should be (Right(()))
           }
         }
         "component mappings tests" in {
@@ -191,7 +191,7 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Right(())
+            result should be (Right(()))
           }
         }
         "component settings test" in {
@@ -252,7 +252,7 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Right(())
+            result should be (Right(()))
           }
         }
         "index template test" in {
@@ -307,7 +307,7 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Right(())
+            result should be (Right(()))
           }
         }
         "data stream test" in {
@@ -359,7 +359,7 @@ class DataStreamServiceTest
             val auditDataStreamCreator = AuditDataStreamCreator.create(service)
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Right(())
+            result should be (Right(()))
           }
         }
       }
@@ -387,7 +387,7 @@ class DataStreamServiceTest
             val expectedFailureReason = s"Unable to determine if the index lifecycle policy with ID '${expectedLifecyclePolicyName.value}' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
+            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
           }
         }
         "component mappings creation fails" in {
@@ -417,7 +417,7 @@ class DataStreamServiceTest
             val expectedFailureReason = s"Unable to determine if component template with ID 'readonlyrest_audit-mappings' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
+            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
           }
         }
         "component settings creation fails" in {
@@ -448,7 +448,7 @@ class DataStreamServiceTest
             val expectedFailureReason = "Unable to determine if component template with ID 'readonlyrest_audit-settings' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
+            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
           }
         }
         "index template creation fails" in {
@@ -480,7 +480,7 @@ class DataStreamServiceTest
             val expectedFailureReason = "Unable to determine if index template with ID 'readonlyrest_audit-template' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
+            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
           }
         }
         "data stream creation fails" in {
@@ -513,7 +513,7 @@ class DataStreamServiceTest
             val expectedFailureReason = "Unable to determine if data stream with ID 'readonlyrest_audit' has been created"
 
             val result = auditDataStreamCreator.createIfNotExists(auditDs).runSyncUnsafe()
-            result shouldBe Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason")))
+            result should be (Left(NonEmptyList.of(ErrorMessage(s"Failed to setup ROR audit data stream readonlyrest_audit. Reason: $expectedFailureReason"))))
           }
         }
       }

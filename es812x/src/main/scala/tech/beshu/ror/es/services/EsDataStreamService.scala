@@ -34,9 +34,8 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.IndexNotFoundException
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
-import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
+import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.utils.TaskOps.Measure

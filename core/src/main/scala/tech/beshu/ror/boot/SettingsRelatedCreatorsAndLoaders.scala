@@ -18,7 +18,7 @@ package tech.beshu.ror.boot
 
 import tech.beshu.ror.api.{MainSettingsApi, TestSettingsApi}
 import tech.beshu.ror.boot.engines.{MainSettingsBasedReloadableEngine, TestSettingsBasedReloadableEngine}
-import tech.beshu.ror.es.IndexDocumentManager
+import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, RorCoreSettingsLoadingStrategy}
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.settings.ror.loader.{ConfigurableRetryStrategy, ForceLoadRorSettingsFromFileLoader, RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader, StartingRorSettingsLoader}

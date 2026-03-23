@@ -39,7 +39,7 @@ class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Req
     actionRequest.indices().asSafeSet.flatMap(DataStreamName.fromString)
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
-    actionRequest.indices(blockContext.dataStreams.map(DataStreamName.toString).toList: _*)
+    actionRequest.indices(blockContext.dataStreams.map(_.stringify).toList: _*)
     ModificationResult.Modified
   }
 }

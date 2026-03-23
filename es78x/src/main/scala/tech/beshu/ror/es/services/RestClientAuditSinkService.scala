@@ -27,7 +27,6 @@ import org.elasticsearch.client.*
 import org.elasticsearch.client.RestClient.FailureListener
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RequestId}
-import tech.beshu.ror.es.IndexBasedAuditSinkService
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate

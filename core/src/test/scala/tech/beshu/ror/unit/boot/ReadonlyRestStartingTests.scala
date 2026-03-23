@@ -53,10 +53,11 @@ import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSettings}
-import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
-import tech.beshu.ror.es.IndexDocumentManager.*
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, EsEnv, IndexDocumentManager}
+import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
+import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.IndexDocumentManager.*
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexDocumentManager}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings

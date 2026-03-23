@@ -14,13 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.services
 
+import cats.effect.Resource
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationToken, RequestId}
+import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
+import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
 
-trait ApiKeyService {
+sealed trait AuditSinkService {
+  def close(): Unit
+}
 
-  def validateToken(token: AuthorizationToken)
-                   (implicit requestId: RequestId): Task[Boolean]
+trait IndexBasedAuditSinkService extends AuditSinkService {
+  def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
+            (implicit requestId: RequestId): Unit
+}
+
+trait DataStreamBasedAuditSinkService extends AuditSinkService {
+  def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)
+            (implicit requestId: RequestId): Unit
+
+  def dataStreamCreator: Resource[Task, AuditDataStreamCreator]
 }

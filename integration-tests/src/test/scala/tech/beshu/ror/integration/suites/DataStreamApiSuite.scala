@@ -810,6 +810,39 @@ class DataStreamApiSuite
         }
       }
     }
+    "get data stream lifecycle" - {
+      "without data_streams rule should" - {
+        "allow to get data stream lifecycle" excludeES(allEs6x, allEs7x, allEs8xBelowEs815x) in {
+          val dataStream = DataStreamNameGenerator.next("admin")
+          createDataStream(dataStream)
+
+          val response = adminDataStreamManager.getDataStreamLifecycle(dataStream)
+          response should have statusCode 200
+        }
+      }
+      "with data_streams rule should" - {
+        "allow to get data stream lifecycle when" - {
+          "the data stream name does match the allowed data stream names" excludeES(allEs6x, allEs7x, allEs8xBelowEs815x) in {
+            val dataStream = DataStreamNameGenerator.next("test")
+            createDataStream(dataStream)
+
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
+            val response = dsm.getDataStreamLifecycle(dataStream)
+            response should have statusCode 200
+          }
+        }
+        "forbid to get data stream lifecycle when" - {
+          "the data stream name does not match the allowed data stream names" excludeES(allEs6x, allEs7x, allEs8xBelowEs815x) in {
+            val dataStream = DataStreamNameGenerator.next("admin")
+            createDataStream(dataStream)
+
+            val dsm = new DataStreamManager(user1Client, esVersionUsed)
+            val response = dsm.getDataStreamLifecycle(dataStream)
+            response should have statusCode 403
+          }
+        }
+      }
+    }
     "delete data stream" - {
       "without data_streams rule should" - {
         "allow to delete all data streams" excludeES(allEs6x, allEs7xBelowEs79x) in {

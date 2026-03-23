@@ -169,6 +169,7 @@ private[indices] trait ComponentTemplateIndices
   }
 
   private def findTemplateBy(name: TemplateName, in: TemplateRequestBlockContext) = {
+    given RequestId = in.requestContext.id.toRequestId
     in.requestContext.esServices.clusterService.componentTemplates.find(_.name == name)
   }
 
@@ -177,6 +178,7 @@ private[indices] trait ComponentTemplateIndices
   }
 
   private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.ComponentTemplate] = {
+    given RequestId = in.requestContext.id.toRequestId
     filterTemplates(namePatterns, in.requestContext.esServices.clusterService.componentTemplates)
   }
 
