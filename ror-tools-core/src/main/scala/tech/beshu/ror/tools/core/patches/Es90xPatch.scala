@@ -23,7 +23,7 @@ import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, CreateRorIndicesResolverClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
@@ -56,6 +56,7 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     XPackSecurityJarPatchCreator(
       OpenModule,
       CreateRorAuthorizationInfoProviderClass(esVersion),
+      CreateRorIndicesResolverClass(),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
       ModifyRBACEngineClass,

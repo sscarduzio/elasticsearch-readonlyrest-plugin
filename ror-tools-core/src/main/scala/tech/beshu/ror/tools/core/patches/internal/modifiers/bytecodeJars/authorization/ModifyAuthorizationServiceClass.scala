@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.author
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7160}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7160, es8190}
 
 import java.io.{File, InputStream}
 
@@ -178,9 +178,40 @@ private[patches] class ModifyAuthorizationServiceClass private(esVersion: SemVer
         /* itf = */ false
       )
       // -- end: ensure _indices_permissions --
-      // listener.onResponse(null)
+      // -- begin: resolve indices on Replaceable requests (ES 8.19+) --
       underlying.visitLabel(label5)
       underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+      if (esVersion >= es8190) {
+        // RorIndicesResolver.resolveIndices(action, originalRequest, this.clusterService, this.indicesAndAliasesResolver)
+        underlying.visitVarInsn(Opcodes.ALOAD, 2) // action
+        underlying.visitVarInsn(Opcodes.ALOAD, 3) // originalRequest
+        underlying.visitVarInsn(Opcodes.ALOAD, 0) // this
+        underlying.visitFieldInsn(
+          Opcodes.GETFIELD,
+          "org/elasticsearch/xpack/security/authz/AuthorizationService",
+          "clusterService",
+          "Lorg/elasticsearch/cluster/service/ClusterService;"
+        )
+        underlying.visitVarInsn(Opcodes.ALOAD, 0) // this
+        underlying.visitFieldInsn(
+          Opcodes.GETFIELD,
+          "org/elasticsearch/xpack/security/authz/AuthorizationService",
+          "indicesAndAliasesResolver",
+          "Lorg/elasticsearch/xpack/security/authz/IndicesAndAliasesResolver;"
+        )
+        underlying.visitMethodInsn(
+          Opcodes.INVOKESTATIC,
+          "org/elasticsearch/xpack/security/authz/RorIndicesResolver",
+          "resolveIndices",
+          "(Ljava/lang/String;" +
+            "Lorg/elasticsearch/transport/TransportRequest;" +
+            "Lorg/elasticsearch/cluster/service/ClusterService;" +
+            "Lorg/elasticsearch/xpack/security/authz/IndicesAndAliasesResolver;)V",
+          /* itf = */ false
+        )
+      }
+      // -- end: resolve indices --
+      // listener.onResponse(null)
       underlying.visitVarInsn(Opcodes.ALOAD, 4)
       underlying.visitInsn(Opcodes.ACONST_NULL)
       underlying.visitMethodInsn(
@@ -239,7 +270,7 @@ private[patches] class ModifyAuthorizationServiceClass private(esVersion: SemVer
         label10,
         4
       )
-      underlying.visitMaxs(3, 5)
+      underlying.visitMaxs(4, 5)
       underlying.visitEnd()
     }
   }
