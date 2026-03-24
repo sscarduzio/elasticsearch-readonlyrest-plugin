@@ -22,6 +22,7 @@ import cats.effect.Resource
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
+import io.lemonlabs.uri.config.UriConfig
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, NodeCredentials, RemoteAuditCluster}
@@ -42,7 +43,7 @@ final class AuditRemoteClusterHealthcheck(httpClientsFactory: HttpClientsFactory
   import AuditRemoteClusterHealthcheck.*
   import AuditRemoteClusterHealthcheck.given Show[AuditClusterNode]
 
-  def check(cluster: RemoteAuditCluster): Task[Either[String, Unit]] = {
+  def check(cluster: RemoteAuditCluster): Task[Either[Error, Unit]] = {
     implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
     val auditClusterNodes = cluster.nodes.toNonEmptyList
     createHttpClient(auditClusterNodes)
@@ -71,13 +72,13 @@ final class AuditRemoteClusterHealthcheck(httpClientsFactory: HttpClientsFactory
           _ <- Either.cond(auditNodesPerEsCluster.size == 1, (), "Configured remote cluster for audit contains ES nodes belonging to different ES clusters. One audit sink can use only nodes from one cluster. See https://docs.readonlyrest.com/elasticsearch/audit#custom-audit-cluster")
         } yield ())
           .leftMap {
-            details => s"Audit cluster healthcheck failed for remote cluster ${cluster.nodes.toList.map(_.show).show}. Details: $details"
+            details => Error(s"Audit cluster healthcheck failed for remote cluster ${cluster.nodes.toList.map(_.show).show}. Details: $details")
           }
       }
       .recover {
         case NonFatal(ex) =>
           logger.error("Unexpected error while remote audit cluster healthcheck", ex)
-          Left("Unexpected error while remote audit cluster healthcheck")
+          Left(Error("Unexpected error while remote audit cluster healthcheck"))
       }
   }
 
@@ -97,7 +98,7 @@ final class AuditRemoteClusterHealthcheck(httpClientsFactory: HttpClientsFactory
           _ <- Either.cond(response.status == 200, (), ConnectionError.UnexpectedResponse(node, s"Unexpected status code: ${response.status} for GET cluster info request"))
           responseJson <- io.circe.parser.parse(response.body).leftMap(_ => ConnectionError.UnexpectedResponse(node, "Response is not a valid JSON"))
           clusterInfo <- responseJson.as[ClusterInfoResponse].leftMap {
-            _ => ConnectionError.UnexpectedResponse(node, s"Invalid response for GET cluster info request")
+            _ => ConnectionError.UnexpectedResponse(node, "Invalid response for GET cluster info request")
           }
         } yield AuditNodeInfo(node, clusterInfo)
       }
@@ -123,6 +124,12 @@ final class AuditRemoteClusterHealthcheck(httpClientsFactory: HttpClientsFactory
   private def toBasicAuthHeader(nodeCredentials: NodeCredentials): Header =
     BasicAuth.fromCredentials(Credentials(User.Id(nodeCredentials.username), PlainTextSecret(nodeCredentials.password))).header
 
+  private def httpClientConfig(poolSize: Int Refined Positive) = Config(
+    connectionTimeout = positiveFiniteDuration(10, TimeUnit.SECONDS),
+    requestTimeout = positiveFiniteDuration(20, TimeUnit.SECONDS),
+    connectionPoolSize = poolSize,
+    validate = false
+  )
 
   private def withRetries[E, A](source: => Task[Either[E, A]]) =
     retryBackoffEither(
@@ -134,28 +141,29 @@ final class AuditRemoteClusterHealthcheck(httpClientsFactory: HttpClientsFactory
 
   private val retryConfig: RetryConfig = RetryConfig(initialDelay = 500.milliseconds, backoffScaler = 2, maxRetries = 3)
 
-  private def httpClientConfig(poolSize: Int Refined Positive) = Config(
-    connectionTimeout = positiveFiniteDuration(10, TimeUnit.SECONDS),
-    requestTimeout = positiveFiniteDuration(20, TimeUnit.SECONDS),
-    connectionPoolSize = poolSize,
-    validate = false
-  )
-
 }
 
 object AuditRemoteClusterHealthcheck {
 
-  given Show[AuditClusterNode] = Show.show(_.toUrl.show)
+  final case class Error(message: String)
 
-  final case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)
+  private given Show[AuditClusterNode] = Show.show { n =>
+    val url = n.toUrl
+    url.authorityOption match {
+      case Some(authority) => url.withAuthority(authority.copy(userInfo = None)(using UriConfig.default)).toUrl.show
+      case None => url.show
+    }
+  }
 
-  final case class AuditNodeInfo(node: AuditClusterNode, info: ClusterInfoResponse)
+  private final case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)
 
-  final case class ClusterInfoResponse(nodeName: String,
+  private final case class AuditNodeInfo(node: AuditClusterNode, info: ClusterInfoResponse)
+
+  private final case class ClusterInfoResponse(nodeName: String,
                                        clusterName: String,
                                        clusterUuid: String)
 
-  object ClusterInfoResponse {
+  private object ClusterInfoResponse {
     given Decoder[ClusterInfoResponse] = Decoder.forProduct3("name", "cluster_name", "cluster_uuid")(
       (name: String, clusterName: String, clusterUuid: String) =>
         ClusterInfoResponse(
@@ -164,9 +172,9 @@ object AuditRemoteClusterHealthcheck {
     )
   }
 
-  sealed trait ConnectionError
+  private sealed trait ConnectionError
 
-  object ConnectionError {
+  private object ConnectionError {
     final case class UnexpectedResponse(node: AuditClusterNode, message: String) extends ConnectionError
 
     final case class UnexpectedConnectionError(node: AuditClusterNode, cause: Throwable) extends ConnectionError

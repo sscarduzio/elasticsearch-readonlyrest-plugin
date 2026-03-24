@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
-import org.elasticsearch.client.{Request, Response, ResponseListener, RestClient}
+import org.elasticsearch.client.*
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.es.services.FailoverClient.*
 import tech.beshu.ror.es.utils.RestResponseOps.*
@@ -89,7 +89,7 @@ final class FailoverClient private(nodeClients: NonEmptyList[NodeClient]) extend
           request,
           new ResponseListener {
             override def onSuccess(response: Response): Unit = {
-              onNodeSuccess(nodeClient.id, response)
+              onNodeSuccess(nodeClient.id)
               finalListener.onSuccess(response)
             }
 
@@ -104,38 +104,41 @@ final class FailoverClient private(nodeClients: NonEmptyList[NodeClient]) extend
           request,
           new ResponseListener {
             override def onSuccess(response: Response): Unit = {
-              onNodeSuccess(nodeClient.id, response)
-              if (response.isRetryable) {
-                performWithFailover(NonEmptyList.fromListUnsafe(nonEmptyOtherClients), request, finalListener)
-              } else {
-                finalListener.onSuccess(response)
-              }
+              onNodeSuccess(nodeClient.id)
+              finalListener.onSuccess(response)
             }
 
             override def onFailure(exception: Exception): Unit = {
-              onNodeFailure(nodeClient.id, exception)
-              performWithFailover(NonEmptyList.fromListUnsafe(nonEmptyOtherClients), request, finalListener)
+              onNodeFailure(nodeClient.id, exception) match {
+                case FailoverDecision.TryNextNode =>
+                  performWithFailover(NonEmptyList.fromListUnsafe(nonEmptyOtherClients), request, finalListener)
+                case FailoverDecision.Stop =>
+                  finalListener.onFailure(exception)
+              }
             }
           }
         )
     }
   }
 
-  private def onNodeSuccess(nodeId: NodeId, response: Response)(using RequestId): Unit = {
-    if (response.isRetryable) {
-      logger.debug(s"Client with ID ${nodeId.value} returned retryable status code.")
-      updateBackoffStateOnFailure(nodeId)
-    } else {
-      logger.debug(s"Client with ID ${nodeId.value} succeeded.")
-      backoffState.remove(nodeId)
-    }
+  private def onNodeSuccess(nodeId: NodeId)(using RequestId): Unit = {
+    logger.debug(s"Client with ID ${nodeId.value} succeeded.")
+    backoffState.remove(nodeId)
   }
 
-  private def onNodeFailure(nodeId: NodeId, exception: Exception)(using RequestId): Unit = {
+  private def onNodeFailure(nodeId: NodeId, exception: Exception)(using RequestId): FailoverDecision = {
     logger.debug(s"Client with ID ${nodeId.value} failed.", exception)
     exception match {
-      case _: IOException => updateBackoffStateOnFailure(nodeId)
-      case _ => ()
+      case r: ResponseException if r.getResponse.isRetryable =>
+        updateBackoffStateOnFailure(nodeId)
+        FailoverDecision.TryNextNode
+      case _: ResponseException =>
+        FailoverDecision.Stop
+      case _: IOException =>
+        updateBackoffStateOnFailure(nodeId)
+        FailoverDecision.TryNextNode
+      case _ =>
+        FailoverDecision.Stop
     }
   }
 
@@ -161,6 +164,14 @@ object FailoverClient {
   private final class NodeClient(val id: NodeId, val restClient: RestClient)
 
   private final class NodeState(val client: NodeClient, val state: BackoffState)
+
+  private sealed trait FailoverDecision
+
+  private object FailoverDecision {
+    case object TryNextNode extends FailoverDecision
+
+    case object Stop extends FailoverDecision
+  }
 
   private final case class BackoffState(failureCount: Int, deadUntilMillis: Long) {
     def isAlive: Boolean = System.currentTimeMillis() >= deadUntilMillis
