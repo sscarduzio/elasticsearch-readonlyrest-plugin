@@ -16,8 +16,10 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
+import tech.beshu.ror.tools.core.utils.EsUtil.{es910, es930}
 
 import java.io.File
 
@@ -34,34 +36,12 @@ import java.io.File
  *    – inner class implementing `AuthorizationEngine.AuthorizedIndices` that
  *      authorizes every index (returns all cluster indices from metadata).
  *
- * Java equivalent:
- * {{{
- * package org.elasticsearch.xpack.security.authz;
- *
- * public final class RorIndicesResolver {
- *     public static void resolveIndices(String action, TransportRequest request,
- *                                       ClusterService clusterService,
- *                                       IndicesAndAliasesResolver resolver) {
- *         if (!(request instanceof IndicesRequest.Replaceable)) return;
- *         try {
- *             Metadata metadata = clusterService.state().metadata();
- *             AllIndicesAuthorized auth = new AllIndicesAuthorized(metadata);
- *             resolver.resolve(action, request, metadata, auth);
- *         } catch (Exception e) { /* swallow – ROR ACL handles it */ }
- *     }
- *
- *     static final class AllIndicesAuthorized implements AuthorizedIndices {
- *         private final Metadata metadata;
- *         AllIndicesAuthorized(Metadata metadata) { this.metadata = metadata; }
- *         public Set<String> all(IndexComponentSelector s) {
- *             return metadata.getIndicesLookup().keySet();
- *         }
- *         public boolean check(String name, IndexComponentSelector s) { return true; }
- *     }
- * }
- * }}}
+ * Version-specific handling:
+ *  - ES 8.19.x–9.0.x: resolve(action, request, Metadata, AuthorizedIndices)
+ *  - ES 9.1.x–9.2.x:  resolve(action, request, ProjectMetadata, AuthorizedIndices)
+ *  - ES 9.3.x+:        resolve(action, request, ProjectMetadata, AuthorizedIndices, TargetProjects)
  */
-private[patches] class CreateRorIndicesResolverClass
+private[patches] class CreateRorIndicesResolverClass(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   private val outerName = "org/elasticsearch/xpack/security/authz/RorIndicesResolver"
@@ -69,12 +49,23 @@ private[patches] class CreateRorIndicesResolverClass
 
   private val authorizedIndicesIface =
     "org/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizedIndices"
-  private val metadataDesc = "Lorg/elasticsearch/cluster/metadata/Metadata;"
+  private val metadataClass = "org/elasticsearch/cluster/metadata/Metadata"
+  private val metadataDesc = s"L$metadataClass;"
+  private val projectMetadataClass = "org/elasticsearch/cluster/metadata/ProjectMetadata"
+  private val projectMetadataDesc = s"L$projectMetadataClass;"
   private val clusterServiceClass = "org/elasticsearch/cluster/service/ClusterService"
   private val resolverClass = "org/elasticsearch/xpack/security/authz/IndicesAndAliasesResolver"
   private val transportRequestClass = "org/elasticsearch/transport/TransportRequest"
   private val replaceableClass = "org/elasticsearch/action/IndicesRequest$Replaceable"
   private val indexComponentSelectorDesc = "Lorg/elasticsearch/action/support/IndexComponentSelector;"
+  private val targetProjectsClass = "org/elasticsearch/search/crossproject/TargetProjects"
+
+  private val usesProjectMetadata: Boolean = esVersion >= es910
+  private val usesTargetProjects: Boolean = esVersion >= es930
+
+  // The metadata type used for the inner class field and the resolve() call
+  private val effectiveMetadataClass: String = if (usesProjectMetadata) projectMetadataClass else metadataClass
+  private val effectiveMetadataDesc: String = if (usesProjectMetadata) projectMetadataDesc else metadataDesc
 
   override def apply(jar: File): Unit = {
     addNewFileToJar(
@@ -186,35 +177,67 @@ private[patches] class CreateRorIndicesResolverClass
       s"()$metadataDesc",
       false
     )
-    mv.visitVarInsn(Opcodes.ASTORE, 4) // metadata -> slot 4
 
-    // AllIndicesAuthorized auth = new AllIndicesAuthorized(metadata);
+    if (usesProjectMetadata) {
+      // ProjectMetadata pm = metadata.getProject();
+      mv.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        metadataClass,
+        "getProject",
+        s"()$projectMetadataDesc",
+        false
+      )
+    }
+
+    mv.visitVarInsn(Opcodes.ASTORE, 4) // metadata/projectMetadata -> slot 4
+
+    // AllIndicesAuthorized auth = new AllIndicesAuthorized(metadata/projectMetadata);
     mv.visitTypeInsn(Opcodes.NEW, innerName)
     mv.visitInsn(Opcodes.DUP)
-    mv.visitVarInsn(Opcodes.ALOAD, 4) // metadata
+    mv.visitVarInsn(Opcodes.ALOAD, 4)
     mv.visitMethodInsn(
       Opcodes.INVOKESPECIAL,
       innerName,
       "<init>",
-      s"($metadataDesc)V",
+      s"($effectiveMetadataDesc)V",
       false
     )
     mv.visitVarInsn(Opcodes.ASTORE, 5) // auth -> slot 5
 
-    // resolver.resolve(action, request, metadata, auth);
+    // resolver.resolve(action, request, metadata/projectMetadata, auth [, targetProjects]);
     mv.visitVarInsn(Opcodes.ALOAD, 3) // resolver
     mv.visitVarInsn(Opcodes.ALOAD, 0) // action
     mv.visitVarInsn(Opcodes.ALOAD, 1) // request
-    mv.visitVarInsn(Opcodes.ALOAD, 4) // metadata
+    mv.visitVarInsn(Opcodes.ALOAD, 4) // metadata/projectMetadata
     mv.visitVarInsn(Opcodes.ALOAD, 5) // auth
-    mv.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      resolverClass,
-      "resolve",
-      s"(Ljava/lang/String;L$transportRequestClass;${metadataDesc}L$authorizedIndicesIface;)" +
-        "Lorg/elasticsearch/xpack/core/security/authz/ResolvedIndices;",
-      false
-    )
+
+    if (usesTargetProjects) {
+      // TargetProjects.LOCAL_ONLY_FOR_CPS_DISABLED
+      mv.visitFieldInsn(
+        Opcodes.GETSTATIC,
+        targetProjectsClass,
+        "LOCAL_ONLY_FOR_CPS_DISABLED",
+        s"L$targetProjectsClass;"
+      )
+      mv.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        resolverClass,
+        "resolve",
+        s"(Ljava/lang/String;L$transportRequestClass;${effectiveMetadataDesc}L$authorizedIndicesIface;L$targetProjectsClass;)" +
+          "Lorg/elasticsearch/xpack/core/security/authz/ResolvedIndices;",
+        false
+      )
+    } else {
+      mv.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        resolverClass,
+        "resolve",
+        s"(Ljava/lang/String;L$transportRequestClass;${effectiveMetadataDesc}L$authorizedIndicesIface;)" +
+          "Lorg/elasticsearch/xpack/core/security/authz/ResolvedIndices;",
+        false
+      )
+    }
+
     mv.visitInsn(Opcodes.POP) // discard ResolvedIndices return value
 
     mv.visitLabel(labelTryEnd)
@@ -239,7 +262,8 @@ private[patches] class CreateRorIndicesResolverClass
     mv.visitLocalVariable("clusterService", s"L$clusterServiceClass;", null, labelStart, labelEnd, 2)
     mv.visitLocalVariable("resolver", s"L$resolverClass;", null, labelStart, labelEnd, 3)
 
-    mv.visitMaxs(5, 6)
+    val maxStack = if (usesTargetProjects) 6 else 5
+    mv.visitMaxs(maxStack, 6)
     mv.visitEnd()
   }
 
@@ -274,16 +298,16 @@ private[patches] class CreateRorIndicesResolverClass
       Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE
     )
 
-    // private final Metadata metadata;
+    // private final Metadata/ProjectMetadata metadata;
     cw.visitField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
       "metadata",
-      metadataDesc,
+      effectiveMetadataDesc,
       null,
       null
     ).visitEnd()
 
-    // <init>(Metadata metadata)
+    // <init>(Metadata/ProjectMetadata metadata)
     emitInnerConstructor(cw)
 
     // public Set<String> all(IndexComponentSelector selector)
@@ -300,7 +324,7 @@ private[patches] class CreateRorIndicesResolverClass
     val mv = cw.visitMethod(
       Opcodes.ACC_PUBLIC,
       "<init>",
-      s"($metadataDesc)V",
+      s"($effectiveMetadataDesc)V",
       null,
       null
     )
@@ -313,7 +337,7 @@ private[patches] class CreateRorIndicesResolverClass
     // this.metadata = metadata
     mv.visitVarInsn(Opcodes.ALOAD, 0)
     mv.visitVarInsn(Opcodes.ALOAD, 1)
-    mv.visitFieldInsn(Opcodes.PUTFIELD, innerName, "metadata", metadataDesc)
+    mv.visitFieldInsn(Opcodes.PUTFIELD, innerName, "metadata", effectiveMetadataDesc)
 
     mv.visitInsn(Opcodes.RETURN)
     mv.visitMaxs(2, 2)
@@ -333,10 +357,10 @@ private[patches] class CreateRorIndicesResolverClass
 
     // return this.metadata.getIndicesLookup().keySet();
     mv.visitVarInsn(Opcodes.ALOAD, 0) // this
-    mv.visitFieldInsn(Opcodes.GETFIELD, innerName, "metadata", metadataDesc)
+    mv.visitFieldInsn(Opcodes.GETFIELD, innerName, "metadata", effectiveMetadataDesc)
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
-      "org/elasticsearch/cluster/metadata/Metadata",
+      effectiveMetadataClass,
       "getIndicesLookup",
       "()Ljava/util/SortedMap;",
       false
@@ -388,5 +412,5 @@ private[patches] class CreateRorIndicesResolverClass
 }
 
 object CreateRorIndicesResolverClass {
-  def apply(): CreateRorIndicesResolverClass = new CreateRorIndicesResolverClass()
+  def apply(esVersion: SemVer): CreateRorIndicesResolverClass = new CreateRorIndicesResolverClass(esVersion)
 }

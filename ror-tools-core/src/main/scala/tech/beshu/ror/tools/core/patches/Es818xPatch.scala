@@ -56,7 +56,7 @@ private[patches] class Es818xPatch(rorPluginDirectory: RorPluginDirectory, esVer
     XPackSecurityJarPatchCreator(
       OpenModule,
       CreateRorAuthorizationInfoProviderClass(esVersion),
-      CreateRorIndicesResolverClass(),
+      CreateRorIndicesResolverClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
       ModifyRBACEngineClass,

@@ -56,7 +56,7 @@ private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVers
     XPackSecurityJarPatchCreator(
       OpenModule,
       CreateRorAuthorizationInfoProviderClass(esVersion),
-      CreateRorIndicesResolverClass(),
+      CreateRorIndicesResolverClass(esVersion),
       ModifyAuthenticationChainClass(esVersion),
       ModifyAuthorizationServiceClass(esVersion),
       ModifyRBACEngineClass,
