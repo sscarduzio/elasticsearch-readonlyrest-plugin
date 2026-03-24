@@ -330,7 +330,7 @@ object AuditingTool extends RequestIdAwareLogging {
       case cluster: RemoteAuditCluster if !cluster.ignoreClusterConnectivityProblems =>
         new AuditRemoteClusterHealthcheck(httpClientsFactory)
           .check(cluster)
-          .map(_.leftMap(CreationError.apply))
+          .map(_.leftMap(error => CreationError(error.message)))
       case AuditCluster.LocalAuditCluster | _: AuditCluster.RemoteAuditCluster =>
         Task.pure(Right(()))
     }
