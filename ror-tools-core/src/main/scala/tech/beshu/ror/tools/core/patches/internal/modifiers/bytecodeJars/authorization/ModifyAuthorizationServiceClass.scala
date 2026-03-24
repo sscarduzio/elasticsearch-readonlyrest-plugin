@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.author
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7160, es8190}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7160, es8180}
 
 import java.io.{File, InputStream}
 
@@ -178,10 +178,10 @@ private[patches] class ModifyAuthorizationServiceClass private(esVersion: SemVer
         /* itf = */ false
       )
       // -- end: ensure _indices_permissions --
-      // -- begin: resolve indices on Replaceable requests (ES 8.19+) --
+      // -- begin: resolve indices on Replaceable requests (ES 8.18+) --
       underlying.visitLabel(label5)
       underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
-      if (esVersion >= es8190) {
+      if (esVersion >= es8180) {
         // RorIndicesResolver.resolveIndices(action, originalRequest, this.clusterService, this.indicesAndAliasesResolver)
         underlying.visitVarInsn(Opcodes.ALOAD, 2) // action
         underlying.visitVarInsn(Opcodes.ALOAD, 3) // originalRequest

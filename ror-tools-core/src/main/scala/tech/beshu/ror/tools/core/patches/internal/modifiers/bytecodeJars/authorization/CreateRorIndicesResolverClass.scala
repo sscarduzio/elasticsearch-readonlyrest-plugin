@@ -19,7 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.author
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
-import tech.beshu.ror.tools.core.utils.EsUtil.{es910, es930}
+import tech.beshu.ror.tools.core.utils.EsUtil.{es8190, es910, es930}
 
 import java.io.File
 
@@ -37,9 +37,10 @@ import java.io.File
  *      authorizes every index (returns all cluster indices from metadata).
  *
  * Version-specific handling:
- *  - ES 8.19.x–9.0.x: resolve(action, request, Metadata, AuthorizedIndices)
- *  - ES 9.1.x–9.2.x:  resolve(action, request, ProjectMetadata, AuthorizedIndices)
- *  - ES 9.3.x+:        resolve(action, request, ProjectMetadata, AuthorizedIndices, TargetProjects)
+ *  - ES 8.18.x:        resolve(Metadata, AuthorizedIndices{all()->Supplier, check(String)})
+ *  - ES 8.19.x–9.0.x:  resolve(Metadata, AuthorizedIndices{all(Selector), check(String,Selector)})
+ *  - ES 9.1.x–9.2.x:   resolve(ProjectMetadata, AuthorizedIndices{all(Selector), check(String,Selector)})
+ *  - ES 9.3.x+:         resolve(ProjectMetadata, AuthorizedIndices, TargetProjects)
  */
 private[patches] class CreateRorIndicesResolverClass(esVersion: SemVer)
   extends BytecodeJarModifier {
@@ -60,6 +61,7 @@ private[patches] class CreateRorIndicesResolverClass(esVersion: SemVer)
   private val indexComponentSelectorDesc = "Lorg/elasticsearch/action/support/IndexComponentSelector;"
   private val targetProjectsClass = "org/elasticsearch/search/crossproject/TargetProjects"
 
+  private val usesIndexComponentSelector: Boolean = esVersion >= es8190
   private val usesProjectMetadata: Boolean = esVersion >= es910
   private val usesTargetProjects: Boolean = esVersion >= es930
 
@@ -310,10 +312,10 @@ private[patches] class CreateRorIndicesResolverClass(esVersion: SemVer)
     // <init>(Metadata/ProjectMetadata metadata)
     emitInnerConstructor(cw)
 
-    // public Set<String> all(IndexComponentSelector selector)
+    // all() — version-specific signature
     emitAllMethod(cw)
 
-    // public boolean check(String name, IndexComponentSelector selector)
+    // check() — version-specific signature
     emitCheckMethod(cw)
 
     cw.visitEnd()
@@ -345,56 +347,153 @@ private[patches] class CreateRorIndicesResolverClass(esVersion: SemVer)
   }
 
   private def emitAllMethod(cw: ClassWriter): Unit = {
-    // public Set<String> all(IndexComponentSelector selector)
-    val mv = cw.visitMethod(
-      Opcodes.ACC_PUBLIC,
-      "all",
-      s"($indexComponentSelectorDesc)Ljava/util/Set;",
-      null,
-      null
-    )
-    mv.visitCode()
+    if (usesIndexComponentSelector) {
+      // ES 8.19+: public Set<String> all(IndexComponentSelector selector)
+      val mv = cw.visitMethod(
+        Opcodes.ACC_PUBLIC,
+        "all",
+        s"($indexComponentSelectorDesc)Ljava/util/Set;",
+        null,
+        null
+      )
+      mv.visitCode()
 
-    // return this.metadata.getIndicesLookup().keySet();
-    mv.visitVarInsn(Opcodes.ALOAD, 0) // this
-    mv.visitFieldInsn(Opcodes.GETFIELD, innerName, "metadata", effectiveMetadataDesc)
-    mv.visitMethodInsn(
-      Opcodes.INVOKEVIRTUAL,
-      effectiveMetadataClass,
-      "getIndicesLookup",
-      "()Ljava/util/SortedMap;",
-      false
-    )
-    mv.visitMethodInsn(
-      Opcodes.INVOKEINTERFACE,
-      "java/util/SortedMap",
-      "keySet",
-      "()Ljava/util/Set;",
-      true
-    )
-    mv.visitInsn(Opcodes.ARETURN)
+      // return this.metadata.getIndicesLookup().keySet();
+      mv.visitVarInsn(Opcodes.ALOAD, 0) // this
+      mv.visitFieldInsn(Opcodes.GETFIELD, innerName, "metadata", effectiveMetadataDesc)
+      mv.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        effectiveMetadataClass,
+        "getIndicesLookup",
+        "()Ljava/util/SortedMap;",
+        false
+      )
+      mv.visitMethodInsn(
+        Opcodes.INVOKEINTERFACE,
+        "java/util/SortedMap",
+        "keySet",
+        "()Ljava/util/Set;",
+        true
+      )
+      mv.visitInsn(Opcodes.ARETURN)
 
-    mv.visitMaxs(1, 2)
-    mv.visitEnd()
+      mv.visitMaxs(1, 2)
+      mv.visitEnd()
+    } else {
+      // ES 8.18.x: public Supplier<Set<String>> all()
+      // Returns a Supplier that yields this.metadata.getIndicesLookup().keySet()
+      //
+      // We generate a private static helper method lambda$all$0(Set):Set that just returns
+      // its argument, then use invokedynamic + LambdaMetafactory to wrap the eagerly-computed
+      // set into a Supplier.
+
+      // First, emit the helper: private static Set lambda$all$0(Set s) { return s; }
+      val helper = cw.visitMethod(
+        Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
+        "lambda$all$0",
+        "(Ljava/util/Set;)Ljava/util/Set;",
+        null,
+        null
+      )
+      helper.visitCode()
+      helper.visitVarInsn(Opcodes.ALOAD, 0)
+      helper.visitInsn(Opcodes.ARETURN)
+      helper.visitMaxs(1, 1)
+      helper.visitEnd()
+
+      // Now emit all():
+      val mv = cw.visitMethod(
+        Opcodes.ACC_PUBLIC,
+        "all",
+        "()Ljava/util/function/Supplier;",
+        null,
+        null
+      )
+      mv.visitCode()
+
+      // Set<String> set = this.metadata.getIndicesLookup().keySet();
+      mv.visitVarInsn(Opcodes.ALOAD, 0) // this
+      mv.visitFieldInsn(Opcodes.GETFIELD, innerName, "metadata", effectiveMetadataDesc)
+      mv.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        effectiveMetadataClass,
+        "getIndicesLookup",
+        "()Ljava/util/SortedMap;",
+        false
+      )
+      mv.visitMethodInsn(
+        Opcodes.INVOKEINTERFACE,
+        "java/util/SortedMap",
+        "keySet",
+        "()Ljava/util/Set;",
+        true
+      )
+      mv.visitVarInsn(Opcodes.ASTORE, 1) // set -> slot 1
+
+      // return () -> set;  (via invokedynamic capturing the set)
+      val bootstrapHandle = new Handle(
+        Opcodes.H_INVOKESTATIC,
+        "java/lang/invoke/LambdaMetafactory",
+        "metafactory",
+        "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+        false
+      )
+
+      mv.visitVarInsn(Opcodes.ALOAD, 1) // set
+      mv.visitInvokeDynamicInsn(
+        "get",                                            // SAM method name
+        "(Ljava/util/Set;)Ljava/util/function/Supplier;", // factory descriptor (captures Set, returns Supplier)
+        bootstrapHandle,
+        Array[AnyRef](
+          org.objectweb.asm.Type.getType("()Ljava/lang/Object;"),  // erased SAM signature
+          new Handle(
+            Opcodes.H_INVOKESTATIC,
+            innerName,
+            "lambda$all$0",
+            "(Ljava/util/Set;)Ljava/util/Set;",
+            false
+          ),
+          org.objectweb.asm.Type.getType("()Ljava/util/Set;")     // instantiated SAM signature
+        ): _*
+      )
+
+      mv.visitInsn(Opcodes.ARETURN)
+
+      mv.visitMaxs(2, 2)
+      mv.visitEnd()
+    }
   }
 
   private def emitCheckMethod(cw: ClassWriter): Unit = {
-    // public boolean check(String name, IndexComponentSelector selector)
-    val mv = cw.visitMethod(
-      Opcodes.ACC_PUBLIC,
-      "check",
-      s"(Ljava/lang/String;$indexComponentSelectorDesc)Z",
-      null,
-      null
-    )
-    mv.visitCode()
-
-    // return true;
-    mv.visitInsn(Opcodes.ICONST_1)
-    mv.visitInsn(Opcodes.IRETURN)
-
-    mv.visitMaxs(1, 3)
-    mv.visitEnd()
+    if (usesIndexComponentSelector) {
+      // ES 8.19+: public boolean check(String name, IndexComponentSelector selector)
+      val mv = cw.visitMethod(
+        Opcodes.ACC_PUBLIC,
+        "check",
+        s"(Ljava/lang/String;$indexComponentSelectorDesc)Z",
+        null,
+        null
+      )
+      mv.visitCode()
+      mv.visitInsn(Opcodes.ICONST_1)
+      mv.visitInsn(Opcodes.IRETURN)
+      mv.visitMaxs(1, 3)
+      mv.visitEnd()
+    } else {
+      // ES 8.18.x: public boolean check(String name)
+      val mv = cw.visitMethod(
+        Opcodes.ACC_PUBLIC,
+        "check",
+        "(Ljava/lang/String;)Z",
+        null,
+        null
+      )
+      mv.visitCode()
+      mv.visitInsn(Opcodes.ICONST_1)
+      mv.visitInsn(Opcodes.IRETURN)
+      mv.visitMaxs(1, 2)
+      mv.visitEnd()
+    }
   }
 
   // ---------------------------------------------------------------------------
