@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import better.files.*
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es8180, es8190, es910, es930}
-
-import java.io.File
 
 /**
  * Adds two new classes to the xpack security JAR:
