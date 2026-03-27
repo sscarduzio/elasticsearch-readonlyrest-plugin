@@ -21,6 +21,7 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.SecurityType
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.misc.Version
 
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
@@ -164,6 +165,16 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       "be allowed" excludeES(allEs6x, allEs7xBelowEs77x) in {
         val response = adminXpackApiManager.grantApiKeyPrivilege("admin", "admin")
         response should have statusCode 200
+      }
+    }
+  }
+
+  "Search API" when {
+    "request with remote indices pattern is called" should {
+      "return indices successfully because cross-cluster calls are supported" excludeES allEs6x in {
+        val adminSearchManager = new SearchManager(adminClient, esVersionUsed)
+        val result = adminSearchManager.search("*,*:*")
+        result should have statusCode 200
       }
     }
   }
