@@ -18,10 +18,10 @@ package tech.beshu.ror.accesscontrol.audit.configurable
 
 import cats.parse.{Parser0, Parser as P}
 import cats.syntax.list.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldValueDescriptor
 
-object AuditFieldValueDescriptorParser extends Logging {
+object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
 
   private val lbrace = P.char('{')
   private val rbrace = P.char('}')
@@ -58,11 +58,12 @@ object AuditFieldValueDescriptorParser extends Logging {
   private def deserializerAuditFieldValueDescriptor(str: String): Option[AuditFieldValueDescriptor] = {
     str.toUpperCase match {
       case "IS_MATCHED" => Some(AuditFieldValueDescriptor.IsMatched)
+      case "MATCHED_BLOCK_NAMES" => Some(AuditFieldValueDescriptor.MatchedBlockNames)
       case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
       case "ECS_EVENT_OUTCOME" => Some(AuditFieldValueDescriptor.EcsEventOutcome)
       case "REASON" => Some(AuditFieldValueDescriptor.Reason)
       case "USER" =>
-        logger.warn(
+        noRequestIdLogger.warn(
           """The USER audit value placeholder is deprecated and should not be used in the configurable audit log serializer.
             |Please use LOGGED_USER or PRESENTED_IDENTITY instead. Check the list of available placeholders in the documentation:
             |https://docs.readonlyrest.com/elasticsearch/audit#using-configurable-serializer.
@@ -75,6 +76,7 @@ object AuditFieldValueDescriptorParser extends Logging {
       case "ACTION" => Some(AuditFieldValueDescriptor.Action)
       case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
       case "ACL_HISTORY" => Some(AuditFieldValueDescriptor.AclHistory)
+      case "BLOCKS_HISTORY" => Some(AuditFieldValueDescriptor.BlocksHistory)
       case "PROCESSING_DURATION_MILLIS" => Some(AuditFieldValueDescriptor.ProcessingDurationMillis)
       case "PROCESSING_DURATION_NANOS" => Some(AuditFieldValueDescriptor.ProcessingDurationNanos)
       case "TIMESTAMP" => Some(AuditFieldValueDescriptor.Timestamp)

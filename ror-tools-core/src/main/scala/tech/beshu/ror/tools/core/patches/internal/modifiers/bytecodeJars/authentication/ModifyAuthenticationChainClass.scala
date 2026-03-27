@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.*
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   Replace AuthenticatorChain#doAuthenticate with a short-circuit. We add the X-elastic-product: Elasticsearch header,
@@ -106,30 +107,39 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         val label1 = new Label()
         underlying.visitLabel(label1)
 
-        // final Authentication auth = Authentication.newInternalAuthentication(InternalUsers.XPACK_USER, TransportVersion.current(), "any");
-        underlying.visitFieldInsn(
-          Opcodes.GETSTATIC,
-          "org/elasticsearch/xpack/core/security/user/InternalUsers",
-          "XPACK_USER",
-          "Lorg/elasticsearch/xpack/core/security/user/InternalUser;"
+        // final Authentication auth =
+        //   Authentication.newRealmAuthentication(new User("_xpack", new String[0]), Authentication.RealmRef.newAnonymousRealmRef("any"))
+        underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/user/User")
+        underlying.visitInsn(Opcodes.DUP)
+        underlying.visitLdcInsn("_xpack")
+        underlying.visitInsn(Opcodes.ICONST_0)
+        underlying.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+        underlying.visitMethodInsn(
+          Opcodes.INVOKESPECIAL,
+          "org/elasticsearch/xpack/core/security/user/User",
+          "<init>",
+          "(Ljava/lang/String;[Ljava/lang/String;)V",
+          false
         )
+        underlying.visitLdcInsn("any")
+
         val label2 = new Label()
         underlying.visitLabel(label2)
         underlying.visitMethodInsn(
           Opcodes.INVOKESTATIC,
-          "org/elasticsearch/TransportVersion",
-          "current",
-          "()Lorg/elasticsearch/TransportVersion;",
+          "org/elasticsearch/xpack/core/security/authc/Authentication$RealmRef",
+          "newAnonymousRealmRef",
+          "(Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;",
           false
         )
-        underlying.visitLdcInsn("any")
+
         val label3 = new Label()
         underlying.visitLabel(label3)
         underlying.visitMethodInsn(
           Opcodes.INVOKESTATIC,
           "org/elasticsearch/xpack/core/security/authc/Authentication",
-          "newInternalAuthentication",
-          "(Lorg/elasticsearch/xpack/core/security/user/InternalUser;Lorg/elasticsearch/TransportVersion;Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          "newRealmAuthentication",
+          "(Lorg/elasticsearch/xpack/core/security/user/User;Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
           false
         )
         underlying.visitVarInsn(Opcodes.ASTORE, 3)

@@ -18,7 +18,6 @@ package org.elasticsearch.transport.netty4
 
 import io.netty.channel.*
 import io.netty.handler.ssl.*
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.TransportVersion
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -31,7 +30,7 @@ import org.elasticsearch.transport.ConnectionProfile
 import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
 
 import java.net.{InetSocketAddress, SocketAddress}
@@ -46,7 +45,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         ssl: InternodeSslSettings,
                                         sharedGroupFactory: SharedGroupFactory)
   extends Netty4Transport(settings, TransportVersion.current(), threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService, sharedGroupFactory)
-    with Logging {
+    with RequestIdAwareLogging {
 
   private val clientSslContext = doPrivileged { SSLCertHelper.prepareClientSSLContext(ssl) }
   private val serverSslContext = doPrivileged { SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false) }
@@ -87,7 +86,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
 
     override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
       if (cause.isInstanceOf[NotSslRecordException] || (cause.getCause != null && cause.getCause.isInstanceOf[NotSslRecordException])) {
-        logger.error("Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect")
+        noRequestIdLogger.error("Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect")
         ctx.channel.close
       } else {
         super.exceptionCaught(ctx, cause)

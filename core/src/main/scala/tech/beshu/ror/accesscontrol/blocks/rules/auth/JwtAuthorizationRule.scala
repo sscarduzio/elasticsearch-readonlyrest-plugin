@@ -17,16 +17,16 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDefForAuthorization
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.*
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseJwtRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.*
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, toClaimsOps}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -38,52 +38,59 @@ final class JwtAuthorizationRule(val settings: Settings)
 
   override val name: Rule.Name = JwtAuthorizationRule.Name.name
 
-  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    settings.groupsLogic match {
-      case groupsLogic if blockContext.isCurrentGroupPotentiallyEligible(groupsLogic) =>
-        processUsingJwtToken(blockContext, settings.jwt) { payload =>
-          authorize(blockContext, payload, groupsLogic)
-        }
-      case _ =>
-        Task.now(RuleResult.Rejected())
+  override protected[rules] def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+    if (blockContext.isCurrentGroupPotentiallyEligible(settings.groupsLogic)) {
+      processUsingJwtToken(blockContext, settings.jwt, GroupsAuthorizationFailed.apply) { payload =>
+        authorize(blockContext, payload)
+      }
+    } else {
+      Task.now(Decision.Denied(Cause.GroupsAuthorizationFailed("Current group is not allowed")))
     }
   }
 
-  override protected[rules] def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    doPostAuthAction(blockContext, settings.jwt)
+  override protected[rules] def postAuthorizationAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+    doPostAuthAction(blockContext, settings.jwt, GroupsAuthorizationFailed.apply)
   }
 
   private def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                 payload: Jwt.Payload,
-                                                                 groupsLogic: GroupsLogic): RuleResult[B] = {
+                                                                 payload: Jwt.Payload) = {
+    implicit val blockContextImpl: B = blockContext
     val groupsConfig = settings.jwt.groupsConfig
-    val result = payload.claims.groupsClaim(groupsConfig.idsClaim, groupsConfig.namesClaim)
-    logClaimSearchResults(blockContext, result)
-    result match {
-      case NotFound =>
-        RuleResult.Rejected()
-      case Found(groups) =>
-        for {
-          nonEmptyGroups <- RuleResult.fromOption(UniqueNonEmptyList.from(groups))
-          matchedGroups <- RuleResult.fromOption(groupsLogic.availableGroupsFrom(nonEmptyGroups))
-          if blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups))
-          contextWithUserMetadata = blockContext.withUserMetadata(
-            _.addAvailableGroups(matchedGroups).withJwtToken(payload)
-          )
-        } yield contextWithUserMetadata
+    val groupsTokenSearchResult = payload.claims.groupsClaim(groupsConfig.idsClaim, groupsConfig.namesClaim)
+    logClaimSearchResults(blockContext, groupsTokenSearchResult)
+    for {
+      userGroups <- groupsFrom(groupsTokenSearchResult)
+      matchedGroups <- settings.groupsLogic
+        .availableGroupsFrom(userGroups)
+        .toRight(Cause.GroupsAuthorizationFailed("None of the user's groups match the configured groups"))
+      _ <- Either.cond(
+        blockContext.isCurrentGroupEligible(GroupIds.from(matchedGroups)),
+        (), Cause.GroupsAuthorizationFailed("Current group is not allowed")
+      )
+    } yield {
+      blockContext.withBlockMetadata(
+        _.addAvailableGroups(matchedGroups).withJwtToken(payload)
+      )
     }
   }
 
   private def logClaimSearchResults[B <: BlockContext](blockContext: B,
                                                        groups: ClaimSearchResult[UniqueList[Group]]): Unit = {
-    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
+    implicit val blockContextImpl: B = blockContext
     val claimsDescription = settings.jwt.groupsConfig.namesClaim match {
       case Some(namesClaim) => s"claims (id:'${settings.jwt.groupsConfig.idsClaim.name.show}',name:'${namesClaim.name.show}')"
       case None => s"claim '${settings.jwt.groupsConfig.idsClaim.name.show}'"
     }
-    logger.debug(s"[${requestId.show}] JWT resolved groups for ${claimsDescription.show}: ${groups.show}")
+    logger.debug(s"JWT resolved groups for ${claimsDescription.show}: ${groups.show}")
   }
 
+
+  private def groupsFrom(groupsFromToken: ClaimSearchResult[UniqueList[Group]]) = {
+    for {
+      groups <- groupsFromToken.toEither.left.map { case () => GroupsAuthorizationFailed("Groups claim not found in JWT") }
+      nonEmptyGroups <- UniqueNonEmptyList.from(groups).toRight(Cause.GroupsAuthorizationFailed("No groups found in JWT token"))
+    } yield nonEmptyGroups
+  }
 }
 
 object JwtAuthorizationRule {

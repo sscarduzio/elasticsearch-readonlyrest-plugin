@@ -17,7 +17,7 @@
 package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
 import org.elasticsearch.rest.{BytesRestResponse, RestResponse}
 import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentParserConfiguration, XContentType}
@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, 
 import scala.jdk.CollectionConverters.*
 
 trait ResponseFieldsFiltering {
-  this: Logging =>
+  this: RequestIdAwareLogging =>
 
   private val responseFieldsRestrictions: Atomic[Option[ResponseFieldsRestrictions]] = Atomic(None: Option[ResponseFieldsRestrictions])
 
@@ -45,7 +45,7 @@ trait ResponseFieldsFiltering {
           case bytesRestResponse: BytesRestResponse =>
             filterBytesRestResponse(bytesRestResponse, fieldsRestrictions)
           case otherResponse =>
-            logger.warn("ResponseFields filtering is unavailable for this type of request")
+            noRequestIdLogger.warn("ResponseFields filtering is unavailable for this type of request")
             otherResponse
         }
       case None =>

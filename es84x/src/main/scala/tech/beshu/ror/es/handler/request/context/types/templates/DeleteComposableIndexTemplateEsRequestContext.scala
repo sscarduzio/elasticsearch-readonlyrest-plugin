@@ -18,14 +18,12 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.elasticsearch.Version
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.DeletingIndexTemplates
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -35,10 +33,9 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposableIndexTemplateAction.Request,
                                                     esContext: EsContext,
-                                                    clusterService: RorClusterService,
                                                     override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext[DeleteComposableIndexTemplateAction.Request, DeletingIndexTemplates](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   override protected def templateOperationFrom(request: DeleteComposableIndexTemplateAction.Request): DeletingIndexTemplates = {
@@ -61,48 +58,13 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposa
     }
   }
 
-  implicit class DeleteComposableIndexTemplateActionRequestOps(request: DeleteComposableIndexTemplateAction.Request) {
-
-    def getNames: List[TemplateNamePattern] = {
-      if (isEsNewerThan712) getNamesForEsPost12
-      else getNamesForEsPre13
+  extension (request: DeleteComposableIndexTemplateAction.Request)
+    private def getNames: List[TemplateNamePattern] = {
+      val names: Array[String] = on(request).call("names").get[Array[String]]
+      names.asSafeList.flatMap(TemplateNamePattern.fromString)
     }
 
-    def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
-      if (isEsNewerThan712) updateNamesForEsPost12(names)
-      else updateNamesForEsPre13(names)
-    }
-
-    private def isEsNewerThan712 = {
-      Version.CURRENT.after(Version.fromString("7.12.1"))
-    }
-
-    private def getNamesForEsPre13 = {
-      Option(on(request).call("name").get[String]).toList
-        .flatMap(TemplateNamePattern.fromString)
-    }
-
-    private def getNamesForEsPost12 = {
-      on(request)
-        .call("names")
-        .get[Array[String]]
-        .asSafeList
-        .flatMap(TemplateNamePattern.fromString)
-    }
-
-    private def updateNamesForEsPre13(names: NonEmptyList[TemplateNamePattern]) = {
-      names.tail match {
-        case Nil =>
-        case _ =>
-          logger.warn(
-            s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
-               | The whole set of patterns [${names.show}]""".oneLiner)
-      }
-      on(request).call("name", names.head.value.value)
-    }
-
-    private def updateNamesForEsPost12(names: NonEmptyList[TemplateNamePattern]): Unit = {
+    private def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
       on(request).set("names", names.toList.map(_.value.value).toArray)
     }
-  }
 }

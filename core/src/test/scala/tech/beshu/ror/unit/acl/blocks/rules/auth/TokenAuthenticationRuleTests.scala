@@ -17,40 +17,38 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.ImpersonationNotAllowed
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.{ApiKey, ServiceToken, StaticToken}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{api, bearer}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.es.EsServices
+import tech.beshu.ror.mocks.MockEsServices.{MockApiKeyService, MockServiceAccountTokenService}
+import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
-import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
 class TokenAuthenticationRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+  extends AnyWordSpec with BlockContextAssertion {
 
   "A TokenAuthenticationRule" should {
     "match" when {
-      "token is configured and default header name is used" in {
+      "static token is configured and default header name is used" in {
         assertMatchRule(
           settings = TokenAuthenticationRule.Settings(
             user = User.Id("userA"),
-            token = tokenFrom("Bearer abc123XYZ"),
-            customHeaderName = None
+            tokenType = StaticToken(strictlyDefinedBearerTokenDef, authorizationTokenFrom("Bearer abc123XYZ"))
           ),
           headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ"))
         )(
@@ -59,12 +57,14 @@ class TokenAuthenticationRuleTests
           )
         )
       }
-      "token and header name are configured and the same token can be find in auth header" in {
+      "static token and header name are configured and the same token can be find in auth header" in {
         assertMatchRule(
           settings = TokenAuthenticationRule.Settings(
             user = User.Id("userA"),
-            token = tokenFrom("Bearer abc123XYZ"),
-            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+            tokenType = StaticToken(
+              AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+              authorizationTokenFrom("Bearer abc123XYZ")
+            )
           ),
           headers = Set(headerFrom("custom-user-auth-header" -> "Bearer abc123XYZ"))
         )(
@@ -73,12 +73,14 @@ class TokenAuthenticationRuleTests
           )
         )
       }
-      "token and header name are configured and the same token can be find in auth header (header name case ignoring)" in {
+      "static token and header name are configured and the same token can be find in auth header (header name case ignoring)" in {
         assertMatchRule(
           settings = TokenAuthenticationRule.Settings(
             user = User.Id("userA"),
-            token = tokenFrom("Bearer abc123XYZ"),
-            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+            tokenType = StaticToken(
+              AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+              authorizationTokenFrom("Bearer abc123XYZ")
+            )
           ),
           headers = Set(headerFrom("CUSTOM-USER-AUTH-HEADER" -> "Bearer abc123XYZ"))
         )(
@@ -87,14 +89,68 @@ class TokenAuthenticationRuleTests
           )
         )
       }
+      "service-token type is configured and valid token is in the default header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          headers = Set(headerFrom("Authorization" -> "Bearer svc-token")),
+          esServices = MockEsServices.`with`(new MockServiceAccountTokenService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("svc-user"))
+        )
+      }
+      "service-token type is configured and valid token is in a custom header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(
+              AuthorizationTokenDef(headerNameFrom("X-Service-Token"), StrictlyDefined(bearer))
+            )
+          ),
+          headers = Set(headerFrom("X-Service-Token" -> "Bearer svc-token")),
+          esServices = MockEsServices.`with`(new MockServiceAccountTokenService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("svc-user"))
+        )
+      }
+      "api-key type is configured and valid token is in the default header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          headers = Set(headerFrom("Authorization" -> "APIKey api-key-value")),
+          esServices = MockEsServices.`with`(new MockApiKeyService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("api-user"))
+        )
+      }
+      "api-key type is configured and valid token is in a custom header" in {
+        assertMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(
+              AuthorizationTokenDef(headerNameFrom("X-Api-Key"), StrictlyDefined(api))
+            )
+          ),
+          headers = Set(headerFrom("X-Api-Key" -> "ApiKey api-key-value")),
+          esServices = MockEsServices.`with`(new MockApiKeyService(true))
+        )(
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("api-user"))
+        )
+      }
       "user is being impersonated" when {
         "impersonation is enabled" when {
           "impersonated user is on allowed users list" in {
             assertMatchRule(
               settings = TokenAuthenticationRule.Settings(
                 user = User.Id("userA"),
-                token = tokenFrom("Bearer abc123XYZ"),
-                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+                tokenType = StaticToken(
+                  AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+                  authorizationTokenFrom("Bearer abc123XYZ")
+                )
               ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -116,26 +172,100 @@ class TokenAuthenticationRuleTests
       }
     }
     "not match" when {
-      "configured token does not correspond to the auth header one" in {
+      "configured static token does not correspond to the auth header one" in {
         assertNotMatchRule(
           settings = TokenAuthenticationRule.Settings(
             user = User.Id("userA"),
-            token = tokenFrom("Bearer abc123XYZ"),
-            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+            tokenType = StaticToken(
+              AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+              authorizationTokenFrom("Bearer abc123XYZ")
+            )
           ),
           impersonation = Impersonation.Disabled,
-          headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123"))
+          headers = Set(headerFrom("custom-user-auth-header" -> "Bearer 123")),
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' is invalid")
         )
       }
-      "token is passed in different header than the configured one" in {
+      "static token is passed in different header than the configured one" in {
         assertNotMatchRule(
           settings = TokenAuthenticationRule.Settings(
             user = User.Id("userA"),
-            token = tokenFrom("Bearer abc123XYZ"),
-            tokenHeaderName = headerNameFrom("custom-user-auth-header")
+            tokenType = StaticToken(
+              AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+              authorizationTokenFrom("Bearer abc123XYZ")
+            )
           ),
           impersonation = Impersonation.Disabled,
-          headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ"))
+          headers = Set(headerFrom("Authorization" -> "Bearer abc123XYZ")),
+          denialCause = AuthenticationFailed("Token header 'custom-user-auth-header' is missing")
+        )
+      }
+      "service-token validation fails" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Bearer svc-token")),
+          esServices = MockEsServices.`with`(new MockServiceAccountTokenService(false)),
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
+        )
+      }
+      "service-token header is absent" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set.empty,
+          denialCause = AuthenticationFailed("Token header 'Authorization' is missing")
+        )
+      }
+      "service-token header has wrong prefix" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("svc-user"),
+            tokenType = ServiceToken(strictlyDefinedBearerTokenDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Api svc-token")),
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
+        )
+      }
+      "api-key validation fails" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Api api-key-value")),
+          esServices = MockEsServices.`with`(new MockApiKeyService(false)),
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
+        )
+      }
+      "api-key header is absent" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set.empty,
+          denialCause = AuthenticationFailed("Token header 'Authorization' is missing")
+        )
+      }
+      "api-key header has wrong prefix" in {
+        assertNotMatchRule(
+          settings = TokenAuthenticationRule.Settings(
+            user = User.Id("api-user"),
+            tokenType = ApiKey(apiKeyDef)
+          ),
+          impersonation = Impersonation.Disabled,
+          headers = Set(headerFrom("Authorization" -> "Bearer api-key-value")),
+          denialCause = AuthenticationFailed("Token header 'Authorization' is invalid")
         )
       }
       "user is being impersonated" when {
@@ -144,8 +274,10 @@ class TokenAuthenticationRuleTests
             assertNotMatchRule(
               settings = TokenAuthenticationRule.Settings(
                 user = User.Id("userA"),
-                token = tokenFrom("Bearer abc123XYZ"),
-                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+                tokenType = StaticToken(
+                  AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+                  authorizationTokenFrom("Bearer abc123XYZ")
+                )
               ),
               headers = Set(basicAuthHeader("admin:wrong_pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -156,15 +288,17 @@ class TokenAuthenticationRuleTests
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = Some(ImpersonationNotAllowed)
+              denialCause = ImpersonationNotAllowed
             )
           }
           "admin cannot impersonate the given user" in {
             assertNotMatchRule(
               settings = TokenAuthenticationRule.Settings(
                 user = User.Id("userA"),
-                token = tokenFrom("Bearer abc123XYZ"),
-                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+                tokenType = StaticToken(
+                  AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+                  authorizationTokenFrom("Bearer abc123XYZ")
+                )
               ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -175,15 +309,17 @@ class TokenAuthenticationRuleTests
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
               )),
-              rejectionCause = Some(ImpersonationNotAllowed)
+              denialCause = ImpersonationNotAllowed
             )
           }
           "rule doesn't accept given impersonated user" in {
             assertNotMatchRule(
               settings = TokenAuthenticationRule.Settings(
                 user = User.Id("userB"),
-                token = tokenFrom("Bearer abc123XYZ"),
-                tokenHeaderName = headerNameFrom("custom-user-auth-header")
+                tokenType = StaticToken(
+                  AuthorizationTokenDef(headerNameFrom("custom-user-auth-header"), StrictlyDefined(bearer)),
+                  authorizationTokenFrom("Bearer abc123XYZ")
+                )
               ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
               impersonation = Impersonation.Enabled(ImpersonationSettings(
@@ -193,64 +329,58 @@ class TokenAuthenticationRuleTests
                   impersonatedUsersIdPatterns = NonEmptyList.of("userA")
                 )),
                 mocksProvider = NoOpMocksProvider // not needed in this context
-              ))
+              )),
+              denialCause = AuthenticationFailed("Impersonated user does not exist")
             )
           }
         }
       }
-
     }
   }
 
   private def assertMatchRule(settings: TokenAuthenticationRule.Settings,
                               impersonation: Impersonation = Impersonation.Disabled,
-                              headers: Set[Header])
+                              headers: Set[Header],
+                              esServices: EsServices = MockEsServices.dummy)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(settings, impersonation, headers, esServices, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(settings: TokenAuthenticationRule.Settings,
                                  impersonation: Impersonation,
                                  headers: Set[Header],
-                                 rejectionCause: Option[Cause] = None): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(rejectionCause))
+                                 denialCause: Cause,
+                                 esServices: EsServices = MockEsServices.dummy): Unit =
+    assertRule(settings, impersonation, headers, esServices, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(settings: TokenAuthenticationRule.Settings,
                          impersonation: Impersonation,
                          headers: Set[Header],
-                         assertionType: AssertionType): Unit = {
+                         esServices: EsServices,
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new TokenAuthenticationRule(settings, CaseSensitivity.Enabled, impersonation)
-    val requestContext = MockRequestContext.indices.withHeaders(headers)
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val requestContext = MockRequestContext.indices.withHeaders(headers).withEsServices(esServices)
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Fulfilled(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Rejected(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(DirectlyLoggedUser(user))
-      )(blockContext)
+      )
     }
 
   private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
                                                           impersonator: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(ImpersonatedUser(user, impersonator))
-      )(blockContext)
+      )
     }
 }

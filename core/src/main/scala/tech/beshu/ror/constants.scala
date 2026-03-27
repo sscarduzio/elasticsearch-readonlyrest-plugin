@@ -16,6 +16,9 @@
  */
 package tech.beshu.ror
 
+import tech.beshu.ror.es.EsVersion
+import tech.beshu.ror.utils.RefinedUtils.nes
+
 import scala.collection.mutable.Set as MutableSet
 
 object constants {
@@ -31,18 +34,20 @@ object constants {
   val AUDIT_SINK_MAX_RETRIES = 3
   val MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES: Integer = 5 * 1000
 
-  val CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user/"
-  val AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/"
-  val FORCE_RELOAD_SETTINGS_PATH = "/_readonlyrest/admin/refreshconfig/"
-  val UPDATE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config/"
-  val PROVIDE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test/"
-  val UPDATE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test/"
-  val DELETE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test/"
-  val PROVIDE_LOCAL_USERS_PATH = "/_readonlyrest/admin/config/test/localusers/"
-  val CONFIGURE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock/"
-  val PROVIDE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock/"
-  val PROVIDE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config/"
-  val PROVIDE_FILE_SETTINGS_PATH = "/_readonlyrest/admin/config/file/"
+  val USER_METADATA_PATH = "/_readonlyrest/metadata/user"
+  val CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user"
+  val AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event"
+  val FORCE_RELOAD_SETTINGS_PATH = "/_readonlyrest/admin/refreshconfig"
+  val UPDATE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config"
+  val PROVIDE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test"
+  val UPDATE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test"
+  val DELETE_TEST_SETTINGS_PATH = "/_readonlyrest/admin/config/test"
+  val PROVIDE_LOCAL_USERS_PATH = "/_readonlyrest/admin/config/test/localusers"
+  val CONFIGURE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock"
+  val PROVIDE_AUTH_MOCK_PATH = "/_readonlyrest/admin/config/test/authmock"
+  val PROVIDE_INDEX_SETTINGS_PATH = "/_readonlyrest/admin/config"
+  val PROVIDE_FILE_SETTINGS_PATH = "/_readonlyrest/admin/config/file"
+  val FETCH_CURRENT_AUDIT_CONFIGURATION_PATH = "/_readonlyrest/admin/config/audit"
 
   val FIELDS_TRANSIENT = "_fields"
 
@@ -50,6 +55,11 @@ object constants {
     "_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index"
   )
 
-  val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd"
+  val AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = nes("'readonlyrest_audit-'yyyy-MM-dd")
 
+  object EsFeatureVersions {
+    val dataStreamSupport = EsVersion(7, 9, 0)
+    val serviceAccountTokenServiceSupport = EsVersion(7, 14, 0)
+    val apiKeyServiceSupport = EsVersion(7, 14, 0)
+  }
 }

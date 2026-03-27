@@ -34,7 +34,7 @@ class KibanaIndexRule(val settings: Settings)
     settings
       .kibanaIndex
       .resolve(blockContext)
-      .map(index => blockContext.withUserMetadata(_.withKibanaIndex(index)))
+      .map(index => blockContext.withBlockMetadata(_.withKibanaIndex(index)))
       .getOrElse(blockContext)
   }
 }

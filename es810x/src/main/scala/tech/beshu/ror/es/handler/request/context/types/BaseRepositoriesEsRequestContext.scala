@@ -17,13 +17,12 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.RepositoryName
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -32,25 +31,27 @@ import tech.beshu.ror.syntax.*
 
 abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                     esContext: EsContext,
-                                                                    clusterService: RorClusterService,
                                                                     override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[RepositoryRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[RepositoryRequestBlockContext](esContext)
     with EsRequest[RepositoryRequestBlockContext] {
 
-  override val initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
+  override def initialBlockContext(block: Block): RepositoryRequestBlockContext = RepositoryRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     repositories = repositoriesFrom(actionRequest).orWildcardWhenEmpty
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 
   override protected def modifyRequest(blockContext: RepositoryRequestBlockContext): ModificationResult = {
     NonEmptyList.fromList(blockContext.repositories.toList) match {
       case Some(repositories) =>
         update(actionRequest, repositories)
       case None =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request, because of empty repositories list.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request, because of empty repositories list.")
         ShouldBeInterrupted
     }
   }

@@ -117,10 +117,10 @@ class TestSettingsApi(rorInstance: RorInstance,
         case TestSettings.NotSet =>
           TestSettingsResponse.ProvideLocalUsers.TestSettingsNotConfigured("ROR Test settings are not configured")
         case TestSettings.Present(_, dependencies, _, _) =>
-          val filteredLocalUsers = dependencies.localUsers.users -- loggedUser.map(_.id)
+          val filteredLocalUsers = dependencies.localUsers.userIds -- loggedUser.map(_.id)
           TestSettingsResponse.ProvideLocalUsers.SuccessResponse(
             users = filteredLocalUsers.map(_.value.value).toList,
-            unknownUsers = dependencies.localUsers.unknownUsers
+            unknownUsers = dependencies.localUsers.thereAreUnknownUsers
           )
         case _: TestSettings.Invalidated =>
           TestSettingsResponse.ProvideLocalUsers.TestSettingsInvalidated("ROR Test settings are invalidated")

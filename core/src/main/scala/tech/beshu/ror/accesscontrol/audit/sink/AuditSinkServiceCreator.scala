@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.audit.sink
 
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
 sealed trait AuditSinkServiceCreator
 

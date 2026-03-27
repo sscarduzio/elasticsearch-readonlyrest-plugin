@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{Reason, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.*
@@ -234,7 +235,7 @@ object CirceOps {
     }
 
     def failed[T](error: CoreCreationError): Decoder[T] = {
-      Decoder.failed(DecodingFailureOps.fromError(error))
+      Decoder.failed(decodingFailureFrom(error))
     }
 
     def optionalDecoder[T: Decoder](fieldsPath: List[String],
@@ -314,16 +315,12 @@ object CirceOps {
 
   }
 
-  object DecodingFailureOps {
-    def fromError(error: CoreCreationError): DecodingFailure =
-      DecodingFailureUtils.fromError(error)
-  }
-
   object DecodingFailureUtils {
     import AclCreationErrorCoders.*
 
-    def fromError(error: CoreCreationError): DecodingFailure =
+    def decodingFailureFrom(error: CoreCreationError): DecodingFailure =
       DecodingFailure(Encoder[CoreCreationError].apply(error).noSpaces, Nil)
+
   }
 
   object AclCreationErrorCoders {
@@ -424,4 +421,6 @@ object CirceOps {
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
   }
+
+
 }

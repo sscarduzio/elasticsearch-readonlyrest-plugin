@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
@@ -41,7 +41,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
                                                                                                override val serviceTimeout: PositiveFiniteDuration)
                                                                                               (implicit clock: Clock)
   extends LdapAuthorizationService.WithGroupsFiltering
-    with Logging {
+    with RequestIdAwareLogging {
 
   private val nestedGroupsService = nestedGroupsConfig
     .map(new UnboundidLdapNestedGroupsService(connectionPool, _, serviceTimeout))
@@ -51,7 +51,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
     Task.measure(
       doFetchGroupsOf(id, filteringGroupIds),
       measurement => Task.delay {
-        logger.debug(s"[${requestId.show}] LDAP groups fetching took ${measurement.show}")
+        logger.debug(s"LDAP groups fetching took ${measurement.show}")
       }
     )
   }
@@ -82,7 +82,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
             UniqueList.from(allGroups.map(_.group))
           }
         case Left(errorResult) =>
-          logger.error(s"[${requestId.show}] LDAP getting user groups returned error: [code=${errorResult.getResultCode.toString.show}, cause=${errorResult.getResultString.show}]")
+          logger.error(s"LDAP getting user groups returned error: [code=${errorResult.getResultCode.toString.show}, cause=${errorResult.getResultString.show}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
   }
@@ -96,7 +96,7 @@ class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFil
     val scope = SearchScope.SUB
     val searchFilter = searchUserGroupsLdapFilerFrom(mode, user, filteringGroupIds)
     val groupAttributes = attributesFrom(mode.groupAttribute)
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: ${baseDn.show}, scope: ${scope.getName().show}, search filter: ${searchFilter.show}, attributes: ${groupAttributes.show}]")
+    logger.debug(s"LDAP search [base DN: ${baseDn.show}, scope: ${scope.getName().show}, search filter: ${searchFilter.show}, attributes: ${groupAttributes.show}]")
     new SearchRequest(listener, baseDn, scope, searchFilter, groupAttributes.toSeq*)
   }
 

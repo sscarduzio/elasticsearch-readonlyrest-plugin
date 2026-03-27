@@ -35,9 +35,17 @@ class RorApiManager(client: RestClient,
 
   final lazy val documentManager = new DocumentManager(client, esVersion)
 
-  def fetchMetadata(preferredGroupId: Option[String] = None,
-                    correlationId: Option[String] = None): RorApiJsonResponse = {
-    call(createUserMetadataRequest(preferredGroupId, correlationId), new RorApiJsonResponse(_))
+  def fetchCurrentUserMetadata(preferredGroupId: Option[String] = None,
+                               correlationId: Option[String] = None): RorApiJsonResponse = {
+    call(createCurrentUserMetadataRequest(preferredGroupId, correlationId), new RorApiJsonResponse(_))
+  }
+
+  def fetchUserMetadata(licenseType: String, correlationId: Option[String] = None): RorApiJsonResponse = {
+    call(createUserMetadataRequest(Some(licenseType), correlationId), new RorApiJsonResponse(_))
+  }
+
+  def fetchUserMetadata(): RorApiJsonResponse = {
+    call(createUserMetadataRequest(None, None), new RorApiJsonResponse(_))
   }
 
   def sendAuditEvent(payload: JSON): RorApiJsonResponse = {
@@ -50,6 +58,10 @@ class RorApiManager(client: RestClient,
 
   def getRorInIndexSettings: RorApiJsonResponse = {
     call(createGetRorInIndexSettingsRequest(), new RorApiJsonResponse(_))
+  }
+
+  def fetchCurrentAuditConfiguration: RorApiJsonResponse = {
+    call(createFetchCurrentAuditConfigurationRequest(), new RorApiJsonResponse(_))
   }
 
   def updateRorInIndexSettings(settings: String): RorApiResponseWithBusinessStatus = {
@@ -110,11 +122,19 @@ class RorApiManager(client: RestClient,
     )
   }
 
-  private def createUserMetadataRequest(preferredGroupId: Option[String],
-                                        correlationId: Option[String]) = {
+  private def createCurrentUserMetadataRequest(preferredGroupId: Option[String],
+                                               correlationId: Option[String]) = {
     val request = new HttpGet(client.from("/_readonlyrest/metadata/current_user"))
-    preferredGroupId.foreach(request.addHeader("x-ror-current-group", _))
     correlationId.foreach(request.addHeader("x-ror-correlation-id", _))
+    preferredGroupId.foreach(request.addHeader("x-ror-current-group", _))
+    request
+  }
+
+  private def createUserMetadataRequest(licenseType: Option[String],
+                                        correlationId: Option[String]) = {
+    val request = new HttpGet(client.from("/_readonlyrest/metadata/user"))
+    correlationId.foreach(request.addHeader("x-ror-correlation-id", _))
+    licenseType.foreach(request.addHeader("x-ror-kbn-license-type", _))
     request
   }
 
@@ -184,6 +204,10 @@ class RorApiManager(client: RestClient,
 
   private def createGetRorInIndexSettingsRequest() = {
     new HttpGet(client.from("/_readonlyrest/admin/config"))
+  }
+
+  private def createFetchCurrentAuditConfigurationRequest() = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/audit"))
   }
 
   private def createReloadRorSettingsRequest() = {

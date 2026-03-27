@@ -16,36 +16,37 @@
  */
 package tech.beshu.ror.accesscontrol.request
 
-import cats.Show
-import eu.timepit.refined.types.string.NonEmptyString
-import monix.eval.Task
-import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.scala.Logging
+import cats.Eval
+import cats.implicits.*
 import org.json.JSONObject
-import squants.information.Bytes
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
+import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{InvalidValue, MissingHeader}
+import tech.beshu.ror.es.EsServices
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Instant
 import scala.language.implicitConversions
 
-trait RequestContext extends Logging {
+trait BaseEsContext {
+  def correlationId: Eval[CorrelationId]
+  def esTaskId: Long
+  def restRequest: RestRequest
+}
+
+trait RequestContext {
 
   type BLOCK_CONTEXT <: BlockContext
 
-  def initialBlockContext: BLOCK_CONTEXT
+  def initialBlockContext(block: Block): BLOCK_CONTEXT
 
   def restRequest: RestRequest
 
@@ -61,28 +62,11 @@ trait RequestContext extends Logging {
 
   def action: Action
 
+  def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]]
+
   def indexAttributes: Set[IndexAttribute]
 
-  def allIndicesAndAliases: Set[FullLocalIndexWithAliases]
-
-  def allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]]
-
-  def allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases]
-
-  def allRemoteDataStreamsAndAliases: Task[Set[FullRemoteDataStreamWithAliases]]
-
-  def allTemplates: Set[Template]
-
-  def allRemoteClusterNames: Set[ClusterName.Full]
-
-  lazy val legacyTemplates: Set[Template.LegacyTemplate] =
-    allTemplates.collect { case t: Template.LegacyTemplate => t }
-
-  lazy val indexTemplates: Set[Template.IndexTemplate] =
-    allTemplates.collect { case t: Template.IndexTemplate => t }
-
-  lazy val componentTemplates: Set[Template.ComponentTemplate] =
-    allTemplates.collect { case t: Template.ComponentTemplate => t }
+  def esServices: EsServices
 
   lazy val isReadOnlyRequest: Boolean =
     RequestContext.readActionPatternsMatcher.`match`(action)
@@ -93,9 +77,15 @@ trait RequestContext extends Logging {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
+  def currentGroupId: Option[GroupId] = {
+    restRequest
+      .allHeaders
+      .find(_.name === Header.Name.currentGroup)
+      .map(h => GroupId(h.value))
+  }
 }
 
-object RequestContext extends Logging {
+object RequestContext extends RequestIdAwareLogging {
 
   type Aux[B <: BlockContext] = RequestContext {type BLOCK_CONTEXT = B}
 
@@ -105,62 +95,37 @@ object RequestContext extends Logging {
   object Id {
     def fromString(value: String): Id = Id(value)
 
-    def from(sessionCorrelationId: CorrelationId, requestId: String): Id =
-      new Id(s"${sessionCorrelationId.value.value}-$requestId")
+    def from(esContext: BaseEsContext): Id = {
+      new Id(s"${esContext.correlationId.value.value.value}-${esContext.restRequest.hashCode()}#${esContext.esTaskId}")
+    }
   }
 
-  def show[B <: BlockContext](userMetadata: UserMetadata,
-                              history: Vector[Block.History[B]])
-                             (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
-    Show.show { r =>
-      def stringifyUser = {
-        userMetadata.loggedUser match {
-          case Some(DirectlyLoggedUser(user)) => s"${user.show}"
-          case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
-          // todo: better implementation needed
-          case None => r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
-        }
-      }
+  final case class Method private(value: String) extends AnyVal
+  object Method {
+    val GET: Method = Method.fromStringUnsafe("GET")
+    val POST: Method = Method.fromStringUnsafe("POST")
+    val PUT: Method = Method.fromStringUnsafe("PUT")
+    val DELETE: Method = Method.fromStringUnsafe("DELETE")
+    val OPTIONS: Method = Method.fromStringUnsafe("OPTIONS")
+    val HEAD: Method = Method.fromStringUnsafe("HEAD")
 
-      def stringifyContentLength = {
-        if (r.restRequest.contentLength == Bytes(0)) "<N/A>"
-        else if (logger.delegate.isEnabled(Level.DEBUG)) r.restRequest.content
-        else s"<OMITTED, LENGTH=${r.restRequest.contentLength}> "
-      }
+    def fromStringUnsafe(str: String): Method = new Method(str.toUpperCase)
+  }
 
-      def stringifyIndices = {
-        val idx = r.initialBlockContext.indices.toList.map(_.show)
-        if (idx.isEmpty) "<N/A>"
-        else idx.mkString(",")
-      }
+  sealed trait RequestGroup
+  object RequestGroup {
+    final case class AGroup(userGroup: GroupId) extends RequestGroup
+    case object `N/A` extends RequestGroup
 
-      def stringifyUserGroup = {
-        userMetadata.currentGroupId match {
-          case Some(groupId) => groupId.show
-          case None => "<N/A>"
-        }
+    implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
+      def toOption: Option[GroupId] = requestGroup match {
+        case AGroup(userGroup) => Some(userGroup)
+        case `N/A` => None
       }
-      s"""{
-         | ID:${r.id.show},
-         | TYP:${r.`type`.show},
-         | CGR:${stringifyUserGroup.show},
-         | USR:${stringifyUser.show},
-         | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
-         | KDX:${userMetadata.kibanaIndex.map(_.show).getOrElse("null").show},
-         | ACT:${r.action.show},
-         | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-         | XFF:${r.restRequest.allHeaders.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null").show},
-         | DA:${r.restRequest.localAddress.show},
-         | IDX:${stringifyIndices.show},
-         | MET:${r.restRequest.method.show},
-         | PTH:${r.restRequest.path.show},
-         | CNT:${stringifyContentLength.show},
-         | HDR:${r.restRequest.allHeaders.show},
-         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ").show},
-         | }""".oneLiner
     }
+  }
 
-  val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
+  private val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
     Set(
       RorAction.RorUserMetadataAction.value,
       "cluster:monitor/*",
@@ -217,92 +182,59 @@ object RequestContext extends Logging {
     ).map(Action.apply)
   }
 
-  final case class Method private(value: String) extends AnyVal
+  extension (requestContext: RequestContext) {
 
-  object Method {
-    val GET: Method = Method.fromStringUnsafe("GET")
-    val POST: Method = Method.fromStringUnsafe("POST")
-    val PUT: Method = Method.fromStringUnsafe("PUT")
-    val DELETE: Method = Method.fromStringUnsafe("DELETE")
-    val OPTIONS: Method = Method.fromStringUnsafe("OPTIONS")
-    val HEAD: Method = Method.fromStringUnsafe("HEAD")
+    def impersonateAs: Option[User.Id] = {
+      findHeader(Header.Name.impersonateAs)
+        .map { header => User.Id(header.value) }
+    }
 
-    def fromStringUnsafe(str: String): Method = new Method(str.toUpperCase)
-  }
-}
-
-class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
-
-  type LocalAliasName = ClusterIndexName.Local
-
-  def impersonateAs: Option[User.Id] = {
-    findHeader(Header.Name.impersonateAs)
-      .map { header => User.Id(header.value) }
-  }
-
-  def xForwardedForHeaderValue: Option[Address] = {
-    findHeader(Header.Name.xForwardedFor)
-      .flatMap { header =>
-        Option(header.value.value)
-          .flatMap(_.split(",").headOption)
-          .flatMap(Address.from)
-      }
-  }
-
-  def basicAuth: Option[BasicAuth] = {
-    requestContext
-      .restRequest
-      .allHeaders
-      .to(LazyList)
-      .map(BasicAuth.fromHeader)
-      .find(_.isDefined)
-      .flatten
-  }
-
-  def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
-
-  def bearerToken: Option[AuthorizationToken] = authorizationToken {
-    AuthorizationTokenDef(Header.Name.authorization, "Bearer ")
-  }
-
-  def authorizationToken(config: AuthorizationTokenDef): Option[AuthorizationToken] = {
-    requestContext
-      .restRequest
-      .allHeaders
-      .find(_.name === config.headerName)
-      .flatMap { h =>
-        if (h.value.value.startsWith(config.prefix)) {
-          NonEmptyString
-            .unapply(h.value.value.substring(config.prefix.length))
-            .map(AuthorizationToken.apply)
-        } else {
-          None
+    def xForwardedForHeaderValue: Option[Address] = {
+      findHeader(Header.Name.xForwardedFor)
+        .flatMap { header =>
+          Option(header.value.value)
+            .flatMap(_.split(",").headOption)
+            .flatMap(Address.from)
         }
-      }
+    }
+
+    def basicAuth: Option[BasicAuth] = {
+      implicit val requestId: RequestId = requestContext.id.toRequestId
+      requestContext
+        .restRequest
+        .allHeaders
+        .to(LazyList)
+        .map(BasicAuth.fromHeader)
+        .find(_.isDefined)
+        .flatten
+    }
+
+    def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
+
+    def bearerToken: Either[AuthorizationTokenRetrievingError, AuthorizationToken] = authorizationTokenBy(
+      AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
+    )
+
+    def authorizationTokenBy(config: AuthorizationTokenDef): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
+      for {
+        tokenHeader <- findHeader(config.headerName).toRight(MissingHeader)
+        authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
+        _ <- config.allowedPrefix match {
+          case AllowedPrefix.Any => Right(())
+          case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Right(())
+          case AllowedPrefix.StrictlyDefined(_) => Left(InvalidValue)
+        }
+      } yield authorizationToken
+
+    }
+
+    private def findHeader(name: Header.Name) =
+      requestContext.restRequest.allHeaders.find(_.name === name)
   }
 
-  private def findHeader(name: Header.Name) =
-    requestContext.restRequest.allHeaders.find(_.name === name)
-}
-
-object RequestContextOps {
-  implicit def from(rc: RequestContext): RequestContextOps = new RequestContextOps(rc)
-
-  sealed trait RequestGroup
-  object RequestGroup {
-    final case class AGroup(userGroup: GroupId) extends RequestGroup
-    case object `N/A` extends RequestGroup
-
-    implicit val show: Show[RequestGroup] = Show.show {
-      case AGroup(group) => group.value.value
-      case `N/A` => "N/A"
-    }
-
-    implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
-      def toOption: Option[GroupId] = requestGroup match {
-        case AGroup(userGroup) => Some(userGroup)
-        case `N/A` => None
-      }
-    }
+  sealed trait AuthorizationTokenRetrievingError
+  object AuthorizationTokenRetrievingError {
+    case object MissingHeader extends AuthorizationTokenRetrievingError
+    case object InvalidValue extends AuthorizationTokenRetrievingError
   }
 }

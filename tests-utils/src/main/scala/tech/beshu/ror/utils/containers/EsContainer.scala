@@ -90,6 +90,10 @@ abstract class EsContainer(val esVersion: String,
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
         container.setNetwork(Network.SHARED)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
+        // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
+        container.withCreateContainerCmdModifier { cmd =>
+          cmd.getHostConfig.withCgroupnsMode("host")
+        }
         EsContainerImplementation.Linux(
           esImage = esImage,
           container = container

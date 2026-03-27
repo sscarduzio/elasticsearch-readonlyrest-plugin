@@ -25,7 +25,6 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.DeletingIndexTemplates
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -35,10 +34,9 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposableIndexTemplateAction.Request,
                                                     esContext: EsContext,
-                                                    clusterService: RorClusterService,
                                                     override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext[DeleteComposableIndexTemplateAction.Request, DeletingIndexTemplates](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   override protected def templateOperationFrom(request: DeleteComposableIndexTemplateAction.Request): DeletingIndexTemplates = {
@@ -61,14 +59,13 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposa
     }
   }
 
-  implicit class DeleteComposableIndexTemplateActionRequestOps(request: DeleteComposableIndexTemplateAction.Request) {
-
-    def getNames: List[TemplateNamePattern] = {
+  extension (request: DeleteComposableIndexTemplateAction.Request)
+    private def getNames: List[TemplateNamePattern] = {
       if (isEsNewerThan712) getNamesForEsPost12
       else getNamesForEsPre13
     }
 
-    def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
+    private def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
       if (isEsNewerThan712) updateNamesForEsPost12(names)
       else updateNamesForEsPre13(names)
     }
@@ -83,11 +80,8 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposa
     }
 
     private def getNamesForEsPost12 = {
-      on(request)
-        .call("names")
-        .get[Array[String]]
-        .asSafeList
-        .flatMap(TemplateNamePattern.fromString)
+      val names: Array[String] = on(request).call("names").get[Array[String]]
+      names.asSafeList.flatMap(TemplateNamePattern.fromString)
     }
 
     private def updateNamesForEsPre13(names: NonEmptyList[TemplateNamePattern]) = {
@@ -104,5 +98,4 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposa
     private def updateNamesForEsPost12(names: NonEmptyList[TemplateNamePattern]): Unit = {
       on(request).set("names", names.toList.map(_.value.value).toArray)
     }
-  }
 }

@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.{ActionListener, DocWriteRequest}
@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
 import java.time.Clock
 import java.util.function.BiConsumer
@@ -39,7 +38,7 @@ final class NodeClientBasedAuditSinkService(client: NodeClient,
                                            (using Clock)
   extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
-    with Logging {
+    with RequestIdAwareLogging {
 
   private val bulkProcessor =
     BulkProcessor
@@ -80,25 +79,25 @@ final class NodeClientBasedAuditSinkService(client: NodeClient,
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {
     override def beforeBulk(executionId: Long, request: BulkRequest): Unit = {
-      logger.debug(s"Flushing ${request.numberOfActions} bulk actions ...")
+      noRequestIdLogger.debug(s"Flushing ${request.numberOfActions} bulk actions ...")
     }
 
     override def afterBulk(executionId: Long, request: BulkRequest, response: BulkResponse): Unit = {
       if (response.hasFailures) {
-        logger.error("Some failures flushing the BulkProcessor: ")
+        noRequestIdLogger.error("Some failures flushing the BulkProcessor: ")
         response
           .getItems.to(LazyList)
           .filter(_.isFailed)
           .map(_.getFailureMessage)
           .groupBy(identity)
           .foreach { case (message, stream) =>
-            logger.error(s"${stream.size}x: $message")
+            noRequestIdLogger.error(s"${stream.size}x: $message")
           }
       }
     }
 
     override def afterBulk(executionId: Long, request: BulkRequest, failure: Throwable): Unit = {
-      logger.error(s"Failed flushing the BulkProcessor: ${failure.getMessage}", failure)
+      noRequestIdLogger.error(s"Failed flushing the BulkProcessor: ${failure.getMessage}", failure)
     }
   }
 

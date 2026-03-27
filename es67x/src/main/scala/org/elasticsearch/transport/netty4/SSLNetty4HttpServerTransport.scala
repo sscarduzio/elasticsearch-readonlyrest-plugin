@@ -18,7 +18,6 @@ package org.elasticsearch.transport.netty4
 
 import io.netty.channel.{Channel, ChannelHandlerContext}
 import io.netty.handler.ssl.NotSslRecordException
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.util.BigArrays
@@ -28,7 +27,7 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SSLCertHelper
+import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 
 class SSLNetty4HttpServerTransport(settings: Settings,
                                    networkService: NetworkService,
@@ -38,7 +37,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    dispatcher: HttpServerTransport.Dispatcher,
                                    ssl: ExternalSslSettings)
   extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher)
-    with Logging {
+    with RequestIdAwareLogging {
 
   private val serverSslContext = doPrivileged {
     SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthenticationEnabled)
@@ -48,7 +47,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
 
   override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
     if (!this.lifecycle.started) return
-    else if (cause.getCause.isInstanceOf[NotSslRecordException]) logger.warn(s"${cause.getMessage} connecting from: ${ctx.channel().remoteAddress()}")
+    else if (cause.getCause.isInstanceOf[NotSslRecordException]) noRequestIdLogger.warn(s"${cause.getMessage} connecting from: ${ctx.channel().remoteAddress()}")
     else super.exceptionCaught(ctx, cause)
     ctx.channel().flush().close()
   }

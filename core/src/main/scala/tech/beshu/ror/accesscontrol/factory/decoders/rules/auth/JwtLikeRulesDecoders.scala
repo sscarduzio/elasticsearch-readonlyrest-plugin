@@ -18,12 +18,10 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleName}
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupIdPattern
 import tech.beshu.ror.accesscontrol.domain.{GroupIds, GroupsLogic}
@@ -38,6 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLog
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 // Common decoder for JWT rules and ROR KBN rules. They are very similar, and their decoding logic is mostly the same.
@@ -46,11 +45,11 @@ trait JwtLikeRulesDecoders[
   AUTHN_DEF <: DEF,
   AUTHZ_DEF <: DEF,
   AUTH_DEF <: AUTHN_DEF & AUTHZ_DEF,
-  AUTHN_RULE <: AuthenticationRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
-  AUTHZ_RULE <: AuthorizationRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
-  AUTH_RULE <: AuthRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
+  AUTHN_RULE <: AuthenticationRule : RuleName : VariableUsage : ImpersonationWarningSupport,
+  AUTHZ_RULE <: AuthorizationRule : RuleName : VariableUsage : ImpersonationWarningSupport,
+  AUTH_RULE <: AuthRule : RuleName : VariableUsage : ImpersonationWarningSupport,
 ] {
-  this: Logging =>
+  this: RequestIdAwareLogging =>
 
   protected def ruleTypePrefix: String
 
@@ -126,7 +125,7 @@ trait JwtLikeRulesDecoders[
               val rule = createAuthRule(authentication, authorization)
               Right(RuleDefinition.create(rule))
             case (Right(definition), None) =>
-              logger.warn(
+              noRequestIdLogger.warn(
                 s"""Missing groups logic settings in ${RuleName[AUTH_RULE].name.show} rule.
                    |For old configs, ROR treats this as `groups_any_of: ["*"]`.
                    |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),

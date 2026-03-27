@@ -19,19 +19,15 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{GroupsAuthorizationFailed, ImpersonationNotSupported}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.ImpersonationNotSupported
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.LdapAuthorizationRule.Settings.{NegativeGroupsLogicSettings, PositiveGroupsLogicSettings}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
@@ -48,11 +44,9 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
 class LdapAuthorizationRuleTests
   extends AnyWordSpec
-    with Inside
     with MockFactory
     with BlockContextAssertion
     with WithDummyRequestIdSupport {
@@ -264,7 +258,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = None,
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("No logged user")
         )
       }
       "user has no group which is permitted" in {
@@ -280,7 +275,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "user current group is not permitted" in {
@@ -292,7 +288,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-          preferredGroupId = Some(GroupId("g3"))
+          preferredGroupId = Some(GroupId("g3")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "groups AND logic is used and not all configured groups are matched" in {
@@ -308,7 +305,8 @@ class LdapAuthorizationRuleTests
             ))
           ),
           loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-          preferredGroupId = None
+          preferredGroupId = None,
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "groups NOT_ANY_OF logic is used" when {
@@ -325,7 +323,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g4"))
+            preferredGroupId = Some(GroupId("g4")),
+            denialCause = GroupsAuthorizationFailed("Current group is not allowed")
           )
         }
         "one of the forbidden groups match the LDAP groups" in {
@@ -341,7 +340,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g1"))
+            preferredGroupId = Some(GroupId("g1")),
+            denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
           )
         }
         "all of the forbidden groups match the LDAP groups" in {
@@ -357,7 +357,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g1"))
+            preferredGroupId = Some(GroupId("g1")),
+            denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
           )
         }
       }
@@ -375,7 +376,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g4"))
+            preferredGroupId = Some(GroupId("g4")),
+            denialCause = GroupsAuthorizationFailed("Current group is not allowed")
           )
         }
         "all of the forbidden groups match the LDAP groups" in {
@@ -391,7 +393,8 @@ class LdapAuthorizationRuleTests
               ))
             ),
             loggedUser = Some(DirectlyLoggedUser(Id("user1"))),
-            preferredGroupId = Some(GroupId("g1"))
+            preferredGroupId = Some(GroupId("g1")),
+            denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
           )
         }
       }
@@ -429,7 +432,8 @@ class LdapAuthorizationRuleTests
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("User has no groups")
             )
           }
           "mocks provider has a given user, but he doesn't have proper group" in {
@@ -451,7 +455,8 @@ class LdapAuthorizationRuleTests
                 ))
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
-              preferredGroupId = None
+              preferredGroupId = None,
+              denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
             )
           }
           "mocks provider is unavailable" in {
@@ -472,7 +477,7 @@ class LdapAuthorizationRuleTests
               )),
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = Some(ImpersonationNotSupported)
+              denialCause = ImpersonationNotSupported
             )
           }
         }
@@ -488,7 +493,7 @@ class LdapAuthorizationRuleTests
               impersonation = Impersonation.Disabled,
               loggedUser = Some(ImpersonatedUser(Id("user1"), Id("admin"))),
               preferredGroupId = None,
-              rejectionCause = Some(ImpersonationNotSupported)
+              denialCause = ImpersonationNotSupported
             )
           }
         }
@@ -509,34 +514,35 @@ class LdapAuthorizationRuleTests
                               loggedUser: Option[LoggedUser],
                               preferredGroupId: Option[GroupId])
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleFulfilled(blockContextAssertion))
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(settings: LdapAuthorizationRule.Settings,
                                  impersonation: Impersonation = Impersonation.Disabled,
                                  loggedUser: Option[LoggedUser],
                                  preferredGroupId: Option[GroupId],
-                                 rejectionCause: Option[Cause] = None): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleRejected(rejectionCause))
+                                 denialCause: Cause): Unit =
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRuleThrown(settings: LdapAuthorizationRule.Settings,
                                impersonation: Impersonation = Impersonation.Disabled,
                                loggedUser: Option[LoggedUser],
                                preferredGroupId: Option[GroupId],
                                exception: Throwable): Unit =
-    assertRule(settings, impersonation, loggedUser, preferredGroupId, AssertionType.RuleThrownException(exception))
+    assertRule(settings, impersonation, loggedUser, preferredGroupId, RuleCheckAssertion.RuleThrownException(exception))
 
   private def assertRule(settings: LdapAuthorizationRule.Settings,
                          impersonation: Impersonation,
                          loggedUser: Option[LoggedUser],
                          preferredGroupId: Option[GroupId],
-                         assertionType: AssertionType): Unit = {
+                         assertionType: RuleCheckAssertion): Unit = {
     val rule = new LdapAuthorizationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(preferredGroupId.map(_.toCurrentGroupHeader))
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
-        case None => UserMetadata.from(requestContext)
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(user)
+        case None => BlockMetadata.from(requestContext)
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
@@ -544,17 +550,7 @@ class LdapAuthorizationRuleTests
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Fulfilled(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Rejected(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertionType)
   }
 
   private def mockLdapService(name: NonEmptyString, groups: Map[User.Id, Set[Group]]) = {
@@ -595,11 +591,11 @@ class LdapAuthorizationRuleTests
                                                  group: GroupId,
                                                  availableGroups: UniqueList[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(DirectlyLoggedUser(user)),
         currentGroup = Some(group),
         availableGroups = availableGroups
-      )(blockContext)
+      )
     }
 
   private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
@@ -607,11 +603,11 @@ class LdapAuthorizationRuleTests
                                                           availableGroups: UniqueList[Group],
                                                           impersonator: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(ImpersonatedUser(user, impersonator)),
         currentGroup = Some(group),
         availableGroups = availableGroups
-      )(blockContext)
+      )
     }
 
   private sealed case class TestException(message: String) extends Exception(message)

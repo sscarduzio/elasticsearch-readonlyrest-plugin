@@ -21,7 +21,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
@@ -32,9 +31,8 @@ import tech.beshu.ror.syntax.*
 private[datastreams] class DataStreamsStatsEsRequestContext private(actionRequest: ActionRequest,
                                                                     dataStreams: Set[DataStreamName],
                                                                     esContext: EsContext,
-                                                                    clusterService: RorClusterService,
                                                                     override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -44,7 +42,7 @@ private[datastreams] class DataStreamsStatsEsRequestContext private(actionReques
     if (modifyActionRequest(blockContext)) {
       ModificationResult.Modified
     } else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      logger.error(s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
       ModificationResult.ShouldBeInterrupted
     }
   }
@@ -70,7 +68,7 @@ object DataStreamsStatsEsRequestContext extends ReflectionBasedDataStreamsEsCont
       getDataStreamsMethodName = "indices"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new DataStreamsStatsEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
+        Some(new DataStreamsStatsEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
       case MatchResult.NotMatched() =>
         None
     }

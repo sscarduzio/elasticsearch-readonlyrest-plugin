@@ -17,10 +17,8 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
@@ -33,15 +31,15 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
-import tech.beshu.ror.es.{RorActionListener, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.syntax.Set
-import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.{Duration, Instant}
@@ -51,14 +49,14 @@ class RegularRequestHandler(engine: Engine,
                             esContext: EsContext,
                             threadPool: ThreadPool)
                            (implicit scheduler: Scheduler)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.core.accessControl
       .handleRegularRequest(request)
-      .map { r =>
-        threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          commitResult(r.result, request)
+      .map { case (result, _) =>
+        doPrivileged {
+          commitResult(result, request)
         }
       }
   }
@@ -67,12 +65,12 @@ class RegularRequestHandler(engine: Engine,
                                                                     request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     Try {
       result match {
-        case allow: RegularRequestResult.Allow[B] =>
-          onAllow(request, allow.blockContext)
-        case RegularRequestResult.ForbiddenBy(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
+        case allow: RegularRequestResult.Allowed[B] =>
+          onAllow(request, allow.matchedBlockContext)
+        case RegularRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
+        case r@RegularRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>
           onIndexNotFound(request, allowedClusters)
         case RegularRequestResult.AliasNotFound() =>
@@ -87,7 +85,8 @@ class RegularRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx(s"[${request.id.toRequestId.show}] ACL committing result failure", ex)
+        implicit val requestContextImpl: RequestContext.Aux[B] = request
+        logger.errorEx(s"ACL committing result failure", ex)
         esContext.listener.onFailure(new Exception(ex))
     }
   }
@@ -101,7 +100,7 @@ class RegularRequestHandler(engine: Engine,
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
-        logger.error(s"[${request.id.toRequestId.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        noRequestIdLogger.error(s"Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case response: CustomResponse =>
         respond(request, response)
@@ -128,7 +127,7 @@ class RegularRequestHandler(engine: Engine,
         handleIndexNotFoundForMultiSearchRequest(request, allowedClusters)
       case AliasRequestBlockContextUpdater =>
         handleIndexNotFoundForAliasRequest(request, allowedClusters)
-      case CurrentUserMetadataRequestBlockContextUpdater |
+      case UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -147,7 +146,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -166,7 +165,7 @@ class RegularRequestHandler(engine: Engine,
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
+           UserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
@@ -255,7 +254,7 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
-    logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
+  private def logRequestProcessingTime(implicit requestContext: RequestContext): Unit = {
+    logger.debug(s"Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
   }
 }

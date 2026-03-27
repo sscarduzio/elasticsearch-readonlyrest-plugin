@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
@@ -35,9 +34,8 @@ import scala.jdk.CollectionConverters.*
 
 class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
                                     esContext: EsContext,
-                                    clusterService: RorClusterService,
                                     override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originDataStreams =
     actionRequest
@@ -73,7 +71,7 @@ class GetDataStreamEsRequestContext(actionRequest: GetDataStreamAction.Request,
   }
 
   private def setDataStreamNames(dataStreams: Set[DataStreamName]): Unit = {
-    actionRequest.indices(dataStreams.map(DataStreamName.toString).toList: _*) // method is named indices but it sets data streams
+    actionRequest.indices(dataStreams.map(_.stringify).toList: _*) // method is named indices but it sets data streams
   }
 
   private def updateGetDataStreamResponse(response: GetDataStreamAction.Response,

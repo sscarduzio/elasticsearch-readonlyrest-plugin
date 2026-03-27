@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.commons
 import tech.beshu.ror.implicits.*
@@ -27,14 +27,14 @@ import scala.annotation.nowarn
 @nowarn("cat=deprecation")
 final class DeprecatedAuditLoggingDecorator[T](underlying: AuditLogSerializer[T])
   extends AuditLogSerializer[T]
-    with Logging {
+    with RequestIdAwareLogging {
 
   private val deprecatedSerializerCanonicalName = underlying.getClass.getCanonicalName
   private val defaultSerializerCanonicalName = classOf[DefaultAuditLogSerializer].getCanonicalName
   private val querySerializerCanonicalName = classOf[QueryAuditLogSerializer].getCanonicalName
 
   override def createLoggableEntry(context: commons.ResponseContext): T = {
-    logger.warn(s"you're using deprecated serializer ${deprecatedSerializerCanonicalName.show}, please use ${defaultSerializerCanonicalName.show}, or ${querySerializerCanonicalName.show} instead")
+    noRequestIdLogger.warn(s"you're using deprecated serializer ${deprecatedSerializerCanonicalName.show}, please use ${defaultSerializerCanonicalName.show}, or ${querySerializerCanonicalName.show} instead")
     underlying.createLoggableEntry(context)
   }
 }

@@ -25,7 +25,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName.*
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, UpdateResponse}
@@ -37,9 +36,8 @@ import scala.jdk.CollectionConverters.*
 class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext,
-                                     clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ResolveClusterActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ResolveClusterActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ResolveClusterActionRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val indices = request
@@ -80,26 +78,32 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   }
 
   private def determineRequestedFullClusterNames() = {
-    initialBlockContext
-      .indices.toList
-      .flatMap[ClusterName] { r =>
-        r.name match {
-          case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
-          case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
-          case ClusterIndexName.Remote(_, ClusterName.Pattern(_)) => None
+    requestedIndices match {
+      case Some(indices) =>
+        indices.toList.flatMap[ClusterName] { r =>
+          r.name match {
+            case ClusterIndexName.Local(_) => Some(ClusterName.Full.local)
+            case ClusterIndexName.Remote(_, clusterName@ClusterName.Full(_)) => Some(clusterName)
+            case ClusterIndexName.Remote(_, ClusterName.Pattern(_)) => None
+          }
         }
-      }
+      case None =>
+        List.empty
+    }
   }
 
   private def requestNonexistentIndices() = {
-    val newRequestedNonexistentIndices = initialBlockContext
-      .indices.toList
-      .distinctBy(_.name.index match {
-        case ClusterIndexName.Local(_) => ClusterName.Full.local
-        case ClusterIndexName.Remote(_, cluster) => cluster
-      })
-      .map(_.randomNonexistentIndex())
-
+    val newRequestedNonexistentIndices = requestedIndices match {
+      case Some(indices) =>
+        indices.toList
+          .distinctBy(_.name.index match {
+            case ClusterIndexName.Local(_) => ClusterName.Full.local
+            case ClusterIndexName.Remote(_, cluster) => cluster
+          })
+          .map(_.randomNonexistentIndex())
+      case None =>
+        List.empty
+    }
     setIndices(actionRequest, newRequestedNonexistentIndices.stringify)
     ModificationResult.Modified
   }
@@ -128,7 +132,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
   private def setIndices(request: ResolveClusterActionRequest, indices: Seq[String]) = {
     request.indices(indices: _*)
     val containsLocalIndices = indices.exists(i => !i.contains(":"))
-    if(request.isLocalIndicesRequested != containsLocalIndices) {
+    if (request.isLocalIndicesRequested != containsLocalIndices) {
       Reflect.on(request).set("localIndicesRequested", containsLocalIndices)
     }
   }

@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthenticationRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 object JwtAuthRulesDecoders
   extends JwtLikeRulesDecoders[
@@ -31,7 +31,7 @@ object JwtAuthRulesDecoders
     JwtAuthenticationRule,
     JwtAuthorizationRule,
     JwtAuthRule,
-  ] with Logging {
+  ] with RequestIdAwareLogging {
 
   override protected def ruleTypePrefix: String = "jwt"
 

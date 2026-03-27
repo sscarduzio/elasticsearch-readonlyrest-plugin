@@ -17,13 +17,11 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.implicits.*
@@ -32,9 +30,8 @@ import tech.beshu.ror.syntax.*
 abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                    esContext: EsContext,
                                                                    aclContext: AccessControlStaticContext,
-                                                                   clusterService: RorClusterService,
                                                                    override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]] =
     Set(requestedIndexFrom(request))
@@ -44,7 +41,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
                                 allAllowedIndices: NonEmptyList[ClusterIndexName],
                                 allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
+      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
     }
     update(request, filteredIndices.head)
   }

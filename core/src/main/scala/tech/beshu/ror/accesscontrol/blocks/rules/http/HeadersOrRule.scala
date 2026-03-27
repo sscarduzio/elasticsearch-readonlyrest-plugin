@@ -19,38 +19,43 @@ package tech.beshu.ror.accesscontrol.blocks.rules.http
 import cats.Show
 import cats.data.NonEmptySet
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersOrRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 /**
   * We match headers in a way that the header name is case-insensitive, and the header value is case-sensitive
   **/
 class HeadersOrRule(val settings: Settings)
-  extends BaseHeaderRule with Logging {
+  extends BaseHeaderRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = HeadersOrRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    RuleResult.resultBasedOnCondition(blockContext) {
-      val requestHeaders = blockContext.requestContext.restRequest.allHeaders
-      val result = settings
-        .headerAccessRequirements
-        .exists { isFulfilled(_, requestHeaders) }
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+    Decision.permit(`with` = blockContext)(
+      when = {
+        val requestHeaders = blockContext.requestContext.restRequest.allHeaders
+        val result = settings
+          .headerAccessRequirements
+          .exists {
+            isFulfilled(_, requestHeaders)
+          }
 
-      if(!result) logAccessRequirementsNotFulfilled(blockContext.requestContext)
-      result
-    }
+        if (!result) logAccessRequirementsNotFulfilled(blockContext.requestContext)
+        result
+      }
+    )
   }
 
   private def logAccessRequirementsNotFulfilled(requestContext: RequestContext): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
-    logger.debug(s"[${requestContext.id.show}] Request headers don't fulfil any of header access requirements: ${settings.headerAccessRequirements.show}")
+    implicit val requestContextImpl: RequestContext = requestContext
+    logger.debug(s"Request headers don't fulfil any of header access requirements: ${settings.headerAccessRequirements.show}")
   }
 }
 

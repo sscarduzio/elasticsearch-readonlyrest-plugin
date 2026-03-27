@@ -19,8 +19,6 @@ package tech.beshu.ror.es.handler
 import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
-import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.*
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
@@ -58,11 +56,13 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.tasks.Task as EsTask
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, EsServices, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorRestChannel}
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
@@ -72,19 +72,18 @@ import tech.beshu.ror.es.handler.request.context.types.repositories.*
 import tech.beshu.ror.es.handler.request.context.types.ror.*
 import tech.beshu.ror.es.handler.request.context.types.snapshots.*
 import tech.beshu.ror.es.handler.request.context.types.templates.*
-import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorClusterService, RorRestChannel}
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Instant
 import scala.reflect.ClassTag
 
-class AclAwareRequestFilter(clusterService: RorClusterService,
-                            settings: Settings,
+class AclAwareRequestFilter(settings: Settings,
                             threadPool: ThreadPool)
-                           (implicit generator: UniqueIdentifierGenerator,
-                            scheduler: Scheduler)
-  extends Logging {
+                           (implicit systemContext: SystemContext)
+  extends RequestIdAwareLogging {
+
+  import systemContext.{scheduler, uniqueIdentifierGenerator}
 
   def handle(engines: Engines,
              esContext: EsContext): Task[Either[Error, Unit]] = {
@@ -98,8 +97,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                                       esContext: EsContext) = {
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
-        val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
-        handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
+        val handler = new UserMetadataRequestHandler(engine, esContext)
+        handler.handle(new UserMetadataEsRequestContext(request, esContext, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
         handleEsRestApiRequest(regularRequestHandler, esContext, engine.core.accessControl.staticContext)
@@ -109,123 +108,124 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
   private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext) = {
+    implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
     esContext.actionRequest match {
       case request: RRAuditEventRequest =>
-        regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, threadPool))
       case request: RorActionRequest =>
-        regularRequestHandler.handle(new RorApiEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new RorApiEsRequestContext(request, esContext, threadPool))
       // snapshots
       case request: GetSnapshotsRequest =>
-        regularRequestHandler.handle(new GetSnapshotsEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetSnapshotsEsRequestContext(request, esContext, threadPool))
       case request: CreateSnapshotRequest =>
-        regularRequestHandler.handle(new CreateSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new CreateSnapshotEsRequestContext(request, esContext, threadPool))
       case request: DeleteSnapshotRequest =>
-        regularRequestHandler.handle(new DeleteSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteSnapshotEsRequestContext(request, esContext, threadPool))
       case request: RestoreSnapshotRequest =>
         for {
-          requestContext <- RestoreSnapshotEsRequestContext.create(request, esContext, clusterService, threadPool)
+          requestContext <- RestoreSnapshotEsRequestContext.create(request, esContext, threadPool)
           result <- regularRequestHandler.handle(requestContext)
         } yield result
       case request: SnapshotsStatusRequest =>
         for {
-          requestContext <- SnapshotsStatusEsRequestContext.create(request, esContext, clusterService, threadPool)
+          requestContext <- SnapshotsStatusEsRequestContext.create(request, esContext, threadPool)
           result <- regularRequestHandler.handle(requestContext)
         } yield result
       // repositories
       case request: GetRepositoriesRequest =>
-        regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, threadPool))
       case request: PutRepositoryRequest =>
-        regularRequestHandler.handle(new CreateRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new CreateRepositoryEsRequestContext(request, esContext, threadPool))
       case request: DeleteRepositoryRequest =>
-        regularRequestHandler.handle(new DeleteRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteRepositoryEsRequestContext(request, esContext, threadPool))
       case request: VerifyRepositoryRequest =>
-        regularRequestHandler.handle(new VerifyRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new VerifyRepositoryEsRequestContext(request, esContext, threadPool))
       case request: CleanupRepositoryRequest =>
-        regularRequestHandler.handle(new CleanupRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new CleanupRepositoryEsRequestContext(request, esContext, threadPool))
       // templates
       case request: GetIndexTemplatesRequest =>
-        regularRequestHandler.handle(new GetTemplatesEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetTemplatesEsRequestContext(request, esContext, threadPool))
       case request: PutIndexTemplateRequest =>
-        regularRequestHandler.handle(new PutTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new PutTemplateEsRequestContext(request, esContext, threadPool))
       case request: DeleteIndexTemplateRequest =>
-        regularRequestHandler.handle(new DeleteTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteTemplateEsRequestContext(request, esContext, threadPool))
       case request: GetComposableIndexTemplateAction.Request =>
-        regularRequestHandler.handle(new GetComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetComposableIndexTemplateEsRequestContext(request, esContext, threadPool))
       case request: PutComposableIndexTemplateAction.Request =>
-        regularRequestHandler.handle(new PutComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new PutComposableIndexTemplateEsRequestContext(request, esContext, threadPool))
       case request: DeleteComposableIndexTemplateAction.Request =>
-        regularRequestHandler.handle(new DeleteComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteComposableIndexTemplateEsRequestContext(request, esContext, threadPool))
       case request: GetComponentTemplateAction.Request =>
-        regularRequestHandler.handle(new GetComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetComponentTemplateEsRequestContext(request, esContext, threadPool))
       case request: PutComponentTemplateAction.Request =>
-        regularRequestHandler.handle(new PutComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new PutComponentTemplateEsRequestContext(request, esContext, threadPool))
       case request: DeleteComponentTemplateAction.Request =>
-        regularRequestHandler.handle(new DeleteComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteComponentTemplateEsRequestContext(request, esContext, threadPool))
       case request: SimulateIndexTemplateRequest =>
-        regularRequestHandler.handle(new SimulateIndexTemplateRequestEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new SimulateIndexTemplateRequestEsRequestContext(request, esContext, aclContext, threadPool))
       // aliases
       case request: GetAliasesRequest =>
-        regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndicesAliasesRequest =>
-        regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, threadPool))
       // indices
       case request: GetIndexRequest =>
-        regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetIndexEsRequestContext(request, esContext, aclContext, threadPool))
       case request: BulkShardRequest =>
-        regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndexRequest =>
-        regularRequestHandler.handle(new IndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndexEsRequestContext(request, esContext, aclContext, threadPool))
       case request: MultiGetRequest =>
-        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, threadPool))
       case request: SearchRequest =>
-        regularRequestHandler.handle(new SearchEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new SearchEsRequestContext(request, esContext, aclContext, threadPool))
       case request: GetRequest =>
-        regularRequestHandler.handle(new GetEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetEsRequestContext(request, esContext, aclContext, threadPool))
       case request: MultiSearchRequest =>
-        regularRequestHandler.handle(new MultiSearchEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiSearchEsRequestContext(request, esContext, threadPool))
       case request: MultiTermVectorsRequest =>
-        regularRequestHandler.handle(new MultiTermVectorsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiTermVectorsEsRequestContext(request, esContext, aclContext, threadPool))
       case request: BulkRequest =>
-        regularRequestHandler.handle(new BulkEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new BulkEsRequestContext(request, esContext, threadPool))
       case request: DeleteRequest =>
-        regularRequestHandler.handle(new DeleteDocumentEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteDocumentEsRequestContext(request, esContext, aclContext, threadPool))
       case request: GetSettingsRequest =>
-        regularRequestHandler.handle(new GetSettingsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetSettingsEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndicesStatsRequest =>
-        regularRequestHandler.handle(new IndicesStatsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesStatsEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndicesShardStoresRequest =>
-        regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ClusterStateRequest =>
-        TemplateClusterStateEsRequestContext.from(request, esContext, clusterService, settings, threadPool) match {
+        TemplateClusterStateEsRequestContext.from(request, esContext, settings, threadPool) match {
           case Some(requestContext) =>
             regularRequestHandler.handle(requestContext)
           case None =>
-            regularRequestHandler.handle(new ClusterStateEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+            regularRequestHandler.handle(new ClusterStateEsRequestContext(request, esContext, aclContext, threadPool))
         }
       case request: ClusterAllocationExplainRequest =>
-        regularRequestHandler.handle(new ClusterAllocationExplainEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new ClusterAllocationExplainEsRequestContext(request, esContext, aclContext, threadPool))
       case request: RolloverRequest =>
-        regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndicesRequest.Replaceable =>
-        regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ReindexRequest =>
-        regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ResizeRequest =>
-        regularRequestHandler.handle(new ResizeEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new ResizeEsRequestContext(request, esContext, aclContext, threadPool))
       case request: ClusterRerouteRequest =>
-        regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, threadPool))
       case request: CompositeIndicesRequest =>
-        ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+        ReflectionBasedActionRequest(esContext, aclContext, threadPool) match {
           case SqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
           case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
           case _ =>
-            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.show}")
-            regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getName.show}")
+            regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, threadPool))
         }
       // rest
       case _ =>
-        ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+        ReflectionBasedActionRequest(esContext, aclContext, threadPool) match {
           case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
@@ -235,7 +235,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           // rest
           case _ =>
             regularRequestHandler.handle {
-              new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
+              new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, threadPool)
             }
         }
     }
@@ -253,7 +253,11 @@ object AclAwareRequestFilter {
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val threadContextResponseHeaders: Set[(String, String)]) {
+                        val esServices: EsServices) extends BaseEsContext {
+
+    override val esTaskId: Long = task.getId
+
+    override val restRequest: RestRequest = channel.restRequest
 
     val timestamp: Instant = Instant.now()
 
@@ -312,4 +316,4 @@ object AclAwareRequestFilter {
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String, cause: Throwable = null)
-  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.show}' cannot be handled; [msg: ${message.show}]", cause)
+  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.getName.show}' cannot be handled; [msg: ${message.show}]", cause)

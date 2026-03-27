@@ -1,0 +1,44 @@
+readonlyrest:
+
+  audit:
+    enabled: true
+    outputs:
+      - type: index
+        index_template: "'custom_template_'yyyyMMdd"
+        serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+      - type: index
+        serializer:
+            type: ecs
+            verbosity_level_serialization_mode: [INFO]
+            include_full_request_content: true
+      - type: log
+        serializer:
+          type: configurable
+          verbosity_level_serialization_mode: [INFO]
+          fields:
+            node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
+            another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+            tid: "{TASK_ID}"
+            bytes: "{CONTENT_LENGTH_IN_BYTES}"
+      - type: data_stream
+        data_stream: "custom_audit_data_stream"
+        serializer:
+            type: ecs
+            verbosity_level_serialization_mode: [INFO]
+            include_full_request_content: true
+
+  # comments should survive
+  access_control_rules:
+    - name: "CONTAINER ADMIN - updated"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
+
+    - name: "test1"
+      indices: ["test1_index", "odd:test1_index"]
+      auth_key: "dev1:test"
+
+  impersonation:
+    - impersonator: admin1
+      auth_key: admin1:pass
+      users: ["*"]

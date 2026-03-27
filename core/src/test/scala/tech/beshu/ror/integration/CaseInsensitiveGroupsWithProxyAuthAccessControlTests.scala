@@ -15,14 +15,16 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.integration
+
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.Allow
+import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult.Allowed
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
+import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -62,17 +64,19 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
             .withHeaders(header("X-Auth-Token", "user1-proxy-id"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              allIndicesAndAliases = Set(
-                fullLocalIndexWithAliases(fullIndexName("g12_index")),
-                fullLocalIndexWithAliases(fullIndexName("g34_index"))
-              )
-          )
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = Set(
+                  fullLocalIndexWithAliases(fullIndexName("g12_index")),
+                  fullLocalIndexWithAliases(fullIndexName("g34_index"))
+                )
+              ))
+            )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
-          inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 1
+          inside(result) { case Allowed(blockContext) =>
+            blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
+            blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }
         }
         "user is User1" in {
@@ -80,17 +84,19 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
             .withHeaders(header("X-Auth-Token", "User1-proxy-id"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              allIndicesAndAliases = Set(
-                fullLocalIndexWithAliases(fullIndexName("g12_index")),
-                fullLocalIndexWithAliases(fullIndexName("g34_index"))
-              )
-          )
+              esServices = MockEsServices.`with`(MockEsClusterService(
+                allIndicesAndAliases = Set(
+                  fullLocalIndexWithAliases(fullIndexName("g12_index")),
+                  fullLocalIndexWithAliases(fullIndexName("g34_index"))
+                )
+              ))
+            )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
-          inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(group("group1")))
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 1
+          inside(result) { case Allowed(blockContext) =>
+            blockContext.blockMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id"))))
+            blockContext.blockMetadata.availableGroups should be(UniqueList.of(group("group1")))
           }
         }
       }

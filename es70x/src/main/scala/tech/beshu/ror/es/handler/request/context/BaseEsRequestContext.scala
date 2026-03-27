@@ -16,28 +16,24 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.{EsServices, RorRestRequest}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.syntax.*
 
 import java.time.Instant
+import scala.jdk.CollectionConverters.*
 
-abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
-                                                       clusterService: RorClusterService)
-  extends RequestContext with Logging {
+abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
+  extends RequestContext {
 
   override type BLOCK_CONTEXT = B
 
-  override val restRequest = esContext.channel.restRequest
+  override val restRequest: RorRestRequest = esContext.channel.restRequest
 
   override val rorKibanaSessionId: CorrelationId = esContext.correlationId.value
 
@@ -45,10 +41,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy implicit val id: RequestContext.Id = RequestContext.Id.from(
-    sessionCorrelationId = esContext.correlationId.value,
-    requestId = s"${restRequest.hashCode()}#$taskId"
-  )
+  override lazy implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
 
   override lazy val action: Action = esContext.action
 
@@ -68,21 +61,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
-    clusterService.allIndicesAndAliases
-
-  override lazy val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
-    clusterService.allRemoteIndicesAndAliases.memoize
-
-  override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] =
-    clusterService.allDataStreamsAndAliases
-
-  override lazy val allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
-    clusterService.allRemoteDataStreamsAndAliases.memoize
-
-  override lazy val allTemplates: Set[Template] = clusterService.allTemplates
-
-  override lazy val allRemoteClusterNames: Set[ClusterName.Full] = clusterService.allClusterNames
+  override val esServices: EsServices = esContext.esServices
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 

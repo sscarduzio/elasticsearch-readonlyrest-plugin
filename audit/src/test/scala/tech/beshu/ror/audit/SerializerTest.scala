@@ -34,6 +34,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new QueryAuditLogSerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -55,6 +56,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
             "content" -> "string",
@@ -66,6 +68,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new QueryAuditLogSerializerV2,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -87,6 +90,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
             "content" -> "string",
@@ -98,6 +102,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new QueryAuditLogSerializerV1,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -119,6 +124,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "content" -> "string",
           )
         )
@@ -128,6 +134,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new FullAuditLogWithQuerySerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -149,6 +156,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
             "content" -> "string",
@@ -160,6 +168,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new FullAuditLogSerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -181,6 +190,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
           )
@@ -191,6 +201,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new BlockVerbosityAwareAuditLogSerializer,
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -212,6 +223,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
           )
@@ -222,6 +234,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new DefaultAuditLogSerializerV2 @nowarn("cat=deprecation"),
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -243,6 +256,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
             "es_node_name" -> "string",
             "es_cluster_name" -> "string",
           )
@@ -253,6 +267,7 @@ class SerializerTest extends AnyWordSpec {
           serializer = new DefaultAuditLogSerializerV1 @nowarn("cat=deprecation"),
           expectedFieldsWithTypes = Map(
             "match" -> "boolean",
+            "matched_block_names" -> "array",
             "block" -> "string",
             "id" -> "string",
             "final_state" -> "string",
@@ -274,6 +289,7 @@ class SerializerTest extends AnyWordSpec {
             "action" -> "string",
             "indices" -> "array",
             "acl_history" -> "string",
+            "blocks_history" -> "array",
           ),
         )
       }
@@ -286,7 +302,13 @@ class SerializerTest extends AnyWordSpec {
     val entryFields = serialized.keySet.asScala.toSet
 
     if (entryFields != expectedFieldsWithTypes.keySet) {
-      fail(s"Serialized event does not contains exactly fields that were expected")
+      val unexpectedFields = entryFields -- expectedFieldsWithTypes.keySet
+      val missingFields = expectedFieldsWithTypes.keySet -- entryFields
+      fail(
+        s"Serialized event does not contain exactly the expected fields." +
+          (if (unexpectedFields.nonEmpty) s" Unexpected fields: ${unexpectedFields.mkString(", ")}." else "") +
+          (if (missingFields.nonEmpty) s" Missing fields: ${missingFields.mkString(", ")}." else "")
+      )
     } else {
       expectedFieldsWithTypes.foreach { case (fieldName, expectedType) =>
         expectedType match {
@@ -300,7 +322,8 @@ class SerializerTest extends AnyWordSpec {
               case s: java.util.Collection[_] => noException should be thrownBy new org.json.JSONArray(s)
               case other => fail(s"Expected '$fieldName' to be JSONArray, but got ${other.getClass.getName}: $other")
             }
-          case other => fail(s"Unknown expected type: $other")
+          case other =>
+            fail(s"Unknown expected type: $other")
         }
       }
     }
@@ -358,4 +381,6 @@ private object DummyAuditRequestContext extends AuditRequestContext {
 
     override def esClusterName: String = "testEsCluster"
   }
+
+  override def matchedBlockNames: Option[List[String]] = Some(List("block1", "block2"))
 }

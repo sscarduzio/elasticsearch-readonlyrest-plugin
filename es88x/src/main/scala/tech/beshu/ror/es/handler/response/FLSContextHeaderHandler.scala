@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.handler.response
 
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -26,17 +26,17 @@ import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
 
-object FLSContextHeaderHandler extends Logging {
+object FLSContextHeaderHandler extends RequestIdAwareLogging {
 
   def addContextHeader(threadPool: ThreadPool,
-                       fieldsRestrictions: FieldsRestrictions,
-                       requestId: RequestContext.Id): Unit = {
+                       fieldsRestrictions: FieldsRestrictions)
+                      (implicit requestId: RequestContext.Id): Unit = {
     val threadContext = threadPool.getThreadContext
     val header = createContextHeader(fieldsRestrictions)
     Option(threadContext.getHeader(header.name.value.value)) match {
       case None =>
         implicit val show = headerShow
-        logger.debug(s"[${requestId.show}] Adding thread context header required by lucene. Header: '${header.show}'")
+        logger.debug(s"Adding thread context header required by lucene. Header: '${header.show}'")
         threadContext.putHeader(header.name.value.value, header.value.value)
       case Some(_) =>
     }

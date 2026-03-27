@@ -42,7 +42,9 @@ import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{usersDefiniti
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.failed
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -52,14 +54,15 @@ object UsersDefinitionsDecoder {
   import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder.*
 
   def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-               authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+               externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
                authProxyDefinitions: Definitions[ProxyAuth],
                jwtDefinitions: Definitions[JwtDef],
                rorKbnDefinitions: Definitions[RorKbnDef],
                ldapServiceDefinitions: Definitions[LdapService],
                impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                mocksProvider: MocksProvider,
-               globalSettings: GlobalSettings): ADecoder[Id, Definitions[UserDef]] = {
+               globalSettings: GlobalSettings,
+               esEnv: EsEnv): ADecoder[Id, Definitions[UserDef]] = {
     implicit val userDefDecoder: SyncDecoder[UserDef] =
       SyncDecoderCreator
         .instance { c =>
@@ -71,14 +74,15 @@ object UsersDefinitionsDecoder {
               val rulesDecoder = userDefRulesDecoder(
                 usernamePatterns,
                 authenticationServiceDefinitions,
-                authorizationServiceDefinitions,
+                externalGroupsProviderServiceDefinitions,
                 authProxyDefinitions,
                 jwtDefinitions,
                 rorKbnDefinitions,
                 ldapServiceDefinitions,
                 impersonatorsDefinitions,
                 mocksProvider,
-                globalSettings
+                globalSettings,
+                esEnv
               )
               rulesDecoder.tryDecode(c.withoutKeys(Set(usernameKey, groupsKey)))
             }
@@ -99,14 +103,15 @@ object UsersDefinitionsDecoder {
 
   private def userDefRulesDecoder(usernamePatterns: UserIdPatterns,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                  authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                  externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
-                                  globalSettings: GlobalSettings): Decoder[List[Rule]] = Decoder.instance { c =>
+                                  globalSettings: GlobalSettings,
+                                  esEnv: EsEnv): Decoder[List[Rule]] = Decoder.instance { c =>
     type RuleDecoders = List[RuleDecoder[Rule]]
     val ruleNames = c.keys.toList.flatten.map(Rule.Name.apply)
     val ruleDecoders = ruleNames.foldLeft(Either.right[Message, RuleDecoders](List.empty)) {
@@ -115,21 +120,22 @@ object UsersDefinitionsDecoder {
         usersDefinitionsAllowedRulesDecoderBy(
           ruleName,
           authenticationServiceDefinitions,
-          authorizationServiceDefinitions,
+          externalGroupsProviderServiceDefinitions,
           authProxyDefinitions,
           jwtDefinitions,
           rorKbnDefinitions,
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
-          globalSettings
+          globalSettings,
+          esEnv
         ) match {
           case Some(ruleDecoder) => Right(ruleDecoder :: decoders)
           case None => Left(Message(s"Unknown rule '${ruleName.show}' in users definitions section"))
         }
     }
     ruleDecoders
-      .left.map(error => DecodingFailureOps.fromError(DefinitionsLevelCreationError(error)))
+      .left.map(error => decodingFailureFrom(DefinitionsLevelCreationError(error)))
       .map { decoders =>
         decoders.map(withUserIdParamsCheck(_, usernamePatterns, globalSettings, decodingFailure))
       }
@@ -230,7 +236,7 @@ object UsersDefinitionsDecoder {
 
   private def failure(msg: Message) = Left(decodingFailure(msg))
 
-  private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
+  private def decodingFailure(msg: Message) = decodingFailureFrom(DefinitionsLevelCreationError(msg))
 
   private def validate(globalSettings: GlobalSettings,
                        definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {

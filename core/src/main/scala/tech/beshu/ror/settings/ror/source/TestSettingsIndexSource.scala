@@ -19,18 +19,18 @@ package tech.beshu.ror.settings.ror.source
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Codec, Decoder, Encoder}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorSettingsIndex, User}
 import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
 import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
-import tech.beshu.ror.es.IndexDocumentManager
 import TestSettingsIndexSource.Const
+import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.json.KeyCodec
@@ -130,19 +130,19 @@ object TestSettingsIndexSource {
       Codec.forProduct1("users")(ExternalAuthenticationServiceMock.apply)(_.users)
     }
 
-    implicit val extAuthorizationMock: Codec[ExternalAuthorizationServiceMock] = {
-      implicit val userMock: Codec[ExternalAuthorizationServiceUserMock] = {
+    implicit val extAuthorizationMock: Codec[ExternalGroupsProviderServiceMock] = {
+      implicit val userMock: Codec[ExternalGroupsProviderServiceUserMock] = {
         // "groups" left for backward compatibility
         val encoder = Encoder.forProduct3("id", "groups", "userGroups")(
-          (userMock: ExternalAuthorizationServiceUserMock) => (userMock.id, userMock.groups.map(_.id), userMock.groups)
+          (userMock: ExternalGroupsProviderServiceUserMock) => (userMock.id, userMock.groups.map(_.id), userMock.groups)
         )
         val deprecatedFormatDecoder = Decoder.forProduct2("id", "groups")((id: User.Id, groupIds: List[GroupId]) =>
-          ExternalAuthorizationServiceUserMock(id, groupIds.map(Group.from).toCovariantSet)
+          ExternalGroupsProviderServiceUserMock(id, groupIds.map(Group.from).toCovariantSet)
         )
-        val decoder = Decoder.forProduct2("id", "userGroups")(ExternalAuthorizationServiceUserMock.apply)
+        val decoder = Decoder.forProduct2("id", "userGroups")(ExternalGroupsProviderServiceUserMock.apply)
         Codec.from(decoder.or(deprecatedFormatDecoder), encoder)
       }
-      Codec.forProduct1("users")(ExternalAuthorizationServiceMock.apply)(_.users)
+      Codec.forProduct1("users")(ExternalGroupsProviderServiceMock.apply)(_.users)
     }
 
     implicit val ldapKeyCodec: KeyCodec[LdapService.Name] = KeyCodec.from[LdapService.Name](
@@ -156,9 +156,9 @@ object TestSettingsIndexSource {
         _.value.value
       )
 
-    implicit val externalAuthorizationKeyCodec: KeyCodec[ExternalAuthorizationService.Name] =
-      KeyCodec.from[ExternalAuthorizationService.Name](
-        NonEmptyString.unapply(_).map(ExternalAuthorizationService.Name.apply),
+    implicit val externalGroupsProviderServiceKeyCodec: KeyCodec[ExternalGroupsProviderService.Name] =
+      KeyCodec.from[ExternalGroupsProviderService.Name](
+        NonEmptyString.unapply(_).map(ExternalGroupsProviderService.Name.apply),
         _.value.value
       )
 
@@ -166,7 +166,7 @@ object TestSettingsIndexSource {
       "ldapMocks",
       "externalAuthenticationMocks",
       "externalAuthorizationMocks"
-    )(AuthServicesMocks.apply)(e => (e.ldapMocks, e.externalAuthenticationServiceMocks, e.externalAuthorizationServiceMocks))
+    )(AuthServicesMocks.apply)(e => (e.ldapMocks, e.externalAuthenticationServiceMocks, e.externalGroupsProviderServiceMocks))
   }
 
   private implicit lazy val expirationTtlDecoder: Codec[PositiveFiniteDuration] = {

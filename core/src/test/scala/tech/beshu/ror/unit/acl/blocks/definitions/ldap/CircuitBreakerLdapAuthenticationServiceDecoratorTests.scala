@@ -27,7 +27,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, RequestId, User}
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -104,19 +106,20 @@ class CircuitBreakerLdapAuthenticationServiceDecoratorTests
     )
   }
 
-  private lazy val authenticated = Task.now(true)
+  private lazy val testUserId = User.Id("morgan")
+  private lazy val authenticated: Task[AuthenticationResult] = Task.now(Right(DirectlyLoggedUser(testUserId)))
   private lazy val timeoutLDAPException = Task.raiseError(new LDAPSearchException(ResultCode.TIMEOUT, "timeout"))
 
   private implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
     def assertSuccessfulAuthentication: Assertion = {
       authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe() should be(true)
+        .authenticate(testUserId, PlainTextSecret("user1"))
+        .runSyncUnsafe() should be(Right(DirectlyLoggedUser(testUserId)))
     }
 
     def assertFailedAuthentication[T: ClassTag]: Assertion = {
       an[T] should be thrownBy authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
+        .authenticate(testUserId, PlainTextSecret("user1"))
         .runSyncUnsafe()
     }
   }

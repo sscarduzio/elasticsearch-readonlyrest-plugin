@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRu
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.IndicesRule.ProcessResult
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.domain.CanPass.No.Reason
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, KibanaIndexName, RequestId, RequestedIndex}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.implicits.*
@@ -51,7 +51,9 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       case (None, Some(nonEmptyRequestedRemoteIndices)) =>
         processRemoteIndices(requestContext, allAllowedRemoteIndices, nonEmptyRequestedRemoteIndices, determinedKibanaIndex)
       case (None, None) =>
-        if (requestContext.allIndicesAndAliases.nonEmpty || requestContext.allDataStreamsAndAliases.nonEmpty) {
+        val clusterService = requestContext.esServices.clusterService
+        given RequestId = requestContext.id.toRequestId
+        if (clusterService.allIndicesAndAliases.nonEmpty || clusterService.allDataStreamsAndAliases.nonEmpty) {
           Task.now(ProcessResult.Ok(
             allAllowedIndices.map(RequestedIndex(_, excluded = false))
           ))
@@ -69,7 +71,8 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking local indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
+    implicit val requestContextImpl: RequestContext = requestContext
+    logger.debug(s"Checking local indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
     canPass[ClusterIndexName.Local](requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>
@@ -89,7 +92,8 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       requestContext,
       PatternsMatcher.create(allAllowedIndices)
     )
-    logger.debug(s"[${requestContext.id.show}] Checking remote indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
+    implicit val requestContextImpl: RequestContext = requestContext
+    logger.debug(s"Checking remote indices (allowed: [${allAllowedIndices.show}], requested: [${requestedIndices.show}])")
     canPass(requestContext, determinedKibanaIndex, requestedIndices)
       .map {
         case CanPass.Yes(narrowedIndices) =>

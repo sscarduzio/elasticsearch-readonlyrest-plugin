@@ -19,11 +19,11 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, DataStreamName, RequestedIndex}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
 import tech.beshu.ror.implicits.*
@@ -31,37 +31,45 @@ import tech.beshu.ror.syntax.*
 
 abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                    esContext: EsContext,
-                                                                   clusterService: RorClusterService,
                                                                    override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[DataStreamRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[DataStreamRequestBlockContext](esContext)
     with EsRequest[DataStreamRequestBlockContext] {
 
-  override val initialBlockContext: DataStreamRequestBlockContext = DataStreamRequestBlockContext(
+  override def initialBlockContext(block: Block): DataStreamRequestBlockContext = DataStreamRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    dataStreams = discoverDataStreams(),
-    backingIndices = discoverBackingIndices()
+    dataStreams = discoveredDataStreams,
+    backingIndices = discoveredBackingIndices
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredBackingIndices match {
+      case BackingIndices.IndicesInvolved(filteredIndices, _) => filteredIndices
+      case BackingIndices.IndicesNotInvolved => Set.empty
+    }
+  }
 
   protected def dataStreamsFrom(request: R): Set[DataStreamName]
 
   protected def backingIndicesFrom(request: R): BackingIndices
 
-  private def discoverDataStreams() = {
+  private lazy val discoveredDataStreams = {
     val dataStreams = dataStreamsFrom(actionRequest).orWildcardWhenEmpty
-    logger.debug(s"[${id.show}] Discovered data streams: ${dataStreams.show}")
+    logger.debug(s"Discovered data streams: ${dataStreams.show}")
     dataStreams
   }
 
-  private def discoverBackingIndices() = {
+  private lazy val discoveredBackingIndices = {
     val backingIndices = backingIndicesFrom(actionRequest)
     backingIndices match {
       case BackingIndices.IndicesInvolved(filteredIndices, _) =>
-        logger.debug(s"[${id.show}] Discovered indices: ${filteredIndices.show}")
+        logger.debug(s"Discovered indices: ${filteredIndices.show}")
       case BackingIndices.IndicesNotInvolved =>
     }
     backingIndices
   }
+
 }

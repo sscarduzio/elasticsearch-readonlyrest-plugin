@@ -108,6 +108,117 @@ trait CustomScalaTestMatchers extends Matchers {
   implicit def toHaveWordStatusCode[T <: BaseManager#SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
     new HaveStatusCode(haveWord)
   }
+
+  def matchJsonIgnoring(ignoredFields: String*)(expected: Value): Matcher[Value] = {
+    new JsonMatcherIgnoringFields(ignoredFields.toSet, expected)
+  }
+
+  class JsonMatcherIgnoringFields(ignoredFields: Set[String], expected: Value) extends Matcher[Value] {
+
+    override def apply(actual: Value): MatchResult = {
+      val differences = findDifferences(actual, expected, path = "")
+
+      MatchResult(
+        differences.isEmpty,
+        s"JSON values differ:\n${differences.mkString("\n")}",
+        s"JSON values match (ignoring fields: ${ignoredFields.mkString(", ")})"
+      )
+    }
+
+    private def findDifferences(actual: Value, expected: Value, path: String): List[String] = {
+      (actual, expected) match {
+        case (Obj(actualMap), Obj(expectedMap)) =>
+          val allKeys = actualMap.keySet ++ expectedMap.keySet
+          allKeys.toList.flatMap { key =>
+            val currentPath = if (path.isEmpty) key else s"$path.$key"
+
+            if (ignoredFields.contains(key) || ignoredFields.contains(currentPath)) {
+              List.empty
+            } else {
+              (actualMap.get(key), expectedMap.get(key)) match {
+                case (Some(actualValue), Some(expectedValue)) =>
+                  findDifferences(actualValue, expectedValue, currentPath)
+                case (None, Some(_)) =>
+                  List(s"At '$currentPath': field missing in actual JSON")
+                case (Some(_), None) =>
+                  List(s"At '$currentPath': unexpected field in actual JSON")
+                case (None, None) =>
+                  List.empty
+              }
+            }
+          }
+
+        case (Arr(actualArray), Arr(expectedArray)) =>
+          if (actualArray.size != expectedArray.size) {
+            List(s"At '$path': array size mismatch (actual: ${actualArray.size}, expected: ${expectedArray.size})")
+          } else {
+            actualArray.zip(expectedArray).zipWithIndex.flatMap { case ((actualElem, expectedElem), idx) =>
+              findDifferences(actualElem, expectedElem, s"$path[$idx]")
+            }.toList
+          }
+
+        case (Str(actualStr), Str(expectedStr)) if actualStr == expectedStr =>
+          List.empty
+
+        case (Num(actualNum), Num(expectedNum)) if actualNum == expectedNum =>
+          List.empty
+
+        case (actualBool: Bool, expectedBool: Bool) if actualBool.value == expectedBool.value =>
+          List.empty
+
+        case (Null, Null) =>
+          List.empty
+
+        case _ =>
+          List(s"At '$path': value mismatch (actual: ${ujson.write(actual)}, expected: ${ujson.write(expected)})")
+      }
+    }
+  }
+
+  def containJsonMatching(ignoredFields: String*)(expected: Value): Matcher[Iterable[Value]] = {
+    new JsonCollectionMatcher(ignoredFields.toSet, expected)
+  }
+
+  class JsonCollectionMatcher(ignoredFields: Set[String], expected: Value) extends Matcher[Iterable[Value]] {
+
+    override def apply(auditEntries: Iterable[Value]): MatchResult = {
+      val matcher = new JsonMatcherIgnoringFields(ignoredFields, expected)
+      val entriesWithDifferences = auditEntries.map { actualEntry =>
+        val differences = matcher.apply(actualEntry)
+        (actualEntry, differences)
+      }
+
+      val matchingEntry = entriesWithDifferences.find(_._2.matches)
+
+      MatchResult(
+        matchingEntry.isDefined,
+        s"""No audit entry found matching expected JSON (ignoring fields: ${ignoredFields.mkString(", ")}).
+           |
+           |Expected:
+           |${ujson.write(expected, indent = 2)}
+           |
+           |Actual entries (${auditEntries.size} total):
+           |${formatEntriesWithDifferences(entriesWithDifferences)}
+           |""".stripMargin,
+        s"Found audit entry matching expected JSON (ignoring fields: ${ignoredFields.mkString(", ")})"
+      )
+    }
+
+    private def formatEntriesWithDifferences(entriesWithDifferences: Iterable[(Value, MatchResult)]): String = {
+      entriesWithDifferences.zipWithIndex.map { case ((entry, matchResult), index) =>
+        if (matchResult.matches) {
+          s"Entry ${index + 1}: ✓ MATCHES"
+        } else {
+          s"""Entry ${index + 1}: ✗ DOES NOT MATCH
+             |${matchResult.failureMessage}
+             |
+             |Actual JSON:
+             |${ujson.write(entry, indent = 2)}""".stripMargin
+        }
+      }.mkString("\n\n---\n\n")
+    }
+  }
+
 }
 
 object CustomScalaTestMatchers extends CustomScalaTestMatchers

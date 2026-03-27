@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 object RorKbnRulesDecoders
   extends JwtLikeRulesDecoders[
@@ -31,7 +31,7 @@ object RorKbnRulesDecoders
     RorKbnAuthenticationRule,
     RorKbnAuthorizationRule,
     RorKbnAuthRule,
-  ] with Logging {
+  ] with RequestIdAwareLogging {
 
   override protected def ruleTypePrefix: String = "ror_kbn"
 

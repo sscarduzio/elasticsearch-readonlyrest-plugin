@@ -45,6 +45,11 @@ class DataStreamManager(client: RestClient, esVersion: String)
     call(request, new DataStreamStatsResult(_))
   }
 
+  def getDataStreamLifecycle(name: String): JsonResponse = {
+    val request = new HttpGet(client.from(s"/_data_stream/$name/_lifecycle"))
+    call(request, new JsonResponse(_))
+  }
+
   def deleteDataStream(name: String): JsonResponse = {
     val request = new HttpDelete(client.from(s"/_data_stream/$name"))
     call(request, new JsonResponse(_))

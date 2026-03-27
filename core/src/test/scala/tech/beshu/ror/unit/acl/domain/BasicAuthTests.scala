@@ -15,13 +15,18 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.domain
+
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, PlainTextSecret, RequestId, User}
 import tech.beshu.ror.utils.TestsUtils.*
 
+import java.util.UUID
+
 class BasicAuthTests extends AnyWordSpec with Inside {
+
+  private implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
 
   "BasicAuth class" should {
     "be able to be created from Authentication header" when {

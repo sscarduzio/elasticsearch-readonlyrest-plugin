@@ -17,11 +17,11 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseComposedAuthenticationAndAuthorizationRule, BaseJwtRule}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 
 final class JwtAuthRule(val authentication: JwtAuthenticationRule,
@@ -31,13 +31,13 @@ final class JwtAuthRule(val authentication: JwtAuthenticationRule,
     authorizationRule = authorization
   ) with BaseJwtRule {
 
-  override protected[rules] def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
-    doPostAuthAction(blockContext, authorization.settings.jwt)
+  override protected[rules] def postAuthAction[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+    doPostAuthAction(blockContext, authorization.settings.jwt, GroupsAuthorizationFailed.apply)
   }
 
   override val name: Rule.Name = JwtAuthRule.Name.name
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+  override val localUsers: LocalUsers = LocalUsers.NotAvailable
   override val userIdCaseSensitivity: CaseSensitivity = authentication.userIdCaseSensitivity
 }
 

@@ -23,8 +23,9 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import ujson.Str
+import tech.beshu.ror.utils.TestUjson.ujson
 
+import java.util.UUID
 import scala.language.postfixOps
 
 class QueryAuditLogSerializerSuite
@@ -51,37 +52,47 @@ class QueryAuditLogSerializerSuite
       "user metadata context for failed login" in {
         val user1MetadataManager = new RorApiManager(basicAuthClient("user2", "dev"), esVersionUsed)
 
-        val result = user1MetadataManager.fetchMetadata()
+        val result = user1MetadataManager.fetchUserMetadata("ent")
 
         result should have statusCode 403
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
         val firstEntry = auditEntries(0)
-        firstEntry("user").str should be("user2")
         firstEntry("final_state").str shouldBe "FORBIDDEN"
+        firstEntry("user").str should be("user2")
         firstEntry("block").str should include("""deny all indices""")
         firstEntry("content").str shouldBe ""
       }
       "user metadata context" in {
         val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"), esVersionUsed)
 
-        val result = user1MetadataManager.fetchMetadata()
+        val correlationId = UUID.randomUUID().toString
+        val result = user1MetadataManager.fetchUserMetadata("ent", Some(correlationId))
 
         result should have statusCode 200
 
-        result.responseJson.obj.size should be(4)
-        result.responseJson("x-ror-username").str should be("user1-proxy-id")
-        result.responseJson("x-ror-current-group").obj("id").str should be("group1")
-        result.responseJson("x-ror-available-groups").arr.map(_.obj("id")).toList should be(List(Str("group1")))
-        result.responseJson("x-ror-correlation-id").str should fullyMatch uuidRegex
+        result.responseJson should be(ujson.read(
+          s"""{
+             |  "type": "USER_WITH_GROUPS",
+             |  "correlation_id": "$correlationId",
+             |  "groups": [
+             |    {
+             |      "username": "user1-proxy-id",
+             |      "group": {
+             |        "id": "group1",
+             |        "name": "group1"
+             |      }
+             |    }
+             |  ]
+             |}""".stripMargin))
 
         val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
 
         val firstEntry = auditIndexManager.getEntries.jsons(0)
-        firstEntry("user").str should be("user1-proxy-id")
         firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("user").str should be("user1-proxy-id")
         firstEntry("block").str should include("""name: 'Allowed only for group1'""")
         firstEntry("content").str shouldBe ""
       }
@@ -94,8 +105,8 @@ class QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditEntries(0)
-        firstEntry("user").str should be("user")
         firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("user").str should be("user")
         firstEntry("block").str should include("name: 'Rule 1'")
         firstEntry("content").str shouldBe ""
       }

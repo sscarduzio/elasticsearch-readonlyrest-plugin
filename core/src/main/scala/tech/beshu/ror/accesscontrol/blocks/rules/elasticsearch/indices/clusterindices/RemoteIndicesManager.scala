@@ -21,7 +21,7 @@ import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
-import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute}
+import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute, RequestId}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
@@ -30,16 +30,23 @@ class RemoteIndicesManager(requestContext: RequestContext,
                            override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName])
   extends IndicesManager[RemoteIndexName] {
 
-  override def allIndicesAndAliases: Task[Set[RemoteIndexName]] =
-    remoteIndices(requestContext.indexAttributes).map(_.flatMap(_.all))
+  private val clusterService = requestContext.esServices.clusterService
 
-  override def allIndices: Task[Set[RemoteIndexName]] =
-    remoteIndices(requestContext.indexAttributes).map(_.map(r => RemoteIndexName(r.indexName, r.clusterName)))
+  override def allIndicesAndAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+    remoteIndices(requestContext.indexAttributes)
+      .map(_.flatMap(_.all))
 
-  override def allAliases: Task[Set[RemoteIndexName]] =
-    requestContext.allRemoteIndicesAndAliases.map(_.flatMap(r => r.aliasesNames.map(RemoteIndexName(_, r.clusterName))))
+  override def allIndices(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+    remoteIndices(requestContext.indexAttributes)
+      .map(_.map(r => RemoteIndexName(r.indexName, r.clusterName)))
 
-  override def indicesPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+  override def allAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] = {
+    clusterService
+      .allRemoteIndicesAndAliases
+      .map(_.flatMap(r => r.aliasesNames.map(RemoteIndexName(_, r.clusterName))))
+  }
+
+  override def indicesPerAliasMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteIndices(requestContext.indexAttributes)
       .map {
         _.foldLeft(Map.empty[RemoteIndexName, Set[RemoteIndexName]]) {
@@ -53,20 +60,19 @@ class RemoteIndicesManager(requestContext: RequestContext,
       }
   }
 
-  override def allDataStreamsAndDataStreamAliases: Task[Set[RemoteIndexName]] = {
+  override def allDataStreamsAndDataStreamAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] = {
     remoteDataStreams(requestContext.indexAttributes).map(_.flatMap(_.all))
   }
 
-  override def allDataStreams: Task[Set[RemoteIndexName]] = {
+  override def allDataStreams(implicit id: RequestId): Task[Set[RemoteIndexName]] = {
     remoteDataStreams(requestContext.indexAttributes).map(_.map(_.dataStream))
   }
 
-  override def allDataStreamAliases: Task[Set[RemoteIndexName]] = {
-    requestContext
-      .allRemoteDataStreamsAndAliases.map(_.flatMap(_.aliases))
+  override def allDataStreamAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] = {
+    clusterService.allRemoteDataStreamsAndAliases.map(_.flatMap(_.aliases))
   }
 
-  override def dataStreamsPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+  override def dataStreamsPerAliasMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteDataStreams(requestContext.indexAttributes)
       .map {
         _.foldLeft(Map.empty[RemoteIndexName, Set[RemoteIndexName]]) {
@@ -77,7 +83,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
       }
   }
 
-  override def backingIndicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+  override def backingIndicesPerDataStreamMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteDataStreams(requestContext.indexAttributes)
       .map {
         _.foldLeft(Map.empty[RemoteIndexName, Set[RemoteIndexName]]) {
@@ -89,8 +95,9 @@ class RemoteIndicesManager(requestContext: RequestContext,
       }
   }
 
-  private def remoteIndices(filteredBy: Set[IndexAttribute]) = {
-    requestContext
+  private def remoteIndices(filteredBy: Set[IndexAttribute])
+                           (implicit id: RequestId) = {
+    clusterService
       .allRemoteIndicesAndAliases
       .map(_.filter(i =>
         if (filteredBy.nonEmpty) filteredBy.contains(i.attribute)
@@ -98,8 +105,9 @@ class RemoteIndicesManager(requestContext: RequestContext,
       ))
   }
 
-  private def remoteDataStreams(filteredBy: Set[IndexAttribute]) = {
-    requestContext
+  private def remoteDataStreams(filteredBy: Set[IndexAttribute])
+                               (implicit id: RequestId) = {
+    clusterService
       .allRemoteDataStreamsAndAliases
       .map(_.filter(ds =>
         if (filteredBy.nonEmpty) filteredBy.contains(ds.attribute)

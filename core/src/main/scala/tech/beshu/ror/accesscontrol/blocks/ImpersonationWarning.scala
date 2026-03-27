@@ -119,7 +119,7 @@ object ImpersonationWarning {
       for {
         mocksProvider <- mocksProvider(rule.impersonation)
         serviceId = rule.settings.service.id
-        warning <- mocksProvider.externalAuthorizationServiceWith(serviceId)(requestId) match {
+        warning <- mocksProvider.externalGroupsProviderServiceWith(serviceId)(requestId) match {
           case Some(_) => None
           case None =>
             ImpersonationWarning(

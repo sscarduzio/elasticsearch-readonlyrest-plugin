@@ -26,7 +26,7 @@ import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.toOps
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.implicits.*
@@ -38,9 +38,8 @@ import scala.jdk.CollectionConverters.*
 class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                    esContext: EsContext,
                                    aclContext: AccessControlStaticContext,
-                                   clusterService: RorClusterService,
                                    override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ResolveIndexAction.Request](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ResolveIndexAction.Request](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ResolveIndexAction.Request): Set[RequestedIndex[ClusterIndexName]] = {
     request
@@ -58,7 +57,7 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
   }
 
   override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    val randomNonExistingIndex = initialBlockContext.randomNonexistentLocalIndex(_.filteredIndices)
+    val randomNonExistingIndex = requestedIndices.getOrElse(Set.empty).randomNonexistentLocalIndex()
     update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name), allowedClusters)
   }
 

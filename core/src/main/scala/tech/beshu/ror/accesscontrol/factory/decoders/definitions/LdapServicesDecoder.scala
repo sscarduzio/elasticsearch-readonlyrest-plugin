@@ -23,7 +23,7 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.*
@@ -42,6 +42,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.value
@@ -50,7 +51,7 @@ import java.time.Clock
 import java.util.concurrent.TimeUnit
 import scala.language.postfixOps
 
-object LdapServicesDecoder extends Logging {
+object LdapServicesDecoder extends RequestIdAwareLogging {
 
   given nameDecoder: Decoder[LdapService.Name] = DecoderHelpers.decodeNonEmptyStringField.map(LdapService.Name.apply)
 
@@ -246,7 +247,7 @@ object LdapServicesDecoder extends Logging {
 
   private def connectionErrorDecodingFailureFrom(error: ConnectionError) = {
     def connectionErrorFrom(message: String) =
-      DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(message)))
+      decodingFailureFrom(DefinitionsLevelCreationError(Message(message)))
 
     error match
       case CannotConnectError(ldap, connectionMethod) =>
@@ -267,7 +268,7 @@ object LdapServicesDecoder extends Logging {
       case BindingTestError(ldap) =>
         connectionErrorFrom(s"There was a problem with test binding in case of '${ldap.show}' LDAP connector}")
       case UnexpectedConnectionError(ldap, cause) =>
-        logger.error(s"Unexpected '${ldap.show}' LDAP connection error", cause)
+        noRequestIdLogger.error(s"Unexpected '${ldap.show}' LDAP connection error", cause)
         connectionErrorFrom(s"Unexpected '${ldap.show}' LDAP connection error: '${cause.getMessage.show}'}")
   }
 
@@ -342,7 +343,7 @@ object LdapServicesDecoder extends Logging {
           groupsFromUserAttribute <- c.downFieldAs[Option[GroupsFromUserAttribute]]("groups_from_user_attribute")
           groupIdAttribute <- (maybeGroupIdAttribute, maybeGroupNameAttribute) match {
             case (Some(id), Some(_)) =>
-              Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(Message(s"Group names (group_name_attribute) are not supported when the group search in user entries is used [ldap ${serviceName.show}]. If you intend to use this feature, please get in touch with us."))))
+              Left(decodingFailureFrom(DefinitionsLevelCreationError(Message(s"Group names (group_name_attribute) are not supported when the group search in user entries is used [ldap ${serviceName.show}]. If you intend to use this feature, please get in touch with us."))))
             case (Some(id), None) => Right(id)
             case (None, Some(name)) =>
               // When only group_name_attribute is defined, we treat it as group ID (backward compatibility)
@@ -373,7 +374,7 @@ object LdapServicesDecoder extends Logging {
             }
         groupsSearchMode <- c.downFieldAs[Option[GroupsSearchMode]]("mode")
         groupConfig <- (groupsSearchMode, deprecatedGroupsSearchMode) match {
-          case (Some(_), Some(_)) => Left(DecodingFailureOps.fromError(
+          case (Some(_), Some(_)) => Left(decodingFailureFrom(
             DefinitionsLevelCreationError(Message("Cannot accept groups search attributes groups_from_user/mode at the same time"))
           ))
           case (maybeSearchMode, maybeDeprecatedSearchMode) =>

@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  users: Definitions[UserDef],
                                  authenticationServices: Definitions[ExternalAuthenticationService],
-                                 authorizationServices: Definitions[ExternalAuthorizationService],
+                                 externalGroupsProviderServices: Definitions[ExternalGroupsProviderService],
                                  jwts: Definitions[JwtDef],
                                  rorKbns: Definitions[RorKbnDef],
                                  ldaps: Definitions[LdapService],

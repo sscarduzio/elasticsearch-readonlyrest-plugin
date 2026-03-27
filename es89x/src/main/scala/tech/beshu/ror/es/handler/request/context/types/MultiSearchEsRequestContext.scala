@@ -21,16 +21,16 @@ import cats.implicits.*
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -44,17 +44,17 @@ import scala.jdk.CollectionConverters.*
 
 class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   esContext: EsContext,
-                                  clusterService: RorClusterService,
                                   override implicit val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(actionRequest),
+    indexPacks = discoveredIndexPacks,
     filter = None,
     fieldLevelSecurity = None,
     requestFieldsUsage = requestFieldsUsage
@@ -65,6 +65,15 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     actionRequest
       .requests().asScala
       .flatMap(indexAttributesFrom)
+      .toCovariantSet
+  }
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks
+      .flatMap {
+        case Indices.Found(indices) => indices
+        case Indices.NotFound => Set.empty
+      }
       .toCovariantSet
   }
 
@@ -79,11 +88,13 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         }
       ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
-      logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
+      logger.error(s"Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
     }
   }
+
+  private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
 
   private def requestFieldsUsage: RequestFieldsUsage = {
     NonEmptyList.fromList(actionRequest.requests().asScala.toList) match {

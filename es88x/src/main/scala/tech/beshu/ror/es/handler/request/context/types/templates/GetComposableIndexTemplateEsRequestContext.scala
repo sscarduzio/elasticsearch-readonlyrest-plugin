@@ -18,7 +18,7 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.cluster.metadata
 import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
@@ -43,11 +42,10 @@ import scala.jdk.CollectionConverters.*
 
 class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
-                                                 clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
                                                 (implicit generator: UniqueIdentifierGenerator)
   extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingIndexTemplates](
-    actionRequest, esContext, clusterService, threadPool
+    actionRequest, esContext, threadPool
   ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList
@@ -108,7 +106,7 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
 
 }
 
-private[templates] object GetComposableIndexTemplateEsRequestContext extends Logging {
+private[templates] object GetComposableIndexTemplateEsRequestContext extends RequestIdAwareLogging {
 
   def filter(templates: Map[String, ComposableIndexTemplate],
              usingTemplate: Set[Template] => Set[Template])

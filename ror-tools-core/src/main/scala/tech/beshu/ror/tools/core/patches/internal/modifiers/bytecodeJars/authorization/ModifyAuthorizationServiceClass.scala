@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es7160, es8180}
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   Elasticsearch’s AuthorizationService blocks requests without a full authorization flow. ROR needs to bypass this
@@ -64,9 +65,72 @@ private[patches] class ModifyAuthorizationServiceClass private(esVersion: SemVer
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
+        case "getAuthorizationInfoFromContext" =>
+          new GetAuthorizationInfoWithoutNullCheck(super.visitMethod(access, name, descriptor, signature, exceptions))
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
+    }
+  }
+
+  /*
+    Replaces getAuthorizationInfoFromContext() to return
+    (AuthorizationInfo) threadContext.getTransient("_authz_info") without the
+    Objects.requireNonNull null-check. When the transient is missing (thread
+    switch via doPrivileged), falls back to RorAuthorizationInfoProvider.get()
+    so that downstream callers like RBACEngine.checkPrivileges never see null.
+  */
+  private class GetAuthorizationInfoWithoutNullCheck(underlying: MethodVisitor)
+    extends MethodVisitor(Opcodes.ASM9) {
+
+    override def visitCode(): Unit = {
+      underlying.visitCode()
+
+      // Object result = this.threadContext.getTransient("_authz_info");
+      // (instance method — slot 0 = this)
+      underlying.visitVarInsn(Opcodes.ALOAD, 0)
+      underlying.visitFieldInsn(
+        Opcodes.GETFIELD,
+        "org/elasticsearch/xpack/security/authz/AuthorizationService",
+        "threadContext",
+        "Lorg/elasticsearch/common/util/concurrent/ThreadContext;"
+      )
+      underlying.visitLdcInsn("_authz_info")
+      underlying.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        "org/elasticsearch/common/util/concurrent/ThreadContext",
+        "getTransient",
+        "(Ljava/lang/String;)Ljava/lang/Object;",
+        /* itf = */ false
+      )
+      // store in local 1
+      underlying.visitVarInsn(Opcodes.ASTORE, 1)
+
+      // if (result != null) return (AuthorizationInfo) result;
+      underlying.visitVarInsn(Opcodes.ALOAD, 1)
+      val fallbackLabel = new Label()
+      underlying.visitJumpInsn(Opcodes.IFNULL, fallbackLabel)
+      underlying.visitVarInsn(Opcodes.ALOAD, 1)
+      underlying.visitTypeInsn(
+        Opcodes.CHECKCAST,
+        "org/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo"
+      )
+      underlying.visitInsn(Opcodes.ARETURN)
+
+      // else return RorAuthorizationInfoProvider.get();
+      underlying.visitLabel(fallbackLabel)
+      underlying.visitFrame(Opcodes.F_APPEND, 1, Array[Object]("java/lang/Object"), 0, null)
+      underlying.visitMethodInsn(
+        Opcodes.INVOKESTATIC,
+        "org/elasticsearch/xpack/security/authz/RorAuthorizationInfoProvider",
+        "get",
+        "()Lorg/elasticsearch/xpack/core/security/authz/AuthorizationEngine$AuthorizationInfo;",
+        /* itf = */ false
+      )
+      underlying.visitInsn(Opcodes.ARETURN)
+
+      underlying.visitMaxs(2, 2)
+      underlying.visitEnd()
     }
   }
 
