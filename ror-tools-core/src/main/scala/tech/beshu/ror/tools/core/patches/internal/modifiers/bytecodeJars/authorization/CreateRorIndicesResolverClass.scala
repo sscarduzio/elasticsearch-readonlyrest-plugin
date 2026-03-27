@@ -37,7 +37,7 @@ import tech.beshu.ror.tools.core.utils.EsUtil.{es8180, es8190, es910, es930}
  *
  * Version-specific handling:
  *  - ES 8.18.x:        resolve(Metadata, AuthorizedIndices{all()->Supplier, check(String)})
- *  - ES 8.19.x–9.0.x:  resolve(Metadata, AuthorizedIndices{all(Selector), check(String,Selector)})
+ *  - ES 8.19.x–9.0.x:  resolve(Metadata, AuthorizedIndices{all()->Supplier, check(String), all(Selector), check(String,Selector)})
  *  - ES 9.1.x–9.2.x:   resolve(ProjectMetadata, AuthorizedIndices{all(Selector), check(String,Selector)})
  *  - ES 9.3.x+:        resolve(ProjectMetadata, AuthorizedIndices, TargetProjects)
  */
@@ -415,6 +415,55 @@ private[patches] class CreateRorIndicesResolverClass(esVersion: SemVer)
         mv.visitEnd()
       }
 
+      // private static Set lambda$all$0(Set s) { return s; }
+      {
+        val mv = cw.visitMethod(
+          Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
+          "lambda$all$0", "(Ljava/util/Set;)Ljava/util/Set;", null, null
+        )
+        mv.visitCode()
+        mv.visitVarInsn(Opcodes.ALOAD, 0)
+        mv.visitInsn(Opcodes.ARETURN)
+        mv.visitMaxs(1, 1)
+        mv.visitEnd()
+      }
+
+      // public Supplier<Set<String>> all()
+      {
+        val mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "all", "()Ljava/util/function/Supplier;", null, null)
+        mv.visitCode()
+
+        // Set<String> set = this.metadata.getIndicesLookup().keySet()
+        mv.visitVarInsn(Opcodes.ALOAD, 0)
+        mv.visitFieldInsn(Opcodes.GETFIELD, innerName, "metadata", metadataDesc)
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, metadataClass, "getIndicesLookup", "()Ljava/util/SortedMap;", false)
+        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/SortedMap", "keySet", "()Ljava/util/Set;", true)
+        mv.visitVarInsn(Opcodes.ASTORE, 1)
+
+        // return () -> set;  (via invokedynamic capturing the set)
+        val bootstrapHandle = new Handle(
+          Opcodes.H_INVOKESTATIC,
+          "java/lang/invoke/LambdaMetafactory",
+          "metafactory",
+          "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+          false
+        )
+        mv.visitVarInsn(Opcodes.ALOAD, 1)
+        mv.visitInvokeDynamicInsn(
+          "get",
+          "(Ljava/util/Set;)Ljava/util/function/Supplier;",
+          bootstrapHandle,
+          Array[AnyRef](
+            org.objectweb.asm.Type.getType("()Ljava/lang/Object;"),
+            new Handle(Opcodes.H_INVOKESTATIC, innerName, "lambda$all$0", "(Ljava/util/Set;)Ljava/util/Set;", false),
+            org.objectweb.asm.Type.getType("()Ljava/util/Set;")
+          ): _*
+        )
+        mv.visitInsn(Opcodes.ARETURN)
+        mv.visitMaxs(2, 2)
+        mv.visitEnd()
+      }
+
       // public Set<String> all(IndexComponentSelector selector)
       {
         val mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "all", s"($indexComponentSelectorDesc)Ljava/util/Set;", null, null)
@@ -424,6 +473,16 @@ private[patches] class CreateRorIndicesResolverClass(esVersion: SemVer)
         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, metadataClass, "getIndicesLookup", "()Ljava/util/SortedMap;", false)
         mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, "java/util/SortedMap", "keySet", "()Ljava/util/Set;", true)
         mv.visitInsn(Opcodes.ARETURN)
+        mv.visitMaxs(1, 2)
+        mv.visitEnd()
+      }
+
+      // public boolean check(String name)
+      {
+        val mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "check", "(Ljava/lang/String;)Z", null, null)
+        mv.visitCode()
+        mv.visitInsn(Opcodes.ICONST_1)
+        mv.visitInsn(Opcodes.IRETURN)
         mv.visitMaxs(1, 2)
         mv.visitEnd()
       }
