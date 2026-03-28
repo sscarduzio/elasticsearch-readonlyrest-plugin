@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import cats.effect.Resource
+import monix.eval.Task
 import org.elasticsearch.action.bulk.{BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.{ActionListener, DocWriteRequest}
@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.audit.sink.AuditDataStreamCreator
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, IndexName, RequestId}
 import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 import java.util.function.BiConsumer
@@ -102,6 +103,7 @@ final class NodeClientBasedAuditSinkService(client: NodeClient,
     }
   }
 
-  override val dataStreamCreator: AuditDataStreamCreator =
-    AuditDataStreamCreator(NonEmptyList.one(new EsDataStreamService(client, jsonParserFactory)))
+  override val dataStreamCreator: Resource[Task, AuditDataStreamCreator] = {
+    Resource.pure[Task, DataStreamService](new EsDataStreamService(client, jsonParserFactory)).map(AuditDataStreamCreator.local)
+  }
 }
