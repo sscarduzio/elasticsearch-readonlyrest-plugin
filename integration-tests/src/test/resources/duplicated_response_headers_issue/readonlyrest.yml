@@ -18,7 +18,7 @@ readonlyrest:
       verbosity: error
 
     - name: "Admin Tenancy"
-      verbosity: error
+      logAllowedEvents: false
       groups: ["Admins"]
       kibana:
         access: admin

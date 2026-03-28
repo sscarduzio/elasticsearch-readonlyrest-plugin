@@ -17,12 +17,11 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Show
-import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 
 final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
-                                 users: DefinitionsProvider[UserDef],
+                                 users: Definitions[UserDef],
                                  authenticationServices: Definitions[ExternalAuthenticationService],
                                  externalGroupsProviderServices: Definitions[ExternalGroupsProviderService],
                                  jwts: Definitions[JwtDef],
@@ -30,21 +29,6 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  ldaps: Definitions[LdapService],
                                  impersonators: Definitions[ImpersonatorDef],
                                  variableTransformationAliases: Definitions[VariableTransformationAliasDef])
-
-class DefinitionsProvider[Item](definitions: Definitions[Item]) {
-
-  private val usedAtLeastOnce: AtomicBoolean = AtomicBoolean(false)
-
-  def definitionsHaveNotBeenUsed: Boolean = !usedAtLeastOnce.get()
-
-  def nonEmpty: Boolean = definitions.items.nonEmpty
-
-  def provide: Definitions[Item] = {
-    usedAtLeastOnce.set(true)
-    definitions
-  }
-
-}
 
 final case class Definitions[Item](items: List[Item]) extends AnyVal
 object Definitions {
