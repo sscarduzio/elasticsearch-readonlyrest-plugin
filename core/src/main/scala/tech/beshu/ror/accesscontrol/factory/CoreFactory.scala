@@ -407,7 +407,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       blocksList <- extractBlocksList(blockDecodingResult)
       blocksNel <- extractNonEmptyBlocksList(blocksList)
       _ <- validateThereAreNoBlockDuplicates(blocksNel)
-      _ <- validateThatTheUsersConfigSectionIsUsedWhenPresent(blocksNel, userDefs)
+      _ <- validateThatUsersConfigSectionIsUsedWhenPresent(blocksNel, userDefs)
     } yield blocksNel).left.map(msg => BlocksLevelCreationError(Message(msg)))
   }
 
@@ -432,7 +432,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
     }
   }
 
-  private def validateThatTheUsersConfigSectionIsUsedWhenPresent(blocks: NonEmptyList[BlockDecodingResult],
+  private def validateThatUsersConfigSectionIsUsedWhenPresent(blocks: NonEmptyList[BlockDecodingResult],
                                                                  userDefs: Definitions[UserDef]): Either[String, Unit] = {
     val thereAreUserDefinitions = userDefs.items.nonEmpty
     lazy val thereIsGroupsRule = blocks.flatMap(_.block.rules).collect {
