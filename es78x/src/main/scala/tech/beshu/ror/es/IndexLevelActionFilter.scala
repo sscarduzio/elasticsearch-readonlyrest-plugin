@@ -77,7 +77,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val esServices = EsServices(
     clusterService = new EsNodeClusterService(
-      nodeName,
+      esEnv.esNodeSettings.nodeName,
       clusterService,
       remoteClusterServiceSupplier,
       repositoriesServiceSupplier,
