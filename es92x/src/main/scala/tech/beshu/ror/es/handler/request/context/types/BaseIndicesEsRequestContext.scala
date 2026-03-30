@@ -89,7 +89,9 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
                        allowedClusters: Set[ClusterName.Full]): ModificationResult
 
   private lazy val discoverIndices: Set[RequestedIndex[ClusterIndexName]] = {
-    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
+    val indices = requestedIndicesFrom(actionRequest)
+      .filter(i => !i.isRemoteIndex || esServices.clusterService.remoteClustersConfigured)
+      .orWildcardWhenEmpty
     logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }

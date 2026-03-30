@@ -189,6 +189,13 @@ object RequestedIndex {
       RequestedIndex(requestedIndex.name.randomNonexistentIndex(), excluded = false)
     }
   }
+
+  implicit class IsRemoteIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) extends AnyVal {
+    def isRemoteIndex: Boolean = requestedIndex.name match {
+      case Local(_) => false
+      case ClusterIndexName.Remote(_, _) => true
+    }
+  }
 }
 
 sealed trait ClusterIndexName {
