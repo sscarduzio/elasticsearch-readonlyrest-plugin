@@ -65,7 +65,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     new RorNotAvailableRequestHandler(esConfigBasedRorSettings.boot)
 
   private val esEnv = EsEnvProvider.create(env)
-  private val nodeName = esEnv.esNodeSettings.nodeName
 
   private val ror = ReadonlyRest.create(
     new EsIndexDocumentManager(client),
@@ -140,10 +139,10 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                       chain: EsChain): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
-        threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
+        threadPool.getThreadContext.addXpackUserAuthenticationHeader(esEnv.esNodeSettings.nodeName)
         chain.continue(task, action, request, listener)
       case Some(_) if action.isInternal =>
-        threadPool.getThreadContext.addSystemAuthenticationHeader(nodeName)
+        threadPool.getThreadContext.addSystemAuthenticationHeader(esEnv.esNodeSettings.nodeName)
         chain.continue(task, action, request, listener)
       case Some(channel) =>
         val correlationId = channel.correlationId
@@ -153,7 +152,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
             new EsContext(
               channel,
               correlationId,
-              nodeName,
+              esEnv.esNodeSettings,
               task,
               action,
               request,

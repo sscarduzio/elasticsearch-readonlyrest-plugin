@@ -241,9 +241,9 @@ class RegularRequestHandler(engine: Engine,
 
   private def addProperHeader(): Unit = {
     if (esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
-      threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
+      threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.esNodeSettings.nodeName)
     else
-      threadPool.getThreadContext.addXpackUserAuthenticationHeader(esContext.nodeName)
+      threadPool.getThreadContext.addXpackUserAuthenticationHeader(esContext.esNodeSettings.nodeName)
   }
 
   private def respond(requestContext: RequestContext, response: CustomResponse): Unit = {

@@ -65,6 +65,13 @@ class EsNodeClusterService(nodeName: String,
 
   import EsNodeClusterService.*
 
+  override def remoteClustersConfigured(implicit id: RequestId): Boolean = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) => remoteClusterService.getRemoteConnectionInfos.count() > 0
+      case None => false
+    }
+  }
+
   override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
@@ -374,7 +381,7 @@ class EsNodeClusterService(nodeName: String,
 
   private def resolveRemoteIndicesUsing(client: Client) = {
     import tech.beshu.ror.es.utils.ThreadContextOps.*
-    threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
+    threadPool.getThreadContext.addXpackUserAuthenticationHeader(esEnv.esNodeSettings.nodeName)
     val promise = CancelablePromise[ResolveIndexAction.Response]()
     client
       .admin()

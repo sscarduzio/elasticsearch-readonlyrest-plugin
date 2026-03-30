@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
+import tech.beshu.ror.accesscontrol.request.BaseEsContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -190,8 +191,14 @@ object RequestedIndex {
     }
   }
 
-  implicit class IsRemoteIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) extends AnyVal {
-    def isRemoteIndex: Boolean = requestedIndex.name match {
+  implicit class InaccessibleRemoteIndex(val requestedIndex: RequestedIndex[ClusterIndexName]) extends AnyVal {
+
+    def isInaccessibleRemoteIndex(esContext: BaseEsContext)
+                                 (implicit id: RequestId): Boolean = {
+      isRemoteIndex && esContext.esNodeSettings.xpackSecurityEnabled && !esContext.esServices.clusterService.remoteClustersConfigured
+    }
+
+    private def isRemoteIndex: Boolean = requestedIndex.name match {
       case Local(_) => false
       case ClusterIndexName.Remote(_, _) => true
     }

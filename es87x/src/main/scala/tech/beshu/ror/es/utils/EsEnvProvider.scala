@@ -33,6 +33,7 @@ object EsEnvProvider {
       esNodeSettings = EsNodeSettings(
         nodeName = Node.NODE_NAME_SETTING.get(settings),
         clusterName = ClusterName.CLUSTER_NAME_SETTING.get(settings).value(),
+        xpackSecurityEnabled = settings.get("xpack.security.enabled", "true").toBoolean
       ),
     )
   }
