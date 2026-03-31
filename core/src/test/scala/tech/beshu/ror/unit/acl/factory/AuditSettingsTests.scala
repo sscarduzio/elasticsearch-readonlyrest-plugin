@@ -56,7 +56,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, testEsNodeSettings)
+    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, defaultTestEsNodeSettings)
     new RawRorSettingsBasedCoreFactory(esEnv)
   }
 
@@ -2275,7 +2275,7 @@ private class DummyAuditRequestContext(override val loggedInUserName: Option[Str
 
   override def generalAuditEvents: JSONObject = new JSONObject
 
-  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
+  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(defaultTestEsNodeSettings)
 
   override def matchedBlockNames: Option[List[String]] = Some(List("block1", "block2"))
 }

@@ -211,7 +211,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   RorAuditLoggerName.default
                 ))
               ),
-              testEsNodeSettings
+              defaultTestEsNodeSettings
             ),
             auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
               override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
@@ -236,7 +236,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     "no enabled outputs in settings" should {
       "be disabled" in {
         val creationResult = AuditingTool.create(
-          settings = AuditSettings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled), testEsNodeSettings),
+          settings = AuditSettings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled), defaultTestEsNodeSettings),
           auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
             override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
 
@@ -261,7 +261,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         AuditCluster.LocalAuditCluster
       ))
     ),
-    esNodeSettings = testEsNodeSettings
+    esNodeSettings = defaultTestEsNodeSettings
   )
 
   private lazy val someday = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))

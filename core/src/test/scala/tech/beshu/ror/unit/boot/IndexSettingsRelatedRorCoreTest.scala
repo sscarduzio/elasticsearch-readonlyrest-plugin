@@ -297,7 +297,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
   private def createEsConfigBasedRorSettings(resourceEsConfigDir: String): EsConfigBasedRorSettings = {
     implicit val systemContext: SystemContext = SystemContext.default
     val esConfig = File(getResourcePath(resourceEsConfigDir))
-    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests, testEsNodeSettings)
+    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests, defaultTestEsNodeSettings)
     EsConfigBasedRorSettings.from(esEnv).runSyncUnsafe() match {
       case Right(settings) =>
         val rorSettingsSourcesConfig = settings.settingsSource.copy(settingsFile = RorSettingsFile(esConfig / "readonlyrest.yml"))
