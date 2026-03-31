@@ -432,7 +432,8 @@ object TestsUtils {
 
   def testEsNodeSettings: EsNodeSettings = EsNodeSettings(
     clusterName = "testEsCluster",
-    nodeName = "testEsNode"
+    nodeName = "testEsNode",
+    xpackSecurityEnabled = true
   )
 
   def defaultEsEnv(): EsEnv = {

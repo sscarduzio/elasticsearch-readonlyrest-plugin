@@ -65,7 +65,7 @@ class EsNodeClusterService(nodeName: String,
 
   override def remoteClustersConfigured(implicit id: RequestId): Boolean = {
     remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) => remoteClusterService.getRemoteConnectionInfos.count() > 0
+      case Some(remoteClusterService) => remoteClusterService.isCrossClusterSearchEnabled()
       case None => false
     }
   }

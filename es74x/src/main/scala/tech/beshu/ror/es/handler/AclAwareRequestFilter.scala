@@ -62,7 +62,7 @@ import tech.beshu.ror.accesscontrol.domain.{Action, CorrelationId, Header}
 import tech.beshu.ror.accesscontrol.request.{BaseEsContext, RequestContext, RestRequest}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, EsServices, HidingInternalErrorDetailsRorActionListener, RorActionListener, RorRestChannel}
+import tech.beshu.ror.es.*
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
