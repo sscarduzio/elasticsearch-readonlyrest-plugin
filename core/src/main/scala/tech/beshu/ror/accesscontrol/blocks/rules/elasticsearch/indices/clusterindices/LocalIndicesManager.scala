@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusteri
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexName
-import tech.beshu.ror.accesscontrol.domain.{IndexAttribute, RequestId}
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
@@ -28,63 +28,51 @@ class LocalIndicesManager(requestContext: RequestContext,
                           override val allowedIndicesMatcher: PatternsMatcher[LocalIndexName])
   extends IndicesManager[LocalIndexName] {
 
+  private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
   private val clusterService = requestContext.esServices.clusterService
 
-  override def allIndicesAndAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] = Task.delay {
-    indices(requestContext.indexAttributes).flatMap(_.all)
+  private lazy val filteredIndices = {
+    val attrs = requestContext.indexAttributes
+    val all = clusterService.allIndicesAndAliases
+    if (attrs.nonEmpty) all.filter(i => attrs.contains(i.attribute)) else all
   }
+  private lazy val cachedAllIndicesAndAliases: Set[LocalIndexName] = filteredIndices.flatMap(_.all)
+  private lazy val cachedAllIndices: Set[LocalIndexName] = filteredIndices.map(_.index)
+  private lazy val cachedAllAliases: Set[LocalIndexName] = clusterService.allIndicesAndAliases.flatMap(_.aliases)
 
-  override def allIndices(implicit requestId: RequestId): Task[Set[LocalIndexName]] = Task.delay {
-    indices(requestContext.indexAttributes).map(_.index)
+  private lazy val filteredDataStreams = {
+    val attrs = requestContext.indexAttributes
+    val all = clusterService.allDataStreamsAndAliases
+    if (attrs.nonEmpty) all.filter(ds => attrs.contains(ds.attribute)) else all
   }
+  private lazy val cachedAllDataStreamsAndAliases: Set[LocalIndexName] = filteredDataStreams.flatMap(_.all)
+  private lazy val cachedAllDataStreams: Set[LocalIndexName] = filteredDataStreams.map(_.dataStream)
+  private lazy val cachedAllDataStreamAliases: Set[LocalIndexName] = clusterService.allDataStreamsAndAliases.flatMap(_.aliases)
 
-  override def allAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] = Task.delay {
-    clusterService.allIndicesAndAliases.flatMap(_.aliases)
-  }
+  override def allIndicesAndAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+    Task.delay(cachedAllIndicesAndAliases)
 
-  override def indicesPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] = {
+  override def allIndices(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+    Task.delay(cachedAllIndices)
+
+  override def allAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+    Task.delay(cachedAllAliases)
+
+  override def indicesPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
     clusterService.indicesPerAliasMap(requestContext.indexAttributes)
-  }
 
-  override def allDataStreamsAndDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] = Task.delay {
-    dataStreams(requestContext.indexAttributes).flatMap(_.all)
-  }
+  override def allDataStreamsAndDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+    Task.delay(cachedAllDataStreamsAndAliases)
 
-  override def allDataStreams(implicit requestId: RequestId): Task[Set[LocalIndexName]] = Task.delay {
-    dataStreams(requestContext.indexAttributes).map(_.dataStream)
-  }
+  override def allDataStreams(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+    Task.delay(cachedAllDataStreams)
 
-  override def allDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] = Task.delay {
-    clusterService
-      .allDataStreamsAndAliases
-      .flatMap(_.aliases)
-  }
+  override def allDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
+    Task.delay(cachedAllDataStreamAliases)
 
-  override def dataStreamsPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =  {
+  override def dataStreamsPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
     clusterService.dataStreamsPerAliasMap(requestContext.indexAttributes)
-  }
 
-  override def backingIndicesPerDataStreamMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] = {
+  override def backingIndicesPerDataStreamMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
     clusterService.backingIndicesPerDataStreamMap(requestContext.indexAttributes)
-  }
-
-  private def dataStreams(filteredBy: Set[IndexAttribute])
-                         (implicit requestId: RequestId) = {
-    clusterService
-      .allDataStreamsAndAliases
-      .filter(ds =>
-        if (filteredBy.nonEmpty) filteredBy.contains(ds.attribute)
-        else true
-      )
-  }
-
-  private def indices(filteredBy: Set[IndexAttribute])
-                     (implicit requestId: RequestId) = {
-    clusterService
-      .allIndicesAndAliases
-      .filter(i =>
-        if (filteredBy.nonEmpty) filteredBy.contains(i.attribute)
-        else true
-      )
-  }
 }
