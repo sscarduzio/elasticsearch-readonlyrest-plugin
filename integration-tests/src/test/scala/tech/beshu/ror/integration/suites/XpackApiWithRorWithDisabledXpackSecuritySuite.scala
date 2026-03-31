@@ -36,12 +36,17 @@ class XpackApiWithRorWithDisabledXpackSecuritySuite extends BaseXpackApiSuite {
 
   "Search API" when {
     "request with remote indices pattern is called" should {
-      "return illegal_argument_exception because cross-cluster calls are not supported" in {
+      "return illegal_argument_exception because cross-cluster calls are not supported" excludeES (allEs6x, allEs7x) in {
         val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
         val result = adminIndexManager.getIndex("*", "*:*")
         result should have statusCode 400
         result.responseJson("error")("type").str should be("illegal_argument_exception")
         result.responseJson("error")("reason").str should include("Cross-cluster calls are not supported in this context but remote indices were requested: [*:*]")
+      }
+      "return indices successfully because cross-cluster calls are supported" excludeES (allEs8x, allEs9x) in {
+        val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+        val result = adminIndexManager.getIndex("*", "*:*")
+        result should have statusCode 200
       }
     }
   }
