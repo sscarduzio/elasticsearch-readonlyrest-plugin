@@ -21,7 +21,7 @@ import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
-import tech.beshu.ror.accesscontrol.domain.{FullRemoteIndexWithAliases, IndexAttribute, RequestId}
+import tech.beshu.ror.accesscontrol.domain.{IndexAttribute, RequestId}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
@@ -47,17 +47,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
   }
 
   override def indicesPerAliasMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
-    remoteIndices(requestContext.indexAttributes)
-      .map {
-        _.foldLeft(Map.empty[RemoteIndexName, Set[RemoteIndexName]]) {
-          case (acc, FullRemoteIndexWithAliases(clusterName, index, _, aliases)) =>
-            val remoteIndicesPerAliasMap = aliases
-              .map(RemoteIndexName(_, clusterName))
-              .map((_, Set(RemoteIndexName(index, clusterName))))
-              .toMap
-            mapMonoid.combine(acc, remoteIndicesPerAliasMap)
-        }
-      }
+    clusterService.remoteIndicesPerAliasMap(requestContext.indexAttributes)
   }
 
   override def allDataStreamsAndDataStreamAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] = {

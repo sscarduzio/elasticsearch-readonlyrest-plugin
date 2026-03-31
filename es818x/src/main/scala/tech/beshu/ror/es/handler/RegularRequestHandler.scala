@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptyList
+import cats.implicits.toShow
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
@@ -40,9 +41,9 @@ import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListen
 import tech.beshu.ror.syntax.Set
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.{Duration, Instant}
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.util.{Failure, Success, Try}
 
 class RegularRequestHandler(engine: Engine,
@@ -52,11 +53,17 @@ class RegularRequestHandler(engine: Engine,
   extends RequestIdAwareLogging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
+    val r: RequestContext = request
+    val startMeasurement = Instant.now()
+    logger.debug("[ROR_DEBUG] ROR ACL - checking request started ...")(r.id.toRequestId)
     engine.core.accessControl
       .handleRegularRequest(request)
       .map { case (result, _) =>
         doPrivileged {
           commitResult(result, request)
+          val end = Instant.now()
+          val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
+          logger.debug(s"[ROR_DEBUG] ROR ACL - checking request done. Took ${measurement.show}")(r.id.toRequestId)
         }
       }
   }

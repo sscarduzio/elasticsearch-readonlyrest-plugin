@@ -26,6 +26,65 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext.*
 
+class AsyncCacheableAction2[K, V](ttl: PositiveFiniteDuration,
+                                  action: K => Task[V]) {
+
+  import CacheableActionCaffeineOps.*
+
+  private val keySemaphoresMap = new ConcurrentHashMap[K, Semaphore[Task]]()
+
+  private val cache: Cache[K, V] =
+    Caffeine.newBuilder()
+      .executor(global)
+      .removalListener(onRemoveHook)
+      .withOptionalTtl(Some(ttl))
+      .build[K, V]()
+
+  def call(key: K): Task[V] = {
+    for {
+      semaphore <- semaphoreOf(key)
+      cachedValue <- semaphore.withPermit {
+        getFromCacheOrRunAction(key).uncancelable.asyncBoundary
+      }
+    } yield cachedValue
+  }
+
+  private def getFromCacheOrRunAction(key: K): Task[V] = {
+    for {
+      cachedValue <- Task.delay(Option(cache.getIfPresent(key)))
+      result <- cachedValue match {
+        case Some(value) =>
+          Task.now(value)
+        case None =>
+          action(key)
+            .flatMap { value =>
+              Task
+                .delay {
+                  cache.put(key, value)
+                }
+                .map(_ => value)
+            }
+      }
+    } yield result
+  }
+
+  def invalidateAll(): Unit = {
+    cache.invalidateAll()
+    keySemaphoresMap.clear()
+  }
+
+  private def onRemoveHook(mappedKey: K,
+                           @nowarn value: V,
+                           @nowarn cause: RemovalCause): Unit = {
+    keySemaphoresMap.remove(mappedKey)
+  }
+
+  private def semaphoreOf(key: K) = for {
+    newSemaphore <- Semaphore[Task](1)
+    usedSemaphore = Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
+  } yield usedSemaphore
+}
+
 class AsyncCacheableAction[K, V](ttl: Option[PositiveFiniteDuration],
                                  action: (K, RequestId) => Task[V])
   extends AsyncCacheableActionWithKeyMapping[K, K, V](ttl, action, identity[K]) {

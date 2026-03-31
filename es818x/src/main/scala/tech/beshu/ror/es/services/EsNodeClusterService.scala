@@ -21,6 +21,7 @@ import cats.implicits.*
 import cats.kernel.Monoid
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 import monix.execution.{CancelablePromise, Scheduler}
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
@@ -28,6 +29,7 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{Resolv
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.internal.RemoteClusterClient
 import org.elasticsearch.client.internal.node.NodeClient
+import org.elasticsearch.cluster.{ClusterChangedEvent, ClusterStateListener}
 import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
@@ -50,7 +52,9 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
+import java.time.{Duration, Instant}
 import java.util.function.Supplier
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
@@ -65,6 +69,27 @@ class EsNodeClusterService(nodeName: String,
     with RequestIdAwareLogging {
 
   import EsNodeClusterService.*
+
+  private val allIndicesAndAliases: Atomic[Set[FullLocalIndexWithAliases]] = Atomic {
+    Option(clusterService.state) match {
+      case Some(state) => extractIndicesAndAliasesFrom(state.metadata)
+      case None => Set.empty
+    }
+  }
+
+  clusterService.addListener(new ClusterStateListener {
+    override def clusterChanged(event: ClusterChangedEvent): Unit = {
+      if(event.metadataChanged()) {
+        val startMeasurement = Instant.now()
+        noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - extracting indices and aliases ...")
+        val newIndicesAndAliases = extractIndicesAndAliasesFrom(event.state().metadata())
+        allIndicesAndAliases.set(newIndicesAndAliases)
+        val end = Instant.now()
+        val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
+        noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - DONE! Took: ${measurement.show}")
+      }
+    }
+  })
 
   override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = {
     remoteClusterServiceSupplier.get() match {
@@ -85,8 +110,7 @@ class EsNodeClusterService(nodeName: String,
   }
 
   override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = {
-    val metadata = clusterService.state.metadata
-    extractIndicesAndAliasesFrom(metadata)
+    allIndicesAndAliases.get()
   }
 
   override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = {
@@ -554,6 +578,7 @@ class EsNodeClusterService(nodeName: String,
   }
 
 }
+
 object EsNodeClusterService {
 
   private implicit class RepositoryServiceOps(val service: RepositoriesService) extends AnyVal {

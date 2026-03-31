@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
+import cats.implicits.toShow
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -29,13 +30,21 @@ import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
+
+import java.time.{Duration, Instant}
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 class SearchEsRequestContext(actionRequest: SearchRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
                              override implicit val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool) {
+  extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool)
+    with RequestIdAwareLogging {
+
+  private val startMeasurement = Instant.now()
+  logger.debug("[ROR_DEBUG] Starting processing of search request by ROR ...")
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
@@ -65,8 +74,14 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
               .filterSourceFieldsUsing(restrictions)
               .filterDocumentFieldsUsing(restrictions)
           }
+        val end = Instant.now()
+        val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
+        logger.debug(s"[ROR_DEBUG] Finished processing of search request by ROR. Took: ${measurement.show}")
         response
       case _ =>
+        val end = Instant.now()
+        val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
+        logger.debug(s"[ROR_DEBUG] Finished processing of search request by ROR. Took: ${measurement.show}")
         actionResponse
     }
   }
