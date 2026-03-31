@@ -71,27 +71,31 @@ class EsNodeClusterService(nodeName: String,
   import EsNodeClusterService.*
 
   private val localIndicesSnapshotAtomic: Atomic[LocalIndicesSnapshot] = Atomic {
-    Option(clusterService.state) match {
-      case Some(state) => buildLocalIndicesSnapshot(extractIndicesAndAliasesFrom(state.metadata))
-      case None => buildLocalIndicesSnapshot(Set.empty)
-    }
+    new LocalIndicesSnapshot(
+      Option(clusterService.state) match {
+        case Some(state) => extractIndicesAndAliasesFrom(state.metadata)
+        case None => Set.empty
+      }
+    )
   }
 
   private val localDataStreamsSnapshotAtomic: Atomic[LocalDataStreamsSnapshot] = Atomic {
-    Option(clusterService.state) match {
-      case Some(state) => buildLocalDataStreamsSnapshot(extractDataStreamsAndAliases(state.metadata))
-      case None => buildLocalDataStreamsSnapshot(Set.empty)
-    }
+    new LocalDataStreamsSnapshot(
+      Option(clusterService.state) match {
+        case Some(state) => extractDataStreamsAndAliases(state.metadata)
+        case None => Set.empty
+      }
+    )
   }
 
   clusterService.addListener(new ClusterStateListener {
     override def clusterChanged(event: ClusterChangedEvent): Unit = {
       if(event.metadataChanged()) {
         val startMeasurement = Instant.now()
-        noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - extracting indices and aliases ...")
+        noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - extracting i.ndices and aliases ...")
         val metadata = event.state().metadata()
-        localIndicesSnapshotAtomic.set(buildLocalIndicesSnapshot(extractIndicesAndAliasesFrom(metadata)))
-        localDataStreamsSnapshotAtomic.set(buildLocalDataStreamsSnapshot(extractDataStreamsAndAliases(metadata)))
+        localIndicesSnapshotAtomic.set(new LocalIndicesSnapshot(extractIndicesAndAliasesFrom(metadata)))
+        localDataStreamsSnapshotAtomic.set(new LocalDataStreamsSnapshot(extractDataStreamsAndAliases(metadata)))
         val end = Instant.now()
         val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
         noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - DONE! Took: ${measurement.show}")
@@ -123,9 +127,6 @@ class EsNodeClusterService(nodeName: String,
   override def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot =
     localIndicesSnapshotAtomic.get()
 
-  private def buildLocalIndicesSnapshot(raw: Set[FullLocalIndexWithAliases]): LocalIndicesSnapshot =
-    LocalIndicesSnapshot(raw, raw.flatMap(_.all), raw.map(_.index), raw.flatMap(_.aliases))
-
   override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
@@ -140,9 +141,6 @@ class EsNodeClusterService(nodeName: String,
 
   override def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot =
     localDataStreamsSnapshotAtomic.get()
-
-  private def buildLocalDataStreamsSnapshot(raw: Set[FullLocalDataStreamWithAliases]): LocalDataStreamsSnapshot =
-    LocalDataStreamsSnapshot(raw, raw.flatMap(_.all), raw.map(_.dataStream), raw.flatMap(_.aliases))
 
   override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] =
     remoteClusterServiceSupplier.get() match {

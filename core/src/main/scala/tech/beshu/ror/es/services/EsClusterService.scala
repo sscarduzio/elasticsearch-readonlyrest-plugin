@@ -121,15 +121,9 @@ trait EsClusterService {
 
   def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]]
 
-  def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot = {
-    val raw = allIndicesAndAliases
-    LocalIndicesSnapshot(raw, raw.flatMap(_.all), raw.map(_.index), raw.flatMap(_.aliases))
-  }
+  def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot = new LocalIndicesSnapshot(allIndicesAndAliases)
 
-  def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot = {
-    val raw = allDataStreamsAndAliases
-    LocalDataStreamsSnapshot(raw, raw.flatMap(_.all), raw.map(_.dataStream), raw.flatMap(_.aliases))
-  }
+  def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot = new LocalDataStreamsSnapshot(allDataStreamsAndAliases)
 
   final def allTemplates(implicit id: RequestId): Set[Template] = {
     legacyTemplates ++ indexTemplates ++ componentTemplates
@@ -168,19 +162,17 @@ object EsClusterService {
   type DocumentsAccessibility = Map[DocumentWithIndex, DocumentAccessibility]
   type IndexUuid = String
 
-  final case class LocalIndicesSnapshot(
-    raw: Set[FullLocalIndexWithAliases],
-    indicesAndAliases: Set[LocalIndexName],
-    indices: Set[LocalIndexName],
-    aliases: Set[LocalIndexName],
-  )
+  final class LocalIndicesSnapshot(val raw: Set[FullLocalIndexWithAliases]) {
+    lazy val indicesAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    lazy val indices: Set[LocalIndexName] = raw.map(_.index)
+    lazy val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
+  }
 
-  final case class LocalDataStreamsSnapshot(
-    raw: Set[FullLocalDataStreamWithAliases],
-    dataStreamsAndAliases: Set[LocalIndexName],
-    dataStreams: Set[LocalIndexName],
-    dataStreamAliases: Set[LocalIndexName],
-  )
+  final class LocalDataStreamsSnapshot(val raw: Set[FullLocalDataStreamWithAliases]) {
+    lazy val dataStreamsAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    lazy val dataStreams: Set[LocalIndexName] = raw.map(_.dataStream)
+    lazy val dataStreamAliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
+  }
 }
 
 class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends EsClusterService {
@@ -265,10 +257,25 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
     action = (filteredBy, id) => underlying.indicesPerAliasMap(filteredBy)(id)
   )
 
+  private lazy val cacheableDataStreamsPerAliasMap = new AsyncCacheableAction[Set[IndexAttribute], Map[LocalIndexName, Set[LocalIndexName]]](
+    action = (filteredBy, id) => underlying.dataStreamsPerAliasMap(filteredBy)(id)
+  )
+
+  private lazy val cacheableBackingIndicesPerDataStreamMap = new AsyncCacheableAction[Set[IndexAttribute], Map[LocalIndexName, Set[LocalIndexName]]](
+    action = (filteredBy, id) => underlying.backingIndicesPerDataStreamMap(filteredBy)(id)
+  )
+
   override def indicesPerAliasMap(filteredBy: Set[IndexAttribute])
-                                 (implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] = {
+                                 (implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
     cacheableIndicesPerAliasMap.call(filteredBy)
-  }
+
+  override def dataStreamsPerAliasMap(filteredBy: Set[IndexAttribute])
+                                     (implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
+    cacheableDataStreamsPerAliasMap.call(filteredBy)
+
+  override def backingIndicesPerDataStreamMap(filteredBy: Set[IndexAttribute])
+                                             (implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
+    cacheableBackingIndicesPerDataStreamMap.call(filteredBy)
 
   override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] =
     cacheableAllRemoteIndicesAndAliases.call(())
