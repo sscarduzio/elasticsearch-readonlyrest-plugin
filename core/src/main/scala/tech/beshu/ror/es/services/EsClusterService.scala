@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local as LocalIndex
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.utils.{AsyncCacheableAction, SyncCacheableAction}
-import tech.beshu.ror.es.services.EsClusterService.*
+import tech.beshu.ror.es.services.EsClusterService.{LocalDataStreamsSnapshot, LocalIndicesSnapshot, *}
 import tech.beshu.ror.syntax.*
 
 import scala.collection.mutable
@@ -63,9 +63,12 @@ trait EsClusterService {
     remoteIndices(filteredBy)
       .map { indices =>
         val builder = mutable.Map.empty[RemoteIndexName, mutable.Set[RemoteIndexName]]
-        indices.foreach { case FullRemoteIndexWithAliases(clusterName, index, _, aliases) =>
-          aliases.foreach { alias =>
-            builder.getOrElseUpdate(RemoteIndexName(alias, clusterName), mutable.Set.empty) += RemoteIndexName(index, clusterName)
+        indices.foreach { remoteIndexWithAliases =>
+          remoteIndexWithAliases.aliasesNames.foreach { alias =>
+            builder.getOrElseUpdate(
+              RemoteIndexName(alias, remoteIndexWithAliases.clusterName),
+              mutable.Set.empty
+            ) += RemoteIndexName(remoteIndexWithAliases.indexName, remoteIndexWithAliases.clusterName)
           }
         }
         builder.view.mapValues(_.toSet.toCovariantSet).toMap
@@ -118,6 +121,16 @@ trait EsClusterService {
 
   def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]]
 
+  def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot = {
+    val raw = allIndicesAndAliases
+    LocalIndicesSnapshot(raw, raw.flatMap(_.all), raw.map(_.index), raw.flatMap(_.aliases))
+  }
+
+  def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot = {
+    val raw = allDataStreamsAndAliases
+    LocalDataStreamsSnapshot(raw, raw.flatMap(_.all), raw.map(_.dataStream), raw.flatMap(_.aliases))
+  }
+
   final def allTemplates(implicit id: RequestId): Set[Template] = {
     legacyTemplates ++ indexTemplates ++ componentTemplates
   }
@@ -154,6 +167,20 @@ object EsClusterService {
   type Document = DocumentWithIndex
   type DocumentsAccessibility = Map[DocumentWithIndex, DocumentAccessibility]
   type IndexUuid = String
+
+  final case class LocalIndicesSnapshot(
+    raw: Set[FullLocalIndexWithAliases],
+    indicesAndAliases: Set[LocalIndexName],
+    indices: Set[LocalIndexName],
+    aliases: Set[LocalIndexName],
+  )
+
+  final case class LocalDataStreamsSnapshot(
+    raw: Set[FullLocalDataStreamWithAliases],
+    dataStreamsAndAliases: Set[LocalIndexName],
+    dataStreams: Set[LocalIndexName],
+    dataStreamAliases: Set[LocalIndexName],
+  )
 }
 
 class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends EsClusterService {
@@ -184,6 +211,14 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
 
   private lazy val cacheableIndexOrAliasUuids = new SyncCacheableAction[IndexOrAlias, Set[IndexUuid]](
     action = (indexOrAlias, id) => underlying.indexOrAliasUuids(indexOrAlias)(id)
+  )
+
+  private lazy val cacheableLocalIndicesSnapshot = new SyncCacheableAction[Unit, LocalIndicesSnapshot](
+    action = (_, id) => underlying.localIndicesSnapshot(id)
+  )
+
+  private lazy val cacheableLocalDataStreamsSnapshot = new SyncCacheableAction[Unit, LocalDataStreamsSnapshot](
+    action = (_, id) => underlying.localDataStreamsSnapshot(id)
   )
 
   private lazy val cacheableAllSnapshots = new SyncCacheableAction[Unit, Map[RepositoryName.Full, Task[Set[SnapshotName.Full]]]](
@@ -248,6 +283,12 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
 
   override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] =
     cacheableAllDataStreamsAndAliases.call(())
+
+  override def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot =
+    cacheableLocalIndicesSnapshot.call(())
+
+  override def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot =
+    cacheableLocalDataStreamsSnapshot.call(())
 
   override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] =
     cacheableAllRemoteDataStreamsAndAliases.call(())

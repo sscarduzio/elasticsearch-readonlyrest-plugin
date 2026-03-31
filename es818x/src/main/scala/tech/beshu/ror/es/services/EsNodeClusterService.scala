@@ -70,17 +70,17 @@ class EsNodeClusterService(nodeName: String,
 
   import EsNodeClusterService.*
 
-  private val allIndicesAndAliases: Atomic[Set[FullLocalIndexWithAliases]] = Atomic {
+  private val localIndicesSnapshotAtomic: Atomic[LocalIndicesSnapshot] = Atomic {
     Option(clusterService.state) match {
-      case Some(state) => extractIndicesAndAliasesFrom(state.metadata)
-      case None => Set.empty
+      case Some(state) => buildLocalIndicesSnapshot(extractIndicesAndAliasesFrom(state.metadata))
+      case None => buildLocalIndicesSnapshot(Set.empty)
     }
   }
 
-  private val allDataStreamsAndAliases: Atomic[Set[FullLocalDataStreamWithAliases]] = Atomic {
+  private val localDataStreamsSnapshotAtomic: Atomic[LocalDataStreamsSnapshot] = Atomic {
     Option(clusterService.state) match {
-      case Some(state) => extractDataStreamsAndAliases(state.metadata)
-      case None => Set.empty
+      case Some(state) => buildLocalDataStreamsSnapshot(extractDataStreamsAndAliases(state.metadata))
+      case None => buildLocalDataStreamsSnapshot(Set.empty)
     }
   }
 
@@ -90,8 +90,8 @@ class EsNodeClusterService(nodeName: String,
         val startMeasurement = Instant.now()
         noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - extracting indices and aliases ...")
         val metadata = event.state().metadata()
-        allIndicesAndAliases.set(extractIndicesAndAliasesFrom(metadata))
-        allDataStreamsAndAliases.set(extractDataStreamsAndAliases(metadata))
+        localIndicesSnapshotAtomic.set(buildLocalIndicesSnapshot(extractIndicesAndAliasesFrom(metadata)))
+        localDataStreamsSnapshotAtomic.set(buildLocalDataStreamsSnapshot(extractDataStreamsAndAliases(metadata)))
         val end = Instant.now()
         val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
         noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - DONE! Took: ${measurement.show}")
@@ -117,9 +117,14 @@ class EsNodeClusterService(nodeName: String,
     lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getUUID).toCovariantSet
   }
 
-  override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = {
-    allIndicesAndAliases.get()
-  }
+  override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] =
+    localIndicesSnapshotAtomic.get().raw
+
+  override def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot =
+    localIndicesSnapshotAtomic.get()
+
+  private def buildLocalIndicesSnapshot(raw: Set[FullLocalIndexWithAliases]): LocalIndicesSnapshot =
+    LocalIndicesSnapshot(raw, raw.flatMap(_.all), raw.map(_.index), raw.flatMap(_.aliases))
 
   override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
@@ -131,7 +136,13 @@ class EsNodeClusterService(nodeName: String,
   }
 
   override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] =
-    allDataStreamsAndAliases.get()
+    localDataStreamsSnapshotAtomic.get().raw
+
+  override def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot =
+    localDataStreamsSnapshotAtomic.get()
+
+  private def buildLocalDataStreamsSnapshot(raw: Set[FullLocalDataStreamWithAliases]): LocalDataStreamsSnapshot =
+    LocalDataStreamsSnapshot(raw, raw.flatMap(_.all), raw.map(_.dataStream), raw.flatMap(_.aliases))
 
   override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] =
     remoteClusterServiceSupplier.get() match {
@@ -270,7 +281,7 @@ class EsNodeClusterService(nodeName: String,
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
             val aliases = indexMetaData.getAliases.asSafeMap.keys.flatMap(IndexName.Full.fromString).toCovariantSet
-            FullLocalIndexWithAliases(
+            new FullLocalIndexWithAliases(
               indexName,
               indexMetaData.getState match {
                 case IndexMetadata.State.CLOSE => IndexAttribute.Closed
@@ -464,7 +475,7 @@ class EsNodeClusterService(nodeName: String,
     IndexName.Full
       .fromString(resolvedIndex.getName)
       .map { index =>
-        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
+        new FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
       }
   }
 

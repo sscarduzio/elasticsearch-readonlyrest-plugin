@@ -243,7 +243,7 @@ abstract class BaseIndicesRuleTests
       }
     }
 
-    FullRemoteIndexWithAliases(
+    new FullRemoteIndexWithAliases(
       ClusterName.Full.fromString(clusterName).getOrElse(throw new IllegalArgumentException(s"Cannot create cluster name from '$clusterName'")),
       fullIndexNameFrom(fullRemoteIndexName),
       IndexAttribute.Opened,

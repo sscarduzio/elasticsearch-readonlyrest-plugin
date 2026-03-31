@@ -559,18 +559,18 @@ object Placeholder {
   def unapply(alias: ClusterIndexName): Option[AliasPlaceholder] = AliasPlaceholder.from(alias)
 }
 
-final case class FullLocalIndexWithAliases(indexName: IndexName.Full,
-                                           attribute: IndexAttribute,
-                                           aliasesNames: Set[IndexName.Full]) {
+final class FullLocalIndexWithAliases(val indexName: IndexName.Full,
+                                      val attribute: IndexAttribute,
+                                      val aliasesNames: Set[IndexName.Full]) {
   lazy val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
   lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(ClusterIndexName.Local.apply)
   lazy val all: Set[ClusterIndexName.Local] = aliases + index
 }
 
-final case class FullRemoteIndexWithAliases(clusterName: ClusterName.Full,
-                                            indexName: IndexName.Full,
-                                            attribute: IndexAttribute,
-                                            aliasesNames: Set[IndexName.Full]) {
+final class FullRemoteIndexWithAliases(val clusterName: ClusterName.Full,
+                                       val indexName: IndexName.Full,
+                                       val attribute: IndexAttribute,
+                                       val aliasesNames: Set[IndexName.Full]) {
   lazy val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
   lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(ClusterIndexName.Remote(_, clusterName))
   lazy val all: Set[ClusterIndexName.Remote] = aliases + index
