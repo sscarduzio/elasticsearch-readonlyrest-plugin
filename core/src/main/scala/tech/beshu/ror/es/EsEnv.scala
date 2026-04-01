@@ -26,13 +26,17 @@ final case class EsEnv(configDir: File,
                        esVersion: EsVersion,
                        esNodeSettings: EsNodeSettings) {
 
-  def isOssDistribution: Boolean = {
+  def isOssDistribution: Boolean = EsEnv.isOssDistribution(modulesDir)
+
+  def elasticsearchConfig: EsConfigFile = EsConfigFile.default(this)
+}
+object EsEnv {
+
+  def isOssDistribution(modulesDir: File): Boolean = {
     Try {
       !(modulesDir / "x-pack-security").exists
     } getOrElse {
       false
     }
   }
-
-  def elasticsearchConfig: EsConfigFile = EsConfigFile.default(this)
 }

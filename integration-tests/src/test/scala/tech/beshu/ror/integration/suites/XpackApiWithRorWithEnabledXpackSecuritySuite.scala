@@ -21,7 +21,7 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, SecurityType}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
@@ -71,7 +71,7 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
                |""".stripMargin
           ) :: Nil
         )
-        
+
         response should have statusCode 200
         response.responseJson should be(ujson.read(
           s"""
@@ -255,6 +255,25 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
         val searchAfterDeleteResponse = fleetSearchManager.search(".fleet-servers")
         searchAfterDeleteResponse should have statusCode 403
+      }
+    }
+  }
+
+  "Search API" when {
+    "request with remote indices pattern and local indices pattern is called" should {
+      "return indices successfully (no remote indices) when there are no remote clusters configured" excludeES allEs6x in {
+        val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+        val result = adminIndexManager.getIndex("*", "*:*")
+        result should have statusCode 200
+        result.indicesAndAliases shouldNot be (Map.empty)
+      }
+    }
+    "request with only remote indices pattern is called" should {
+      "return no indices when there are no remote clusters configured" excludeES allEs6x in {
+        val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+        val result = adminIndexManager.getIndex("*:*")
+        result should have statusCode 200
+        result.indicesAndAliases should be(Map.empty)
       }
     }
   }

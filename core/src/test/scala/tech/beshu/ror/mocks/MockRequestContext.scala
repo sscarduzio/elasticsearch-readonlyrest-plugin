@@ -383,6 +383,8 @@ object MockEsServices {
                              private val allRemoteClusterNames: Set[ClusterName.Full] = Set.empty)
     extends EsClusterService {
 
+    override def remoteClustersConfigured(implicit id: RequestId): Boolean = true
+
     override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = allIndicesAndAliases
 
     override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] = allDataStreamsAndAliases

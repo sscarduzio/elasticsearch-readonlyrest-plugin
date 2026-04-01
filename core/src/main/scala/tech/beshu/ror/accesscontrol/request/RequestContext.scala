@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{InvalidValue, MissingHeader}
-import tech.beshu.ror.es.EsServices
+import tech.beshu.ror.es.{EsNodeSettings, EsServices}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -40,6 +40,8 @@ trait BaseEsContext {
   def correlationId: Eval[CorrelationId]
   def esTaskId: Long
   def restRequest: RestRequest
+  def esNodeSettings: EsNodeSettings
+  def esServices: EsServices
 }
 
 trait RequestContext {

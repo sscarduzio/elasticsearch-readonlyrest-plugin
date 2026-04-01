@@ -28,6 +28,8 @@ import tech.beshu.ror.syntax.*
 
 trait EsClusterService {
 
+  def remoteClustersConfigured(implicit id: RequestId): Boolean
+
   def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full]
 
   def indexOrAliasUuids(indexOrAlias: IndexOrAlias)
@@ -80,6 +82,10 @@ object EsClusterService {
 }
 
 class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends EsClusterService {
+
+  private lazy val cacheableRemoteClustersConfigured = new SyncCacheableAction[Unit, Boolean](
+    action = (_, id) => underlying.remoteClustersConfigured(id)
+  )
 
   private lazy val cacheableAllRemoteClusterNames = new SyncCacheableAction[Unit, Set[ClusterName.Full]](
     action = (_, id) => underlying.allRemoteClusterNames(id)
@@ -139,6 +145,10 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
     }
   )
 
+
+  override def remoteClustersConfigured(implicit id: RequestId): Boolean =
+    cacheableRemoteClustersConfigured.call(())
+
   override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] =
     cacheableAllRemoteClusterNames.call(())
 
@@ -184,4 +194,5 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
                                             filter: Filter)
                                            (implicit id: RequestId): Task[DocumentsAccessibility] =
     cacheableVerifyDocumentsAccessibility.call((documents, filter))
+
 }

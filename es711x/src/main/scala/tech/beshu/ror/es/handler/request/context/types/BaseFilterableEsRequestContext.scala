@@ -103,7 +103,9 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
   protected def requestFieldsUsage: RequestFieldsUsage
 
   private lazy val discoveredIndices: Set[RequestedIndex[ClusterIndexName]] = {
-    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
+    val indices = requestedIndicesFrom(actionRequest)
+      .orWildcardWhenEmpty
+      .skipRemoteIndicesIfNeeded(esContext)
     logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }

@@ -25,7 +25,7 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError.MalformedSettings
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, defaultTestEsNodeSettings}
 
 class RorBootSettingsTest
   extends AnyWordSpec with Inside {
@@ -105,6 +105,6 @@ class RorBootSettingsTest
     getResourcePath(resourceEsConfigFolderPath),
     getResourcePath(resourceEsConfigFolderPath),
     defaultEsVersionForTests,
-    testEsNodeSettings
+    defaultTestEsNodeSettings
   )
 }

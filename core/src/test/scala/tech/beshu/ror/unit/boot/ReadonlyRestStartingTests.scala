@@ -55,7 +55,6 @@ import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged
 import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.IndexDocumentManager.*
 import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexDocumentManager}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -1416,7 +1415,7 @@ class ReadonlyRestStartingTests
               AuditSink.Enabled(dataStreamSinkConfig1),
               AuditSink.Enabled(dataStreamSinkConfig2)
             ),
-            testEsNodeSettings
+            defaultTestEsNodeSettings
           ))
         )
 
@@ -1462,8 +1461,7 @@ class ReadonlyRestStartingTests
 
   private def createEsConfigBasedRorSettings(resourceEsConfigDir: String)
                                             (implicit systemContext: SystemContext): Either[LoadingError, EsConfigBasedRorSettings] = {
-    val esConfig = File(getResourcePath(resourceEsConfigDir))
-    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests, testEsNodeSettings)
+    val esEnv = createEsEnv(File(getResourcePath(resourceEsConfigDir)))
     EsConfigBasedRorSettings
       .from(esEnv)
       .runSyncUnsafe()
