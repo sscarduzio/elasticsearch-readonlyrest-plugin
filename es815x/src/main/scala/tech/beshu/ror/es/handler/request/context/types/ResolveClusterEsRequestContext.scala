@@ -88,7 +88,7 @@ class ResolveClusterEsRequestContext(actionRequest: ResolveClusterActionRequest,
     val newRequestedNonexistentIndices = requestedIndices match {
       case Some(indices) =>
         indices.toList
-          .distinctBy(_.name.index match {
+          .distinctBy(_.name match {
             case ClusterIndexName.Local(_) => ClusterName.Full.local
             case ClusterIndexName.Remote(_, cluster) => cluster
           })

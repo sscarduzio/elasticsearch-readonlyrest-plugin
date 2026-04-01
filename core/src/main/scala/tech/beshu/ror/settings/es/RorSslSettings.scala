@@ -17,7 +17,7 @@
 package tech.beshu.ror.settings.es
 
 import better.files.*
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.EitherT
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
@@ -28,7 +28,6 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 sealed trait RorSslSettings
 object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdAwareLogging {
@@ -63,19 +62,11 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdA
   def load(esEnv: EsEnv,
            rorSettingsFile: RorSettingsFile)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, Option[RorSslSettings]]] = {
-    val result = for {
-      xpackSecuritySettings <- loadXpackSecuritySettings(esEnv)
-      rorSslSettings <- loadRorSslSetting(esEnv.elasticsearchConfig, rorSettingsFile, xpackSecuritySettings)
-    } yield rorSslSettings
-    result.value
-  }
-
-  private def loadXpackSecuritySettings(esEnv: EsEnv)
-                                       (implicit systemContext: SystemContext): EitherT[Task, LoadingError, XpackSecuritySettings] = {
-    EitherT {
-      implicit val decoder: Decoder[XpackSecuritySettings] = xpackSettingsDecoder(esEnv.isOssDistribution)
-      loadSetting[XpackSecuritySettings](esEnv, "X-Pack settings")
-    }
+    loadRorSslSetting(
+      esEnv.elasticsearchConfig,
+      rorSettingsFile,
+      XpackSecuritySettings(esEnv.esNodeSettings.xpackSecurityEnabled)
+    ).value
   }
 
   private def loadRorSslSetting(esConfigFile: EsConfigFile,
@@ -129,24 +120,6 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdA
   }
 
   private final case class XpackSecuritySettings(enabled: Boolean)
-
-  private def xpackSettingsDecoder(isOssDistribution: Boolean): Decoder[XpackSecuritySettings] = {
-    if (isOssDistribution) {
-      Decoder.const(XpackSecuritySettings(enabled = false))
-    } else {
-      val booleanDecoder = YamlKeyDecoder[Boolean](
-        path = NonEmptyList.of("xpack", "security", "enabled"),
-        default = true
-      )
-      val stringDecoder = YamlKeyDecoder[String](
-        path = NonEmptyList.of("xpack", "security", "enabled"),
-        default = "true"
-      ) map {
-        _.toBoolean
-      }
-      (booleanDecoder or stringDecoder) map XpackSecuritySettings.apply
-    }
-  }
 
   private def lift[T](value: => T): EitherT[Task, LoadingError, T] = EitherT.rightT(value)
 }

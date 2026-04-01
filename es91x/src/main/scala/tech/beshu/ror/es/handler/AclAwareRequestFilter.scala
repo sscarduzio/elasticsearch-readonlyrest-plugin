@@ -275,13 +275,14 @@ object AclAwareRequestFilter {
 
   final class EsContext(val channel: RorRestChannel,
                         val correlationId: Eval[CorrelationId],
-                        val nodeName: String,
+                        val esNodeSettings: EsNodeSettings,
                         val task: EsTask,
                         val action: Action,
                         val actionRequest: ActionRequest,
                         val listener: RorActionListener[ActionResponse],
                         val chain: EsChain,
-                        val esServices: EsServices) extends BaseEsContext {
+                        val esServices: EsServices,
+                        val esVersion: EsVersion) extends BaseEsContext {
 
     override val esTaskId: Long = task.getId
 

@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{Json, ParsingFailure, parser}
+import io.circe.{Decoder, Json, ParsingFailure, parser}
 import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
@@ -66,7 +66,7 @@ import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
-import tech.beshu.ror.utils.yaml.YamlParser
+import tech.beshu.ror.utils.yaml.{YamlKeyDecoder, YamlParser}
 
 import java.nio.file.Path
 import java.time.Duration
@@ -430,13 +430,38 @@ object TestsUtils {
     parser.parse(jsonString).toTry.get
   }
 
-  def testEsNodeSettings: EsNodeSettings = EsNodeSettings(
+
+  def createEsEnv(configDir: File): EsEnv = {
+    val xpackSecurityEnabled = loadPathFrom(configDir, NonEmptyList.of("xpack", "security", "enabled"), true)
+    EsEnv(
+      configDir = configDir,
+      modulesDir = configDir,
+      esVersion = defaultEsVersionForTests,
+      esNodeSettings = EsNodeSettings(
+        clusterName = "testEsCluster",
+        nodeName = "testEsNode",
+        xpackSecurityEnabled = xpackSecurityEnabled
+      ))
+  }
+
+  def defaultTestEsNodeSettings: EsNodeSettings = EsNodeSettings(
     clusterName = "testEsCluster",
-    nodeName = "testEsNode"
+    nodeName = "testEsNode",
+    xpackSecurityEnabled = true
   )
 
-  def defaultEsEnv(): EsEnv = {
-    EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
+  def defaultEsEnv(esConfig: Option[File] = None): EsEnv = {
+    EsEnv(esConfig.getOrElse(File("/config")), File("/modules"), defaultEsVersionForTests, defaultTestEsNodeSettings)
+  }
+
+  private def loadPathFrom[T: Decoder](configDir: File, path: NonEmptyList[String], default: T) = {
+    val decoder = YamlKeyDecoder[T](path, default)
+    rorYamlParser
+      .parse((configDir / "elasticsearch.yml").contentAsString)
+      .flatMap(decoder.decodeJson) match {
+      case Right(value) => value
+      case Left(error) => throw error
+    }
   }
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {

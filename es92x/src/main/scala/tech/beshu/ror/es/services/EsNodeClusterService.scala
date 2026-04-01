@@ -67,6 +67,13 @@ class EsNodeClusterService(nodeName: String,
 
   import EsNodeClusterService.*
 
+  override def remoteClustersConfigured(implicit id: RequestId): Boolean = {
+    remoteClusterServiceSupplier.get() match {
+      case Some(remoteClusterService) => !remoteClusterService.getRegisteredRemoteClusterNames.isEmpty
+      case None => false
+    }
+  }
+
   override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>

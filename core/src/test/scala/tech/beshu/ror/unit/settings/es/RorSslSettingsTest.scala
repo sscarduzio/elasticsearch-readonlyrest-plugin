@@ -30,7 +30,7 @@ import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBas
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, getResourcePath, testEsNodeSettings}
+import tech.beshu.ror.utils.TestsUtils.{createEsEnv, defaultEsEnv, getResourcePath}
 
 class RorSslSettingsTest
   extends AnyWordSpec with Inside {
@@ -122,7 +122,10 @@ class RorSslSettingsTest
         }
       }
       "file content is not valid yaml" in {
-        val error = loadRorSslSettings("/boot_tests/es_api_ssl_settings_file_invalid_yaml/")
+        val error = loadRorSslSettings(
+          settingsFolderPath = "/boot_tests/es_api_ssl_settings_file_invalid_yaml/",
+          esEnv = Some(defaultEsEnv(esConfig = Some(File(getResourcePath("/boot_tests/es_api_ssl_settings_file_invalid_yaml")))))
+        )
         inside(error) {
           case Left(error: LoadingError.MalformedSettings) =>
             error.message should startWith("Cannot parse file")
@@ -220,12 +223,12 @@ class RorSslSettingsTest
       .toOption.flatten.get
   }
 
-  private def loadRorSslSettings(settingsFolderPath: String) = {
-    val esConfigFile = File(getResourcePath(settingsFolderPath))
+  private def loadRorSslSettings(settingsFolderPath: String,
+                                 esEnv: Option[EsEnv] = None) = {
     val rorSettingsFile = RorSettingsFile(getResourcePath(s"$settingsFolderPath/readonlyrest.yml"))
-    val esEnv = EsEnv(esConfigFile, esConfigFile, defaultEsVersionForTests, testEsNodeSettings)
+    val customEsEnv = esEnv.getOrElse(createEsEnv(File(getResourcePath(settingsFolderPath))))
     RorSslSettings
-      .load(esEnv, rorSettingsFile)
+      .load(customEsEnv, rorSettingsFile)
       .runSyncUnsafe()
   }
 }
