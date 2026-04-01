@@ -34,6 +34,13 @@ VERSIONS=$(ls "$DEST_DIR"/action_strings_es*.txt 2>/dev/null \
 TOTAL=$(echo "$VERSIONS" | wc -l | tr -d ' ')
 COUNT=0
 
+# Single full clone (no --depth 1, we need all tags), then checkout per version
+ES_REPO=$(mktemp -d -t ror-regen-es-XXXXXXXXXX)
+echo "Cloning elasticsearch repo (full tags)... this takes a minute."
+git clone --quiet --no-checkout --filter=blob:none \
+  "https://github.com/elastic/elasticsearch" "$ES_REPO"
+echo "Clone done."
+
 for VERSION in $VERSIONS; do
   COUNT=$((COUNT + 1))
   FILENAME="$DEST_DIR/action_strings_es${VERSION}.txt"
@@ -41,14 +48,14 @@ for VERSION in $VERSIONS; do
 
   echo "[$COUNT/$TOTAL] Regenerating $VERSION (was $OLD_COUNT strings)..."
 
-  TEMPDIR=$(mktemp -d -t ror-regen-es-$VERSION-XXXXXXXXXX)
-
-  # Handle pre-release tags (e.g., 9.0.0-beta1 -> v9.0.0-beta1)
-  git clone --quiet --branch "v$VERSION" --depth 1 \
-    "https://github.com/elastic/elasticsearch" "$TEMPDIR" 2>/dev/null
+  # Checkout the tag — blobs are fetched on demand thanks to --filter=blob:none
+  git -C "$ES_REPO" checkout --quiet "v$VERSION" 2>/dev/null || {
+    echo "  SKIP: tag v$VERSION not found"
+    continue
+  }
 
   egrep -ri --include="*.java" \
-    'public.*static.*final.*(String|ActionType).*"[a-z]+:[a-z]' "$TEMPDIR" \
+    'public.*static.*final.*(String|ActionType).*"[a-z]+:[a-z]' "$ES_REPO" \
     | grep -v mock \
     | sed 's/.*"\([^"]*\)".*/"\1"/' \
     | grep '^"[a-z]*:[a-z].*/[a-z]' \
@@ -64,9 +71,9 @@ for VERSION in $VERSIONS; do
   else
     echo "  -> $NEW_COUNT strings ($DIFF)"
   fi
-
-  rm -rf "$TEMPDIR"
 done
+
+rm -rf "$ES_REPO"
 
 echo ""
 echo "Done. Review changes in $DEST_DIR, then commit and push."
