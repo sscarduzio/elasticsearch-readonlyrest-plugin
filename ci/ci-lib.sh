@@ -26,20 +26,18 @@ function tag {
   return 0
 }
 
-# not used at the moment - it may be needed later
-function upload_to_ror_data_bucket {
+# not used at the moment - it may be needed laterok,
+function upload_using_aws_s3_uploader {
   LOCAL_FILE="$1"
   S3_PATH="$2"
 
-  BUCKET="${AWS_DATA_STORE_BUCKET:-readonlyrest-data}"
-  REGION="${AWS_DATA_STORE_REGION:-eu-west-1}"
-  PATH_PREFIX="${AWS_DATA_STORE_PATH_PREFIX:-}"
+  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-ror-builds-xdelta}"
+  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  # shellcheck disable=SC2154
-  "$CI_DIR"/s3-uploader.sh "$aws_access_key_id" "$aws_secret_access_key" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
+  "$CI_DIR"/s3-uploader.sh "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" "$BUCKET" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
 }
 
-function upload_to_ror_data_xdelta_bucket {
+function upload_using_deltaglider_uploader {
   LOCAL_FILE="$1"
   S3_PATH=$(echo "$2" | sed 's:/*$::')
   FILE_NAME=$(basename "$LOCAL_FILE")

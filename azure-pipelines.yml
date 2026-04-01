@@ -67,11 +67,6 @@ stages:
               ci/upload-es-artifacts.sh
             continueOnError: true
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              AWS_DATA_STORE_BUCKET: $(AWS_DATA_STORE_BUCKET)
-              AWS_DATA_STORE_REGION: $(AWS_DATA_STORE_REGION)
-              AWS_DATA_STORE_PATH_PREFIX: $(AWS_DATA_STORE_PATH_PREFIX)
               VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
@@ -796,11 +791,6 @@ stages:
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              AWS_DATA_STORE_BUCKET: $(AWS_DATA_STORE_BUCKET)
-              AWS_DATA_STORE_REGION: $(AWS_DATA_STORE_REGION)
-              AWS_DATA_STORE_PATH_PREFIX: $(AWS_DATA_STORE_PATH_PREFIX)
               VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
@@ -883,11 +873,6 @@ stages:
               echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              AWS_DATA_STORE_BUCKET: $(AWS_DATA_STORE_BUCKET)
-              AWS_DATA_STORE_REGION: $(AWS_DATA_STORE_REGION)
-              AWS_DATA_STORE_PATH_PREFIX: $(AWS_DATA_STORE_PATH_PREFIX)
               VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
