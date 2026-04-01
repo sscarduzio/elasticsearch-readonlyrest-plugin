@@ -44,7 +44,7 @@ trait EsClusterService {
         builder.getOrElseUpdate(alias, mutable.Set.empty) += indexWithAliases.index
       }
     }
-    builder.view.mapValues(_.toSet.toCovariantSet).toMap
+    builder.view.mapValues(_.toCovariantSet).toMap
   }
 
   private def indices(filteredBy: Set[IndexAttribute])
@@ -71,7 +71,7 @@ trait EsClusterService {
             ) += RemoteIndexName(remoteIndexWithAliases.indexName, remoteIndexWithAliases.clusterName)
           }
         }
-        builder.view.mapValues(_.toSet.toCovariantSet).toMap
+        builder.view.mapValues(_.toCovariantSet).toMap
       }
   }
 
@@ -94,7 +94,7 @@ trait EsClusterService {
         builder.getOrElseUpdate(alias, mutable.Set.empty) += dataStreamWithAliases.dataStream
       }
     }
-    builder.view.mapValues(_.toSet.toCovariantSet).toMap
+    builder.view.mapValues(_.toCovariantSet).toMap
   }
 
   def backingIndicesPerDataStreamMap(filteredBy: Set[IndexAttribute])
@@ -105,7 +105,7 @@ trait EsClusterService {
         builder.getOrElseUpdate(fullDataStream.dataStream, mutable.Set.empty) += index
       }
     }
-    builder.view.mapValues(_.toSet.toCovariantSet).toMap
+    builder.view.mapValues(_.toCovariantSet).toMap
   }
 
   private def dataStreams(filteredBy: Set[IndexAttribute])

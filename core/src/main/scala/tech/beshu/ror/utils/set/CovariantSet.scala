@@ -50,7 +50,10 @@ trait CovariantSetExtensions {
   }
 
   implicit class FromIterable[A](val iterable: IterableOnce[A]) {
-    def toCovariantSet: CovariantSet[A] = CovariantSet(iterable.iterator.toSet)
+    def toCovariantSet: CovariantSet[A] = iterable match {
+      case s: Set[A @unchecked] => new CovariantSet[A](s.asInstanceOf[Set[Any]])
+      case other => CovariantSet(other.iterator.toSet)
+    }
   }
 
   implicit class FromNonEmptyList[A](val nonEmptyList: NonEmptyList[A]) {
@@ -111,8 +114,11 @@ trait CatsInstances {
 
   implicit val covariantSetTraverse: Traverse[CovariantSet] = new Traverse[CovariantSet] {
     override def traverse[G[_] : Applicative, A, B](fa: CovariantSet[A])(f: A => G[B]): G[CovariantSet[B]] = {
-      val gset: G[Set[Any]] = fa.underlying.asInstanceOf[Set[A]].toList.traverse(f).map(_.toSet)
-      gset.map(new CovariantSet[B](_))
+      val G = Applicative[G]
+      val gset = fa.underlying.foldLeft(G.pure(Set.newBuilder[Any])) { (acc, a) =>
+        G.map2(acc, f(a.asInstanceOf[A]))((builder, b) => builder += b)
+      }
+      G.map(gset)(builder => new CovariantSet[B](builder.result()))
     }
 
     override def foldLeft[A, B](fa: CovariantSet[A], b: B)(f: (B, A) => B): B =
