@@ -260,11 +260,20 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
   }
 
   "Search API" when {
-    "request with remote indices pattern is called" should {
-      "return indices successfully because cross-cluster calls are supported" excludeES allEs6x in {
+    "request with remote indices pattern and local indices pattern is called" should {
+      "return indices successfully (no remote indices) when there are no remote clusters configured" excludeES allEs6x in {
         val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
         val result = adminIndexManager.getIndex("*", "*:*")
         result should have statusCode 200
+        result.indicesAndAliases shouldNot be (Map.empty)
+      }
+    }
+    "request with only remote indices pattern is called" should {
+      "return no indices when there are no remote clusters configured" excludeES allEs6x in {
+        val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+        val result = adminIndexManager.getIndex("*:*")
+        result should have statusCode 200
+        result.indicesAndAliases should be(Map.empty)
       }
     }
   }

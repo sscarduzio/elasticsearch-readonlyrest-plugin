@@ -104,8 +104,8 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
 
   private lazy val discoveredIndices: Set[RequestedIndex[ClusterIndexName]] = {
     val indices = requestedIndicesFrom(actionRequest)
-      .filterNot(_.isInaccessibleRemoteIndex(esContext))
       .orWildcardWhenEmpty
+      .skipRemoteIndicesIfNeeded(esContext)
     logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }
