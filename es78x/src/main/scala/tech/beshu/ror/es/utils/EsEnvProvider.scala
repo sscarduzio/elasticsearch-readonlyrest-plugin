@@ -27,7 +27,7 @@ object EsEnvProvider {
 
   def create(environment: Environment): EsEnv = {
     val settings = environment.settings()
-    val modulesDir = File(environment.configFile())
+    val modulesDir = File(environment.modulesFile())
     EsEnv(
       configDir = File(environment.configFile()),
       modulesDir = modulesDir,
