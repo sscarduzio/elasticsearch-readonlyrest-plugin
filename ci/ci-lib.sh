@@ -26,6 +26,7 @@ function tag {
   return 0
 }
 
+# not used at the moment - it may be needed later
 function upload_to_ror_data_bucket {
   LOCAL_FILE="$1"
   S3_PATH="$2"
