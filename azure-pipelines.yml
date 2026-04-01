@@ -60,14 +60,14 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
 
-              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
 
               ci/upload-es-artifacts.sh
             continueOnError: true
             env:
-              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
@@ -778,7 +778,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
 
-              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
 
@@ -791,7 +791,7 @@ stages:
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
             env:
-              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
@@ -861,7 +861,7 @@ stages:
               export aws_access_key_id=$var_aws_access_key_id
               export aws_secret_access_key=$var_aws_secret_access_key
 
-              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
 
@@ -873,7 +873,7 @@ stages:
               echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
             env:
-              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
