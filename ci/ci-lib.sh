@@ -33,6 +33,7 @@ function upload_to_ror_data_bucket {
   BUCKET="${AWS_DATA_STORE_BUCKET:-readonlyrest-data}"
   REGION="${AWS_DATA_STORE_REGION:-eu-west-1}"
   PATH_PREFIX="${AWS_DATA_STORE_PATH_PREFIX:-}"
+  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
   # shellcheck disable=SC2154
   "$CI_DIR"/s3-uploader.sh "$aws_access_key_id" "$aws_secret_access_key" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
 }
@@ -44,6 +45,7 @@ function upload_to_ror_data_xdelta_bucket {
 
   BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-ror-builds-xdelta}"
   PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
+  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
   DELTA_GLIDER_VERSION="6.1.1"
 
   docker run --rm \
