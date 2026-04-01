@@ -168,8 +168,8 @@ object RequestedIndex {
   extension [T <: ClusterIndexName](requestedIndices: Iterable[RequestedIndex[T]])
     def includedOnly: Set[T] = requestedIndices.filterNot(_.excluded).map(_.name).toCovariantSet
 
-  extension (requestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]])
-    def includedOnly: Set[ClusterIndexName] = requestedIndices.toList.includedOnly
+  extension [T <: ClusterIndexName](requestedIndices: NonEmptyList[RequestedIndex[T]])
+    def includedOnly: Set[T] = requestedIndices.toList.includedOnly
 
   extension (requestedIndex: RequestedIndex[ClusterIndexName]) {
     def randomNonexistentLocalIndex(): RequestedIndex[ClusterIndexName.Local] = {
@@ -367,7 +367,7 @@ object ClusterIndexName {
     def skipRemoteIndicesIfNeeded(esContext: BaseEsContext)
                                  (implicit id: RequestId): Set[RequestedIndex[ClusterIndexName]] = {
       val filtered = indices.filterNot(shouldSkipIndex(_, esContext))
-      if(filtered.isEmpty) {
+      if(indices.nonEmpty && filtered.isEmpty) {
         val nonExistentRemoteIndex: ClusterIndexName = ClusterIndexName.Local.randomNonexistentIndex("remote*")
         Set(RequestedIndex(nonExistentRemoteIndex, excluded = false))
       } else {
@@ -430,39 +430,26 @@ object ClusterIndexName {
 
   extension (index: ClusterIndexName) {
     def formatAsDataStreamBackingIndexName: ClusterIndexName = {
-      val format: (NonEmptyString => IndexName.Pattern) => ClusterIndexName = (fn) => {
-        index match {
-          case ClusterIndexName.Local(IndexName.Full(name)) if !doesItLookLikeABackingIndex(name) =>
-            ClusterIndexName.Local(fn(name))
-          case ClusterIndexName.Local(IndexName.Pattern(namePattern)) if !doesItLookLikeABackingIndex(namePattern) =>
-            ClusterIndexName.Local(fn(namePattern))
-          case ClusterIndexName.Remote(IndexName.Full(name), cluster) if !doesItLookLikeABackingIndex(name) =>
-            ClusterIndexName.Remote(fn(name), cluster)
-          case ClusterIndexName.Remote(IndexName.Pattern(namePattern), cluster) if !doesItLookLikeABackingIndex(namePattern) =>
-            ClusterIndexName.Remote(fn(namePattern), cluster)
-          case i =>
-            i
-        }
-      }
       format(backingIndexWildcardNameFrom)
     }
 
     def formatAsLegacyDataStreamBackingIndexName: ClusterIndexName = {
-      val format: (NonEmptyString => IndexName.Pattern) => ClusterIndexName = (fn) => {
-        index match {
-          case ClusterIndexName.Local(IndexName.Full(name)) if !doesItLookLikeABackingIndex(name) =>
-            ClusterIndexName.Local(fn(name))
-          case ClusterIndexName.Local(IndexName.Pattern(namePattern)) if !doesItLookLikeABackingIndex(namePattern) =>
-            ClusterIndexName.Local(fn(namePattern))
-          case ClusterIndexName.Remote(IndexName.Full(name), cluster) if !doesItLookLikeABackingIndex(name) =>
-            ClusterIndexName.Remote(fn(name), cluster)
-          case ClusterIndexName.Remote(IndexName.Pattern(namePattern), cluster) if !doesItLookLikeABackingIndex(namePattern) =>
-            ClusterIndexName.Remote(fn(namePattern), cluster)
-          case i =>
-            i
-        }
-      }
       format(legacyBackingIndexWildcardNameFrom)
+    }
+
+    private def format(backingIndexWildcardFromString: NonEmptyString => IndexName.Pattern) = {
+      index match {
+        case ClusterIndexName.Local(IndexName.Full(name)) if !doesItLookLikeABackingIndex(name) =>
+          ClusterIndexName.Local(backingIndexWildcardFromString(name))
+        case ClusterIndexName.Local(IndexName.Pattern(namePattern)) if !doesItLookLikeABackingIndex(namePattern) =>
+          ClusterIndexName.Local(backingIndexWildcardFromString(namePattern))
+        case ClusterIndexName.Remote(IndexName.Full(name), cluster) if !doesItLookLikeABackingIndex(name) =>
+          ClusterIndexName.Remote(backingIndexWildcardFromString(name), cluster)
+        case ClusterIndexName.Remote(IndexName.Pattern(namePattern), cluster) if !doesItLookLikeABackingIndex(namePattern) =>
+          ClusterIndexName.Remote(backingIndexWildcardFromString(namePattern), cluster)
+        case index =>
+          index
+      }
     }
 
     private def doesItLookLikeABackingIndex(nameStr: NonEmptyString) = {

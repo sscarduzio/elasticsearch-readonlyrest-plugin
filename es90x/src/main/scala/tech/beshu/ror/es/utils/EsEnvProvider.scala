@@ -36,7 +36,7 @@ object EsEnvProvider {
         nodeName = Node.NODE_NAME_SETTING.get(settings),
         clusterName = ClusterName.CLUSTER_NAME_SETTING.get(settings).value(),
         xpackSecurityEnabled =
-          if(EsEnv.isOssDistribution(modulesDir)) false
+          if (EsEnv.isOssDistribution(modulesDir)) false
           else settings.get("xpack.security.enabled", "true").toBoolean
       ),
     )
