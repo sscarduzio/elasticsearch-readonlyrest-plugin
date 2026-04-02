@@ -107,7 +107,13 @@ trait LogsShowInstances
 
   implicit def uniqueNonEmptyListShow[T: Show]: Show[UniqueNonEmptyList[T]] = Show.show(_.toList.show)
 
-  implicit def iterableLikeShow[T: Show, I <: Iterable[T]]: Show[I] = Show.show(_.map(_.show).mkString(", "))
+  implicit def iterableLikeShow[T: Show, I <: Iterable[T]]: Show[I] = Show.show { iterable =>
+    val sb = new java.lang.StringBuilder
+    val iter = iterable.iterator
+    if (iter.hasNext) sb.append(iter.next().show)
+    while (iter.hasNext) { sb.append(", "); sb.append(iter.next().show) }
+    sb.toString
+  }
 
   implicit def nonEmptyListShow[T: Show]: Show[NonEmptyList[T]] = Show.show(_.toList.show)
 
@@ -263,9 +269,9 @@ trait LogsShowInstances
     }
 
     def stringifyIndices = {
-      val idx = r.requestedIndices.toList.flatten.map(_.show)
+      val idx = r.requestedIndices.toList.flatten
       if (idx.isEmpty) "<N/A>"
-      else idx.mkString(",")
+      else idx.show
     }
 
     def stringifyUserGroup = {
@@ -289,7 +295,7 @@ trait LogsShowInstances
        | PTH:${r.restRequest.path.show},
        | CNT:${stringifyContentLength.show},
        | HDR:${r.restRequest.allHeaders.show},
-       | HIS:${history.blocks.map(h => blockHistoryShow(headerShow).show(h)).mkString(", ").show},
+       | HIS:${iterableLikeShow(blockHistoryShow(headerShow)).show(history.blocks)},
        | }""".oneLiner
   }
 
@@ -370,10 +376,9 @@ trait LogsShowInstances
         case BlockHistory.Permitted(_, _, _) => "MATCHED"
         case BlockHistory.Denied(_, denied, _) => s"NOT_MATCHED (${denied.cause.show})"
       }
-      val rulesHistoryItemsStr = h
-        .history
-        .map(_.show)
-        .mkStringOrEmptyString(" RULES:[", ", ", "]")
+      val rulesHistoryItemsStr =
+        if (h.history.isEmpty) ""
+        else s" RULES:[${h.history.show}]"
       val resolvedPart = h match {
         case BlockHistory.Permitted(_, decision, _) => decision.context.show match {
           case "" => ""
