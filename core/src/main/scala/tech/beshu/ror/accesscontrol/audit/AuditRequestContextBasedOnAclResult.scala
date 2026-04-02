@@ -46,27 +46,27 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
   override val correlationId: String = requestContext.rorKibanaSessionId.value.value
-  override val indices: ScalaSet[String] = requestContext.requestedIndices match {
+  override lazy val indices: ScalaSet[String] = requestContext.requestedIndices match {
     case Some(indices) => indices.map(_.stringify).toSet
     case None => ScalaSet.empty
   }
   override val action: String = requestContext.action.value
-  override val headers: Map[String, String] =
+  override lazy val headers: Map[String, String] =
     requestContext.restRequest.allHeaders
       .map(h => (h.name.value.value, h.value.value))
       .toMap
-  override val requestHeaders: Headers = new Headers(
+  override lazy val requestHeaders: Headers = new Headers(
     requestContext.restRequest.allHeaders
       .foldLeft(Map.empty[String, ScalaSet[String]]) {
         case (acc, header) =>
-          val headerNames: ScalaSet[String] = acc.get(header.name.value.value).toList.flatten.toSet
-          acc + (header.name.value.value -> (headerNames + header.value.value))
+          val key = header.name.value.value
+          acc.updated(key, acc.getOrElse(key, ScalaSet.empty) + header.value.value)
       }
   )
   override val uriPath: String = requestContext.restRequest.path.value.value
   override val matchedBlockNames: Option[List[String]] = matchedBlocks.map(_.map(_.name.value).toList)
-  override val history: String = aclProcessingHistory.blocks.map(b => blockHistoryShow(showHeader).show(b)).mkString(", ")
-  override val blocksHistory: Map[String, (Boolean, Option[String])] =
+  override lazy val history: String = iterableLikeShow(blockHistoryShow(showHeader)).show(aclProcessingHistory.blocks)
+  override lazy val blocksHistory: Map[String, (Boolean, Option[String])] =
     aclProcessingHistory.blocks
       .map { h =>
         val blockName = h.block.name.value
@@ -77,7 +77,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
         blockName -> matchedAndCause
       }
       .toMap
-  override val content: String = requestContext.restRequest.content
+  override lazy val content: String = requestContext.restRequest.content
   override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
   override val remoteAddress: String = requestContext.restRequest.remoteAddress match {
     case Some(Address.Ip(value)) => value.toString
