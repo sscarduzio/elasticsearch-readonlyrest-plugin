@@ -58,7 +58,7 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
     .toMap
 
   override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-    Task.unit.flatMap { _ =>
+    Task.defer {
       resolveGroupsLogic(blockContext) match {
         case Some(permittedGroupsLogic) if blockContext.isCurrentGroupPotentiallyEligible(permittedGroupsLogic) =>
           continueCheckingWithUserDefinitions(blockContext, permittedGroupsLogic)

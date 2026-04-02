@@ -41,31 +41,31 @@ class AsyncCacheableAction2[K, V](ttl: PositiveFiniteDuration,
       .build[K, V]()
 
   def call(key: K): Task[V] = {
-    for {
-      semaphore <- semaphoreOf(key)
-      cachedValue <- semaphore.withPermit {
-        getFromCacheOrRunAction(key).uncancelable.asyncBoundary
+    Task
+      .delay(Option(cache.getIfPresent(key)))
+      .flatMap {
+        case Some(value) => Task.now(value)
+        case None =>
+          semaphoreOf(key).flatMap { semaphore =>
+            semaphore.withPermit {
+              getFromCacheOrRunAction(key).uncancelable.asyncBoundary
+            }
+          }
       }
-    } yield cachedValue
   }
 
   private def getFromCacheOrRunAction(key: K): Task[V] = {
-    for {
-      cachedValue <- Task.delay(Option(cache.getIfPresent(key)))
-      result <- cachedValue match {
+    Task
+      .delay(Option(cache.getIfPresent(key)))
+      .flatMap {
         case Some(value) =>
           Task.now(value)
         case None =>
-          action(key)
-            .flatMap { value =>
-              Task
-                .delay {
-                  cache.put(key, value)
-                }
-                .map(_ => value)
-            }
+          action(key).map { value =>
+            cache.put(key, value)
+            value
+          }
       }
-    } yield result
   }
 
   def invalidateAll(): Unit = {
@@ -79,10 +79,15 @@ class AsyncCacheableAction2[K, V](ttl: PositiveFiniteDuration,
     keySemaphoresMap.remove(mappedKey)
   }
 
-  private def semaphoreOf(key: K) = for {
-    newSemaphore <- Semaphore[Task](1)
-    usedSemaphore = Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
-  } yield usedSemaphore
+  private def semaphoreOf(key: K): Task[Semaphore[Task]] = {
+    Option(keySemaphoresMap.get(key)) match {
+      case Some(existing) => Task.now(existing)
+      case None =>
+        Semaphore[Task](1).map { newSemaphore =>
+          Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
+        }
+    }
+  }
 }
 
 class AsyncCacheableAction[K, V](ttl: Option[PositiveFiniteDuration],
@@ -115,31 +120,31 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
 
   def call(key: K)(implicit requestId: RequestId): Task[V] = {
     val mappedKey = keyMap(key)
-    for {
-      semaphore <- semaphoreOf(mappedKey)
-      cachedValue <- semaphore.withPermit {
-        getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
+    Task
+      .delay(Option(cache.getIfPresent(mappedKey)))
+      .flatMap {
+        case Some(value) => Task.now(value)
+        case None =>
+          semaphoreOf(mappedKey).flatMap { semaphore =>
+            semaphore.withPermit {
+              getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
+            }
+          }
       }
-    } yield cachedValue
   }
 
   private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = {
-    for {
-      cachedValue <- Task.delay(Option(cache.getIfPresent(mappedKey)))
-      result <- cachedValue match {
+    Task
+      .delay(Option(cache.getIfPresent(mappedKey)))
+      .flatMap {
         case Some(value) =>
           Task.now(value)
         case None =>
-          action(key, requestId)
-            .flatMap { value =>
-              Task
-                .delay {
-                  cache.put(mappedKey, value)
-                }
-                .map(_ => value)
-            }
+          action(key, requestId).map { value =>
+            cache.put(mappedKey, value)
+            value
+          }
       }
-    } yield result
   }
 
   def invalidateAll(): Unit = {
@@ -153,10 +158,15 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
     keySemaphoresMap.remove(mappedKey)
   }
 
-  private def semaphoreOf(key: K1) = for {
-    newSemaphore <- Semaphore[Task](1)
-    usedSemaphore = Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
-  } yield usedSemaphore
+  private def semaphoreOf(key: K1): Task[Semaphore[Task]] = {
+    Option(keySemaphoresMap.get(key)) match {
+      case Some(existing) => Task.now(existing)
+      case None =>
+        Semaphore[Task](1).map { newSemaphore =>
+          Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
+        }
+    }
+  }
 }
 
 class AsyncCacheableActionWithTimeout[K, V](ttl: PositiveFiniteDuration,
