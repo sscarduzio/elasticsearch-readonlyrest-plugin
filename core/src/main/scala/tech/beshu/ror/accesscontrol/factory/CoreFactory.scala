@@ -27,11 +27,9 @@ import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListSt
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
@@ -47,7 +45,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, G
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
@@ -370,7 +367,12 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           }
           DecoderHelpers
             .decodeFieldList[BlockDecodingResult, Task](Attributes.acl, RulesLevelCreationError.apply)
-            .emapE(extractAndValidateAclBlocks(_, userDefs))
+            .emapE { result =>
+              BlockDecodingResultAclValidator
+                .validate(result.toOption, userDefs, Attributes.acl)
+                .leftMap(msgs => BlocksLevelCreationError(Message(msgs.toList.mkString(", "))))
+                .toEither
+            }
         }
       } yield {
         val blocks = blocksNel.map(_.block)
@@ -398,51 +400,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         Core(accessControl, rorDependencies, auditingTools)
       }
       decoder.apply(c)
-    }
-  }
-
-  private def extractAndValidateAclBlocks(blockDecodingResult: FieldListResult[BlockDecodingResult],
-                                          userDefs: Definitions[UserDef]): Either[BlocksLevelCreationError, NonEmptyList[BlockDecodingResult]] = {
-    (for {
-      blocksList <- extractBlocksList(blockDecodingResult)
-      blocksNel <- extractNonEmptyBlocksList(blocksList)
-      _ <- validateThereAreNoBlockDuplicates(blocksNel)
-      _ <- validateThatUsersConfigSectionIsUsedWhenPresent(blocksNel, userDefs)
-    } yield blocksNel).left.map(msg => BlocksLevelCreationError(Message(msg)))
-  }
-
-  private def extractBlocksList(blockDecodingResult: FieldListResult[BlockDecodingResult]): Either[String, List[BlockDecodingResult]] = {
-    blockDecodingResult match {
-      case FieldListValue(blocks) => Right(blocks)
-      case NoField => Left(s"No ${Attributes.acl.show} section found")
-    }
-  }
-
-  private def extractNonEmptyBlocksList(blocks: List[BlockDecodingResult]): Either[String, NonEmptyList[BlockDecodingResult]] = {
-    NonEmptyList.fromList(blocks) match {
-      case Some(nel) => Right(nel)
-      case None => Left(s"${Attributes.acl.show} defined, but no block found")
-    }
-  }
-
-  private def validateThereAreNoBlockDuplicates(blocks: NonEmptyList[BlockDecodingResult]): Either[String, Unit] = {
-    blocks.map(_.block.name).toList.findDuplicates match {
-      case Nil => Right(())
-      case duplicates => Left(s"Blocks must have unique names. Duplicates: ${duplicates.show}")
-    }
-  }
-
-  private def validateThatUsersConfigSectionIsUsedWhenPresent(blocks: NonEmptyList[BlockDecodingResult],
-                                                                 userDefs: Definitions[UserDef]): Either[String, Unit] = {
-    val thereAreUserDefinitions = userDefs.items.nonEmpty
-    lazy val thereIsGroupsRule = blocks.flatMap(_.block.rules).collect {
-      case rule: BaseGroupsRule[_] => rule
-    }.nonEmpty
-
-    if (thereAreUserDefinitions && !thereIsGroupsRule) {
-      Left("The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.")
-    } else {
-      Right(())
     }
   }
 
@@ -517,6 +474,10 @@ object RawRorSettingsBasedCoreFactory {
   private case class BlockDecodingResult(block: Block,
                                          localUsers: LocalUsers,
                                          impersonationWarnings: ImpersonationWarningsReader)
+
+  private object BlockDecodingResultAclValidator extends AclValidator[BlockDecodingResult] {
+    override protected def extract(blockRepresentation: BlockDecodingResult): Block = blockRepresentation.block
+  }
 
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {
