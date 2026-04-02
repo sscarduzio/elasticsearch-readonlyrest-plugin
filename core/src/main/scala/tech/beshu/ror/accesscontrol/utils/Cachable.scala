@@ -40,32 +40,28 @@ class AsyncCacheableAction2[K, V](ttl: PositiveFiniteDuration,
       .withOptionalTtl(Some(ttl))
       .build[K, V]()
 
-  def call(key: K): Task[V] = {
-    Task
-      .delay(Option(cache.getIfPresent(key)))
-      .flatMap {
-        case Some(value) => Task.now(value)
-        case None =>
-          semaphoreOf(key).flatMap { semaphore =>
-            semaphore.withPermit {
-              getFromCacheOrRunAction(key).uncancelable.asyncBoundary
-            }
+  def call(key: K): Task[V] = Task.defer {
+    Option(cache.getIfPresent(key)) match {
+      case Some(value) => Task.now(value)
+      case None =>
+        semaphoreOf(key).flatMap { semaphore =>
+          semaphore.withPermit {
+            getFromCacheOrRunAction(key).uncancelable.asyncBoundary
           }
-      }
+        }
+    }
   }
 
-  private def getFromCacheOrRunAction(key: K): Task[V] = {
-    Task
-      .delay(Option(cache.getIfPresent(key)))
-      .flatMap {
-        case Some(value) =>
-          Task.now(value)
-        case None =>
-          action(key).map { value =>
-            cache.put(key, value)
-            value
-          }
-      }
+  private def getFromCacheOrRunAction(key: K): Task[V] = Task.defer {
+    Option(cache.getIfPresent(key)) match {
+      case Some(value) =>
+        Task.now(value)
+      case None =>
+        action(key).map { value =>
+          cache.put(key, value)
+          value
+        }
+    }
   }
 
   def invalidateAll(): Unit = {
@@ -118,33 +114,29 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
       .withOptionalTtl(ttl)
       .build[K1, V]()
 
-  def call(key: K)(implicit requestId: RequestId): Task[V] = {
+  def call(key: K)(implicit requestId: RequestId): Task[V] = Task.defer {
     val mappedKey = keyMap(key)
-    Task
-      .delay(Option(cache.getIfPresent(mappedKey)))
-      .flatMap {
-        case Some(value) => Task.now(value)
-        case None =>
-          semaphoreOf(mappedKey).flatMap { semaphore =>
-            semaphore.withPermit {
-              getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
-            }
+    Option(cache.getIfPresent(mappedKey)) match {
+      case Some(value) => Task.now(value)
+      case None =>
+        semaphoreOf(mappedKey).flatMap { semaphore =>
+          semaphore.withPermit {
+            getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
           }
-      }
+        }
+    }
   }
 
-  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = {
-    Task
-      .delay(Option(cache.getIfPresent(mappedKey)))
-      .flatMap {
-        case Some(value) =>
-          Task.now(value)
-        case None =>
-          action(key, requestId).map { value =>
-            cache.put(mappedKey, value)
-            value
-          }
-      }
+  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = Task.defer {
+    Option(cache.getIfPresent(mappedKey)) match {
+      case Some(value) =>
+        Task.now(value)
+      case None =>
+        action(key, requestId).map { value =>
+          cache.put(mappedKey, value)
+          value
+        }
+    }
   }
 
   def invalidateAll(): Unit = {
