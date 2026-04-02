@@ -99,12 +99,12 @@ class IndicesRule(override val settings: Settings,
       Task.now(Permitted(blockContext))
     } else {
       import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks.*
-      def atLeastOneFound(indices: Vector[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
+      def atLeastOneFound(indices: List[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
 
       val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toCovariantSet
       blockContext
         .indexPacks
-        .foldLeft(Task.now(Vector.empty[Indices].asRight[Unit])) {
+        .foldLeft(Task.now(List.empty[Indices].asRight[Unit])) {
           case (acc, pack) => acc.flatMap {
             case Right(currentList) => pack match {
               case Indices.Found(indices) =>
@@ -114,19 +114,19 @@ class IndicesRule(override val settings: Settings,
                   indices,
                   kibanaIndexFrom(blockContext)
                 ) map {
-                  case ProcessResult.Ok(narrowedIndices) => Right(currentList :+ Indices.Found(narrowedIndices))
-                  case ProcessResult.Failed.IndexNotFound => Right(currentList :+ Indices.NotFound)
+                  case ProcessResult.Ok(narrowedIndices) => Right(Indices.Found(narrowedIndices) :: currentList)
+                  case ProcessResult.Failed.IndexNotFound => Right(Indices.NotFound :: currentList)
                   case ProcessResult.Failed.Other => Left(())
                 }
               case Indices.NotFound =>
-                Task.now(Right(currentList :+ Indices.NotFound))
+                Task.now(Right(Indices.NotFound :: currentList))
             }
             case result@Left(_) =>
               Task.now(result)
           }
         }
         .map {
-          case Right(indices) if atLeastOneFound(indices) => Permitted(blockContext.withIndicesPacks(indices.toList))
+          case Right(indices) if atLeastOneFound(indices) => Permitted(blockContext.withIndicesPacks(indices.reverse))
           case Right(_) => Denied(Cause.IndexNotFound(
             getAllowedClusterNames(blockContext.requestContext, resolvedAllowedIndices)
           ))

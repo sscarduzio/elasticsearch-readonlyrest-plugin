@@ -255,12 +255,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
 
     private def gatherGroupMetadataPreservingOrder(): Seq[GroupMetadata] = {
-      blockResults.foldLeft(Vector.empty[GroupMetadata]) { case (acc, matched) =>
-        matched.result.context.blockMetadata.availableGroups
-          .foldLeft(acc) { case (acc, group) =>
-            acc :+ groupMetadataFrom(group, matched)
-          }
-      }
+      blockResults
+        .flatMap { matched => matched.result.context.blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)) }
+        .toSeq
     }
 
     private def allowedThroughFirstForbidden(): View[PermittedWithUser[UserMetadataRequestBlockContext]] = {

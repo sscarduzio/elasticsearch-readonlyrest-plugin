@@ -96,21 +96,21 @@ abstract class BaseGroupsRule[+GL <: GroupsLogic](override val name: Rule.Name,
                                                                                           blockContext: B,
                                                                                           permittedGroupsLogic: GroupsLogic): Task[Decision[B]] = {
     def loop(remaining: List[UserDef],
-             failedCauses: Vector[(UserDef, Cause)]): Task[Either[NonEmptyList[(UserDef, Cause)], B]] = {
+             failedCauses: List[(UserDef, Cause)]): Task[Either[NonEmptyList[(UserDef, Cause)], B]] = {
       remaining match {
         case Nil =>
-          Task.now(Left(NonEmptyList.fromListUnsafe(failedCauses.toList)))
+          Task.now(Left(NonEmptyList.fromListUnsafe(failedCauses.reverse)))
         case userDef :: tail =>
           authorizeAndAuthenticate(blockContext, permittedGroupsLogic)(userDef).flatMap {
             case Right(successContext) =>
               Task.now(Right(successContext))
             case Left(cause) =>
-              loop(tail, failedCauses :+ (userDef -> cause))
+              loop(tail, (userDef -> cause) :: failedCauses)
           }
       }
     }
 
-    loop(userDefs.toList, Vector.empty).map {
+    loop(userDefs.toList, Nil).map {
       case Right(newBlockContext) =>
         Permitted(newBlockContext)
       case Left(causes) =>
