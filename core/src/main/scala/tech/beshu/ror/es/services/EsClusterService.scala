@@ -153,8 +153,7 @@ trait EsClusterService {
 
   def expandLocalIndices(indices: Set[ClusterIndexName])
                         (implicit id: RequestId): Set[ClusterIndexName] = {
-    val all: Set[ClusterIndexName] = allIndicesAndAliases.flatMap(_.all)
-    PatternsMatcher.create(indices).filter(all)
+    PatternsMatcher.create(indices).filter(localIndicesSnapshot.indicesAndAliases)
   }
 }
 
@@ -165,15 +164,15 @@ object EsClusterService {
   type IndexUuid = String
 
   final class LocalIndicesSnapshot(val raw: Set[FullLocalIndexWithAliases]) {
-    lazy val indicesAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
-    lazy val indices: Set[LocalIndexName] = raw.map(_.index)
-    lazy val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
+    val indicesAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    val indices: Set[LocalIndexName] = raw.map(_.index)
+    val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
   }
 
   final class LocalDataStreamsSnapshot(val raw: Set[FullLocalDataStreamWithAliases]) {
-    lazy val dataStreamsAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
-    lazy val dataStreams: Set[LocalIndexName] = raw.map(_.dataStream)
-    lazy val dataStreamAliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
+    val dataStreamsAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    val dataStreams: Set[LocalIndexName] = raw.map(_.dataStream)
+    val dataStreamAliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
   }
 }
 

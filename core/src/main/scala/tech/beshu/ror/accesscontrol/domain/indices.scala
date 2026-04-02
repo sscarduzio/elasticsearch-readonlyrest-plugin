@@ -566,18 +566,18 @@ object Placeholder {
 final class FullLocalIndexWithAliases(val indexName: IndexName.Full,
                                       val attribute: IndexAttribute,
                                       val aliasesNames: Set[IndexName.Full]) {
-  lazy val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
-  lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(ClusterIndexName.Local.apply)
-  lazy val all: Set[ClusterIndexName.Local] = aliases + index
+  val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
+  val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(ClusterIndexName.Local.apply)
+  val all: Set[ClusterIndexName.Local] = aliases + index
 }
 
 final class FullRemoteIndexWithAliases(val clusterName: ClusterName.Full,
                                        val indexName: IndexName.Full,
                                        val attribute: IndexAttribute,
                                        val aliasesNames: Set[IndexName.Full]) {
-  lazy val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
-  lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(ClusterIndexName.Remote(_, clusterName))
-  lazy val all: Set[ClusterIndexName.Remote] = aliases + index
+  val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
+  val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(ClusterIndexName.Remote(_, clusterName))
+  val all: Set[ClusterIndexName.Remote] = aliases + index
 }
 
 sealed trait IndexAttribute
