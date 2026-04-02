@@ -76,12 +76,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                 case Policy.Allow => RegularRequestResult.Allowed(blockContext)
                 case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
               }
-            case Decision.Denied(_) if wasDeniedDueToAliasNotFound(blocksHistory) =>
-              RegularRequestResult.AliasNotFound()
-            case Decision.Denied(_) if wasDeniedDueToTemplateNotFound(blocksHistory) =>
-              RegularRequestResult.TemplateNotFound()
             case Decision.Denied(_) =>
-              wasDeniedDueToIndexNotFound(blocksHistory) match {
+              val denialCauses = denialCausesFrom(blocksHistory)
+              val noImpersonation = !impersonationRelatedCauseExists(denialCauses)
+              if (noImpersonation && aliasNotFoundCauseExists(denialCauses))
+                RegularRequestResult.AliasNotFound()
+              else if (noImpersonation && templateNotFoundCauseExists(denialCauses))
+                RegularRequestResult.TemplateNotFound()
+              else indexNotFoundCauseExists(denialCauses) match {
                 case Some(error) =>
                   RegularRequestResult.IndexNotFound(error.allowedClusters)
                 case None =>
@@ -377,25 +379,6 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         case BlockHistory.Denied(block, decision, _) => Some(block.name -> decision.cause)
       }
     }
-  }
-
-  private def wasDeniedDueToIndexNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]): Option[Denied.Cause.IndexNotFound] = {
-    val causes = denialCausesFrom(history)
-    if (impersonationRelatedCauseExists(causes)) {
-      None
-    } else {
-      indexNotFoundCauseExists(causes)
-    }
-  }
-
-  private def wasDeniedDueToAliasNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
-    val causes = denialCausesFrom(history)
-    !impersonationRelatedCauseExists(causes) && aliasNotFoundCauseExists(causes)
-  }
-
-  private def wasDeniedDueToTemplateNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
-    val causes = denialCausesFrom(history)
-    !impersonationRelatedCauseExists(causes) && templateNotFoundCauseExists(causes)
   }
 
   private def indexNotFoundCauseExists(causes: Set[Denied.Cause]): Option[Denied.Cause.IndexNotFound] = {
