@@ -412,7 +412,7 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         val settings = rorSettingsFromUnsafe(settingsStr)
         inside(createCore(settings)) {
           case Left(errors) if errors.size == 1 =>
-            errors.head should be(BlocksLevelCreationError(Message("Blocks must have unique names. Duplicates: test_block1, The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.")))
+            errors.head should be(BlocksLevelCreationError(Message("Blocks must have unique names. Duplicates: test_block1; The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.")))
         }
       }
     }

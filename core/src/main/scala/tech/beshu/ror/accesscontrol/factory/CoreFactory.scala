@@ -370,7 +370,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             .emapE { result =>
               BlockDecodingResultAclValidator
                 .validate(result.toOption, userDefs, Attributes.acl)
-                .leftMap(msgs => BlocksLevelCreationError(Message(msgs.toList.mkString(", "))))
+                .leftMap(msgs => BlocksLevelCreationError(Message(msgs.toList.mkString("; "))))
                 .toEither
             }
         }
