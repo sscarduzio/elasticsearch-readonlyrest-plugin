@@ -79,7 +79,7 @@ private object UserMetadataValue {
         correlationId,
         userMetadata.loggedUser,
         userMetadata.userOrigin,
-        userMetadata.kibanaPolicy
+        userMetadata.kibanaPolicy.getOrElse(KibanaPolicy.default)
       )
     }
 
@@ -100,7 +100,7 @@ private object UserMetadataValue {
           groupMetadata.group,
           groupMetadata.loggedUser,
           groupMetadata.userOrigin,
-          groupMetadata.kibanaPolicy
+          groupMetadata.kibanaPolicy.getOrElse(KibanaPolicy.default)
         )
       }
   }
