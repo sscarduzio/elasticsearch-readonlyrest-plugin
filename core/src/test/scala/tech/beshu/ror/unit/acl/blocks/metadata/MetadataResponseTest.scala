@@ -150,6 +150,54 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
             |}""".stripMargin)
       }
     }
+    "return default kibana policy when no kibana policy is defined" when {
+      "USER_WITHOUT_GROUPS" in {
+        val metadata = createUserMetadataWithoutKibanaPolicy()
+        val result = MetadataResponse.fromAsCirceJson(
+          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false)),
+          userMetadata = metadata,
+          currentGroupId = None,
+          correlationId = CorrelationId(nes("test-id"))
+        )
+
+        result shouldBe circeJsonFrom(
+          """{
+            |  "type": "USER_WITHOUT_GROUPS",
+            |  "correlation_id": "test-id",
+            |  "username": "admin",
+            |  "kibana": {
+            |    "access": "unrestricted"
+            |  }
+            |}""".stripMargin)
+      }
+      "USER_WITH_GROUPS" in {
+        val metadata = createUserMetadataWithGroupsAndNoKibanaPolicy()
+        val result = MetadataResponse.fromAsCirceJson(
+          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true)),
+          userMetadata = metadata,
+          currentGroupId = None,
+          correlationId = CorrelationId(nes("test-id"))
+        )
+
+        result shouldBe circeJsonFrom(
+          """{
+            |  "type": "USER_WITH_GROUPS",
+            |  "correlation_id": "test-id",
+            |  "groups": [
+            |    {
+            |      "group": { "id": "admins", "name": "Administrators" },
+            |      "username": "admin",
+            |      "kibana": { "access": "unrestricted" }
+            |    },
+            |    {
+            |      "group": { "id": "users", "name": "Users" },
+            |      "username": "admin",
+            |      "kibana": { "access": "unrestricted" }
+            |    }
+            |  ]
+            |}""".stripMargin)
+      }
+    }
   }
 
   private def createUserMetadataWithAllFields(): UserMetadata.WithoutGroups = {
@@ -208,6 +256,35 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
     UserMetadata.WithGroups(
       groupsMetadata = NonEmptyList.of(group1, group2)
     )
+  }
+
+  private def createUserMetadataWithoutKibanaPolicy(): UserMetadata.WithoutGroups = {
+    UserMetadata.WithoutGroups(
+      loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
+      userOrigin = None,
+      kibanaPolicy = None,
+      metadataOrigin = MetadataOrigin(blockContext = dummyCtx)
+    )
+  }
+
+  private def createUserMetadataWithGroupsAndNoKibanaPolicy(): UserMetadata.WithGroups = {
+    val group1 = UserMetadata.WithGroups.GroupMetadata(
+      group = group("admins", "Administrators"),
+      loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
+      userOrigin = None,
+      kibanaPolicy = None,
+      metadataOrigin = MetadataOrigin(blockContext = dummyCtx)
+    )
+
+    val group2 = UserMetadata.WithGroups.GroupMetadata(
+      group = group("users", "Users"),
+      loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("admin"))),
+      userOrigin = None,
+      kibanaPolicy = None,
+      metadataOrigin = MetadataOrigin(blockContext = dummyCtx)
+    )
+
+    UserMetadata.WithGroups(groupsMetadata = NonEmptyList.of(group1, group2))
   }
 
   private lazy val dummyCtx = UserMetadataRequestBlockContext(

@@ -57,7 +57,7 @@ class QueryAuditLogSerializerSuite
         result should have statusCode 403
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size shouldBe 1
+        auditEntries.size should be (1)
         val firstEntry = auditEntries(0)
         firstEntry("final_state").str shouldBe "FORBIDDEN"
         firstEntry("user").str should be("user2")
@@ -82,13 +82,16 @@ class QueryAuditLogSerializerSuite
              |      "group": {
              |        "id": "group1",
              |        "name": "group1"
+             |      },
+             |      "kibana": {
+             |        "access":"unrestricted"
              |      }
              |    }
              |  ]
              |}""".stripMargin))
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size shouldBe 1
+        auditEntries.size should be (1)
 
         val firstEntry = auditIndexManager.getEntries.jsons(0)
         firstEntry("final_state").str shouldBe "ALLOWED"
@@ -102,7 +105,7 @@ class QueryAuditLogSerializerSuite
         response should have statusCode 200
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size shouldBe 1
+        auditEntries.size should be (1)
 
         val firstEntry = auditEntries(0)
         firstEntry("final_state").str shouldBe "ALLOWED"
@@ -116,7 +119,7 @@ class QueryAuditLogSerializerSuite
         response should have statusCode 403
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size shouldBe 1
+        auditEntries.size should be (1)
 
         val firstEntry = auditEntries(0)
         firstEntry("final_state").str shouldBe "FORBIDDEN"
