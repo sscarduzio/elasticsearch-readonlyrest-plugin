@@ -8,8 +8,6 @@ variables:
   dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
   GRADLE_USER_HOME: '$(Pipeline.Workspace)/.gradle'
-  ROR_ARTIFACTS_STORE_BUCKET: 'ror-builds-xdelta'
-  ROR_ARTIFACTS_STORE_PATH_PREFIX: ''
 
 trigger:
   batch: false
