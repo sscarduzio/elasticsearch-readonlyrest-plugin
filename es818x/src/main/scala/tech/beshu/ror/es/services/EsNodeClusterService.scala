@@ -91,14 +91,9 @@ class EsNodeClusterService(nodeName: String,
   clusterService.addListener(new ClusterStateListener {
     override def clusterChanged(event: ClusterChangedEvent): Unit = {
       if(event.metadataChanged()) {
-        val startMeasurement = Instant.now()
-        noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - extracting i.ndices and aliases ...")
         val metadata = event.state().metadata()
         localIndicesSnapshotAtomic.set(new LocalIndicesSnapshot(extractIndicesAndAliasesFrom(metadata)))
         localDataStreamsSnapshotAtomic.set(new LocalDataStreamsSnapshot(extractDataStreamsAndAliases(metadata)))
-        val end = Instant.now()
-        val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
-        noRequestIdLogger.debug(s"[ROR_DEBUG] [${event.hashCode()}] Cluster state has changed - DONE! Took: ${measurement.show}")
       }
     }
   })

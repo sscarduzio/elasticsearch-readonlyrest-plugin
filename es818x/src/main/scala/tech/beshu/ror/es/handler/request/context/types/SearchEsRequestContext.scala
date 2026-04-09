@@ -43,9 +43,6 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool)
     with RequestIdAwareLogging {
 
-  private val startMeasurement = Instant.now()
-  logger.debug("[ROR_DEBUG] Starting processing of search request by ROR ...")
-
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
   override protected def requestedIndicesFrom(request: SearchRequest): Set[RequestedIndex[ClusterIndexName]] = {
@@ -74,14 +71,8 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
               .filterSourceFieldsUsing(restrictions)
               .filterDocumentFieldsUsing(restrictions)
           }
-        val end = Instant.now()
-        val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
-        logger.debug(s"[ROR_DEBUG] Finished processing of search request by ROR. Took: ${measurement.show}")
         response
       case _ =>
-        val end = Instant.now()
-        val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
-        logger.debug(s"[ROR_DEBUG] Finished processing of search request by ROR. Took: ${measurement.show}")
         actionResponse
     }
   }

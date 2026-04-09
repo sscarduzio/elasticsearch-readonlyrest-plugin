@@ -60,9 +60,6 @@ class RegularRequestHandler(engine: Engine,
       .handleRegularRequest(request)
       .map { case (result, _) =>
         doPrivileged {
-          val end = Instant.now()
-          val measurement = new FiniteDuration(Duration.between(startMeasurement, end).toMillis, MILLISECONDS)
-          logger.debug(s"[ROR_DEBUG] ROR ACL - checking request done. Took ${measurement.show}")(r.id.toRequestId)
           commitResult(result, request)
         }
       }
