@@ -24,7 +24,7 @@ project.ext {
     publishedPluginVersion = rootProject.properties['pluginVersion']
     pluginVersion = rootProject.properties['pluginVersion']
     esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : project.property('latestSupportedEsVersion')
-    s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
+    s3BucketName = System.env.BUCKET ?: "beshu"
 }
 
 group = 'org.elasticsearch.plugin'
@@ -32,7 +32,7 @@ version = pluginVersion + '_es' + project.ext.esVersion
 
 repositories {
     maven {
-        url = "s3://" + project.s3BucketName + "/build"
+        url = "s3://" + project.s3BucketName + "/ror/libs"
         authentication {
             awsIm(AwsImAuthentication)
         }

@@ -37,7 +37,7 @@ function upload_using_aws_s3_uploader {
     exit 1
   fi
 
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-ror-builds-xdelta}"
+  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
   REGION="${STORE_ADDR:-us-east-1}"
   PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
@@ -55,7 +55,7 @@ function upload_using_deltaglider_uploader {
     exit 1
   fi
 
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-ror-builds-xdelta}"
+  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
   PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
   DELTA_GLIDER_VERSION="6.1.1"
