@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.toShow
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -30,18 +29,13 @@ import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
-
-import java.time.{Duration, Instant}
-import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 class SearchEsRequestContext(actionRequest: SearchRequest,
                              esContext: EsContext,
                              aclContext: AccessControlStaticContext,
                              override implicit val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool)
-    with RequestIdAwareLogging {
+  extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
