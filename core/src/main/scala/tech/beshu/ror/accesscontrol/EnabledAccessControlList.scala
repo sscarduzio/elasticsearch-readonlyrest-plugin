@@ -83,12 +83,14 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                 RegularRequestResult.AliasNotFound()
               else if (noImpersonation && templateNotFoundCauseExists(denialCauses))
                 RegularRequestResult.TemplateNotFound()
-              else indexNotFoundCauseExists(denialCauses) match {
+              else if (noImpersonation) indexNotFoundCauseExists(denialCauses) match {
                 case Some(error) =>
                   RegularRequestResult.IndexNotFound(error.allowedClusters)
                 case None =>
                   RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
               }
+              else
+                RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
           }
           handlingResult -> History(blocksHistory)
         }
