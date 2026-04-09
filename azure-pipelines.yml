@@ -1,4 +1,5 @@
 variables:
+  system.debug: 'true'
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
@@ -56,15 +57,14 @@ stages:
       - job:
         steps:
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
               export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
               export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
               ci/upload-es-artifacts.sh
             continueOnError: true
@@ -74,6 +74,9 @@ stages:
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
               VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
 
   - stage: GRADLE_WARMUP
     displayName: 'Warm up Gradle cache'
@@ -202,10 +205,17 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
         strategy:
           maxParallel: 99
           matrix:
@@ -776,15 +786,14 @@ stages:
           - script: |
               set -e
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
               export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
               export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
@@ -800,6 +809,9 @@ stages:
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
               VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
@@ -861,15 +873,14 @@ stages:
               apt-get update && apt-get install -y git file
               git status && echo ">>> Git installed correctly!"
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
               export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
               export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
@@ -884,6 +895,9 @@ stages:
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
               VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)

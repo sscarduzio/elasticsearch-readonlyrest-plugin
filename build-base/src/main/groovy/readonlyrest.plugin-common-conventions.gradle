@@ -30,11 +30,23 @@ project.ext {
 group = 'org.elasticsearch.plugin'
 version = pluginVersion + '_es' + project.ext.esVersion
 
+def storeAddress = System.env.ROR_LIBS_STORE_URL ?: ""
+if (storeAddress.startsWith("http")) {
+    System.setProperty("org.gradle.s3.endpoint", storeAddress)
+}
+
 repositories {
     maven {
         url = "s3://" + project.s3BucketName + "/ror/libs"
-        authentication {
-            awsIm(AwsImAuthentication)
+        if (storeAddress.startsWith("http")) {
+            credentials(AwsCredentials) {
+                accessKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_ID ?: ""
+                secretKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_SECRET ?: ""
+            }
+        } else {
+            authentication {
+                awsIm(AwsImAuthentication)
+            }
         }
         metadataSources {
             artifact()
