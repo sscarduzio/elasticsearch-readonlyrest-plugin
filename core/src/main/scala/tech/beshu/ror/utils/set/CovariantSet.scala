@@ -45,66 +45,41 @@ object CovariantSetFactory extends CovariantSetFactory
 
 trait CovariantSetExtensions {
 
-  implicit class ToScalaSet[A](val covariantSet: CovariantSet[A]) {
+  extension [A](covariantSet: CovariantSet[A]) {
     def asScala: Set[A] = covariantSet.underlying.asInstanceOf[Set[A]]
+    def contains(elem: A): Boolean = covariantSet.underlying.contains(elem)
+    def concat(that: IterableOnce[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.concat(that))
+    inline def ++(that: IterableOnce[A]): CovariantSet[A] = concat(that)
+    def +(elem: A): CovariantSet[A] = CovariantSet(covariantSet.underlying + elem)
+    def removedAll(that: IterableOnce[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.removedAll(that))
+    inline def --(that: IterableOnce[A]): CovariantSet[A] = removedAll(that)
+    def diff(other: CovariantSet[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.diff(other.underlying))
+    def intersect(other: CovariantSet[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.intersect(other.underlying))
+    def subsetOf(other: CovariantSet[A]): Boolean = covariantSet.underlying.subsetOf(other.underlying)
   }
 
-  implicit class FromIterable[A](val iterable: IterableOnce[A]) {
+  extension [A](iterable: IterableOnce[A]) {
     def toCovariantSet: CovariantSet[A] = iterable match {
       case s: Set[A @unchecked] => new CovariantSet[A](s.asInstanceOf[Set[Any]])
       case other => CovariantSet(other.iterator.toSet)
     }
   }
 
-  implicit class FromNonEmptyList[A](val nonEmptyList: NonEmptyList[A]) {
+  extension [A](nonEmptyList: NonEmptyList[A]) {
     def toCovariantSet: CovariantSet[A] = nonEmptyList.iterator.toCovariantSet
   }
 
-  implicit class FromArray[A](val array: Array[A]) {
+  extension [A](array: Array[A]) {
     def toCovariantSet: CovariantSet[A] = CovariantSet(array.toSet)
   }
-
-  implicit class Contains[A](val covariantSet: CovariantSet[A]) {
-    def contains(elem: A): Boolean = covariantSet.underlying.contains(elem)
-  }
-
-  implicit class Concat[A](val covariantSet: CovariantSet[A]) {
-    def concat(that: IterableOnce[A]): CovariantSet[A] =
-      CovariantSet(covariantSet.underlying.concat(that))
-
-    @`inline` def ++(that: IterableOnce[A]): CovariantSet[A] = concat(that)
-
-    def +(elem: A): CovariantSet[A] = CovariantSet(covariantSet.underlying + elem)
-  }
-
-  implicit class RemovedAll[A](val covariantSet: CovariantSet[A]) {
-    def removedAll(that: IterableOnce[A]): CovariantSet[A] =
-      CovariantSet(covariantSet.underlying.removedAll(that))
-
-    @`inline` def --(that: IterableOnce[A]): CovariantSet[A] = removedAll(that)
-  }
-
-  implicit class Diff[A](val covariantSet: CovariantSet[A]) {
-    def diff(other: CovariantSet[A]): CovariantSet[A] =
-      CovariantSet(covariantSet.underlying.diff(other.underlying))
-  }
-
-  implicit class Intersect[A](val covariantSet: CovariantSet[A]) {
-    def intersect(other: CovariantSet[A]): CovariantSet[A] =
-      CovariantSet(covariantSet.underlying.intersect(other.underlying))
-  }
-
-  implicit class SubsetOf[A](val covariantSet: CovariantSet[A]) {
-    def subsetOf(other: CovariantSet[A]): Boolean =
-      covariantSet.underlying.subsetOf(other.underlying)
-  }
-
-
 }
 
 trait CovariantSetInstances {
 
-  implicit def monoid[A]: Monoid[CovariantSet[A]] = Monoid.instance[CovariantSet[A]](
+  implicit def monoid[A]: Monoid[CovariantSet[A]] =
+    cachedMonoid.asInstanceOf[Monoid[CovariantSet[A]]]
+
+  private val cachedMonoid: Monoid[CovariantSet[Any]] = Monoid.instance[CovariantSet[Any]](
     emptyValue = CovariantSetFactory.empty,
     cmb = (a, b) => a ++ b
   )
