@@ -30,20 +30,7 @@ final case class CovariantSet[+A] private[set](private[set] val underlying: Set[
   override def iterableFactory: CovariantSetFactory = CovariantSet
   override def iterator: Iterator[A] = underlying.iterator.asInstanceOf[Iterator[A]]
 }
-object CovariantSet extends CovariantSetFactory with CovariantSetExtensions with CovariantSetInstances with CatsInstances
-
-trait CovariantSetFactory extends IterableFactory[CovariantSet] {
-
-  private val emptySetInstance = CovariantSet[Any](Set.empty)
-
-  override def from[A](source: IterableOnce[A]): CovariantSet[A] = new CovariantSet[A](Set.from(source))
-  override def empty[A]: CovariantSet[A] = emptySetInstance.asInstanceOf[CovariantSet[A]]
-  override def newBuilder[A]: mutable.Builder[A, CovariantSet[A]] =
-    Set.newBuilder.mapResult(scalaSet => new CovariantSet[A](scalaSet.asInstanceOf[Set[Any]]))
-}
-object CovariantSetFactory extends CovariantSetFactory
-
-trait CovariantSetExtensions {
+object CovariantSet extends CovariantSetFactory with CovariantSetInstances with CatsInstances {
 
   extension [A](covariantSet: CovariantSet[A]) {
     def asScala: Set[A] = covariantSet.underlying.asInstanceOf[Set[A]]
@@ -57,11 +44,25 @@ trait CovariantSetExtensions {
     def intersect(other: CovariantSet[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.intersect(other.underlying))
     def subsetOf(other: CovariantSet[A]): Boolean = covariantSet.underlying.subsetOf(other.underlying)
   }
+}
+
+trait CovariantSetFactory extends IterableFactory[CovariantSet] {
+
+  private val emptySetInstance = CovariantSet[Any](Set.empty)
+
+  override def from[A](source: IterableOnce[A]): CovariantSet[A] = new CovariantSet[A](Set.from(source))
+  override def empty[A]: CovariantSet[A] = emptySetInstance.asInstanceOf[CovariantSet[A]]
+  override def newBuilder[A]: mutable.Builder[A, CovariantSet[A]] =
+    Set.newBuilder.mapResult(scalaSet => new CovariantSet[A](scalaSet.asInstanceOf[Set[Any]]))
+}
+object CovariantSetFactory extends CovariantSetFactory
+
+trait CovariantSetConversions {
 
   extension [A](iterable: IterableOnce[A]) {
     def toCovariantSet: CovariantSet[A] = iterable match {
       case s: Set[A @unchecked] => new CovariantSet[A](s.asInstanceOf[Set[Any]])
-      case other => CovariantSet(other.iterator.toSet)
+      case other => new CovariantSet[A](other.iterator.toSet.asInstanceOf[Set[Any]])
     }
   }
 
@@ -70,7 +71,7 @@ trait CovariantSetExtensions {
   }
 
   extension [A](array: Array[A]) {
-    def toCovariantSet: CovariantSet[A] = CovariantSet(array.toSet)
+    def toCovariantSet: CovariantSet[A] = new CovariantSet[A](array.toSet.asInstanceOf[Set[Any]])
   }
 }
 
