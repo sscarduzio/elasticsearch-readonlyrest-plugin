@@ -77,8 +77,8 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
 
   private def setNonExistentIndexFor(command: AllocationCommand) = {
     val randomIndex = indexFrom(command)
-        .map(_.name.randomNonexistentLocalIndex())
-        .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
+      .map(_.name.randomNonexistentLocalIndex())
+      .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
     command match {
       case c: CancelAllocationCommand =>
         new CancelAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.allowPrimary(), c.projectId())
