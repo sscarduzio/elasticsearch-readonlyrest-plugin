@@ -149,7 +149,7 @@ object TestsUtils {
 
   def fullLocalIndexWithAliases(fullIndexName: IndexName.Full,
                                 aliasesNames: Set[IndexName.Full]): FullLocalIndexWithAliases =
-    FullLocalIndexWithAliases(fullIndexName, IndexAttribute.Opened, aliasesNames)
+    new FullLocalIndexWithAliases(fullIndexName, IndexAttribute.Opened, aliasesNames)
 
   def fullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full): FullLocalDataStreamWithAliases =
     fullLocalDataStreamWithAliases(
