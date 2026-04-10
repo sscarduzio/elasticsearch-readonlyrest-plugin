@@ -18,7 +18,6 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import cats.kernel.Monoid
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.atomic.Atomic
@@ -48,11 +47,13 @@ import tech.beshu.ror.es.utils.ActionListenerToTaskAdapter
 import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
+import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
@@ -387,21 +388,19 @@ class EsNodeClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  private def aliasesPerIndexFrom(resolvedAliases: List[ResolvedAlias]) = {
-    lazy val mapMonoid: Monoid[Map[IndexName.Full, Set[IndexName.Full]]] =
-      Monoid[Map[IndexName.Full, Set[IndexName.Full]]]
-    resolvedAliases
-      .map { resolvedAlias =>
+  private def aliasesPerIndexFrom(resolvedAliases: List[ResolvedAlias]): Map[IndexName.Full, Set[IndexName.Full]] = {
+    val result = mutable.HashMap.empty[IndexName.Full, mutable.Builder[IndexName.Full, Set[IndexName.Full]]]
+    resolvedAliases.foreach { resolvedAlias =>
+      IndexName.Full.fromString(resolvedAlias.getName).foreach { aliasName =>
         resolvedAlias
           .getIndices.asSafeList
           .flatMap(IndexName.Full.fromString)
-          .map(index => (index, IndexName.Full.fromString(resolvedAlias.getName).toCovariantSet))
-          .toMap
+          .foreach { index =>
+            result.getOrElseUpdate(index, CovariantSet.newBuilder) += aliasName
+          }
       }
-      .foldLeft(Map.empty[IndexName.Full, Set[IndexName.Full]]) {
-        case (acc, aliasesPerIndex) =>
-          mapMonoid.combine(acc, aliasesPerIndex)
-      }
+    }
+    result.view.mapValues(_.result()).toMap
   }
 
   private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {
@@ -556,31 +555,20 @@ object EsNodeClusterService {
     }
 
     private def aliasesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
-      lazy val mapMonoid: Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]] =
-        Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]]
+      val result = mutable.HashMap.empty[DataStreamName.Full, mutable.Builder[DataStreamName.Full, Set[DataStreamName.Full]]]
       val dataStreamAliases = metadata.dataStreamAliases()
-      dataStreamAliases
-        .keySet().asScala
-        .flatMap { aliasName =>
-          val dataStreamAlias = dataStreamAliases.get(aliasName)
-          val dataStreams: Set[DataStreamName.Full] =
-            dataStreamAlias
-              .getDataStreams.asScala
-              .flatMap { ds =>
-                DataStreamName.Full.fromString(ds)
-              }
-              .toCovariantSet
-
-          DataStreamName.Full.fromString(dataStreamAlias.getName)
-            .map(alias => (alias, dataStreams))
+      dataStreamAliases.keySet().asScala.foreach { aliasName =>
+        val dataStreamAlias = dataStreamAliases.get(aliasName)
+        DataStreamName.Full.fromString(dataStreamAlias.getName).foreach { alias =>
+          dataStreamAlias
+            .getDataStreams.asScala
+            .flatMap(DataStreamName.Full.fromString)
+            .foreach { ds =>
+              result.getOrElseUpdate(ds, CovariantSet.newBuilder) += alias
+            }
         }
-        .map {
-          case (alias, dataStreams) =>
-            dataStreams.map(ds => (ds, Set(alias))).toMap
-        }
-        .foldLeft(Map.empty[DataStreamName.Full, Set[DataStreamName.Full]]) { (acc, aliasesPerDataStream) =>
-          mapMonoid.combine(acc, aliasesPerDataStream)
-        }
+      }
+      result.view.mapValues(_.result()).toMap
     }
 
     private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
@@ -593,9 +581,7 @@ object EsNodeClusterService {
             dataStream
               .getIndices.asScala
               .map(_.getName)
-              .flatMap(
-                IndexName.Full.fromString
-              )
+              .flatMap(IndexName.Full.fromString)
               .toCovariantSet
 
           DataStreamName.Full
