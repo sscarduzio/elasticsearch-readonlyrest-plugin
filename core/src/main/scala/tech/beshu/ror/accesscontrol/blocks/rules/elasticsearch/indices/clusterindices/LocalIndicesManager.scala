@@ -30,44 +30,41 @@ class LocalIndicesManager(requestContext: RequestContext,
 
   private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
   private val clusterService = requestContext.esServices.clusterService
-  private val attrs = requestContext.indexAttributes
+  private val indexAttributesFromRequest = requestContext.indexAttributes
 
-  // Snapshots fetched once per LocalIndicesManager instance (per rule evaluation per request).
-  // The underlying Atomic reads are O(1); in non-es818x modules the decorator caches them within the request.
   private lazy val indicesSnapshot = clusterService.localIndicesSnapshot
-  private lazy val dataStreamsSnapshot = clusterService.localDataStreamsSnapshot
 
   // Indices — for the common case (no attribute filter) use the pre-computed flat sets from the snapshot;
   // for filtered requests compute from the raw set (which carries attribute information).
-  private lazy val filteredIndices = {
-    if (attrs.nonEmpty) indicesSnapshot.raw.filter(i => attrs.contains(i.attribute))
+  private lazy val attributeFilteredIndices = {
+    if (indexAttributesFromRequest.nonEmpty) indicesSnapshot.raw.filter(i => indexAttributesFromRequest.contains(i.attribute))
     else indicesSnapshot.raw
   }
-
-  private lazy val cachedAllIndicesAndAliases: Set[LocalIndexName] =
-    if (attrs.isEmpty) indicesSnapshot.indicesAndAliases
-    else filteredIndices.flatMap(_.all)
-
-  private lazy val cachedAllIndices: Set[LocalIndexName] =
-    if (attrs.isEmpty) indicesSnapshot.indices
-    else filteredIndices.map(_.index)
-
+  private lazy val cachedAllIndicesAndAliases: Set[LocalIndexName] = {
+    if (indexAttributesFromRequest.isEmpty) indicesSnapshot.indicesAndAliases
+    else attributeFilteredIndices.flatMap(_.all)
+  }
+  private lazy val cachedAllIndices: Set[LocalIndexName] = {
+    if (indexAttributesFromRequest.isEmpty) indicesSnapshot.indices
+    else attributeFilteredIndices.map(_.index)
+  }
   private lazy val cachedAllAliases: Set[LocalIndexName] = indicesSnapshot.aliases
 
+  private lazy val dataStreamsSnapshot = clusterService.localDataStreamsSnapshot
+
   // Data streams — same pattern as indices above.
-  private lazy val filteredDataStreams = {
-    if (attrs.nonEmpty) dataStreamsSnapshot.raw.filter(ds => attrs.contains(ds.attribute))
+  private lazy val attributeFilteredDataStreams = {
+    if (indexAttributesFromRequest.nonEmpty) dataStreamsSnapshot.raw.filter(ds => indexAttributesFromRequest.contains(ds.attribute))
     else dataStreamsSnapshot.raw
   }
-
-  private lazy val cachedAllDataStreamsAndAliases: Set[LocalIndexName] =
-    if (attrs.isEmpty) dataStreamsSnapshot.dataStreamsAndAliases
-    else filteredDataStreams.flatMap(_.all)
-
-  private lazy val cachedAllDataStreams: Set[LocalIndexName] =
-    if (attrs.isEmpty) dataStreamsSnapshot.dataStreams
-    else filteredDataStreams.map(_.dataStream)
-
+  private lazy val cachedAllDataStreamsAndAliases: Set[LocalIndexName] = {
+    if (indexAttributesFromRequest.isEmpty) dataStreamsSnapshot.dataStreamsAndAliases
+    else attributeFilteredDataStreams.flatMap(_.all)
+  }
+  private lazy val cachedAllDataStreams: Set[LocalIndexName] = {
+    if (indexAttributesFromRequest.isEmpty) dataStreamsSnapshot.dataStreams
+    else attributeFilteredDataStreams.map(_.dataStream)
+  }
   private lazy val cachedAllDataStreamAliases: Set[LocalIndexName] = dataStreamsSnapshot.dataStreamAliases
 
   override def allIndicesAndAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
@@ -80,7 +77,7 @@ class LocalIndicesManager(requestContext: RequestContext,
     Task.delay(cachedAllAliases)
 
   override def indicesPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
-    clusterService.indicesPerAliasMap(attrs)
+    clusterService.indicesPerAliasMap(indexAttributesFromRequest)
 
   override def allDataStreamsAndDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllDataStreamsAndAliases)
@@ -92,8 +89,8 @@ class LocalIndicesManager(requestContext: RequestContext,
     Task.delay(cachedAllDataStreamAliases)
 
   override def dataStreamsPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
-    clusterService.dataStreamsPerAliasMap(attrs)
+    clusterService.dataStreamsPerAliasMap(indexAttributesFromRequest)
 
   override def backingIndicesPerDataStreamMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
-    clusterService.backingIndicesPerDataStreamMap(attrs)
+    clusterService.backingIndicesPerDataStreamMap(indexAttributesFromRequest)
 }

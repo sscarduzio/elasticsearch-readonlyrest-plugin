@@ -26,66 +26,6 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext.*
 
-class AsyncCacheableAction2[K, V](ttl: PositiveFiniteDuration,
-                                  action: K => Task[V]) {
-
-  import CacheableActionCaffeineOps.*
-
-  private val keySemaphoresMap = new ConcurrentHashMap[K, Semaphore[Task]]()
-
-  private val cache: Cache[K, V] =
-    Caffeine.newBuilder()
-      .executor(global)
-      .removalListener(onRemoveHook)
-      .withOptionalTtl(Some(ttl))
-      .build[K, V]()
-
-  def call(key: K): Task[V] = Task.defer {
-    Option(cache.getIfPresent(key)) match {
-      case Some(value) => Task.now(value)
-      case None =>
-        semaphoreOf(key).flatMap { semaphore =>
-          semaphore.withPermit {
-            getFromCacheOrRunAction(key).uncancelable.asyncBoundary
-          }
-        }
-    }
-  }
-
-  private def getFromCacheOrRunAction(key: K): Task[V] = Task.defer {
-    Option(cache.getIfPresent(key)) match {
-      case Some(value) =>
-        Task.now(value)
-      case None =>
-        action(key).map { value =>
-          cache.put(key, value)
-          value
-        }
-    }
-  }
-
-  def invalidateAll(): Unit = {
-    cache.invalidateAll()
-    keySemaphoresMap.clear()
-  }
-
-  private def onRemoveHook(mappedKey: K,
-                           @nowarn value: V,
-                           @nowarn cause: RemovalCause): Unit = {
-    keySemaphoresMap.remove(mappedKey)
-  }
-
-  private def semaphoreOf(key: K): Task[Semaphore[Task]] = {
-    Option(keySemaphoresMap.get(key)) match {
-      case Some(existing) => Task.now(existing)
-      case None =>
-        Semaphore[Task](1).map { newSemaphore =>
-          Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
-        }
-    }
-  }
-}
-
 class AsyncCacheableAction[K, V](ttl: Option[PositiveFiniteDuration],
                                  action: (K, RequestId) => Task[V])
   extends AsyncCacheableActionWithKeyMapping[K, K, V](ttl, action, identity[K]) {

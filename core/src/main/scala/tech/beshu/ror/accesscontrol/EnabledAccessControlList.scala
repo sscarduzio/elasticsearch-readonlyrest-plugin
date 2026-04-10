@@ -71,26 +71,11 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         .run
         .map { case (blocksHistory, result) =>
           val handlingResult: RegularRequestResult[B] = result match {
-            case Decision.Permitted(blockContext) =>
-              blockContext.block.policy match {
-                case Policy.Allow => RegularRequestResult.Allowed(blockContext)
-                case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
-              }
-            case Decision.Denied(_) =>
-              val denialCauses = denialCausesFrom(blocksHistory)
-              val noImpersonation = !impersonationRelatedCauseExists(denialCauses)
-              if (noImpersonation && aliasNotFoundCauseExists(denialCauses))
-                RegularRequestResult.AliasNotFound()
-              else if (noImpersonation && templateNotFoundCauseExists(denialCauses))
-                RegularRequestResult.TemplateNotFound()
-              else if (noImpersonation) indexNotFoundCauseExists(denialCauses) match {
-                case Some(error) =>
-                  RegularRequestResult.IndexNotFound(error.allowedClusters)
-                case None =>
-                  RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
-              }
-              else
-                RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
+            case Decision.Permitted(blockContext) => blockContext.block.policy match {
+              case Policy.Allow => RegularRequestResult.Allowed(blockContext)
+              case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
+            }
+            case Decision.Denied(_) => deniedResultFrom(blocksHistory)
           }
           handlingResult -> History(blocksHistory)
         }
@@ -123,6 +108,24 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
           }
       }
     }
+
+  private def deniedResultFrom[B <: BlockContext](blocksHistory: Vector[BlockHistory[B]]): RegularRequestResult[B] = {
+    val denialCauses = denialCausesFrom(blocksHistory)
+    val noImpersonation = !impersonationRelatedCauseExists(denialCauses)
+    if (noImpersonation && aliasNotFoundCauseExists(denialCauses))
+      RegularRequestResult.AliasNotFound()
+    else if (noImpersonation && templateNotFoundCauseExists(denialCauses))
+      RegularRequestResult.TemplateNotFound()
+    else if (noImpersonation) {
+      indexNotFoundCauseExists(denialCauses) match {
+        case Some(error) =>
+          RegularRequestResult.IndexNotFound(error.allowedClusters)
+        case None =>
+          RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
+      }
+    } else
+      RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
+  }
 
   private def determineUserMetadataForApiV1(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
                                             optPreferredGroupId: Option[GroupId],
