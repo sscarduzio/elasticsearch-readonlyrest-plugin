@@ -98,9 +98,10 @@ class EsNodeClusterService(nodeName: String,
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         remoteClusterService
-          .getRemoteConnectionInfos.toList.asScala.toCovariantSet
+          .getRemoteConnectionInfos.toList.asScala
           .map(_.getClusterAlias)
           .flatMap(ClusterName.Full.fromString)
+          .toCovariantSet
       case None =>
         Set.empty
     }

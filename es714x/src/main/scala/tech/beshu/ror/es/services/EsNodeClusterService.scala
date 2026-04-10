@@ -18,16 +18,17 @@ package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import cats.kernel.Monoid
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.CancelablePromise
+import monix.execution.atomic.Atomic
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.cluster.ClusterChangedEvent
 import org.elasticsearch.cluster.metadata.{IndexMetadata, Metadata, RepositoriesMetadata}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
@@ -46,11 +47,13 @@ import tech.beshu.ror.es.utils.CallActionRequestAndHandleResponse.*
 import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.function.Supplier
+import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
@@ -65,9 +68,26 @@ class EsNodeClusterService(nodeName: String,
 
   import EsNodeClusterService.*
 
+  private val localClusterSnapshotAtomic: Atomic[LocalClusterSnapshot] = Atomic {
+    Option(clusterService.state) match {
+      case Some(state) => LocalClusterSnapshot.from(state.metadata())
+      case None => LocalClusterSnapshot.empty
+    }
+  }
+
+  clusterService.addListener((event: ClusterChangedEvent) => {
+    if (event.metadataChanged()) {
+      val metadata = event.state().metadata()
+      localClusterSnapshotAtomic.transform { current =>
+        if (metadata.version() > current.version) LocalClusterSnapshot.from(metadata)
+        else current
+      }
+    }
+  })
+
   override def remoteClustersConfigured(implicit id: RequestId): Boolean = {
     remoteClusterServiceSupplier.get() match {
-      case Some(remoteClusterService) => remoteClusterService.isCrossClusterSearchEnabled()
+      case Some(remoteClusterService) => remoteClusterService.isCrossClusterSearchEnabled
       case None => false
     }
   }
@@ -91,10 +111,11 @@ class EsNodeClusterService(nodeName: String,
     lookup.get(indexOrAlias.stringify).getIndices.asScala.map(_.getIndexUUID).toCovariantSet
   }
 
-  override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = {
-    val metadata = clusterService.state.metadata
-    extractIndicesAndAliasesFrom(metadata)
-  }
+  override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] =
+    localClusterSnapshotAtomic.get().indices.raw
+
+  override def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot =
+    localClusterSnapshotAtomic.get().indices
 
   override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = {
     remoteClusterServiceSupplier.get() match {
@@ -105,10 +126,11 @@ class EsNodeClusterService(nodeName: String,
     }
   }
 
-  override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] = {
-    val metadata = clusterService.state.metadata
-    extractDataStreamsAndAliases(metadata)
-  }
+  override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] =
+    localClusterSnapshotAtomic.get().dataStreams.raw
+
+  override def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot =
+    localClusterSnapshotAtomic.get().dataStreams
 
   override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] =
     remoteClusterServiceSupplier.get() match {
@@ -237,92 +259,6 @@ class EsNodeClusterService(nodeName: String,
       .map(results => zip(results, documents))
   }
 
-  private def extractIndicesAndAliasesFrom(metadata: Metadata) = {
-    val indices = metadata.getIndices
-    indices
-      .keysIt().asScala
-      .flatMap { index =>
-        val indexMetaData = indices.get(index)
-        IndexName.Full
-          .fromString(indexMetaData.getIndex.getName)
-          .map { indexName =>
-            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
-            FullLocalIndexWithAliases(
-              indexName,
-              indexMetaData.getState match {
-                case IndexMetadata.State.CLOSE => IndexAttribute.Closed
-                case IndexMetadata.State.OPEN => IndexAttribute.Opened
-              },
-              aliases
-            )
-          }
-      }
-      .toCovariantSet
-  }
-
-  private def extractDataStreamsAndAliases(metadata: Metadata): Set[FullLocalDataStreamWithAliases] = {
-    val aliasesPerDataStream = aliasesPerDataStreamFrom(metadata)
-    backingIndicesPerDataStreamFrom(metadata)
-      .map { case (dataStreamName, backingIndices) =>
-        FullLocalDataStreamWithAliases(
-          dataStreamName = dataStreamName,
-          aliasesNames = aliasesPerDataStream.getOrElse(dataStreamName, Set.empty),
-          backingIndices = backingIndices
-        )
-      }
-      .toCovariantSet
-  }
-
-  private def aliasesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
-    lazy val mapMonoid: Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]] =
-      Monoid[Map[DataStreamName.Full, Set[DataStreamName.Full]]]
-    val dataStreamAliases = metadata.dataStreamAliases()
-    dataStreamAliases
-      .keySet().asScala
-      .flatMap { aliasName =>
-        val dataStreamAlias = dataStreamAliases.get(aliasName)
-        val dataStreams: Set[DataStreamName.Full] =
-          dataStreamAlias
-            .getDataStreams.asScala
-            .flatMap { ds =>
-              DataStreamName.Full.fromString(ds)
-            }
-            .toCovariantSet
-
-        DataStreamName.Full.fromString(dataStreamAlias.getName)
-          .map(alias => (alias, dataStreams))
-      }
-      .map {
-        case (alias, dataStreams) =>
-          dataStreams.map(ds => (ds, Set(alias))).toMap
-      }
-      .foldLeft(Map.empty[DataStreamName.Full, Set[DataStreamName.Full]]) { (acc, aliasesPerDataStream) =>
-        mapMonoid.combine(acc, aliasesPerDataStream)
-      }
-  }
-
-  private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
-    val dataStreams = metadata.dataStreams()
-    dataStreams
-      .keySet().asScala
-      .flatMap { dataStreamName =>
-        val dataStream = dataStreams.get(dataStreamName)
-        val backingIndices =
-          dataStream
-            .getIndices.asScala
-            .map(_.getName)
-            .flatMap(
-              IndexName.Full.fromString
-            )
-            .toCovariantSet
-
-        DataStreamName.Full
-          .fromString(dataStream.getName)
-          .map(dataStreamName => (dataStreamName, backingIndices))
-      }
-      .toMap
-  }
-
   private def provideAllRemoteDataStreams(remoteClusterService: RemoteClusterService)
                                          (implicit requestId: RequestId) = {
     val remoteClusterFullNames =
@@ -437,7 +373,7 @@ class EsNodeClusterService(nodeName: String,
     IndexName.Full
       .fromString(resolvedIndex.getName)
       .map { index =>
-        FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
+        new FullRemoteIndexWithAliases(remoteClusterName, index, indexAttributeFrom(resolvedIndex), aliasesFrom(resolvedIndex))
       }
   }
 
@@ -448,21 +384,19 @@ class EsNodeClusterService(nodeName: String,
       .toCovariantSet
   }
 
-  private def aliasesPerIndexFrom(resolvedAliases: List[ResolvedAlias]) = {
-    lazy val mapMonoid: Monoid[Map[IndexName.Full, Set[IndexName.Full]]] =
-      Monoid[Map[IndexName.Full, Set[IndexName.Full]]]
-    resolvedAliases
-      .map { resolvedAlias =>
+  private def aliasesPerIndexFrom(resolvedAliases: List[ResolvedAlias]): Map[IndexName.Full, Set[IndexName.Full]] = {
+    val result = mutable.HashMap.empty[IndexName.Full, mutable.Builder[IndexName.Full, Set[IndexName.Full]]]
+    resolvedAliases.foreach { resolvedAlias =>
+      IndexName.Full.fromString(resolvedAlias.getName).foreach { aliasName =>
         resolvedAlias
           .getIndices.asSafeList
           .flatMap(IndexName.Full.fromString)
-          .map(index => (index, IndexName.Full.fromString(resolvedAlias.getName).toCovariantSet))
-          .toMap
+          .foreach { index =>
+            result.getOrElseUpdate(index, CovariantSet.newBuilder) += aliasName
+          }
       }
-      .foldLeft(Map.empty[IndexName.Full, Set[IndexName.Full]]) {
-        case (acc, aliasesPerIndex) =>
-          mapMonoid.combine(acc, aliasesPerIndex)
-      }
+    }
+    result.view.mapValues(_.result()).toMap
   }
 
   private def indexAttributeFrom(resolvedIndex: ResolvedIndex): IndexAttribute = {
@@ -557,7 +491,103 @@ class EsNodeClusterService(nodeName: String,
   }
 
 }
+
 object EsNodeClusterService {
+
+  private final class LocalClusterSnapshot private(val version: Long,
+                                                   val indices: LocalIndicesSnapshot,
+                                                   val dataStreams: LocalDataStreamsSnapshot)
+
+  private object LocalClusterSnapshot {
+
+    def from(metadata: Metadata): LocalClusterSnapshot = {
+      new LocalClusterSnapshot(
+        version = metadata.version(),
+        indices = new LocalIndicesSnapshot(extractIndicesAndAliasesFrom(metadata)),
+        dataStreams = new LocalDataStreamsSnapshot(extractDataStreamsAndAliases(metadata))
+      )
+    }
+
+    val empty: LocalClusterSnapshot = new LocalClusterSnapshot(
+      version = -1L,
+      indices = new LocalIndicesSnapshot(Set.empty),
+      dataStreams = new LocalDataStreamsSnapshot(Set.empty)
+    )
+
+    private def extractIndicesAndAliasesFrom(metadata: Metadata) = {
+      val indices = metadata.getIndices
+      indices
+        .keysIt().asScala
+        .flatMap { index =>
+          val indexMetaData = indices.get(index)
+          IndexName.Full
+            .fromString(indexMetaData.getIndex.getName)
+            .map { indexName =>
+              val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.Full.fromString)
+              new FullLocalIndexWithAliases(
+                indexName,
+                indexMetaData.getState match {
+                  case IndexMetadata.State.CLOSE => IndexAttribute.Closed
+                  case IndexMetadata.State.OPEN => IndexAttribute.Opened
+                },
+                aliases
+              )
+            }
+        }
+        .toCovariantSet
+    }
+
+    private def extractDataStreamsAndAliases(metadata: Metadata): Set[FullLocalDataStreamWithAliases] = {
+      val aliasesPerDataStream = aliasesPerDataStreamFrom(metadata)
+      backingIndicesPerDataStreamFrom(metadata)
+        .map { case (dataStreamName, backingIndices) =>
+          FullLocalDataStreamWithAliases(
+            dataStreamName = dataStreamName,
+            aliasesNames = aliasesPerDataStream.getOrElse(dataStreamName, Set.empty),
+            backingIndices = backingIndices
+          )
+        }
+        .toCovariantSet
+    }
+
+    private def aliasesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
+      val result = mutable.HashMap.empty[DataStreamName.Full, mutable.Builder[DataStreamName.Full, Set[DataStreamName.Full]]]
+      val dataStreamAliases = metadata.dataStreamAliases()
+      dataStreamAliases.keySet().asScala.foreach { aliasName =>
+        val dataStreamAlias = dataStreamAliases.get(aliasName)
+        DataStreamName.Full.fromString(dataStreamAlias.getName).foreach { alias =>
+          dataStreamAlias
+            .getDataStreams.asScala
+            .flatMap(DataStreamName.Full.fromString)
+            .foreach { ds =>
+              result.getOrElseUpdate(ds, CovariantSet.newBuilder) += alias
+            }
+        }
+      }
+      result.view.mapValues(_.result()).toMap
+    }
+
+    private def backingIndicesPerDataStreamFrom(metadata: Metadata): Map[DataStreamName.Full, Set[IndexName.Full]] = {
+      val dataStreams = metadata.dataStreams()
+      dataStreams
+        .keySet().asScala
+        .flatMap { dataStreamName =>
+          val dataStream = dataStreams.get(dataStreamName)
+          val backingIndices =
+            dataStream
+              .getIndices.asScala
+              .map(_.getName)
+              .flatMap(IndexName.Full.fromString)
+              .toCovariantSet
+
+          DataStreamName.Full
+            .fromString(dataStream.getName)
+            .map(dataStreamName => (dataStreamName, backingIndices))
+        }
+        .toMap
+    }
+
+  }
 
   private implicit class RepositoryServiceOps(val service: RepositoriesService) extends AnyVal {
 
