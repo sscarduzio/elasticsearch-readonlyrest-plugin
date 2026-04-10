@@ -123,6 +123,43 @@ trait EsClusterService {
 
   def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]]
 
+  def remoteDataStreamsPerAliasMap(filteredBy: Set[IndexAttribute])
+                                 (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+    remoteDataStreams(filteredBy)
+      .map { dataStreams =>
+        val builder = mutable.Map.empty[RemoteIndexName, mutable.Set[RemoteIndexName]]
+        dataStreams.foreach { fullRemoteDataStream =>
+          fullRemoteDataStream.aliases.foreach { alias =>
+            builder.getOrElseUpdate(alias, mutable.Set.empty) += fullRemoteDataStream.dataStream
+          }
+        }
+        builder.view.mapValues(_.toCovariantSet).toMap
+      }
+  }
+
+  def remoteBackingIndicesPerDataStreamMap(filteredBy: Set[IndexAttribute])
+                                          (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+    remoteDataStreams(filteredBy)
+      .map { dataStreams =>
+        val builder = mutable.Map.empty[RemoteIndexName, mutable.Set[RemoteIndexName]]
+        dataStreams.foreach { fullRemoteDataStream =>
+          fullRemoteDataStream.indices.foreach { index =>
+            builder.getOrElseUpdate(fullRemoteDataStream.dataStream, mutable.Set.empty) += index
+          }
+        }
+        builder.view.mapValues(_.toCovariantSet).toMap
+      }
+  }
+
+  private def remoteDataStreams(filteredBy: Set[IndexAttribute])
+                               (implicit id: RequestId) = {
+    allRemoteDataStreamsAndAliases
+      .map(_.filter(ds =>
+        if (filteredBy.nonEmpty) filteredBy.contains(ds.attribute)
+        else true
+      ))
+  }
+
   def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot = new LocalIndicesSnapshot(allIndicesAndAliases)
 
   def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot = new LocalDataStreamsSnapshot(allDataStreamsAndAliases)
@@ -296,6 +333,22 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
   override def remoteIndicesPerAliasMap(filteredBy: Set[IndexAttribute])
                                        (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
     cacheableRemoteIndicesPerAliasMap.call(filteredBy)
+
+  private lazy val cacheableRemoteDataStreamsPerAliasMap = new AsyncCacheableAction[Set[IndexAttribute], Map[RemoteIndexName, Set[RemoteIndexName]]](
+    action = (filteredBy, id) => underlying.remoteDataStreamsPerAliasMap(filteredBy)(id)
+  )
+
+  private lazy val cacheableRemoteBackingIndicesPerDataStreamMap = new AsyncCacheableAction[Set[IndexAttribute], Map[RemoteIndexName, Set[RemoteIndexName]]](
+    action = (filteredBy, id) => underlying.remoteBackingIndicesPerDataStreamMap(filteredBy)(id)
+  )
+
+  override def remoteDataStreamsPerAliasMap(filteredBy: Set[IndexAttribute])
+                                           (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+    cacheableRemoteDataStreamsPerAliasMap.call(filteredBy)
+
+  override def remoteBackingIndicesPerDataStreamMap(filteredBy: Set[IndexAttribute])
+                                                    (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+    cacheableRemoteBackingIndicesPerDataStreamMap.call(filteredBy)
 
   override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] =
     cacheableAllDataStreamsAndAliases.call(())
