@@ -20,37 +20,26 @@ import monix.eval.Task
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionRequestBuilder, ActionResponse}
 
 import scala.concurrent.Promise
-import scala.language.implicitConversions
-
-class CallActionRequestAndHandleResponse[REQUEST <: ActionRequest, RESPONSE <: ActionResponse] private(builder: ActionRequestBuilder[REQUEST, RESPONSE, _]) {
-
-  def call[R](f: RESPONSE => R): Task[R] = {
-    val listener = new GenericResponseListener[RESPONSE]()
-    builder.execute(listener)
-    listener.result(f)
-  }
-}
 
 object CallActionRequestAndHandleResponse {
-  implicit def toOps[REQUEST <: ActionRequest, RESPONSE <: ActionResponse](builder: ActionRequestBuilder[REQUEST, RESPONSE, _]): CallActionRequestAndHandleResponse[REQUEST, RESPONSE] =
-    new CallActionRequestAndHandleResponse(builder)
-}
-
-class InvokeCallerAndHandleResponse[RESPONSE <: ActionResponse] private(caller: ActionListener[RESPONSE] => _) {
-
-  def execute[R](f: RESPONSE => R): Task[R] = {
-    val listener = new GenericResponseListener[RESPONSE]()
-    caller(listener)
-    listener.result(f)
-  }
+  extension [REQUEST <: ActionRequest, RESPONSE <: ActionResponse](builder: ActionRequestBuilder[REQUEST, RESPONSE, ?])
+    def call[R](f: RESPONSE => R): Task[R] = {
+      val listener = new GenericResponseListener[RESPONSE]()
+      builder.execute(listener)
+      listener.result(f)
+    }
 }
 
 object InvokeCallerAndHandleResponse {
-  implicit def toOps[RESPONSE <: ActionResponse](caller: ActionListener[RESPONSE] => Unit): InvokeCallerAndHandleResponse[RESPONSE] =
-    new InvokeCallerAndHandleResponse(caller)
+  extension [RESPONSE <: ActionResponse](caller: ActionListener[RESPONSE] => Unit)
+    def execute[R](f: RESPONSE => R): Task[R] = {
+      val listener = new GenericResponseListener[RESPONSE]()
+      caller(listener)
+      listener.result(f)
+    }
 }
 
-private final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {
+private final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE]:
 
   private val promise = Promise[RESPONSE]()
 
@@ -58,11 +47,8 @@ private final class GenericResponseListener[RESPONSE <: ActionResponse] extends 
     .fromFuture(promise.future)
     .map(f)
 
-  override def onResponse(response: RESPONSE): Unit = {
+  override def onResponse(response: RESPONSE): Unit =
     promise.success(response)
-  }
 
-  override def onFailure(exception: Exception): Unit = {
+  override def onFailure(exception: Exception): Unit =
     promise.failure(exception)
-  }
-}
