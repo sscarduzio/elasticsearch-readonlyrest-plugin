@@ -78,7 +78,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
       }
       .toMap
   override lazy val content: String = requestContext.restRequest.content
-  override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
+  override lazy val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
   override val remoteAddress: String = requestContext.restRequest.remoteAddress match {
     case Some(Address.Ip(value)) => value.toString
     case Some(Address.Name(value)) => value.toString

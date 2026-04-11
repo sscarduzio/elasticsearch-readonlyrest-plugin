@@ -558,7 +558,7 @@ object EsNodeClusterService {
     private def aliasesPerDataStreamFrom(metadata: ProjectMetadata): Map[DataStreamName.Full, Set[DataStreamName.Full]] = {
       val result = mutable.HashMap.empty[DataStreamName.Full, mutable.Builder[DataStreamName.Full, Set[DataStreamName.Full]]]
       val dataStreamAliases = metadata.dataStreamAliases()
-      dataStreamAliases.keySet().asScala.foreach { aliasName =>
+      dataStreamAliases.keySet().forEach { aliasName =>
         val dataStreamAlias = dataStreamAliases.get(aliasName)
         DataStreamName.Full.fromString(dataStreamAlias.getName).foreach { alias =>
           dataStreamAlias

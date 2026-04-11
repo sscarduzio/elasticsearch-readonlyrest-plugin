@@ -51,11 +51,11 @@ trait EsClusterService {
 
   private def indices(filteredBy: Set[IndexAttribute])
                      (implicit requestId: RequestId) = {
-    allIndicesAndAliases
-      .filter(i =>
-        if (filteredBy.nonEmpty) filteredBy.contains(i.attribute)
-        else true
-      )
+    if (filteredBy.nonEmpty) {
+      allIndicesAndAliases.filter(i => filteredBy.contains(i.attribute))
+    } else {
+      allIndicesAndAliases
+    }
   }
 
   def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases]
@@ -79,11 +79,11 @@ trait EsClusterService {
 
   private def remoteIndices(filteredBy: Set[IndexAttribute])
                            (implicit id: RequestId) = {
-    allRemoteIndicesAndAliases
-      .map(_.filter(i =>
-        if (filteredBy.nonEmpty) filteredBy.contains(i.attribute)
-        else true
-      ))
+    if (filteredBy.nonEmpty) {
+      allRemoteIndicesAndAliases.map(_.filter(i => filteredBy.contains(i.attribute)))
+    } else {
+      allRemoteIndicesAndAliases
+    }
   }
 
   def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]]
@@ -112,11 +112,11 @@ trait EsClusterService {
 
   private def dataStreams(filteredBy: Set[IndexAttribute])
                          (implicit requestId: RequestId) = {
-    allDataStreamsAndAliases
-      .filter(ds =>
-        if (filteredBy.nonEmpty) filteredBy.contains(ds.attribute)
-        else true
-      )
+    if (filteredBy.nonEmpty) {
+      allDataStreamsAndAliases.filter(ds => filteredBy.contains(ds.attribute))
+    } else {
+      allDataStreamsAndAliases
+    }
   }
 
   def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases]
@@ -124,7 +124,7 @@ trait EsClusterService {
   def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]]
 
   def remoteDataStreamsPerAliasMap(filteredBy: Set[IndexAttribute])
-                                 (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
+                                  (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteDataStreams(filteredBy)
       .map { dataStreams =>
         val builder = mutable.Map.empty[RemoteIndexName, mutable.Set[RemoteIndexName]]
@@ -153,11 +153,11 @@ trait EsClusterService {
 
   private def remoteDataStreams(filteredBy: Set[IndexAttribute])
                                (implicit id: RequestId) = {
-    allRemoteDataStreamsAndAliases
-      .map(_.filter(ds =>
-        if (filteredBy.nonEmpty) filteredBy.contains(ds.attribute)
-        else true
-      ))
+    if (filteredBy.nonEmpty) {
+      allRemoteDataStreamsAndAliases.map(_.filter(ds => filteredBy.contains(ds.attribute)))
+    } else {
+      allRemoteDataStreamsAndAliases
+    }
   }
 
   def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot = new LocalIndicesSnapshot(allIndicesAndAliases)
@@ -285,7 +285,6 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
     }
   )
 
-
   override def remoteClustersConfigured(implicit id: RequestId): Boolean =
     cacheableRemoteClustersConfigured.call(())
 
@@ -347,7 +346,7 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
     cacheableRemoteDataStreamsPerAliasMap.call(filteredBy)
 
   override def remoteBackingIndicesPerDataStreamMap(filteredBy: Set[IndexAttribute])
-                                                    (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+                                                   (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
     cacheableRemoteBackingIndicesPerDataStreamMap.call(filteredBy)
 
   override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] =
