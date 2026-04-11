@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.accesscontrol.orders.requestedIndexOrder
 import tech.beshu.ror.accesscontrol.request.BaseEsContext
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
@@ -87,10 +88,12 @@ object KibanaIndexName {
   val default: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana"))))
 
   private val kibanaIndicesRegexesCache: Cache[KibanaIndexName, Vector[Regex]] =
-    Caffeine.newBuilder()
-      .executor(global)
-      .maximumSize(1000)
-      .build[KibanaIndexName, Vector[Regex]]()
+    doPrivileged {
+      Caffeine.newBuilder()
+        .executor(global)
+        .maximumSize(1000)
+        .build[KibanaIndexName, Vector[Regex]]()
+    }
 
   private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = Vector(
     s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
