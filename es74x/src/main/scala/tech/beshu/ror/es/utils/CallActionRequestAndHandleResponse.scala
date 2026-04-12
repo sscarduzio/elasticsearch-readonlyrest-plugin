@@ -39,7 +39,7 @@ object InvokeCallerAndHandleResponse {
     }
 }
 
-private final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE]:
+private final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {
 
   private val promise = Promise[RESPONSE]()
 
@@ -52,3 +52,4 @@ private final class GenericResponseListener[RESPONSE <: ActionResponse] extends 
 
   override def onFailure(exception: Exception): Unit =
     promise.failure(exception)
+}
