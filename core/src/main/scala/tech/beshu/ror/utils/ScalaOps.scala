@@ -210,7 +210,7 @@ object ScalaOps {
       Option(value).flatMap(NonEmptyString.unapply)
     }
 
-    def oneLiner: String = value.stripMargin.replaceAll("\n", "")
+    def oneLiner: String = value.stripMargin.replace("\n", "")
 
     def removeTrailingSlashIfPresent(): String = {
       if (value.endsWith("/")) value.dropRight(1) else value
