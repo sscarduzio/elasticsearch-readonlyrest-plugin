@@ -21,7 +21,7 @@ buildscript {
         esVersion = project.properties['esVersion']
         esModule = project.properties['esModule']
         repoPath = rootDir.absolutePath.toString()
-        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
+        s3BucketName = System.env.BUCKET ?: "beshu"
     }
 }
 

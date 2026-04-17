@@ -18,7 +18,7 @@
 buildscript {
     ext {
         pluginVersion = rootProject.properties['pluginVersion']
-        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
+        s3BucketName = System.env.BUCKET ?: "beshu"
     }
 }
 

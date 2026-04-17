@@ -301,11 +301,11 @@ object DataStreamName {
   final case class FullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
                                                   aliasesNames: Set[DataStreamName.Full],
                                                   backingIndices: Set[IndexName.Full]) {
-    lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
-    lazy val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
-    lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
-    lazy val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
-    lazy val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
+    val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+    val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
+    val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
+    val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
+    val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
 
     private def toLocalIndex(ds: DataStreamName.Full): ClusterIndexName.Local =
       ClusterIndexName.Local(IndexName.Full(ds.value))
@@ -315,11 +315,11 @@ object DataStreamName {
                                                    dataStreamName: DataStreamName.Full,
                                                    aliasesNames: Set[DataStreamName.Full],
                                                    backingIndices: Set[IndexName.Full]) {
-    lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
-    lazy val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
-    lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
-    lazy val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
-    lazy val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
+    val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+    val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
+    val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
+    val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
+    val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
 
     private def toRemoteIndex(ds: DataStreamName.Full): ClusterIndexName.Remote =
       ClusterIndexName.Remote(IndexName.Full(ds.value), clusterName)

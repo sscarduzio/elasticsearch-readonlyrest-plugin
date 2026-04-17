@@ -36,7 +36,7 @@ final case class UserDef private(override val id: UUID,
   override type Id = UUID // artificial ID (won't be used)
   override val idShow: Show[UUID] = Show.show(_.toString)
 
-  def localGroups: UniqueNonEmptyList[Group] =
+  val localGroups: UniqueNonEmptyList[Group] =
     mode match {
       case Mode.WithoutGroupsMapping(_, localGroups) => localGroups
       case Mode.WithGroupsMapping(_, GroupMappings.Simple(localGroups)) => localGroups
@@ -44,7 +44,7 @@ final case class UserDef private(override val id: UUID,
         UniqueNonEmptyList.unsafeFrom(mappings.map(_.local))
     }
 
-  def authenticationRule: AuthenticationRule = mode match {
+  val authenticationRule: AuthenticationRule = mode match {
     case Mode.WithoutGroupsMapping(rule, _) => rule
     case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => rule
     case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => rule

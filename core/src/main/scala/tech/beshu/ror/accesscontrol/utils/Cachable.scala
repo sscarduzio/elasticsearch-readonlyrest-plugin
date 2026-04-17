@@ -20,6 +20,7 @@ import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause}
 import monix.catnap.Semaphore
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -48,39 +49,37 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
   private val keySemaphoresMap = new ConcurrentHashMap[K1, Semaphore[Task]]()
 
   private val cache: Cache[K1, V] =
-    Caffeine.newBuilder()
-      .executor(global)
-      .removalListener(onRemoveHook)
-      .withOptionalTtl(ttl)
-      .build[K1, V]()
+    doPrivileged {
+      Caffeine.newBuilder()
+        .executor(global)
+        .removalListener(onRemoveHook)
+        .withOptionalTtl(ttl)
+        .build[K1, V]()
+    }
 
-  def call(key: K)(implicit requestId: RequestId): Task[V] = {
+  def call(key: K)(implicit requestId: RequestId): Task[V] = Task.defer {
     val mappedKey = keyMap(key)
-    for {
-      semaphore <- semaphoreOf(mappedKey)
-      cachedValue <- semaphore.withPermit {
-        getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
-      }
-    } yield cachedValue
+    Option(cache.getIfPresent(mappedKey)) match {
+      case Some(value) => Task.now(value)
+      case None =>
+        semaphoreOf(mappedKey).flatMap { semaphore =>
+          semaphore.withPermit {
+            getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
+          }
+        }
+    }
   }
 
-  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = {
-    for {
-      cachedValue <- Task.delay(Option(cache.getIfPresent(mappedKey)))
-      result <- cachedValue match {
-        case Some(value) =>
-          Task.now(value)
-        case None =>
-          action(key, requestId)
-            .flatMap { value =>
-              Task
-                .delay {
-                  cache.put(mappedKey, value)
-                }
-                .map(_ => value)
-            }
-      }
-    } yield result
+  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = Task.defer {
+    Option(cache.getIfPresent(mappedKey)) match {
+      case Some(value) =>
+        Task.now(value)
+      case None =>
+        action(key, requestId).map { value =>
+          cache.put(mappedKey, value)
+          value
+        }
+    }
   }
 
   def invalidateAll(): Unit = {
@@ -94,10 +93,15 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
     keySemaphoresMap.remove(mappedKey)
   }
 
-  private def semaphoreOf(key: K1) = for {
-    newSemaphore <- Semaphore[Task](1)
-    usedSemaphore = Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
-  } yield usedSemaphore
+  private def semaphoreOf(key: K1): Task[Semaphore[Task]] = {
+    Option(keySemaphoresMap.get(key)) match {
+      case Some(existing) => Task.now(existing)
+      case None =>
+        Semaphore[Task](1).map { newSemaphore =>
+          Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
+        }
+    }
+  }
 }
 
 class AsyncCacheableActionWithTimeout[K, V](ttl: PositiveFiniteDuration,
@@ -135,9 +139,11 @@ class SyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDura
   import CacheableActionCaffeineOps.*
 
   private val cache: Cache[K1, V] =
-    Caffeine.newBuilder()
-      .withOptionalTtl(ttl)
-      .build[K1, V]()
+    doPrivileged {
+      Caffeine.newBuilder()
+        .withOptionalTtl(ttl)
+        .build[K1, V]()
+    }
 
   def call(key: K)(implicit requestId: RequestId): V = {
     cache.get(keyMap(key), _ => action(key, requestId))
