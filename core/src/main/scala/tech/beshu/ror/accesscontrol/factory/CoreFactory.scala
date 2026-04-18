@@ -471,13 +471,9 @@ object RawRorSettingsBasedCoreFactory {
     }
   }
 
-  private case class BlockDecodingResult(block: Block,
-                                         localUsers: LocalUsers,
-                                         impersonationWarnings: ImpersonationWarningsReader)
-
-  private object BlockDecodingResultAclValidator extends AclValidator[BlockDecodingResult] {
-    override protected def extract(blockRepresentation: BlockDecodingResult): Block = blockRepresentation.block
-  }
+  private[factory] case class BlockDecodingResult(block: Block,
+                                                  localUsers: LocalUsers,
+                                                  impersonationWarnings: ImpersonationWarningsReader)
 
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {
@@ -486,7 +482,7 @@ object RawRorSettingsBasedCoreFactory {
     case object Skipped extends RuleDecodingResult
   }
 
-  private object Attributes {
+  private[factory] object Attributes {
     val rorSectionName = "readonlyrest"
     val acl = "access_control_rules"
 

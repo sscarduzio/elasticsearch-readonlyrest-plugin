@@ -20,33 +20,30 @@ import cats.data.{NonEmptyList, ValidatedNel}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.{Attributes, BlockDecodingResult}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.findDuplicates
 
-abstract class AclValidator[B] {
+object AclValidator {
 
-  protected def extract(blockRepresentation: B): Block
-
-  def validate(blockRepresentationsOpt: Option[List[B]],
-               userDefs: Definitions[UserDef],
-               aclAttributeName: String): ValidatedNel[String, NonEmptyList[B]] = {
-    lazy val blocks = blockRepresentationsOpt.getOrElse(List.empty).map(extract)
+  def validate(blockDecodingResultsOpt: Option[List[BlockDecodingResult]],
+               userDefs: Definitions[UserDef]): ValidatedNel[String, NonEmptyList[BlockDecodingResult]] = {
+    lazy val blocks = blockDecodingResultsOpt.getOrElse(List.empty).map(_.block)
     (
-      validateAclPresentAndNonEmpty(blockRepresentationsOpt, aclAttributeName),
+      validateAclPresentAndNonEmpty(blockDecodingResultsOpt),
       validateThereAreNoBlockDuplicates(blocks),
       validateThatUsersConfigSectionIsUsedWhenPresent(blocks, userDefs),
     ).mapN { case (blocksNel, _, _) => blocksNel }
   }
 
-  private def validateAclPresentAndNonEmpty(blockRepresentationsOpt: Option[List[B]],
-                                            aclAttributeName: String): ValidatedNel[String, NonEmptyList[B]] =
-    blockRepresentationsOpt match {
+  private def validateAclPresentAndNonEmpty(blockDecodingResultsOpt: Option[List[BlockDecodingResult]]): ValidatedNel[String, NonEmptyList[BlockDecodingResult]] =
+    blockDecodingResultsOpt match {
       case None =>
-        s"No $aclAttributeName section found".invalidNel
+        s"No ${Attributes.acl} section found".invalidNel
       case Some(blocks) =>
         NonEmptyList.fromList(blocks) match {
-          case None => s"$aclAttributeName defined, but no block found".invalidNel
+          case None => s"${Attributes.acl} defined, but no block found".invalidNel
           case Some(blocksNel) => blocksNel.validNel
         }
     }
@@ -65,7 +62,7 @@ abstract class AclValidator[B] {
     }.nonEmpty
 
     if (thereAreUserDefinitions && !thereIsGroupsRule) {
-      "The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.".invalidNel
+      s"The `${UsersDefinitionsDecoder.usersKey}` config section is defined, but there is no groups rule that uses it. Either remove the `${UsersDefinitionsDecoder.usersKey}` section in the config, or add the groups rule in the ACL.".invalidNel
     } else {
       ().validNel
     }
