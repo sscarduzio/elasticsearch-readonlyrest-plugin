@@ -32,10 +32,12 @@ plugins {
 repositories {
     mavenCentral()
     mavenLocal()
-    maven {
-        url = "s3://" + s3BucketName + "/build"
-        authentication {
-            awsIm(AwsImAuthentication)
+    if (System.env.ROR_LIBS_STORE_URL ? true : false) {
+        maven {
+            url = "s3://" + s3BucketName + "/build"
+            authentication {
+                awsIm(AwsImAuthentication)
+            }
         }
     }
 }
