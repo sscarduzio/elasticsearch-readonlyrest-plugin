@@ -36,20 +36,22 @@ if (storeAddress.startsWith("http")) {
 }
 
 repositories {
-    maven {
-        url = "s3://" + project.s3BucketName + "/ror/libs"
-        if (storeAddress.startsWith("http")) {
-            credentials(AwsCredentials) {
-                accessKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_ID ?: ""
-                secretKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_SECRET ?: ""
+    if (System.env.ROR_LIBS_STORE_URL ? true : false) {
+        maven {
+            url = "s3://" + project.s3BucketName + "/ror/libs"
+            if (storeAddress.startsWith("http")) {
+                credentials(AwsCredentials) {
+                    accessKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_ID ?: ""
+                    secretKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_SECRET ?: ""
+                }
+            } else {
+                authentication {
+                    awsIm(AwsImAuthentication)
+                }
             }
-        } else {
-            authentication {
-                awsIm(AwsImAuthentication)
+            metadataSources {
+                artifact()
             }
-        }
-        metadataSources {
-            artifact()
         }
     }
 }
