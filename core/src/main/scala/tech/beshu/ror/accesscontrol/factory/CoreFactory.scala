@@ -368,8 +368,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           DecoderHelpers
             .decodeFieldList[BlockDecodingResult, Task](Attributes.acl, RulesLevelCreationError.apply)
             .emapE { result =>
-              BlockDecodingResultAclValidator
-                .validate(result.toOption, userDefs, Attributes.acl)
+              AclValidator
+                .validate(result.toOption, userDefs)
                 .leftMap(msgs => BlocksLevelCreationError(Message(msgs.toList.mkString("; "))))
                 .toEither
             }
