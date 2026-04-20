@@ -25,6 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.*
 import tech.beshu.ror.accesscontrol.domain.{IndexName, LocalUsers, RorSettingsIndex, User}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -168,26 +170,13 @@ class LocalUsersTest extends AnyWordSpec with Inside {
             User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
           )))
         }
-        "auth_key rules used (groups rule not present, local users from users section not returned)" in {
+        "auth_key rules used" in {
           val settings =
             s"""
                |readonlyrest:
                |  access_control_rules:
                |  - name: test_block1
                |    auth_key: admin:container
-               |
-               |  users:
-               |  - username: user1
-               |    groups: ["group1", "group3"]
-               |    auth_key: "user1:pass"
-               |
-               |  - username: user2
-               |    groups: ["group2", "group4"]
-               |    auth_key: "user2:pass"
-               |
-               |  - username: user4
-               |    groups: ["group5", "group6"]
-               |    auth_key: "user4:pass"
                |""".stripMargin
 
           assertLocalUsersFromSettings(settings, allUsersResolved(UniqueNonEmptyList.of(User.Id("admin"))))
@@ -199,23 +188,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |  access_control_rules:
                |  - name: test_block1
                |    auth_key: admin:container
-               |
-               |  users:
-               |    - username: cartman
-               |      groups: ["local_group1", "local_group3"]
-               |      ldap_authentication: "ldap1"
-               |
-               |    - username: Bìlbö Bággįnš
-               |      groups: ["local_group1"]
-               |      ldap_authentication: "ldap1"
-               |
-               |    - username: bong
-               |      groups: ["local_group2"]
-               |      ldap_authentication: "ldap1"
-               |
-               |    - username: morgan
-               |      groups: ["local_group2", "local_group3"]
-               |      ldap_authentication: "ldap1"
                |
                |  ldaps:
                |   - name: ldap1
@@ -242,31 +214,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |  - name: test_block1
                |    auth_key: admin:container
                |
-               |  users:
-               |    - username: cartman
-               |      groups:
-               |      - id: "kib_tracy_default_padm"
-               |        name: "default tenant"
-               |      - id: "kib_tracy_tenant1_padm"
-               |        name: "default tenant2"
-               |      ror_kbn_auth:
-               |        name: "kbn1"
-               |
-               |    - username: Bìlbö Bággįnš
-               |      groups: ["local_group1"]
-               |      ror_kbn_auth:
-               |        name: "kbn1"
-               |
-               |    - username: bong
-               |      groups: ["local_group2"]
-               |      ror_kbn_auth:
-               |        name: "kbn2"
-               |
-               |    - username: morgan
-               |      groups: ["local_group2", "local_group3"]
-               |      ror_kbn_auth:
-               |        name: "kbn3"
-               |
                |  ror_kbn:
                |    - name: kbn1
                |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
@@ -292,31 +239,6 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |  - name: test_block1
                |    auth_key: admin:container
                |
-               |  users:
-               |    - username: cartman
-               |      groups:
-               |      - id: "kib_tracy_default_padm"
-               |        name: "default tenant"
-               |      - id: "kib_tracy_tenant1_padm"
-               |        name: "default tenant2"
-               |      ror_kbn_authentication:
-               |        name: "kbn1"
-               |
-               |    - username: Bìlbö Bággįnš
-               |      groups: ["local_group1"]
-               |      ror_kbn_auth:
-               |        name: "kbn1"
-               |
-               |    - username: bong
-               |      groups: ["local_group2"]
-               |      ror_kbn_auth:
-               |        name: "kbn2"
-               |
-               |    - username: morgan
-               |      groups: ["local_group2", "local_group3"]
-               |      ror_kbn_auth:
-               |        name: "kbn3"
-               |
                |  ror_kbn:
                |    - name: kbn1
                |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
@@ -335,30 +257,13 @@ class LocalUsersTest extends AnyWordSpec with Inside {
           }
         }
       }
-      "users section defined with wildcard patterns (groups rule not present, local users from users section not returned)" in {
+      "users section defined with wildcard patterns" in {
         val settings =
           s"""
              |readonlyrest:
              |  access_control_rules:
              |  - name: test_block1
              |    auth_key: admin:container
-             |
-             |  users:
-             |  - username: user1
-             |    groups: ["group1", "group3"]
-             |    auth_key: "user1:pass"
-             |
-             |  - username: "*"
-             |    groups: ["group2", "group4"]
-             |    auth_key: "user2:pass"
-             |
-             |  - username: "*"
-             |    groups: ["group5", "group6"]
-             |    auth_key: "user4:pass"
-             |
-             |  - username: "*"
-             |    groups: ["group5", "group6"]
-             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
              |""".stripMargin
         assertLocalUsersFromSettings(settings, expected = allUsersResolved(UniqueNonEmptyList.of(User.Id("admin"))))
       }
@@ -443,6 +348,72 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         assertLocalUsersFromSettings(settings, expected = withUnknownUsers(UniqueNonEmptyList.of(
           User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
         )))
+      }
+    }
+    "return error" when {
+      "users section defined, but there is no groups rule" in {
+        val settingsStr =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key: admin:container
+             |
+             |  users:
+             |  - username: user1
+             |    groups: ["group1", "group3"]
+             |    auth_key: "user1:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group2", "group4"]
+             |    auth_key: "user2:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key: "user4:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |""".stripMargin
+        val settings = rorSettingsFromUnsafe(settingsStr)
+        inside(createCore(settings)) {
+          case Left(errors) if errors.size == 1 =>
+            errors.head should be(BlocksLevelCreationError(Message("The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.")))
+        }
+      }
+      "two blocks have the same names and users section defined, but there is no groups rule" in {
+        val settingsStr =
+          s"""
+             |readonlyrest:
+             |  access_control_rules:
+             |  - name: test_block1
+             |    auth_key: admin:container
+             |  - name: test_block1
+             |    auth_key: admin:container
+
+             |  users:
+             |  - username: user1
+             |    groups: ["group1", "group3"]
+             |    auth_key: "user1:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group2", "group4"]
+             |    auth_key: "user2:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key: "user4:pass"
+             |
+             |  - username: "*"
+             |    groups: ["group5", "group6"]
+             |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+             |""".stripMargin
+        val settings = rorSettingsFromUnsafe(settingsStr)
+        inside(createCore(settings)) {
+          case Left(errors) if errors.size == 1 =>
+            errors.head should be(BlocksLevelCreationError(Message("Blocks must have unique names. Duplicates: test_block1; The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.")))
+        }
       }
     }
   }
