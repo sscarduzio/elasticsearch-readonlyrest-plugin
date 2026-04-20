@@ -83,7 +83,7 @@ class RorBootSettingsTest
         MalformedSettings(
           expectedFilePath,
           s"Cannot load ROR boot settings from file ${expectedFilePath.toString}. " +
-            s"Cause: Unsupported response code [200] for readonlyrest.not_started_response_code. Supported response codes are: 403, 503."
+            s"Cause: Unsupported HTTP code '200' for 'readonlyrest.not_started_response_code'. Allowed values: '403', '503'"
         )
       }
     }
@@ -95,7 +95,7 @@ class RorBootSettingsTest
         MalformedSettings(
           expectedFilePath,
           s"Cannot load ROR boot settings from file ${expectedFilePath.toString}. " +
-            s"Cause: Unsupported response code [200] for readonlyrest.failed_to_start_response_code. Supported response codes are: 403, 503."
+            s"Cause: Unsupported HTTP code '200' for 'readonlyrest.failed_to_start_response_code'. Allowed values: '403', '503'"
         )
       }
     }

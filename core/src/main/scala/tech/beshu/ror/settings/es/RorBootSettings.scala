@@ -80,10 +80,11 @@ object RorBootSettings extends YamlFileBasedSettingsLoaderSupport {
 
     private def rorNotStartedResponseHttpCodeDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[Option[RorNotStartedResponse.HttpCode]] = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val path = s"${consts.rorSection}.${consts.rorNotStartedResponseCode}"
       val creator: String => Either[String, RorNotStartedResponse.HttpCode] = {
         case "503" => Right(RorNotStartedResponse.HttpCode.`503`)
         case "403" => Right(RorNotStartedResponse.HttpCode.`403`)
-        case unknown => Left(???) // todo:
+        case unknown => Left(s"Unsupported HTTP code '$unknown' for '$path'. Allowed values: '403', '503'")
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.rorNotStartedResponseCode),
@@ -93,10 +94,11 @@ object RorBootSettings extends YamlFileBasedSettingsLoaderSupport {
 
     private def rorRorFailedToStartResponseHttpCodeDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[Option[RorFailedToStartResponse.HttpCode]] = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      val path = s"${consts.rorSection}.${consts.rorFailedTpStartResponseCode}"
       val creator: String => Either[String, RorFailedToStartResponse.HttpCode] = {
         case "503" => Right(RorFailedToStartResponse.HttpCode.`503`)
         case "403" => Right(RorFailedToStartResponse.HttpCode.`403`)
-        case unknown => Left(???) // todo:
+        case unknown => Left(s"Unsupported HTTP code '$unknown' for '$path'. Allowed values: '403', '503'")
       } // todo: introduce trait?
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.rorFailedTpStartResponseCode),

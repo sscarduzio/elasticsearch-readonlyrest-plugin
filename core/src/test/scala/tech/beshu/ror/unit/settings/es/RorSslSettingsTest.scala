@@ -117,7 +117,7 @@ class RorSslSettingsTest
           val esConfigFolderPath = "/boot_tests/es_api_ssl_settings_malformed"
           val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
           loadRorSslSettings(esConfigFolderPath) shouldBe Left {
-            MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: Missing required field")
+            MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: 'keystore_file' is required when keystore based SSL settings are used")
           }
         }
       }
@@ -139,7 +139,7 @@ class RorSslSettingsTest
           MalformedSettings(
             expectedFilePath,
             s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. " +
-              s"Cause: Field sets [server_certificate_key_file, server_certificate_file] and [keystore_file, keystore_pass, key_pass, key_alias] could not be present in the same settings section")
+              s"Cause: Field sets [server_certificate_key_file, server_certificate_file] and [keystore_file, keystore_pass, key_alias, key_pass] could not be present in the same settings section")
         }
       }
     }
@@ -211,7 +211,7 @@ class RorSslSettingsTest
           val configFolderPath = "/boot_tests/internode_ssl_settings_malformed"
           val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml")
           loadRorSslSettings(configFolderPath) shouldBe Left {
-            MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: Missing required field")
+            MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: 'keystore_file' is required when keystore based SSL settings are used")
           }
         }
       }
@@ -219,8 +219,11 @@ class RorSslSettingsTest
   }
 
   private def forceLoadRorSslSettings(settingsFolderPath: String) = {
-    loadRorSslSettings(settingsFolderPath)
-      .toOption.flatten.get
+    loadRorSslSettings(settingsFolderPath) match {
+      case Right(Some(sslSettings)) => sslSettings
+      case Right(None) => throw new IllegalStateException(s"No SSL settings to load")
+      case Left(error) => throw new IllegalStateException(s"Cannot load SSL settings: $error")
+    }
   }
 
   private def loadRorSslSettings(settingsFolderPath: String,

@@ -88,6 +88,13 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
       val loadingAttemptsInterval = LoadingAttemptsInterval((5 second).toRefinedNonNegativeUnsafe)
     }
 
+    private object legacyConsts {
+      val refreshInterval: NonEmptyString  = NonEmptyString.unsafeFrom("com.readonlyrest.settings.refresh.interval")
+      val loadingDelay: NonEmptyString     = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.delay")
+      val attemptsInterval: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.attempts.interval")
+      val attemptsCount: NonEmptyString    = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.attempts.count")
+    }
+
     private object consts {
       val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
       val forceLoadFromFileKey: NonEmptyString = NonEmptyString.unsafeFrom("force_load_from_file")
@@ -115,7 +122,7 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
         str.toLowerCase match {
           case "true" => Right(true)
           case "false" => Right(false)
-          case _ => Left(???) // todo:
+          case _ => Left(s"Cannot convert '$str' to boolean. Expected 'true' or 'false'")
         }
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
@@ -153,14 +160,26 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
           case Success(v: FiniteDuration) =>
             v.toRefineNonNegative
               .map(v => LoadingAttemptsInterval(v))
-              .left.map(_ => ???) // todo:
+              .left.map(_ => s"Duration '$str' must be non-negative")
           case Success(_) | Failure(_) =>
-            Left(???) // todo:
+            Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m'")
+        }
+      }
+      val legacyCreator: String => Either[String, LoadingAttemptsInterval] = { str =>
+        parseLegacyDuration(str) match {
+          case Success(v) =>
+            v.toRefineNonNegative
+              .map(v => LoadingAttemptsInterval(v))
+              .left.map(_ => s"Duration '$str' must be non-negative")
+          case Failure(_) =>
+            Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m' or integer seconds")
         }
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsIntervalKey),
         creator = creator
+      ).orElse(
+        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsInterval, legacyCreator)
       )
     }
 
@@ -169,12 +188,14 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
       val creator: String => Either[String, LoadingAttemptsCount] = { str =>
         toNonNegativeInt(str) match {
           case Success(value) => Right(LoadingAttemptsCount(value))
-          case Failure(exception) => Left(???) // todo:
+          case Failure(exception) => Left(exception.getMessage)
         }
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
         creator = creator
+      ).orElse(
+        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsCount, creator)
       )
     }
 
@@ -185,14 +206,26 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
           case Success(v: FiniteDuration) =>
             v.toRefineNonNegative
               .map(v => LoadingDelay(v))
-              .left.map(_ => ???) // todo:
+              .left.map(_ => s"Duration '$str' must be non-negative")
           case Success(_) | Failure(_) =>
-            Left(???) // todo:
+            Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m'")
+        }
+      }
+      val legacyCreator: String => Either[String, LoadingDelay] = { str =>
+        parseLegacyDuration(str) match {
+          case Success(v) =>
+            v.toRefineNonNegative
+              .map(v => LoadingDelay(v))
+              .left.map(_ => s"Duration '$str' must be non-negative")
+          case Failure(_) =>
+            Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m' or integer seconds")
         }
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.initialDelayKey),
         creator = creator
+      ).orElse(
+        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.loadingDelay, legacyCreator)
       )
     }
 
@@ -205,15 +238,38 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
           case Success(v: FiniteDuration) =>
             v.toRefinedPositive
               .map(v => CoreRefreshSettings.Enabled(v))
-              .left.map(_ => ???) // todo:
+              .left.map(_ => s"Duration '$str' must be positive (greater than zero)")
           case Success(_) | Failure(_) =>
-            Left(???) // todo:
+            Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m'")
+        }
+      }
+      val legacyCreator: String => Either[String, CoreRefreshSettings] = { str =>
+        parseLegacyDuration(str) match {
+          case Success(v) if v == Duration.Zero => Right(CoreRefreshSettings.Disabled)
+          case Success(v) =>
+            v.toRefinedPositive
+              .map(v => CoreRefreshSettings.Enabled(v))
+              .left.map(_ => s"Duration '$str' must be positive (greater than zero)")
+          case Failure(_) =>
+            Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m' or integer seconds")
         }
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.poolIntervalSection),
         creator = creator
+      ).orElse(
+        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.refreshInterval, legacyCreator)
       )
+    }
+
+    private def parseLegacyDuration(value: String): Try[FiniteDuration] = Try {
+      Try(value.toLong) match {
+        case Success(seconds) => FiniteDuration(seconds, java.util.concurrent.TimeUnit.SECONDS)
+        case Failure(_)       => Duration(value) match {
+          case d: FiniteDuration => d
+          case _                 => throw new IllegalArgumentException(s"Expected a finite duration, got '$value'")
+        }
+      }
     }
 
     private def toNonNegativeInt(value: String): Try[Int Refined NonNegative] = Try {

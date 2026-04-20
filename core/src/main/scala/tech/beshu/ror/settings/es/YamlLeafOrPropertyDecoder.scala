@@ -42,7 +42,7 @@ object YamlLeafOrPropertyDecoder {
                                    (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] = {
     implicit val yamlLeafDecoder: YamlLeafDecoder[T] = YamlLeafDecoder.from(creator)
     implicit val propertyValueDecoder: PropertyValueDecoder[T] = PropertyValueDecoder.from(creator)
-    apply(path)
+    new OptionalYamlLeafOrPropertyDecoder[T](path)
   }
 
   def createOptionalListValueDecoder[T](path: NonEmptyList[NonEmptyString], itemCreator: String => Either[String, T])
@@ -72,6 +72,13 @@ object YamlLeafOrPropertyDecoder {
     })
   }
 
+  def createLegacyPropertyDecoder[T](legacyKey: NonEmptyString, creator: String => Either[String, T])
+                                    (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] =
+    _ => propertiesProvider.getProperty(PropName(legacyKey)) match {
+      case Some(str) => creator(str).map(Some.apply)
+      case None      => Right(None)
+    }
+
   def pure[T](value: T): YamlLeafOrPropertyDecoder[T] = {
     PureYamlLeafOrPropertyDecoder(value)
   }
@@ -80,6 +87,14 @@ object YamlLeafOrPropertyDecoder {
                        (implicit yamlLeafDecoder: YamlLeafDecoder[T],
                         propertyValueDecoder: PropertyValueDecoder[T]): YamlLeafOrPropertyDecoder[T] = {
     new RequiredYamlLeafOrPropertyDecoder(path)
+  }
+
+  implicit class OptionalDecoderOps[T](val decoder: YamlLeafOrPropertyDecoder[Option[T]]) extends AnyVal {
+    def orElse(other: YamlLeafOrPropertyDecoder[Option[T]]): YamlLeafOrPropertyDecoder[Option[T]] =
+      json => decoder.decode(json).flatMap {
+        case some @ Some(_) => Right(some)
+        case None           => other.decode(json)
+      }
   }
 
   implicit val yamlLeafOrPropertyDecoderFunctor: Functor[YamlLeafOrPropertyDecoder] = new Functor {
@@ -105,7 +120,16 @@ object YamlLeafOrPropertyDecoder {
     }
 
     override def tailRecM[A, B](a: A)(f: A => YamlLeafOrPropertyDecoder[Either[A, B]]): YamlLeafOrPropertyDecoder[B] =
-      ???
+      json => {
+        @scala.annotation.tailrec
+        def loop(current: A): Either[String, B] =
+          f(current).decode(json) match {
+            case Left(err)           => Left(err)
+            case Right(Left(nextA))  => loop(nextA)
+            case Right(Right(b))     => Right(b)
+          }
+        loop(a)
+      }
   }
 }
 
@@ -141,7 +165,7 @@ final class RequiredYamlLeafOrPropertyDecoder[T: YamlLeafDecoder : PropertyValue
     optionalDecoder
       .decode(json)
       .flatMap {
-        case None => Left(???)
+        case None => Left(s"Required setting not found at path '${path.toList.map(_.value).mkString(".")}'")
         case Some(value) => Right(value)
       }
   }

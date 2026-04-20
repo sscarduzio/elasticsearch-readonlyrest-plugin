@@ -51,6 +51,7 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
       val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
       val settingsSection: NonEmptyString = NonEmptyString.unsafeFrom("settings")
       val indexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("index_name")
+      val deprecatedSettingsIndexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("settings_index")
       val filePathKey: NonEmptyString = NonEmptyString.unsafeFrom("file_path")
       val maxSizeKey: NonEmptyString = NonEmptyString.unsafeFrom("max_size")
     }
@@ -74,10 +75,13 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
         NonEmptyString
           .from(str)
           .map(str => RorSettingsIndex(IndexName.Full(str)))
-          .left.map(_ => ???) // todo:
+          .left.map(_ => s"Index name must not be empty")
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.indexNameKey),
+        creator = creator
+      ) orElse YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, consts.deprecatedSettingsIndexNameKey),
         creator = creator
       )
     }
@@ -88,11 +92,16 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
         NonEmptyString
           .from(str)
           .map(str => RorSettingsFile(File(str.value)))
-          .left.map(_ => ???) // todo:
+          .left.map(_ => s"Settings file path must not be empty")
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.filePathKey),
         creator = creator
+      ).orElse(
+        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(
+          legacyKey = NonEmptyString.unsafeFrom("com.readonlyrest.settings.file.path"),
+          creator = creator
+        )
       )
     }
 
@@ -102,11 +111,16 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
         Information
           .parseString(str)
           .toEither
-          .left.map(_ => ???) // todo:
+          .left.map(_ => s"Cannot parse '$str' as a data size. Expected format like '1 MB', '512 KB'")
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
         creator = creator
+      ).orElse(
+        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(
+          legacyKey = NonEmptyString.unsafeFrom("com.readonlyrest.settings.maxSize"),
+          creator = creator
+        )
       )
     }
 

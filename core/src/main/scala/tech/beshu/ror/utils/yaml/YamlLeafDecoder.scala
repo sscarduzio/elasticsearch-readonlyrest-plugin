@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.yaml
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{ACursor, HCursor, Json}
+import io.circe.{ACursor, HCursor, Json, JsonNumber}
 
 import scala.language.implicitConversions
 
@@ -34,12 +34,27 @@ trait YamlLeafDecoder[A] extends FromStringCreator[A] {
 
   protected def decodeStringOpt(json: Json, path: NonEmptyList[NonEmptyString]): Either[String, Option[String]] = {
     val cursor = json.hcursor
-    val result = for {
-      oneLine <- downOneLineField(cursor, path).as[Option[String]]
-      multiLine <- downMultiLineField(cursor, path).as[Option[String]]
+    for {
+      oneLine <- scalarAsStringOpt(downOneLineField(cursor, path))
+      multiLine <- scalarAsStringOpt(downMultiLineField(cursor, path))
     } yield oneLine.orElse(multiLine)
-    result.left.map(_.message)
   }
+
+  private def scalarAsStringOpt(cursor: ACursor): Either[String, Option[String]] =
+    cursor.focus match {
+      case None => Right(None)
+      case Some(j) if j.isNull => Right(None)
+      case Some(j) =>
+        j.asString.map(s => Right(Some(s)))
+          .orElse(j.asBoolean.map(b => Right(Some(b.toString))))
+          .orElse(j.asNumber.map(n => Right(Some(numberToString(n)))))
+          .getOrElse(Left(s"Expected a scalar value but got: ${j.noSpaces}"))
+    }
+
+  private def numberToString(n: JsonNumber): String =
+    n.toLong.map(_.toString)
+      .orElse(n.toBigDecimal.map(_.bigDecimal.toPlainString))
+      .getOrElse(n.toDouble.toString)
 
   private def downOneLineField(c: HCursor, path: NonEmptyList[NonEmptyString]) = {
     c.downField(toString(path))

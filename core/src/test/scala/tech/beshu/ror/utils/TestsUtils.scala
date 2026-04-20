@@ -403,7 +403,7 @@ object TestsUtils {
   }
 
   def rorSettingsFromUnsafe(yamlContent: String): RawRorSettings = {
-    rorSettingFrom(yamlContent).toOption.get
+    rorSettingFrom(yamlContent).toTry.get
   }
 
   def rorSettingFrom(yamlContent: String): Either[ParsingFailure, RawRorSettings] = {
@@ -458,8 +458,9 @@ object TestsUtils {
     rorYamlParser
       .parse((configDir / "elasticsearch.yml").contentAsString)
       .map { json =>
-        val cursor = path.foldLeft[ACursor](json.hcursor)((c, segment) => c.downField(segment))
-        cursor.as[T].getOrElse(default)
+        val oneLineCursor = json.hcursor.downField(path.toList.mkString("."))
+        val multiLineCursor = path.foldLeft[ACursor](json.hcursor)((c, segment) => c.downField(segment))
+        oneLineCursor.as[T].orElse(multiLineCursor.as[T]).getOrElse(default)
       } match {
       case Right(value) => value
       case Left(error) => throw error
