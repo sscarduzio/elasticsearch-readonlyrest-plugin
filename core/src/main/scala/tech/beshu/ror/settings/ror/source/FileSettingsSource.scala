@@ -20,6 +20,7 @@ import better.files.File
 import cats.data.EitherT
 import io.circe.{Decoder, Json}
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.settings.ror.source.FileSettingsSource.FileSettingsLoadingError
 import tech.beshu.ror.settings.ror.source.FileSettingsSource.LoadingError.FileNotExist
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
@@ -28,7 +29,8 @@ import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoading
 class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
   extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
 
-  override def load(): Task[Either[FileSettingsLoadingError, SETTINGS]] = {
+  override def load()
+                   (implicit requestId: RequestId): Task[Either[FileSettingsLoadingError, SETTINGS]] = {
     (for {
       _ <- checkIfFileExist(settingsFile)
       settings <- loadSettingsFromFile(settingsFile)

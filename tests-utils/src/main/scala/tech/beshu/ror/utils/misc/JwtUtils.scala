@@ -44,8 +44,7 @@ object JwtUtils {
 
     def defaultClaims(): DefaultClaims = {
       val initialClaimsMap = Map[String, AnyRef]("sub" -> "test")
-      val fullMapOfClaims
-      = claims
+      val fullMapOfClaims = claims
         .foldLeft(initialClaimsMap) {
           case (acc, claim) =>
             val claimValue = claim.name.tail match {

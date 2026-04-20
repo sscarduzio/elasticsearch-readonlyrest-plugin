@@ -18,10 +18,11 @@ package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy}
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaUserDataRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
@@ -57,12 +58,12 @@ class KibanaUserDataRuleTests
           kibanaTemplateIndex = Some(AlreadyResolved(kibanaTemplateIndex)),
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
-          metadata = None,
+          genericMetadata = None,
           rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
-        blockContext.userMetadata should be {
-          UserMetadata
+        blockContext.blockMetadata should be {
+          BlockMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
@@ -81,12 +82,12 @@ class KibanaUserDataRuleTests
           kibanaTemplateIndex = None,
           appsToHide = apps.toCovariantSet,
           allowedApiPaths = Set.empty,
-          metadata = None,
+          genericMetadata = None,
           rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
-        blockContext.userMetadata should be {
-          UserMetadata
+        blockContext.blockMetadata should be {
+          BlockMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
@@ -118,12 +119,12 @@ class KibanaUserDataRuleTests
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
           allowedApiPaths = paths.toCovariantSet,
-          metadata = None,
+          genericMetadata = None,
           rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
-        blockContext.userMetadata should be {
-          UserMetadata
+        blockContext.blockMetadata should be {
+          BlockMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
@@ -160,18 +161,18 @@ class KibanaUserDataRuleTests
           kibanaTemplateIndex = None,
           appsToHide = Set.empty,
           allowedApiPaths = Set.empty,
-          metadata = Option(resolvableMetadataJsonRepresentation),
+          genericMetadata = Option(resolvableMetadataJsonRepresentation),
           rorIndex = RorSettingsIndex(rorIndex)
         ))
         val blockContext = checkRule(rule)
-        blockContext.userMetadata should be {
-          UserMetadata
+        blockContext.blockMetadata should be {
+          BlockMetadata
             .empty
             .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1")))
             .withCurrentGroupId(GroupId("mygroup"))
             .withKibanaAccess(KibanaAccess.Unrestricted)
             .withKibanaIndex(KibanaIndexName.default)
-            .withKibanaMetadata(
+            .withKibanaGenericMetadata(
               JsonTree.Object(Map(
                 "a" -> JsonTree.Value(NumValue(1)),
                 "b" -> JsonTree.Value(BooleanValue(true)),
@@ -194,20 +195,22 @@ class KibanaUserDataRuleTests
   private def checkRule(rule: KibanaUserDataRule): BlockContext = {
     val requestContext = MockRequestContext.indices.withHeaders(currentGroupHeader("mygroup"))
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata
+      blockMetadata = BlockMetadata
         .from(requestContext)
         .withLoggedUser(LoggedUser.DirectlyLoggedUser(User.Id("user1"))),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
-      allAllowedIndices = Set.empty
+      allAllowedIndices = Set.empty,
+      allAllowedClusters = Set.empty
     )
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     result match {
-      case Success(RuleResult.Fulfilled(blockContext)) =>
+      case Success(Permitted(blockContext)) =>
         blockContext
-      case Success(r@RuleResult.Rejected(_)) =>
+      case Success(r@Denied(_)) =>
         fail(s"Rule was not matched. Result: $r")
       case Failure(exception) =>
         fail(s"Rule was not matched. Exception thrown", exception)
@@ -225,7 +228,7 @@ class KibanaUserDataRuleTests
       kibanaTemplateIndex = None,
       appsToHide = Set.empty,
       allowedApiPaths = Set.empty,
-      metadata = None,
+      genericMetadata = None,
       rorIndex = RorSettingsIndex(rorIndex)
     )
 
@@ -234,16 +237,16 @@ class KibanaUserDataRuleTests
                                                             dataStreams: Set[DataStreamName],
                                                             customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
-        kibanaAccess = Some(settings.access),
-        kibanaIndex = Some(kibanaIndexFrom(customKibanaIndex)),
+      assertBlockContext(blockContext)(
         indices = indices,
-        dataStreams = dataStreams
-      )(
-        blockContext
+        dataStreams = dataStreams,
+        kibanaPolicy = Some(KibanaPolicy.default.copy(
+          access = settings.access,
+          index = Some(kibanaIndexFrom(customKibanaIndex)),
+        )),
       )
     }
 
-  private val variableCreator: RuntimeResolvableVariableCreator =
+  private lazy val variableCreator: RuntimeResolvableVariableCreator =
     new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
 }

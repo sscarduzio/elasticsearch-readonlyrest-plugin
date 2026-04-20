@@ -50,11 +50,11 @@ class MSearchWithFilterSuite
   "userShouldOnlySeeFacebookPostsFilterTest" ignore { // todo: check this test, because it fails too often
     waitUntilAllIndexed()
 
-    val searchResult1 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
-    val searchResult2 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
-    val searchResult3 = user2SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
-    val searchResult4 = user2SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
-    val searchResult5 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
+    val searchResult1 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery*)
+    val searchResult2 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery*)
+    val searchResult3 = user2SearchManager.mSearchUnsafe(matchAllIndicesQuery*)
+    val searchResult4 = user2SearchManager.mSearchUnsafe(matchAllIndicesQuery*)
+    val searchResult5 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery*)
 
     assertSearchResult("facebook", searchResult1)
     assertSearchResult("facebook", searchResult2)
@@ -82,7 +82,7 @@ class MSearchWithFilterSuite
       .withMaxDuration(Duration.ofSeconds(10))
     Failsafe
       .`with`[SearchManager#MSearchResult, RetryPolicy[SearchManager#MSearchResult]](retryPolicy)
-      .get(() => adminSearchManager.mSearchUnsafe(matchAllIndicesQuery: _*))
+      .get(() => adminSearchManager.mSearchUnsafe(matchAllIndicesQuery*))
   }
 
   private def resultsContainsLessElementsThan(): BiPredicate[SearchManager#MSearchResult, Throwable] =

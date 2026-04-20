@@ -32,7 +32,7 @@ trait SingletonPluginTestSupport
     with EsClusterProvider
     with BeforeAndAfterAll
     with ResolvedRorSettingsFileProvider {
-  this: Suite with BaseSingleNodeEsClusterTest =>
+  this: Suite & BaseSingleNodeEsClusterTest =>
 
   override lazy val targetEs: EsContainer = SingletonEsContainerWithRorSecurity.singleton.nodes.head
 

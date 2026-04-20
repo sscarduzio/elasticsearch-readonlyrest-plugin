@@ -18,11 +18,9 @@ package tech.beshu.ror.es.actions.rrauditevent
 
 import org.elasticsearch.action.ActionListener
 
-import scala.annotation.unused
-
 object RRAuditEventActionHandler {
 
-  def handle(@unused request: RRAuditEventRequest, listener: ActionListener[RRAuditEventResponse]): Unit = {
+  def handle(listener: ActionListener[RRAuditEventResponse]): Unit = {
     listener.onResponse(new RRAuditEventResponse())
   }
 }

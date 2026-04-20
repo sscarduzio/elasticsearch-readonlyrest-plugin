@@ -19,12 +19,11 @@ package tech.beshu.ror.es.handler.request.context.types
 import cats.data.NonEmptyList
 import cats.implicits.*
 import com.google.common.collect.Sets
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -40,18 +39,18 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
                                                      requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                                      esContext: EsContext,
                                                      aclContext: AccessControlStaticContext,
-                                                     clusterService: RorClusterService,
                                                      override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = requestedIndices
 
   override protected def update(request: ActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
+      logger.error(s"Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
       ShouldBeInterrupted
     }
   }
@@ -66,11 +65,11 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
   }
 }
 
-object ReflectionBasedIndicesEsRequestContext extends Logging {
+object ReflectionBasedIndicesEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
     requestedIndicesFrom(arg.esContext.actionRequest)
-      .map(new ReflectionBasedIndicesEsRequestContext(arg.esContext.actionRequest, _, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      .map(new ReflectionBasedIndicesEsRequestContext(arg.esContext.actionRequest, _, arg.esContext, arg.aclContext, arg.threadPool))
   }
 
   private def requestedIndicesFrom(request: ActionRequest) = {
@@ -78,7 +77,7 @@ object ReflectionBasedIndicesEsRequestContext extends Logging {
       .orElse(getIndicesUsingField(request, fieldName = "indices"))
       .orElse(getIndexUsingMethod(request, methodName = "getIndex"))
       .orElse(getIndexUsingField(request, fieldName = "index"))
-      .map(indices => indices.toList.toCovariantSet.flatMap(RequestedIndex.fromString))
+      .map(indices => indices.toCovariantSet.flatMap(RequestedIndex.fromString))
   }
 
   private def getIndicesUsingMethod(request: ActionRequest, methodName: String) = {
@@ -107,7 +106,7 @@ object ReflectionBasedIndicesEsRequestContext extends Logging {
       .getOrElse(None)
   }
 
-  private def getIndexUsingMethod(request: ActionRequest, methodName: String) =  {
+  private def getIndexUsingMethod(request: ActionRequest, methodName: String) = {
     callMethod[String](request, methodName)
       .map(index => NonEmptyList.fromFoldable(Option(index)))
       .getOrElse(None)

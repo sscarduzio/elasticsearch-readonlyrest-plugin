@@ -21,7 +21,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
@@ -32,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, UserIdPatterns}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, GroupsLogic, LocalUsers, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
@@ -45,6 +44,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.kibana.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.*
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.*
 import tech.beshu.ror.implicits.*
 
 object ruleDecoders {
@@ -52,7 +53,8 @@ object ruleDecoders {
   def ruleDecoderBy(name: Rule.Name,
                     definitions: DefinitionsPack,
                     globalSettings: GlobalSettings,
-                    mocksProvider: MocksProvider)
+                    mocksProvider: MocksProvider,
+                    esEnv: EsEnv)
                    (implicit systemContext: SystemContext): Option[RuleDecoder[Rule]] = {
     val variableCreator = new RuntimeResolvableVariableCreator(
       TransformationCompiler.withAliases(
@@ -105,14 +107,15 @@ object ruleDecoders {
       case _ => usersDefinitionsAllowedRulesDecoderBy(
         name,
         definitions.authenticationServices,
-        definitions.authorizationServices,
+        definitions.externalGroupsProviderServices,
         definitions.proxies,
         definitions.jwts,
         definitions.rorKbns,
         definitions.ldaps,
         Some(definitions.impersonators),
         mocksProvider,
-        globalSettings
+        globalSettings,
+        esEnv
       )
     }
     optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
@@ -120,29 +123,37 @@ object ruleDecoders {
 
   def usersDefinitionsAllowedRulesDecoderBy(name: Rule.Name,
                                             authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                            authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                            externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
                                             authProxyDefinitions: Definitions[ProxyAuth],
                                             jwtDefinitions: Definitions[JwtDef],
                                             rorKbnDefinitions: Definitions[RorKbnDef],
                                             ldapServiceDefinitions: Definitions[LdapService],
                                             impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                             mocksProvider: MocksProvider,
-                                            globalSettings: GlobalSettings): Option[RuleDecoder[Rule]] = {
+                                            globalSettings: GlobalSettings,
+                                            esEnv: EsEnv): Option[RuleDecoder[Rule]] = {
     val optionalRuleDecoder = name match {
       case ExternalAuthorizationRule.Name.name =>
-        Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
+        Some(new ExternalAuthorizationRuleDecoder(externalGroupsProviderServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case JwtAuthRule.Name.name =>
-        Some(new JwtAuthRuleDecoder(jwtDefinitions, globalSettings))
+        val definitions = jwtDefinitions.items.collect {case definition: JwtDefForAuth => definition}
+        Some(new JwtAuthRulesDecoders.AuthRuleDecoder(jwtDefinitions.items, definitions, globalSettings))
+      case JwtAuthenticationRule.Name.name =>
+        val definitions = jwtDefinitions.items.collect {case definition: JwtDefForAuthentication => definition}
+        Some(new JwtAuthRulesDecoders.AuthenticationRuleDecoder(jwtDefinitions.items, definitions, globalSettings))
+      case JwtAuthorizationRule.Name.name =>
+        val definitions = jwtDefinitions.items.collect {case definition: JwtDefForAuthorization => definition}
+        Some(new JwtAuthRulesDecoders.AuthorizationRuleDecoder(jwtDefinitions.items, definitions))
       case LdapAuthorizationRule.Name.name =>
         Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case LdapAuthRule.Name.name =>
         Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case RorKbnAuthRule.Name.name =>
-        Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, globalSettings))
+        Some(new RorKbnRulesDecoders.AuthRuleDecoder(rorKbnDefinitions.items, rorKbnDefinitions.items, globalSettings))
       case RorKbnAuthenticationRule.Name.name =>
-        Some(new RorKbnAuthenticationRuleDecoder(rorKbnDefinitions, globalSettings))
+        Some(new RorKbnRulesDecoders.AuthenticationRuleDecoder(rorKbnDefinitions.items, rorKbnDefinitions.items, globalSettings))
       case RorKbnAuthorizationRule.Name.name =>
-        Some(new RorKbnAuthorizationRuleDecoder(rorKbnDefinitions))
+        Some(new RorKbnRulesDecoders.AuthorizationRuleDecoder(rorKbnDefinitions.items, rorKbnDefinitions.items))
       case _ =>
         authenticationRuleDecoderBy(
           name,
@@ -151,7 +162,8 @@ object ruleDecoders {
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
-          globalSettings
+          globalSettings,
+          esEnv
         )
     }
     optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
@@ -163,7 +175,8 @@ object ruleDecoders {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
                                   mocksProvider: MocksProvider,
-                                  globalSettings: GlobalSettings): Option[RuleDecoder[AuthenticationRule]] = {
+                                  globalSettings: GlobalSettings,
+                                  esEnv: EsEnv): Option[RuleDecoder[AuthenticationRule]] = {
     val optionalRuleDecoder = name match {
       case AuthKeyRule.Name.name =>
         Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
@@ -184,7 +197,7 @@ object ruleDecoders {
       case ProxyAuthRule.Name.name =>
         Some(new ProxyAuthRuleDecoder(authProxyDefinitions, impersonatorsDefinitions, mocksProvider, globalSettings))
       case TokenAuthenticationRule.Name.name =>
-        Some(new TokenAuthenticationRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings))
+        Some(new TokenAuthenticationRuleDecoder(impersonatorsDefinitions, mocksProvider, globalSettings, esEnv))
       case _ => None
     }
     optionalRuleDecoder
@@ -211,18 +224,18 @@ object ruleDecoders {
   private def checkUsersEligibility(rule: AuthenticationRule,
                                     userIdPatterns: UserIdPatterns,
                                     globalSettings: GlobalSettings) = {
-    rule.eligibleUsers match {
-      case EligibleUsersSupport.Available(users) =>
+    rule.localUsers match {
+      case LocalUsers.Available(Known(users)) =>
         implicit val userIdCaseSensitivity: CaseSensitivity = globalSettings.userIdCaseSensitivity
         val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
-        if (users.exists(matcher.`match`)) {
+        if (users.toList.exists(matcher.`match`)) {
           Right(())
         } else {
           Left(
             s"Users [${users.show}] are allowed to be authenticated by rule [${rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."
           )
         }
-      case EligibleUsersSupport.NotAvailable =>
+      case LocalUsers.Available(KnownAndUnknown(_)) | LocalUsers.Available(Unknown) | LocalUsers.NotAvailable =>
         Right(())
     }
   }

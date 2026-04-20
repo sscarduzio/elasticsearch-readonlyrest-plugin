@@ -21,7 +21,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
@@ -40,6 +40,7 @@ import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
+import tech.beshu.ror.constants.EsFeatureVersions
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -47,7 +48,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.annotation.nowarn
 import scala.util.{Failure, Success, Try}
 
-object AuditingSettingsDecoder extends Logging {
+object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   def instance(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = {
     for {
@@ -191,17 +192,14 @@ object AuditingSettingsDecoder extends Logging {
 
   private given Decoder[RorAuditIndexTemplate] =
     SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emapE { patternStr =>
-        RorAuditIndexTemplate
-          .from(patternStr)
-          .left
-          .map {
-            case CreationError.ParsingError(msg) =>
-              auditSettingsError(
-                s"Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: ${patternStr.show} error: ${msg.show}"
-              )
-          }
+      .from(nonEmptyStringDecoder)
+      .emapE { patternNes =>
+        RorAuditIndexTemplate.from(patternNes).left.map {
+          case CreationError.ParsingError(msg) =>
+            auditSettingsError(
+              s"Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: ${patternNes.show} error: ${msg.show}"
+            )
+        }
       }
       .decoder
 
@@ -343,16 +341,18 @@ object AuditingSettingsDecoder extends Logging {
     Try {
       serializer match {
         case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
-          Some(serializer)
+          Some((serializer, serializer.getClass.getName))
         case serializer: tech.beshu.ror.audit.EnvironmentAwareAuditLogSerializer =>
-          Some(new EnvironmentAwareAuditLogSerializerAdapter(serializer))
+          Some((new EnvironmentAwareAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
+        case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] if fullClassName.startsWith("tech.beshu.ror.requestcontext") =>
+          Some((new DeprecatedAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
         case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
-          Some(new DeprecatedAuditLogSerializerAdapter(serializer))
+          Some((new DeprecatedAuditLogSerializerAdapter(serializer), serializer.getClass.getName))
         case _ => None
       }
     } match {
-      case Success(Some(customSerializer)) =>
-        logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
+      case Success(Some((customSerializer, name))) =>
+        noRequestIdLogger.info(s"Using custom serializer: $name")
         Right(customSerializer)
       case Success(None) => Left(auditSettingsError(s"Class ${fullClassName.show} is not a subclass of ${classOf[AuditLogSerializer].getName.show} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName.show}"))
       case Failure(ex) => Left(auditSettingsError(s"Cannot create instance of class '${fullClassName.show}', error: ${ex.getMessage.show}"))
@@ -516,12 +516,12 @@ object AuditingSettingsDecoder extends Logging {
     case object Log extends AuditSinkType
 
     def from(value: String, esVersion: EsVersion): Either[AuditingSettingsCreationError, AuditSinkType] = value match {
-      case "data_stream" if esVersion >= dataStreamSupportEsVersion =>
+      case "data_stream" if esVersion >= EsFeatureVersions.dataStreamSupport =>
         AuditSinkType.DataStream.asRight
       case "data_stream" =>
         Left(AuditingSettingsCreationError(Reason.Message(
-          s"Data stream audit output is supported from Elasticsearch version ${dataStreamSupportEsVersion.formatted}, " +
-            s"but your version is ${esVersion.formatted}. Use 'index' type or upgrade to ${dataStreamSupportEsVersion.formatted} or later."
+          s"Data stream audit output is supported from Elasticsearch version ${EsFeatureVersions.dataStreamSupport.formatted}, " +
+            s"but your version is ${esVersion.formatted}. Use 'index' type or upgrade to ${EsFeatureVersions.dataStreamSupport.formatted} or later."
         )))
       case "index" =>
         AuditSinkType.Index.asRight
@@ -531,7 +531,7 @@ object AuditingSettingsDecoder extends Logging {
         unsupportedOutputTypeError(
           unsupportedType = other,
           supportedTypes =
-            if (esVersion >= dataStreamSupportEsVersion) {
+            if (esVersion >= EsFeatureVersions.dataStreamSupport) {
               NonEmptyList.of("data_stream", "index", "log")
             } else {
               NonEmptyList.of("index", "log")
@@ -552,8 +552,6 @@ object AuditingSettingsDecoder extends Logging {
         .emapE(AuditSinkType.from(_, esVersion))
         .decoder
     }
-
-    private val dataStreamSupportEsVersion = EsVersion(7, 9, 0)
   }
 
   private object DeprecatedAuditSettingsDecoder {

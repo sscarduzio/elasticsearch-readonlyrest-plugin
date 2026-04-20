@@ -21,8 +21,8 @@ import cats.implicits.*
 import org.elasticsearch.action.termvectors.{MultiTermVectorsRequest, TermVectorsRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -34,9 +34,8 @@ import scala.jdk.CollectionConverters.*
 class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
                                        esContext: EsContext,
                                        aclContext: AccessControlStaticContext,
-                                       clusterService: RorClusterService,
                                        override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: MultiTermVectorsRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.getRequests.asScala.flatMap(r => RequestedIndex.fromString(r.index())).toCovariantSet
@@ -44,10 +43,11 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
 
   override protected def update(request: MultiTermVectorsRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     request.getRequests.removeIf { request => removeOrAlter(request, filteredIndices.toCovariantSet) }
     if (request.getRequests.asScala.isEmpty) {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. All indices were filtered out.")
+      logger.error(s"Cannot update ${actionRequest.getClass.show} request. All indices were filtered out.")
       ShouldBeInterrupted
     } else {
       Modified
@@ -56,14 +56,14 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
 
   private def removeOrAlter(request: TermVectorsRequest,
                             filteredIndices: Set[RequestedIndex[ClusterIndexName]]): Boolean = {
-    val expandedIndicesOfRequest = clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toCovariantSet)
+    val expandedIndicesOfRequest = esContext.esServices.clusterService.expandLocalIndices(ClusterIndexName.fromString(request.index()).toCovariantSet)
     val remaining = expandedIndicesOfRequest.intersect(filteredIndices.includedOnly).toList
     remaining match {
       case Nil =>
         true
       case index :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${remaining.show}]")
+          logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${remaining.show}]")
         }
         request.index(index.stringify)
         false

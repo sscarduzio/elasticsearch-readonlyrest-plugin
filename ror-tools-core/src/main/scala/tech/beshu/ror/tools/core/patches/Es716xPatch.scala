@@ -21,10 +21,12 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{AlwaysGrantApplicationPermission, ModifyBootstrapPolicyUtilClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyApplicationPermissionClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass, ModifyRoleClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyCreateComponentsInSecurityClass, ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
 
@@ -32,25 +34,32 @@ import scala.language.postfixOps
 
 private[patches] class Es716xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
-      new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
+    ElasticsearchJarPatchCreator(
+      ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         getPropertySecurityPermission
       )),
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
-      new SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      CreateApiKeyServiceBridgeClass,
+      CreateServiceAccountServiceBridgeClass,
+      ModifyRepositoriesServiceClass(esVersion),
+      ModifySnapshotsServiceClass(esVersion)
     ),
-    new RorSecurityPolicyPatchCreator(
+    RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
         getPropertySecurityPermission
       )),
     ),
-    new XPackCoreJarPatchCreator(
-      AlwaysGrantApplicationPermission,
+    XPackCoreJarPatchCreator(
+      ModifyRoleClass,
+      ModifyApplicationPermissionClass,
     ),
-    new XPackSecurityJarPatchCreator(
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      DeactivateSecurityServerTransportInterceptor,
-      new DummyAuthenticationInAuthenticationChain(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+    XPackSecurityJarPatchCreator(
+      ModifyCreateComponentsInSecurityClass,
+      CreateRorAuthorizationInfoProviderClass(esVersion),
+      ModifyAuthenticationChainClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
+      ModifySecurityClass,
+      ModifySecurityServerTransportInterceptorClass,
     )
   )

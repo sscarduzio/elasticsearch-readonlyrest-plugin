@@ -19,21 +19,22 @@ package tech.beshu.ror.unit.acl.blocks.rules.elasticsearch
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.Inside
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, FilteredResponseFields}
+import tech.beshu.ror.accesscontrol.blocks.{Block, FilteredResponseFields}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseField, ResponseFieldsRestrictions}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ResponseFieldsRuleTests extends AnyWordSpec {
+class ResponseFieldsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
+
   "A ResponseFields rule" should {
     "add appropriate response transformation to block context" when {
       "whitelist mode is used" in {
@@ -49,19 +50,17 @@ class ResponseFieldsRuleTests extends AnyWordSpec {
     val resolvedFields = fields.map(field => AlreadyResolved(ResponseField(NonEmptyString.unsafeFrom(field)).nel))
     val rule = new ResponseFieldsRule(ResponseFieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), mode))
     val requestContext = MockRequestContext.indices
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
+    val blockContext = GeneralIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, Set.empty)
 
-    rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-      BlockContext.GeneralIndexRequestBlockContext(
-        requestContext = requestContext,
-        userMetadata = UserMetadata.empty,
-        responseHeaders = Set.empty,
-        responseTransformations = FilteredResponseFields(ResponseFieldsRestrictions(
-          UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode
-        )) :: Nil,
-        filteredIndices = Set.empty,
-        allAllowedIndices = Set.empty
-      )
-    ))
+    val result = rule.check(blockContext).runSyncUnsafe()
+    inside(result) {
+      case Permitted(blockContext) =>
+        assertBlockContext(blockContext)(
+          responseTransformations =
+            FilteredResponseFields(ResponseFieldsRestrictions(
+              UniqueNonEmptyList.fromNonEmptyList(resolvedFields.map(_.value.head)), mode
+            )) :: Nil
+        )
+    }
   }
 }

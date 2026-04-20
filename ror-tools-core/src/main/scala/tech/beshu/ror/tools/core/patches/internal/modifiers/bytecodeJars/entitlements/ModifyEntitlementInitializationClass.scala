@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es8181, es901}
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /**
  * Modifies the EntitlementInitialization class to bypass forbidden file path validation
@@ -29,7 +30,7 @@ import java.io.{File, InputStream}
  * requires access to certain paths that would otherwise be blocked by Elasticsearch's
  * security entitlements system in versions 8.18.1 and 9.0.1+.
  */
-private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
+private[patches] class ModifyEntitlementInitializationClass private(esVersion: SemVer)
   extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
@@ -138,4 +139,8 @@ private[patches] class ModifyEntitlementInitializationClass(esVersion: SemVer)
       underlying.visitEnd()
     }
   }
+}
+
+object ModifyEntitlementInitializationClass {
+  def apply(esVersion: SemVer): ModifyEntitlementInitializationClass = new ModifyEntitlementInitializationClass(esVersion)
 }

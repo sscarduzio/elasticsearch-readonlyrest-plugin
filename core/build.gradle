@@ -18,15 +18,15 @@
 buildscript {
     ext {
         pluginVersion = rootProject.properties['pluginVersion']
-        s3BucketName = System.env.BUCKET ?: "readonlyrest-data"
+        s3BucketName = System.env.BUCKET ?: "beshu"
     }
 }
 
 plugins {
     id "readonlyrest.base-common-conventions"
 
-    id "com.github.maiflai.scalatest" version "0.33"
-    id "com.gradleup.shadow" version "9.1.0"
+    id "com.github.maiflai.scalatest"   version "0.33"
+    id "com.gradleup.shadow"            version "9.3.0"
     id "java-library"
 }
 
@@ -57,62 +57,58 @@ dependencies {
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
-    api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '3.0.1'
+    api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '3.0.2' // we cannot bump it higher without upgrading netty to 4.2.x
     api group: 'com.github.pathikrit',          name: 'better-files_3',                      version: '3.9.2'
-    api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.6'
-    api group: 'io.circe',                      name: 'circe-generic_3',                     version: '0.14.6'
-    api group: 'io.circe',                      name: 'circe-parser_3',                      version: '0.14.6'
-    api group: 'io.circe',                      name: 'circe-refined_3',                     version: '0.14.6'
+    api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.15'
+    api group: 'io.circe',                      name: 'circe-generic_3',                     version: '0.14.15'
+    api group: 'io.circe',                      name: 'circe-parser_3',                      version: '0.14.15'
+    api group: 'io.circe',                      name: 'circe-refined_3',                     version: '0.14.9'
     api group: 'commons-codec',                 name: 'commons-codec',                       version: '1.15'
-    api group: 'com.beachape',                  name: 'enumeratum_3',                        version: '1.7.5'
+    api group: 'com.beachape',                  name: 'enumeratum_3',                        version: '1.9.2'
     api group: 'com.hrakaroo',                  name: 'glob',                                version: '0.9.0'
     api group: 'com.comcast',                   name: 'ip4s-core_3',                         version: '2.0.4'
-    api group: 'org.typelevel',                 name: 'jawn-parser_3',                       version: '1.5.1'
-    api group: 'io.jsonwebtoken',               name: 'jjwt-api',                            version: '0.12.7'
-    api group: 'io.jsonwebtoken',               name: 'jjwt-impl',                           version: '0.12.7'
-    api(group: 'io.jsonwebtoken',               name: 'jjwt-orgjson',                        version: '0.12.7') {
-        // jjwt-orgjson:0.12.57 uses json version, which has known security vulnerabilities
-        exclude group: 'org.json', module: 'json'
-    }
-    api group: 'org.jooq',                  name: 'joor',                                   version: '0.9.15'
-    api group: 'org.apache.logging.log4j',  name: 'log4j-api-scala_3',                      version: '13.1.0'
-    api(group: 'org.apache.logging.log4j',  name: 'log4j-slf4j-impl',                       version: '2.11.2') {
+    api group: 'org.typelevel',                 name: 'jawn-parser_3',                       version: '1.6.0'
+    api group: 'io.jsonwebtoken',               name: 'jjwt-api',                            version: '0.13.0'
+    api group: 'io.jsonwebtoken',               name: 'jjwt-impl',                           version: '0.13.0'
+    api group: 'io.jsonwebtoken',               name: 'jjwt-orgjson',                        version: '0.13.0'
+    api group: 'org.jooq',                      name: 'joor',                                version: '0.9.15'
+    api group: 'org.apache.logging.log4j',      name: 'log4j-api-scala_3',                   version: '13.1.0'
+    api(group: 'org.apache.logging.log4j',      name: 'log4j-slf4j-impl',                    version: '2.11.2') {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
-    api group: 'io.monix',                      name: 'monix_3',                            version: '3.4.1'
-    api group: 'eu.timepit',                    name: 'refined_3',                          version: '0.11.3'
-    api group: 'org.reflections',               name: 'reflections',                        version: '0.9.11'
-    api group: 'org.mozilla',                   name: 'rhino',                              version: '1.7.14'
-    api group: 'com.github.ben-manes.caffeine', name: 'caffeine',                           version: '3.1.8'
-    api group: 'com.github.tototoshi',          name: 'scala-csv_3',                        version: '1.4.1'
-    api group: 'org.scala-lang.modules',        name: 'scala-parallel-collections_3',       version: '1.0.4'
-    api group: 'io.lemonlabs',                  name: 'scala-uri_3',                        version: '4.0.3'
-    api group: 'org.typelevel',                 name: 'squants_3',                          version: '1.8.3'
-    api group: 'com.unboundid',                 name: 'unboundid-ldapsdk',                  version: '6.0.11'
-    api group: 'com.lihaoyi',                   name: 'upickle_3',                          version: '4.0.2'
-    api group: 'org.bouncycastle',              name: 'bctls-fips',                         version: '2.1.20'
-    api group: 'org.bouncycastle',              name: 'bcpkix-fips',                        version: '2.1.9'
+    api group: 'io.monix',                      name: 'monix_3',                             version: '3.4.1'
+    api group: 'eu.timepit',                    name: 'refined_3',                           version: '0.11.3'
+    api group: 'org.reflections',               name: 'reflections',                         version: '0.9.11'
+    api group: 'org.mozilla',                   name: 'rhino',                               version: '1.8.1'
+    api group: 'com.github.ben-manes.caffeine', name: 'caffeine',                            version: '3.2.3'
+    api group: 'com.github.tototoshi',          name: 'scala-csv_3',                         version: '2.0.0'
+    api group: 'org.scala-lang.modules',        name: 'scala-parallel-collections_3',        version: '1.2.0'
+    api group: 'com.indoorvivants',             name: 'scala-uri_3',                         version: '4.2.0'
+    api group: 'org.typelevel',                 name: 'squants_3',                           version: '1.8.3'
+    api group: 'com.unboundid',                 name: 'unboundid-ldapsdk',                   version: '7.0.4'
+    api group: 'com.lihaoyi',                   name: 'upickle_3',                           version: '4.4.2'
+    api group: 'org.bouncycastle',              name: 'bctls-fips',                          version: '2.1.22'
+    api group: 'org.bouncycastle',              name: 'bcpkix-fips',                         version: '2.1.10'
 
     testImplementation  project(':tests-utils')
-    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                 version: '2.24.2'
-    testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',            version: '1.3.14'
-    testRuntimeOnly     group: 'org.pegdown',                name: 'pegdown',                    version: '1.4.2'
-    testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_3',            version: '3.9.5'
-    testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                version: '6.0.0'
-    testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-16_3',          version: '3.2.14.0'
-    testImplementation  group: 'org.scalatest',              name: 'scalatest_3',                version: '3.2.16'
-    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',     version: '0.44.0'
+    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.25.3'
+    testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',                version: '1.5.23'
+    testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_3',                version: '3.9.5'
+    testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                    version: '7.3.0'
+    testImplementation  group: 'org.scalatestplus',          name: 'scalacheck-1-18_3',              version: '3.2.19.0'
+    testImplementation  group: 'org.scalatest',              name: 'scalatest_3',                    version: '3.2.19'
+    testImplementation  group: 'com.dimafeng',               name: 'testcontainers-scala-core_3',    version: '0.44.0'
 
     constraints {
-        api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.126.Final'
-        api group: 'io.netty',              name: 'netty-handler-proxy',                version: '4.1.126.Final'
-        api group: 'io.netty',              name: 'netty-resolver-dns',                 version: '4.1.126.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.126.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.126.Final'
-        api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.126.Final'
+        api group: 'io.netty',              name: 'netty-codec-http2',                  version: '4.1.132.Final'
+        api group: 'io.netty',              name: 'netty-handler-proxy',                version: '4.1.132.Final'
+        api group: 'io.netty',              name: 'netty-resolver-dns',                 version: '4.1.132.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-unix-common', version: '4.1.132.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-epoll',       version: '4.1.132.Final'
+        api group: 'io.netty',              name: 'netty-transport-native-kqueue',      version: '4.1.132.Final'
         api group: 'com.google.guava',      name: 'guava',                              version: '32.0.1-jre'
         api group: 'io.spray',              name: 'spray-json_3',                       version: '1.3.6'
-        api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '3.0.1'
+        api group: 'org.asynchttpclient',   name: 'async-http-client',                  version: '3.0.2'
     }
 }
 
@@ -134,11 +130,12 @@ test {
 }
 
 tasks.withType(ScalaCompile).configureEach {
+    // Use artifactView to safely access configuration files in Gradle 9.x
+    def pluginFiles = configurations.scalaCompilerPlugin.incoming.artifactView {
+        attributes { }
+    }.files
     // Map plugin jars to -Xplugin parameter
-    List<String> parameters =
-            configurations.scalaCompilerPlugin.files.collect {
-                '-Xplugin:' + it.absolutePath
-            }
+    List<String> parameters = pluginFiles.collect { '-Xplugin:' + it.absolutePath }
 
     // Add whatever flags you typically add
     parameters += [

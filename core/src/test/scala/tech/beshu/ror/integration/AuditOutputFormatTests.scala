@@ -30,11 +30,11 @@ import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, testEsNodeSettings}
+import tech.beshu.ror.utils.TestsUtils.{fullDataStreamName, header, nes, defaultTestEsNodeSettings}
 
 import java.time.{Clock, Instant, ZoneId}
 import scala.concurrent.duration.*
@@ -75,7 +75,19 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         def expectedJson(jsonString: String) = ujson.read(
           s"""{
              |  "headers":["x-forwarded-for", "custom-one"],
-             |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
+             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]]",
+             |  "blocks_history":[
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
+             |      "block_name":"CONTAINER ADMIN",
+             |      "matched":false
+             |    },
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
+             |      "block_name":"User 1",
+             |      "matched":false
+             |    }
+             |  ],
              |  "origin":"localhost",
              |  "match":false,
              |  "final_state":"FORBIDDEN",
@@ -91,7 +103,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"indices:admin/get",
-             |  "block":"default",
+             |  "block":"mismatched",
              |  "id":"mock",
              |  "content_len":0,
              |  "es_cluster_name": "testEsCluster",
@@ -101,11 +113,11 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
+        ujson.read(jsonStringFromIndex) should be (expectedJson(jsonStringFromIndex))
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
-        dataStream shouldBe fullDataStreamName(NonEmptyString.unsafeFrom("readonlyrest_audit"))
-        ujson.read(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
+        dataStream should be (fullDataStreamName(NonEmptyString.unsafeFrom("readonlyrest_audit")))
+        ujson.read(jsonStringFromDataStream) should be (expectedJson(jsonStringFromDataStream))
       }
       "is passed normally" in {
         val indexAuditSinkService = new MockedIndexAuditSinkService()
@@ -120,7 +132,19 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
         def expectedJson(jsonString: String) = ujson.read(
           s"""{
              |  "headers":["X-Forwarded-For", "Custom-One"],
-             |  "acl_history":"[CONTAINER ADMIN-> RULES:[auth_key->false]], [User 1-> RULES:[auth_key->false]]",
+             |  "acl_history":"[CONTAINER ADMIN: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]], [User 1: NOT_MATCHED (AUTH_FAIL (No basic auth credentials provided)) -> RULES:[auth_key->false]]",
+             |  "blocks_history":[
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
+             |      "block_name":"CONTAINER ADMIN",
+             |      "matched":false
+             |    },
+             |    {
+             |      "forbidden_cause":"AUTH_FAIL (No basic auth credentials provided)",
+             |      "block_name":"User 1",
+             |      "matched":false
+             |    }
+             |  ],
              |  "origin":"localhost",
              |  "match":false,
              |  "final_state":"FORBIDDEN",
@@ -136,7 +160,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"indices:admin/get",
-             |  "block":"default",
+             |  "block":"mismatched",
              |  "id":"mock",
              |  "content_len":0,
              |  "es_cluster_name": "testEsCluster",
@@ -146,11 +170,11 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         val (index, jsonStringFromIndex) = Await.result(indexAuditSinkService.result, 5 seconds)
         index.name.value should startWith("readonlyrest_audit-")
-        ujson.read(jsonStringFromIndex) shouldBe expectedJson(jsonStringFromIndex)
+        ujson.read(jsonStringFromIndex) should be (expectedJson(jsonStringFromIndex))
 
         val (dataStream, jsonStringFromDataStream) = Await.result(dataStreamAuditSinkService.result, 5 seconds)
-        dataStream shouldBe fullDataStreamName(nes("readonlyrest_audit"))
-        ujson.read(jsonStringFromDataStream) shouldBe expectedJson(jsonStringFromDataStream)
+        dataStream should be (fullDataStreamName(nes("readonlyrest_audit")))
+        ujson.read(jsonStringFromDataStream) should be (expectedJson(jsonStringFromDataStream))
       }
     }
   }
@@ -171,7 +195,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
           AuditCluster.LocalAuditCluster
         ))
       ),
-      testEsNodeSettings
+      defaultTestEsNodeSettings
     )
     val auditingTool = AuditingTool.create(
       settings = settings,

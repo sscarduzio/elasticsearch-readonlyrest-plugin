@@ -20,13 +20,13 @@ import cats.Eval
 import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
+import tech.beshu.ror.es.utils.ThreadContextOps.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 sealed abstract class RorActionListener[T](val underlying: ActionListener[T]) extends ActionListener[T] {
 
@@ -37,7 +37,7 @@ sealed abstract class RorActionListener[T](val underlying: ActionListener[T]) ex
 
 final class HidingInternalErrorDetailsRorActionListener[T](underlying: ActionListener[T],
                                                            correlationId: Eval[CorrelationId])
-  extends RorActionListener[T](underlying) with Logging {
+  extends RorActionListener[T](underlying) with RequestIdAwareLogging {
 
   override def onFailure(e: Exception): Unit = {
     super.onFailure(adaptExceptionIfNeeded(e))
@@ -47,7 +47,7 @@ final class HidingInternalErrorDetailsRorActionListener[T](underlying: ActionLis
     ex match {
       case esException: ElasticsearchException => esException
       case other =>
-        logger.error(s"[${correlationId.value.show}] Internal error.", other)
+        noRequestIdLogger.error(s"[${correlationId.value.show}] Internal error.", other)
         new ElasticsearchException(s"[${correlationId.value.show}] Internal error. See logs for details.")
     }
   }
@@ -60,13 +60,11 @@ final class AtEsLevelUpdateActionResponseListener(esContext: EsContext,
   extends RorActionListener[ActionResponse](esContext.listener.underlying) {
 
   override def onResponse(response: ActionResponse): Unit = {
-    val stashedContext = threadPool.getThreadContext.stashPreservingSomeHeaders(esContext)
+    threadPool.getThreadContext.setupContextPropagation()
     update(response) runAsync {
       case Right(updatedResponse) =>
-        stashedContext.restore()
         super.onResponse(updatedResponse)
       case Left(ex) =>
-        stashedContext.close()
         onFailure(new Exception(ex))
     }
   }

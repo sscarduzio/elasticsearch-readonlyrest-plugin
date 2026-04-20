@@ -20,8 +20,8 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -31,9 +31,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresRequest,
                                          esContext: EsContext,
                                          aclContext: AccessControlStaticContext,
-                                         clusterService: RorClusterService,
                                          override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[IndicesShardStoresRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[IndicesShardStoresRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: IndicesShardStoresRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
@@ -41,7 +40,8 @@ class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresReques
 
   override protected def update(request: IndicesShardStoresRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+                                allAllowedIndices: NonEmptyList[ClusterIndexName],
+                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     actionRequest.indices(filteredIndices.stringify: _*)
     Modified
   }

@@ -39,8 +39,8 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
@@ -51,10 +51,10 @@ import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSettings}
-import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
-import tech.beshu.ror.es.IndexDocumentManager.*
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, EsEnv, IndexDocumentManager}
+import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
+import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.IndexDocumentManager.*
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexDocumentManager}
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -83,6 +83,8 @@ class ReadonlyRestStartingTests
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   private implicit val testClock: Clock = Clock.systemUTC()
+
+  private implicit val requestId: RequestId = RequestId(UUID.randomUUID().toString)
 
   "A ReadonlyREST core" should {
     "support the main engine" should {
@@ -431,7 +433,7 @@ class ReadonlyRestStartingTests
         }) { rorInstance =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
         }
         "there is some settings stored in index" should {
           "load test engine as active" when {
@@ -468,7 +470,7 @@ class ReadonlyRestStartingTests
             }) { case (rorInstance, expirationTimestamp) =>
               rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-              rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+              rorInstance.currentTestSettings().runSyncUnsafe() should be(
                 TestSettings.Present(
                   dependencies = RorDependencies.noOp,
                   rawSettings = testSettings1,
@@ -490,15 +492,15 @@ class ReadonlyRestStartingTests
               ))
               rorInstance.mocksProvider.externalAuthenticationServiceWith(ExternalAuthenticationService.Name("ext2"))(newRequestId()) should be(None)
 
-              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalAuthorizationService.Name("grp1"))(newRequestId()) should be(Some(
-                ExternalAuthorizationServiceMock(Set(
-                  ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(
+              rorInstance.mocksProvider.externalGroupsProviderServiceWith(ExternalGroupsProviderService.Name("grp1"))(newRequestId()) should be(Some(
+                ExternalGroupsProviderServiceMock(Set(
+                  ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock(
                     id = User.Id("Bruce"),
                     groups = Set(group("group3"), group("group4"))
                   )
                 ))
               ))
-              rorInstance.mocksProvider.externalAuthorizationServiceWith(ExternalAuthorizationService.Name("grp2"))(newRequestId()) should be(None)
+              rorInstance.mocksProvider.externalGroupsProviderServiceWith(ExternalGroupsProviderService.Name("grp2"))(newRequestId()) should be(None)
             }
           }
           "load test engine as invalidated" when {
@@ -532,7 +534,7 @@ class ReadonlyRestStartingTests
             }) { rorInstance =>
               rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-              rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+              rorInstance.currentTestSettings().runSyncUnsafe() should be(
                 TestSettings.Invalidated(
                   recent = testSettings1,
                   configuredTtl = (100 seconds).toRefinedPositiveUnsafe
@@ -561,7 +563,7 @@ class ReadonlyRestStartingTests
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
           }
         }
         "settings structure is not valid" should {
@@ -595,7 +597,7 @@ class ReadonlyRestStartingTests
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
           }
         }
         "settings structure is valid, rule is malformed and cannot start engine" should {
@@ -628,7 +630,7 @@ class ReadonlyRestStartingTests
             )
           }) { rorInstance =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(
               TestSettings.Invalidated(
                 recent = testSettingsMalformed,
                 configuredTtl = (100 seconds).toRefinedPositiveUnsafe
@@ -659,12 +661,13 @@ class ReadonlyRestStartingTests
         }) { case (rorInstance, mockedIndexDocumentManager) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -683,7 +686,7 @@ class ReadonlyRestStartingTests
           testEngineReloadResult.value shouldBe a[TestSettings.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+          val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
           testSettingsEngine shouldBe a[TestSettings.Present]
           Option(testSettingsEngine.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
             (testSettings1, 1 minute).some
@@ -710,12 +713,13 @@ class ReadonlyRestStartingTests
             )
           }) { case (rorInstance, mockedIndexDocumentManager) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-            (mockedIndexDocumentManager.saveDocumentJson _)
+            ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+              mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
               .expects(
                 where {
-                  (index: IndexName.Full, id: String, document: Json) =>
+                  (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
                       document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -734,7 +738,7 @@ class ReadonlyRestStartingTests
             testEngineReloadResult1stAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngine shouldBe a[TestSettings.Present]
             Option(testSettingsEngine.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
               (testSettings1, 1 minute).some
@@ -749,7 +753,7 @@ class ReadonlyRestStartingTests
             testEngineReloadResult2ndAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngineAfterReload = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngineAfterReload = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngineAfterReload shouldBe a[TestSettings.Present]
             Option(testSettingsEngineAfterReload.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
               (testSettings1, 1 minute).some
@@ -779,12 +783,13 @@ class ReadonlyRestStartingTests
             )
           }) { case (rorInstance, mockedIndexDocumentManager) =>
             rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-            rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+            rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-            (mockedIndexDocumentManager.saveDocumentJson _)
+            ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+              mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
               .expects(
                 where {
-                  (index: IndexName.Full, id: String, document: Json) =>
+                  (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
                       document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -803,17 +808,18 @@ class ReadonlyRestStartingTests
             testEngineReloadResult1stAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngine shouldBe a[TestSettings.Present]
             Option(testSettingsEngine.asInstanceOf[TestSettings.Present])
               .map(i => (i.rawSettings, i.configuredTtl.value)) should be((testSettings1, 10 minute).some)
 
             val testEngine1Expiration = testSettingsEngine.asInstanceOf[TestSettings.Present].validTo
 
-            (mockedIndexDocumentManager.saveDocumentJson _)
+            ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+              mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
               .expects(
                 where {
-                  (index: IndexName.Full, id: String, document: Json) =>
+                  (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                     index == fullIndexName(".readonlyrest") &&
                       id == "2" &&
                       document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -832,7 +838,7 @@ class ReadonlyRestStartingTests
             testEngineReloadResult2ndAttempt.value shouldBe a[TestSettings.Present]
             rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-            val testSettingsEngineAfterReload = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+            val testSettingsEngineAfterReload = rorInstance.currentTestSettings().runSyncUnsafe()
             testSettingsEngineAfterReload shouldBe a[TestSettings.Present]
             Option(testSettingsEngineAfterReload.asInstanceOf[TestSettings.Present])
               .map(i => (i.rawSettings, i.configuredTtl.value)) should be((testSettings1, 5 minute).some)
@@ -863,12 +869,13 @@ class ReadonlyRestStartingTests
           )
         }) { case (rorInstance, mockedIndexDocumentManager) =>
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -887,7 +894,7 @@ class ReadonlyRestStartingTests
           testEngineReloadResult1stAttempt.value shouldBe a[TestSettings.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          val testSettingsEngine = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+          val testSettingsEngine = rorInstance.currentTestSettings().runSyncUnsafe()
           testSettingsEngine shouldBe a[TestSettings.Present]
           Option(testSettingsEngine.asInstanceOf[TestSettings.Present]).map(i => (i.rawSettings, i.configuredTtl.value)) should be {
             (testSettings1, 1 minute).some
@@ -895,10 +902,11 @@ class ReadonlyRestStartingTests
 
           val testEngine1Expiration = testSettingsEngine.asInstanceOf[TestSettings.Present].validTo
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings2.rawYaml) &&
@@ -917,7 +925,7 @@ class ReadonlyRestStartingTests
           testEngineReloadResult2ndAttempt.value shouldBe a[TestSettings.Present]
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          val testSettingsEngineAfterReload = rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe()
+          val testSettingsEngineAfterReload = rorInstance.currentTestSettings().runSyncUnsafe()
           testSettingsEngineAfterReload shouldBe a[TestSettings.Present]
           Option(testSettingsEngineAfterReload.asInstanceOf[TestSettings.Present])
             .map(i => (i.rawSettings, i.configuredTtl.value)) should be((testSettings2, 2 minutes).some)
@@ -949,8 +957,10 @@ class ReadonlyRestStartingTests
         }) { case (rorInstance, mockedIndexDocumentManager) =>
 
           lazy val expirationTimestamp = testClock.instant().plusSeconds(100)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
@@ -962,13 +972,13 @@ class ReadonlyRestStartingTests
             ))))
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
           Task.sleep(5 seconds).runSyncUnsafe()
 
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1006,7 +1016,7 @@ class ReadonlyRestStartingTests
             (mockedIndexDocumentManager, expirationTimestamp)
           )
         }) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1016,8 +1026,10 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().plusSeconds(200)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
@@ -1032,7 +1044,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1072,7 +1084,7 @@ class ReadonlyRestStartingTests
           )
         }) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1082,8 +1094,10 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().plusSeconds(100)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.now(Right(circeJsonFrom(
               s"""{
@@ -1098,7 +1112,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1138,7 +1152,7 @@ class ReadonlyRestStartingTests
           )
         }) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1148,8 +1162,10 @@ class ReadonlyRestStartingTests
           )
 
           val expirationTimestamp2 = testClock.instant().minusSeconds(1)
-          (mockedIndexDocumentManager.documentAsJson _)
-            .expects(fullIndexName(".readonlyrest"), "2")
+          
+          ((index: IndexName.Full, id: String, requestId: RequestId) =>
+            mockedIndexDocumentManager.documentAsJson(index, id)(requestId))
+            .expects(fullIndexName(".readonlyrest"), "2", *)
             .repeated(1)
             .returns(Task.delay(Right(circeJsonFrom(
               s"""{
@@ -1164,7 +1180,7 @@ class ReadonlyRestStartingTests
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
 
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Invalidated(
               recent = testSettings2,
               configuredTtl = (200 seconds).toRefinedPositiveUnsafe
@@ -1194,12 +1210,13 @@ class ReadonlyRestStartingTests
         }) { case (rorInstance, mockedIndexDocumentManager) =>
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1221,7 +1238,7 @@ class ReadonlyRestStartingTests
           Task.sleep(5 seconds).runSyncUnsafe()
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Invalidated(testSettings1, (3 seconds).toRefinedPositiveUnsafe)
           )
         }
@@ -1245,12 +1262,13 @@ class ReadonlyRestStartingTests
           mockedIndexDocumentManager)
       }) { case (rorInstance, mockedIndexDocumentManager) =>
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-        rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(TestSettings.NotSet)
+        rorInstance.currentTestSettings().runSyncUnsafe() should be(TestSettings.NotSet)
 
-        (mockedIndexDocumentManager.saveDocumentJson _)
+        ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+          mockedIndexDocumentManager.saveDocumentJson(index, id, document))
           .expects(
             where {
-              (index: IndexName.Full, id: String, document: Json) =>
+              (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                 index == fullIndexName(".readonlyrest") &&
                   id == "2" &&
                   document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1268,12 +1286,13 @@ class ReadonlyRestStartingTests
 
         testEngineReloadResult.value shouldBe a[TestSettings.Present]
         rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
-        rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() shouldBe a[TestSettings.Present]
+        rorInstance.currentTestSettings().runSyncUnsafe() shouldBe a[TestSettings.Present]
 
-        (mockedIndexDocumentManager.saveDocumentJson _)
+        ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+          mockedIndexDocumentManager.saveDocumentJson(index, id, document))
           .expects(
             where {
-              (index: IndexName.Full, id: String, document: Json) =>
+              (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                 index == fullIndexName(".readonlyrest") &&
                   id == "2" &&
                   document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1288,7 +1307,7 @@ class ReadonlyRestStartingTests
         rorInstance.invalidateTestSettingsEngine()(newRequestId()).runSyncUnsafe() should be(Right(()))
 
         rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-        rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+        rorInstance.currentTestSettings().runSyncUnsafe() should be(
           TestSettings.Invalidated(recent = testSettings1, configuredTtl = (1 minute).toRefinedPositiveUnsafe)
         )
       }
@@ -1328,7 +1347,7 @@ class ReadonlyRestStartingTests
           }
         ) { case (rorInstance, (mockedIndexDocumentManager, expirationTimestamp)) =>
           rorInstance.engines.value.impersonatorsEngine.value.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Present(
               dependencies = RorDependencies.noOp,
               rawSettings = testSettings1,
@@ -1337,10 +1356,11 @@ class ReadonlyRestStartingTests
             )
           )
 
-          (mockedIndexDocumentManager.saveDocumentJson _)
+          ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+            mockedIndexDocumentManager.saveDocumentJson(index, id, document)(requestId))
             .expects(
               where {
-                (index: IndexName.Full, id: String, document: Json) =>
+                (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
                   index == fullIndexName(".readonlyrest") &&
                     id == "2" &&
                     document.hcursor.get[String]("settings").toOption.contains(testSettings1.rawYaml) &&
@@ -1356,7 +1376,7 @@ class ReadonlyRestStartingTests
           )
 
           rorInstance.engines.value.impersonatorsEngine should be(Option.empty)
-          rorInstance.currentTestSettings()(newRequestId()).runSyncUnsafe() should be(
+          rorInstance.currentTestSettings().runSyncUnsafe() should be(
             TestSettings.Invalidated(testSettings1, (100 seconds).toRefinedPositiveUnsafe)
           )
         }
@@ -1389,18 +1409,18 @@ class ReadonlyRestStartingTests
           mockedCoreFactory = mock[CoreFactory],
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
-          RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader),
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(AuditingTool.AuditSettings(
             NonEmptyList.of(
               AuditSink.Enabled(dataStreamSinkConfig1),
               AuditSink.Enabled(dataStreamSinkConfig2)
             ),
-            testEsNodeSettings
+            defaultTestEsNodeSettings
           ))
         )
 
         val dataStreamService1 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = NotAcknowledged)
-        val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = Acknowledged, componentTemplateResult = NotAcknowledged)
+        val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, componentTemplateResult = NotAcknowledged)
 
         val auditSinkServiceCreator = mock[DataStreamAndIndexBasedAuditSinkServiceCreator]
 
@@ -1441,8 +1461,7 @@ class ReadonlyRestStartingTests
 
   private def createEsConfigBasedRorSettings(resourceEsConfigDir: String)
                                             (implicit systemContext: SystemContext): Either[LoadingError, EsConfigBasedRorSettings] = {
-    val esConfig = File(getResourcePath(resourceEsConfigDir))
-    val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests, testEsNodeSettings)
+    val esEnv = createEsEnv(File(getResourcePath(resourceEsConfigDir)))
     EsConfigBasedRorSettings
       .from(esEnv)
       .runSyncUnsafe()
@@ -1724,12 +1743,15 @@ class ReadonlyRestStartingTests
 
   private def mockSavingMainSettings(mockedManager: IndexDocumentManager,
                                      resourceFileName: String,
-                                     saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
-    (mockedManager.saveDocumentJson _)
+                                     saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(())))
+                                    (implicit requestId: RequestId) = {
+    ((index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+      mockedManager.saveDocumentJson(index, id, document)(requestId))
       .expects(
         fullIndexName(".readonlyrest"),
         "1",
-        circeJsonFrom(s"""{ "settings": "${escapeJava(getResourceContent(resourceFileName))}"}""")
+        circeJsonFrom(s"""{ "settings": "${escapeJava(getResourceContent(resourceFileName))}"}"""),
+        *
       )
       .once()
       .returns(saveResult)
@@ -1741,8 +1763,10 @@ class ReadonlyRestStartingTests
                                   expectedDocument: String,
                                   returnsResponse: Task[Either[ReadError, Json]],
                                   attemptCount: AttemptCount) = {
-    val handler = (mockedManager.documentAsJson _)
-      .expects(fullIndexName(expectedIndex), expectedDocument)
+    val handler =
+      ((index: IndexName.Full, id: String, requestId: RequestId) =>
+        mockedManager.documentAsJson(index, id)(requestId))
+        .expects(fullIndexName(expectedIndex), expectedDocument, *)
     val handlerWithRepetitions = attemptCount match {
       case AttemptCount.AnyNumberOfTimes => handler.anyNumberOfTimes()
       case AttemptCount.Exact(count) => handler.repeated(count)
@@ -1761,12 +1785,12 @@ class ReadonlyRestStartingTests
   // anonymous class instead of mock due to final defs and protected methods in DataStreamService
   private def mockedDataSteamService(dataStreamExists: Boolean,
                                      ilmExists: Boolean = false,
-                                     ilmCreationResult: CreationResult = CreationResult.Acknowledged,
+                                     ilmCreationResult: CreationResult = Acknowledged,
                                      componentTemplateExists: Boolean = false,
-                                     componentTemplateResult: CreationResult = CreationResult.Acknowledged,
+                                     componentTemplateResult: CreationResult = Acknowledged,
                                      indexTemplateExists: Boolean = false,
-                                     indexTemplateResult: CreationResult = CreationResult.Acknowledged,
-                                     dataStreamResult: CreationResult = CreationResult.Acknowledged) = new DataStreamService {
+                                     indexTemplateResult: CreationResult = Acknowledged,
+                                     dataStreamResult: CreationResult = Acknowledged) = new DataStreamService {
     override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = Task.now(dataStreamExists)
 
     override protected def checkIndexLifecyclePolicyExists(policyId: NonEmptyString): Task[Boolean] = Task.pure(ilmExists)

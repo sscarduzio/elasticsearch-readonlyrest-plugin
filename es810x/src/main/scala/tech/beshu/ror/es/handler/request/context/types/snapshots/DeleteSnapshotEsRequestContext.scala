@@ -21,8 +21,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -33,9 +32,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
                                      esContext: EsContext,
-                                     clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: DeleteSnapshotRequest): Set[SnapshotName] = {
     request
@@ -60,7 +58,7 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -71,14 +69,15 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       .toRight(())
   }
 
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def repositoryFrom(implicit blockContext: SnapshotRequestBlockContext) = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val repositories = blockContext.repositories.toList
     repositories match {
       case Nil =>
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+          logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
         }
         Right(repository)
     }

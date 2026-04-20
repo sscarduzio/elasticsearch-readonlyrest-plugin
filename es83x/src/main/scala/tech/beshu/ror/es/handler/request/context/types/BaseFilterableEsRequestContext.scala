@@ -17,15 +17,16 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.toOps
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -35,35 +36,37 @@ import tech.beshu.ror.syntax.*
 abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                   esContext: EsContext,
                                                                   aclContext: AccessControlStaticContext,
-                                                                  clusterService: RorClusterService,
                                                                   override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext)
     with EsRequest[FilterableRequestBlockContext] {
 
-  override val initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
+  override def initialBlockContext(block: Block): FilterableRequestBlockContext = FilterableRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    filteredIndices = discoverIndices(),
+    filteredIndices = discoveredIndices,
     allAllowedIndices = Set(ClusterIndexName.Local.wildcard),
     filter = None,
     fieldLevelSecurity = None,
     requestFieldsUsage = requestFieldsUsage
   )
 
-  override def modifyWhenIndexNotFound: ModificationResult = {
+  override lazy val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(discoveredIndices)
+
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex(_.filteredIndices)
+      val nonExistentIndex = discoveredIndices.randomNonexistentLocalIndex()
       if (nonExistentIndex.name.hasWildcard) {
         val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.filteredIndices.map(_.randomNonexistentIndex()).toList)
+          .fromList(discoveredIndices.map(_.randomNonexistentLocalIndex()).toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         update(
           request = actionRequest,
           filteredRequestedIndices = nonExistingIndices,
-          filter = initialBlockContext.filter,
-          fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
+          filter = None,
+          fieldLevelSecurity = None
         )
         Modified
       } else {
@@ -72,9 +75,9 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     } else {
       update(
         request = actionRequest,
-        filteredRequestedIndices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex(_.filteredIndices)),
-        filter = initialBlockContext.filter,
-        fieldLevelSecurity = initialBlockContext.fieldLevelSecurity
+        filteredRequestedIndices = NonEmptyList.of(discoveredIndices.randomNonexistentLocalIndex()),
+        filter = None,
+        fieldLevelSecurity = None
       )
       Modified
     }
@@ -85,7 +88,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
       case Some(indices) =>
         update(actionRequest, indices, blockContext.filter, blockContext.fieldLevelSecurity)
       case None =>
-        logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
+        logger.warn(s"empty list of indices produced, so we have to interrupt the request processing")
         ShouldBeInterrupted
     }
   }
@@ -99,9 +102,11 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
 
   protected def requestFieldsUsage: RequestFieldsUsage
 
-  private def discoverIndices() = {
-    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
-    logger.debug(s"[${id.show}] Discovered indices: ${indices.show}")
+  private lazy val discoveredIndices: Set[RequestedIndex[ClusterIndexName]] = {
+    val indices = requestedIndicesFrom(actionRequest)
+      .orWildcardWhenEmpty
+      .skipRemoteIndicesIfNeeded(esContext)
+    logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }
 }

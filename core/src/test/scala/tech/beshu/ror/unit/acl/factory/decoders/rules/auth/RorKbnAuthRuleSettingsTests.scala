@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
@@ -154,7 +154,7 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
           }
         )
       }
@@ -171,7 +171,7 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Cannot find ROR Kibana definition with name: kbn1")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
           }
         )
       }
@@ -250,14 +250,14 @@ class RorKbnAuthRuleSettingsTests
                    |      $groupsAllOfKey: ["groups1", "groups2"]
                    |  ror_kbn:
                    |
-                   |  - name: kbn2
+                   |  - name: kbn1
                    |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
                    |
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
                 errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for ROR Kibana rule 'kbn1'")
+                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `ror_kbn_auth` rule 'kbn1'")
                 ))
               }
             )
@@ -286,153 +286,6 @@ class RorKbnAuthRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("ror_kbn definitions must have unique identifiers. Duplicates: kbn1")))
-          }
-        )
-      }
-      "no signature key is defined for default HMAC algorithm" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- name: "kbn1"
-                |""".stripMargin
-            )))
-          }
-        )
-      }
-      "RSA algorithm is defined but on signature key" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "RSA"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- name: "kbn1"
-                |  signature_algo: "RSA"
-                |""".stripMargin
-            )))
-          }
-        )
-      }
-      "unrecognized algorithm is used" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "UNKNOWN"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Unrecognised algorithm family 'UNKNOWN'. Should be either of: HMAC, EC, RSA, NONE")))
-          }
-        )
-      }
-      "RSA signature key is malformed" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "RSA"
-              |    signature_key: "malformed_key"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
-          }
-        )
-      }
-      "RSA signature key cannot be read from system env" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "RSA"
-              |    signature_key: "@{env:SECRET}"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
-          }
-        )
-      }
-      "EC signature key is malformed" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "EC"
-              |    signature_key: "malformed_key"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
           }
         )
       }

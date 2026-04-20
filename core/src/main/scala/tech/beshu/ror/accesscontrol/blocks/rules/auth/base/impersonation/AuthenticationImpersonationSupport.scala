@@ -20,10 +20,10 @@ import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.Decision
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation.Enabled
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult.Handled
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
@@ -33,11 +33,10 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, RequestId, User}
 import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 
-private [rules] trait AuthenticationImpersonationSupport extends ImpersonationSupport
+private[rules] trait AuthenticationImpersonationSupport extends ImpersonationSupport
 
-private [rules]trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
+private[rules] trait SimpleAuthenticationImpersonationSupport extends AuthenticationImpersonationSupport {
   this: AuthenticationRule =>
 
   protected def impersonation: Impersonation
@@ -81,7 +80,7 @@ private [rules]trait SimpleAuthenticationImpersonationSupport extends Authentica
         _ <- checkIfImpersonatorDifferFromTheImpersonatedUser[B](loggedImpersonator, theImpersonatedUserId)
         _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId, settings.mocksProvider)
       } yield {
-        blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
+        blockContext.withBlockMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
       }
     } map {
       Handled.apply
@@ -102,34 +101,34 @@ private [rules]trait SimpleAuthenticationImpersonationSupport extends Authentica
           if (userMatcher.`match`(theImpersonatedUserId)) Some(impersonatorDef)
           else None
         },
-      ifNone = Rejected[B](Cause.ImpersonationNotAllowed)
+      ifNone = Denied[B](Cause.ImpersonationNotAllowed)
     )
   }
 
   private def authenticateImpersonator[B <: BlockContext : BlockContextUpdater](impersonatorDef: ImpersonatorDef,
-                                                                                blockContext: B) = EitherT {
+                                                                                blockContext: B): EitherT[Task, Denied[B], LoggedUser] = EitherT {
     impersonatorDef
       .authenticationRule
       .check(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
       .map {
-        case Fulfilled(bc) =>
-          bc.userMetadata.loggedUser match {
+        case Permitted(bc) =>
+          bc.blockMetadata.loggedUser match {
             case Some(loggedUser) => Right(loggedUser)
             case None => throw new IllegalStateException("Impersonator should be logged")
           }
-        case Rejected(_) =>
-          Left(Rejected[B](Cause.ImpersonationNotAllowed))
+        case Denied(_) =>
+          Left(Denied[B](Cause.ImpersonationNotAllowed))
       }
   }
 
   private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                  mocksProvider: MocksProvider)
-                                                                (implicit requestId: RequestId) = EitherT {
+                                                                (implicit requestId: RequestId): EitherT[Task, Denied[B], Unit] = EitherT {
     exists(theImpersonatedUserId, mocksProvider)
       .map {
         case Exists => Right(())
-        case NotExist => Left(Rejected[B]())
-        case CannotCheck => Left(Rejected[B](Cause.ImpersonationNotSupported))
+        case NotExist => Left(Denied[B](Cause.AuthenticationFailed("Impersonated user does not exist")))
+        case CannotCheck => Left(Denied[B](Cause.ImpersonationNotSupported))
       }
   }
 
@@ -138,14 +137,14 @@ private [rules]trait SimpleAuthenticationImpersonationSupport extends Authentica
     EitherT.cond[Task](
       test = loggedImpersonator.id != theImpersonatedUserId,
       right = (),
-      left = Rejected[B](Cause.ImpersonationNotAllowed),
+      left = Denied[B](Cause.ImpersonationNotAllowed),
     )
 
-  private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]): Task[RuleResult[B]] = {
+  private def toRuleResult[B <: BlockContext](result: EitherT[Task, Denied[B], B]): Task[Decision[B]] = {
     result
       .value
       .map {
-        case Right(newBlockContext) => Fulfilled[B](newBlockContext)
+        case Right(newBlockContext) => Permitted[B](newBlockContext)
         case Left(rejected) => rejected
       }
   }
@@ -159,7 +158,7 @@ object SimpleAuthenticationImpersonationSupport {
   sealed trait ImpersonationResult[B <: BlockContext]
   object ImpersonationResult {
     final case class NotImpersonationRequest[B <: BlockContext]() extends ImpersonationResult[B]
-    final case class Handled[B <: BlockContext](result: Rule.RuleResult[B]) extends ImpersonationResult[B]
+    final case class Handled[B <: BlockContext](result: Decision[B]) extends ImpersonationResult[B]
   }
 
   sealed trait UserExistence

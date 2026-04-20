@@ -25,6 +25,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
@@ -33,7 +34,7 @@ import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStre
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
@@ -42,7 +43,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
@@ -129,16 +130,24 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = ForbiddenBy(
-              requestContext,
-              new Block(
-                Block.Name("mock-block"),
-                Block.Policy.Forbid(),
-                Block.Verbosity.Info,
-                Block.Audit.Enabled,
-                NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+              requestContext = requestContext,
+              blockContext = GeneralIndexRequestBlockContext(
+                block = new Block(
+                  Block.Name("mock-block"),
+                  Block.Policy.Forbid(),
+                  Block.Verbosity.Info,
+                  Block.Audit.Enabled,
+                  NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+                ),
+                requestContext = requestContext,
+                blockMetadata = BlockMetadata.empty,
+                responseHeaders = Set.empty,
+                responseTransformations = List.empty,
+                filteredIndices = Set.empty,
+                allAllowedIndices = Set.empty,
+                allAllowedClusters = Set.empty
               ),
-              GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
-              Vector.empty
+              history = History.empty
             )
 
             auditingTool.audit(responseContext).runSyncUnsafe()
@@ -162,7 +171,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             ).runSyncUnsafe().toOption.flatten.get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
-            val responseContext = Forbidden(requestContext, Vector.empty)
+            val responseContext = Forbidden(requestContext, History.empty)
 
             auditingTool.audit(responseContext).runSyncUnsafe()
           }
@@ -202,7 +211,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   RorAuditLoggerName.default
                 ))
               ),
-              testEsNodeSettings
+              defaultTestEsNodeSettings
             ),
             auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
               override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
@@ -227,7 +236,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     "no enabled outputs in settings" should {
       "be disabled" in {
         val creationResult = AuditingTool.create(
-          settings = AuditSettings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled), testEsNodeSettings),
+          settings = AuditSettings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled), defaultTestEsNodeSettings),
           auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
             override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
 
@@ -252,7 +261,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         AuditCluster.LocalAuditCluster
       ))
     ),
-    esNodeSettings = testEsNodeSettings
+    esNodeSettings = defaultTestEsNodeSettings
   )
 
   private lazy val someday = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
@@ -260,16 +269,24 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private def createAllowedResponseContext(policy: Block.Policy, verbosity: Block.Verbosity) = {
     val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
     AllowedBy(
-      requestContext,
-      new Block(
-        Block.Name("mock-block"),
-        policy,
-        verbosity,
-        Block.Audit.Enabled,
-        NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+      requestContext = requestContext,
+      blockContext = GeneralIndexRequestBlockContext(
+        block = new Block(
+          Block.Name("mock-block"),
+          policy,
+          verbosity,
+          Block.Audit.Enabled,
+          NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
+        ),
+        requestContext = requestContext,
+        blockMetadata = BlockMetadata.empty,
+        responseHeaders = Set.empty,
+        responseTransformations = List.empty,
+        filteredIndices = Set.empty,
+        allAllowedIndices = Set.empty,
+        allAllowedClusters = Set.empty
       ),
-      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
-      Vector.empty
+      history = History.empty
     )
   }
 
@@ -281,7 +298,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def mockedDataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService & reflect.Selectable = {
+  private def mockedDataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService = {
     val mockedDataStreamService = mock[DataStreamService]
 
     (mockedDataStreamService.checkDataStreamExists(_: DataStreamName.Full))

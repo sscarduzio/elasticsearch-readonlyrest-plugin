@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import better.files.File
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -25,13 +24,12 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -135,7 +133,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
       }
       "external authorization service is mocked" in {
         val mocksProvider = mocksProviderForExternalAuthzServiceFrom(
-          Map(ExternalAuthorizationService.Name("GroupsService1") -> Map.empty)
+          Map(ExternalGroupsProviderService.Name("GroupsService1") -> Map.empty)
         )
 
         val settings =
@@ -294,6 +292,8 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
               |  jwt:
               |
               |  - name: jwt1
+              |    user_claim: "user"
+              |    group_ids_claim: groups
               |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
               |
               |""".stripMargin
@@ -413,7 +413,6 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
   private val factory: CoreFactory = {
     implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
-    new RawRorSettingsBasedCoreFactory(esEnv)
+    new RawRorSettingsBasedCoreFactory(defaultEsEnv())
   }
 }

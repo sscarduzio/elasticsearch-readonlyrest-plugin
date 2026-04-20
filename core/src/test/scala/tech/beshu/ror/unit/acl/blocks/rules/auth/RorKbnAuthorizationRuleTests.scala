@@ -17,32 +17,29 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, GroupsAuthorizationFailed}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.TestsUtils.{RuleCheckAssertion, *}
 import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import java.security.Key
-import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class RorKbnAuthorizationRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+  extends AnyWordSpec with BlockContextAssertion {
 
   "A RorKbnAuthorizationRule" should {
     "match" when {
@@ -61,10 +58,10 @@ class RorKbnAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "token has valid RS256 signature" in {
@@ -82,10 +79,10 @@ class RorKbnAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (no preferred group)" in {
@@ -107,10 +104,10 @@ class RorKbnAuthorizationRuleTests
           tokenHeader = bearerHeader(jwt)
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty (with preferred group)" in {
@@ -133,10 +130,10 @@ class RorKbnAuthorizationRuleTests
           preferredGroupId = Some(GroupId("group2"))
         ) {
           blockContext =>
-            assertBlockContext(
+            assertBlockContext(blockContext)(
               currentGroup = Some(GroupId("group2")),
               availableGroups = UniqueList.of(group("group2")),
-            )(blockContext)
+            )
         }
       }
       "groups OR logic is used" when {
@@ -159,10 +156,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
-              )(blockContext)
+              )
           }
         }
         "at least one allowed group matches the JWT groups (2)" in {
@@ -184,10 +181,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group2")),
                 availableGroups = UniqueList.of(group("group2")),
-              )(blockContext)
+              )
           }
         }
       }
@@ -211,10 +208,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
-              )(blockContext)
+              )
           }
         }
         "all allowed groups match the JWT groups (2)" in {
@@ -236,10 +233,10 @@ class RorKbnAuthorizationRuleTests
             tokenHeader = bearerHeader(jwt)
           ) {
             blockContext =>
-              assertBlockContext(
+              assertBlockContext(blockContext)(
                 currentGroup = Some(GroupId("group3")),
                 availableGroups = UniqueList.of(group("group3"), group("group2")),
-              )(blockContext)
+              )
           }
         }
       }
@@ -258,7 +255,8 @@ class RorKbnAuthorizationRuleTests
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt2)
+          tokenHeader = bearerHeader(jwt2),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "token has invalid RS256 signature" in {
@@ -274,7 +272,8 @@ class RorKbnAuthorizationRuleTests
             SignatureCheckMethod.Rsa(pub)
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "groups aren't passed in JWT token claim while some groups are defined in settings" in {
@@ -293,7 +292,8 @@ class RorKbnAuthorizationRuleTests
               UniqueNonEmptyList.of(GroupId("g1"))
             )
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("Groups claim not found in ROR Kibana token")
         )
       }
       "rule groups are defined with 'or' logic and intersection between those groups and ROR Kbn ones is empty" in {
@@ -312,7 +312,8 @@ class RorKbnAuthorizationRuleTests
               UniqueNonEmptyList.of(GroupId("group3"), GroupId("group4")),
             )
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "rule groups are defined with 'and' logic and intersection between those groups and ROR Kbn ones is empty" in {
@@ -331,7 +332,8 @@ class RorKbnAuthorizationRuleTests
               UniqueNonEmptyList.of(GroupId("group2"), GroupId("group3")),
             )
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = GroupsAuthorizationFailed("None of the user's groups match the configured groups")
         )
       }
       "preferred group is not on the groups list from JWT" in {
@@ -347,7 +349,8 @@ class RorKbnAuthorizationRuleTests
           ),
           groupsLogic = GroupsLogic.NotAnyOf(GroupIds(UniqueNonEmptyList.of(GroupId("not-used-group")))),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group5"))
+          preferredGroupId = Some(GroupId("group5")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
       "preferred group is not on the permitted groups list" in {
@@ -367,7 +370,8 @@ class RorKbnAuthorizationRuleTests
             )
           ),
           tokenHeader = bearerHeader(jwt),
-          preferredGroupId = Some(GroupId("group5"))
+          preferredGroupId = Some(GroupId("group5")),
+          denialCause = GroupsAuthorizationFailed("Current group is not allowed")
         )
       }
     }
@@ -378,39 +382,34 @@ class RorKbnAuthorizationRuleTests
                               tokenHeader: Header,
                               preferredGroupId: Option[GroupId] = None)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
                                  groupsLogic: GroupsLogic,
                                  tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, blockContextAssertion = None)
+                                 preferredGroupId: Option[GroupId] = None,
+                                 denialCause: Cause): Unit =
+    assertRule(configuredRorKbnDef, groupsLogic, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
                          groupsLogic: GroupsLogic,
                          tokenHeader: Header,
                          preferredGroupId: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
+                         assertion: RuleCheckAssertion): Unit = {
     val rule = new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(configuredRorKbnDef, groupsLogic))
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
-      allAllowedIndices = Set.empty
+      allAllowedIndices = Set.empty,
+      allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Fulfilled(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Rejected())
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
 }

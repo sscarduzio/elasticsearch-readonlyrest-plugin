@@ -42,6 +42,6 @@ class TransportRRAuditEventAction(transportService: TransportService,
 
   override def doExecute(task: Task, request: RRAuditEventRequest,
                          listener: ActionListener[RRAuditEventResponse]): Unit = {
-    RRAuditEventActionHandler.handle(request, listener)
+    RRAuditEventActionHandler.handle(listener)
   }
 }

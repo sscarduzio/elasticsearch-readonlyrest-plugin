@@ -19,7 +19,7 @@ package tech.beshu.ror.es.dlsfls
 import java.io.ByteArrayOutputStream
 import java.util.{Iterator => JavaIterator}
 import com.google.common.collect.Iterators
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.apache.lucene.index.StoredFieldVisitor.Status
 import org.apache.lucene.index.*
 import org.apache.lucene.util.Bits
@@ -36,21 +36,21 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 private class RorDocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)
-  extends FilterLeafReader(reader) with Logging {
+  extends FilterLeafReader(reader) with RequestIdAwareLogging {
 
   private val policy = new FieldsPolicy(fieldsRestrictions)
   private val remainingFieldsInfo = {
     val fInfos = in.getFieldInfos
     val newInfos = if (fInfos.asScala.isEmpty) {
-      logger.warn("original fields were empty! This is weird!")
+      noRequestIdLogger.warn("original fields were empty! This is weird!")
       fInfos
     } else {
       val remainingFields = fInfos.asScala.filter(f => policy.canKeep(f.name)).toSet
       new FieldInfos(remainingFields.toArray)
     }
-    logger.debug(s"always allow: ${constants.FIELDS_ALWAYS_ALLOW.mkString(",")}")
-    logger.debug(s"original fields were: ${fInfos.asScala.map(_.name).mkString(",")}")
-    logger.debug(s"new fields are: ${newInfos.asScala.map(_.name).mkString(",")}")
+    noRequestIdLogger.debug(s"always allow: ${constants.FIELDS_ALWAYS_ALLOW.mkString(",")}")
+    noRequestIdLogger.debug(s"original fields were: ${fInfos.asScala.map(_.name).mkString(",")}")
+    noRequestIdLogger.debug(s"new fields are: ${newInfos.asScala.map(_.name).mkString(",")}")
     newInfos
   }
   private val jsonPolicyBasedFilterer = new JsonPolicyBasedFilterer(policy)

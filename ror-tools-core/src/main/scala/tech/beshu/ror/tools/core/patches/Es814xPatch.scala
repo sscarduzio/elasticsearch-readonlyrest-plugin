@@ -22,9 +22,13 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationChain
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyBootstrapPolicyUtilClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{ModifyApplicationPermissionClass, ModifyAuthorizationServiceClass, ModifySimpleRoleClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifyCreateComponentsInSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, ModifyRepositoriesServiceClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
@@ -32,29 +36,38 @@ import scala.language.postfixOps
 
 private[patches] class Es814xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
+    ElasticsearchJarPatchCreator(
       OpenModule,
-      new ModifyBootstrapPolicyUtilClass(esVersion, NonEmptyList.of(
+      ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
         createClassLoaderRuntimePermission, getPropertySecurityPermission
       )),
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+      CreateApiKeyServiceBridgeClass,
+      CreateServiceAccountServiceBridgeClass,
+      ModifyRepositoriesServiceClass(esVersion)
     ),
-    new RorSecurityPolicyPatchCreator(
+    RorSecurityPolicyPatchCreator(
       AddAdditionalPermissions(NonEmptyList.of(
-        createClassLoaderRuntimePermission, getPropertySecurityPermission)
-      ),
+        createClassLoaderRuntimePermission, getPropertySecurityPermission
+      )),
     ),
-    new XPackCoreJarPatchCreator(
+    XPackCoreJarPatchCreator(
       OpenModule,
-      DisabledAsyncSearchSecurity
+      ModifySimpleRoleClass,
+      ModifyApplicationPermissionClass,
+      ModifyAsyncSearchSecurityClass,
+      ModifySecurityContextClass,
     ),
-    new XPackSecurityJarPatchCreator(
+    XPackSecurityJarPatchCreator(
       OpenModule,
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      new DummyAuthenticationInAuthenticationChain(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+      ModifyCreateComponentsInSecurityClass,
+      CreateRorAuthorizationInfoProviderClass(esVersion),
+      ModifyAuthenticationChainClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
+      ModifySecurityClass,
     ),
-    new XPackIlmJarPatchCreator(
+    XPackIlmJarPatchCreator(
       OpenModule
     )
   )

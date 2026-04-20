@@ -33,11 +33,6 @@ object XPackSecurityAuthenticationHeader {
     getAuthenticationHeaderValue(nodeName, "_xpack", isInternal = false)
   )
 
-  def createXpackSecurityAuthenticationHeader(nodeName: String) = new Header(
-    Header.Name(nes("_xpack_security_authentication")),
-    getAuthenticationHeaderValue(nodeName, "_xpack_security", isInternal = true)
-  )
-
   def createSystemAuthenticationHeader(nodeName: String) = new Header(
     Header.Name(nes("_xpack_security_authentication")),
     getAuthenticationHeaderValue(nodeName, "_system", isInternal = true)
@@ -48,10 +43,13 @@ object XPackSecurityAuthenticationHeader {
     val currentVersion = Version.CURRENT
     output.setVersion(currentVersion)
     Version.writeVersion(currentVersion, output)
+    // Internal user flag
     output.writeBoolean(isInternal)
-    if(isInternal) {
+    if (isInternal) {
+      // Internal users only need their name
       output.writeString(userName)
     } else {
+      // Regular User.writeUser format: name, roles, metadata, fullName, email, enabled, runAs
       output.writeString(userName)
       output.writeStringArray(Array("superuser"))
       output.writeGenericMap(Map.empty[String, AnyRef].asJava)
@@ -60,17 +58,18 @@ object XPackSecurityAuthenticationHeader {
       output.writeBoolean(true)
       output.writeBoolean(false)
     }
+    // Authenticating realm: nodeName as realm reference, "__attach" as realm type and name
     output.writeString(nodeName)
     output.writeString("__attach")
     output.writeString("__attach")
-    if(output.getVersion.onOrAfter(Version.V_8_2_0)) {
-      output.writeBoolean(false)
-    }
+    // Realm domain flag (ES 8.2.0+)
     output.writeBoolean(false)
-    if (output.getVersion.onOrAfter(Version.V_7_0_0)) {
-      output.writeVInt(4) // Internal
-      output.writeGenericMap(Map.empty[String, Object].asJava)
-    }
+    // Lookup realm present flag
+    output.writeBoolean(false)
+    // Authentication type: INTERNAL = 4
+    output.writeVInt(4)
+    // Metadata: empty map
+    output.writeGenericMap(Map.empty[String, Object].asJava)
     NonEmptyString.unsafeFrom {
       Base64.getEncoder.encodeToString(BytesReference.toBytes(output.bytes()))
     }

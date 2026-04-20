@@ -23,15 +23,14 @@ import monix.execution.Scheduler
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -46,20 +45,20 @@ import scala.jdk.CollectionConverters.*
 
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
-                               clusterService: RorClusterService,
                                override val threadPool: ThreadPool)
                               (implicit scheduler: Scheduler)
-  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
   private val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(actionRequest),
+    indexPacks = discoveredIndexPacks,
     filter = None,
     fieldLevelSecurity = None,
     requestFieldsUsage = requestFieldsUsage
@@ -70,6 +69,15 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     actionRequest
       .getItems.asScala
       .flatMap(indexAttributesFrom)
+      .toCovariantSet
+  }
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks
+      .flatMap {
+        case Indices.Found(indices) => indices
+        case Indices.NotFound => Set.empty
+      }
       .toCovariantSet
   }
 
@@ -90,6 +98,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       ShouldBeInterrupted
     }
   }
+
+  private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
 
   private def indexPacksFrom(request: MultiGetRequest): List[Indices] = {
     request
@@ -120,7 +130,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       case Nil => updateItemWithNonExistingIndex(item)
       case index :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+          logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
         }
         item.index(index.stringify)
     }
@@ -128,7 +138,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def updateItemWithNonExistingIndex(item: MultiGetRequest.Item): Unit = {
     val originRequestIndices = requestedIndicesFrom(item).toList
-    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
+    val notExistingIndex = originRequestIndices.randomNonexistentLocalIndex()
     item.index(notExistingIndex.stringify)
   }
 
@@ -155,10 +165,10 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
     NonEmptyList.fromList(identifyDocumentsToVerifyUsing(originalResponses)) match {
       case Some(existingDocumentsToVerify) =>
-        clusterService.verifyDocumentsAccessibilities(existingDocumentsToVerify, definedFilter, id)
-          .map { results =>
-            prepareNewResponse(originalResponses, results)
-          }
+        esContext
+          .esServices.clusterService
+          .verifyDocumentsAccessibility(existingDocumentsToVerify, definedFilter)
+          .map { results => prepareNewResponse(originalResponses, results) }
       case None =>
         Task.now(response)
     }

@@ -13,7 +13,7 @@ for ((i = 1; i < $#; i++)); do
   FILE="${!i}"
 
   echo "Uploading $FILE to $DEST ..."
-  upload "$FILE" "$DEST"
+  upload_using_deltaglider_uploader "$FILE" "$DEST"
 done
 
 echo "DONE"

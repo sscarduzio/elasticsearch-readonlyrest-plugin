@@ -71,3 +71,33 @@ object KibanaAccess {
 
   implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
 }
+
+sealed trait RorKbnLicenseType
+object RorKbnLicenseType {
+  case object Free extends RorKbnLicenseType
+  case object Pro extends RorKbnLicenseType
+  final case class Enterprise(multiTenancyEnabled: Boolean) extends RorKbnLicenseType
+
+  type CreationError = Unit
+
+  def from(value: String): Either[CreationError, RorKbnLicenseType] = {
+    value.toLowerCase match {
+      case "free" => Right(RorKbnLicenseType.Free)
+      case "pro" => Right(RorKbnLicenseType.Pro)
+      case "ent" => Right(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true))
+      case "ent-disabled-multitenancy" => Right(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false))
+      case _ => Left(())
+    }
+  }
+
+  extension (licenseType: RorKbnLicenseType) {
+    def isEnterprise: Boolean = licenseType match {
+      case RorKbnLicenseType.Enterprise(_) => true
+      case _ => false
+    }
+    def isProOrEnterprise: Boolean = licenseType match {
+      case RorKbnLicenseType.Pro | RorKbnLicenseType.Enterprise(_) => true
+      case _ => false
+    }
+  }
+}

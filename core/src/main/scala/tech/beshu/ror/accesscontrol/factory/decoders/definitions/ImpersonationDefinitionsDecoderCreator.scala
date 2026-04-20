@@ -30,8 +30,9 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureOps}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureUtils}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -40,7 +41,8 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
                                              authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                              authProxyDefinitions: Definitions[ProxyAuth],
                                              ldapDefinitions: Definitions[LdapService],
-                                             mocksProvider: MocksProvider) {
+                                             mocksProvider: MocksProvider,
+                                             esEnv: EsEnv) {
 
   def create: ADecoder[Id, Definitions[ImpersonatorDef]] = {
     implicit val decoder: SyncDecoder[ImpersonatorDef] = SyncDecoderCreator.from(impersonationDefDecoder)
@@ -92,7 +94,8 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
             ldapDefinitions,
             impersonatorsDefinitions = None,
             mocksProvider,
-            globalSettings
+            globalSettings,
+            esEnv
           ) match {
           case Some(decoder) =>
             ruleDecoders
@@ -117,6 +120,6 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
   }
 
   private def decodingFailure(message: Message) = {
-    DecodingFailureOps.fromError(DefinitionsLevelCreationError(message))
+    DecodingFailureUtils.decodingFailureFrom(DefinitionsLevelCreationError(message))
   }
 }

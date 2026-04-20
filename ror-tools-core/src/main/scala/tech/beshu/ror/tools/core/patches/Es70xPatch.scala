@@ -20,26 +20,32 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.base.SimpleEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.DummyAuthenticationInAuthenticationServiceAuthenticator
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.DummyAuthorizeInAuthorizationService
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.AlwaysGrantApplicationPermission
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyApplicationPermissionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityContextGetAuthenticationClass, ModifySecurityServerTransportInterceptorClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
 
 import scala.language.postfixOps
 
 private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
   extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    new ElasticsearchJarPatchCreator(
-      new RepositoriesServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion),
-      new SnapshotsServiceAvailableForClusterServiceForAnyTypeOfNode(esVersion)
+    ElasticsearchJarPatchCreator(
+      ModifyRepositoriesServiceClass(esVersion),
+      ModifySnapshotsServiceClass(esVersion)
     ),
-    new OptionalXPackCoreJarPatchCreator(
-      AlwaysGrantApplicationPermission,
+    OptionalXPackCoreJarPatchCreator(
+      ModifyApplicationPermissionClass,
+      ModifySecurityContextGetAuthenticationClass,
     ),
-    new OptionalXPackSecurityJarPatchCreator(
-      DeactivateGetRequestCacheKeyDifferentiatorInSecurity,
-      DeactivateSecurityServerTransportInterceptor,
-      new DummyAuthenticationInAuthenticationServiceAuthenticator(esVersion),
-      new DummyAuthorizeInAuthorizationService(esVersion),
+    OptionalXPackSecurityJarPatchCreator(
+      CreateRorAuthorizationInfoProviderClass(esVersion),
+      ModifyAuthenticationServiceAuthenticatorClass(esVersion),
+      ModifyAuthorizationServiceClass(esVersion),
+      ModifyRBACEngineClass,
+      ModifyRestHasPrivilegesActionClass,
+      ModifySecurityClass,
+      ModifySecurityServerTransportInterceptorClass,
     )
   )

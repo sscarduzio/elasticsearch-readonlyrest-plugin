@@ -1,4 +1,5 @@
 variables:
+  system.debug: 'true'
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
@@ -56,14 +57,26 @@ stages:
       - job:
         steps:
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key 
-              ci/upload_es_artifacts.sh
+              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+              export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
+              export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+
+              ci/upload-es-artifacts.sh
             continueOnError: true
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
+              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
+              VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
 
   - stage: GRADLE_WARMUP
     displayName: 'Warm up Gradle cache'
@@ -168,14 +181,14 @@ stages:
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition: 
+    condition:
       and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), 
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), 
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
+        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
-      - job: 
+      - job:
         container: eclipse-temurin:17-jdk
         steps:
           - checkout: self
@@ -192,10 +205,17 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
         strategy:
           maxParallel: 99
           matrix:
@@ -246,15 +266,9 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               ROR_TASK: core_tests
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
           - task: PublishTestResults@2
@@ -281,36 +295,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -338,36 +323,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -423,36 +379,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -498,36 +425,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -551,36 +449,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -608,36 +477,7 @@ stages:
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -668,31 +508,7 @@ stages:
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-              Write-Host ">>> $env:ES_MODULE"
-              .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-              if ($LASTEXITCODE -ne 0) {
-                Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                  Get-Content $_.FullName
-                }
-                exit 1
-              }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -725,31 +541,7 @@ stages:
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -773,31 +565,7 @@ stages:
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -906,7 +674,6 @@ stages:
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
 
-
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
@@ -939,15 +706,9 @@ stages:
           - script: |
               set -e
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
               echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:
@@ -1002,13 +763,17 @@ stages:
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 600
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -1021,16 +786,34 @@ stages:
           - script: |
               set -e
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
+              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+              export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
+              export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
+        
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
+              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
+              VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
         strategy:
@@ -1062,7 +845,6 @@ stages:
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
         timeoutInMinutes: 180
         steps:
           - checkout: self
@@ -1070,6 +852,11 @@ stages:
             clean: false
             persistCredentials: true
             timeoutInMinutes: 180
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -1086,11 +873,15 @@ stages:
               apt-get update && apt-get install -y git file
               git status && echo ">>> Git installed correctly!"
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
+              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
+              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+              export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
+              export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
-              export DOCKER=docker
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
                 exit 1
@@ -1099,8 +890,14 @@ stages:
               echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
+              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
+              VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
@@ -1134,12 +931,16 @@ stages:
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
           - task: Cache@2
             displayName: 'Restore Gradle cache'
             inputs:
@@ -1219,7 +1020,6 @@ stages:
           - script: |
               set -ex
 
-              export DOCKER=docker
               docker login -u $var_docker_registry_user -p $var_docker_registry_password
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"

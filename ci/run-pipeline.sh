@@ -4,6 +4,37 @@ source "$(dirname "$0")/ci-lib.sh"
 
 trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
 
+log_disk_usage() {
+  local label="${1:-}"
+  echo "=== Disk usage ($label) ==="
+  df -h / || true
+  df -i / || true
+
+  echo "--- Docker ---"
+  docker system df || true
+  docker ps -a || true
+  docker volume ls || true
+
+  echo "--- Workspace build dirs ---"
+  du -sh */build 2>/dev/null || true
+
+  echo "--- Temp dirs ---"
+  du -sh /tmp 2>/dev/null || true
+  find /tmp -maxdepth 1 -type d -name 'deltaglider-*' -exec du -sh {} + 2>/dev/null || true
+
+  echo "--- Gradle ---"
+  du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
+
+  echo "=== End disk usage ==="
+}
+
+cleanup_docker_and_build() {
+  docker ps -aq | xargs -r docker rm -f || true
+  docker builder prune -af || true
+  docker system prune -af --volumes || true
+  find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+}
+
 echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
 
 # Log file friendly Gradle output
@@ -276,7 +307,21 @@ release_ror_plugins() {
   local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
   while IFS= read -r version || [[ -n "$version" ]]; do
-    time release_ror_plugin "$ROR_VERSION" "$version"
+    local attempt
+    for attempt in 1 2 3; do
+      if time release_ror_plugin "$ROR_VERSION" "$version"; then
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        echo "WARN: release_ror_plugin failed for ES $version (attempt $attempt/3), retrying after cleanup..."
+        log_disk_usage "before retry cleanup (attempt $attempt)"
+        cleanup_docker_and_build
+        log_disk_usage "after retry cleanup (attempt $attempt)"
+      else
+        echo "ERROR: release_ror_plugin failed for ES $version after 3 attempts"
+        return 1
+      fi
+    done
   done <"$ROR_VERSIONS_FILE"
 }
 
@@ -294,7 +339,7 @@ release_ror_plugin() {
     return 2
   fi
 
-  if ! $DOCKER info >/dev/null 2>&1; then
+  if ! docker info >/dev/null 2>&1; then
     echo "Docker daemon not running or not logged in"
     return 3
   fi
@@ -321,8 +366,11 @@ release_ror_plugin() {
     fi
 
     tag "$TAG"
-    $DOCKER system prune -fa
   fi
+
+  # Clean up after every version to prevent disk space exhaustion
+  log_disk_usage "after release of ES $ES_VERSION"
+  cleanup_docker_and_build
 }
 
 public_ror_prebuild_plugin() {
@@ -338,7 +386,7 @@ public_ror_prebuild_plugin() {
     return 2
   fi
 
-  if ! $DOCKER info >/dev/null 2>&1; then
+  if ! docker info >/dev/null 2>&1; then
     echo "Docker daemon not running or not logged in"
     return 3
   fi
@@ -351,7 +399,7 @@ public_ror_prebuild_plugin() {
     return 4
   fi
 
-  $DOCKER system prune -fa
+  docker system prune -fa
 }
 
 if [[ $ROR_TASK == "release_es9xx" ]]; then

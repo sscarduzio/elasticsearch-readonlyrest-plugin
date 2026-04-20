@@ -17,18 +17,21 @@
 package tech.beshu.ror.unit.acl.factory.decoders.rules.auth
 
 import cats.data.NonEmptyList
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.GroupMappings.Advanced.Mapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.StaticToken
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.{BaseGroupsRule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableGroupsLogic}
@@ -46,7 +49,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[BaseGroupsRule[GroupsLogic]]
-    with Inside
+    with Inside with MockFactory
     with ScalaCheckPropertyChecks {
 
   private val simpleSyntaxTestParams = Table[String, GroupIds => GroupsLogic](
@@ -255,7 +258,7 @@ class GroupsRuleSettingsTests
                   localGroups should be(UniqueNonEmptyList.of(group("group2"), group("group4")))
                   authRule shouldBe an[TokenAuthenticationRule]
                   authRule.asInstanceOf[TokenAuthenticationRule].settings should be {
-                    TokenAuthenticationRule.Settings(userId("morgan"), Token("Bearer abc123XYZ"), Header.Name.authorization)
+                    TokenAuthenticationRule.Settings(userId("morgan"), StaticToken(anyTokenDef, authorizationTokenFrom("Bearer abc123XYZ")))
                   }
                 }
               }
@@ -1583,7 +1586,7 @@ class GroupsRuleSettingsTests
     }
   }
 
-  forAll(extendedSyntaxTestParams) { (extendedSyntaxName, creator) =>
+  forAll(extendedSyntaxTestParams) { (extendedSyntaxName, _) =>
     s"A GroupsRule settings test for $extendedSyntaxName extended syntax" should {
       "correctly parse and use extended syntax" in {
         assertDecodingSuccess(
@@ -1623,13 +1626,14 @@ class GroupsRuleSettingsTests
     }
   }
 
-  private def currentUserMetadataRequestBlockContextFrom(update: UserMetadata => UserMetadata = identity,
+  private def currentUserMetadataRequestBlockContextFrom(update: BlockMetadata => BlockMetadata = identity,
                                                          requestContext: MockUserMetadataRequestContext = MockRequestContext.metadata) = {
-    CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      update(UserMetadata.from(requestContext)),
-      syntax.Set.empty,
-      List.empty
+    UserMetadataRequestBlockContext(
+      block = mock[Block],
+      requestContext = requestContext,
+      blockMetadata = update(BlockMetadata.from(requestContext)),
+      responseHeaders = syntax.Set.empty,
+      responseTransformations = List.empty
     )
   }
 }

@@ -24,15 +24,20 @@ import org.elasticsearch.node.Node
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 
 object EsEnvProvider {
+
   def create(environment: Environment): EsEnv = {
     val settings = environment.settings()
+    val modulesDir = File(environment.modulesFile())
     EsEnv(
       configDir = File(environment.configFile()),
-      modulesDir = File(environment.configFile()),
+      modulesDir = modulesDir,
       esVersion = EsVersion(major = Version.CURRENT.major, minor = Version.CURRENT.minor, revision = Version.CURRENT.revision),
       esNodeSettings = EsNodeSettings(
         nodeName = Node.NODE_NAME_SETTING.get(settings),
         clusterName = ClusterName.CLUSTER_NAME_SETTING.get(settings).value(),
+        xpackSecurityEnabled =
+          if (EsEnv.isOssDistribution(modulesDir)) false
+          else settings.get("xpack.security.enabled", "true").toBoolean
       ),
     )
   }

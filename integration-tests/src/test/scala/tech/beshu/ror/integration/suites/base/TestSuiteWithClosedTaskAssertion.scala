@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import scala.util.{Failure, Success, Try}
 
 trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomScalaTestMatchers {
-  this: MultipleClients with MultipleEsTargets with ESVersionSupport =>
+  this: MultipleClients & MultipleEsTargets & ESVersionSupport =>
 
   private lazy val adminCatManager = new CatManager(
     clients.head.basicAuthClient("admin", "container"),

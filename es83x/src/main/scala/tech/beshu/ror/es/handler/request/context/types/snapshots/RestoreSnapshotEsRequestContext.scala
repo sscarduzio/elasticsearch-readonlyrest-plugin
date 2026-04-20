@@ -23,14 +23,14 @@ import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotR
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.RequestedIndex.*
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestId, RequestedIndex, SnapshotName}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseSnapshotEsRequestContext
+import tech.beshu.ror.es.services.EsClusterService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
@@ -40,9 +40,8 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
                                               requestedSnapshot: SnapshotName.Full,
                                               requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                               esContext: EsContext,
-                                              clusterService: RorClusterService,
                                               override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[SnapshotName] =
     Set(requestedSnapshot)
@@ -63,7 +62,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -75,7 +74,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
+          logger.warn(s"Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.show}]")
         }
         Right(snapshot)
     }
@@ -88,7 +87,7 @@ class RestoreSnapshotEsRequestContext private(actionRequest: RestoreSnapshotRequ
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+          logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
         }
         Right(repository)
     }
@@ -114,19 +113,19 @@ object RestoreSnapshotEsRequestContext {
 
   def create(actionRequest: RestoreSnapshotRequest,
              esContext: EsContext,
-             clusterService: RorClusterService,
-             threadPool: ThreadPool): Task[RestoreSnapshotEsRequestContext] = {
+             threadPool: ThreadPool)
+            (implicit id: RequestContext.Id): Task[RestoreSnapshotEsRequestContext] = {
+    given RequestId = id.toRequestId
     for {
       requestedRepository <- Task(repositoryFrom(actionRequest))
       requestedSnapshot <- Task(snapshotFrom(actionRequest))
-      requestedIndices <- requestedIndicesFrom(actionRequest, requestedRepository, requestedSnapshot, clusterService)
+      requestedIndices <- requestedIndicesFrom(actionRequest, requestedRepository, requestedSnapshot, esContext.esServices.clusterService)
     } yield RestoreSnapshotEsRequestContext(
       actionRequest,
       requestedRepository,
       requestedSnapshot,
       requestedIndices,
       esContext,
-      clusterService,
       threadPool
     )
   }
@@ -156,7 +155,8 @@ object RestoreSnapshotEsRequestContext {
   private def requestedIndicesFrom(request: RestoreSnapshotRequest,
                                    repository: RepositoryName.Full,
                                    snapshot: SnapshotName.Full,
-                                   clusterService: RorClusterService) = {
+                                   clusterService: EsClusterService)
+                                  (implicit rid: RequestId) = {
     clusterService
       .snapshotIndices(repository, snapshot)
       .map(_.filterBy(indicesFrom(request)))

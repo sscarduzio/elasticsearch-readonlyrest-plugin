@@ -18,30 +18,32 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex, TemplateOperation}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
 import tech.beshu.ror.syntax.*
 
 abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOperation](actionRequest: R,
                                                                                          esContext: EsContext,
-                                                                                         clusterService: RorClusterService,
                                                                                          override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[TemplateRequestBlockContext](esContext, clusterService)
+  extends BaseEsRequestContext[TemplateRequestBlockContext](esContext)
     with EsRequest[TemplateRequestBlockContext] {
 
   protected def templateOperationFrom(actionRequest: R): T
 
-  override val initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
+  override def initialBlockContext(block: Block): TemplateRequestBlockContext = TemplateRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
     templateOperation = templateOperationFrom(actionRequest),
     responseTemplateTransformation = identity,
     allAllowedIndices = Set.empty
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 }

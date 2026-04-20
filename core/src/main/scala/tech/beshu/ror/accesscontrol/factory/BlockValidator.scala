@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.*
 import cats.data.Validated.*
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -33,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith, RuleDoesNotMeetRequirement}
 import tech.beshu.ror.implicits.*
 
-object BlockValidator extends Logging {
+object BlockValidator {
 
   def validate(blockName: Block.Name,
                rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
@@ -174,8 +173,8 @@ object BlockValidator extends Logging {
   private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])
                                                (ruleDefinition: RuleDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
     ruleDefinition match {
-      case RuleDefinition(_, NotUsingVariable(), _, _) => Validated.Valid(())
-      case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _, _) =>
+      case RuleDefinition(_, NotUsingVariable(), _) => Validated.Valid(())
+      case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _) =>
         val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
         allNonCompliantResults match {
           case Nil => Validated.Valid(())

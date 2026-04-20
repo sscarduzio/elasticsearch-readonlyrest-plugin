@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.UpdateResponse
@@ -39,9 +38,8 @@ import tech.beshu.ror.syntax.*
 class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                           esContext: EsContext,
                                           aclContext: AccessControlStaticContext,
-                                          clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
@@ -79,7 +77,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
           request
         }
       case Left(ClassificationError.ParsingException(ex)) =>
-        logger.debug(s"[${id.show}] Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:", ex)
+        logger.debug(s"Cannot parse ESQL statement - we can pass it though, because ES is going to reject it. Cause:", ex)
         request
     }
   }
@@ -90,7 +88,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
       case Some(definedFields) =>
         definedFields.strategy match {
           case FlsAtLuceneLevelApproach =>
-            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, id)
+            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions)
             request
           case BasedOnBlockContextOnly.NotAllowedFieldsUsed(_) | BasedOnBlockContextOnly.EverythingAllowed =>
             request
@@ -125,7 +123,6 @@ object EsqlIndicesEsRequestContext {
         arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
         arg.esContext,
         arg.aclContext,
-        arg.clusterService,
         arg.threadPool
       ))
     } else {

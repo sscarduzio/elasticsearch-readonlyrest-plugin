@@ -31,6 +31,7 @@ trait AuditRequestContext {
   def requestHeaders: Headers
   def uriPath: String
   def history: String
+  def blocksHistory: Map[String, (Boolean, Option[String])] = Map.empty // block name -> (matched, forbidden cause)
   def content: String
   def contentLength: Integer
   def remoteAddress: String
@@ -45,4 +46,5 @@ trait AuditRequestContext {
   def rawAuthHeader: Option[String]
   def generalAuditEvents: JSONObject
   def auditEnvironmentContext: AuditEnvironmentContext
+  def matchedBlockNames: Option[List[String]]
 }

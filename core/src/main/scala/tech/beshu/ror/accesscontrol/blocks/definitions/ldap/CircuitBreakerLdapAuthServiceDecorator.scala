@@ -20,11 +20,11 @@ import cats.Show
 import cats.implicits.toShow
 import monix.catnap.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class CircuitBreakerLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticationService,
@@ -32,7 +32,8 @@ class CircuitBreakerLdapAuthenticationServiceDecorator(val underlying: LdapAuthe
   extends LdapAuthenticationService
     with LdapCircuitBreaker {
 
-  override def authenticate(user: User.Id, secret: domain.PlainTextSecret)(implicit requestId: RequestId): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: PlainTextSecret)
+                           (implicit requestId: RequestId): Task[AuthenticationResult] = {
     protect(
       underlying.authenticate(user, secret)
     )
@@ -113,7 +114,7 @@ class CircuitBreakerLdapUsersServiceDecorator(val underlying: LdapUsersService,
   override def serviceTimeout: PositiveFiniteDuration = underlying.serviceTimeout
 }
 
-trait LdapCircuitBreaker extends Logging {
+trait LdapCircuitBreaker extends RequestIdAwareLogging {
   this: LdapService =>
 
   protected def circuitBreakerConfig: CircuitBreakerConfig
@@ -126,16 +127,16 @@ trait LdapCircuitBreaker extends Logging {
         maxFailures = maxFailures.value,
         resetTimeout = resetDuration.value,
         onRejected = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker rejected task (Open or HalfOpen state)")
+          noRequestIdLogger.debug(s"LDAP ${id.show} circuit breaker rejected task (Open or HalfOpen state)")
         },
         onClosed = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker is accepting tasks again (switched to Close state)")
+          noRequestIdLogger.debug(s"LDAP ${id.show} circuit breaker is accepting tasks again (switched to Close state)")
         },
         onHalfOpen = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker accepted one task for testing (switched to HalfOpen state)")
+          noRequestIdLogger.debug(s"LDAP ${id.show} circuit breaker accepted one task for testing (switched to HalfOpen state)")
         },
         onOpen = Task {
-          logger.debug(s"LDAP ${id.show} circuit breaker rejected task (switched to Open state)")
+          noRequestIdLogger.debug(s"LDAP ${id.show} circuit breaker rejected task (switched to Open state)")
         }
       )
   }

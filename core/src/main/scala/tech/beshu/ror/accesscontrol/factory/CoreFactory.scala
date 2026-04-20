@@ -20,21 +20,16 @@ import cats.data.{NonEmptyList, State, Validated}
 import cats.kernel.Monoid
 import io.circe.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.{LocalUsersSupport, localUsersMonoid}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
@@ -50,6 +45,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, G
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -71,7 +67,7 @@ trait CoreFactory {
 
 class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                                     (implicit systemContext: SystemContext)
-  extends CoreFactory with Logging {
+  extends CoreFactory with RequestIdAwareLogging {
 
   override def createCoreFrom(rorSettings: RawRorSettings,
                               rorSettingsIndex: RorSettingsIndex,
@@ -152,14 +148,15 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings,
-                              mocksProvider: MocksProvider): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
+                              mocksProvider: MocksProvider,
+                              esEnv: EsEnv): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider).map {
+          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider, esEnv).map {
             case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
             case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
             case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
@@ -176,23 +173,24 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             case Some(rules) =>
               Right(rules)
             case None =>
-              Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"No rules defined in block"))))
+              Left(decodingFailureFrom(RulesLevelCreationError(Message(s"No rules defined in block"))))
           }
         }
       case Validated.Invalid(unknownRules) =>
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Unknown rules: ${unknownRules.show}"))))
+        Left(decodingFailureFrom(RulesLevelCreationError(Message(s"Unknown rules: ${unknownRules.show}"))))
     }
   }
 
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
                                         globalSettings: GlobalSettings,
-                                        mocksProvider: MocksProvider): State[ACursor, RuleDecodingResult] = {
+                                        mocksProvider: MocksProvider,
+                                        esEnv: EsEnv): State[ACursor, RuleDecodingResult] = {
     State(cursor => {
       if (!cursor.keys.toList.flatten.contains(name)) {
         (cursor, RuleDecodingResult.Skipped)
       } else {
-        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider) match {
+        ruleDecoderBy(Rule.Name(name), definitions, globalSettings, mocksProvider, esEnv) match {
           case Some(decoder) =>
             decoder.tryDecode(cursor) match {
               case Right(RuleDecoder.Result(rule, unconsumedCursor)) =>
@@ -209,7 +207,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private def blockDecoder(definitions: DefinitionsPack,
                            globalSettings: GlobalSettings,
-                           mocksProvider: MocksProvider)
+                           mocksProvider: MocksProvider,
+                           esEnv: EsEnv)
                           (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
@@ -238,7 +237,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
           audit <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
-          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider)
+          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, esEnv)
             .toSyncDecoder
             .decoder
             .tryDecode(c.withFocus(
@@ -249,10 +248,10 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .remove(Attributes.Block.audit)
               )
             ))
-          block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(DecodingFailureOps.fromError(_))
+          block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
-          localUsers = rules.map(localUsersForRule).combineAll,
+          localUsers = LocalUsers.from(block),
           impersonationWarnings = new BlockImpersonationWarningsReader(block.name, rules)
         )
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
@@ -291,7 +290,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             policy <- policyType match {
               case "allow" => Right(Block.Policy.Allow)
               case "forbid" => c.downFieldAs[Option[String]]("response_message").map(Block.Policy.Forbid.apply)
-              case unknown => Left(DecodingFailureOps.fromError(unknownTypeError(unknown)))
+              case unknown => Left(decodingFailureFrom(unknownTypeError(unknown)))
             }
           } yield policy
         }
@@ -305,13 +304,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         case Some(f) if f.isObject => extendedPolicyDecoder(c)
         case Some(_) | None => Left(DecodingFailure("Malformed block policy type", c.history))
       }
-    }
-  }
-
-  private def localUsersForRule[R <: Rule](rule: RuleDefinition[R]) = {
-    rule.localUsersSupport match {
-      case users: LocalUsersSupport.AvailableLocalUsers[R] => users.definedLocalUsers(rule.rule)
-      case LocalUsersSupport.NotAvailableLocalUsers() => LocalUsers.empty
     }
   }
 
@@ -332,24 +324,25 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
-        authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
+        externalGroupsProviderServices <- AsyncDecoderCreator.from(ExternalGroupsProviderServicesDecoder.instance(httpClientFactory))
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, variableCreator))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(using ldapConnectionPoolProvider, systemContext.clock)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
-          globalSettings, authenticationServices, authProxies, ldapServices, mocksProvider
+          globalSettings, authenticationServices, authProxies, ldapServices, mocksProvider, esEnv
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(
           authenticationServices,
-          authorizationServices,
+          externalGroupsProviderServices,
           authProxies,
           jwtDefs,
           rorKbnDefs,
           ldapServices,
           Some(impersonationDefs),
           mocksProvider,
-          globalSettings
+          globalSettings,
+          esEnv
         ))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocksNel <- {
@@ -360,7 +353,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 proxies = authProxies,
                 users = userDefs,
                 authenticationServices = authenticationServices,
-                authorizationServices = authorizationServices,
+                externalGroupsProviderServices = externalGroupsProviderServices,
                 jwts = jwtDefs,
                 rorKbns = rorKbnDefs,
                 ldaps = ldapServices,
@@ -369,6 +362,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
               ),
               globalSettings,
               mocksProvider,
+              esEnv
             )
           }
           DecoderHelpers
@@ -389,23 +383,19 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         }
       } yield {
         val blocks = blocksNel.map(_.block)
-        blocks.toList.foreach { block => logger.info(s"ADDING BLOCK:\t ${block.show}") }
-        val localUsers: LocalUsers = {
-          val fromUserDefs = localUsersFromUserDefs(userDefs)
-          val fromImpersonatorDefs = localUsersFromImpersonatorDefs(impersonationDefs)
-          val fromBlocks = blocksNel.map(_.localUsers).toList
-          (fromBlocks :+ fromUserDefs :+ fromImpersonatorDefs).combineAll
-        }
+        blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
+        val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
 
         val rorDependencies = RorDependencies(
           services = RorDependencies.Services(
             authenticationServices = authenticationServices.items.map(_.id),
-            authorizationServices = authorizationServices.items.map(_.id),
+            externalGroupsProviderServices = externalGroupsProviderServices.items.map(_.id),
             ldaps = ldapServices.items.map(_.id)
           ),
           localUsers = localUsers,
           impersonationWarningsReader = new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
         )
+        import systemContext.scheduler
         val accessControl = new EnabledAccessControlList(
           blocks,
           new AccessControlListStaticContext(
@@ -420,51 +410,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
     }
   }
 
-  private def localUsersFromUserDefs(definitions: Definitions[UserDef]) = {
-    definitions.items
-      .flatMap { definition =>
-        List(
-          localUsersFromUsernamePatterns(definition.usernames, unknownUsersForWildcardPattern = true),
-          localUsersFromMode(definition.mode)
-        )
-      }
-      .combineAll
-  }
-
-  private def localUsersFromImpersonatorDefs(definitions: Definitions[ImpersonatorDef]) = {
-    definitions.items
-      .map(_.impersonatedUsers.usernames)
-      .map(localUsersFromUsernamePatterns(_, unknownUsersForWildcardPattern = false))
-      .combineAll
-  }
-
-  private def localUsersFromUsernamePatterns(userIdPatterns: UserIdPatterns,
-                                             unknownUsersForWildcardPattern: Boolean): LocalUsers = {
-    userIdPatterns
-      .patterns
-      .map { userIdPattern =>
-        if (userIdPattern.containsWildcard) {
-          LocalUsers(users = Set.empty, unknownUsers = unknownUsersForWildcardPattern)
-        } else {
-          LocalUsers(users = Set(userIdPattern.value), unknownUsers = false)
-        }
-      }
-      .toList
-      .combineAll
-  }
-
-  private def localUsersFromMode(mode: UserDef.Mode): LocalUsers = {
-    def localUsersFor(support: EligibleUsersSupport) = support match {
-      case EligibleUsersSupport.Available(users) => LocalUsers(users, unknownUsers = false)
-      case EligibleUsersSupport.NotAvailable => LocalUsers.empty
-    }
-
-    mode match {
-      case Mode.WithoutGroupsMapping(rule, _) => localUsersFor(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => localUsersFor(rule.eligibleUsers)
-      case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => localUsersFor(rule.eligibleUsers)
-    }
-  }
 }
 
 object RawRorSettingsBasedCoreFactory {

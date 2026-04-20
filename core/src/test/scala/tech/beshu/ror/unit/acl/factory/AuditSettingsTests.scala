@@ -56,7 +56,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
     implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, testEsNodeSettings)
+    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, defaultTestEsNodeSettings)
     new RawRorSettingsBasedCoreFactory(esEnv)
   }
 
@@ -334,6 +334,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |                triple_nested_next: "tnt"
                 |          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
                 |          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+                |          matched_blocks: "{MATCHED_BLOCK_NAMES}"
                 |          tid: "{TASK_ID}"
                 |          bytes: "{CONTENT_LENGTH_IN_BYTES}"
               """.stripMargin
@@ -363,6 +364,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               ),
               AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
               AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
+              AuditFieldPath("matched_blocks") -> AuditFieldValueDescriptor.MatchedBlockNames,
               AuditFieldPath("tid") -> AuditFieldValueDescriptor.TaskId,
               AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
             )
@@ -607,9 +609,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "presented_identity" : "basic auth user",
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -684,9 +688,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "presented_identity" : "basic auth user",
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -760,9 +766,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "presented_identity" : "basic auth user",
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -1350,7 +1358,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage = "Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list (array syntax)" in {
@@ -1969,7 +1977,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage = "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
@@ -2011,7 +2019,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage = "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
@@ -2212,7 +2220,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       parser.parse(jsonObject.toString(0)).left.map(_.getMessage)
   }
 
-
 }
 
 private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAuditLogSerializer {
@@ -2268,5 +2275,7 @@ private class DummyAuditRequestContext(override val loggedInUserName: Option[Str
 
   override def generalAuditEvents: JSONObject = new JSONObject
 
-  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
+  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(defaultTestEsNodeSettings)
+
+  override def matchedBlockNames: Option[List[String]] = Some(List("block1", "block2"))
 }

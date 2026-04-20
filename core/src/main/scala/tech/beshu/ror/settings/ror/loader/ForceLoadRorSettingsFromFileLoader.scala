@@ -17,15 +17,17 @@
 package tech.beshu.ror.settings.ror.loader
 
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.FileSettingsSource
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSource[MainRorSettings])
-  extends StartingRorSettingsLoader with Logging {
+  extends StartingRorSettingsLoader with RequestIdAwareLogging {
 
-  override def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
+  override def load()
+                   (implicit requestId: RequestId): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = loadSettingsFromSource(
       source = mainSettingsFileSource,
       settingsDescription = s"main settings from file '${mainSettingsFileSource.settingsFile.show}''"

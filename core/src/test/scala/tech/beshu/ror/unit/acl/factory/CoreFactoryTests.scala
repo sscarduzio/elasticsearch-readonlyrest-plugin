@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import better.files.File
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -29,11 +29,9 @@ import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RorSettingsIndex}
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -43,8 +41,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
 
   private val factory: CoreFactory = {
     implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
-    new RawRorSettingsBasedCoreFactory(esEnv)
+    new RawRorSettingsBasedCoreFactory(defaultEsEnv())
   }
 
   "A RorAclFactory" should {
@@ -331,7 +328,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    response_group_ids_json_path: "$..groups[?(@.id)].id"
             |
             |""".stripMargin)
-        val acl = createCore(settings, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings, new MockHttpClientsFactoryWithFixedHttpClient(mock[SimpleHttpClient[Task]]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))))
       }
       "block has many authentication rules" in {
@@ -354,7 +351,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token"
             |
     """.stripMargin)
-        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[SimpleHttpClient[Task]]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block should contain only one authentication rule, but contains: [auth_key, proxy_auth]")))))
       }
       "block uses user variable without defining authentication rule beforehand" in {
@@ -367,7 +364,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |  - name: test_block
             |    uri_re: "some_@{user}"
             |""".stripMargin)
-        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[SimpleHttpClient[Task]]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract user requires one of the rules defined in block to be authentication rule")))))
       }
       "'groups' rule uses jwt variable without defining `jwt_auth` rule beforehand" in {
@@ -387,7 +384,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    auth_key: "user2:pass"
             |
             |""".stripMargin)
-        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = createCore(settings,  new MockHttpClientsFactoryWithFixedHttpClient(mock[SimpleHttpClient[Task]]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. JWT variables are not allowed to be used in Groups rule")))))
       }
     }
@@ -472,7 +469,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |    uri_re: "/endpoint_@{acl:current_group}"
             |""".stripMargin)
 
-        inside(createCore(settings, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))) {
+        inside(createCore(settings, new MockHttpClientsFactoryWithFixedHttpClient(mock[SimpleHttpClient[Task]]))) {
           case Right(Core(acl: EnabledAccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))

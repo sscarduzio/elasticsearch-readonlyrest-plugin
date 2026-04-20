@@ -18,30 +18,31 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.{Action, RequestId}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.implicits.*
 
 class ActionsRule(val settings: Settings)
-  extends RegularRule with Logging {
+  extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = ActionsRule.Name.name
 
   private val matcher: PatternsMatcher[Action] = PatternsMatcher.create(settings.actions.toSortedSet)
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     val requestContext = blockContext.requestContext
     if (matcher.`match`(requestContext.action)) {
-      RuleResult.Fulfilled(blockContext)
+      Decision.Permitted(blockContext)
     } else {
       implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
-      logger.debug(s"[${requestId.show}] This request uses the action '${requestContext.action.show}' and none of them is on the list.")
-      RuleResult.Rejected()
+      logger.debug(s"This request uses the action '${requestContext.action.show}' and none of them is on the list.")
+      Decision.Denied(Cause.NotAuthorized)
     }
   }
 }

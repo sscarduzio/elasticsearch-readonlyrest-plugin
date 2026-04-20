@@ -23,10 +23,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.syntax.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService as AuthenticationService, ExternalAuthorizationService as AuthorizationService}
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService as AuthenticationService, ExternalGroupsProviderService as AuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MocksProvider}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RequestId, User}
@@ -37,8 +36,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.CirceErrorOps
 
-class AuthMockApi(rorInstance: RorInstance)
-  extends Logging {
+class AuthMockApi(rorInstance: RorInstance) {
 
   import AuthMockApi.*
   import AuthMockApi.AuthMockResponse.*
@@ -74,8 +72,8 @@ class AuthMockApi(rorInstance: RorInstance)
     val extAuthn = services.authenticationServices.map { serviceId =>
       toAuthMockService(serviceId, rorInstance.mocksProvider.externalAuthenticationServiceWith(serviceId))
     }
-    val extAuthz = services.authorizationServices.map { serviceId =>
-      toAuthMockService(serviceId, rorInstance.mocksProvider.externalAuthorizationServiceWith(serviceId))
+    val extAuthz = services.externalGroupsProviderServices.map { serviceId =>
+      toAuthMockService(serviceId, rorInstance.mocksProvider.externalGroupsProviderServiceWith(serviceId))
     }
     AuthMockResponse.ProvideAuthMock.CurrentAuthMocks((ldaps ++ extAuthn ++ extAuthz).toList)
   }
@@ -99,8 +97,7 @@ class AuthMockApi(rorInstance: RorInstance)
       .toEitherT[Task]
   }
 
-  private def readCurrentAuthServices()
-                                     (implicit requestId: RequestId): EitherT[Task, AuthMockResponse, RorDependencies.Services] = {
+  private def readCurrentAuthServices(): EitherT[Task, AuthMockResponse, RorDependencies.Services] = {
     EitherT(withRorSettingsAuthServices(
       action = identity,
       onNotSet = AuthMockResponse.UpdateAuthMock.NotConfigured.apply,
@@ -110,8 +107,7 @@ class AuthMockApi(rorInstance: RorInstance)
 
   private def withRorSettingsAuthServices[A, B](action: RorDependencies.Services => B,
                                               onNotSet: String => A,
-                                              onInvalidated: String => A)
-                                             (implicit requestId: RequestId): Task[Either[A, B]] = {
+                                              onInvalidated: String => A): Task[Either[A, B]] = {
     rorInstance.currentTestSettings().map {
       case TestSettings.NotSet =>
         Left(onNotSet(testSettingsNotConfiguredMessage))
@@ -135,8 +131,8 @@ class AuthMockApi(rorInstance: RorInstance)
           services.ldaps.find(_.value === name).toValidNel(name)
         case ExternalAuthenticationService(name, _) =>
           services.authenticationServices.find(_.value === name).toValidNel(name)
-        case ExternalAuthorizationService(name, _) =>
-          services.authorizationServices.find(_.value === name).toValidNel(name)
+        case ExternalGroupsProviderService(name, _) =>
+          services.externalGroupsProviderServices.find(_.value === name).toValidNel(name)
       }
       .sequence
       .map(_ => ())
@@ -230,8 +226,8 @@ object AuthMockApi {
 
     }
 
-    final case class ExternalAuthorizationService(name: NonEmptyString, mock: MockMode[ExternalAuthorizationService.Mock]) extends AuthMockService
-    object ExternalAuthorizationService {
+    final case class ExternalGroupsProviderService(name: NonEmptyString, mock: MockMode[ExternalGroupsProviderService.Mock]) extends AuthMockService
+    object ExternalGroupsProviderService {
       final case class Mock(users: List[MockUserWithGroups])
     }
   }
@@ -285,7 +281,7 @@ object AuthMockApi {
     }
 
     def toAuthMockService(serviceId: AuthorizationService#Id,
-                          maybeMock: Option[ExternalAuthorizationServiceMock]): AuthMockService = {
+                          maybeMock: Option[ExternalGroupsProviderServiceMock]): AuthMockService = {
       val mockMode =
         maybeMock
           .map {
@@ -293,11 +289,11 @@ object AuthMockApi {
               .map(user => MockUserWithGroups(user.id.value, user.groups.map(toMockGroup).toList))
               .toList
           }
-          .map(AuthMockService.ExternalAuthorizationService.Mock.apply)
+          .map(AuthMockService.ExternalGroupsProviderService.Mock.apply)
           .map(MockMode.Enabled.apply)
           .getOrElse(MockMode.NotConfigured)
 
-      ExternalAuthorizationService(name = serviceId.value, mock = mockMode)
+      ExternalGroupsProviderService(name = serviceId.value, mock = mockMode)
     }
 
     def toAuthMockService(serviceId: AuthenticationService#Id,
@@ -331,12 +327,12 @@ object AuthMockApi {
               externalAuthenticationServiceMocks = mocksProvider.externalAuthenticationServiceMocks +
                 (AuthenticationService.Name(name) -> ExternalAuthenticationServiceMock(users = mock.users.map(toAuthenticationMock).toCovariantSet))
             )
-          case ExternalAuthorizationService(_, MockMode.NotConfigured) =>
+          case ExternalGroupsProviderService(_, MockMode.NotConfigured) =>
             mocksProvider
-          case ExternalAuthorizationService(name, MockMode.Enabled(mock)) =>
+          case ExternalGroupsProviderService(name, MockMode.Enabled(mock)) =>
             mocksProvider.copy(
-              externalAuthorizationServiceMocks = mocksProvider.externalAuthorizationServiceMocks +
-                (AuthorizationService.Name(name) -> ExternalAuthorizationServiceMock(users = mock.users.map(toAuthorizationMock).toCovariantSet))
+              externalGroupsProviderServiceMocks = mocksProvider.externalGroupsProviderServiceMocks +
+                (AuthorizationService.Name(name) -> ExternalGroupsProviderServiceMock(users = mock.users.map(toAuthorizationMock).toCovariantSet))
             )
         }
       }
@@ -349,7 +345,7 @@ object AuthMockApi {
     }
 
     private def toAuthorizationMock(user: MockUserWithGroups) = {
-      MocksProvider.ExternalAuthorizationServiceMock.ExternalAuthorizationServiceUserMock(id = user.domainUserId, groups = user.domainGroups)
+      MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock(id = user.domainUserId, groups = user.domainGroups)
     }
 
     private def toAuthenticationMock(user: MockUser) = {
@@ -411,14 +407,14 @@ object AuthMockApi {
 
       }
 
-      implicit val externalAuthorizationServiceCodec: Codec[ExternalAuthorizationService] = {
-        implicit val mockCodec: Codec[ExternalAuthorizationService.Mock] =
-          Codec.forProduct1("users")(ExternalAuthorizationService.Mock.apply)(_.users)
-        implicit val mockModeCodec: Codec[MockMode[ExternalAuthorizationService.Mock]] =
-          mockModeCodecFor[ExternalAuthorizationService.Mock]
+      implicit val externalGroupsProviderServiceCodec: Codec[ExternalGroupsProviderService] = {
+        implicit val mockCodec: Codec[ExternalGroupsProviderService.Mock] =
+          Codec.forProduct1("users")(ExternalGroupsProviderService.Mock.apply)(_.users)
+        implicit val mockModeCodec: Codec[MockMode[ExternalGroupsProviderService.Mock]] =
+          mockModeCodecFor[ExternalGroupsProviderService.Mock]
 
         Codec.forProduct2("name", "mock")(
-          ExternalAuthorizationService.apply
+          ExternalGroupsProviderService.apply
         )(mock => (mock.name, mock.mock))
       }
 
@@ -429,7 +425,7 @@ object AuthMockApi {
             service <- serviceType match {
               case "LDAP" => Decoder[LdapAuthorizationService].apply(c)
               case "EXT_AUTHN" => Decoder[ExternalAuthenticationService].apply(c)
-              case "EXT_AUTHZ" => Decoder[ExternalAuthorizationService].apply(c)
+              case "EXT_AUTHZ" => Decoder[ExternalGroupsProviderService].apply(c)
               case other => Left(DecodingFailure(s"Unknown auth mock service type: ${other.show}", Nil))
             }
           } yield service
@@ -441,9 +437,9 @@ object AuthMockApi {
           case service: ExternalAuthenticationService =>
             Json.obj("type" -> Json.fromString("EXT_AUTHN"))
               .deepMerge(Encoder[ExternalAuthenticationService].apply(service))
-          case service: ExternalAuthorizationService =>
+          case service: ExternalGroupsProviderService =>
             Json.obj("type" -> Json.fromString("EXT_AUTHZ"))
-              .deepMerge(Encoder[ExternalAuthorizationService].apply(service))
+              .deepMerge(Encoder[ExternalGroupsProviderService].apply(service))
         }
         Codec.from(decoder, encoder)
       }

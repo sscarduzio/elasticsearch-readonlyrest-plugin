@@ -40,7 +40,7 @@ dependencies {
     implementation  project(path: ':ror-tools-core')
     implementation  group: 'org.elasticsearch',                 name: 'elasticsearch' ,                         version: moduleEsVersion
     implementation  group: 'org.elasticsearch.client',          name: 'elasticsearch-rest-client',              version: moduleEsVersion
-    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.13'
+    implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.14'
     compileOnly     group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',                     version: moduleEsVersion
     compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
     implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: moduleEsVersion
@@ -120,7 +120,7 @@ tasks.register('uploadRorPluginToS3', Exec) {
     def pluginFileZip = distributionsDir + "/" + pluginFullName + ".zip"
     def pluginSha1 = distributionsDir + "/" + pluginFullName + ".zip.sha1"
     def pluginSha512 = distributionsDir + "/" + pluginFullName + ".zip.sha512"
-    def targetS3Dir = "build/" + pluginVersion + "/"
+    def targetS3Dir = pluginVersion + "/"
 
     commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
 }

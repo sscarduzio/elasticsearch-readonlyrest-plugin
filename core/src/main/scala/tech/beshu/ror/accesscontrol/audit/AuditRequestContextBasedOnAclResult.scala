@@ -17,24 +17,24 @@
 package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
+import cats.data.NonEmptyList
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.blocks.Block.History
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.History
+import tech.beshu.ror.accesscontrol.History.BlockHistory
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.{Address, Header}
+import tech.beshu.ror.accesscontrol.domain.{Address, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.*
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
 
 import java.time.Instant
-import scala.collection.immutable.{Set => ScalaSet}
+import scala.collection.immutable.Set as ScalaSet
 
 private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                                            userMetadata: Option[UserMetadata],
-                                                                            historyEntries: Vector[History[B]],
+                                                                            loggedUser: Option[LoggedUser],
+                                                                            matchedBlocks: Option[NonEmptyList[Block]],
+                                                                            aclProcessingHistory: History[B],
                                                                             loggingContext: LoggingContext,
                                                                             override val auditEnvironmentContext: AuditEnvironmentContext,
                                                                             override val generalAuditEvents: JSONObject,
@@ -43,30 +43,42 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
 
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
 
-  private val loggedUser: Option[domain.LoggedUser] = userMetadata
-    .flatMap(_.loggedUser)
-
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
   override val correlationId: String = requestContext.rorKibanaSessionId.value.value
-  override val indices: ScalaSet[String] =
-    requestContext
-      .initialBlockContext.indices
-      .map(_.stringify).toSet
+  override lazy val indices: ScalaSet[String] = requestContext.requestedIndices match {
+    case Some(indices) => indices.map(_.stringify).toSet
+    case None => ScalaSet.empty
+  }
   override val action: String = requestContext.action.value
-  override val headers: Map[String, String] = requestContext.restRequest.allHeaders.map(h => (h.name.value.value, h.value.value)).toMap
-  override val requestHeaders: Headers = new Headers(
+  override lazy val headers: Map[String, String] =
+    requestContext.restRequest.allHeaders
+      .map(h => (h.name.value.value, h.value.value))
+      .toMap
+  override lazy val requestHeaders: Headers = new Headers(
     requestContext.restRequest.allHeaders
       .foldLeft(Map.empty[String, ScalaSet[String]]) {
         case (acc, header) =>
-          val headerNames: ScalaSet[String] = acc.get(header.name.value.value).toList.flatten.toSet
-          acc + (header.name.value.value -> (headerNames + header.value.value))
+          val key = header.name.value.value
+          acc.updated(key, acc.getOrElse(key, ScalaSet.empty) + header.value.value)
       }
   )
   override val uriPath: String = requestContext.restRequest.path.value.value
-  override val history: String = historyEntries.map(h => historyShow(showHeader).show(h)).mkString(", ")
-  override val content: String = requestContext.restRequest.content
-  override val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
+  override val matchedBlockNames: Option[List[String]] = matchedBlocks.map(_.map(_.name.value).toList)
+  override lazy val history: String = iterableLikeShow(blockHistoryShow(showHeader)).show(aclProcessingHistory.blocks)
+  override lazy val blocksHistory: Map[String, (Boolean, Option[String])] =
+    aclProcessingHistory.blocks
+      .map { h =>
+        val blockName = h.block.name.value
+        val matchedAndCause = h match {
+          case BlockHistory.Permitted(_, _, _) => true -> None
+          case BlockHistory.Denied(_, denied, _) => false -> Some(denied.cause.show)
+        }
+        blockName -> matchedAndCause
+      }
+      .toMap
+  override lazy val content: String = requestContext.restRequest.content
+  override lazy val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
   override val remoteAddress: String = requestContext.restRequest.remoteAddress match {
     case Some(Address.Ip(value)) => value.toString
     case Some(Address.Name(value)) => value.toString
@@ -86,7 +98,6 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
         case DirectlyLoggedUser(_) => None
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
       }
-
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
 }

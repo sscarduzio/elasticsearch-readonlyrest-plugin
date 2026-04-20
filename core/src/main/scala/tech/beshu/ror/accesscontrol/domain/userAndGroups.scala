@@ -16,14 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.Eq
 import cats.implicits.*
+import cats.kernel.Semigroup
+import cats.{Eq, Monoid}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 sealed trait LoggedUser {
@@ -162,6 +167,7 @@ object GroupsLogic {
     implicit val anyOfCreator: Creator[AnyOf] = (groupIds: GroupIds) => AnyOf.apply(groupIds)
     implicit val notAllOfCreator: Creator[NotAllOf] = (groupIds: GroupIds) => NotAllOf.apply(groupIds)
     implicit val notAnyOfCreator: Creator[NotAnyOf] = (groupIds: GroupIds) => NotAnyOf.apply(groupIds)
+
     def apply[GL <: GroupsLogic](implicit creator: Creator[GL]): Creator[GL] = creator
   }
 
@@ -260,9 +266,77 @@ object GroupsLogic {
   }
 }
 
-final case class LocalUsers(users: Set[User.Id], unknownUsers: Boolean)
+sealed trait LocalUsers
 
 object LocalUsers {
-  def empty: LocalUsers = LocalUsers(Set.empty, unknownUsers = false)
+  final case class Available(users: AvailableLocalUsers) extends LocalUsers
+
+  case object NotAvailable extends LocalUsers
+
+  def from(block: Block): LocalUsers = block.rules.map(LocalUsers.from).combineAll
+
+  def from(rule: Rule): LocalUsers = rule match {
+    case authentication: AuthenticationRule => authentication.localUsers
+    case _ => LocalUsers.NotAvailable
+  }
+
+  implicit val localUsersMonoid: Monoid[LocalUsers] = Monoid.instance(
+    emptyValue = LocalUsers.NotAvailable,
+    cmb = {
+      case (LocalUsers.NotAvailable, x) => x
+      case (x, LocalUsers.NotAvailable) => x
+      case (LocalUsers.Available(x), LocalUsers.Available(y)) => LocalUsers.Available(x |+| y)
+    }
+  )
+
+  extension (localUsers: LocalUsers) {
+    def userIds: CovariantSet[User.Id] = localUsers match {
+        case LocalUsers.Available(AvailableLocalUsers.KnownAndUnknown(users)) => users.toCovariantSet
+        case LocalUsers.Available(AvailableLocalUsers.Known(users)) => users.toCovariantSet
+        case LocalUsers.Available(AvailableLocalUsers.Unknown) => CovariantSet.empty
+        case LocalUsers.NotAvailable => CovariantSet.empty
+      }
+
+    def thereAreUnknownUsers: Boolean = localUsers match {
+        case LocalUsers.Available(AvailableLocalUsers.KnownAndUnknown(_)) => true
+        case LocalUsers.Available(AvailableLocalUsers.Known(_)) => false
+        case LocalUsers.Available(AvailableLocalUsers.Unknown) => true
+        case LocalUsers.NotAvailable => false
+      }
+  }
 }
 
+sealed trait AvailableLocalUsers
+
+object AvailableLocalUsers {
+  final case class KnownAndUnknown(users: UniqueNonEmptyList[User.Id]) extends AvailableLocalUsers
+
+  final case class Known(users: UniqueNonEmptyList[User.Id]) extends AvailableLocalUsers
+
+  object Known {
+    def apply(user: User.Id) = new Known(UniqueNonEmptyList.of(user))
+  }
+
+  case object Unknown extends AvailableLocalUsers
+
+  implicit val availableLocalUsersSemigroup: Semigroup[AvailableLocalUsers] = Semigroup.instance({
+    case (AvailableLocalUsers.Known(u1), AvailableLocalUsers.Known(u2)) =>
+      AvailableLocalUsers.Known(u1 |+| u2)
+    case (AvailableLocalUsers.Unknown, AvailableLocalUsers.Unknown) =>
+      AvailableLocalUsers.Unknown
+    case (AvailableLocalUsers.Known(u), AvailableLocalUsers.Unknown) =>
+      AvailableLocalUsers.KnownAndUnknown(u)
+    case (AvailableLocalUsers.Unknown, AvailableLocalUsers.Known(u)) =>
+      AvailableLocalUsers.KnownAndUnknown(u)
+    case (AvailableLocalUsers.KnownAndUnknown(u1), AvailableLocalUsers.KnownAndUnknown(u2)) =>
+      AvailableLocalUsers.KnownAndUnknown(u1 |+| u2)
+    case (AvailableLocalUsers.KnownAndUnknown(u1), AvailableLocalUsers.Known(u2)) =>
+      AvailableLocalUsers.KnownAndUnknown(u1 |+| u2)
+    case (AvailableLocalUsers.Known(u1), AvailableLocalUsers.KnownAndUnknown(u2)) =>
+      AvailableLocalUsers.KnownAndUnknown(u1 |+| u2)
+    case (AvailableLocalUsers.KnownAndUnknown(u), AvailableLocalUsers.Unknown) =>
+      AvailableLocalUsers.KnownAndUnknown(u)
+    case (AvailableLocalUsers.Unknown, AvailableLocalUsers.KnownAndUnknown(u)) =>
+      AvailableLocalUsers.KnownAndUnknown(u)
+  })
+}

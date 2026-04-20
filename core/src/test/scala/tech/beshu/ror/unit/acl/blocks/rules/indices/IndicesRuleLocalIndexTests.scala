@@ -17,10 +17,11 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
-import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
+import tech.beshu.ror.mocks.MockEsServices
+import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -33,9 +34,9 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set.empty,
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test")))
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test")),
         )
       }
@@ -43,9 +44,9 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set(requestedIndex("_all")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test")))
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test"))
         )
       }
@@ -53,9 +54,9 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set(requestedIndex("*")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test")))
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test"))
         )
       }
@@ -70,9 +71,9 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set(requestedIndex("te*")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("test"))),
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test"))
         )
       }
@@ -129,11 +130,11 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-index")),
           requestIndices = Set(requestedIndex("test-alias")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test-index"))
         )
       }
@@ -141,11 +142,11 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-alias")),
           requestIndices = Set(requestedIndex("test-al*")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test-alias"))
         )
       }
@@ -153,11 +154,11 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-index")),
           requestIndices = Set(requestedIndex("*-alias")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test-index"))
         )
       }
@@ -165,11 +166,11 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*-index")),
           requestIndices = Set(requestedIndex("test-alias")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set(fullIndexName("test-alias")))
             )
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test-index"))
         )
       }
@@ -177,14 +178,14 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-index1"), indexNameVar("test-index2")),
           requestIndices = Set(requestedIndex("test-alias")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index1"), Set(fullIndexName("test-alias"))),
               fullLocalIndexWithAliases(fullIndexName("test-index2"), Set(fullIndexName("test-alias"))),
               fullLocalIndexWithAliases(fullIndexName("test-index3"), Set(fullIndexName("test-alias"))),
               fullLocalIndexWithAliases(fullIndexName("test-index4"), Set(fullIndexName("test-alias")))
             )
-          ),
+          ))),
           filteredRequestedIndices = Set(requestedIndex("test-index1"), requestedIndex("test-index2"))
         )
       }
@@ -192,21 +193,21 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("odd:test1*"), indexNameVar("local*")),
           requestIndices = Set(requestedIndex("local_index*"), requestedIndex("odd:test1_index*")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("local_index1")),
               fullLocalIndexWithAliases(fullIndexName("local_index2")),
               fullLocalIndexWithAliases(fullIndexName("other"))
             ),
-            allRemoteIndicesAndAliases = Task.now(Set(
+            allRemoteIndicesAndAliases = Set(
               fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-27"),
               fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-28"),
               fullRemoteIndexWithAliases("etl1", "c01-logs-smg-stats-2020-03-29"),
               fullRemoteIndexWithAliases("odd", "test1_index1"),
               fullRemoteIndexWithAliases("odd", "test1_index2"),
               fullRemoteIndexWithAliases("odd", "test2_index1"),
-            ))
-          ),
+            )
+          ))),
           filteredRequestedIndices = Set(
             requestedIndex("local_index1"),
             requestedIndex("local_index2"),
@@ -228,7 +229,7 @@ trait IndicesRuleLocalIndexTests {
             configured = NonEmptySet.of(indexNameVar("odd:test1*"), indexNameVar("local*")),
             requestIndices = Set(requestedIndex(".custom_kibana_7.9.0")),
             modifyBlockContext = bc => bc.copy(
-              userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
+              blockMetadata = bc.blockMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
             ),
             filteredRequestedIndices = Set(requestedIndex(".custom_kibana_7.9.0"))
           )
@@ -238,7 +239,7 @@ trait IndicesRuleLocalIndexTests {
             configured = NonEmptySet.of(indexNameVar("odd:test1*"), indexNameVar("local*")),
             requestIndices = Set(requestedIndex(".custom_kibana_8.10.4"), requestedIndex(".custom_kibana_task_manager_8.10.4")),
             modifyBlockContext = bc => bc.copy(
-              userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
+              blockMetadata = bc.blockMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".custom_kibana")))
             ),
             filteredRequestedIndices = Set(requestedIndex(".custom_kibana_8.10.4"), requestedIndex(".custom_kibana_task_manager_8.10.4"))
           )
@@ -248,7 +249,7 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-index1-*")),
           requestIndices = Set(requestedIndex("test-index*"), requestedIndex("-*old")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index1-0001")),
               fullLocalIndexWithAliases(fullIndexName("test-index1-0002")),
@@ -256,7 +257,7 @@ trait IndicesRuleLocalIndexTests {
               fullLocalIndexWithAliases(fullIndexName("test-index2-0001")),
               fullLocalIndexWithAliases(fullIndexName("test-index2-old")),
             )
-          ),
+          ))),
           filteredRequestedIndices = Set(
             requestedIndex("test-index1-0001"),
             requestedIndex("test-index1-0002")
@@ -269,9 +270,9 @@ trait IndicesRuleLocalIndexTests {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test")),
           requestIndices = Set.empty,
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set.empty
-          )
+          ))),
         )
       }
       "'_all' passed, one is configured, no real indices" in {
@@ -326,38 +327,38 @@ trait IndicesRuleLocalIndexTests {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-index")),
           requestIndices = Set(requestedIndex("test-alias")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index")),
               fullLocalIndexWithAliases(fullIndexName("test-index2"), Set(fullIndexName("test-alias")))
             )
-          )
+          )))
         )
       }
       "wildcard alias passed, full name index with no alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test-index")),
           requestIndices = Set(requestedIndex("*-alias")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index"), Set.empty),
               fullLocalIndexWithAliases(fullIndexName("test-index2"), Set(fullIndexName("test-alias")))
             )
-          )
+          )))
         )
       }
       "full name index passed, index alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test12-alias")),
           requestIndices = Set(requestedIndex("test-index1")),
-          modifyRequestContext = _.copy(
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
             allIndicesAndAliases = Set(
               fullLocalIndexWithAliases(fullIndexName("test-index1"), Set(fullIndexName("test12-alias"))),
               fullLocalIndexWithAliases(fullIndexName("test-index2"), Set(fullIndexName("test12-alias"))),
               fullLocalIndexWithAliases(fullIndexName("test-index3"), Set(fullIndexName("test34-alias"))),
               fullLocalIndexWithAliases(fullIndexName("test-index4"), Set(fullIndexName("test34-alias")))
             )
-          )
+          ))),
         )
       }
       "there is only one kibana-related index" in {
@@ -365,7 +366,7 @@ trait IndicesRuleLocalIndexTests {
           configured = NonEmptySet.of(indexNameVar("test12")),
           requestIndices = Set(requestedIndex(".kibana_8.10.4"), requestedIndex("test-index1")),
           modifyBlockContext = bc => bc.copy(
-            userMetadata = bc.userMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".kibana")))
+            blockMetadata = bc.blockMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".kibana")))
           ),
         )
       }

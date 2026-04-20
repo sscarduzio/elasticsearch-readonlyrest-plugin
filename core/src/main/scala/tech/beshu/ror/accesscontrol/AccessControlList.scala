@@ -16,42 +16,46 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import cats.data.NonEmptySet
+import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult, WithHistory}
-import tech.beshu.ror.accesscontrol.blocks.Block.History
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.AccessControlList.{AccessControlStaticContext, RegularRequestResult, UserMetadataRequestResult}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
+import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
+
+import scala.collection.immutable.ListMap
 
 trait AccessControlList {
   def description: String
-  def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]]
-  def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]]
+
+  def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])]
+
+  def handleMetadataRequest(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])]
+
   def staticContext: AccessControlStaticContext
 }
 
 object AccessControlList {
 
-  final case class WithHistory[RESULT, B <: BlockContext](history: Vector[History[B]], result: RESULT)
-  object WithHistory {
-    def withNoHistory[RESULT, B <: BlockContext](handlingResult: RESULT): WithHistory[RESULT, B] =
-      WithHistory(Vector.empty, handlingResult)
-  }
-
   sealed trait RegularRequestResult[B <: BlockContext]
   object RegularRequestResult {
-    final case class Allow[B <: BlockContext](blockContext: B, block: Block)
+    final case class Allowed[B <: BlockContext](matchedBlockContext: B)
       extends RegularRequestResult[B]
-    final case class ForbiddenBy[B <: BlockContext](blockContext: B, block: Block)
+    final case class Forbidden[B <: BlockContext](matchedBlockContext: B)
       extends RegularRequestResult[B]
-    final case class ForbiddenByMismatched[B <: BlockContext](causes: NonEmptySet[ForbiddenCause])
-      extends RegularRequestResult[B]
-    final case class IndexNotFound[B <: BlockContext]()
+    final case class ForbiddenByMismatched[B <: BlockContext](detailedCauses: ListMap[Block.Name, Denied.Cause])
+      extends RegularRequestResult[B] {
+
+      lazy val causes: NonEmptySet[ForbiddenCause] = detailedToGenericCauses(detailedCauses.values)
+    }
+    final case class IndexNotFound[B <: BlockContext](allowedClusters: Set[ClusterName.Full])
       extends RegularRequestResult[B]
     final case class AliasNotFound[B <: BlockContext]()
       extends RegularRequestResult[B]
@@ -65,10 +69,15 @@ object AccessControlList {
 
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
-    final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
-    final case class ForbiddenBy(blockContext: CurrentUserMetadataRequestBlockContext, block: Block) extends UserMetadataRequestResult
-    final case class ForbiddenByMismatched(causes: NonEmptySet[ForbiddenCause]) extends UserMetadataRequestResult
+    final case class Allowed(userMetadata: UserMetadata) extends UserMetadataRequestResult
+    final case class Forbidden(matchedBlockContext: UserMetadataRequestBlockContext) extends UserMetadataRequestResult
+    final case class ForbiddenByMismatched(detailedCauses: ListMap[Block.Name, Denied.Cause])
+      extends UserMetadataRequestResult {
+
+      lazy val causes: NonEmptySet[ForbiddenCause] = detailedToGenericCauses(detailedCauses.values)
+    }
     case object PassedThrough extends UserMetadataRequestResult
+    case object RorKbnPluginNotSupported extends UserMetadataRequestResult
   }
 
   sealed trait ForbiddenCause
@@ -76,12 +85,35 @@ object AccessControlList {
     case object OperationNotAllowed extends ForbiddenCause
     case object ImpersonationNotSupported extends ForbiddenCause
     case object ImpersonationNotAllowed extends ForbiddenCause
+
+    def from(cause: Denied.Cause): ForbiddenCause = {
+      cause match {
+        case Denied.Cause.ImpersonationNotAllowed =>
+          ForbiddenCause.ImpersonationNotAllowed
+        case Denied.Cause.ImpersonationNotSupported =>
+          ForbiddenCause.ImpersonationNotSupported
+        case _: Denied.Cause.OtherFailure |
+             _: Denied.Cause.AuthenticationFailure |
+             _: Denied.Cause.AuthorizationFailure =>
+          ForbiddenCause.OperationNotAllowed
+      }
+    }
   }
 
   trait AccessControlStaticContext {
     def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine]
+
     def doesRequirePassword: Boolean
+
     def forbiddenRequestMessage: String
+
     def obfuscatedHeaders: Set[Header.Name]
+  }
+
+  private def detailedToGenericCauses(detailedCauses: Iterable[Denied.Cause]): NonEmptySet[ForbiddenCause] = {
+    NonEmptyList
+      .fromList(detailedCauses.map(ForbiddenCause.from).toList.distinct)
+      .getOrElse(NonEmptyList.one(ForbiddenCause.OperationNotAllowed))
+      .toNes
   }
 }

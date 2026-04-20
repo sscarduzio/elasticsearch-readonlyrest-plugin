@@ -21,7 +21,6 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -32,9 +31,8 @@ import tech.beshu.ror.syntax.*
 
 class CreateRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
                                        esContext: EsContext,
-                                       clusterService: RorClusterService,
                                        override val threadPool: ThreadPool)
-  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def repositoriesFrom(request: PutRepositoryRequest): Set[RepositoryName] = Set {
     RepositoryName
@@ -45,7 +43,7 @@ class CreateRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
   override protected def update(request: PutRepositoryRequest,
                                 repositories: NonEmptyList[RepositoryName]): ModificationResult = {
     if (repositories.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+      logger.warn(s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
     }
     request.name(RepositoryName.toString(repositories.head))
     Modified

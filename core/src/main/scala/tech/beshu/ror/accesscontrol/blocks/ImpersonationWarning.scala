@@ -119,7 +119,7 @@ object ImpersonationWarning {
       for {
         mocksProvider <- mocksProvider(rule.impersonation)
         serviceId = rule.settings.service.id
-        warning <- mocksProvider.externalAuthorizationServiceWith(serviceId)(requestId) match {
+        warning <- mocksProvider.externalGroupsProviderServiceWith(serviceId)(requestId) match {
           case Some(_) => None
           case None =>
             ImpersonationWarning(
@@ -133,6 +133,12 @@ object ImpersonationWarning {
     )
     implicit def groupsRule[GL <: GroupsLogic]: ImpersonationWarningExtractor[BaseGroupsRule[GL]] = noWarnings[BaseGroupsRule[GL]]
     implicit val jwtAuthRule: ImpersonationWarningExtractor[JwtAuthRule] = ImpersonationWarningExtractor[JwtAuthRule] { (rule, blockName, _) =>
+      Some(impersonationNotSupportedWarning(rule, blockName))
+    }
+    implicit val jwtAuthenticationRule: ImpersonationWarningExtractor[JwtAuthenticationRule] = ImpersonationWarningExtractor[JwtAuthenticationRule] { (rule, blockName, _) =>
+      Some(impersonationNotSupportedWarning(rule, blockName))
+    }
+    implicit val jwtAuthorizationRule: ImpersonationWarningExtractor[JwtAuthorizationRule] = ImpersonationWarningExtractor[JwtAuthorizationRule] { (rule, blockName, _) =>
       Some(impersonationNotSupportedWarning(rule, blockName))
     }
     implicit val ldapAuthenticationRule: ImpersonationWarningExtractor[LdapAuthenticationRule] = ImpersonationWarningExtractor[LdapAuthenticationRule] { (rule, blockName, requestId) =>

@@ -18,7 +18,7 @@ package tech.beshu.ror.es.actions.rrtestsettings
 
 import cats.implicits.toShow
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse
@@ -27,7 +27,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RorInstanceSupplier
 
-class RRTestSettingsActionHandler extends Logging {
+class RRTestSettingsActionHandler extends RequestIdAwareLogging {
 
   private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
@@ -52,7 +52,7 @@ class RRTestSettingsActionHandler extends Logging {
     case Right(response) =>
       listener.onResponse(new RRTestSettingsResponse(response))
     case Left(ex) =>
-      logger.error(s"[${requestId.show}] Internal error", ex)
+      logger.error("Internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 

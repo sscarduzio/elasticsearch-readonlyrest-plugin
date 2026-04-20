@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: UnboundidLdapConnectionPool,
                                                                 config: NestedGroupsConfig,
                                                                 serviceTimeout: PositiveFiniteDuration)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   private val ldapGroupsExplorer = new GraphNodeAncestorsExplorer[LdapGroup](
     kinshipLevel = config.nestedLevels,
@@ -55,11 +55,11 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
             results.flatMap(_.toLdapGroup(config.groupAttribute)).toSet
           }
         case Left(errorResult) =>
-          logger.error(s"[${requestId.show}] LDAP getting groups of [${group.group.show}] group returned error: [${errorResult.show}]")
+          logger.error(s"LDAP getting groups of [${group.group.show}] group returned error: [${errorResult.show}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.errorEx(s"[${requestId.show}] LDAP getting groups of [${group.group.show}] group returned error", ex))
+        Task(logger.errorEx(s"LDAP getting groups of [${group.group.show}] group returned error", ex))
       }
   }
 
@@ -70,7 +70,7 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
     val scope = SearchScope.SUB
     val searchFilter = searchFilterFrom(config.groupSearchFilter, config.memberAttribute, ldapGroup)
     val groupAttributes = attributesFrom(config.groupAttribute)
-    logger.debug(s"[${requestId.show}] LDAP search [base DN: ${baseDn.show}, scope: ${scope.show}, search filter: ${searchFilter.show}, attributes: ${groupAttributes.show}]")
+    logger.debug(s"LDAP search [base DN: ${baseDn.show}, scope: ${scope.show}, search filter: ${searchFilter.show}, attributes: ${groupAttributes.show}]")
     new SearchRequest(listener, baseDn, scope, searchFilter, groupAttributes.toSeq*)
   }
 

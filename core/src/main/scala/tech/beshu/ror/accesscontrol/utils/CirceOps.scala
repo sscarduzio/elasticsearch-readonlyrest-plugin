@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{Reason, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.*
@@ -234,7 +235,7 @@ object CirceOps {
     }
 
     def failed[T](error: CoreCreationError): Decoder[T] = {
-      Decoder.failed(DecodingFailureOps.fromError(error))
+      Decoder.failed(decodingFailureFrom(error))
     }
 
     def optionalDecoder[T: Decoder](fieldsPath: List[String],
@@ -314,12 +315,12 @@ object CirceOps {
 
   }
 
-  object DecodingFailureOps {
-
+  object DecodingFailureUtils {
     import AclCreationErrorCoders.*
 
-    def fromError(error: CoreCreationError): DecodingFailure =
+    def decodingFailureFrom(error: CoreCreationError): DecodingFailure =
       DecodingFailure(Encoder[CoreCreationError].apply(error).noSpaces, Nil)
+
   }
 
   object AclCreationErrorCoders {
@@ -363,30 +364,34 @@ object CirceOps {
   }
 
   implicit class ACursorOps[C <: ACursor](val value: C) extends AnyVal {
-    def downFields(field: String, fields: String*): ACursor = {
-      fields.toList.foldLeft(value.downField(field)) {
-        case (_: FailedCursor, nextField) => value.downField(nextField)
-        case (found: HCursor, _) => found
-        case (other, _) => other
-      }
+    /**
+     * Tries to navigate to any of the given fields (alternatives), returning the first one that exists.
+     * This is different from Circe's built-in `downFields` which navigates sequentially into nested fields.
+     */
+    def downFieldAlternatives(field: String, fields: String*): ACursor = {
+      downFieldsAlternativesWithKey(field, fields: _*)._1
     }
 
-    def downFieldsWithKey(field: String, fields: String*): (ACursor, String) = {
-      fields.toList.foldLeft((value.downField(field), field)) {
-        case ((_: FailedCursor, prevField@_), nextField) => (value.downField(nextField), nextField)
-        case ((found: HCursor, foundFiled), _) => (found, foundFiled)
-        case ((other, otherField), _) => (other, otherField)
+    def downFieldsAlternativesWithKey(field: String, fields: String*): (ACursor, String) = {
+      val firstAttempt = value.downField(field)
+      if (firstAttempt.succeeded) {
+        (firstAttempt, field)
+      } else {
+        fields.toList.foldLeft((firstAttempt, field)) {
+          case ((acc, _), nextField) if !acc.succeeded => (value.downField(nextField), nextField)
+          case (acc, _) => acc
+        }
       }
     }
 
     def downNonEmptyField(name: String): Decoder.Result[NonEmptyString] = {
       import tech.beshu.ror.accesscontrol.factory.decoders.common.nonEmptyStringDecoder
-      downFields(name).asWithError[NonEmptyString](s"Field ${name.show} cannot be empty")
+      value.downField(name).asWithError[NonEmptyString](s"Field ${name.show} cannot be empty")
     }
 
     def downNonEmptyOptionalField(name: String): Decoder.Result[Option[NonEmptyString]] = {
       import tech.beshu.ror.accesscontrol.factory.decoders.common.nonEmptyStringDecoder
-      downFields(name).asWithError[Option[NonEmptyString]](s"Field ${name.show} cannot be empty")
+      value.downField(name).asWithError[Option[NonEmptyString]](s"Field ${name.show} cannot be empty")
     }
 
     def downFieldAs[T: Decoder](name: String): Decoder.Result[T] = {
@@ -396,7 +401,7 @@ object CirceOps {
     }
 
     def downFieldsAs[T: Decoder](field: String, fields: String*): Decoder.Result[T] = {
-      val (cursor, key) = downFieldsWithKey(field, fields*)
+      val (cursor, key) = downFieldsAlternativesWithKey(field, fields*)
       cursor.as[T].adaptError {
         case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '${key.show}': ${errorMessage.show}")
       }
@@ -416,4 +421,6 @@ object CirceOps {
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
   }
+
+
 }

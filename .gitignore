@@ -2,6 +2,7 @@
 .gradle/
 build/
 out/
+tmp/*
 *.swp
 *-execution-hints.log
 *-execution-times.log

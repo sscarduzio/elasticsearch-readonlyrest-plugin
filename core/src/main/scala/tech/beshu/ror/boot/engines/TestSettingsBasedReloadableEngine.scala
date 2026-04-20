@@ -19,7 +19,6 @@ package tech.beshu.ror.boot.engines
 import cats.data.EitherT
 import monix.catnap.Semaphore
 import monix.eval.Task
-import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.accesscontrol.domain.RequestId
@@ -47,8 +46,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
                                                               initialEngine: InitialEngine,
                                                               reloadInProgress: Semaphore[Task],
                                                               testSettingsSource: IndexSettingsSource[TestRorSettings])
-                                                             (implicit systemContext: SystemContext,
-                                                              scheduler: Scheduler)
+                                                             (implicit systemContext: SystemContext)
   extends BaseReloadableEngine(
     name = "test",
     boot = boot,
@@ -57,8 +55,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     reloadInProgress = reloadInProgress
   ) {
 
-  def currentTestSettings()
-                         (implicit requestId: RequestId): Task[TestSettings] = {
+  def currentTestSettings(): Task[TestSettings] = {
     Task.delay {
       currentEngineState match {
         case EngineState.NotStartedYet(None, _) | EngineState.Stopped =>
@@ -172,8 +169,7 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  private def readCurrentTestSettingsForUpdate()
-                                              (implicit requestId: RequestId): EitherT[Task, IndexSettingsUpdateError, TestSettings.Present] = {
+  private def readCurrentTestSettingsForUpdate(): EitherT[Task, IndexSettingsUpdateError, TestSettings.Present] = {
     EitherT {
       currentTestSettings()
         .map {
@@ -192,7 +188,8 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
   }
 
   private def saveSettingsInIndex[A](newSettings: TestRorSettings,
-                                     onFailure: SettingsSavingError[SavingError] => A): EitherT[Task, A, Unit] = {
+                                     onFailure: SettingsSavingError[SavingError] => A)
+                                    (implicit requestId: RequestId): EitherT[Task, A, Unit] = {
     EitherT(testSettingsSource.save(newSettings))
       .leftMap(onFailure)
   }
@@ -217,7 +214,8 @@ private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest
     }
   }
 
-  private def loadTestSettings(): EitherT[Task, IndexSettingsReloadError, Option[TestRorSettings]] = {
+  private def loadTestSettings()
+                              (implicit requestId: RequestId): EitherT[Task, IndexSettingsReloadError, Option[TestRorSettings]] = {
     EitherT(testSettingsSource.load())
       .map(Some(_))
       .leftFlatMap {
@@ -255,8 +253,7 @@ object TestSettingsBasedReloadableEngine {
                esConfigBasedRorSettings: EsConfigBasedRorSettings,
                initialEngine: ReadonlyRest.TestEngine,
                reloadInProgress: Semaphore[Task])
-              (implicit systemContext: SystemContext,
-               scheduler: Scheduler): TestSettingsBasedReloadableEngine = {
+              (implicit systemContext: SystemContext): TestSettingsBasedReloadableEngine = {
       val engine = initialEngine match {
         case TestEngine.NotConfigured =>
           InitialEngine.NotConfigured

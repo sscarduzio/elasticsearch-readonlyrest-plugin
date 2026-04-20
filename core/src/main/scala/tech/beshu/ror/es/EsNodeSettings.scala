@@ -16,4 +16,4 @@
  */
 package tech.beshu.ror.es
 
-final case class EsNodeSettings(nodeName: String, clusterName: String)
+final case class EsNodeSettings(nodeName: String, clusterName: String, xpackSecurityEnabled: Boolean)

@@ -18,14 +18,20 @@ package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.containers.SecurityType
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, SecurityType}
 import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecurityPlugin
 import tech.beshu.ror.utils.containers.images.domain.Enabled
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SearchManager}
+import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
+
+import java.util.Base64
 
 class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
 
-  override implicit val rorSettingsFileName: String = "/xpack_api/readonlyrest_without_ror_ssl.yml"
+  override implicit lazy val rorSettingsFileName: String =
+    if(Version.greaterOrEqualThan(esVersionUsed, 7, 14, 0)) "/xpack_api/readonlyrest_without_ror_ssl_es714+.yml"
+    else "/xpack_api/readonlyrest_without_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType =
     SecurityType.RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
@@ -34,8 +40,16 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
       internodeSsl = Enabled.Yes(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.InternodeSsl.Xpack)
     ))
 
+  override protected def implementationSpecificInitializer(): ElasticsearchNodeDataInitializer = {
+    (esVersion: String, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc(".apm-agent-configuration", 1, ujson.read("""{}""")).force()
+      documentManager.createDoc(".fleet-servers", 1, ujson.read("""{}""")).force()
+    }
+  }
+
   "Security API" when {
-    "_has_privileges endpoint is called" should {
+    "/_security/user/_has_privileges endpoint is called" should {
       "return ROR artificial user" excludeES allEs6x in {
         val response = adminXpackApiManager.hasPrivileges(
           clusterPrivileges = "monitor" :: Nil,
@@ -57,61 +71,35 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
                |""".stripMargin
           ) :: Nil
         )
+
         response should have statusCode 200
-        if (Version.greaterOrEqualThan(esVersionUsed, 8, 9, 0)) {
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "username":"_xpack",
-               |  "has_all_requested":false,
-               |  "cluster":{
-               |    "monitor":true
-               |  },
-               |  "index":{
-               |    ".monitoring-*-6-*,.monitoring-*-7-*":{
-               |      "read":true
-               |    }
-               |  },
-               |  "application":{
-               |    "kibana":{
-               |      "space:default":{
-               |        "login:":false,
-               |        "version:$esVersionUsed":false
-               |      }
-               |    }
-               |  }
-               |}
-               |""".stripMargin
-          ))
-        } else {
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "username":"_xpack",
-               |  "has_all_requested":true,
-               |  "cluster":{
-               |    "monitor":true
-               |  },
-               |  "index":{
-               |    ".monitoring-*-6-*,.monitoring-*-7-*":{
-               |      "read":true
-               |    }
-               |  },
-               |  "application":{
-               |    "kibana":{
-               |      "space:default":{
-               |        "login:":true,
-               |        "version:$esVersionUsed":true
-               |      }
-               |    }
-               |  }
-               |}
-               |""".stripMargin
-          ))
-        }
+        response.responseJson should be(ujson.read(
+          s"""
+             |{
+             |  "username":"_xpack",
+             |  "has_all_requested":true,
+             |  "cluster":{
+             |    "monitor":true
+             |  },
+             |  "index":{
+             |    ".monitoring-*-6-*,.monitoring-*-7-*":{
+             |      "read":true
+             |    }
+             |  },
+             |  "application":{
+             |    "kibana":{
+             |      "space:default":{
+             |        "login:":true,
+             |        "version:$esVersionUsed":true
+             |      }
+             |    }
+             |  }
+             |}
+             |""".stripMargin
+        ))
       }
     }
-    "user/_privileges endpoint is called" should {
+    "/_security/user/_privileges endpoint is called" should {
       "return ROR artificial user's privileges" excludeES allEs6x in {
         val response = adminXpackApiManager.userPrivileges()
         response should have statusCode 200
@@ -160,10 +148,132 @@ class XpackApiWithRorWithEnabledXpackSecuritySuite extends BaseXpackApiSuite {
         }
       }
     }
-    "API key grant request is called" should {
-      "be allowed" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "/_security/api_key endpoints are called" should {
+      "allow granting an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
         val response = adminXpackApiManager.grantApiKeyPrivilege("admin", "admin")
         response should have statusCode 200
+      }
+      "allow getting an API key by id" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        val createResponse = adminXpackApiManager.createApiKey("test-get-key")
+        createResponse should have statusCode 200
+        val apiKeyId = createResponse.responseJson("id").str
+
+        val getResponse = adminXpackApiManager.getApiKey(apiKeyId)
+        getResponse should have statusCode 200
+        getResponse.responseJson("api_keys").arr.size should be(1)
+        getResponse.responseJson("api_keys")(0)("id").str should be(apiKeyId)
+        getResponse.responseJson("api_keys")(0)("name").str should be("test-get-key")
+      }
+      "allow creating and using an API key" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        val createResponse = adminXpackApiManager.createApiKey("test-agent-key")
+        createResponse should have statusCode 200
+        createResponse.responseJson("name").str should be("test-agent-key")
+
+        val apiKeyId = createResponse.responseJson("id").str
+        val apiKeyValue = createResponse.responseJson("api_key").str
+        val encodedKey = Base64.getEncoder.encodeToString(s"$apiKeyId:$apiKeyValue".getBytes)
+
+        val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey"), esVersionUsed)
+        val searchResponse = agentSearchManager.search(".apm-agent-configuration")
+        searchResponse should have statusCode 200
+
+        val invalidateResponse = adminXpackApiManager.invalidateApiKey(apiKeyId)
+        invalidateResponse should have statusCode 200
+
+        val searchAfterInvalidateResponse = agentSearchManager.search(".apm-agent-configuration")
+        searchAfterInvalidateResponse should have statusCode 403
+      }
+      "allow updating an API key" excludeES(allEs6x, allEs7x, allEs8xBelowEs84x) in {
+        val createResponse = adminXpackApiManager.createApiKey("test-update-key")
+        createResponse should have statusCode 200
+        val apiKeyId = createResponse.responseJson("id").str
+        val apiKeyValue = createResponse.responseJson("api_key").str
+        val encodedKey = Base64.getEncoder.encodeToString(s"$apiKeyId:$apiKeyValue".getBytes)
+
+        val updateResponse = adminXpackApiManager.updateApiKey(apiKeyId)
+        updateResponse should have statusCode 200
+
+        val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey"), esVersionUsed)
+        agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
+      }
+      "allow bulk updating API keys" excludeES(allEs6x, allEs7x, allEs8xBelowEs85x) in {
+        val createResponse1 = adminXpackApiManager.createApiKey("test-bulk-update-key-1")
+        createResponse1 should have statusCode 200
+        val createResponse2 = adminXpackApiManager.createApiKey("test-bulk-update-key-2")
+        createResponse2 should have statusCode 200
+        val keyId1 = createResponse1.responseJson("id").str
+        val keyId2 = createResponse2.responseJson("id").str
+        val keyValue1 = createResponse1.responseJson("api_key").str
+        val encodedKey1 = Base64.getEncoder.encodeToString(s"$keyId1:$keyValue1".getBytes)
+
+        val bulkUpdateResponse = adminXpackApiManager.bulkUpdateApiKeys(keyId1, keyId2)
+        bulkUpdateResponse should have statusCode 200
+
+        val agentSearchManager = new SearchManager(tokenAuthClient(s"ApiKey $encodedKey1"), esVersionUsed)
+        agentSearchManager.search(".apm-agent-configuration") should have statusCode 200
+      }
+      "allow querying API keys" excludeES(allEs6x, allEs7xBelowEs715x) in {
+        val keyName = "test-query-key"
+        val createResponse = adminXpackApiManager.createApiKey(keyName)
+        createResponse should have statusCode 200
+
+        val queryResponse = adminXpackApiManager.queryApiKeys(Some(keyName))
+        queryResponse should have statusCode 200
+        queryResponse.responseJson("api_keys").arr.map(_("name").str).toList should contain(keyName)
+      }
+    }
+    "/_security/service endpoints are called" should {
+      "return service accounts list" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        val response = adminXpackApiManager.getServiceAccounts()
+        response should have statusCode 200
+        response.responseJson.obj.keys should contain("elastic/fleet-server")
+      }
+      "return the service account" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        val response = adminXpackApiManager.getServiceAccount("elastic", "fleet-server")
+        response should have statusCode 200
+        response.responseJson.obj.keys should contain("elastic/fleet-server")
+      }
+      "return service account credentials" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        val response = adminXpackApiManager.getServiceAccountCredentials("elastic", "fleet-server")
+        response should have statusCode 200
+        response.responseJson("service_account").str should be("elastic/fleet-server")
+      }
+      "allow creating and deleting a service account token" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        val createResponse = adminXpackApiManager.createServiceAccountToken("elastic", "fleet-server", "test-token")
+        createResponse should have statusCode 200
+        createResponse.responseJson("created").bool should be(true)
+        createResponse.responseJson("token")("name").str should be("test-token")
+
+        val tokenValue = createResponse.responseJson("token")("value").str
+        val fleetSearchManager = new SearchManager(tokenAuthClient(s"Bearer $tokenValue"), esVersionUsed)
+        val searchResponse = fleetSearchManager.search(".fleet-servers")
+        searchResponse should have statusCode 200
+
+        val deleteResponse = adminXpackApiManager.deleteServiceAccountToken("elastic", "fleet-server", "test-token")
+        deleteResponse should have statusCode 200
+        deleteResponse.responseJson("found").bool should be(true)
+
+        val searchAfterDeleteResponse = fleetSearchManager.search(".fleet-servers")
+        searchAfterDeleteResponse should have statusCode 403
+      }
+    }
+  }
+
+  "Search API" when {
+    "request with remote indices pattern and local indices pattern is called" should {
+      "return indices successfully (no remote indices) when there are no remote clusters configured" excludeES allEs6x in {
+        val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+        val result = adminIndexManager.getIndex("*", "*:*")
+        result should have statusCode 200
+        result.indicesAndAliases shouldNot be (Map.empty)
+      }
+    }
+    "request with only remote indices pattern is called" should {
+      "return no indices when there are no remote clusters configured" excludeES allEs6x in {
+        val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
+        val result = adminIndexManager.getIndex("*:*")
+        result should have statusCode 200
+        result.indicesAndAliases should be(Map.empty)
       }
     }
   }

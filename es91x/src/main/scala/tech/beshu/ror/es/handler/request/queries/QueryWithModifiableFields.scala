@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.es.handler.request.queries.QueryType.{Compound, Leaf}
 
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 
 trait QueryWithModifiableFields[QUERY <: QueryBuilder] {
@@ -267,7 +268,6 @@ object QueryWithModifiableFields {
       case builder: TermQueryBuilder => handleLeafQuery(builder, notAllowedFields)
       case builder: TermsSetQueryBuilder => handleLeafQuery(builder, notAllowedFields)
       case builder: WildcardQueryBuilder => handleLeafQuery(builder, notAllowedFields)
-
       case other => other
     }
 
@@ -276,6 +276,7 @@ object QueryWithModifiableFields {
       ModifiableLeafQuery[QUERY].handleNotAllowedFieldsIn(leafQuery, notAllowedFields)
     }
 
+    @nowarn("msg=unused implicit parameter")
     private def handleCompoundQuery[QUERY <: QueryBuilder : Compound : QueryWithModifiableFields](compoundQuery: QUERY,
                                                                                                   notAllowedFields: NonEmptyList[SpecificField]) = {
       QueryWithModifiableFields[QUERY].handleNotAllowedFieldsIn(compoundQuery, notAllowedFields)

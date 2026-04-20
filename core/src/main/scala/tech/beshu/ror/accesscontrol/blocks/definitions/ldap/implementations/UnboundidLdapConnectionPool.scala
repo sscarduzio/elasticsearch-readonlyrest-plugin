@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.BindRequestUser
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 
@@ -28,7 +28,7 @@ import scala.jdk.CollectionConverters.*
 
 class UnboundidLdapConnectionPool(connectionPool: LDAPConnectionPool,
                                   bindRequestUser: BindRequestUser)
-  extends Logging {
+  extends RequestIdAwareLogging {
 
   def asyncBind(request: BindRequest): Task[BindResult] = {
     bindRequestUser match {

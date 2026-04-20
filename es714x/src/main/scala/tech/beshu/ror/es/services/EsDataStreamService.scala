@@ -18,7 +18,7 @@ package tech.beshu.ror.es.services
 
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.ResourceNotFoundException
 import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction}
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction}
@@ -33,9 +33,8 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.IndexNotFoundException
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
-import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
+import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
 import tech.beshu.ror.utils.TaskOps.Measure
@@ -45,7 +44,7 @@ import scala.jdk.CollectionConverters.*
 
 final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)(using Clock)
   extends DataStreamService
-    with Logging {
+    with RequestIdAwareLogging {
 
   override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = execute {
     val enhancedActionType = client.findActionUnsafe[ActionResponse]("indices:admin/data_stream/get")
@@ -218,11 +217,11 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
         response <- Task.measure(
           task = Task.delay(nodeClient.execute(action, request).actionGet()),
           logTimeMeasurement = duration => Task.delay {
-            logger.debug(s"Action ${action.name()} request: ${request.toString}, taken ${duration.toMillis}ms")
+            noRequestIdLogger.debug(s"Action ${action.name()} request: ${request.toString}, taken ${duration.toMillis}ms")
           }
         )
         _ <- Task.delay {
-          logger.debug(s"Action ${action.name()} response: ${response.toString}")
+          noRequestIdLogger.debug(s"Action ${action.name()} response: ${response.toString}")
         }
       } yield response
     }
@@ -230,7 +229,7 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     def executeAck[REQUEST <: ActionRequest, RESPONSE <: AcknowledgedResponse](action: ActionType[RESPONSE],
                                                                                request: REQUEST): Task[RESPONSE] = {
       executeT(action, request)
-        .tapEval(response => Task.delay(logger.debug(s"Action ${action.name()} acknowledged: ${response.isAcknowledged}")))
+        .tapEval(response => Task.delay(noRequestIdLogger.debug(s"Action ${action.name()} acknowledged: ${response.isAcknowledged}")))
     }
 
     private def supportedActions: Map[ActionType[ActionResponse], TransportAction[ActionRequest, ActionResponse]] = {

@@ -28,6 +28,7 @@ import java.time.Clock
 
 class UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering private(val underlying: LdapAuthorizationService.WithGroupsFiltering)
   extends LdapAuthorizationService.WithoutGroupsFiltering {
+  
   override def groupsOf(id: User.Id)(implicit requestId: RequestId): Task[UniqueList[Group]] =
     underlying.groupsOf(id, Set.empty)
 
