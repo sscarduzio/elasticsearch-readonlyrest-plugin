@@ -84,7 +84,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     "audit is disabled" should {
       "be disabled" when {
         "one line audit format" in {
-          val settings = rorSettingsWithAuditUnsafe(
+          val settings = rorSettingsFromUnsafe(
             """
               |readonlyrest.audit.enabled: false
               |readonlyrest:
@@ -115,7 +115,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "no outputs defined" should {
           "fallback to default index based audit sink" when {
             "one line audit format" in {
-              val settings = rorSettingsWithAuditUnsafe(
+              val settings = rorSettingsFromUnsafe(
                 """
                   |readonlyrest.audit.enabled: true
                   |readonlyrest:
@@ -124,7 +124,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |  - name: test_block
                   |    type: allow
                   |    auth_key: admin:container
-                """.stripMargin
+                  |""".stripMargin
               )
 
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
