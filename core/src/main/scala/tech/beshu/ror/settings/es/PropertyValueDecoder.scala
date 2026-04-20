@@ -38,7 +38,7 @@ object PropertyValueDecoder {
 
   private final class OptionalPropertyValueDecoder[T: PropertyValueDecoder] extends PropertyValueDecoder[Option[T]] {
 
-    override protected implicit def provider: PropertiesProvider =
+    override protected[PropertyValueDecoder] implicit def provider: PropertiesProvider =
       implicitly[PropertyValueDecoder[T]].provider
 
     override def creator: String => Either[String, Option[T]] = { str =>

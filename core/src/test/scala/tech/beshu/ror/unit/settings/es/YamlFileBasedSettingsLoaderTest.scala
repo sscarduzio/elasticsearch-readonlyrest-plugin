@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.settings.es
 
 import better.files.File
 import cats.implicits.*
-import io.circe.Decoder
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.settings.es.YamlLeafOrPropertyDecoder
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,6 +28,9 @@ import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 
 class YamlFileBasedSettingsLoaderTest extends AnyWordSpec with Inside {
+
+  private given YamlLeafOrPropertyDecoder[String] = json =>
+    json.asString.toRight(s"Expected string, got ${json.noSpaces}")
 
   private implicit val systemContext: SystemContext = new SystemContext(
     envVarsProvider = name =>
@@ -66,7 +69,7 @@ class YamlFileBasedSettingsLoaderTest extends AnyWordSpec with Inside {
     }
   }
 
-  private def loadFromTempFile[A: Decoder](content: String) =
+  private def loadFromTempFile[A: YamlLeafOrPropertyDecoder](content: String) =
     tempFile(content)
       .map { file =>
         val loader = new YamlFileBasedSettingsLoader(file)

@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{Decoder, Json, ParsingFailure, parser}
+import io.circe.{ACursor, Decoder, Json, ParsingFailure, parser}
 import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
@@ -66,7 +66,7 @@ import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
-import tech.beshu.ror.utils.yaml.{YamlKeyDecoder, YamlParser}
+import tech.beshu.ror.utils.yaml.YamlParser
 
 import java.nio.file.Path
 import java.time.Duration
@@ -455,10 +455,12 @@ object TestsUtils {
   }
 
   private def loadPathFrom[T: Decoder](configDir: File, path: NonEmptyList[String], default: T) = {
-    val decoder = YamlKeyDecoder[T](path, default)
     rorYamlParser
       .parse((configDir / "elasticsearch.yml").contentAsString)
-      .flatMap(decoder.decodeJson) match {
+      .map { json =>
+        val cursor = path.foldLeft[ACursor](json.hcursor)((c, segment) => c.downField(segment))
+        cursor.as[T].getOrElse(default)
+      } match {
       case Right(value) => value
       case Left(error) => throw error
     }

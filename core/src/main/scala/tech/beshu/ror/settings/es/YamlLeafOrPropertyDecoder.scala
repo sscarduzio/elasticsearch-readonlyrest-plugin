@@ -19,8 +19,9 @@ package tech.beshu.ror.settings.es
 import cats.data.NonEmptyList
 import cats.{Functor, Monad}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.Json
+import io.circe.{ACursor, Json}
 import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.yaml.YamlLeafDecoder
 
 import scala.language.implicitConversions
@@ -42,6 +43,33 @@ object YamlLeafOrPropertyDecoder {
     implicit val yamlLeafDecoder: YamlLeafDecoder[T] = YamlLeafDecoder.from(creator)
     implicit val propertyValueDecoder: PropertyValueDecoder[T] = PropertyValueDecoder.from(creator)
     apply(path)
+  }
+
+  def createOptionalListValueDecoder[T](path: NonEmptyList[NonEmptyString], itemCreator: String => Either[String, T])
+                                       (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[Set[T]]] = {
+    new OptionalListYamlLeafOrPropertyDecoder[T](path, itemCreator)
+  }
+
+  def sectionPresentDecoder(path: NonEmptyList[NonEmptyString]): YamlLeafOrPropertyDecoder[Boolean] = {
+    new SectionPresentYamlLeafOrPropertyDecoder(path)
+  }
+
+  def fromEither[T](either: Either[String, T]): YamlLeafOrPropertyDecoder[T] = new YamlLeafOrPropertyDecoder[T] {
+    override def decode(json: Json): Either[String, T] = either
+  }
+
+  def optionalStringDecoder(path: NonEmptyList[NonEmptyString])
+                           (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[String]] = {
+    createOptionalValueDecoder(path, str => Right(str))
+  }
+
+  def optionalBooleanDecoder(path: NonEmptyList[NonEmptyString])
+                            (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[Boolean]] = {
+    createOptionalValueDecoder(path, str => str.toLowerCase match {
+      case "true" => Right(true)
+      case "false" => Right(false)
+      case other => Left(s"Cannot convert '$other' to boolean")
+    })
   }
 
   def pure[T](value: T): YamlLeafOrPropertyDecoder[T] = {
@@ -122,4 +150,67 @@ final class RequiredYamlLeafOrPropertyDecoder[T: YamlLeafDecoder : PropertyValue
 
 final case class PureYamlLeafOrPropertyDecoder[T](value: T) extends YamlLeafOrPropertyDecoder[T] {
   override def decode(json: Json): Either[String, T] = Right(value)
+}
+
+final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonEmptyString],
+                                                     itemCreator: String => Either[String, T])
+                                                    (implicit propertiesProvider: PropertiesProvider)
+  extends YamlLeafOrPropertyDecoder[Option[Set[T]]] {
+
+  override def decode(json: Json): Either[String, Option[Set[T]]] = {
+    decodeFromYaml(json).flatMap {
+      case Some(values) => Right(Some(values))
+      case None => decodeFromProperty()
+    }
+  }
+
+  private def decodeFromYaml(json: Json): Either[String, Option[Set[T]]] = {
+    val cursor = json.hcursor
+    val oneLineFocus = cursor.downField(path.toList.map(_.value).mkString(".")).focus
+    val multiLineFocus = path.foldLeft[ACursor](cursor)((c, segment) => c.downField(segment.value)).focus
+    oneLineFocus.orElse(multiLineFocus) match {
+      case None => Right(None)
+      case Some(j) if j.isNull => Right(None)
+      case Some(j) if j.isArray =>
+        j.asArray.get.toList.foldLeft[Either[String, List[T]]](Right(List.empty)) { case (acc, elem) =>
+          for {
+            xs <- acc
+            str <- elem.asString.toRight(s"Expected string element at path '.${path.toList.map(_.value).mkString(".")}', got ${elem.noSpaces}")
+            value <- itemCreator(str)
+          } yield xs :+ value
+        }.map(xs => Some(xs.toSet))
+      case Some(j) if j.isString =>
+        parseCommaSeparated(j.asString.get).map(Some.apply)
+      case Some(j) =>
+        Left(s"Expected list or string at path '.${path.toList.map(_.value).mkString(".")}', got ${j.noSpaces}")
+    }
+  }
+
+  private def decodeFromProperty(): Either[String, Option[Set[T]]] = {
+    val propName = NonEmptyString.unsafeFrom(path.toList.map(_.value).mkString("."))
+    propertiesProvider.getProperty(PropName(propName)) match {
+      case Some(str) => parseCommaSeparated(str).map(Some.apply)
+      case None => Right(None)
+    }
+  }
+
+  private def parseCommaSeparated(str: String): Either[String, Set[T]] = {
+    str.split(",").toList
+      .map(_.trim).filter(_.nonEmpty)
+      .foldLeft[Either[String, Set[T]]](Right(Set.empty)) {
+        case (Left(e), _) => Left(e)
+        case (Right(acc), s) => itemCreator(s).map(acc + _)
+      }
+  }
+}
+
+final class SectionPresentYamlLeafOrPropertyDecoder(path: NonEmptyList[NonEmptyString])
+  extends YamlLeafOrPropertyDecoder[Boolean] {
+
+  override def decode(json: Json): Either[String, Boolean] = {
+    val cursor = json.hcursor
+    val oneLineFocus = cursor.downField(path.toList.map(_.value).mkString(".")).focus
+    val multiLineFocus = path.foldLeft[ACursor](cursor)((c, segment) => c.downField(segment.value)).focus
+    Right(oneLineFocus.orElse(multiLineFocus).exists(j => !j.isNull))
+  }
 }

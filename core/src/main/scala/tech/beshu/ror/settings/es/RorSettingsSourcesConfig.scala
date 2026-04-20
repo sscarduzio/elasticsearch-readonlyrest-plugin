@@ -74,7 +74,7 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
         NonEmptyString
           .from(str)
           .map(str => RorSettingsIndex(IndexName.Full(str)))
-          .left.map(error => ???) // todo:
+          .left.map(_ => ???) // todo:
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.indexNameKey),
@@ -88,7 +88,7 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
         NonEmptyString
           .from(str)
           .map(str => RorSettingsFile(File(str.value)))
-          .left.map(error => ???) // todo:
+          .left.map(_ => ???) // todo:
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.filePathKey),
@@ -102,7 +102,7 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
         Information
           .parseString(str)
           .toEither
-          .left.map(ex => ???) // todo:
+          .left.map(_ => ???) // todo:
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
