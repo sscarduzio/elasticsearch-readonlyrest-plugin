@@ -74,10 +74,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                               httpClientFactory: HttpClientsFactory,
                               ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                               mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
-    val expandedJson = YamlOps.jsonWithOneLinerKeysToRegularJson(rorSettings.settingsJson)
-    expandedJson \\ Attributes.rorSectionName match {
+    rorSettings.settingsJson \\ Attributes.rorSectionName match {
       case Nil => createCoreFromRorSection(
-        expandedJson,
+        rorSettings.settingsJson,
         rorSettingsIndex,
         httpClientFactory,
         ldapConnectionPoolProvider,

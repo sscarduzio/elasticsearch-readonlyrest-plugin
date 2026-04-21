@@ -54,13 +54,13 @@ final class YamlFileBasedSettingsLoader(file: File)
     file.fileReader { reader =>
       yamlParser
         .parse(reader)
+        .map(jsonWithOneLinerKeysToRegularJson)
         .left.map(e => createError(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
         .flatMap { json =>
           jsonStaticVariableResolver
             .resolve(json)
             .left.map(e => createError(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
         }
-        .map(jsonWithOneLinerKeysToRegularJson)
     }
   }
 
