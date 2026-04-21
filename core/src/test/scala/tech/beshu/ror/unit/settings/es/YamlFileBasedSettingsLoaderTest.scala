@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.settings.es
 import better.files.File
 import cats.implicits.*
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.settings.es.YamlLeafOrPropertyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec

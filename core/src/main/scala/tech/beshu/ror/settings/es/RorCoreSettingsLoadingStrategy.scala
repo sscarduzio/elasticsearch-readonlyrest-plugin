@@ -28,6 +28,7 @@ import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}

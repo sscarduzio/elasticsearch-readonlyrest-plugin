@@ -28,6 +28,7 @@ import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
 import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
 sealed trait RorSslSettings
 object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdAwareLogging {
