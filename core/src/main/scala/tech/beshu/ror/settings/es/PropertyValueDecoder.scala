@@ -59,7 +59,6 @@ object PropertyValueDecoder {
 
     override def decode(propertyName: NonEmptyString): Either[String, T] = {
       for {
-        // todo: better message
         propertyValue <- provider.getProperty(PropName(propertyName)).toRight(s"Cannot find property with name '$propertyName'")
         value <- creator(propertyValue)
       } yield value

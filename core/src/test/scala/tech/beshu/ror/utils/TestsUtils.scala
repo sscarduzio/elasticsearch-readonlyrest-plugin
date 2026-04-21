@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{ACursor, Decoder, Json, ParsingFailure, parser}
+import io.circe.{ACursor, Decoder, Json, parser}
 import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
@@ -60,7 +60,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
-import tech.beshu.ror.settings.ror.RawRorSettings
+import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
@@ -403,13 +403,10 @@ object TestsUtils {
   }
 
   def rorSettingsFromUnsafe(yamlContent: String): RawRorSettings = {
-    rorSettingFrom(yamlContent).toTry.get
-  }
-
-  def rorSettingFrom(yamlContent: String): Either[ParsingFailure, RawRorSettings] = {
-    rorYamlParser
-      .parse(yamlContent)
-      .map(json => RawRorSettings(json, yamlContent))
+    new RawRorSettingsYamlParser(Megabytes(1))
+      .fromString(yamlContent)
+      .left.map { e => new IllegalStateException(s"Error: $e") }
+      .toTry.get
   }
 
   def rorSettingsFromResource(resource: String): RawRorSettings = {

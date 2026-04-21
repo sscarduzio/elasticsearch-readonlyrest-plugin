@@ -286,7 +286,6 @@ class JwtAuthRuleSettingsTests
               |
               |""".stripMargin,
           assertion = rule => {
-            // todo:
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(AuthorizationTokenPrefix.NoPrefix)))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
