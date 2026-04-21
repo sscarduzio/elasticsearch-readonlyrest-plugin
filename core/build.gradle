@@ -36,15 +36,13 @@ version = pluginVersion
 repositories {
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
-    if (System.env.ROR_LIBS_STORE_URL ? true : false) {
-        maven {
-            url = "s3://" + s3BucketName + "/build"
-            authentication {
-                awsIm(AwsImAuthentication)
-            }
-            metadataSources {
-                artifact()
-            }
+    maven {
+        url = "s3://" + s3BucketName + "/build"
+        authentication {
+            awsIm(AwsImAuthentication)
+        }
+        metadataSources {
+            artifact()
         }
     }
 }
