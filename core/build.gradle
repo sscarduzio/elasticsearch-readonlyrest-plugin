@@ -59,6 +59,7 @@ dependencies {
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
+    api group: 'org.apache.httpcomponents.client5', name: 'httpclient5',                     version: '5.6.1'
     api group: 'org.asynchttpclient',           name: 'async-http-client',                   version: '3.0.2' // we cannot bump it higher without upgrading netty to 4.2.x
     api group: 'com.github.pathikrit',          name: 'better-files_3',                      version: '3.9.2'
     api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.15'

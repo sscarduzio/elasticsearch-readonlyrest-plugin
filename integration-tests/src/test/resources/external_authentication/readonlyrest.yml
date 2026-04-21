@@ -11,11 +11,11 @@ readonlyrest:
     type: allow
     auth_key: admin:container
 
-  - name: "::Tweets::"
-    type: allow
-    methods: GET
-    indices: ["twitter"]
-    external_authentication: "ext1"
+#   - name: "::Tweets::"
+#     type: allow
+#     methods: GET
+#     indices: ["twitter"]
+#     external_authentication: "ext1"
 
   - name: "::Facebook posts::"
     type: allow
@@ -27,10 +27,10 @@ readonlyrest:
 
   external_authentication_service_configs:
 
-  - name: "ext1"
-    authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth1"
-    success_status_code: 200
-    cache_ttl_in_sec: 60
+#   - name: "ext1"
+#     authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth1"
+#     success_status_code: 200
+#     cache_ttl_in_sec: 60
 
   - name: "ext2"
     authentication_endpoint: "http://{EXT2_HOST}:{EXT2_PORT}/auth2"
