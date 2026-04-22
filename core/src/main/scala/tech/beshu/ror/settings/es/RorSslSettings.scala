@@ -264,78 +264,91 @@ private object SslDecoders extends RequestIdAwareLogging {
                                        (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[ExternalSslSettings]] = {
     implicit val pp: PropertiesProvider = sc.propertiesProvider
     val sectionPath = NonEmptyList.of(consts.rorSection, consts.externalSsl)
-    for {
-      sectionPresent <- YamlLeafOrPropertyDecoder.sectionPresentDecoder(sectionPath)
-      enable <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
-      ciphers <- ciphersDecoder(sectionPath)
-      protocols <- protocolsDecoder(sectionPath)
-      clientAuthentication <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
-      verification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
-      keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
-      keystorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
-      keyAlias <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
-      keyPass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
-      truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
-      truststorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
-      serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
-      serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
-      clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
-      result <- YamlLeafOrPropertyDecoder.fromEither[Option[ExternalSslSettings]] {
-        if (!sectionPresent || !enable.getOrElse(true)) Right(None)
-        else for {
-          serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
-          clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
-        } yield Some(ExternalSslSettings(
-          serverCertificateSettings = serverCert,
-          clientCertificateSettings = clientCert,
-          allowedProtocols = protocols.getOrElse(Set.empty),
-          allowedCiphers = ciphers.getOrElse(Set.empty),
-          clientAuthenticationEnabled = clientAuthentication.orElse(verification).getOrElse(false),
-          fipsMode = fipsMode
-        ))
-      }
-    } yield result
+    YamlLeafOrPropertyDecoder.whenSectionPresent[ExternalSslSettings](sectionPath) {
+      for {
+        enable <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
+        result <- enable match {
+          case Some(false) => YamlLeafOrPropertyDecoder.pure[Option[ExternalSslSettings]](None)
+          case _ =>
+            for {
+              ciphers <- ciphersDecoder(sectionPath)
+              protocols <- protocolsDecoder(sectionPath)
+              clientAuthentication <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
+              verification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
+              keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
+              keystorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
+              keyAlias <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
+              keyPass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
+              truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
+              truststorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
+              serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
+              serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
+              clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
+              r <- YamlLeafOrPropertyDecoder.fromEither[Option[ExternalSslSettings]] {
+                for {
+                  serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
+                  clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
+                } yield Some(ExternalSslSettings(
+                  serverCertificateSettings = serverCert,
+                  clientCertificateSettings = clientCert,
+                  allowedProtocols = protocols.getOrElse(Set.empty),
+                  allowedCiphers = ciphers.getOrElse(Set.empty),
+                  clientAuthenticationEnabled = clientAuthentication.orElse(verification).getOrElse(false),
+                  fipsMode = fipsMode
+                ))
+              }
+            } yield r
+        }
+      } yield result
+    }
   }
 
   private def internodeSslSectionDecoder(basePath: File, fipsMode: FipsMode)
                                         (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[InternodeSslSettings]] = {
     implicit val pp: PropertiesProvider = sc.propertiesProvider
     val sectionPath = NonEmptyList.of(consts.rorSection, consts.internodeSsl)
-    for {
-      sectionPresent <- YamlLeafOrPropertyDecoder.sectionPresentDecoder(sectionPath)
-      enable <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
-      ciphers <- ciphersDecoder(sectionPath)
-      protocols <- protocolsDecoder(sectionPath)
-      clientAuthentication <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
-      certificateVerification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.certificateVerification)
-      hostnameVerification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.hostnameVerification)
-      verification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
-      keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
-      keystorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
-      keyAlias <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
-      keyPass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
-      truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
-      truststorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
-      serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
-      serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
-      clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
-      result <- YamlLeafOrPropertyDecoder.fromEither[Option[InternodeSslSettings]] {
-        if (!sectionPresent || !enable.getOrElse(true)) Right(None)
-        else for {
-          serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
-          clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
-        } yield Some(InternodeSslSettings(
-          serverCertificateSettings = serverCert,
-          clientCertificateSettings = clientCert,
-          allowedProtocols = protocols.getOrElse(Set.empty),
-          allowedCiphers = ciphers.getOrElse(Set.empty),
-          clientAuthenticationEnabled = clientAuthentication.getOrElse(false),
-          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false),
-          hostnameVerificationEnabled = hostnameVerification.getOrElse(false),
-          fipsMode = fipsMode
-        ))
-      }
-    } yield result
+    YamlLeafOrPropertyDecoder.whenSectionPresent[InternodeSslSettings](sectionPath) {
+      for {
+        enable <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
+        result <- enable match {
+          case Some(false) =>
+            YamlLeafOrPropertyDecoder.pure[Option[InternodeSslSettings]](None)
+          case _ =>
+            for {
+              ciphers <- ciphersDecoder(sectionPath)
+              protocols <- protocolsDecoder(sectionPath)
+              clientAuthentication <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
+              certificateVerification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.certificateVerification)
+              hostnameVerification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.hostnameVerification)
+              verification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
+              keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
+              keystorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
+              keyAlias <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
+              keyPass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
+              truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
+              truststorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
+              serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
+              serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
+              clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
+              r <- YamlLeafOrPropertyDecoder.fromEither[Option[InternodeSslSettings]] {
+                for {
+                  serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
+                  clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
+                } yield Some(InternodeSslSettings(
+                  serverCertificateSettings = serverCert,
+                  clientCertificateSettings = clientCert,
+                  allowedProtocols = protocols.getOrElse(Set.empty),
+                  allowedCiphers = ciphers.getOrElse(Set.empty),
+                  clientAuthenticationEnabled = clientAuthentication.getOrElse(false),
+                  certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false),
+                  hostnameVerificationEnabled = hostnameVerification.getOrElse(false),
+                  fipsMode = fipsMode
+                ))
+              }
+            } yield r
+        }
+      } yield result
+    }
   }
 
   private def buildServerCertificateSettings(keystoreFile: Option[KeystoreFile],

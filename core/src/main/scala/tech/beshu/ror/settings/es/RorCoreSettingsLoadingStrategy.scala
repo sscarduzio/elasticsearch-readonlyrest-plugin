@@ -70,7 +70,7 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
   sealed trait CoreRefreshSettings
   object CoreRefreshSettings {
     case object Disabled extends CoreRefreshSettings
-    final case class Enabled(poolInterval: PositiveFiniteDuration) extends CoreRefreshSettings
+    final case class Enabled(pollInterval: PositiveFiniteDuration) extends CoreRefreshSettings
   }
 
   def load(esEnv: EsEnv)
@@ -90,10 +90,10 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
     }
 
     private object legacyConsts {
-      val refreshInterval: NonEmptyString  = NonEmptyString.unsafeFrom("com.readonlyrest.settings.refresh.interval")
-      val loadingDelay: NonEmptyString     = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.delay")
+      val refreshInterval: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.refresh.interval")
+      val loadingDelay: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.delay")
       val attemptsInterval: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.attempts.interval")
-      val attemptsCount: NonEmptyString    = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.attempts.count")
+      val attemptsCount: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.attempts.count")
     }
 
     private object consts {
@@ -101,7 +101,7 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
       val forceLoadFromFileKey: NonEmptyString = NonEmptyString.unsafeFrom("force_load_from_file")
       val loadFromIndexSection: NonEmptyString = NonEmptyString.unsafeFrom("load_from_index")
       val retryStrategySection: NonEmptyString = NonEmptyString.unsafeFrom("initial_loading_retry_strategy")
-      val poolIntervalSection: NonEmptyString = NonEmptyString.unsafeFrom("poll_interval")
+      val pollIntervalSection: NonEmptyString = NonEmptyString.unsafeFrom("poll_interval")
       val attemptsIntervalKey: NonEmptyString = NonEmptyString.unsafeFrom("attempts_interval")
       val attemptsCountKey: NonEmptyString = NonEmptyString.unsafeFrom("attempts_count")
       val initialDelayKey: NonEmptyString = NonEmptyString.unsafeFrom("initial_delay")
@@ -176,12 +176,14 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
             Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m' or integer seconds")
         }
       }
-      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
-        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsIntervalKey),
-        creator = creator
-      ).orElse(
-        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsInterval, legacyCreator)
-      )
+      YamlLeafOrPropertyDecoder
+        .createOptionalValueDecoder(
+          path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsIntervalKey),
+          creator = creator
+        )
+        .orElse {
+          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsInterval, legacyCreator)
+        }
     }
 
     private def loadingAttemptsCountDecoder(systemContext: SystemContext) = {
@@ -192,12 +194,13 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
           case Failure(exception) => Left(exception.getMessage)
         }
       }
-      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
-        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
-        creator = creator
-      ).orElse(
-        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsCount, creator)
-      )
+      YamlLeafOrPropertyDecoder
+        .createOptionalValueDecoder(
+          path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
+          creator = creator
+        ).orElse(
+          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsCount, creator)
+        )
     }
 
     private def loadingDelayDecoder(systemContext: SystemContext) = {
@@ -256,7 +259,7 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
         }
       }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
-        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.poolIntervalSection),
+        path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.pollIntervalSection),
         creator = creator
       ).orElse(
         YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.refreshInterval, legacyCreator)
@@ -266,9 +269,9 @@ object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport
     private def parseLegacyDuration(value: String): Try[FiniteDuration] = Try {
       Try(value.toLong) match {
         case Success(seconds) => FiniteDuration(seconds, java.util.concurrent.TimeUnit.SECONDS)
-        case Failure(_)       => Duration(value) match {
+        case Failure(_) => Duration(value) match {
           case d: FiniteDuration => d
-          case _                 => throw new IllegalArgumentException(s"Expected a finite duration, got '$value'")
+          case _ => throw new IllegalArgumentException(s"Expected a finite duration, got '$value'")
         }
       }
     }
