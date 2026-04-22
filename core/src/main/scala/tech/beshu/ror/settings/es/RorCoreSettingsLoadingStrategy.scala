@@ -26,7 +26,7 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
@@ -36,7 +36,7 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Failure, Success, Try}
 
 sealed trait RorCoreSettingsLoadingStrategy
-object RorCoreSettingsLoadingStrategy extends YamlFileBasedSettingsLoaderSupport {
+object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
   case object ForceLoadingFromFileSettings extends RorCoreSettingsLoadingStrategy
   final case class LoadFromIndexWithFileFallback(indexLoadingRetrySettings: LoadingRetryStrategySettings,

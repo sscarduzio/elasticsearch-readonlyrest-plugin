@@ -26,12 +26,12 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.SslSettings.*
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.{FromString, RequestIdAwareLogging, SSLCertHelper}
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
 sealed trait RorSslSettings
-object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdAwareLogging {
+object RorSslSettings extends ElasticsearchConfigLoaderSupport with RequestIdAwareLogging {
 
   final case class OnlyExternalSslSettings(ssl: ExternalSslSettings) extends RorSslSettings
   final case class OnlyInternodeSslSettings(ssl: InternodeSslSettings) extends RorSslSettings

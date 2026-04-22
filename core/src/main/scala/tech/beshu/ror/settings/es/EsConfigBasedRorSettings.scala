@@ -20,7 +20,7 @@ import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 
 import scala.language.{implicitConversions, postfixOps}
 

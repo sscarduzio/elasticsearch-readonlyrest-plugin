@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSetti
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
@@ -34,7 +34,7 @@ final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
                                           settingsFile: RorSettingsFile,
                                           settingsMaxSize: Information)
 
-object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
+object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
 
   def from(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorSettingsSourcesConfig]] = {

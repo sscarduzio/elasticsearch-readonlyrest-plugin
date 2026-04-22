@@ -24,7 +24,7 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
@@ -33,7 +33,7 @@ import scala.language.postfixOps
 final case class RorBootSettings(rorNotStartedResponse: RorNotStartedResponse,
                                  rorFailedToStartResponse: RorFailedToStartResponse)
 
-object RorBootSettings extends YamlFileBasedSettingsLoaderSupport {
+object RorBootSettings extends ElasticsearchConfigLoaderSupport {
 
   def load(env: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorBootSettings]] = {

@@ -24,13 +24,13 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.Transformati
 import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 import tech.beshu.ror.utils.yaml.YamlParser
 
-final class YamlFileBasedSettingsLoader(file: File)
-                                       (implicit systemContext: SystemContext) {
+final class ElasticsearchConfigLoader(file: File)
+                                     (implicit systemContext: SystemContext) {
 
   private val yamlParser: YamlParser = new YamlParser()
 
@@ -75,7 +75,7 @@ final class YamlFileBasedSettingsLoader(file: File)
   private def createError(message: String) = LoadingError.MalformedSettings(file, message)
 }
 
-object YamlFileBasedSettingsLoader {
+object ElasticsearchConfigLoader {
   sealed trait LoadingError
   object LoadingError {
     final case class FileNotFound(file: File) extends LoadingError
@@ -83,7 +83,7 @@ object YamlFileBasedSettingsLoader {
   }
 }
 
-private[es] trait YamlFileBasedSettingsLoaderSupport {
+private[es] trait ElasticsearchConfigLoaderSupport {
 
   protected def loadSetting[T: YamlLeafOrPropertyDecoder](esEnv: EsEnv, settingsName: String)
                                                          (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
@@ -92,7 +92,7 @@ private[es] trait YamlFileBasedSettingsLoaderSupport {
 
   protected def loadSetting[T: YamlLeafOrPropertyDecoder](file: File, settingsName: String)
                                                          (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
-    val loader = new YamlFileBasedSettingsLoader(file)
+    val loader = new ElasticsearchConfigLoader(file)
     loader.loadSettings[T](settingsName)
   }
 

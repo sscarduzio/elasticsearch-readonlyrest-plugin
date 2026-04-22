@@ -27,8 +27,8 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.RorSslSettings
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBasedSettings, KeystoreBasedSettings}
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError.MalformedSettings
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{createEsEnv, defaultEsEnv, getResourcePath}
 
