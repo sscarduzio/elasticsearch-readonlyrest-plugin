@@ -111,14 +111,24 @@ class RorSslSettingsTest
         ssl should be (Right(None))
       }
     }
+    "load FIPS mode SSL_ONLY" in {
+      val ssl = forceLoadRorSslSettings("/boot_tests/ssl_fips_mode")
+
+      inside(ssl.externalSsl) {
+        case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, _, _, _, FipsMode.SslOnly)) =>
+          keystoreFile.value.name should be("ror-keystore.jks")
+          keystorePassword should be(KeystorePassword("readonlyrest1"))
+          keyPass should be(KeyPass("readonlyrest2"))
+      }
+    }
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
           val esConfigFolderPath = "/boot_tests/es_api_ssl_settings_malformed"
           val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
-          loadRorSslSettings(esConfigFolderPath) shouldBe Left {
+          loadRorSslSettings(esConfigFolderPath) should be(Left(
             MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: 'keystore_file' is required when keystore based SSL settings are used")
-          }
+          ))
         }
       }
       "file content is not valid yaml" in {
@@ -135,12 +145,12 @@ class RorSslSettingsTest
         val configFolderPath = "/boot_tests/es_api_ssl_settings_both_pem_and_keystore_configured"
         val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml")
 
-        loadRorSslSettings(configFolderPath) shouldBe Left {
+        loadRorSslSettings(configFolderPath) should be(Left(
           MalformedSettings(
             expectedFilePath,
             s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. " +
               s"Cause: Field sets [server_certificate_key_file, server_certificate_file] and [keystore_file, keystore_pass, key_alias, key_pass] could not be present in the same settings section")
-        }
+        ))
       }
     }
   }
@@ -205,15 +215,53 @@ class RorSslSettingsTest
         ssl should be (Right(None))
       }
     }
+    "load both external and internode SSL settings" in {
+      val ssl = forceLoadRorSslSettings("/boot_tests/ssl_both_external_and_internode")
+
+      inside(ssl) {
+        case RorSslSettings.ExternalAndInternodeSslSettings(external, internode) =>
+          inside(external.serverCertificateSettings) {
+            case KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)) =>
+              keystoreFile.value.name should be("ror-keystore.jks")
+              keystorePassword should be(KeystorePassword("readonlyrest1"))
+              keyPass should be(KeyPass("readonlyrest2"))
+          }
+          external.fipsMode should be(FipsMode.NonFips)
+          inside(internode.serverCertificateSettings) {
+            case KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)) =>
+              keystoreFile.value.name should be("ror-internode-keystore.jks")
+              keystorePassword should be(KeystorePassword("readonlyrest3"))
+              keyPass should be(KeyPass("readonlyrest4"))
+          }
+          internode.certificateVerificationEnabled should be(true)
+          internode.hostnameVerificationEnabled should be(true)
+      }
+    }
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
           val configFolderPath = "/boot_tests/internode_ssl_settings_malformed"
           val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml")
-          loadRorSslSettings(configFolderPath) shouldBe Left {
+          loadRorSslSettings(configFolderPath) should be(Left(
             MalformedSettings(expectedFilePath, s"Cannot load ROR SSL settings from file ${expectedFilePath.toString}. Cause: 'keystore_file' is required when keystore based SSL settings are used")
-          }
+          ))
         }
+      }
+      "XPack Security is enabled and SSL is declared in elasticsearch config" in {
+        val configFolderPath = "/boot_tests/ror_ssl_declared_in_es_file_xpack_security_enabled"
+        val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml")
+
+        loadRorSslSettings(configFolderPath) should be(Left(
+          MalformedSettings(expectedFilePath, s"Cannot use ROR SSL when XPack Security is enabled")
+        ))
+      }
+      "XPack Security is enabled and SSL is declared in readonlyrest settings file" in {
+        val configFolderPath = "/boot_tests/ror_ssl_declared_in_readonlyrest_file_xpack_security_enabled"
+        val expectedFilePath = getResourcePath(s"$configFolderPath/elasticsearch.yml")
+
+        loadRorSslSettings(configFolderPath) should be(Left(
+          MalformedSettings(expectedFilePath, s"Cannot use ROR SSL when XPack Security is enabled")
+        ))
       }
     }
   }

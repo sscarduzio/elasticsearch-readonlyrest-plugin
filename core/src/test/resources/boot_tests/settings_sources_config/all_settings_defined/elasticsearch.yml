@@ -1,0 +1,8 @@
+node.name: n1_it
+cluster.initial_master_nodes: n1_it
+
+readonlyrest:
+  settings:
+    index_name: .my-ror-index
+    file_path: /custom/path/readonlyrest.yml
+    max_size: 10 MB

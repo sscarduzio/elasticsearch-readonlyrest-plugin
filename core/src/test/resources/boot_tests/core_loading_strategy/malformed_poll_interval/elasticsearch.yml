@@ -1,0 +1,6 @@
+node.name: n1_it
+cluster.initial_master_nodes: n1_it
+
+readonlyrest:
+  load_from_index:
+    poll_interval: not-a-duration

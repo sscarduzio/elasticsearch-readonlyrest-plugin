@@ -1,0 +1,10 @@
+node.name: n1_it
+cluster.initial_master_nodes: n1_it
+
+readonlyrest:
+  load_from_index:
+    initial_loading_retry_strategy:
+      attempts_interval: 10s
+      attempts_count: 3
+      initial_delay: 2s
+    poll_interval: 30s

@@ -79,25 +79,25 @@ class RorBootSettingsTest
       val esConfigFolderPath = "/boot_tests/boot_config/not_started_code_malformed"
       val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
 
-      RorBootSettings.load(esEnvFrom(esConfigFolderPath)).runSyncUnsafe() shouldBe Left {
+      RorBootSettings.load(esEnvFrom(esConfigFolderPath)).runSyncUnsafe() should be(Left(
         MalformedSettings(
           expectedFilePath,
           s"Cannot load ROR boot settings from file ${expectedFilePath.toString}. " +
             s"Cause: Invalid value at '.readonlyrest.not_started_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
         )
-      }
+      ))
     }
     "failed to start response code is malformed" in {
       val esConfigFolderPath = "/boot_tests/boot_config/failed_to_start_code_malformed"
       val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
 
-      RorBootSettings.load(esEnvFrom(esConfigFolderPath)).runSyncUnsafe() shouldBe Left {
+      RorBootSettings.load(esEnvFrom(esConfigFolderPath)).runSyncUnsafe() should be(Left(
         MalformedSettings(
           expectedFilePath,
           s"Cannot load ROR boot settings from file ${expectedFilePath.toString}. " +
             s"Cause: Invalid value at '.readonlyrest.failed_to_start_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
         )
-      }
+      ))
     }
   }
 

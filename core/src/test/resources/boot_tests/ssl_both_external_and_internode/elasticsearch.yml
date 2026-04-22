@@ -1,0 +1,17 @@
+node.name: n1_it
+cluster.initial_master_nodes: n1_it
+xpack.security.enabled: false
+
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "ror-keystore.jks"
+    keystore_pass: readonlyrest1
+    key_pass: readonlyrest2
+  ssl_internode:
+    enable: true
+    keystore_file: "ror-internode-keystore.jks"
+    keystore_pass: readonlyrest3
+    key_pass: readonlyrest4
+    certificate_verification: true
+    hostname_verification: true
