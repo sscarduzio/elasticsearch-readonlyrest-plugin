@@ -51,22 +51,29 @@ object FromString {
   }
 
   val nonNegativeFiniteDuration: FromString[NonNegativeFiniteDuration] = instance { str =>
-    Try(Duration(str)) match {
-      case Success(v: FiniteDuration) =>
+    parseFiniteDuration(str) match {
+      case Success(v) =>
         v.toRefineNonNegative.left.map(_ => s"Duration '$str' must be non-negative")
-      case Success(_) | Failure(_) =>
+      case Failure(_) =>
         Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m'")
     }
   }
 
   val positiveFiniteDuration: FromString[PositiveFiniteDuration] = instance { str =>
-    Try(Duration(str)) match {
-      case Success(v: FiniteDuration) =>
+    parseFiniteDuration(str) match {
+      case Success(v) =>
         v.toRefinedPositive.left.map(_ => s"Duration '$str' must be positive (greater than zero)")
-      case Success(_) | Failure(_) =>
+      case Failure(_) =>
         Left(s"Cannot parse '$str' as a duration. Expected a finite duration like '5s', '1m'")
     }
   }
+
+  private def parseFiniteDuration(str: String): Try[FiniteDuration] =
+    Try(str.toLong).map(FiniteDuration(_, java.util.concurrent.TimeUnit.SECONDS))
+      .orElse(Try(Duration(str)).flatMap {
+        case d: FiniteDuration => Success(d)
+        case _                 => Failure(new IllegalArgumentException(s"Expected a finite duration"))
+      })
 
   val nonNegativeInt: FromString[Int Refined NonNegative] = instance { str =>
     Try(Integer.valueOf(str)) match {

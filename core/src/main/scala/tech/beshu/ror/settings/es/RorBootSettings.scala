@@ -69,14 +69,14 @@ object RorBootSettings extends ElasticsearchConfigLoaderSupport {
     object consts {
       val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
       val rorNotStartedResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("not_started_response_code")
-      val rorFailedTpStartResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("failed_to_start_response_code")
+      val rorFailedToStartResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("failed_to_start_response_code")
     }
 
     def rorBootSettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[RorBootSettings] = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
       for {
         notStartedHttpCode    <- httpCodeDecoder(consts.rorNotStartedResponseCode,    RorNotStartedResponse.HttpCode.`403`,    RorNotStartedResponse.HttpCode.`503`)
-        failedToStartHttpCode <- httpCodeDecoder(consts.rorFailedTpStartResponseCode, RorFailedToStartResponse.HttpCode.`403`, RorFailedToStartResponse.HttpCode.`503`)
+        failedToStartHttpCode <- httpCodeDecoder(consts.rorFailedToStartResponseCode, RorFailedToStartResponse.HttpCode.`403`, RorFailedToStartResponse.HttpCode.`503`)
       } yield RorBootSettings(
         RorNotStartedResponse(notStartedHttpCode.getOrElse(defaults.rorNotStartedResponse)),
         RorFailedToStartResponse(failedToStartHttpCode.getOrElse(defaults.rorFailedToStartResponse))

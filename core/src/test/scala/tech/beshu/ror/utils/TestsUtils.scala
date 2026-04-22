@@ -305,10 +305,10 @@ object TestsUtils {
           bc.indices should be(indices)
         case bc: FilterableRequestBlockContext =>
           bc.filteredIndices should be(indices)
-          bc.filter should be (filter)
+          bc.filter should be(filter)
         case bc: FilterableMultiRequestBlockContext =>
           bc.indexPacks should be(indexPacks)
-          bc.filter should be (filter)
+          bc.filter should be(filter)
         case bc: AliasRequestBlockContext =>
           bc.indices should be(indices)
           bc.aliases should be(aliases)
@@ -323,13 +323,13 @@ object TestsUtils {
     final case class RuleThrownException(exception: Throwable) extends RuleCheckAssertion
   }
 
-  extension(rule: Rule) {
+  extension (rule: Rule) {
     def checkAndAssert[B <: BlockContext : BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
       import monix.execution.Scheduler.Implicits.global
       val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
       assertion match {
         case RuleCheckAssertion.RulePermitted(blockContextAssertion) =>
-          result.get shouldBe a [Permitted[B]]
+          result.get shouldBe a[Permitted[B]]
           blockContextAssertion(result.get.asInstanceOf[Permitted[B]].context)
         case RuleCheckAssertion.RuleDenied(cause) =>
           result.get should be(Denied(cause))
@@ -338,7 +338,6 @@ object TestsUtils {
       }
     }
   }
-
 
   def headerFrom(nameAndValue: (String, String)): Header = {
     (NonEmptyString.unapply(nameAndValue._1), NonEmptyString.unapply(nameAndValue._2)) match {
@@ -427,7 +426,6 @@ object TestsUtils {
     parser.parse(jsonString).toTry.get
   }
 
-
   def createEsEnv(configDir: File): EsEnv = {
     val xpackSecurityEnabled = loadPathFrom(configDir, NonEmptyList.of("xpack", "security", "enabled"), true)
     EsEnv(
@@ -457,7 +455,16 @@ object TestsUtils {
       .map { json =>
         val oneLineCursor = json.hcursor.downField(path.toList.mkString("."))
         val multiLineCursor = path.foldLeft[ACursor](json.hcursor)((c, segment) => c.downField(segment))
-        oneLineCursor.as[T].orElse(multiLineCursor.as[T]).getOrElse(default)
+        oneLineCursor.as[Option[T]] match {
+          case Right(Some(value)) => value
+          case Right(None) =>
+            multiLineCursor.as[Option[T]] match {
+              case Right(Some(value)) => value
+              case Right(None) => default
+              case Left(error) => throw error
+            }
+          case Left(error) => throw error
+        }
       } match {
       case Right(value) => value
       case Left(error) => throw error

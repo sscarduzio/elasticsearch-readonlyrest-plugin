@@ -70,6 +70,12 @@ class FromStringTest extends AnyWordSpec {
         "Cannot parse 'Inf' as a duration. Expected a finite duration like '5s', '1m'"
       ))
     }
+    "decode a bare integer as seconds" in {
+      FromString.nonNegativeFiniteDuration.decode("5") should be(Right((5 seconds).toRefinedNonNegativeUnsafe))
+    }
+    "decode bare zero as seconds" in {
+      FromString.nonNegativeFiniteDuration.decode("0") should be(Right((0 seconds).toRefinedNonNegativeUnsafe))
+    }
     "fail for a non-duration string" in {
       FromString.nonNegativeFiniteDuration.decode("not-a-duration") should be(Left(
         "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
@@ -81,8 +87,14 @@ class FromStringTest extends AnyWordSpec {
     "decode a positive duration" in {
       FromString.positiveFiniteDuration.decode("10s") should be(Right((10 seconds).toRefinedPositiveUnsafe))
     }
+    "decode a bare integer as seconds" in {
+      FromString.positiveFiniteDuration.decode("10") should be(Right((10 seconds).toRefinedPositiveUnsafe))
+    }
     "fail for zero duration" in {
       FromString.positiveFiniteDuration.decode("0s") should be(Left("Duration '0s' must be positive (greater than zero)"))
+    }
+    "fail for bare zero integer" in {
+      FromString.positiveFiniteDuration.decode("0") should be(Left("Duration '0' must be positive (greater than zero)"))
     }
     "fail for a negative duration" in {
       FromString.positiveFiniteDuration.decode("-5s") should be(Left("Duration '-5s' must be positive (greater than zero)"))
