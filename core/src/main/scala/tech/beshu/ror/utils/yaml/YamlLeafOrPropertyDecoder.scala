@@ -18,11 +18,12 @@ package tech.beshu.ror.utils.yaml
 
 import cats.Monad
 import cats.data.NonEmptyList
-import cats.implicits._
+import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{ACursor, Json, JsonNumber}
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.utils.FromString
 
 import scala.language.implicitConversions
 
@@ -32,21 +33,21 @@ trait YamlLeafOrPropertyDecoder[T] {
 
 object YamlLeafOrPropertyDecoder {
 
-  def createRequiredValueDecoder[T](path: NonEmptyList[NonEmptyString], creator: String => Either[String, T])
+  def createRequiredValueDecoder[T](path: NonEmptyList[NonEmptyString], decoder: FromString[T])
                                    (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[T] = {
-    implicit val valueCreator: ValueCreator[T] = ValueCreator(creator)
+    implicit val valueCreator: FromString[T] = decoder
     apply(path)
   }
 
-  def createOptionalValueDecoder[T](path: NonEmptyList[NonEmptyString], creator: String => Either[String, T])
+  def createOptionalValueDecoder[T](path: NonEmptyList[NonEmptyString], decoder: FromString[T])
                                    (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] = {
-    implicit val valueCreator: ValueCreator[T] = ValueCreator(creator)
+    implicit val valueCreator: FromString[T] = decoder
     applyOptional(path)
   }
 
-  def createOptionalListValueDecoder[T](path: NonEmptyList[NonEmptyString], itemCreator: String => Either[String, T])
+  def createOptionalListValueDecoder[T](path: NonEmptyList[NonEmptyString], itemDecoder: FromString[T])
                                        (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[Set[T]]] = {
-    implicit val valueCreator: ValueCreator[T] = ValueCreator(itemCreator)
+    implicit val valueCreator: FromString[T] = itemDecoder
     new OptionalListYamlLeafOrPropertyDecoder[T](path)
   }
 
@@ -62,23 +63,17 @@ object YamlLeafOrPropertyDecoder {
     _ => either
 
   def optionalStringDecoder(path: NonEmptyList[NonEmptyString])
-                           (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[String]] = {
-    createOptionalValueDecoder(path, str => Right(str))
-  }
+                           (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[String]] =
+    createOptionalValueDecoder(path, FromString.string)
 
   def optionalBooleanDecoder(path: NonEmptyList[NonEmptyString])
-                            (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[Boolean]] = {
-    createOptionalValueDecoder(path, str => str.toLowerCase match {
-      case "true" => Right(true)
-      case "false" => Right(false)
-      case other => Left(s"Cannot convert '$other' to boolean")
-    })
-  }
+                            (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[Boolean]] =
+    createOptionalValueDecoder(path, FromString.boolean)
 
-  def createLegacyPropertyDecoder[T](legacyKey: NonEmptyString, creator: String => Either[String, T])
+  def createLegacyPropertyDecoder[T](legacyKey: NonEmptyString, decoder: FromString[T])
                                     (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] =
     _ => propertiesProvider.getProperty(PropName(legacyKey)) match {
-      case Some(str) => creator(str).map(Some.apply)
+      case Some(str) => decoder.decode(str).map(Some.apply)
       case None      => Right(None)
     }
 
@@ -86,12 +81,12 @@ object YamlLeafOrPropertyDecoder {
     _ => Right(value)
 
   implicit def apply[T](path: NonEmptyList[NonEmptyString])
-                       (implicit valueCreator: ValueCreator[T],
+                       (implicit valueCreator: FromString[T],
                         propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[T] =
     new RequiredYamlLeafOrPropertyDecoder(path)
 
   implicit def applyOptional[T](path: NonEmptyList[NonEmptyString])
-                               (implicit valueCreator: ValueCreator[T],
+                               (implicit valueCreator: FromString[T],
                                 propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] =
     new OptionalYamlLeafOrPropertyDecoder[T](path)
 
@@ -124,8 +119,6 @@ object YamlLeafOrPropertyDecoder {
       }
   }
 }
-
-private final case class ValueCreator[T](create: String => Either[String, T])
 
 private object JsonPathOps {
 
@@ -163,7 +156,7 @@ private object JsonPathOps {
 }
 
 private final class OptionalYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonEmptyString])
-                                                        (implicit valueCreator: ValueCreator[T],
+                                                        (implicit valueCreator: FromString[T],
                                                          propertiesProvider: PropertiesProvider)
   extends YamlLeafOrPropertyDecoder[Option[T]] {
 
@@ -172,14 +165,14 @@ private final class OptionalYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonE
 
   private def decodeFromYaml(json: Json): Either[String, Option[T]] =
     JsonPathOps.scalarAsStringOpt(json, path).flatMap {
-      case Some(str) => valueCreator.create(str).map(Some.apply).left.map(withPath)
+      case Some(str) => valueCreator.decode(str).map(Some.apply).left.map(withPath)
       case None      => Right(None)
     }
 
   private def decodeFromProperty(): Either[String, Option[T]] = {
     val propName = NonEmptyString.unsafeFrom(JsonPathOps.pathAsString(path))
     propertiesProvider.getProperty(PropName(propName)) match {
-      case Some(str) => valueCreator.create(str).map(Some.apply).left.map(withPath)
+      case Some(str) => valueCreator.decode(str).map(Some.apply).left.map(withPath)
       case None      => Right(None)
     }
   }
@@ -189,7 +182,7 @@ private final class OptionalYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonE
 }
 
 private final class RequiredYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonEmptyString])
-                                                        (implicit valueCreator: ValueCreator[T],
+                                                        (implicit valueCreator: FromString[T],
                                                          propertiesProvider: PropertiesProvider)
   extends YamlLeafOrPropertyDecoder[T] {
 
@@ -203,7 +196,7 @@ private final class RequiredYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonE
 }
 
 private final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonEmptyString])
-                                                            (implicit valueCreator: ValueCreator[T],
+                                                            (implicit valueCreator: FromString[T],
                                                              propertiesProvider: PropertiesProvider)
   extends YamlLeafOrPropertyDecoder[Option[Set[T]]] {
 
@@ -224,7 +217,7 @@ private final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[
     arr.toList.traverse { elem =>
       elem.asString
         .toRight(s"Expected string element at path '.${JsonPathOps.pathAsString(path)}', got ${elem.noSpaces}")
-        .flatMap(valueCreator.create)
+        .flatMap(valueCreator.decode)
     }.map(xs => Some(xs.toSet))
 
   private def decodeFromProperty(): Either[String, Option[Set[T]]] = {
@@ -238,6 +231,6 @@ private final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[
   private def parseCommaSeparated(str: String): Either[String, Set[T]] =
     str.split(",").toList
       .map(_.trim).filter(_.nonEmpty)
-      .traverse(valueCreator.create)
+      .traverse(valueCreator.decode)
       .map(_.toSet)
 }

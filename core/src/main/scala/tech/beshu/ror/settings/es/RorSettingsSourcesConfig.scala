@@ -27,6 +27,7 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
 final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
@@ -52,9 +53,14 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
       val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
       val settingsSection: NonEmptyString = NonEmptyString.unsafeFrom("settings")
       val indexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("index_name")
-      val deprecatedSettingsIndexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("settings_index")
       val filePathKey: NonEmptyString = NonEmptyString.unsafeFrom("file_path")
       val maxSizeKey: NonEmptyString = NonEmptyString.unsafeFrom("max_size")
+    }
+
+    object legacyConsts {
+      val settingsIndexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("settings_index")
+      val filePath: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.file.path")
+      val maxSize: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.maxSize")
     }
 
     def rorSettingsSourcesConfigDecoder(systemContext: SystemContext,
@@ -72,55 +78,45 @@ object RorSettingsSourcesConfig extends YamlFileBasedSettingsLoaderSupport {
 
     private def settingsIndexNameDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
-      val creator: String => Either[String, RorSettingsIndex] = { str =>
-        NonEmptyString
-          .from(str)
-          .map(str => RorSettingsIndex(IndexName.Full(str)))
-          .left.map(_ => s"Index name must not be empty")
-      }
-      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
-        path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.indexNameKey),
-        creator = creator
-      ) orElse YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
-        path = NonEmptyList.of(consts.rorSection, consts.deprecatedSettingsIndexNameKey),
-        creator = creator
-      )
+      val decoder: FromString[RorSettingsIndex] =
+        FromString.nonEmptyString.map(s => RorSettingsIndex(IndexName.Full(s)))
+      YamlLeafOrPropertyDecoder
+        .createOptionalValueDecoder(
+          path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.indexNameKey),
+          decoder = decoder
+        ).orElse(
+          YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+            path = NonEmptyList.of(consts.rorSection, legacyConsts.settingsIndexNameKey),
+            decoder = decoder
+          )
+        )
     }
 
     private def settingsFileDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
-      val creator: String => Either[String, RorSettingsFile] = { str =>
-        NonEmptyString
-          .from(str)
-          .map(str => RorSettingsFile(File(str.value)))
-          .left.map(_ => s"Settings file path must not be empty")
-      }
-      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
-        path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.filePathKey),
-        creator = creator
-      ).orElse(
-        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(
-          legacyKey = NonEmptyString.unsafeFrom("com.readonlyrest.settings.file.path"),
-          creator = creator
+      val decoder: FromString[RorSettingsFile] =
+        FromString.nonEmptyString.map(s => RorSettingsFile(File(s.value)))
+      YamlLeafOrPropertyDecoder
+        .createOptionalValueDecoder(
+          path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.filePathKey),
+          decoder = decoder
+        ).orElse(
+          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(
+            legacyKey = legacyConsts.filePath,
+            decoder = decoder
+          )
         )
-      )
     }
 
     private def settingsMaxSizeDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
-      val creator: String => Either[String, Information] = { str =>
-        Information
-          .parseString(str)
-          .toEither
-          .left.map(_ => s"Cannot parse '$str' as a data size. Expected format like '1 MB', '512 KB'")
-      }
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
-        creator = creator
+        decoder = FromString.information
       ).orElse(
         YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(
-          legacyKey = NonEmptyString.unsafeFrom("com.readonlyrest.settings.maxSize"),
-          creator = creator
+          legacyKey = legacyConsts.maxSize,
+          decoder = FromString.information
         )
       )
     }

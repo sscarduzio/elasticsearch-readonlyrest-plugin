@@ -27,7 +27,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
-import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
+import tech.beshu.ror.utils.{FromString, RequestIdAwareLogging, SSLCertHelper}
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
 sealed trait RorSslSettings
@@ -249,14 +249,14 @@ private object SslDecoders extends RequestIdAwareLogging {
 
   private def fipsModeDecoder(implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[FipsMode]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
-    val creator: String => Either[String, FipsMode] = {
+    val decoder: FromString[FipsMode] = FromString.instance {
       case "NON_FIPS" => Right(FipsMode.NonFips)
       case "SSL_ONLY" => Right(FipsMode.SslOnly)
-      case other => Left(s"Invalid settings option '${other.show}' for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
+      case other      => Left(s"Invalid settings option '${other.show}' for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
     }
     YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
       path = NonEmptyList.of(consts.rorSection, consts.fipsMode),
-      creator = creator
+      decoder = decoder
     )
   }
 
@@ -430,8 +430,7 @@ private object SslDecoders extends RequestIdAwareLogging {
   private def fileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString], key: NonEmptyString)
                          (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[File]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
-    val creator: String => Either[String, File] = str => Right(basePath / str)
-    YamlLeafOrPropertyDecoder.createOptionalValueDecoder(sectionPath :+ key, creator)
+    YamlLeafOrPropertyDecoder.createOptionalValueDecoder(sectionPath :+ key, FromString.string.map(basePath / _))
   }
 
   private def keystoreFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
@@ -464,7 +463,7 @@ private object SslDecoders extends RequestIdAwareLogging {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
     YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
       path = sectionPath :+ consts.allowedCiphers,
-      itemCreator = (str: String) => Right(Cipher(str))
+      itemDecoder = FromString.string.map(Cipher.apply)
     )
   }
 
@@ -473,7 +472,7 @@ private object SslDecoders extends RequestIdAwareLogging {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
     YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
       path = sectionPath :+ consts.allowedProtocols,
-      itemCreator = (str: String) => Right(Protocol(str))
+      itemDecoder = FromString.string.map(Protocol.apply)
     )
   }
 }

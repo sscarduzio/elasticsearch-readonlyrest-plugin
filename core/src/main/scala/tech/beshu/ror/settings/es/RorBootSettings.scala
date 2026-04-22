@@ -25,6 +25,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
 import scala.language.postfixOps
@@ -86,10 +87,10 @@ object RorBootSettings extends YamlFileBasedSettingsLoaderSupport {
                                   (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] =
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, pathKey),
-        creator = {
-          case "403" => Right(code403)
-          case "503" => Right(code503)
-          case unknown => Left(s"Unsupported HTTP code '$unknown'. Allowed values: '403', '503'")
+        decoder = FromString.instance {
+          case "403"    => Right(code403)
+          case "503"    => Right(code503)
+          case unknown  => Left(s"Unsupported HTTP code '$unknown'. Allowed values: '403', '503'")
         }
       )
   }
