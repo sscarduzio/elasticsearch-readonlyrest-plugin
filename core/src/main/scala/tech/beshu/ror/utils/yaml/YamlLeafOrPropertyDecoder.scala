@@ -52,12 +52,16 @@ object YamlLeafOrPropertyDecoder {
   }
 
   def whenSectionPresent[T](sectionPath: NonEmptyList[NonEmptyString])
-                           (inner: YamlLeafOrPropertyDecoder[Option[T]]): YamlLeafOrPropertyDecoder[Option[T]] =
-    json =>
-      if (JsonPathOps.focusAt(json, sectionPath).exists(j => !j.isNull))
+                           (inner: YamlLeafOrPropertyDecoder[Option[T]])
+                           (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] =
+    json => {
+      val inYaml = JsonPathOps.focusAt(json, sectionPath).exists(j => !j.isNull)
+      val inProperties = propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsString(sectionPath))
+      if (inYaml || inProperties)
         inner.decode(json)
       else
         Right(None)
+    }
 
   def fromEither[T](either: Either[String, T]): YamlLeafOrPropertyDecoder[T] =
     _ => either
@@ -131,12 +135,8 @@ private object JsonPathOps {
       .orElse(path.foldLeft[ACursor](cursor)((c, segment) => c.downField(segment.value)).focus)
   }
 
-  def yamlOrFallback[A](fromYaml: => Either[String, Option[A]],
-                        fromProperty: => Either[String, Option[A]]): Either[String, Option[A]] =
-    fromYaml.flatMap {
-      case some @ Some(_) => Right(some)
-      case None           => fromProperty
-    }
+  def existsAt(json: Json, path: NonEmptyList[NonEmptyString]): Boolean =
+    focusAt(json, path).exists(j => !j.isNull)
 
   def scalarAsStringOpt(json: Json, path: NonEmptyList[NonEmptyString]): Either[String, Option[String]] =
     focusAt(json, path) match {
@@ -160,8 +160,18 @@ private final class OptionalYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonE
                                                          propertiesProvider: PropertiesProvider)
   extends YamlLeafOrPropertyDecoder[Option[T]] {
 
-  override def decode(json: Json): Either[String, Option[T]] =
-    JsonPathOps.yamlOrFallback(decodeFromYaml(json), decodeFromProperty())
+  private val propName = NonEmptyString.unsafeFrom(JsonPathOps.pathAsString(path))
+
+  override def decode(json: Json): Either[String, Option[T]] = {
+    val inYaml = JsonPathOps.existsAt(json, path)
+    val inProperty = propertiesProvider.getProperty(PropName(propName)).isDefined
+    (inYaml, inProperty) match {
+      case (true, true) => Left(conflictError)
+      case (true, false) => decodeFromYaml(json)
+      case (false, true) => decodeFromProperty()
+      case (false, false) => Right(None)
+    }
+  }
 
   private def decodeFromYaml(json: Json): Either[String, Option[T]] =
     JsonPathOps.scalarAsStringOpt(json, path).flatMap {
@@ -169,16 +179,17 @@ private final class OptionalYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonE
       case None      => Right(None)
     }
 
-  private def decodeFromProperty(): Either[String, Option[T]] = {
-    val propName = NonEmptyString.unsafeFrom(JsonPathOps.pathAsString(path))
+  private def decodeFromProperty(): Either[String, Option[T]] =
     propertiesProvider.getProperty(PropName(propName)) match {
       case Some(str) => valueCreator.decode(str).map(Some.apply).left.map(withPath)
       case None      => Right(None)
     }
-  }
 
   private def withPath(err: String): String =
-    s"Invalid value at '.${JsonPathOps.pathAsString(path)}': $err"
+    s"Invalid value at '.$propName': $err"
+
+  private def conflictError: String =
+    s"Value at '.$propName' is defined in both YAML configuration and system properties. Please use only one."
 }
 
 private final class RequiredYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonEmptyString])
@@ -200,8 +211,18 @@ private final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[
                                                              propertiesProvider: PropertiesProvider)
   extends YamlLeafOrPropertyDecoder[Option[Set[T]]] {
 
-  override def decode(json: Json): Either[String, Option[Set[T]]] =
-    JsonPathOps.yamlOrFallback(decodeFromYaml(json), decodeFromProperty())
+  private val propName = NonEmptyString.unsafeFrom(JsonPathOps.pathAsString(path))
+
+  override def decode(json: Json): Either[String, Option[Set[T]]] = {
+    val inYaml = JsonPathOps.existsAt(json, path)
+    val inProperty = propertiesProvider.getProperty(PropName(propName)).isDefined
+    (inYaml, inProperty) match {
+      case (true, true)  => Left(conflictError)
+      case (true, false) => decodeFromYaml(json)
+      case (false, true) => decodeFromProperty()
+      case (false, false) => Right(None)
+    }
+  }
 
   private def decodeFromYaml(json: Json): Either[String, Option[Set[T]]] =
     JsonPathOps.focusAt(json, path) match {
@@ -210,27 +231,28 @@ private final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[
       case Some(j) =>
         j.asArray.map(decodeArray)
           .orElse(j.asString.map(str => parseCommaSeparated(str).map(Some.apply)))
-          .getOrElse(Left(s"Expected list or string at path '.${JsonPathOps.pathAsString(path)}', got ${j.noSpaces}"))
+          .getOrElse(Left(s"Expected list or string at path '.$propName', got ${j.noSpaces}"))
     }
 
   private def decodeArray(arr: Vector[Json]): Either[String, Option[Set[T]]] =
     arr.toList.traverse { elem =>
       elem.asString
-        .toRight(s"Expected string element at path '.${JsonPathOps.pathAsString(path)}', got ${elem.noSpaces}")
+        .toRight(s"Expected string element at path '.$propName', got ${elem.noSpaces}")
         .flatMap(valueCreator.decode)
     }.map(xs => Some(xs.toSet))
 
-  private def decodeFromProperty(): Either[String, Option[Set[T]]] = {
-    val propName = NonEmptyString.unsafeFrom(JsonPathOps.pathAsString(path))
+  private def decodeFromProperty(): Either[String, Option[Set[T]]] =
     propertiesProvider.getProperty(PropName(propName)) match {
       case Some(str) => parseCommaSeparated(str).map(Some.apply)
       case None      => Right(None)
     }
-  }
 
   private def parseCommaSeparated(str: String): Either[String, Set[T]] =
     str.split(",").toList
       .map(_.trim).filter(_.nonEmpty)
       .traverse(valueCreator.decode)
       .map(_.toSet)
+
+  private def conflictError: String =
+    s"Value at '.$propName' is defined in both YAML configuration and system properties. Please use only one."
 }

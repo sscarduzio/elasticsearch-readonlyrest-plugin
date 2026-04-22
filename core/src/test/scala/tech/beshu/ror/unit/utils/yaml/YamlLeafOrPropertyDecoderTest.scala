@@ -31,6 +31,136 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
   private val yamlParser = new YamlParser(Some(Kilobytes(100)))
 
+  "createOptionalValueDecoder" should {
+    "decode a value from YAML when only YAML has it" in {
+      val json = parse(
+        """
+          |readonlyrest:
+          |  ssl:
+          |    enable: true
+          |""".stripMargin
+      )
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
+    "decode a value from property when only property has it" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.enable" -> "true"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
+    "return None when absent in both YAML and property" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(None))
+    }
+    "fail when the value is defined in both YAML and property" in {
+      val json = parse(
+        """
+          |readonlyrest:
+          |  ssl:
+          |    enable: true
+          |""".stripMargin
+      )
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.enable" -> "false"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Left(
+        "Value at '.readonlyrest.ssl.enable' is defined in both YAML configuration and system properties. Please use only one."
+      ))
+    }
+  }
+
+  "createRequiredValueDecoder" should {
+    "decode a value from YAML when only YAML has it" in {
+      val json = parse(
+        """
+          |readonlyrest:
+          |  ssl:
+          |    keystore_file: ror.jks
+          |""".stripMargin
+      )
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyDecoder.createRequiredValueDecoder(
+        path = path("readonlyrest", "ssl", "keystore_file"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right("ror.jks"))
+    }
+    "decode a value from property when only property has it" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.keystore_file" -> "ror.jks"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createRequiredValueDecoder(
+        path = path("readonlyrest", "ssl", "keystore_file"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right("ror.jks"))
+    }
+    "fail when absent in both YAML and property" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyDecoder.createRequiredValueDecoder(
+        path = path("readonlyrest", "ssl", "keystore_file"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Left("Cannot find '.readonlyrest.ssl.keystore_file' path"))
+    }
+    "fail when the value is defined in both YAML and property" in {
+      val json = parse(
+        """
+          |readonlyrest:
+          |  ssl:
+          |    keystore_file: ror.jks
+          |""".stripMargin
+      )
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.keystore_file" -> "other.jks"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createRequiredValueDecoder(
+        path = path("readonlyrest", "ssl", "keystore_file"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Left(
+        "Value at '.readonlyrest.ssl.keystore_file' is defined in both YAML configuration and system properties. Please use only one."
+      ))
+    }
+  }
+
   "createOptionalListValueDecoder" should {
     "decode a YAML sequence" in {
       val json = parse(
@@ -92,6 +222,28 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(Some(Set("TLS_A", "TLS_B"))))
     }
+    "fail when the value is defined in both YAML and property" in {
+      val json = parse(
+        """
+          |readonlyrest:
+          |  ssl:
+          |    allowed_ciphers:
+          |      - TLS_RSA_WITH_AES_128_CBC_SHA
+          |""".stripMargin
+      )
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.allowed_ciphers" -> "TLS_A,TLS_B"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
+        path = path("readonlyrest", "ssl", "allowed_ciphers"),
+        itemDecoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Left(
+        "Value at '.readonlyrest.ssl.allowed_ciphers' is defined in both YAML configuration and system properties. Please use only one."
+      ))
+    }
   }
 
   "whenSectionPresent" should {
@@ -133,6 +285,32 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
           |    keystore_file: ror.jks
           |""".stripMargin
       )
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val inner = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+      val decoder = YamlLeafOrPropertyDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
+
+      decoder.decode(json) should be(Right(None))
+    }
+    "evaluate the inner decoder when the section is absent from YAML but a property under it exists" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.enable" -> "true"
+      ))
+      val inner = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+      val decoder = YamlLeafOrPropertyDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
+    "return None when the section is absent from both YAML and properties" in {
+      val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.default
       val inner = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
