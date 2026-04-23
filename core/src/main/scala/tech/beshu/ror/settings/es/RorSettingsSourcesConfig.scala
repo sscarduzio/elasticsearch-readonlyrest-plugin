@@ -85,7 +85,8 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.indexNameKey),
           decoder = decoder
-        ).orElse(
+        )
+        .orElse(
           YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
             path = NonEmptyList.of(consts.rorSection, legacyConsts.settingsIndexNameKey),
             decoder = decoder
@@ -102,7 +103,8 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.filePathKey),
           decoder = decoder
-        ).orElse(
+        )
+        .orElse(
           YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(
             legacyKey = legacyConsts.filePath,
             decoder = decoder
@@ -113,15 +115,17 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
     private def settingsMaxSizeDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
       implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
-      YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
-        path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
-        decoder = FromString.information
-      ).orElse(
-        YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(
-          legacyKey = legacyConsts.maxSize,
+      YamlLeafOrPropertyOrEnvDecoder
+        .createOptionalValueDecoder(
+          path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
           decoder = FromString.information
         )
-      )
+        .orElse(
+          YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(
+            legacyKey = legacyConsts.maxSize,
+            decoder = FromString.information
+          )
+        )
     }
 
   }

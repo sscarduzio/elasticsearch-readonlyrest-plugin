@@ -174,7 +174,8 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
           decoder = decoder
-        ).orElse(
+        )
+        .orElse(
           YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsCount, decoder)
         )
     }
@@ -190,7 +191,8 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.initialDelayKey),
           decoder = decoder
-        ).orElse(
+        )
+        .orElse(
           YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(legacyConsts.loadingDelay, legacyDecoder)
         )
     }
@@ -211,7 +213,8 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.pollIntervalSection),
           decoder = decoder
-        ).orElse(
+        )
+        .orElse(
           YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(legacyConsts.refreshInterval, legacyDecoder)
         )
     }
