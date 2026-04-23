@@ -22,14 +22,15 @@ import io.circe.Json
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.Kilobytes
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.FromString
-import tech.beshu.ror.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.yaml.{YamlLeafOrPropertyDecoder, YamlParser}
 
-class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
+class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
   private val yamlParser = new YamlParser(Some(Kilobytes(100)))
+  private given EnvVarsProvider = TestsEnvVarsProvider.default
 
   "createOptionalValueDecoder" should {
     "decode a value from YAML when only YAML has it" in {
@@ -62,7 +63,35 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(Some(true)))
     }
-    "return None when absent in both YAML and property" in {
+    "decode a value from env var when only env var has it" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "true"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
+    "decode a value from env var with escaped underscores in segment name" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "503"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "not_started_response_code"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right(Some("503")))
+    }
+    "return None when absent in YAML, property, and env var" in {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.default
@@ -73,7 +102,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(None))
     }
-    "prefer YAML when the value is defined in both YAML and property" in {
+    "prefer YAML over property and env var" in {
       val json = parse(
         """
           |readonlyrest:
@@ -84,6 +113,25 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
         "readonlyrest.ssl.enable" -> "false"
+      ))
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "false"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
+    "prefer property over env var when YAML is absent" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.enable" -> "true"
+      ))
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "false"
       ))
       val decoder = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -125,7 +173,21 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right("ror.jks"))
     }
-    "fail when absent in both YAML and property" in {
+    "decode a value from env var when only env var has it" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "ror.jks"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createRequiredValueDecoder(
+        path = path("readonlyrest", "ssl", "keystore_file"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right("ror.jks"))
+    }
+    "fail when absent in YAML, property, and env var" in {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.default
@@ -136,7 +198,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Left("Cannot find '.readonlyrest.ssl.keystore_file' path"))
     }
-    "prefer YAML when the value is defined in both YAML and property" in {
+    "prefer YAML over property and env var" in {
       val json = parse(
         """
           |readonlyrest:
@@ -148,6 +210,9 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
         "readonlyrest.ssl.keystore_file" -> "other.jks"
       ))
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "another.jks"
+      ))
       val decoder = YamlLeafOrPropertyDecoder.createRequiredValueDecoder(
         path = path("readonlyrest", "ssl", "keystore_file"),
         decoder = FromString.string
@@ -155,9 +220,55 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right("ror.jks"))
     }
+    "prefer property over env var when YAML is absent" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.keystore_file" -> "from-property.jks"
+      ))
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "from-env.jks"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createRequiredValueDecoder(
+        path = path("readonlyrest", "ssl", "keystore_file"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right("from-property.jks"))
+    }
   }
 
   "createOptionalListValueDecoder" should {
+    "decode a value from env var as a comma-separated list when only env var has it" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_ALLOWED__CIPHERS" -> "TLS_A,TLS_B"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
+        path = path("readonlyrest", "ssl", "allowed_ciphers"),
+        itemDecoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right(Some(Set("TLS_A", "TLS_B"))))
+    }
+    "prefer property over env var when YAML is absent" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
+        "readonlyrest.ssl.allowed_ciphers" -> "TLS_FROM_PROP"
+      ))
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_ALLOWED__CIPHERS" -> "TLS_FROM_ENV"
+      ))
+      val decoder = YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
+        path = path("readonlyrest", "ssl", "allowed_ciphers"),
+        itemDecoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right(Some(Set("TLS_FROM_PROP"))))
+    }
     "decode a YAML sequence" in {
       val json = parse(
         """
@@ -304,6 +415,49 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
       decoder.decode(json) should be(Right(Some(true)))
     }
     "return None when the section is absent from both YAML and properties" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val inner = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+      val decoder = YamlLeafOrPropertyDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
+
+      decoder.decode(json) should be(Right(None))
+    }
+    "evaluate the inner decoder when the section is absent from YAML and properties but an env var under it exists" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "true"
+      ))
+      val inner = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+      val decoder = YamlLeafOrPropertyDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
+    "not falsely detect section presence when env var belongs to a sibling section with an escaped underscore" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      // ES_SETTING_READONLYREST_SSL__INTERNODE_* belongs to readonlyrest.ssl_internode, not readonlyrest.ssl
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        "ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE" -> "true"
+      ))
+      val inner = YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+      val decoder = YamlLeafOrPropertyDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
+
+      decoder.decode(json) should be(Right(None))
+    }
+    "return None when the section is absent from YAML, properties, and env vars" in {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.default

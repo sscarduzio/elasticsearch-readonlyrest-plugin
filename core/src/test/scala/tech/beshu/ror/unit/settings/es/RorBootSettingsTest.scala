@@ -24,7 +24,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
-import tech.beshu.ror.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.withEsEnv
 
 class RorBootSettingsTest
@@ -130,6 +130,63 @@ class RorBootSettingsTest
         )))
       }
     }
+    "be loaded from OS environment variables" when {
+      "not_started_response_code is set via env var" in {
+        val settings = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          envVars = Map("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "503")
+        )
+
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+        )))
+      }
+      "failed_to_start_response_code is set via env var" in {
+        val settings = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          envVars = Map("ES_SETTING_READONLYREST_FAILED__TO__START__RESPONSE__CODE" -> "503")
+        )
+
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+        )))
+      }
+    }
+    "YAML takes priority over JVM property and env var" in {
+      val settings = load(
+        """
+          |readonlyrest:
+          |  not_started_response_code: 403
+          |""".stripMargin,
+        properties = Map("readonlyrest.not_started_response_code" -> "503"),
+        envVars    = Map("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "503")
+      )
+
+      settings should be(Right(RorBootSettings(
+        rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+        rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+      )))
+    }
+    "JVM property takes priority over env var" in {
+      val settings = load(
+        """
+          |node.name: n1_it
+          |""".stripMargin,
+        properties = Map("readonlyrest.not_started_response_code" -> "503"),
+        envVars    = Map("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "403")
+      )
+
+      settings should be(Right(RorBootSettings(
+        rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+        rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+      )))
+    }
   }
   "not be able to load" when {
     "not started response code is malformed" in {
@@ -160,9 +217,12 @@ class RorBootSettingsTest
     }
   }
 
-  private def load(yaml: String, properties: Map[String, String] = Map.empty) = {
+  private def load(yaml: String,
+                   properties: Map[String, String] = Map.empty,
+                   envVars: Map[String, String] = Map.empty) = {
     implicit val systemContext: SystemContext = new SystemContext(
-      propertiesProvider = TestsPropertiesProvider.usingMap(properties)
+      propertiesProvider = TestsPropertiesProvider.usingMap(properties),
+      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(yaml) { (esEnv, _) =>
       RorBootSettings.load(esEnv).runSyncUnsafe()

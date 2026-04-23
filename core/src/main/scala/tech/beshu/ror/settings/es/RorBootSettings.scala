@@ -22,7 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
@@ -74,6 +74,7 @@ object RorBootSettings extends ElasticsearchConfigLoaderSupport {
 
     def rorBootSettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[RorBootSettings] = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       for {
         notStartedHttpCode    <- httpCodeDecoder(consts.rorNotStartedResponseCode,    RorNotStartedResponse.HttpCode.`403`,    RorNotStartedResponse.HttpCode.`503`)
         failedToStartHttpCode <- httpCodeDecoder(consts.rorFailedToStartResponseCode, RorFailedToStartResponse.HttpCode.`403`, RorFailedToStartResponse.HttpCode.`503`)
@@ -84,7 +85,8 @@ object RorBootSettings extends ElasticsearchConfigLoaderSupport {
     }
 
     private def httpCodeDecoder[T](pathKey: NonEmptyString, code403: T, code503: T)
-                                  (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] =
+                                  (implicit propertiesProvider: PropertiesProvider,
+                                   envVarsProvider: EnvVarsProvider): YamlLeafOrPropertyDecoder[Option[T]] =
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, pathKey),
         decoder = FromString.instance {

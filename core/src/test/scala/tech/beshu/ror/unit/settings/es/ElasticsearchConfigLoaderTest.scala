@@ -24,16 +24,17 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
-import tech.beshu.ror.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
 
 class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
   private given PropertiesProvider = TestsPropertiesProvider.default
+  private given EnvVarsProvider = TestsEnvVarsProvider.default
   private given SystemContext = SystemContext.default
 
   "ElasticsearchConfigLoader" when {

@@ -24,7 +24,7 @@ import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
@@ -120,6 +120,7 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
     private def forceLoadFromFileDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.forceLoadFromFileKey),
         decoder = FromString.boolean
@@ -150,6 +151,7 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
     private def loadingAttemptsIntervalDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[LoadingAttemptsInterval] =
         FromString.nonNegativeFiniteDuration.map(LoadingAttemptsInterval.apply)
       val legacyDecoder: FromString[LoadingAttemptsInterval] =
@@ -166,6 +168,7 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
     private def loadingAttemptsCountDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[LoadingAttemptsCount] = FromString.nonNegativeInt.map(LoadingAttemptsCount.apply)
       YamlLeafOrPropertyDecoder
         .createOptionalValueDecoder(
@@ -178,6 +181,7 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
     private def loadingDelayDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[LoadingDelay] =
         FromString.nonNegativeFiniteDuration.map(LoadingDelay.apply)
       val legacyDecoder: FromString[LoadingDelay] =
@@ -193,6 +197,7 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
     private def coreRefreshSettingsDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
 
       def toRefreshSettings(d: NonNegativeFiniteDuration): CoreRefreshSettings =
         if (d.value == Duration.Zero) CoreRefreshSettings.Disabled

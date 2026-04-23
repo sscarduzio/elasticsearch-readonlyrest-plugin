@@ -28,7 +28,7 @@ import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBasedSettings, KeystoreBasedSettings}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
-import tech.beshu.ror.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, withEsEnv, withTempConfigDir}
 
 class RorSslSettingsTest
@@ -206,6 +206,79 @@ class RorSslSettingsTest
           keyPass should be(KeyPass("readonlyrest2"))
       }
       ssl.internodeSsl should be(None)
+    }
+    "be loaded from OS environment variables" when {
+      "external SSL is configured via env vars" in {
+        val ssl = forceLoad(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |xpack.security.enabled: false
+            |""".stripMargin,
+          envVars = Map(
+            "ES_SETTING_READONLYREST_SSL_ENABLE"        -> "true",
+            "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "ror-keystore.jks",
+            "ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS" -> "readonlyrest1",
+            "ES_SETTING_READONLYREST_SSL_KEY__PASS"      -> "readonlyrest2"
+          )
+        )
+        inside(ssl.externalSsl) {
+          case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+            keystoreFile.value.name should be("ror-keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(false)
+        }
+        ssl.internodeSsl should be(None)
+      }
+      "internode SSL is configured via env vars" in {
+        val ssl = forceLoad(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |xpack.security.enabled: false
+            |""".stripMargin,
+          envVars = Map(
+            "ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE"        -> "true",
+            "ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__FILE" -> "ror-keystore.jks",
+            "ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__PASS" -> "readonlyrest1",
+            "ES_SETTING_READONLYREST_SSL__INTERNODE_KEY__PASS"      -> "readonlyrest2"
+          )
+        )
+        inside(ssl.internodeSsl) {
+          case Some(InternodeSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
+            keystoreFile.value.name should be("ror-keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(false)
+            certificateVerificationEnabled should be(false)
+            hostnameVerificationEnabled should be(false)
+        }
+        ssl.externalSsl should be(None)
+      }
+      "fips_mode is configured via env var" in {
+        val ssl = forceLoad(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |xpack.security.enabled: false
+            |""".stripMargin,
+          envVars = Map(
+            "ES_SETTING_READONLYREST_FIPS__MODE"         -> "SSL_ONLY",
+            "ES_SETTING_READONLYREST_SSL_ENABLE"        -> "true",
+            "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "ror-keystore.jks",
+            "ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS" -> "readonlyrest1",
+            "ES_SETTING_READONLYREST_SSL_KEY__PASS"      -> "readonlyrest2"
+          )
+        )
+        inside(ssl.externalSsl) {
+          case Some(ExternalSslSettings(KeystoreBasedSettings(_, _, _, _), None, _, _, _, FipsMode.SslOnly)) =>
+        }
+      }
     }
     "be loaded from JVM properties" when {
       "external SSL is configured via properties" in {
@@ -591,8 +664,9 @@ class RorSslSettingsTest
 
   private def forceLoad(esConfigYaml: String,
                         rorSettingsYaml: String = basicRorSettings,
-                        properties: Map[String, String] = Map.empty) = {
-    load(esConfigYaml, rorSettingsYaml, properties) match {
+                        properties: Map[String, String] = Map.empty,
+                        envVars: Map[String, String] = Map.empty) = {
+    load(esConfigYaml, rorSettingsYaml, properties, envVars) match {
       case Right(Some(sslSettings)) => sslSettings
       case Right(None)              => throw new IllegalStateException("No SSL settings to load")
       case Left(error)              => throw new IllegalStateException(s"Cannot load SSL settings: $error")
@@ -601,9 +675,11 @@ class RorSslSettingsTest
 
   private def load(esConfigYaml: String,
                    rorSettingsYaml: String = basicRorSettings,
-                   properties: Map[String, String] = Map.empty) = {
+                   properties: Map[String, String] = Map.empty,
+                   envVars: Map[String, String] = Map.empty) = {
     implicit val systemContext: SystemContext = new SystemContext(
-      propertiesProvider = TestsPropertiesProvider.usingMap(properties)
+      propertiesProvider = TestsPropertiesProvider.usingMap(properties),
+      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(esConfigYaml, Map("readonlyrest.yml" -> rorSettingsYaml)) { (esEnv, configDir) =>
       RorSslSettings.load(esEnv, RorSettingsFile(configDir / "readonlyrest.yml")).runSyncUnsafe()

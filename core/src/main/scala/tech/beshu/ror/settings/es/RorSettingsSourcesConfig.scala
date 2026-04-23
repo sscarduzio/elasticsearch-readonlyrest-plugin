@@ -25,7 +25,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
@@ -78,6 +78,7 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
 
     private def settingsIndexNameDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[RorSettingsIndex] =
         FromString.nonEmptyString.map(s => RorSettingsIndex(IndexName.Full(s)))
       YamlLeafOrPropertyDecoder
@@ -94,6 +95,7 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
 
     private def settingsFileDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[RorSettingsFile] =
         FromString.nonEmptyString.map(s => RorSettingsFile(File(s.value)))
       YamlLeafOrPropertyDecoder
@@ -110,6 +112,7 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
 
     private def settingsMaxSizeDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
         decoder = FromString.information

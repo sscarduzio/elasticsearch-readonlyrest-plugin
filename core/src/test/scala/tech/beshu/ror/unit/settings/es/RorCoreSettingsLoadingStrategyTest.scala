@@ -27,7 +27,7 @@ import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.*
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings.{Disabled, Enabled}
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.*
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
-import tech.beshu.ror.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.withEsEnv
 
 import scala.concurrent.duration.*
@@ -159,6 +159,53 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
         )))
       }
     }
+    "be loaded from OS environment variables" when {
+      "force_load_from_file is set via env var" in {
+        val result = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          envVars = Map("ES_SETTING_READONLYREST_FORCE__LOAD__FROM__FILE" -> "true")
+        )
+
+        result should be(Right(ForceLoadingFromFileSettings))
+      }
+      "poll_interval is set via env var" in {
+        val result = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          envVars = Map("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL" -> "30s")
+        )
+
+        result should be(Right(LoadFromIndexWithFileFallback(
+          indexLoadingRetrySettings = defaultRetrySettings,
+          coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
+        )))
+      }
+      "all retry and refresh settings are set via env vars" in {
+        val result = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          envVars = Map(
+            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__INTERVAL" -> "10s",
+            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__COUNT"    -> "3",
+            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_INITIAL__DELAY"     -> "2s",
+            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL"                                       -> "30s"
+          )
+        )
+
+        result should be(Right(LoadFromIndexWithFileFallback(
+          indexLoadingRetrySettings = LoadingRetryStrategySettings(
+            attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
+            attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
+            delay = LoadingDelay.unsafeFrom(2 seconds)
+          ),
+          coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
+        )))
+      }
+    }
     "read retry settings from legacy JVM system properties" when {
       "all legacy properties are set" in {
         val properties = Map(
@@ -273,9 +320,11 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
   )
 
   private def load(yaml: String,
-                   properties: Map[String, String] = Map.empty) = {
+                   properties: Map[String, String] = Map.empty,
+                   envVars: Map[String, String] = Map.empty) = {
     implicit val systemContext: SystemContext = new SystemContext(
-      propertiesProvider = TestsPropertiesProvider.usingMap(properties)
+      propertiesProvider = TestsPropertiesProvider.usingMap(properties),
+      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(yaml) { (esEnv, _) =>
       RorCoreSettingsLoadingStrategy.load(esEnv).runSyncUnsafe()

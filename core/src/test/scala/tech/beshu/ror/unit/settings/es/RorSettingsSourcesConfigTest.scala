@@ -28,7 +28,7 @@ import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorSettingsSourcesConfig
 import tech.beshu.ror.utils.RefinedUtils.nes
-import tech.beshu.ror.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.withEsEnv
 
 class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
@@ -185,6 +185,24 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
         )))
       }
     }
+    "load all settings from OS environment variables" in {
+      val (_, result) = load(
+        """
+          |node.name: n1_it
+          |""".stripMargin,
+        envVars = Map(
+          "ES_SETTING_READONLYREST_SETTINGS_INDEX__NAME" -> ".my-ror-index",
+          "ES_SETTING_READONLYREST_SETTINGS_FILE__PATH"  -> "/custom/path/readonlyrest.yml",
+          "ES_SETTING_READONLYREST_SETTINGS_MAX__SIZE"   -> "10 MB"
+        )
+      )
+
+      result should be(Right(RorSettingsSourcesConfig(
+        settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
+        settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
+        settingsMaxSize = Megabytes(10)
+      )))
+    }
     "fail to load" when {
       "max_size has an invalid value" in {
         inside(load(
@@ -205,9 +223,11 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
   }
 
   private def load(yaml: String,
-                   properties: Map[String, String] = Map.empty): (File, Either[LoadingError, RorSettingsSourcesConfig]) = {
+                   properties: Map[String, String] = Map.empty,
+                   envVars: Map[String, String] = Map.empty): (File, Either[LoadingError, RorSettingsSourcesConfig]) = {
     implicit val systemContext: SystemContext = new SystemContext(
-      propertiesProvider = TestsPropertiesProvider.usingMap(properties)
+      propertiesProvider = TestsPropertiesProvider.usingMap(properties),
+      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(yaml) { (esEnv, configDir) =>
       val result = RorSettingsSourcesConfig.from(esEnv).runSyncUnsafe()

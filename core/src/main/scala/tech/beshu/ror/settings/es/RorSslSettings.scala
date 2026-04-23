@@ -24,7 +24,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{EsConfigFile, RorSettingsFile}
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.{FromString, RequestIdAwareLogging, SSLCertHelper}
@@ -249,6 +249,7 @@ private object SslDecoders extends RequestIdAwareLogging {
 
   private def fipsModeDecoder(implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[FipsMode]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     val decoder: FromString[FipsMode] = FromString.instance {
       case "NON_FIPS" => Right(FipsMode.NonFips)
       case "SSL_ONLY" => Right(FipsMode.SslOnly)
@@ -263,6 +264,7 @@ private object SslDecoders extends RequestIdAwareLogging {
   private def externalSslSectionDecoder(basePath: File, fipsMode: FipsMode)
                                        (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[ExternalSslSettings]] = {
     implicit val pp: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     val sectionPath = NonEmptyList.of(consts.rorSection, consts.externalSsl)
     YamlLeafOrPropertyDecoder.whenSectionPresent[ExternalSslSettings](sectionPath) {
       for {
@@ -306,6 +308,7 @@ private object SslDecoders extends RequestIdAwareLogging {
   private def internodeSslSectionDecoder(basePath: File, fipsMode: FipsMode)
                                         (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[InternodeSslSettings]] = {
     implicit val pp: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     val sectionPath = NonEmptyList.of(consts.rorSection, consts.internodeSsl)
     YamlLeafOrPropertyDecoder.whenSectionPresent[InternodeSslSettings](sectionPath) {
       for {
@@ -433,6 +436,7 @@ private object SslDecoders extends RequestIdAwareLogging {
   private def fileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString], key: NonEmptyString)
                          (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[File]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     YamlLeafOrPropertyDecoder.createOptionalValueDecoder(sectionPath :+ key, FromString.string.map(basePath / _))
   }
 
@@ -464,6 +468,7 @@ private object SslDecoders extends RequestIdAwareLogging {
   private def ciphersDecoder(sectionPath: NonEmptyList[NonEmptyString])
                             (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[Set[Cipher]]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
       path = sectionPath :+ consts.allowedCiphers,
       itemDecoder = FromString.string.map(Cipher.apply)
@@ -473,6 +478,7 @@ private object SslDecoders extends RequestIdAwareLogging {
   private def protocolsDecoder(sectionPath: NonEmptyList[NonEmptyString])
                               (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[Set[Protocol]]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
       path = sectionPath :+ consts.allowedProtocols,
       itemDecoder = FromString.string.map(Protocol.apply)
