@@ -124,7 +124,7 @@ object YamlLeafOrPropertyDecoder {
   }
 }
 
-private object JsonPathOps {
+object JsonPathOps {
 
   def pathAsString(path: NonEmptyList[NonEmptyString]): String =
     path.toList.map(_.value).mkString(".")

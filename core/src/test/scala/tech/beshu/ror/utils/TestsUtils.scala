@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{ACursor, Decoder, Json, parser}
+import io.circe.{Decoder, Json, parser}
 import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
@@ -66,7 +66,7 @@ import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
-import tech.beshu.ror.utils.yaml.YamlParser
+import tech.beshu.ror.utils.yaml.{JsonPathOps, YamlParser}
 
 import java.nio.file.Path
 import java.time.Duration
@@ -428,6 +428,11 @@ object TestsUtils {
   }
 
   def createEsEnv(configDir: File): EsEnv = {
+    def loadPathFrom[T: Decoder](configDir: File, path: NonEmptyList[String], default: T): T = {
+      val json = rorYamlParser.parse((configDir / "elasticsearch.yml").contentAsString).toTry.get
+      val nesPath = path.map(NonEmptyString.unsafeFrom)
+      JsonPathOps.focusAt(json, nesPath).flatMap(_.as[T].toOption).getOrElse(default)
+    }
     val xpackSecurityEnabled = loadPathFrom(configDir, NonEmptyList.of("xpack", "security", "enabled"), true)
     EsEnv(
       configDir = configDir,
@@ -464,28 +469,6 @@ object TestsUtils {
 
   def defaultEsEnv(esConfig: Option[File] = None): EsEnv = {
     EsEnv(esConfig.getOrElse(File("/config")), File("/modules"), defaultEsVersionForTests, defaultTestEsNodeSettings)
-  }
-
-  private def loadPathFrom[T: Decoder](configDir: File, path: NonEmptyList[String], default: T) = {
-    rorYamlParser
-      .parse((configDir / "elasticsearch.yml").contentAsString)
-      .map { json =>
-        val oneLineCursor = json.hcursor.downField(path.toList.mkString("."))
-        val multiLineCursor = path.foldLeft[ACursor](json.hcursor)((c, segment) => c.downField(segment))
-        oneLineCursor.as[Option[T]] match {
-          case Right(Some(value)) => value
-          case Right(None) =>
-            multiLineCursor.as[Option[T]] match {
-              case Right(Some(value)) => value
-              case Right(None) => default
-              case Left(error) => throw error
-            }
-          case Left(error) => throw error
-        }
-      } match {
-      case Right(value) => value
-      case Left(error) => throw error
-    }
   }
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
