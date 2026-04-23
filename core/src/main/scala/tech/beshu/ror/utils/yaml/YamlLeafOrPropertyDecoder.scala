@@ -56,7 +56,7 @@ object YamlLeafOrPropertyDecoder {
                            (implicit propertiesProvider: PropertiesProvider): YamlLeafOrPropertyDecoder[Option[T]] =
     json => {
       val inYaml = JsonPathOps.focusAt(json, sectionPath).exists(j => !j.isNull)
-      val inProperties = propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsString(sectionPath))
+      val inProperties = propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsString(sectionPath) + ".")
       if (inYaml || inProperties)
         inner.decode(json)
       else

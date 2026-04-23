@@ -24,12 +24,11 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
+import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.withEsEnv
 
 class RorBootSettingsTest
   extends AnyWordSpec with Inside {
-
-  private implicit val systemContext: SystemContext = SystemContext.default
 
   "A ReadonlyREST ES starting settings" should {
     "be loaded from elasticsearch config file" when {
@@ -87,6 +86,50 @@ class RorBootSettingsTest
         rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
       )))
     }
+    "be loaded from JVM properties" when {
+      "not_started_response_code is set via property" in {
+        val settings = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          properties = Map("readonlyrest.not_started_response_code" -> "503")
+        )
+
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+        )))
+      }
+      "failed_to_start_response_code is set via property" in {
+        val settings = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          properties = Map("readonlyrest.failed_to_start_response_code" -> "503")
+        )
+
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+        )))
+      }
+      "all settings are set via properties" in {
+        val settings = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          properties = Map(
+            "readonlyrest.not_started_response_code" -> "503",
+            "readonlyrest.failed_to_start_response_code" -> "503"
+          )
+        )
+
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+        )))
+      }
+    }
   }
   "not be able to load" when {
     "not started response code is malformed" in {
@@ -117,7 +160,10 @@ class RorBootSettingsTest
     }
   }
 
-  private def load(yaml: String) = {
+  private def load(yaml: String, properties: Map[String, String] = Map.empty) = {
+    implicit val systemContext: SystemContext = new SystemContext(
+      propertiesProvider = TestsPropertiesProvider.usingMap(properties)
+    )
     withEsEnv(yaml) { (esEnv, _) =>
       RorBootSettings.load(esEnv).runSyncUnsafe()
     }

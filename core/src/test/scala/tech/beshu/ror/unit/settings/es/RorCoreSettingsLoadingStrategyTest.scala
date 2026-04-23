@@ -75,6 +75,16 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
 
         result should be(Right(ForceLoadingFromFileSettings))
       }
+      "force_load_from_file is set to true via JVM property" in {
+        val result = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          properties = Map("readonlyrest.force_load_from_file" -> "true")
+        )
+
+        result should be(Right(ForceLoadingFromFileSettings))
+      }
     }
     "load all retry and refresh settings from elasticsearch config" in {
       val result = load(
@@ -98,6 +108,28 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
         coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
       )))
     }
+    "load all retry and refresh settings from JVM properties" in {
+      val result = load(
+        """
+          |node.name: n1_it
+          |""".stripMargin,
+        properties = Map(
+          "readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval" -> "10s",
+          "readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count"    -> "3",
+          "readonlyrest.load_from_index.initial_loading_retry_strategy.initial_delay"     -> "2s",
+          "readonlyrest.load_from_index.poll_interval"                                    -> "30s"
+        )
+      )
+
+      result should be(Right(LoadFromIndexWithFileFallback(
+        indexLoadingRetrySettings = LoadingRetryStrategySettings(
+          attemptsInterval = LoadingAttemptsInterval.unsafeFrom(10 seconds),
+          attemptsCount = LoadingAttemptsCount.unsafeFrom(3),
+          delay = LoadingDelay.unsafeFrom(2 seconds)
+        ),
+        coreRefreshSettings = Enabled((30 seconds).toRefinedPositiveUnsafe)
+      )))
+    }
     "disable core refresh" when {
       "poll_interval is set to 0" in {
         val result = load(
@@ -106,6 +138,19 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
             |  load_from_index:
             |    poll_interval: 0s
             |""".stripMargin
+        )
+
+        result should be(Right(LoadFromIndexWithFileFallback(
+          indexLoadingRetrySettings = defaultRetrySettings,
+          coreRefreshSettings = Disabled
+        )))
+      }
+      "poll_interval is set to 0 via JVM property" in {
+        val result = load(
+          """
+            |node.name: n1_it
+            |""".stripMargin,
+          properties = Map("readonlyrest.load_from_index.poll_interval" -> "0s")
         )
 
         result should be(Right(LoadFromIndexWithFileFallback(

@@ -34,10 +34,6 @@ import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, withEsEnv, wit
 class RorSslSettingsTest
   extends AnyWordSpec with Inside {
 
-  private implicit val systemContext: SystemContext = new SystemContext(
-    propertiesProvider = TestsPropertiesProvider.default
-  )
-
   "A ReadonlyREST ES API SSL settings" should {
     "be loaded from elasticsearch config file" when {
       "all properties contain at least one non-digit" in {
@@ -211,6 +207,79 @@ class RorSslSettingsTest
       }
       ssl.internodeSsl should be(None)
     }
+    "be loaded from JVM properties" when {
+      "external SSL is configured via properties" in {
+        val ssl = forceLoad(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |xpack.security.enabled: false
+            |""".stripMargin,
+          properties = Map(
+            "readonlyrest.ssl.enable"        -> "true",
+            "readonlyrest.ssl.keystore_file" -> "ror-keystore.jks",
+            "readonlyrest.ssl.keystore_pass" -> "readonlyrest1",
+            "readonlyrest.ssl.key_pass"      -> "readonlyrest2"
+          )
+        )
+        inside(ssl.externalSsl) {
+          case Some(ExternalSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+            keystoreFile.value.name should be("ror-keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(false)
+        }
+        ssl.internodeSsl should be(None)
+      }
+      "internode SSL is configured via properties" in {
+        val ssl = forceLoad(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |xpack.security.enabled: false
+            |""".stripMargin,
+          properties = Map(
+            "readonlyrest.ssl_internode.enable"        -> "true",
+            "readonlyrest.ssl_internode.keystore_file" -> "ror-keystore.jks",
+            "readonlyrest.ssl_internode.keystore_pass" -> "readonlyrest1",
+            "readonlyrest.ssl_internode.key_pass"      -> "readonlyrest2"
+          )
+        )
+        inside(ssl.internodeSsl) {
+          case Some(InternodeSslSettings(KeystoreBasedSettings(keystoreFile, Some(keystorePassword), None, Some(keyPass)), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled, hostnameVerificationEnabled, FipsMode.NonFips)) =>
+            keystoreFile.value.name should be("ror-keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(false)
+            certificateVerificationEnabled should be(false)
+            hostnameVerificationEnabled should be(false)
+        }
+        ssl.externalSsl should be(None)
+      }
+      "fips_mode is configured via property" in {
+        val ssl = forceLoad(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |xpack.security.enabled: false
+            |""".stripMargin,
+          properties = Map(
+            "readonlyrest.fips_mode"         -> "SSL_ONLY",
+            "readonlyrest.ssl.enable"        -> "true",
+            "readonlyrest.ssl.keystore_file" -> "ror-keystore.jks",
+            "readonlyrest.ssl.keystore_pass" -> "readonlyrest1",
+            "readonlyrest.ssl.key_pass"      -> "readonlyrest2"
+          )
+        )
+        inside(ssl.externalSsl) {
+          case Some(ExternalSslSettings(KeystoreBasedSettings(_, _, _, _), None, _, _, _, FipsMode.SslOnly)) =>
+        }
+      }
+    }
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
@@ -248,6 +317,7 @@ class RorSslSettingsTest
           (configDir / "readonlyrest.yml").writeText("readonlyrest:\n")
           val esNodeSettings = EsNodeSettings(clusterName = "testEsCluster", nodeName = "testEsNode", xpackSecurityEnabled = false)
           val esEnv = EsEnv(configDir, configDir, defaultEsVersionForTests, esNodeSettings)
+          implicit val systemContext: SystemContext = SystemContext.default
           val error = RorSslSettings.load(esEnv, RorSettingsFile(configDir / "readonlyrest.yml")).runSyncUnsafe()
           inside(error) {
             case Left(error: LoadingError.MalformedSettings) =>
@@ -519,15 +589,22 @@ class RorSslSettingsTest
     }
   }
 
-  private def forceLoad(esConfigYaml: String, rorSettingsYaml: String = basicRorSettings) = {
-    load(esConfigYaml, rorSettingsYaml) match {
+  private def forceLoad(esConfigYaml: String,
+                        rorSettingsYaml: String = basicRorSettings,
+                        properties: Map[String, String] = Map.empty) = {
+    load(esConfigYaml, rorSettingsYaml, properties) match {
       case Right(Some(sslSettings)) => sslSettings
       case Right(None)              => throw new IllegalStateException("No SSL settings to load")
       case Left(error)              => throw new IllegalStateException(s"Cannot load SSL settings: $error")
     }
   }
 
-  private def load(esConfigYaml: String, rorSettingsYaml: String = basicRorSettings) = {
+  private def load(esConfigYaml: String,
+                   rorSettingsYaml: String = basicRorSettings,
+                   properties: Map[String, String] = Map.empty) = {
+    implicit val systemContext: SystemContext = new SystemContext(
+      propertiesProvider = TestsPropertiesProvider.usingMap(properties)
+    )
     withEsEnv(esConfigYaml, Map("readonlyrest.yml" -> rorSettingsYaml)) { (esEnv, configDir) =>
       RorSslSettings.load(esEnv, RorSettingsFile(configDir / "readonlyrest.yml")).runSyncUnsafe()
     }
