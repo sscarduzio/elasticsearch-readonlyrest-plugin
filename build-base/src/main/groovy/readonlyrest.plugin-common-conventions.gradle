@@ -30,7 +30,7 @@ project.ext {
 group = 'org.elasticsearch.plugin'
 version = pluginVersion + '_es' + project.ext.esVersion
 
-def storeAddress = System.env.ROR_LIBS_STORE_URL ?: ""
+def storeAddress = System.env.ROR_LIBS_STORE_URL ?: "https://dgp.serve.beshu.tech/"
 if (storeAddress.startsWith("http")) {
     System.setProperty("org.gradle.s3.endpoint", storeAddress)
 }
@@ -38,16 +38,16 @@ if (storeAddress.startsWith("http")) {
 repositories {
     maven {
         url = "s3://" + project.s3BucketName + "/ror/libs"
-        if (storeAddress.startsWith("http")) {
-            credentials(AwsCredentials) {
-                accessKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_ID ?: ""
-                secretKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_SECRET ?: ""
-            }
-        } else {
-            authentication {
-                awsIm(AwsImAuthentication)
-            }
-        }
+//        if (storeAddress.startsWith("http")) {
+//            credentials(AwsCredentials) {
+//                accessKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_ID ?: null
+//                secretKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_SECRET ?: null
+//            }
+//        } else {
+//            authentication {
+//                awsIm(AwsImAuthentication)
+//            }
+//        }
         metadataSources {
             artifact()
         }

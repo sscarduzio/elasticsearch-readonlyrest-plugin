@@ -68,13 +68,6 @@ object FromString {
     }
   }
 
-  private def parseFiniteDuration(str: String): Try[FiniteDuration] =
-    Try(str.toLong).map(FiniteDuration(_, java.util.concurrent.TimeUnit.SECONDS))
-      .orElse(Try(Duration(str)).flatMap {
-        case d: FiniteDuration => Success(d)
-        case _                 => Failure(new IllegalArgumentException(s"Expected a finite duration"))
-      })
-
   val nonNegativeInt: FromString[Int Refined NonNegative] = instance { str =>
     Try(Integer.valueOf(str)) match {
       case Success(int) if int >= 0 => Right(Refined.unsafeApply(int))
@@ -90,4 +83,11 @@ object FromString {
     Information.parseString(str).toEither
       .left.map(_ => s"Cannot parse '$str' as a data size. Expected format like '1 MB', '512 KB'")
   }
+
+  private def parseFiniteDuration(str: String): Try[FiniteDuration] =
+    Try(str.toLong).map(FiniteDuration(_, java.util.concurrent.TimeUnit.SECONDS))
+      .orElse(Try(Duration(str)).flatMap {
+        case d: FiniteDuration => Success(d)
+        case _                 => Failure(new IllegalArgumentException(s"Expected a finite duration"))
+      })
 }

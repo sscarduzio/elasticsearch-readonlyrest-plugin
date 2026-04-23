@@ -24,29 +24,42 @@ import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorSettingsSourcesConfig
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, defaultTestEsNodeSettings, getResourcePath}
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, defaultTestEsNodeSettings}
 
 class RorSettingsSourcesConfigTest extends AnyWordSpec {
 
   "ROR settings sources config" should {
     "use default values" when {
       "no readonlyrest settings are present in elasticsearch config" in {
-        val esConfigFolderPath = "/boot_tests/settings_sources_config/no_settings"
-        val result = load(esConfigFolderPath)
+        val (configDir, result) = load(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |""".stripMargin
+        )
 
         result should be(Right(RorSettingsSourcesConfig(
           settingsIndex = RorSettingsIndex.default,
-          settingsFile = RorSettingsFile(File(getResourcePath(esConfigFolderPath)) / "readonlyrest.yml"),
+          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
           settingsMaxSize = Megabytes(3)
         )))
       }
     }
     "load all settings from elasticsearch config" in {
-      val result = load("/boot_tests/settings_sources_config/all_settings_defined")
+      val (_, result) = load(
+        """
+          |readonlyrest:
+          |  settings:
+          |    index_name: .my-ror-index
+          |    file_path: /custom/path/readonlyrest.yml
+          |    max_size: 10 MB
+          |""".stripMargin
+      )
 
       result should be(Right(RorSettingsSourcesConfig(
         settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
@@ -56,21 +69,30 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec {
     }
     "load index name from legacy YAML key" when {
       "readonlyrest.settings_index is defined" in {
-        val esConfigFolderPath = "/boot_tests/settings_sources_config/legacy_index_name"
-        val result = load(esConfigFolderPath)
+        val (configDir, result) = load(
+          """
+            |readonlyrest:
+            |  settings_index: .my-legacy-ror-index
+            |""".stripMargin
+        )
 
         result should be(Right(RorSettingsSourcesConfig(
           settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-legacy-ror-index"))),
-          settingsFile = RorSettingsFile(File(getResourcePath(esConfigFolderPath)) / "readonlyrest.yml"),
+          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
           settingsMaxSize = Megabytes(3)
         )))
       }
     }
     "load file path from legacy JVM property" when {
       "com.readonlyrest.settings.file.path is set" in {
-        val esConfigFolderPath = "/boot_tests/settings_sources_config/no_settings"
         val properties = Map("com.readonlyrest.settings.file.path" -> "/legacy/path/readonlyrest.yml")
-        val result = load(esConfigFolderPath, properties)
+        val (_, result) = load(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |""".stripMargin,
+          properties
+        )
 
         result should be(Right(RorSettingsSourcesConfig(
           settingsIndex = RorSettingsIndex.default,
@@ -81,46 +103,57 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec {
     }
     "load max size from legacy JVM property" when {
       "com.readonlyrest.settings.maxSize is set" in {
-        val esConfigFolderPath = "/boot_tests/settings_sources_config/no_settings"
         val properties = Map("com.readonlyrest.settings.maxSize" -> "5 MB")
-        val result = load(esConfigFolderPath, properties)
+        val (configDir, result) = load(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |""".stripMargin,
+          properties
+        )
 
         result should be(Right(RorSettingsSourcesConfig(
           settingsIndex = RorSettingsIndex.default,
-          settingsFile = RorSettingsFile(File(getResourcePath(esConfigFolderPath)) / "readonlyrest.yml"),
+          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
           settingsMaxSize = Megabytes(5)
         )))
       }
     }
     "fail to load" when {
       "max_size has an invalid value" in {
-        val esConfigFolderPath = "/boot_tests/settings_sources_config/malformed_max_size"
-        val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
-
-        load(esConfigFolderPath) should be(Left(MalformedSettings(
-          expectedFilePath,
-          s"Cannot load ROR settings source settings from file ${expectedFilePath.toString}. " +
-            s"Cause: Invalid value at '.readonlyrest.settings.max_size': " +
-            s"Cannot parse 'not-a-size' as a data size. Expected format like '1 MB', '512 KB'"
-        )))
+        load(
+          """
+            |readonlyrest:
+            |  settings:
+            |    max_size: not-a-size
+            |""".stripMargin
+        )._2 match {
+          case Left(MalformedSettings(_, message)) =>
+            message should include(
+              "Invalid value at '.readonlyrest.settings.max_size': " +
+                "Cannot parse 'not-a-size' as a data size. Expected format like '1 MB', '512 KB'"
+            )
+          case other => fail(s"Expected Left(MalformedSettings), got $other")
+        }
       }
     }
   }
 
-  private def load(resourceEsConfigFolderPath: String,
-                   properties: Map[String, String] = Map.empty) = {
+  private def load(yaml: String,
+                   properties: Map[String, String] = Map.empty): (File, Either[LoadingError, RorSettingsSourcesConfig]) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties)
     )
-    RorSettingsSourcesConfig
-      .from(esEnvFrom(resourceEsConfigFolderPath))
-      .runSyncUnsafe()
+    val configDir = File.newTemporaryDirectory()
+    try {
+      (configDir / "elasticsearch.yml").writeText(yaml)
+      val result = RorSettingsSourcesConfig
+        .from(EsEnv(configDir, configDir, defaultEsVersionForTests, defaultTestEsNodeSettings))
+        .runSyncUnsafe()
+      (configDir, result)
+    } finally {
+      (configDir / "elasticsearch.yml").delete(swallowIOExceptions = true)
+      configDir.delete(swallowIOExceptions = true)
+    }
   }
-
-  private def esEnvFrom(resourceEsConfigFolderPath: String) = EsEnv(
-    getResourcePath(resourceEsConfigFolderPath),
-    getResourcePath(resourceEsConfigFolderPath),
-    defaultEsVersionForTests,
-    defaultTestEsNodeSettings
-  )
 }

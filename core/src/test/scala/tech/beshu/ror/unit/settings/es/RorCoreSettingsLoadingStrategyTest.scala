@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.settings.es
 
+import better.files.File
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,7 +29,7 @@ import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSett
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.*
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, defaultTestEsNodeSettings, getResourcePath}
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, defaultTestEsNodeSettings}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -38,7 +39,12 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
   "ROR core settings loading strategy" should {
     "default to loading from index with file fallback and default values" when {
       "no readonlyrest settings are present in elasticsearch config" in {
-        val result = load("/boot_tests/core_loading_strategy/no_settings")
+        val result = load(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |""".stripMargin
+        )
 
         result should be(Right(LoadFromIndexWithFileFallback(
           indexLoadingRetrySettings = defaultRetrySettings,
@@ -46,7 +52,12 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
         )))
       }
       "force_load_from_file is set to false" in {
-        val result = load("/boot_tests/core_loading_strategy/force_load_from_file_false")
+        val result = load(
+          """
+            |readonlyrest:
+            |  force_load_from_file: false
+            |""".stripMargin
+        )
 
         result should be(Right(LoadFromIndexWithFileFallback(
           indexLoadingRetrySettings = defaultRetrySettings,
@@ -56,13 +67,28 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
     }
     "resolve to ForceLoadingFromFileSettings" when {
       "force_load_from_file is set to true" in {
-        val result = load("/boot_tests/core_loading_strategy/force_load_from_file_true")
+        val result = load(
+          """
+            |readonlyrest:
+            |  force_load_from_file: true
+            |""".stripMargin
+        )
 
         result should be(Right(ForceLoadingFromFileSettings))
       }
     }
     "load all retry and refresh settings from elasticsearch config" in {
-      val result = load("/boot_tests/core_loading_strategy/all_retry_settings_defined")
+      val result = load(
+        """
+          |readonlyrest:
+          |  load_from_index:
+          |    initial_loading_retry_strategy:
+          |      attempts_interval: 10s
+          |      attempts_count: 3
+          |      initial_delay: 2s
+          |    poll_interval: 30s
+          |""".stripMargin
+      )
 
       result should be(Right(LoadFromIndexWithFileFallback(
         indexLoadingRetrySettings = LoadingRetryStrategySettings(
@@ -75,7 +101,13 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
     }
     "disable core refresh" when {
       "poll_interval is set to 0" in {
-        val result = load("/boot_tests/core_loading_strategy/refresh_disabled")
+        val result = load(
+          """
+            |readonlyrest:
+            |  load_from_index:
+            |    poll_interval: 0s
+            |""".stripMargin
+        )
 
         result should be(Right(LoadFromIndexWithFileFallback(
           indexLoadingRetrySettings = defaultRetrySettings,
@@ -91,7 +123,13 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
           "com.readonlyrest.settings.loading.attempts.interval" -> "7s",
           "com.readonlyrest.settings.loading.attempts.count"   -> "10"
         )
-        val result = load("/boot_tests/core_loading_strategy/no_settings", properties)
+        val result = load(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |""".stripMargin,
+          properties
+        )
 
         result should be(Right(LoadFromIndexWithFileFallback(
           indexLoadingRetrySettings = LoadingRetryStrategySettings(
@@ -104,7 +142,13 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
       }
       "legacy refresh interval is given as integer seconds" in {
         val properties = Map("com.readonlyrest.settings.refresh.interval" -> "15")
-        val result = load("/boot_tests/core_loading_strategy/no_settings", properties)
+        val result = load(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |""".stripMargin,
+          properties
+        )
 
         result should be(Right(LoadFromIndexWithFileFallback(
           indexLoadingRetrySettings = defaultRetrySettings,
@@ -113,7 +157,13 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
       }
       "legacy refresh interval of 0 disables refresh" in {
         val properties = Map("com.readonlyrest.settings.refresh.interval" -> "0")
-        val result = load("/boot_tests/core_loading_strategy/no_settings", properties)
+        val result = load(
+          """
+            |node.name: n1_it
+            |cluster.initial_master_nodes: n1_it
+            |""".stripMargin,
+          properties
+        )
 
         result should be(Right(LoadFromIndexWithFileFallback(
           indexLoadingRetrySettings = defaultRetrySettings,
@@ -123,37 +173,54 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
     }
     "fail to load" when {
       "attempts_interval has an invalid value" in {
-        val esConfigFolderPath = "/boot_tests/core_loading_strategy/malformed_attempts_interval"
-        val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
-
-        load(esConfigFolderPath) should be(Left(MalformedSettings(
-          expectedFilePath,
-          s"Cannot load ROR loading core strategy settings from file ${expectedFilePath.toString}. " +
-            s"Cause: Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval': " +
-            s"Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
-        )))
+        load(
+          """
+            |readonlyrest:
+            |  load_from_index:
+            |    initial_loading_retry_strategy:
+            |      attempts_interval: not-a-duration
+            |""".stripMargin
+        ) match {
+          case Left(MalformedSettings(_, message)) =>
+            message should include(
+              "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval': " +
+                "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
+            )
+          case other => fail(s"Expected Left(MalformedSettings), got $other")
+        }
       }
       "attempts_count has an invalid value" in {
-        val esConfigFolderPath = "/boot_tests/core_loading_strategy/malformed_attempts_count"
-        val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
-
-        load(esConfigFolderPath) should be(Left(MalformedSettings(
-          expectedFilePath,
-          s"Cannot load ROR loading core strategy settings from file ${expectedFilePath.toString}. " +
-            s"Cause: Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count': " +
-            s"Cannot convert 'not-a-number' to non-negative integer"
-        )))
+        load(
+          """
+            |readonlyrest:
+            |  load_from_index:
+            |    initial_loading_retry_strategy:
+            |      attempts_count: not-a-number
+            |""".stripMargin
+        ) match {
+          case Left(MalformedSettings(_, message)) =>
+            message should include(
+              "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count': " +
+                "Cannot convert 'not-a-number' to non-negative integer"
+            )
+          case other => fail(s"Expected Left(MalformedSettings), got $other")
+        }
       }
       "poll_interval has an invalid value" in {
-        val esConfigFolderPath = "/boot_tests/core_loading_strategy/malformed_poll_interval"
-        val expectedFilePath = getResourcePath(s"$esConfigFolderPath/elasticsearch.yml")
-
-        load(esConfigFolderPath) should be(Left(MalformedSettings(
-          expectedFilePath,
-          s"Cannot load ROR loading core strategy settings from file ${expectedFilePath.toString}. " +
-            s"Cause: Invalid value at '.readonlyrest.load_from_index.poll_interval': " +
-            s"Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
-        )))
+        load(
+          """
+            |readonlyrest:
+            |  load_from_index:
+            |    poll_interval: not-a-duration
+            |""".stripMargin
+        ) match {
+          case Left(MalformedSettings(_, message)) =>
+            message should include(
+              "Invalid value at '.readonlyrest.load_from_index.poll_interval': " +
+                "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
+            )
+          case other => fail(s"Expected Left(MalformedSettings), got $other")
+        }
       }
     }
   }
@@ -164,20 +231,20 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
     delay = LoadingDelay.unsafeFrom(5 seconds)
   )
 
-  private def load(resourceEsConfigFolderPath: String,
+  private def load(yaml: String,
                    properties: Map[String, String] = Map.empty) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties)
     )
-    RorCoreSettingsLoadingStrategy
-      .load(esEnvFrom(resourceEsConfigFolderPath))
-      .runSyncUnsafe()
+    val configDir = File.newTemporaryDirectory()
+    try {
+      (configDir / "elasticsearch.yml").writeText(yaml)
+      RorCoreSettingsLoadingStrategy
+        .load(EsEnv(configDir, configDir, defaultEsVersionForTests, defaultTestEsNodeSettings))
+        .runSyncUnsafe()
+    } finally {
+      (configDir / "elasticsearch.yml").delete(swallowIOExceptions = true)
+      configDir.delete(swallowIOExceptions = true)
+    }
   }
-
-  private def esEnvFrom(resourceEsConfigFolderPath: String) = EsEnv(
-    getResourcePath(resourceEsConfigFolderPath),
-    getResourcePath(resourceEsConfigFolderPath),
-    defaultEsVersionForTests,
-    defaultTestEsNodeSettings
-  )
 }
