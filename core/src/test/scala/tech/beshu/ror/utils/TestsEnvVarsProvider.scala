@@ -24,10 +24,7 @@ class TestsEnvVarsProvider(envMap: Map[EnvVarName, String]) extends EnvVarsProvi
   override def getEnv(name: EnvVarName): Option[String] = envMap.get(name)
 
   override def hasEnvWithPrefix(prefix: String): Boolean =
-    envMap.keys.exists { k =>
-      val s = k.value.value
-      s.startsWith(prefix) && (s.length == prefix.length || s.charAt(prefix.length) != '_')
-    }
+    envMap.keys.exists(_.value.value.startsWith(prefix))
 }
 
 object TestsEnvVarsProvider {

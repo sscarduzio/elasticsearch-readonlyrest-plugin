@@ -23,12 +23,7 @@ import scala.util.Try
 
 trait EnvVarsProvider {
   def getEnv(name: EnvVarName): Option[String]
-
-  // Returns true if any env var starts with `prefix` and the character immediately
-  // after the prefix is not `_`. The `_` exclusion prevents the section prefix
-  // "ES_SETTING_FOO_BAR_" from falsely matching "ES_SETTING_FOO_BAR__BAZ_*" where
-  // `__BAZ` is an escaped-underscore segment belonging to a sibling section.
-  def hasEnvWithPrefix(prefix: String): Boolean = false
+  def hasEnvWithPrefix(prefix: String): Boolean
 }
 
 object EnvVarProvider {
@@ -41,7 +36,5 @@ object OsEnvVarsProvider extends EnvVarsProvider {
     Try(Option(System.getenv(name.value.value))).toOption.flatten
 
   override def hasEnvWithPrefix(prefix: String): Boolean =
-    Try(System.getenv().keySet().stream().anyMatch(k =>
-      k.startsWith(prefix) && (k.length == prefix.length || k.charAt(prefix.length) != '_')
-    )).getOrElse(false)
+    Try(System.getenv().keySet().stream().anyMatch(_.startsWith(prefix))).getOrElse(false)
 }
