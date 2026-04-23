@@ -36,8 +36,7 @@ object JvmPropertiesProvider extends PropertiesProvider {
     Try(Option(System.getProperty(name.value.value))).toOption.flatten
 
   override def hasPropertyWithPrefix(prefix: String): Boolean = {
-    val prefixWithDot = if (prefix.endsWith(".")) prefix else s"$prefix."
-    Try(System.getProperties.stringPropertyNames().stream().anyMatch(_.startsWith(prefixWithDot))).getOrElse(false)
+    Try(System.getProperties.stringPropertyNames().stream().anyMatch(_.startsWith(prefix))).getOrElse(false)
   }
 }
 
