@@ -33,8 +33,8 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
 import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
 import tech.beshu.ror.utils.TestsUtils.*
@@ -443,13 +443,13 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(n) if n.value == "sys_group_1" => Some("S1")
-    case EnvVarName(n) if n.value == "sys_group_2" => Some("ss2")
-    case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
-    case EnvVarName(n) if n.value == "USER1_PASS" => Some("user1:passwd")
-    case EnvVarName(n) if n.value == "LDAP_HOST" => Some(SingletonLdapContainers.ldap1.ldapHost)
-    case EnvVarName(n) if n.value == "LDAP_PORT" => Some(s"${SingletonLdapContainers.ldap1.ldapPort}")
-    case _ => None
-  }
+  override implicit protected def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(Map(
+      "sys_group_1" -> "S1",
+      "sys_group_2" -> "ss2",
+      "READONLYREST_ENABLE" -> "true",
+      "USER1_PASS" -> "user1:passwd",
+      "LDAP_HOST" -> SingletonLdapContainers.ldap1.ldapHost,
+      "LDAP_PORT" -> s"${SingletonLdapContainers.ldap1.ldapPort}"
+    ))
 }

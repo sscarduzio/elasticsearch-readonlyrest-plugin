@@ -134,10 +134,6 @@ object YamlLeafOrPropertyOrEnvDecoder {
   }
 }
 
-// Backward-compatible alias — existing import sites need no changes
-type YamlLeafOrPropertyDecoder[T] = YamlLeafOrPropertyOrEnvDecoder[T]
-val  YamlLeafOrPropertyDecoder    = YamlLeafOrPropertyOrEnvDecoder
-
 object JsonPathOps {
 
   def pathAsString(path: NonEmptyList[NonEmptyString]): String =

@@ -29,7 +29,7 @@ import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStr
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
 import tech.beshu.ror.utils.FromString
-import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}
@@ -76,7 +76,7 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
 
   def load(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorCoreSettingsLoadingStrategy]] = {
-    implicit val loadingRorCoreStrategySettingsDecoder: YamlLeafOrPropertyDecoder[RorCoreSettingsLoadingStrategy] =
+    implicit val loadingRorCoreStrategySettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] =
       decoders.loadingRorCoreStrategySettingsDecoder(systemContext)
     loadSetting[RorCoreSettingsLoadingStrategy](esEnv, "ROR loading core strategy settings")
   }
@@ -108,12 +108,12 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
       val initialDelayKey: NonEmptyString = NonEmptyString.unsafeFrom("initial_delay")
     }
 
-    def loadingRorCoreStrategySettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[RorCoreSettingsLoadingStrategy] = {
+    def loadingRorCoreStrategySettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] = {
       for {
         forceLoadFromFile <- forceLoadFromFileDecoder(systemContext)
         loadingRorCoreStrategy <- forceLoadFromFile match {
           case None | Some(false) => loadFromIndexWithFileFallbackDecoder(systemContext)
-          case Some(true) => YamlLeafOrPropertyDecoder.pure[RorCoreSettingsLoadingStrategy](ForceLoadingFromFileSettings)
+          case Some(true) => YamlLeafOrPropertyOrEnvDecoder.pure[RorCoreSettingsLoadingStrategy](ForceLoadingFromFileSettings)
         }
       } yield loadingRorCoreStrategy
     }
@@ -121,13 +121,13 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
     private def forceLoadFromFileDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
       implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
-      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+      YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.forceLoadFromFileKey),
         decoder = FromString.boolean
       )
     }
 
-    private def loadFromIndexWithFileFallbackDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[RorCoreSettingsLoadingStrategy] = {
+    private def loadFromIndexWithFileFallbackDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] = {
       for {
         loadingRetryStrategySettings <- loadingRetryStrategySettingsDecoder(systemContext)
         coreRefreshSettings <- coreRefreshSettingsDecoder(systemContext)
@@ -156,13 +156,13 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         FromString.nonNegativeFiniteDuration.map(LoadingAttemptsInterval.apply)
       val legacyDecoder: FromString[LoadingAttemptsInterval] =
         legacyNonNeg(LoadingAttemptsInterval.apply)
-      YamlLeafOrPropertyDecoder
+      YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsIntervalKey),
           decoder = decoder
         )
         .orElse {
-          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsInterval, legacyDecoder)
+          YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsInterval, legacyDecoder)
         }
     }
 
@@ -170,12 +170,12 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
       implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[LoadingAttemptsCount] = FromString.nonNegativeInt.map(LoadingAttemptsCount.apply)
-      YamlLeafOrPropertyDecoder
+      YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.attemptsCountKey),
           decoder = decoder
         ).orElse(
-          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsCount, decoder)
+          YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(legacyConsts.attemptsCount, decoder)
         )
     }
 
@@ -186,12 +186,12 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         FromString.nonNegativeFiniteDuration.map(LoadingDelay.apply)
       val legacyDecoder: FromString[LoadingDelay] =
         legacyNonNeg(LoadingDelay.apply)
-      YamlLeafOrPropertyDecoder
+      YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.retryStrategySection, consts.initialDelayKey),
           decoder = decoder
         ).orElse(
-          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.loadingDelay, legacyDecoder)
+          YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(legacyConsts.loadingDelay, legacyDecoder)
         )
     }
 
@@ -207,12 +207,12 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
         FromString.nonNegativeFiniteDuration.map(toRefreshSettings)
       val legacyDecoder: FromString[CoreRefreshSettings] =
         legacyNonNeg(identity).map(toRefreshSettings)
-      YamlLeafOrPropertyDecoder
+      YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.loadFromIndexSection, consts.pollIntervalSection),
           decoder = decoder
         ).orElse(
-          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(legacyConsts.refreshInterval, legacyDecoder)
+          YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(legacyConsts.refreshInterval, legacyDecoder)
         )
     }
 

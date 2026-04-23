@@ -28,7 +28,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
-import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
                                           settingsFile: RorSettingsFile,
@@ -38,7 +38,7 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
 
   def from(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorSettingsSourcesConfig]] = {
-    implicit val rorBootSettingsDecoder: YamlLeafOrPropertyDecoder[RorSettingsSourcesConfig] =
+    implicit val rorBootSettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[RorSettingsSourcesConfig] =
       decoders.rorSettingsSourcesConfigDecoder(systemContext, esEnv)
     loadSetting[RorSettingsSourcesConfig](esEnv, "ROR settings source settings")
   }
@@ -64,7 +64,7 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
     }
 
     def rorSettingsSourcesConfigDecoder(systemContext: SystemContext,
-                                        esEnv: EsEnv): YamlLeafOrPropertyDecoder[RorSettingsSourcesConfig] = {
+                                        esEnv: EsEnv): YamlLeafOrPropertyOrEnvDecoder[RorSettingsSourcesConfig] = {
       for {
         settingsIndexName <- settingsIndexNameDecoder(systemContext)
         settingsFilePath <- settingsFileDecoder(systemContext)
@@ -81,12 +81,12 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
       implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[RorSettingsIndex] =
         FromString.nonEmptyString.map(s => RorSettingsIndex(IndexName.Full(s)))
-      YamlLeafOrPropertyDecoder
+      YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.indexNameKey),
           decoder = decoder
         ).orElse(
-          YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+          YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
             path = NonEmptyList.of(consts.rorSection, legacyConsts.settingsIndexNameKey),
             decoder = decoder
           )
@@ -98,12 +98,12 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
       implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       val decoder: FromString[RorSettingsFile] =
         FromString.nonEmptyString.map(s => RorSettingsFile(File(s.value)))
-      YamlLeafOrPropertyDecoder
+      YamlLeafOrPropertyOrEnvDecoder
         .createOptionalValueDecoder(
           path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.filePathKey),
           decoder = decoder
         ).orElse(
-          YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(
+          YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(
             legacyKey = legacyConsts.filePath,
             decoder = decoder
           )
@@ -113,11 +113,11 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
     private def settingsMaxSizeDecoder(systemContext: SystemContext) = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
       implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
-      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+      YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, consts.settingsSection, consts.maxSizeKey),
         decoder = FromString.information
       ).orElse(
-        YamlLeafOrPropertyDecoder.createLegacyPropertyDecoder(
+        YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(
           legacyKey = legacyConsts.maxSize,
           decoder = FromString.information
         )

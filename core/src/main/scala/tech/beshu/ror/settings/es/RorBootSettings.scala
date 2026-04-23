@@ -26,7 +26,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
-import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 import scala.language.postfixOps
 
@@ -37,7 +37,7 @@ object RorBootSettings extends ElasticsearchConfigLoaderSupport {
 
   def load(env: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorBootSettings]] = {
-    implicit val rorBootSettingsDecoder: YamlLeafOrPropertyDecoder[RorBootSettings] = decoders.rorBootSettingsDecoder(systemContext)
+    implicit val rorBootSettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[RorBootSettings] = decoders.rorBootSettingsDecoder(systemContext)
     loadSetting[RorBootSettings](env, "ROR boot settings")
   }
 
@@ -72,7 +72,7 @@ object RorBootSettings extends ElasticsearchConfigLoaderSupport {
       val rorFailedToStartResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("failed_to_start_response_code")
     }
 
-    def rorBootSettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyDecoder[RorBootSettings] = {
+    def rorBootSettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorBootSettings] = {
       implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
       implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       for {
@@ -86,8 +86,8 @@ object RorBootSettings extends ElasticsearchConfigLoaderSupport {
 
     private def httpCodeDecoder[T](pathKey: NonEmptyString, code403: T, code503: T)
                                   (implicit propertiesProvider: PropertiesProvider,
-                                   envVarsProvider: EnvVarsProvider): YamlLeafOrPropertyDecoder[Option[T]] =
-      YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+                                   envVarsProvider: EnvVarsProvider): YamlLeafOrPropertyOrEnvDecoder[Option[T]] =
+      YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = NonEmptyList.of(consts.rorSection, pathKey),
         decoder = FromString.instance {
           case "403"    => Right(code403)

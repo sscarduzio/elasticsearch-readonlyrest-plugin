@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
-import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 import tech.beshu.ror.utils.yaml.YamlParser
 
@@ -39,12 +39,12 @@ final class ElasticsearchConfigLoader(file: File)
     TransformationCompiler.withoutAliases(systemContext.variablesFunctions)
   )
 
-  def loadSettings[SETTINGS: YamlLeafOrPropertyDecoder](settingsName: String): Task[Either[LoadingError, SETTINGS]] = Task.delay {
+  def loadSettings[SETTINGS: YamlLeafOrPropertyOrEnvDecoder](settingsName: String): Task[Either[LoadingError, SETTINGS]] = Task.delay {
     for {
       _ <- Either.cond(file.exists, (), LoadingError.FileNotFound(file): LoadingError)
       settings <- loadedSettingsJson
         .flatMap { json =>
-          implicitly[YamlLeafOrPropertyDecoder[SETTINGS]]
+          implicitly[YamlLeafOrPropertyOrEnvDecoder[SETTINGS]]
             .decode(json)
             .left.map(e => createError(s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
         }
@@ -85,13 +85,13 @@ object ElasticsearchConfigLoader {
 
 private[es] trait ElasticsearchConfigLoaderSupport {
 
-  protected def loadSetting[T: YamlLeafOrPropertyDecoder](esEnv: EsEnv, settingsName: String)
-                                                         (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
+  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](esEnv: EsEnv, settingsName: String)
+                                                              (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
     loadSetting(esEnv.elasticsearchConfig.file, settingsName)
   }
 
-  protected def loadSetting[T: YamlLeafOrPropertyDecoder](file: File, settingsName: String)
-                                                         (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
+  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](file: File, settingsName: String)
+                                                              (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
     val loader = new ElasticsearchConfigLoader(file)
     loader.loadSettings[T](settingsName)
   }

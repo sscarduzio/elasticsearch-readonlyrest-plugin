@@ -28,7 +28,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.{FromString, RequestIdAwareLogging, SSLCertHelper}
-import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyDecoder
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 sealed trait RorSslSettings
 object RorSslSettings extends ElasticsearchConfigLoaderSupport with RequestIdAwareLogging {
@@ -74,7 +74,7 @@ object RorSslSettings extends ElasticsearchConfigLoaderSupport with RequestIdAwa
                                 rorSettingsFile: RorSettingsFile,
                                 xpackSecuritySettings: XpackSecuritySettings)
                                (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
-    implicit val rorSslSettingsDecoder: YamlLeafOrPropertyDecoder[Option[RorSslSettings]] =
+    implicit val rorSslSettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]] =
       SslDecoders.rorSslDecoder(esConfigFile.file.parent)
     loadSslSettingsFrom(esConfigFile.file)
       .flatMap {
@@ -92,7 +92,7 @@ object RorSslSettings extends ElasticsearchConfigLoaderSupport with RequestIdAwa
   }
 
   private def fallbackToRorSettingsFile(rorSettingsFile: RorSettingsFile)
-                                       (implicit decoder: YamlLeafOrPropertyDecoder[Option[RorSslSettings]],
+                                       (implicit decoder: YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]],
                                         systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
     val settingsFile = rorSettingsFile.file
     if (settingsFile.exists) {
@@ -109,7 +109,7 @@ object RorSslSettings extends ElasticsearchConfigLoaderSupport with RequestIdAwa
   }
 
   private def loadSslSettingsFrom(settingsFile: File)
-                                 (implicit decoder: YamlLeafOrPropertyDecoder[Option[RorSslSettings]],
+                                 (implicit decoder: YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]],
                                   systemContext: SystemContext) = {
     for {
       _ <- lift(noRequestIdLogger.info(s"Trying to load ROR SSL settings from '${settingsFile.show}' file ..."))
@@ -232,7 +232,7 @@ private object SslDecoders extends RequestIdAwareLogging {
   }
 
   def rorSslDecoder(basePath: File)
-                   (implicit systemContext: SystemContext): YamlLeafOrPropertyDecoder[Option[RorSslSettings]] = {
+                   (implicit systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]] = {
     for {
       fipsMode <- fipsModeDecoder
       externalSsl <- externalSslSectionDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
@@ -247,7 +247,7 @@ private object SslDecoders extends RequestIdAwareLogging {
     }
   }
 
-  private def fipsModeDecoder(implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[FipsMode]] = {
+  private def fipsModeDecoder(implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[FipsMode]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
     implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     val decoder: FromString[FipsMode] = FromString.instance {
@@ -255,38 +255,38 @@ private object SslDecoders extends RequestIdAwareLogging {
       case "SSL_ONLY" => Right(FipsMode.SslOnly)
       case other      => Left(s"Invalid settings option '${other.show}' for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
     }
-    YamlLeafOrPropertyDecoder.createOptionalValueDecoder(
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
       path = NonEmptyList.of(consts.rorSection, consts.fipsMode),
       decoder = decoder
     )
   }
 
   private def externalSslSectionDecoder(basePath: File, fipsMode: FipsMode)
-                                       (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[ExternalSslSettings]] = {
+                                       (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ExternalSslSettings]] = {
     implicit val pp: PropertiesProvider = sc.propertiesProvider
     implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     val sectionPath = NonEmptyList.of(consts.rorSection, consts.externalSsl)
-    YamlLeafOrPropertyDecoder.whenSectionPresent[ExternalSslSettings](sectionPath) {
+    YamlLeafOrPropertyOrEnvDecoder.whenSectionPresent[ExternalSslSettings](sectionPath) {
       for {
-        enable <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
+        enable <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
         result <- enable match {
-          case Some(false) => YamlLeafOrPropertyDecoder.pure[Option[ExternalSslSettings]](None)
+          case Some(false) => YamlLeafOrPropertyOrEnvDecoder.pure[Option[ExternalSslSettings]](None)
           case _ =>
             for {
               ciphers <- ciphersDecoder(sectionPath)
               protocols <- protocolsDecoder(sectionPath)
-              clientAuthentication <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
-              verification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
+              clientAuthentication <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
+              verification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
               keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
-              keystorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
-              keyAlias <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
-              keyPass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
+              keystorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
+              keyAlias <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
+              keyPass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
               truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
-              truststorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
+              truststorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
               serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
               serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
               clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
-              r <- YamlLeafOrPropertyDecoder.fromEither[Option[ExternalSslSettings]] {
+              r <- YamlLeafOrPropertyOrEnvDecoder.fromEither[Option[ExternalSslSettings]] {
                 for {
                   serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
                   clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
@@ -306,34 +306,34 @@ private object SslDecoders extends RequestIdAwareLogging {
   }
 
   private def internodeSslSectionDecoder(basePath: File, fipsMode: FipsMode)
-                                        (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[InternodeSslSettings]] = {
+                                        (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[InternodeSslSettings]] = {
     implicit val pp: PropertiesProvider = sc.propertiesProvider
     implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
     val sectionPath = NonEmptyList.of(consts.rorSection, consts.internodeSsl)
-    YamlLeafOrPropertyDecoder.whenSectionPresent[InternodeSslSettings](sectionPath) {
+    YamlLeafOrPropertyOrEnvDecoder.whenSectionPresent[InternodeSslSettings](sectionPath) {
       for {
-        enable <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
+        enable <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
         result <- enable match {
           case Some(false) =>
-            YamlLeafOrPropertyDecoder.pure[Option[InternodeSslSettings]](None)
+            YamlLeafOrPropertyOrEnvDecoder.pure[Option[InternodeSslSettings]](None)
           case _ =>
             for {
               ciphers <- ciphersDecoder(sectionPath)
               protocols <- protocolsDecoder(sectionPath)
-              clientAuthentication <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
-              certificateVerification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.certificateVerification)
-              hostnameVerification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.hostnameVerification)
-              verification <- YamlLeafOrPropertyDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
+              clientAuthentication <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
+              certificateVerification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.certificateVerification)
+              hostnameVerification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.hostnameVerification)
+              verification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
               keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
-              keystorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
-              keyAlias <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
-              keyPass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
+              keystorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
+              keyAlias <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
+              keyPass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
               truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
-              truststorePass <- YamlLeafOrPropertyDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
+              truststorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
               serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
               serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
               clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
-              r <- YamlLeafOrPropertyDecoder.fromEither[Option[InternodeSslSettings]] {
+              r <- YamlLeafOrPropertyOrEnvDecoder.fromEither[Option[InternodeSslSettings]] {
                 for {
                   serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
                   clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
@@ -434,52 +434,52 @@ private object SslDecoders extends RequestIdAwareLogging {
   }
 
   private def fileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString], key: NonEmptyString)
-                         (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[File]] = {
+                         (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[File]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
     implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
-    YamlLeafOrPropertyDecoder.createOptionalValueDecoder(sectionPath :+ key, FromString.string.map(basePath / _))
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(sectionPath :+ key, FromString.string.map(basePath / _))
   }
 
   private def keystoreFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
-                                 (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[KeystoreFile]] = {
+                                 (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[KeystoreFile]] = {
     fileDecoder(basePath, sectionPath, consts.keystoreFile).map(_.map(KeystoreFile.apply))
   }
 
   private def truststoreFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
-                                   (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[TruststoreFile]] = {
+                                   (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[TruststoreFile]] = {
     fileDecoder(basePath, sectionPath, consts.truststoreFile).map(_.map(TruststoreFile.apply))
   }
 
   private def serverCertFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
-                                   (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[ServerCertificateFile]] = {
+                                   (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ServerCertificateFile]] = {
     fileDecoder(basePath, sectionPath, consts.serverCertificateFile).map(_.map(ServerCertificateFile.apply))
   }
 
   private def serverCertKeyFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
-                                      (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[ServerCertificateKeyFile]] = {
+                                      (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ServerCertificateKeyFile]] = {
     fileDecoder(basePath, sectionPath, consts.serverCertificateKeyFile).map(_.map(ServerCertificateKeyFile.apply))
   }
 
   private def clientTrustedCertFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
-                                          (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[ClientTrustedCertificateFile]] = {
+                                          (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ClientTrustedCertificateFile]] = {
     fileDecoder(basePath, sectionPath, consts.clientTrustedCertificateFile).map(_.map(ClientTrustedCertificateFile.apply))
   }
 
   private def ciphersDecoder(sectionPath: NonEmptyList[NonEmptyString])
-                            (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[Set[Cipher]]] = {
+                            (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[Set[Cipher]]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
     implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
-    YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
       path = sectionPath :+ consts.allowedCiphers,
       itemDecoder = FromString.string.map(Cipher.apply)
     )
   }
 
   private def protocolsDecoder(sectionPath: NonEmptyList[NonEmptyString])
-                              (implicit sc: SystemContext): YamlLeafOrPropertyDecoder[Option[Set[Protocol]]] = {
+                              (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[Set[Protocol]]] = {
     implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
     implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
-    YamlLeafOrPropertyDecoder.createOptionalListValueDecoder(
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
       path = sectionPath :+ consts.allowedProtocols,
       itemDecoder = FromString.string.map(Protocol.apply)
     )
