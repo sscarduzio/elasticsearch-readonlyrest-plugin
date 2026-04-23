@@ -419,7 +419,10 @@ private object SslDecoders extends RequestIdAwareLogging {
         } else {
           clientTrustedCertificateFile match {
             case Some(file) => Right(Some(ClientCertificateSettings.FileBasedSettings(file)))
-            case None => Right(None)
+            case None =>
+              val errorMessage = s"'${consts.clientTrustedCertificateFile.show}' expected but was absent"
+              noRequestIdLogger.error(errorMessage)
+              Left(errorMessage)
           }
         }
       case (false, false) =>

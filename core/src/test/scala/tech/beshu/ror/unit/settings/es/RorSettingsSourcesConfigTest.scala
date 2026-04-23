@@ -18,20 +18,20 @@ package tech.beshu.ror.unit.settings.es
 
 import better.files.File
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorSettingsFile, RorSettingsIndex}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorSettingsSourcesConfig
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, defaultTestEsNodeSettings}
+import tech.beshu.ror.utils.TestsUtils.withEsEnv
 
-class RorSettingsSourcesConfigTest extends AnyWordSpec {
+class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
 
   "ROR settings sources config" should {
     "use default values" when {
@@ -121,19 +121,18 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec {
     }
     "fail to load" when {
       "max_size has an invalid value" in {
-        load(
+        inside(load(
           """
             |readonlyrest:
             |  settings:
             |    max_size: not-a-size
             |""".stripMargin
-        )._2 match {
+        )._2) {
           case Left(MalformedSettings(_, message)) =>
             message should include(
               "Invalid value at '.readonlyrest.settings.max_size': " +
                 "Cannot parse 'not-a-size' as a data size. Expected format like '1 MB', '512 KB'"
             )
-          case other => fail(s"Expected Left(MalformedSettings), got $other")
         }
       }
     }
@@ -144,16 +143,9 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties)
     )
-    val configDir = File.newTemporaryDirectory()
-    try {
-      (configDir / "elasticsearch.yml").writeText(yaml)
-      val result = RorSettingsSourcesConfig
-        .from(EsEnv(configDir, configDir, defaultEsVersionForTests, defaultTestEsNodeSettings))
-        .runSyncUnsafe()
+    withEsEnv(yaml) { (esEnv, configDir) =>
+      val result = RorSettingsSourcesConfig.from(esEnv).runSyncUnsafe()
       (configDir, result)
-    } finally {
-      (configDir / "elasticsearch.yml").delete(swallowIOExceptions = true)
-      configDir.delete(swallowIOExceptions = true)
     }
   }
 }

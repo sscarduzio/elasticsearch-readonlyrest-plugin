@@ -166,9 +166,8 @@ private final class OptionalYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonE
     val inYaml = JsonPathOps.existsAt(json, path)
     val inProperty = propertiesProvider.getProperty(PropName(propName)).isDefined
     (inYaml, inProperty) match {
-      case (true, true) => Left(conflictError)
-      case (true, false) => decodeFromYaml(json)
-      case (false, true) => decodeFromProperty()
+      case (true, _)      => decodeFromYaml(json)
+      case (false, true)  => decodeFromProperty()
       case (false, false) => Right(None)
     }
   }
@@ -187,9 +186,6 @@ private final class OptionalYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonE
 
   private def withPath(err: String): String =
     s"Invalid value at '.$propName': $err"
-
-  private def conflictError: String =
-    s"Value at '.$propName' is defined in both YAML configuration and system properties. Please use only one."
 }
 
 private final class RequiredYamlLeafOrPropertyDecoder[T](path: NonEmptyList[NonEmptyString])
@@ -217,9 +213,8 @@ private final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[
     val inYaml = JsonPathOps.existsAt(json, path)
     val inProperty = propertiesProvider.getProperty(PropName(propName)).isDefined
     (inYaml, inProperty) match {
-      case (true, true)  => Left(conflictError)
-      case (true, false) => decodeFromYaml(json)
-      case (false, true) => decodeFromProperty()
+      case (true, _)      => decodeFromYaml(json)
+      case (false, true)  => decodeFromProperty()
       case (false, false) => Right(None)
     }
   }
@@ -252,7 +247,4 @@ private final class OptionalListYamlLeafOrPropertyDecoder[T](path: NonEmptyList[
       .map(_.trim).filter(_.nonEmpty)
       .traverse(valueCreator.decode)
       .map(_.toSet)
-
-  private def conflictError: String =
-    s"Value at '.$propName' is defined in both YAML configuration and system properties. Please use only one."
 }

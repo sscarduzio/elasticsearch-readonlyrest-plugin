@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.unit.settings.es
 
-import better.files.File
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.*
@@ -29,12 +28,12 @@ import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSett
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.*
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, defaultTestEsNodeSettings}
+import tech.beshu.ror.utils.TestsUtils.withEsEnv
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
+class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
 
   "ROR core settings loading strategy" should {
     "default to loading from index with file fallback and default values" when {
@@ -173,53 +172,50 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
     }
     "fail to load" when {
       "attempts_interval has an invalid value" in {
-        load(
+        inside(load(
           """
             |readonlyrest:
             |  load_from_index:
             |    initial_loading_retry_strategy:
             |      attempts_interval: not-a-duration
             |""".stripMargin
-        ) match {
+        )) {
           case Left(MalformedSettings(_, message)) =>
             message should include(
               "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval': " +
                 "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
             )
-          case other => fail(s"Expected Left(MalformedSettings), got $other")
         }
       }
       "attempts_count has an invalid value" in {
-        load(
+        inside(load(
           """
             |readonlyrest:
             |  load_from_index:
             |    initial_loading_retry_strategy:
             |      attempts_count: not-a-number
             |""".stripMargin
-        ) match {
+        )) {
           case Left(MalformedSettings(_, message)) =>
             message should include(
               "Invalid value at '.readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count': " +
                 "Cannot convert 'not-a-number' to non-negative integer"
             )
-          case other => fail(s"Expected Left(MalformedSettings), got $other")
         }
       }
       "poll_interval has an invalid value" in {
-        load(
+        inside(load(
           """
             |readonlyrest:
             |  load_from_index:
             |    poll_interval: not-a-duration
             |""".stripMargin
-        ) match {
+        )) {
           case Left(MalformedSettings(_, message)) =>
             message should include(
               "Invalid value at '.readonlyrest.load_from_index.poll_interval': " +
                 "Cannot parse 'not-a-duration' as a duration. Expected a finite duration like '5s', '1m'"
             )
-          case other => fail(s"Expected Left(MalformedSettings), got $other")
         }
       }
     }
@@ -236,15 +232,8 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties)
     )
-    val configDir = File.newTemporaryDirectory()
-    try {
-      (configDir / "elasticsearch.yml").writeText(yaml)
-      RorCoreSettingsLoadingStrategy
-        .load(EsEnv(configDir, configDir, defaultEsVersionForTests, defaultTestEsNodeSettings))
-        .runSyncUnsafe()
-    } finally {
-      (configDir / "elasticsearch.yml").delete(swallowIOExceptions = true)
-      configDir.delete(swallowIOExceptions = true)
+    withEsEnv(yaml) { (esEnv, _) =>
+      RorCoreSettingsLoadingStrategy.load(esEnv).runSyncUnsafe()
     }
   }
 }

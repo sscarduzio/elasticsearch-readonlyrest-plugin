@@ -73,6 +73,7 @@ import java.time.Duration
 import java.util.Base64
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.Using
 import scala.util.{Failure, Success, Try}
 
 object TestsUtils {
@@ -438,6 +439,22 @@ object TestsUtils {
         xpackSecurityEnabled = xpackSecurityEnabled
       ))
   }
+
+  private given Using.Releasable[File] = _.delete(swallowIOExceptions = true)
+
+  def withEsEnv[T](esConfigYaml: String,
+                   additionalFiles: Map[String, String] = Map.empty)
+                  (f: (EsEnv, File) => T): T =
+    Using.resource(File.newTemporaryDirectory()) { configDir =>
+      (configDir / "elasticsearch.yml").writeText(esConfigYaml)
+      additionalFiles.foreach { case (name, content) =>
+        (configDir / name).writeText(content)
+      }
+      f(createEsEnv(configDir), configDir)
+    }
+
+  def withTempConfigDir[T](f: File => T): T =
+    Using.resource(File.newTemporaryDirectory())(f)
 
   def defaultTestEsNodeSettings: EsNodeSettings = EsNodeSettings(
     clusterName = "testEsCluster",

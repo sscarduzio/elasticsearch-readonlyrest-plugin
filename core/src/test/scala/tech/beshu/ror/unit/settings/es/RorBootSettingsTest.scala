@@ -16,17 +16,15 @@
  */
 package tech.beshu.ror.unit.settings.es
 
-import better.files.File
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, defaultTestEsNodeSettings}
+import tech.beshu.ror.utils.TestsUtils.withEsEnv
 
 class RorBootSettingsTest
   extends AnyWordSpec with Inside {
@@ -43,9 +41,10 @@ class RorBootSettingsTest
             |""".stripMargin
         )
 
-        settings.map(_.rorNotStartedResponse) should be(Right(
-          RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`)
-        ))
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
+        )))
       }
       "boot settings contains failed to start response code" in {
         val settings = load(
@@ -55,9 +54,10 @@ class RorBootSettingsTest
             |""".stripMargin
         )
 
-        settings.map(_.rorFailedToStartResponse) should be(Right(
-          RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`)
-        ))
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`403`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+        )))
       }
       "boot settings contains all codes" in {
         val settings = load(
@@ -90,45 +90,36 @@ class RorBootSettingsTest
   }
   "not be able to load" when {
     "not started response code is malformed" in {
-      load(
+      inside(load(
         """
           |readonlyrest:
           |  not_started_response_code: 200
           |""".stripMargin
-      ) match {
+      )) {
         case Left(MalformedSettings(_, message)) =>
           message should include(
             "Invalid value at '.readonlyrest.not_started_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
           )
-        case other => fail(s"Expected Left(MalformedSettings), got $other")
       }
     }
     "failed to start response code is malformed" in {
-      load(
+      inside(load(
         """
           |readonlyrest:
           |  failed_to_start_response_code: 200
           |""".stripMargin
-      ) match {
+      )) {
         case Left(MalformedSettings(_, message)) =>
           message should include(
             "Invalid value at '.readonlyrest.failed_to_start_response_code': Unsupported HTTP code '200'. Allowed values: '403', '503'"
           )
-        case other => fail(s"Expected Left(MalformedSettings), got $other")
       }
     }
   }
 
   private def load(yaml: String) = {
-    val configDir = File.newTemporaryDirectory()
-    try {
-      (configDir / "elasticsearch.yml").writeText(yaml)
-      RorBootSettings
-        .load(EsEnv(configDir, configDir, defaultEsVersionForTests, defaultTestEsNodeSettings))
-        .runSyncUnsafe()
-    } finally {
-      (configDir / "elasticsearch.yml").delete(swallowIOExceptions = true)
-      configDir.delete(swallowIOExceptions = true)
+    withEsEnv(yaml) { (esEnv, _) =>
+      RorBootSettings.load(esEnv).runSyncUnsafe()
     }
   }
 }

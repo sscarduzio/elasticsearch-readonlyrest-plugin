@@ -73,7 +73,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(None))
     }
-    "fail when the value is defined in both YAML and property" in {
+    "prefer YAML when the value is defined in both YAML and property" in {
       val json = parse(
         """
           |readonlyrest:
@@ -90,9 +90,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
         decoder = FromString.boolean
       )
 
-      decoder.decode(json) should be(Left(
-        "Value at '.readonlyrest.ssl.enable' is defined in both YAML configuration and system properties. Please use only one."
-      ))
+      decoder.decode(json) should be(Right(Some(true)))
     }
   }
 
@@ -138,7 +136,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Left("Cannot find '.readonlyrest.ssl.keystore_file' path"))
     }
-    "fail when the value is defined in both YAML and property" in {
+    "prefer YAML when the value is defined in both YAML and property" in {
       val json = parse(
         """
           |readonlyrest:
@@ -155,9 +153,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
         decoder = FromString.string
       )
 
-      decoder.decode(json) should be(Left(
-        "Value at '.readonlyrest.ssl.keystore_file' is defined in both YAML configuration and system properties. Please use only one."
-      ))
+      decoder.decode(json) should be(Right("ror.jks"))
     }
   }
 
@@ -222,7 +218,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(Some(Set("TLS_A", "TLS_B"))))
     }
-    "fail when the value is defined in both YAML and property" in {
+    "prefer YAML when the value is defined in both YAML and property" in {
       val json = parse(
         """
           |readonlyrest:
@@ -240,9 +236,7 @@ class YamlLeafOrPropertyDecoderTest extends AnyWordSpec {
         itemDecoder = FromString.string
       )
 
-      decoder.decode(json) should be(Left(
-        "Value at '.readonlyrest.ssl.allowed_ciphers' is defined in both YAML configuration and system properties. Please use only one."
-      ))
+      decoder.decode(json) should be(Right(Some(Set("TLS_RSA_WITH_AES_128_CBC_SHA"))))
     }
   }
 

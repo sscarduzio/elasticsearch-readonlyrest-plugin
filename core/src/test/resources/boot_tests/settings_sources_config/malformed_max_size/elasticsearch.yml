@@ -1,6 +1,0 @@
-node.name: n1_it
-cluster.initial_master_nodes: n1_it
-
-readonlyrest:
-  settings:
-    max_size: not-a-size
