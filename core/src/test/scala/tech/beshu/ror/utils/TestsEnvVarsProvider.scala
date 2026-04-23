@@ -23,8 +23,8 @@ import tech.beshu.ror.providers.EnvVarsProvider
 class TestsEnvVarsProvider(envMap: Map[EnvVarName, String]) extends EnvVarsProvider {
   override def getEnv(name: EnvVarName): Option[String] = envMap.get(name)
 
-  override def hasEnvWithPrefix(prefix: String): Boolean =
-    envMap.keys.exists(_.value.value.startsWith(prefix))
+  override def hasEnvMatching(predicate: String => Boolean): Boolean =
+    envMap.keys.exists(k => predicate(k.value.value))
 }
 
 object TestsEnvVarsProvider {

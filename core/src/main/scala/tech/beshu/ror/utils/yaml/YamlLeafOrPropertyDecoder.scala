@@ -62,7 +62,8 @@ object YamlLeafOrPropertyOrEnvDecoder {
     json => {
       val inYaml       = JsonPathOps.focusAt(json, sectionPath).exists(j => !j.isNull)
       val inProperties = propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsString(sectionPath) + ".")
-      val inEnv        = envVarsProvider.hasEnvWithPrefix(JsonPathOps.pathPrefixToEnvVarPrefix(sectionPath))
+      val envPrefix    = JsonPathOps.pathPrefixToEnvVarPrefix(sectionPath)
+      val inEnv        = envVarsProvider.hasEnvMatching(k => k.startsWith(envPrefix) && (k.length == envPrefix.length || k.charAt(envPrefix.length) != '_'))
       if (inYaml || inProperties || inEnv)
         inner.decode(json)
       else

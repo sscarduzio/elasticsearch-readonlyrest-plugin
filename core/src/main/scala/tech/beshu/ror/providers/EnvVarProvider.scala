@@ -23,7 +23,7 @@ import scala.util.Try
 
 trait EnvVarsProvider {
   def getEnv(name: EnvVarName): Option[String]
-  def hasEnvWithPrefix(prefix: String): Boolean
+  def hasEnvMatching(predicate: String => Boolean): Boolean
 }
 
 object EnvVarProvider {
@@ -35,6 +35,6 @@ object OsEnvVarsProvider extends EnvVarsProvider {
   override def getEnv(name: EnvVarName): Option[String] =
     Try(Option(System.getenv(name.value.value))).toOption.flatten
 
-  override def hasEnvWithPrefix(prefix: String): Boolean =
-    Try(System.getenv().keySet().stream().anyMatch(_.startsWith(prefix))).getOrElse(false)
+  override def hasEnvMatching(predicate: String => Boolean): Boolean =
+    Try(System.getenv().keySet().stream().anyMatch(predicate(_))).getOrElse(false)
 }
