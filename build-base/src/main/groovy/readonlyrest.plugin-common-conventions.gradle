@@ -24,30 +24,16 @@ project.ext {
     publishedPluginVersion = rootProject.properties['pluginVersion']
     pluginVersion = rootProject.properties['pluginVersion']
     esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : project.property('latestSupportedEsVersion')
-    s3BucketName = System.env.BUCKET ?: "beshu"
+    s3BucketName = System.getenv('BUCKET') ?: 'beshu'
+    s3StoreAddress = System.getenv('ROR_LIBS_STORE_URL') ?: 'https://dgp.serve.beshu.tech'
 }
 
 group = 'org.elasticsearch.plugin'
-version = pluginVersion + '_es' + project.ext.esVersion
-
-def storeAddress = System.env.ROR_LIBS_STORE_URL ?: ""
-if (storeAddress.startsWith("http")) {
-    System.setProperty("org.gradle.s3.endpoint", storeAddress)
-}
+version = "${pluginVersion}_es${project.ext.esVersion}"
 
 repositories {
     maven {
-        url = "s3://" + project.s3BucketName + "/ror/libs"
-        if (storeAddress.startsWith("http")) {
-            credentials(AwsCredentials) {
-                accessKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_ID ?: ""
-                secretKey = System.env.ROR_LIBS_STORE_ACCESS_KEY_SECRET ?: ""
-            }
-        } else {
-            authentication {
-                awsIm(AwsImAuthentication)
-            }
-        }
+        url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/ror/libs")
         metadataSources {
             artifact()
         }
