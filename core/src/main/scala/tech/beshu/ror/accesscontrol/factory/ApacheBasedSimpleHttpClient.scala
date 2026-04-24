@@ -59,10 +59,9 @@ private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
       )
       promise.future
     }.map { response =>
-      // CLAUDE_MGW: getBodyText returns null for empty-body responses (unlike AHC's getResponseBody which returned "")
       HttpClient.Response(
         status = response.getCode,
-        body = Option(response.getBodyText).getOrElse("")
+        body = Option(response.getBodyText).getOrElse("") // getBodyText returns null for empty-body responses
       )
     }
   }
@@ -84,13 +83,11 @@ private[factory] object ApacheBasedSimpleHttpClient extends RequestIdAwareLoggin
           .setConnectTimeout(Timeout.ofMilliseconds(config.connectionTimeout.value.toMillis))
           .build()
 
-      // CLAUDE_MGW: Use builder (instead of direct constructor) to support conditional TLS strategy injection
       val connManagerBuilder = PoolingAsyncClientConnectionManagerBuilder.create()
         .setDefaultConnectionConfig(connectionConfig)
         .setMaxConnTotal(config.connectionPoolSize.value)
         .setMaxConnPerRoute(config.connectionPoolSize.value)
 
-      // CLAUDE_MGW: Migrate ssl bypass from old AHC client's setUseInsecureTrustManager(!config.validate) - this was silently lost in migration
       if (!config.validate) {
         val sslContext = SSLContextBuilder.create()
           .loadTrustMaterial(TrustAllStrategy.INSTANCE)
