@@ -72,30 +72,30 @@ object HttpClientsFactory {
     )
   }
 
-  // todo: remove synchronized, use more sophisticated lock mechanism
-  class DefaultHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
+}
 
-    private val existingClients = new CopyOnWriteArrayList[SimpleHttpClient[Task]]()
-    private val isWorking = AtomicBoolean(true)
+// todo: remove synchronized, use more sophisticated lock mechanism
+class DefaultHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
 
-    override def create(config: Config): HttpClient = synchronized {
-      if (isWorking.get()) {
-        val client = ApacheBasedSimpleHttpClient.create(config)
-        existingClients.add(client)
-        new LoggingSimpleHttpClient[Task](client)
-      } else {
-        throw new IllegalStateException("Cannot create http client - factory was closed")
-      }
+  private val existingClients = new CopyOnWriteArrayList[SimpleHttpClient[Task]]()
+  private val isWorking = AtomicBoolean(true)
+
+  override def create(config: Config): HttpClient = synchronized {
+    if (isWorking.get()) {
+      val client = ApacheBasedSimpleHttpClient.create(config)
+      existingClients.add(client)
+      new LoggingSimpleHttpClient[Task](client)
+    } else {
+      throw new IllegalStateException("Cannot create http client - factory was closed")
     }
+  }
 
-    override def shutdown(): Task[Unit] = {
-      val clients = synchronized {
-        isWorking.set(false)
-        existingClients.iterator().asScala.toList
-      }
-      Task.parSequenceUnordered(clients.map(_.close())).void
+  override def shutdown(): Task[Unit] = {
+    val clients = synchronized {
+      isWorking.set(false)
+      existingClients.iterator().asScala.toList
     }
-
+    Task.parSequenceUnordered(clients.map(_.close())).void
   }
 
 }
