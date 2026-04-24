@@ -141,7 +141,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           (
             createReadonlyRestBoot(coreFactory, indexDocumentManager),
-            createEsConfigBasedRorSettings("/boot_tests/index_settings//custom_index_defined/")
+            createEsConfigBasedRorSettings("/boot_tests/index_settings/custom_index_defined/")
           )
         } { _ =>
           // nothing - just should start
@@ -156,7 +156,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           (
             createReadonlyRestBoot(coreFactory, indexDocumentManager),
-            createEsConfigBasedRorSettings("/boot_tests/index_settings//custom_index_defined/"),
+            createEsConfigBasedRorSettings("/boot_tests/index_settings/custom_index_defined/"),
             (indexDocumentManager, coreFactory)
           )
         } { case (rorInstance, (indexDocumentManager, coreFactory)) =>
@@ -181,7 +181,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           (
             createReadonlyRestBoot(coreFactory, indexDocumentManager),
-            createEsConfigBasedRorSettings("/boot_tests/index_settings//custom_index_defined/"),
+            createEsConfigBasedRorSettings("/boot_tests/index_settings/custom_index_defined/"),
             (indexDocumentManager, coreFactory)
           )
         } { case (rorInstance, (indexDocumentManager, coreFactory)) =>

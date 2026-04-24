@@ -17,20 +17,21 @@
 package tech.beshu.ror.settings.es
 
 import better.files.*
-import cats.data.EitherT
-import io.circe.{Decoder, DecodingFailure, HCursor}
+import cats.data.{EitherT, NonEmptyList}
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.{EsConfigFile, RorSettingsFile}
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.SslSettings.*
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
-import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.utils.{FromString, RequestIdAwareLogging, SSLCertHelper}
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 sealed trait RorSslSettings
-object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdAwareLogging {
+object RorSslSettings extends ElasticsearchConfigLoaderSupport with RequestIdAwareLogging {
 
   final case class OnlyExternalSslSettings(ssl: ExternalSslSettings) extends RorSslSettings
   final case class OnlyInternodeSslSettings(ssl: InternodeSslSettings) extends RorSslSettings
@@ -73,7 +74,8 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdA
                                 rorSettingsFile: RorSettingsFile,
                                 xpackSecuritySettings: XpackSecuritySettings)
                                (implicit systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
-    implicit val rorSslSettingsDecoder: Decoder[Option[RorSslSettings]] = SslDecoders.rorSslDecoder(esConfigFile.file.parent)
+    implicit val rorSslSettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]] =
+      SslDecoders.rorSslDecoder(esConfigFile.file.parent)
     loadSslSettingsFrom(esConfigFile.file)
       .flatMap {
         case None =>
@@ -90,7 +92,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdA
   }
 
   private def fallbackToRorSettingsFile(rorSettingsFile: RorSettingsFile)
-                                       (implicit decoder: Decoder[Option[RorSslSettings]],
+                                       (implicit decoder: YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]],
                                         systemContext: SystemContext): EitherT[Task, LoadingError, Option[RorSslSettings]] = {
     val settingsFile = rorSettingsFile.file
     if (settingsFile.exists) {
@@ -107,7 +109,7 @@ object RorSslSettings extends YamlFileBasedSettingsLoaderSupport with RequestIdA
   }
 
   private def loadSslSettingsFrom(settingsFile: File)
-                                 (implicit decoder: Decoder[Option[RorSslSettings]],
+                                 (implicit decoder: YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]],
                                   systemContext: SystemContext) = {
     for {
       _ <- lift(noRequestIdLogger.info(s"Trying to load ROR SSL settings from '${settingsFile.show}' file ..."))
@@ -207,203 +209,279 @@ object SslSettings {
 private object SslDecoders extends RequestIdAwareLogging {
 
   object consts {
-    val rorSection = "readonlyrest"
-    val fipsMode = "fips_mode"
-    val externalSsl = "ssl"
-    val internodeSsl = "ssl_internode"
-    val keystoreFile = "keystore_file"
-    val keystorePass = "keystore_pass"
-    val truststoreFile = "truststore_file"
-    val truststorePass = "truststore_pass"
-    val keyPass = "key_pass"
-    val keyAlias = "key_alias"
-    val allowedCiphers = "allowed_ciphers"
-    val allowedProtocols = "allowed_protocols"
-    val certificateVerification = "certificate_verification"
-    val hostnameVerification = "hostname_verification"
-    val clientAuthentication = "client_authentication"
-    val verification = "verification"
-    val enable = "enable"
-    val serverCertificateKeyFile = "server_certificate_key_file"
-    val serverCertificateFile = "server_certificate_file"
-    val clientTrustedCertificateFile = "client_trusted_certificate_file"
+    val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
+    val fipsMode: NonEmptyString = NonEmptyString.unsafeFrom("fips_mode")
+    val externalSsl: NonEmptyString = NonEmptyString.unsafeFrom("ssl")
+    val internodeSsl: NonEmptyString = NonEmptyString.unsafeFrom("ssl_internode")
+    val keystoreFile: NonEmptyString = NonEmptyString.unsafeFrom("keystore_file")
+    val keystorePass: NonEmptyString = NonEmptyString.unsafeFrom("keystore_pass")
+    val truststoreFile: NonEmptyString = NonEmptyString.unsafeFrom("truststore_file")
+    val truststorePass: NonEmptyString = NonEmptyString.unsafeFrom("truststore_pass")
+    val keyPass: NonEmptyString = NonEmptyString.unsafeFrom("key_pass")
+    val keyAlias: NonEmptyString = NonEmptyString.unsafeFrom("key_alias")
+    val allowedCiphers: NonEmptyString = NonEmptyString.unsafeFrom("allowed_ciphers")
+    val allowedProtocols: NonEmptyString = NonEmptyString.unsafeFrom("allowed_protocols")
+    val certificateVerification: NonEmptyString = NonEmptyString.unsafeFrom("certificate_verification")
+    val hostnameVerification: NonEmptyString = NonEmptyString.unsafeFrom("hostname_verification")
+    val clientAuthentication: NonEmptyString = NonEmptyString.unsafeFrom("client_authentication")
+    val verification: NonEmptyString = NonEmptyString.unsafeFrom("verification")
+    val enable: NonEmptyString = NonEmptyString.unsafeFrom("enable")
+    val serverCertificateKeyFile: NonEmptyString = NonEmptyString.unsafeFrom("server_certificate_key_file")
+    val serverCertificateFile: NonEmptyString = NonEmptyString.unsafeFrom("server_certificate_file")
+    val clientTrustedCertificateFile: NonEmptyString = NonEmptyString.unsafeFrom("client_trusted_certificate_file")
   }
 
-  final case class CommonSslProperties(serverCertificateSettings: ServerCertificateSettings,
-                                       clientCertificateSettings: Option[ClientCertificateSettings],
-                                       allowedProtocols: Set[SslSettings.Protocol],
-                                       allowedCiphers: Set[SslSettings.Cipher],
-                                       clientAuthentication: Option[Boolean])
-
-  private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = DecoderHelpers.decodeStringLike.map(KeystorePassword.apply)
-  private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = DecoderHelpers.decodeStringLike.map(TruststorePassword.apply)
-  private implicit val keyPassDecoder: Decoder[KeyPass] = DecoderHelpers.decodeStringLike.map(KeyPass.apply)
-  private implicit val keyAliasDecoder: Decoder[KeyAlias] = DecoderHelpers.decodeStringLike.map(KeyAlias.apply)
-  private implicit val cipherDecoder: Decoder[Cipher] = DecoderHelpers.decodeStringLike.map(Cipher.apply)
-  private implicit val protocolDecoder: Decoder[Protocol] = DecoderHelpers.decodeStringLike.map(Protocol.apply)
-
-  private def clientCertificateSettingsDecoder(basePath: File): Decoder[Option[ClientCertificateSettings]] = {
-    val aFileDecoder: Decoder[File] = fileDecoder(basePath)
-    implicit val truststoreFileDecoder = aFileDecoder.map(TruststoreFile.apply)
-    implicit val clientTrustedCertificateFileDecoder = aFileDecoder.map(ClientTrustedCertificateFile.apply)
-
-    val truststoreBasedClientCertificateSettingsDecoder: Decoder[ClientCertificateSettings] =
-      Decoder.forProduct2(consts.truststoreFile, consts.truststorePass)(ClientCertificateSettings.TruststoreBasedSettings.apply)
-    val fileBasedClientCertificateSettingsDecoder: Decoder[ClientCertificateSettings] =
-      Decoder.forProduct1(consts.clientTrustedCertificateFile)(ClientCertificateSettings.FileBasedSettings.apply)
-    Decoder.instance { c =>
-      val truststoreBasedKeys = Set(consts.truststoreFile, consts.truststorePass)
-      val fileBasedKeys = Set(consts.clientTrustedCertificateFile)
-      val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
-      if (presentKeys.intersect(truststoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${truststoreBasedKeys.show}] could not be present in the same settings section"
-        noRequestIdLogger.error(errorMessage)
-        Left(DecodingFailure(errorMessage, List.empty))
-      } else if (presentKeys.intersect(truststoreBasedKeys).nonEmpty) {
-        truststoreBasedClientCertificateSettingsDecoder(c)
-          .map(Option.apply)
-      } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        if (SSLCertHelper.isPEMHandlingAvailable) {
-          fileBasedClientCertificateSettingsDecoder(c)
-            .map(Option.apply)
-        } else {
-          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
-          noRequestIdLogger.error(errorMessage)
-          Left(DecodingFailure(errorMessage, List.empty))
-        }
-      } else {
-        Right(None)
-      }
-    }
-  }
-
-  private def serverCertificateSettingsDecoder(basePath: File): Decoder[ServerCertificateSettings] = {
-    val aFileDecoder: Decoder[File] = fileDecoder(basePath)
-    implicit val keystoreFileDecoder = aFileDecoder.map(KeystoreFile.apply)
-    implicit val serverCertificateFileDecoder = aFileDecoder.map(ServerCertificateFile.apply)
-    implicit val serverCertificateKeyFileDecoder = aFileDecoder.map(ServerCertificateKeyFile.apply)
-    val keystoreBasedServerCertificateSettingsDecoder: Decoder[ServerCertificateSettings] =
-      Decoder.forProduct4(consts.keystoreFile, consts.keystorePass, consts.keyAlias, consts.keyPass)(ServerCertificateSettings.KeystoreBasedSettings.apply)
-    val fileBasedServerCertificateSettingsDecoder: Decoder[ServerCertificateSettings] =
-      Decoder.forProduct2(consts.serverCertificateKeyFile, consts.serverCertificateFile)(ServerCertificateSettings.FileBasedSettings.apply)
-    Decoder.instance { c =>
-      val keystoreBasedKeys = Set(consts.keystoreFile, consts.keystorePass, consts.keyPass, consts.keyAlias)
-      val fileBasedKeys = Set(consts.serverCertificateKeyFile, consts.serverCertificateFile)
-      val presentKeys = c.keys.fold[Set[String]](Set.empty)(_.toSet)
-      if (presentKeys.intersect(keystoreBasedKeys).nonEmpty && presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        val errorMessage = s"Field sets [${fileBasedKeys.show}] and [${keystoreBasedKeys.show}] could not be present in the same settings section"
-        noRequestIdLogger.error(errorMessage)
-        Left(DecodingFailure(errorMessage, List.empty))
-      } else if (presentKeys.intersect(keystoreBasedKeys).nonEmpty) {
-        keystoreBasedServerCertificateSettingsDecoder(c)
-      } else if (presentKeys.intersect(fileBasedKeys).nonEmpty) {
-        if (SSLCertHelper.isPEMHandlingAvailable) {
-          fileBasedServerCertificateSettingsDecoder(c)
-        } else {
-          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
-          noRequestIdLogger.error(errorMessage)
-          Left(DecodingFailure(errorMessage, List.empty))
-        }
-      } else {
-        val errorMessage = "There was no SSL settings present for server"
-        noRequestIdLogger.error(errorMessage)
-        Left(DecodingFailure(errorMessage, List.empty))
-      }
-    }
-  }
-
-  def rorSslDecoder(basePath: File): Decoder[Option[RorSslSettings]] = Decoder.instance { c =>
-    implicit val isFipsCompliantDecoder: Decoder[FipsMode] = Decoder.decodeString.emap {
-      case "NON_FIPS" => Right(FipsMode.NonFips)
-      case "SSL_ONLY" => Right(FipsMode.SslOnly)
-      case _ => Left("Invalid settings option for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
-    }
+  def rorSslDecoder(basePath: File)
+                   (implicit systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[RorSslSettings]] = {
     for {
-      fipsMode <- c.downField(consts.rorSection).downField(consts.fipsMode).as[Option[FipsMode]]
-      interNodeSsl <- {
-        implicit val internodeSslSettingsDecoder: Decoder[Option[InternodeSslSettings]] =
-          sslInternodeSettingsDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
-        c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[InternodeSslSettings]]]
-      }
-      externalSsl <- {
-        implicit val externalSslSettingsDecoder: Decoder[Option[ExternalSslSettings]] =
-          sslExternalSettingsDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
-        c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[ExternalSslSettings]]]
-      }
+      fipsMode <- fipsModeDecoder
+      externalSsl <- externalSslSectionDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
+      internodeSsl <- internodeSslSectionDecoder(basePath, fipsMode.getOrElse(FipsMode.NonFips))
     } yield {
-      (externalSsl.flatten, interNodeSsl.flatten) match {
-        case (Some(ssl), None) => Some(RorSslSettings.OnlyExternalSslSettings(ssl))
-        case (None, Some(ssl)) => Some(RorSslSettings.OnlyInternodeSslSettings(ssl))
-        case (Some(externalSsl), Some(internalSsl)) => Some(RorSslSettings.ExternalAndInternodeSslSettings(externalSsl, internalSsl))
+      (externalSsl, internodeSsl) match {
+        case (Some(ex), Some(in)) => Some(RorSslSettings.ExternalAndInternodeSslSettings(ex, in))
+        case (Some(ex), None) => Some(RorSslSettings.OnlyExternalSslSettings(ex))
+        case (None, Some(in)) => Some(RorSslSettings.OnlyInternodeSslSettings(in))
         case (None, None) => None
       }
     }
   }
 
-  private def sslInternodeSettingsDecoder(basePath: File,
-                                          fipsMode: FipsMode): Decoder[Option[InternodeSslSettings]] = Decoder.instance { c =>
-    whenEnabled(c) {
+  private def fipsModeDecoder(implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[FipsMode]] = {
+    implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
+    val decoder: FromString[FipsMode] = FromString.instance {
+      case "NON_FIPS" => Right(FipsMode.NonFips)
+      case "SSL_ONLY" => Right(FipsMode.SslOnly)
+      case other      => Left(s"Invalid settings option '${other.show}' for FIPS MODE. Valid values are: NON_FIPS, SSL_ONLY")
+    }
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+      path = NonEmptyList.of(consts.rorSection, consts.fipsMode),
+      decoder = decoder
+    )
+  }
+
+  private def externalSslSectionDecoder(basePath: File, fipsMode: FipsMode)
+                                       (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ExternalSslSettings]] = {
+    implicit val pp: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
+    val sectionPath = NonEmptyList.of(consts.rorSection, consts.externalSsl)
+    YamlLeafOrPropertyOrEnvDecoder.whenSectionPresent[ExternalSslSettings](sectionPath) {
       for {
-        certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
-        hostnameVerification <- c.downField(consts.hostnameVerification).as[Option[Boolean]]
-        verification <- c.downField(consts.verification).as[Option[Boolean]]
-        sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
-      } yield
-        InternodeSslSettings(
-          serverCertificateSettings = sslCommonProperties.serverCertificateSettings,
-          clientCertificateSettings = sslCommonProperties.clientCertificateSettings,
-          allowedProtocols = sslCommonProperties.allowedProtocols,
-          allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.getOrElse(false),
-          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false),
-          hostnameVerificationEnabled = hostnameVerification.getOrElse(false),
-          fipsMode = fipsMode
-        )
+        enable <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
+        result <- enable match {
+          case Some(false) => YamlLeafOrPropertyOrEnvDecoder.pure[Option[ExternalSslSettings]](None)
+          case _ =>
+            for {
+              ciphers <- ciphersDecoder(sectionPath)
+              protocols <- protocolsDecoder(sectionPath)
+              clientAuthentication <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
+              verification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
+              keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
+              keystorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
+              keyAlias <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
+              keyPass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
+              truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
+              truststorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
+              serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
+              serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
+              clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
+              r <- YamlLeafOrPropertyOrEnvDecoder.fromEither[Option[ExternalSslSettings]] {
+                for {
+                  serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
+                  clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
+                } yield Some(ExternalSslSettings(
+                  serverCertificateSettings = serverCert,
+                  clientCertificateSettings = clientCert,
+                  allowedProtocols = protocols.getOrElse(Set.empty),
+                  allowedCiphers = ciphers.getOrElse(Set.empty),
+                  clientAuthenticationEnabled = clientAuthentication.orElse(verification).getOrElse(false),
+                  fipsMode = fipsMode
+                ))
+              }
+            } yield r
+        }
+      } yield result
     }
   }
 
-  private def sslExternalSettingsDecoder(basePath: File,
-                                         fipsMode: FipsMode): Decoder[Option[ExternalSslSettings]] = Decoder.instance { c =>
-    whenEnabled(c) {
+  private def internodeSslSectionDecoder(basePath: File, fipsMode: FipsMode)
+                                        (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[InternodeSslSettings]] = {
+    implicit val pp: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
+    val sectionPath = NonEmptyList.of(consts.rorSection, consts.internodeSsl)
+    YamlLeafOrPropertyOrEnvDecoder.whenSectionPresent[InternodeSslSettings](sectionPath) {
       for {
-        verification <- c.downField(consts.verification).as[Option[Boolean]]
-        sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
-      } yield
-        ExternalSslSettings(
-          serverCertificateSettings = sslCommonProperties.serverCertificateSettings,
-          clientCertificateSettings = sslCommonProperties.clientCertificateSettings,
-          allowedProtocols = sslCommonProperties.allowedProtocols,
-          allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = sslCommonProperties.clientAuthentication.orElse(verification).getOrElse(false),
-          fipsMode = fipsMode
-        )
+        enable <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.enable)
+        result <- enable match {
+          case Some(false) =>
+            YamlLeafOrPropertyOrEnvDecoder.pure[Option[InternodeSslSettings]](None)
+          case _ =>
+            for {
+              ciphers <- ciphersDecoder(sectionPath)
+              protocols <- protocolsDecoder(sectionPath)
+              clientAuthentication <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.clientAuthentication)
+              certificateVerification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.certificateVerification)
+              hostnameVerification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.hostnameVerification)
+              verification <- YamlLeafOrPropertyOrEnvDecoder.optionalBooleanDecoder(sectionPath :+ consts.verification)
+              keystoreFile <- keystoreFileDecoder(basePath, sectionPath)
+              keystorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keystorePass).map(_.map(KeystorePassword.apply))
+              keyAlias <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyAlias).map(_.map(KeyAlias.apply))
+              keyPass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.keyPass).map(_.map(KeyPass.apply))
+              truststoreFile <- truststoreFileDecoder(basePath, sectionPath)
+              truststorePass <- YamlLeafOrPropertyOrEnvDecoder.optionalStringDecoder(sectionPath :+ consts.truststorePass).map(_.map(TruststorePassword.apply))
+              serverCertFile <- serverCertFileDecoder(basePath, sectionPath)
+              serverCertKeyFile <- serverCertKeyFileDecoder(basePath, sectionPath)
+              clientTrustedCertFile <- clientTrustedCertFileDecoder(basePath, sectionPath)
+              r <- YamlLeafOrPropertyOrEnvDecoder.fromEither[Option[InternodeSslSettings]] {
+                for {
+                  serverCert <- buildServerCertificateSettings(keystoreFile, keystorePass, keyAlias, keyPass, serverCertKeyFile, serverCertFile)
+                  clientCert <- buildClientCertificateSettings(truststoreFile, truststorePass, clientTrustedCertFile)
+                } yield Some(InternodeSslSettings(
+                  serverCertificateSettings = serverCert,
+                  clientCertificateSettings = clientCert,
+                  allowedProtocols = protocols.getOrElse(Set.empty),
+                  allowedCiphers = ciphers.getOrElse(Set.empty),
+                  clientAuthenticationEnabled = clientAuthentication.getOrElse(false),
+                  certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false),
+                  hostnameVerificationEnabled = hostnameVerification.getOrElse(false),
+                  fipsMode = fipsMode
+                ))
+              }
+            } yield r
+        }
+      } yield result
     }
   }
 
-  private def sslCommonPropertiesDecoder(basePath: File, c: HCursor) = {
-    for {
-      ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
-      protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
-      clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
-      serverCertificateSettings <- serverCertificateSettingsDecoder(basePath).apply(c)
-      clientCertificateSettings <- clientCertificateSettingsDecoder(basePath).apply(c)
-    } yield
-      CommonSslProperties(
-        serverCertificateSettings = serverCertificateSettings,
-        clientCertificateSettings = clientCertificateSettings,
-        allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
-        allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-        clientAuthentication = clientAuthentication,
-      )
+  private def buildServerCertificateSettings(keystoreFile: Option[KeystoreFile],
+                                             keystorePass: Option[KeystorePassword],
+                                             keyAlias: Option[KeyAlias],
+                                             keyPass: Option[KeyPass],
+                                             serverCertificateKeyFile: Option[ServerCertificateKeyFile],
+                                             serverCertificateFile: Option[ServerCertificateFile]): Either[String, ServerCertificateSettings] = {
+    val keystoreBased = keystoreFile.isDefined || keystorePass.isDefined || keyAlias.isDefined || keyPass.isDefined
+    val fileBased = serverCertificateKeyFile.isDefined || serverCertificateFile.isDefined
+    (keystoreBased, fileBased) match {
+      case (true, true) =>
+        val errorMessage = s"Field sets [${consts.serverCertificateKeyFile.show}, ${consts.serverCertificateFile.show}] and [${consts.keystoreFile.show}, ${consts.keystorePass.show}, ${consts.keyAlias.show}, ${consts.keyPass.show}] could not be present in the same settings section"
+        noRequestIdLogger.error(errorMessage)
+        Left(errorMessage)
+      case (true, false) =>
+        keystoreFile match {
+          case Some(file) => Right(ServerCertificateSettings.KeystoreBasedSettings(file, keystorePass, keyAlias, keyPass))
+          case None =>
+            val errorMessage = s"'${consts.keystoreFile.show}' is required when keystore based SSL settings are used"
+            noRequestIdLogger.error(errorMessage)
+            Left(errorMessage)
+        }
+      case (false, true) =>
+        if (!SSLCertHelper.isPEMHandlingAvailable) {
+          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
+          noRequestIdLogger.error(errorMessage)
+          Left(errorMessage)
+        } else {
+          (serverCertificateKeyFile, serverCertificateFile) match {
+            case (Some(keyFile), Some(certFile)) => Right(ServerCertificateSettings.FileBasedSettings(keyFile, certFile))
+            case _ =>
+              val errorMessage = s"'${consts.serverCertificateKeyFile.show}' and '${consts.serverCertificateFile.show}' are both required when file based SSL settings are used"
+              noRequestIdLogger.error(errorMessage)
+              Left(errorMessage)
+          }
+        }
+      case (false, false) =>
+        val errorMessage = "There was no SSL settings present for server"
+        noRequestIdLogger.error(errorMessage)
+        Left(errorMessage)
+    }
   }
 
-  private def whenEnabled[T <: SslSettings](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {
-    for {
-      isEnabled <- cursor.downField(consts.enable).as[Option[Boolean]]
-      result <- if (isEnabled.getOrElse(true)) decoding.map(Some.apply) else Right(None)
-    } yield result
+  private def buildClientCertificateSettings(truststoreFile: Option[TruststoreFile],
+                                             truststorePassword: Option[TruststorePassword],
+                                             clientTrustedCertificateFile: Option[ClientTrustedCertificateFile]): Either[String, Option[ClientCertificateSettings]] = {
+    val truststoreBased = truststoreFile.isDefined || truststorePassword.isDefined
+    val fileBased = clientTrustedCertificateFile.isDefined
+    (truststoreBased, fileBased) match {
+      case (true, true) =>
+        val errorMessage = s"Field sets [${consts.clientTrustedCertificateFile.show}] and [${consts.truststoreFile.show}, ${consts.truststorePass.show}] could not be present in the same settings section"
+        noRequestIdLogger.error(errorMessage)
+        Left(errorMessage)
+      case (true, false) =>
+        truststoreFile match {
+          case Some(file) => Right(Some(ClientCertificateSettings.TruststoreBasedSettings(file, truststorePassword)))
+          case None =>
+            val errorMessage = s"'${consts.truststoreFile.show}' is required when truststore based client SSL settings are used"
+            noRequestIdLogger.error(errorMessage)
+            Left(errorMessage)
+        }
+      case (false, true) =>
+        if (!SSLCertHelper.isPEMHandlingAvailable) {
+          val errorMessage = "PEM File Handling is not available in your current deployment of Elasticsearch"
+          noRequestIdLogger.error(errorMessage)
+          Left(errorMessage)
+        } else {
+          clientTrustedCertificateFile match {
+            case Some(file) => Right(Some(ClientCertificateSettings.FileBasedSettings(file)))
+            case None =>
+              val errorMessage = s"'${consts.clientTrustedCertificateFile.show}' expected but was absent"
+              noRequestIdLogger.error(errorMessage)
+              Left(errorMessage)
+          }
+        }
+      case (false, false) =>
+        Right(None)
+    }
   }
 
-  private def fileDecoder(basePath: File): Decoder[File] =
-    Decoder.decodeString.map { str => basePath / str }
+  private def fileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString], key: NonEmptyString)
+                         (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[File]] = {
+    implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(sectionPath :+ key, FromString.string.map(basePath / _))
+  }
+
+  private def keystoreFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
+                                 (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[KeystoreFile]] = {
+    fileDecoder(basePath, sectionPath, consts.keystoreFile).map(_.map(KeystoreFile.apply))
+  }
+
+  private def truststoreFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
+                                   (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[TruststoreFile]] = {
+    fileDecoder(basePath, sectionPath, consts.truststoreFile).map(_.map(TruststoreFile.apply))
+  }
+
+  private def serverCertFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
+                                   (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ServerCertificateFile]] = {
+    fileDecoder(basePath, sectionPath, consts.serverCertificateFile).map(_.map(ServerCertificateFile.apply))
+  }
+
+  private def serverCertKeyFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
+                                      (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ServerCertificateKeyFile]] = {
+    fileDecoder(basePath, sectionPath, consts.serverCertificateKeyFile).map(_.map(ServerCertificateKeyFile.apply))
+  }
+
+  private def clientTrustedCertFileDecoder(basePath: File, sectionPath: NonEmptyList[NonEmptyString])
+                                          (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[ClientTrustedCertificateFile]] = {
+    fileDecoder(basePath, sectionPath, consts.clientTrustedCertificateFile).map(_.map(ClientTrustedCertificateFile.apply))
+  }
+
+  private def ciphersDecoder(sectionPath: NonEmptyList[NonEmptyString])
+                            (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[Set[Cipher]]] = {
+    implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
+      path = sectionPath :+ consts.allowedCiphers,
+      itemDecoder = FromString.string.map(Cipher.apply)
+    )
+  }
+
+  private def protocolsDecoder(sectionPath: NonEmptyList[NonEmptyString])
+                              (implicit sc: SystemContext): YamlLeafOrPropertyOrEnvDecoder[Option[Set[Protocol]]] = {
+    implicit val propertiesProvider: PropertiesProvider = sc.propertiesProvider
+    implicit val envVarsProvider: EnvVarsProvider = sc.envVarsProvider
+    YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
+      path = sectionPath :+ consts.allowedProtocols,
+      itemDecoder = FromString.string.map(Protocol.apply)
+    )
+  }
 }

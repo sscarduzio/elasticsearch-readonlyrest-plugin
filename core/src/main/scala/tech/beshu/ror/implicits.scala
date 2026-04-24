@@ -68,7 +68,7 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
@@ -539,10 +539,10 @@ trait LogsShowInstances
 
   implicit val mainRorSettingsShow: Show[MainRorSettings] = Show.show(_.rawSettings.rawYaml)
 
-  implicit val esConfigBasedRorSettingsLoadingErrorShow: Show[YamlFileBasedSettingsLoader.LoadingError] = Show.show {
-    case YamlFileBasedSettingsLoader.LoadingError.FileNotFound(file) =>
+  implicit val esConfigBasedRorSettingsLoadingErrorShow: Show[ElasticsearchConfigLoader.LoadingError] = Show.show {
+    case ElasticsearchConfigLoader.LoadingError.FileNotFound(file) =>
       s"Cannot find settings file: [${file.show}]"
-    case YamlFileBasedSettingsLoader.LoadingError.MalformedSettings(file, message) =>
+    case ElasticsearchConfigLoader.LoadingError.MalformedSettings(file, message) =>
       s"Settings file is malformed: [${file.show}], ${message.show}"
   }
 

@@ -14,30 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.providers
+package tech.beshu.ror.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.providers.EnvVarsProvider
 
-import scala.util.Try
+class TestsEnvVarsProvider(envMap: Map[EnvVarName, String]) extends EnvVarsProvider {
+  override def getEnv(name: EnvVarName): Option[String] = envMap.get(name)
 
-trait PropertiesProvider {
-  def getProperty(name: PropName): Option[String]
-  def hasPropertyWithPrefix(prefix: String): Boolean
+  override def hasEnvMatching(predicate: String => Boolean): Boolean =
+    envMap.keys.exists(k => predicate(k.value.value))
 }
 
-object PropertiesProvider {
+object TestsEnvVarsProvider {
+  def default: TestsEnvVarsProvider = new TestsEnvVarsProvider(Map.empty)
 
-  final case class PropName(value: NonEmptyString)
+  def usingMap(map: Map[String, String]): TestsEnvVarsProvider = new TestsEnvVarsProvider(
+    map.map { case (key, value) => (EnvVarName(NonEmptyString.unsafeFrom(key)), value) }
+  )
 }
-
-object JvmPropertiesProvider extends PropertiesProvider {
-  override def getProperty(name: PropName): Option[String] =
-    Try(Option(System.getProperty(name.value.value))).toOption.flatten
-
-  override def hasPropertyWithPrefix(prefix: String): Boolean = {
-    Try(System.getProperties.stringPropertyNames().stream().anyMatch(_.startsWith(prefix))).getOrElse(false)
-  }
-}
-
-

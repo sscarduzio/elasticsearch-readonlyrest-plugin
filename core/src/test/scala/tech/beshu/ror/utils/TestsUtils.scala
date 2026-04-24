@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import better.files.File
 import cats.data.{EitherT, NonEmptyList}
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.{Decoder, Json, ParsingFailure, parser}
+import io.circe.{Decoder, Json, parser}
 import io.jsonwebtoken.JwtBuilder
 import io.lemonlabs.uri.Url
 import monix.eval.Task
@@ -60,19 +60,20 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.KibanaAppRegex
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
-import tech.beshu.ror.settings.ror.RawRorSettings
+import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
-import tech.beshu.ror.utils.yaml.{YamlKeyDecoder, YamlParser}
+import tech.beshu.ror.utils.yaml.{JsonPathOps, YamlParser}
 
 import java.nio.file.Path
 import java.time.Duration
 import java.util.Base64
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.Using
 import scala.util.{Failure, Success, Try}
 
 object TestsUtils {
@@ -305,10 +306,10 @@ object TestsUtils {
           bc.indices should be(indices)
         case bc: FilterableRequestBlockContext =>
           bc.filteredIndices should be(indices)
-          bc.filter should be (filter)
+          bc.filter should be(filter)
         case bc: FilterableMultiRequestBlockContext =>
           bc.indexPacks should be(indexPacks)
-          bc.filter should be (filter)
+          bc.filter should be(filter)
         case bc: AliasRequestBlockContext =>
           bc.indices should be(indices)
           bc.aliases should be(aliases)
@@ -323,13 +324,13 @@ object TestsUtils {
     final case class RuleThrownException(exception: Throwable) extends RuleCheckAssertion
   }
 
-  extension(rule: Rule) {
+  extension (rule: Rule) {
     def checkAndAssert[B <: BlockContext : BlockContextUpdater](blockContext: B, assertion: RuleCheckAssertion): Unit = {
       import monix.execution.Scheduler.Implicits.global
       val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
       assertion match {
         case RuleCheckAssertion.RulePermitted(blockContextAssertion) =>
-          result.get shouldBe a [Permitted[B]]
+          result.get shouldBe a[Permitted[B]]
           blockContextAssertion(result.get.asInstanceOf[Permitted[B]].context)
         case RuleCheckAssertion.RuleDenied(cause) =>
           result.get should be(Denied(cause))
@@ -338,7 +339,6 @@ object TestsUtils {
       }
     }
   }
-
 
   def headerFrom(nameAndValue: (String, String)): Header = {
     (NonEmptyString.unapply(nameAndValue._1), NonEmptyString.unapply(nameAndValue._2)) match {
@@ -403,13 +403,10 @@ object TestsUtils {
   }
 
   def rorSettingsFromUnsafe(yamlContent: String): RawRorSettings = {
-    rorSettingFrom(yamlContent).toOption.get
-  }
-
-  def rorSettingFrom(yamlContent: String): Either[ParsingFailure, RawRorSettings] = {
-    rorYamlParser
-      .parse(yamlContent)
-      .map(json => RawRorSettings(json, yamlContent))
+    new RawRorSettingsYamlParser(Megabytes(1))
+      .fromString(yamlContent)
+      .left.map { e => new IllegalStateException(s"Error: $e") }
+      .toTry.get
   }
 
   def rorSettingsFromResource(resource: String): RawRorSettings = {
@@ -430,8 +427,12 @@ object TestsUtils {
     parser.parse(jsonString).toTry.get
   }
 
-
   def createEsEnv(configDir: File): EsEnv = {
+    def loadPathFrom[T: Decoder](configDir: File, path: NonEmptyList[String], default: T): T = {
+      val json = rorYamlParser.parse((configDir / "elasticsearch.yml").contentAsString).toTry.get
+      val nesPath = path.map(NonEmptyString.unsafeFrom)
+      JsonPathOps.focusAt(json, nesPath).flatMap(_.as[T].toOption).getOrElse(default)
+    }
     val xpackSecurityEnabled = loadPathFrom(configDir, NonEmptyList.of("xpack", "security", "enabled"), true)
     EsEnv(
       configDir = configDir,
@@ -444,6 +445,22 @@ object TestsUtils {
       ))
   }
 
+  private given Using.Releasable[File] = _.delete(swallowIOExceptions = true)
+
+  def withEsEnv[T](esConfigYaml: String,
+                   additionalFiles: Map[String, String] = Map.empty)
+                  (f: (EsEnv, File) => T): T =
+    Using.resource(File.newTemporaryDirectory()) { configDir =>
+      (configDir / "elasticsearch.yml").writeText(esConfigYaml)
+      additionalFiles.foreach { case (name, content) =>
+        (configDir / name).writeText(content)
+      }
+      f(createEsEnv(configDir), configDir)
+    }
+
+  def withTempConfigDir[T](f: File => T): T =
+    Using.resource(File.newTemporaryDirectory())(f)
+
   def defaultTestEsNodeSettings: EsNodeSettings = EsNodeSettings(
     clusterName = "testEsCluster",
     nodeName = "testEsNode",
@@ -452,16 +469,6 @@ object TestsUtils {
 
   def defaultEsEnv(esConfig: Option[File] = None): EsEnv = {
     EsEnv(esConfig.getOrElse(File("/config")), File("/modules"), defaultEsVersionForTests, defaultTestEsNodeSettings)
-  }
-
-  private def loadPathFrom[T: Decoder](configDir: File, path: NonEmptyList[String], default: T) = {
-    val decoder = YamlKeyDecoder[T](path, default)
-    rorYamlParser
-      .parse((configDir / "elasticsearch.yml").contentAsString)
-      .flatMap(decoder.decodeJson) match {
-      case Right(value) => value
-      case Left(error) => throw error
-    }
   }
 
   implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {

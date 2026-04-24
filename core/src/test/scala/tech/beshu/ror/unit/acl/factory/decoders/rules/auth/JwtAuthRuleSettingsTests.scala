@@ -32,8 +32,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.json.JsonPath
@@ -286,7 +286,6 @@ class JwtAuthRuleSettingsTests
               |
               |""".stripMargin,
           assertion = rule => {
-            // todo:
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(AuthorizationTokenPrefix.NoPrefix)))
             rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
@@ -1092,13 +1091,10 @@ class JwtAuthRuleSettingsTests
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(env) if env.value == "SECRET_RSA" =>
-      val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-      Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
-    case _ =>
-      None
-  }
+  override implicit protected def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(Map(
+      "SECRET_RSA" -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
+    ))
 
   private val mockedHttpClientsFactory: HttpClientsFactory = {
     val httpClientMock = mock[SimpleHttpClient[Task]]

@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -292,11 +292,8 @@ class RorKbnAuthRuleSettingsTests
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(env) if env.value == "SECRET_RSA" =>
-      val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-      Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
-    case _ =>
-      None
-  }
+  override implicit protected def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(Map(
+      "SECRET_RSA" -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
+    ))
 }

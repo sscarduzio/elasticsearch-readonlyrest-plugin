@@ -21,6 +21,10 @@ import tech.beshu.ror.providers.PropertiesProvider
 
 class TestsPropertiesProvider(propertiesMap: Map[PropertiesProvider.PropName, String]) extends PropertiesProvider {
   override def getProperty(name: PropertiesProvider.PropName): Option[String] = propertiesMap.get(name)
+
+  override def hasPropertyWithPrefix(prefix: String): Boolean = {
+    propertiesMap.keys.exists(_.value.value.startsWith(prefix))
+  }
 }
 object TestsPropertiesProvider {
   def default: TestsPropertiesProvider = new TestsPropertiesProvider(Map.empty)

@@ -56,7 +56,7 @@ import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamS
 import tech.beshu.ror.es.services.IndexDocumentManager.*
 import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexDocumentManager}
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError

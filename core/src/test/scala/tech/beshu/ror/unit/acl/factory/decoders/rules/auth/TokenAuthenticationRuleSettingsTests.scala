@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{api, bearer
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.{anyTokenDef, authorizationTokenFrom, headerNameFrom, unsafeNes}
 
@@ -344,10 +344,6 @@ class TokenAuthenticationRuleSettingsTests
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(env) if env.value == "SECRET_TOKEN" =>
-      Some("abc123XYZ")
-    case _ =>
-      None
-  }
+  override implicit protected def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(Map("SECRET_TOKEN" -> "abc123XYZ"))
 }

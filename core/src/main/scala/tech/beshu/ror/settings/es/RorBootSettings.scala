@@ -17,23 +17,27 @@
 package tech.beshu.ror.settings.es
 
 import cats.data.NonEmptyList
-import io.circe.Decoder
+import eu.timepit.refined.types.all.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader.LoadingError
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
+
+import scala.language.postfixOps
 
 final case class RorBootSettings(rorNotStartedResponse: RorNotStartedResponse,
                                  rorFailedToStartResponse: RorFailedToStartResponse)
 
-object RorBootSettings extends YamlFileBasedSettingsLoaderSupport {
+object RorBootSettings extends ElasticsearchConfigLoaderSupport {
 
   def load(env: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, RorBootSettings]] = {
-    implicit val rorBootSettingsDecoder: Decoder[RorBootSettings] = decoders.rorBootSettingsDecoder
+    implicit val rorBootSettingsDecoder: YamlLeafOrPropertyOrEnvDecoder[RorBootSettings] = decoders.rorBootSettingsDecoder(systemContext)
     loadSetting[RorBootSettings](env, "ROR boot settings")
   }
 
@@ -57,54 +61,40 @@ object RorBootSettings extends YamlFileBasedSettingsLoaderSupport {
 
   private object decoders {
 
+    object defaults {
+      val rorNotStartedResponse: RorNotStartedResponse.HttpCode = RorNotStartedResponse.HttpCode.`403`
+      val rorFailedToStartResponse: RorFailedToStartResponse.HttpCode = RorFailedToStartResponse.HttpCode.`403`
+    }
+
     object consts {
-      val rorSection = "readonlyrest"
-      val rorNotStartedResponseCode = "not_started_response_code"
-      val rorFailedTpStartResponseCode = "failed_to_start_response_code"
+      val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
+      val rorNotStartedResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("not_started_response_code")
+      val rorFailedToStartResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("failed_to_start_response_code")
     }
 
-    def rorBootSettingsDecoder: Decoder[RorBootSettings] = Decoder.instance { c =>
+    def rorBootSettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorBootSettings] = {
+      implicit val propertiesProvider: PropertiesProvider = systemContext.propertiesProvider
+      implicit val envVarsProvider: EnvVarsProvider = systemContext.envVarsProvider
       for {
-        notStarted <- c.as[RorNotStartedResponse]
-        failedToStart <- c.as[RorFailedToStartResponse]
-      } yield RorBootSettings(notStarted, failedToStart)
-    }
-
-    private implicit val rorNotStartedResponseDecoder: Decoder[RorNotStartedResponse] = {
-      val segments = NonEmptyList.of(consts.rorSection, consts.rorNotStartedResponseCode)
-
-      implicit val httpCodeDecoder: Decoder[RorNotStartedResponse.HttpCode] = Decoder.decodeInt.emap {
-        case 403 => Right(RorNotStartedResponse.HttpCode.`403`)
-        case 503 => Right(RorNotStartedResponse.HttpCode.`503`)
-        case other => Left(
-          s"Unsupported response code [${other.show}] for ${segments.toList.mkString(".").show}. Supported response codes are: 403, 503."
-        )
-      }
-
-      YamlKeyDecoder[RorNotStartedResponse.HttpCode](
-        path = segments,
-        default = RorNotStartedResponse.HttpCode.`403`
+        notStartedHttpCode    <- httpCodeDecoder(consts.rorNotStartedResponseCode,    RorNotStartedResponse.HttpCode.`403`,    RorNotStartedResponse.HttpCode.`503`)
+        failedToStartHttpCode <- httpCodeDecoder(consts.rorFailedToStartResponseCode, RorFailedToStartResponse.HttpCode.`403`, RorFailedToStartResponse.HttpCode.`503`)
+      } yield RorBootSettings(
+        RorNotStartedResponse(notStartedHttpCode.getOrElse(defaults.rorNotStartedResponse)),
+        RorFailedToStartResponse(failedToStartHttpCode.getOrElse(defaults.rorFailedToStartResponse))
       )
-        .map(RorNotStartedResponse.apply)
     }
 
-    private implicit val rorFailedToStartResponseDecoder: Decoder[RorFailedToStartResponse] = {
-      val segments = NonEmptyList.of(consts.rorSection, consts.rorFailedTpStartResponseCode)
-
-      implicit val httpCodeDecoder: Decoder[RorFailedToStartResponse.HttpCode] = Decoder.decodeInt.emap {
-        case 403 => Right(RorFailedToStartResponse.HttpCode.`403`)
-        case 503 => Right(RorFailedToStartResponse.HttpCode.`503`)
-        case other => Left(
-          s"Unsupported response code [${other.show}] for ${segments.toList.mkString(".").show}. Supported response codes are: 403, 503."
-        )
-      }
-
-      YamlKeyDecoder[RorFailedToStartResponse.HttpCode](
-        path = segments,
-        default = RorFailedToStartResponse.HttpCode.`403`
+    private def httpCodeDecoder[T](pathKey: NonEmptyString, code403: T, code503: T)
+                                  (implicit propertiesProvider: PropertiesProvider,
+                                   envVarsProvider: EnvVarsProvider): YamlLeafOrPropertyOrEnvDecoder[Option[T]] =
+      YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+        path = NonEmptyList.of(consts.rorSection, pathKey),
+        decoder = FromString.instance {
+          case "403"    => Right(code403)
+          case "503"    => Right(code503)
+          case unknown  => Left(s"Unsupported HTTP code '$unknown'. Allowed values: '403', '503'")
+        }
       )
-        .map(RorFailedToStartResponse.apply)
-    }
   }
 
 }
