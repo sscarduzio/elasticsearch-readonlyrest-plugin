@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.DefaultHttpClientsFactory
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
@@ -74,7 +75,7 @@ class CurrentUserMetadataAccessControlTests
 
   override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
-  override protected val httpClientsFactory: HttpClientsFactory = HttpClientsFactory.default()
+  override protected val httpClientsFactory: HttpClientsFactory = new DefaultHttpClientsFactory
 
   override protected def settingsYaml: String =
     s"""

@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory
 
 import io.netty.util.HashedWheelTimer
 import monix.eval.Task
-import monix.execution.atomic.AtomicBoolean
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
@@ -27,57 +26,12 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.CopyOnWriteArrayList
 import scala.concurrent.duration.DurationInt
-import scala.jdk.CollectionConverters.*
 import scala.jdk.DurationConverters.ScalaDurationOps
 import scala.jdk.FutureConverters.CompletionStageOps
 import scala.language.postfixOps
 
-// todo: remove synchronized, use more sophisticated lock mechanism
-class AsyncHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
-
-  private val existingClients = new CopyOnWriteArrayList[AsyncHttpClient]()
-  private val isWorking = AtomicBoolean(true)
-
-  override def create(config: Config): HttpClient = synchronized {
-    if (isWorking.get()) {
-      val asyncHttpClient = newAsyncHttpClient(config)
-      existingClients.add(asyncHttpClient)
-      new LoggingSimpleHttpClient[Task](new AsyncBasedSimpleHttpClient(asyncHttpClient))
-    } else {
-      throw new IllegalStateException("Cannot create http client - factory was closed")
-    }
-  }
-
-  override def shutdown(): Unit = synchronized {
-    isWorking.set(false)
-    existingClients.iterator().asScala.foreach(_.close())
-  }
-
-  private def newAsyncHttpClient(config: Config) = {
-    try {
-      val timer = new HashedWheelTimer
-      val maxIdleTimeout = 60.seconds
-      val connectionTtl = -1.milliseconds
-      val cleanerPeriod = -1.milliseconds
-      val pool = new DefaultChannelPool(maxIdleTimeout.toJava, connectionTtl.toJava, DefaultChannelPool.PoolLeaseStrategy.FIFO, timer, cleanerPeriod.toJava)
-      asyncHttpClient {
-        new DefaultAsyncHttpClientConfig.Builder()
-          .setNettyTimer(timer)
-          .setChannelPool(pool)
-          .setUseInsecureTrustManager(!config.validate)
-          .build()
-      }
-    } catch {
-      case ex: Throwable =>
-        noRequestIdLogger.error(s"Failed to create AsyncHttpClient", ex)
-        throw ex
-    }
-  }
-}
-
-class AsyncBasedSimpleHttpClient(asyncHttpClient: AsyncHttpClient) extends SimpleHttpClient[Task] {
+private class AsyncBasedSimpleHttpClient(asyncHttpClient: AsyncHttpClient) extends SimpleHttpClient[Task] {
 
   override def send(request: HttpClient.Request)
                    (implicit requestId: RequestId): Task[HttpClient.Response] = {
@@ -98,5 +52,31 @@ class AsyncBasedSimpleHttpClient(asyncHttpClient: AsyncHttpClient) extends Simpl
 
   override def close(): Task[Unit] = {
     Task.delay(asyncHttpClient.close())
+  }
+}
+
+private[factory] object AsyncBasedSimpleHttpClient extends RequestIdAwareLogging {
+
+  def create(config: Config): HttpClient = new AsyncBasedSimpleHttpClient(newAsyncHttpClient(config))
+
+  private def newAsyncHttpClient(config: Config) = {
+    try {
+      val timer = new HashedWheelTimer
+      val maxIdleTimeout = 60.seconds
+      val connectionTtl = -1.milliseconds
+      val cleanerPeriod = -1.milliseconds
+      val pool = new DefaultChannelPool(maxIdleTimeout.toJava, connectionTtl.toJava, DefaultChannelPool.PoolLeaseStrategy.FIFO, timer, cleanerPeriod.toJava)
+      asyncHttpClient {
+        new DefaultAsyncHttpClientConfig.Builder()
+          .setNettyTimer(timer)
+          .setChannelPool(pool)
+          .setUseInsecureTrustManager(!config.validate)
+          .build()
+      }
+    } catch {
+      case ex: Throwable =>
+        noRequestIdLogger.error(s"Failed to create AsyncHttpClient", ex)
+        throw ex
+    }
   }
 }

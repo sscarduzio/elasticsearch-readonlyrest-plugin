@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import monix.eval.Task
-import monix.execution.atomic.AtomicBoolean
 import org.apache.hc.client5.http.async.methods.{SimpleHttpRequest, SimpleHttpResponse}
 import org.apache.hc.client5.http.config.{ConnectionConfig, RequestConfig}
 import org.apache.hc.client5.http.impl.async.{CloseableHttpAsyncClient, HttpAsyncClients}
@@ -29,63 +28,8 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.CopyOnWriteArrayList
 import scala.concurrent.Promise
-import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
-
-private[factory] class ApacheHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
-
-  private val existingClients = new CopyOnWriteArrayList[CloseableHttpAsyncClient]()
-  private val isWorking = AtomicBoolean(true)
-
-  override def create(config: Config): HttpClient = synchronized {
-    if (isWorking.get()) {
-      val client = newAsyncHttpClient(config)
-      existingClients.add(client)
-      new LoggingSimpleHttpClient[Task](new ApacheBasedSimpleHttpClient(client))
-    } else {
-      throw new IllegalStateException("Cannot create http client - factory was closed")
-    }
-  }
-
-  override def shutdown(): Unit = synchronized {
-    isWorking.set(false)
-    existingClients.iterator().asScala.foreach(_.close())
-  }
-
-  private def newAsyncHttpClient(config: Config): CloseableHttpAsyncClient = {
-    try {
-      val connectionConfig =
-        ConnectionConfig.custom()
-          .setConnectTimeout(Timeout.ofMilliseconds(config.connectionTimeout.value.toMillis))
-          .build()
-
-      val connManager = PoolingAsyncClientConnectionManager()
-      connManager.setDefaultConnectionConfig(connectionConfig)
-      connManager.setMaxTotal(config.connectionPoolSize.value)
-      connManager.setDefaultMaxPerRoute(config.connectionPoolSize.value)
-
-      val requestConfig = RequestConfig.custom()
-        .setResponseTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
-        .build()
-
-      val builder = HttpAsyncClients.custom()
-        .setConnectionManager(connManager)
-        .setDefaultRequestConfig(requestConfig)
-
-      val client = builder.build()
-
-      client.start()
-      client
-
-    } catch {
-      case ex: Throwable =>
-        noRequestIdLogger.error("Failed to create Apache HttpAsyncClient", ex)
-        throw ex
-    }
-  }
-}
 
 private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
   extends SimpleHttpClient[Task] {
@@ -122,4 +66,43 @@ private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
 
   override def close(): Task[Unit] =
     Task.delay(client.close())
+}
+
+private[factory] object ApacheBasedSimpleHttpClient extends RequestIdAwareLogging {
+
+  def create(config: Config): HttpClient = new ApacheBasedSimpleHttpClient(
+    newCloseableHttpAsyncClient(config)
+  )
+
+  private def newCloseableHttpAsyncClient(config: Config): CloseableHttpAsyncClient = {
+    try {
+      val connectionConfig =
+        ConnectionConfig.custom()
+          .setConnectTimeout(Timeout.ofMilliseconds(config.connectionTimeout.value.toMillis))
+          .build()
+
+      val connManager = PoolingAsyncClientConnectionManager()
+      connManager.setDefaultConnectionConfig(connectionConfig)
+      connManager.setMaxTotal(config.connectionPoolSize.value)
+      connManager.setDefaultMaxPerRoute(config.connectionPoolSize.value)
+
+      val requestConfig = RequestConfig.custom()
+        .setResponseTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
+        .build()
+
+      val builder = HttpAsyncClients.custom()
+        .setConnectionManager(connManager)
+        .setDefaultRequestConfig(requestConfig)
+
+      val client = builder.build()
+
+      client.start()
+      client
+    } catch {
+      case ex: Throwable =>
+        noRequestIdLogger.error("Failed to create Apache HttpAsyncClient", ex)
+        throw ex
+    }
+  }
+
 }

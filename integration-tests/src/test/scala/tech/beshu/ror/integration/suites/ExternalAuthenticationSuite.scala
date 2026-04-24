@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInit
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
-//TODO change test nteames. Current names are copies from old java integration tests
+//TODO change test names. Current names are copies from old java integration tests
 class ExternalAuthenticationSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
@@ -37,31 +37,31 @@ class ExternalAuthenticationSuite
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
   override def clusterDependencies: List[DependencyDef] = List(
-    //wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
+    wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
     wiremock(name = "EXT2", portWhenRunningOnWindows = 8081, mappings = "/external_authentication/wiremock_service2_cartman.json")
   )
 
-//  "testAuthenticationSuccessWithService1" in {
-//    val indexManager = new IndexManager(basicAuthClient("cartman", "user1"), esVersionUsed)
-//    val response = indexManager.getIndex("twitter")
-//
-//    response should have statusCode 200
-//  }
+  "testAuthenticationSuccessWithService1" in {
+    val indexManager = new IndexManager(basicAuthClient("cartman", "user1"), esVersionUsed)
+    val response = indexManager.getIndex("twitter")
+
+    response should have statusCode 200
+  }
   "testAuthenticationSuccessWithService2" in {
     val indexManager = new IndexManager(basicAuthClient("cartman", "user1"), esVersionUsed)
     val response = indexManager.getIndex("facebook")
 
     response should have statusCode 200
   }
-//  "testAuthenticationErrorWithService1" in {
-//    val firstIndexManager = new IndexManager(basicAuthClient("cartman", "user2"), esVersionUsed)
-//    val firstResult = firstIndexManager.getIndex("twitter")
-//
-//    firstResult should have statusCode 403
-//
-//    val indexManager = new IndexManager(basicAuthClient("morgan", "user2"), esVersionUsed)
-//    val response = indexManager.getIndex("twitter")
-//
-//    response should have statusCode 403
-//  }
+  "testAuthenticationErrorWithService1" in {
+    val firstIndexManager = new IndexManager(basicAuthClient("cartman", "user2"), esVersionUsed)
+    val firstResult = firstIndexManager.getIndex("twitter")
+
+    firstResult should have statusCode 403
+
+    val indexManager = new IndexManager(basicAuthClient("morgan", "user2"), esVersionUsed)
+    val response = indexManager.getIndex("twitter")
+
+    response should have statusCode 403
+  }
 }

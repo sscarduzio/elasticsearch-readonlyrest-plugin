@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.DefaultHttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
@@ -134,7 +135,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private[ror] def loadRorEngine(settings: RawRorSettings,
                                  settingsIndex: RorSettingsIndex)
                                 (implicit requestId: RequestId): Task[Either[StartingFailure, Engine]] = {
-    val httpClientsFactory = HttpClientsFactory.default()
+    val httpClientsFactory = new DefaultHttpClientsFactory
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
     EitherT(

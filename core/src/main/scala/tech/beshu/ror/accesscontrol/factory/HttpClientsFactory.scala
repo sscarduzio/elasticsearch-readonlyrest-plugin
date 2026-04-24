@@ -22,6 +22,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.Url
 import monix.eval.Task
+import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
 import tech.beshu.ror.implicits.*
@@ -29,7 +30,8 @@ import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{CopyOnWriteArrayList, TimeUnit}
+import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.language.postfixOps
 
 trait HttpClientsFactory {
@@ -70,17 +72,26 @@ object HttpClientsFactory {
     )
   }
 
-  val enableBenchmark: Boolean = false
-  val numberOfBenchmarkRequests: Int = 20000
+  // todo: remove synchronized, use more sophisticated lock mechanism
+  class DefaultHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
 
-  def default(): HttpClientsFactory = {
-    val delegate = new ApacheHttpClientsFactory
-    if (enableBenchmark) {
-      new HttpClientsFactory {
-        override def create(config: Config): HttpClient = new BenchmarkingHttpClient[Task](delegate.create(config), numberOfBenchmarkRequests)
-        override def shutdown(): Unit = delegate.shutdown()
+    private val existingClients = new CopyOnWriteArrayList[SimpleHttpClient[Task]]()
+    private val isWorking = AtomicBoolean(true)
+
+    override def create(config: Config): HttpClient = synchronized {
+      if (isWorking.get()) {
+        val client = ApacheBasedSimpleHttpClient.create(config)
+        existingClients.add(client)
+        new LoggingSimpleHttpClient[Task](client)
+      } else {
+        throw new IllegalStateException("Cannot create http client - factory was closed")
       }
-    } else delegate
+    }
+
+    override def shutdown(): Unit = synchronized {
+      isWorking.set(false)
+      existingClients.iterator().asScala.foreach(_.close())
+    }
 
   }
 
@@ -114,30 +125,4 @@ trait SimpleHttpClient[F[_]] {
   def send(request: HttpClient.Request)
           (implicit requestId: RequestId): F[HttpClient.Response]
   def close(): F[Unit]
-}
-
-private class BenchmarkingHttpClient[F[_] : Async](delegate: SimpleHttpClient[F], iterations: Int)
-  extends SimpleHttpClient[F] with RequestIdAwareLogging {
-
-  override def send(request: HttpClient.Request)
-                   (implicit requestId: RequestId): F[HttpClient.Response] = {
-    val program = List.fill(iterations)(delegate.send(request)).sequence
-    for {
-      _ <- Async[F].pure(println(s"Starting benchmark with $iterations requests"))
-      start <- Async[F].pure(System.nanoTime())
-      _ <- program
-      end <- Async[F].pure(System.nanoTime())
-      totalMs = (end - start) / 1e6
-      avgMs = totalMs / iterations
-      rps = iterations / (totalMs / 1000)
-      _ <- Async[F].pure {
-        println(s"Total time: ${totalMs} ms")
-        println(s"Avg latency: ${avgMs} ms")
-        println(s"Throughput: ${rps} req/s")
-      }
-      response <- delegate.send(request)
-    } yield response
-  }
-
-  override def close(): F[Unit] = delegate.close()
 }
