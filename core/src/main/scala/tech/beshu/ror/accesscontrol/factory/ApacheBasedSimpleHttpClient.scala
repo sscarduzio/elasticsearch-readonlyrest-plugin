@@ -20,8 +20,10 @@ import monix.eval.Task
 import org.apache.hc.client5.http.async.methods.{SimpleHttpRequest, SimpleHttpResponse}
 import org.apache.hc.client5.http.config.{ConnectionConfig, RequestConfig}
 import org.apache.hc.client5.http.impl.async.{CloseableHttpAsyncClient, HttpAsyncClients}
-import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder
+import org.apache.hc.client5.http.ssl.{ClientTlsStrategyBuilder, NoopHostnameVerifier, TrustAllStrategy}
 import org.apache.hc.core5.concurrent.FutureCallback
+import org.apache.hc.core5.ssl.SSLContextBuilder
 import org.apache.hc.core5.util.Timeout
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
@@ -57,9 +59,10 @@ private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
       )
       promise.future
     }.map { response =>
+      // CLAUDE_MGW: getBodyText returns null for empty-body responses (unlike AHC's getResponseBody which returned "")
       HttpClient.Response(
         status = response.getCode,
-        body = response.getBodyText
+        body = Option(response.getBodyText).getOrElse("")
       )
     }
   }
@@ -81,20 +84,34 @@ private[factory] object ApacheBasedSimpleHttpClient extends RequestIdAwareLoggin
           .setConnectTimeout(Timeout.ofMilliseconds(config.connectionTimeout.value.toMillis))
           .build()
 
-      val connManager = PoolingAsyncClientConnectionManager()
-      connManager.setDefaultConnectionConfig(connectionConfig)
-      connManager.setMaxTotal(config.connectionPoolSize.value)
-      connManager.setDefaultMaxPerRoute(config.connectionPoolSize.value)
+      // CLAUDE_MGW: Use builder (instead of direct constructor) to support conditional TLS strategy injection
+      val connManagerBuilder = PoolingAsyncClientConnectionManagerBuilder.create()
+        .setDefaultConnectionConfig(connectionConfig)
+        .setMaxConnTotal(config.connectionPoolSize.value)
+        .setMaxConnPerRoute(config.connectionPoolSize.value)
+
+      // CLAUDE_MGW: Migrate ssl bypass from old AHC client's setUseInsecureTrustManager(!config.validate) - this was silently lost in migration
+      if (!config.validate) {
+        val sslContext = SSLContextBuilder.create()
+          .loadTrustMaterial(TrustAllStrategy.INSTANCE)
+          .build()
+        val tlsStrategy = ClientTlsStrategyBuilder.create()
+          .setSslContext(sslContext)
+          .setHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+          .buildAsync()
+        connManagerBuilder.setTlsStrategy(tlsStrategy)
+      }
+
+      val connManager = connManagerBuilder.build()
 
       val requestConfig = RequestConfig.custom()
         .setResponseTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
         .build()
 
-      val builder = HttpAsyncClients.custom()
+      val client = HttpAsyncClients.custom()
         .setConnectionManager(connManager)
         .setDefaultRequestConfig(requestConfig)
-
-      val client = builder.build()
+        .build()
 
       client.start()
       client
