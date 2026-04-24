@@ -243,7 +243,7 @@ object ReadonlyRest {
                     (implicit scheduler: Scheduler) {
 
     private[ror] def shutdown(): Unit = {
-      httpClientsFactory.shutdown()
+      httpClientsFactory.shutdown().runAsyncAndForget
       ldapConnectionPoolProvider.close().runAsyncAndForget
       auditingTool.foreach(_.close().runAsyncAndForget)
     }

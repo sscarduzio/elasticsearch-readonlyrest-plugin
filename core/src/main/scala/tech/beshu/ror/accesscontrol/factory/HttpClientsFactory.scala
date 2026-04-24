@@ -37,7 +37,7 @@ import scala.language.postfixOps
 trait HttpClientsFactory {
 
   def create(config: Config): HttpClient
-  def shutdown(): Unit
+  def shutdown(): Task[Unit]
 }
 
 object HttpClientsFactory {
@@ -88,9 +88,12 @@ object HttpClientsFactory {
       }
     }
 
-    override def shutdown(): Unit = synchronized {
-      isWorking.set(false)
-      existingClients.iterator().asScala.foreach(_.close())
+    override def shutdown(): Task[Unit] = {
+      val clients = synchronized {
+        isWorking.set(false)
+        existingClients.iterator().asScala.toList
+      }
+      Task.parSequenceUnordered(clients.map(_.close())).void
     }
 
   }

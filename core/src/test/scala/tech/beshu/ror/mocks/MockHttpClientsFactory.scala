@@ -29,10 +29,10 @@ object MockHttpClientsFactory extends HttpClientsFactory {
 
     override def close(): Task[Unit] = Task.unit
   }
-  override def shutdown(): Unit = {}
+  override def shutdown(): Task[Unit] = Task.unit
 }
 
 class MockHttpClientsFactoryWithFixedHttpClient(httpClient: HttpClient) extends HttpClientsFactory {
   override def create(config: HttpClientsFactory.Config): HttpClient = httpClient
-  override def shutdown(): Unit = {}
+  override def shutdown(): Task[Unit] = Task.unit
 }
