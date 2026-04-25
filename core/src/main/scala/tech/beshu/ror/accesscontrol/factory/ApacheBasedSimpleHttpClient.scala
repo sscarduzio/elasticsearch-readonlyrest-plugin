@@ -21,7 +21,7 @@ import org.apache.hc.client5.http.async.methods.{SimpleHttpRequest, SimpleHttpRe
 import org.apache.hc.client5.http.config.{ConnectionConfig, RequestConfig}
 import org.apache.hc.client5.http.impl.async.{CloseableHttpAsyncClient, HttpAsyncClients}
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder
-import org.apache.hc.client5.http.ssl.{ClientTlsStrategyBuilder, NoopHostnameVerifier, TrustAllStrategy}
+import org.apache.hc.client5.http.ssl.{ClientTlsStrategyBuilder, HostnameVerificationPolicy, NoopHostnameVerifier, TrustAllStrategy}
 import org.apache.hc.core5.concurrent.FutureCallback
 import org.apache.hc.core5.ssl.SSLContextBuilder
 import org.apache.hc.core5.util.Timeout
@@ -70,7 +70,7 @@ private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
     Task.delay(client.close())
 }
 
-private[factory] object ApacheBasedSimpleHttpClient extends RequestIdAwareLogging {
+private object ApacheBasedSimpleHttpClient extends RequestIdAwareLogging {
 
   def create(config: Config): HttpClient = new ApacheBasedSimpleHttpClient(
     newCloseableHttpAsyncClient(config)
@@ -94,6 +94,7 @@ private[factory] object ApacheBasedSimpleHttpClient extends RequestIdAwareLoggin
           .build()
         val tlsStrategy = ClientTlsStrategyBuilder.create()
           .setSslContext(sslContext)
+          .setHostVerificationPolicy(HostnameVerificationPolicy.CLIENT)
           .setHostnameVerifier(NoopHostnameVerifier.INSTANCE)
           .buildAsync()
         connManagerBuilder.setTlsStrategy(tlsStrategy)
@@ -102,6 +103,7 @@ private[factory] object ApacheBasedSimpleHttpClient extends RequestIdAwareLoggin
       val connManager = connManagerBuilder.build()
 
       val requestConfig = RequestConfig.custom()
+        .setConnectionRequestTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
         .setResponseTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
         .build()
 

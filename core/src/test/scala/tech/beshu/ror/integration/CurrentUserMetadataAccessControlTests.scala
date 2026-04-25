@@ -70,7 +70,7 @@ class CurrentUserMetadataAccessControlTests
   override protected def afterAll(): Unit = {
     super.afterAll()
     ldapConnectionPoolProvider.close().runSyncUnsafe()
-    httpClientsFactory.shutdown()
+    httpClientsFactory.shutdown().runSyncUnsafe()
   }
 
   override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider

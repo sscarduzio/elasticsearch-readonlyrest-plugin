@@ -95,7 +95,9 @@ class DefaultHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLo
       isWorking.set(false)
       existingClients.iterator().asScala.toList
     }
-    Task.parSequenceUnordered(clients.map(_.close())).void
+    Task.parSequenceUnordered(clients.map(_.close().onErrorHandleWith { e =>
+      Task.eval(noRequestIdLogger.error("Error closing HTTP client", e))
+    })).void
   }
 
 }
