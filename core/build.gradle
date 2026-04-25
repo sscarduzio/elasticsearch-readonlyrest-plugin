@@ -77,8 +77,9 @@ dependencies {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
     api group: 'io.monix',                      name: 'monix_3',                             version: '3.4.1'
-    api group: 'io.netty',                      name: 'netty-transport',                     version: '4.1.132.Final'
+    api group: 'io.netty',                      name: 'netty-codec-http2',                   version: '4.1.132.Final'
     api group: 'io.netty',                      name: 'netty-handler',                       version: '4.1.132.Final'
+    api group: 'io.netty',                      name: 'netty-transport',                     version: '4.1.132.Final'
     api group: 'eu.timepit',                    name: 'refined_3',                           version: '0.11.3'
     api group: 'org.reflections',               name: 'reflections',                         version: '0.9.11'
     api group: 'org.mozilla',                   name: 'rhino',                               version: '1.8.1'
