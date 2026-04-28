@@ -30,11 +30,11 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 
 private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
-  extends SimpleHttpClient[Task] {
+  extends SimpleHttpClient[Task] with RequestIdAwareLogging {
 
   override def send(request: HttpClient.Request)
                    (implicit requestId: RequestId): Task[HttpClient.Response] = {
@@ -42,39 +42,47 @@ private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
       case Method.Get => "GET"
       case Method.Post => "POST"
     }
-    val httpRequest = SimpleHttpRequest.create(method, request.url.toStringRaw)
-    request.headers.foreach { case (k, v) => httpRequest.setHeader(k, v) }
-
-    Task.deferFuture {
-      val promise = Promise[SimpleHttpResponse]()
-      client.execute(
-        httpRequest,
-        new FutureCallback[SimpleHttpResponse] {
-          override def completed(result: SimpleHttpResponse): Unit = promise.success(result)
-
-          override def failed(ex: Exception): Unit = promise.failure(ex)
-
-          override def cancelled(): Unit = promise.failure(new RuntimeException("HTTP request cancelled"))
-        }
-      )
-      promise.future
-    }.map { response =>
-      HttpClient.Response(
-        status = response.getCode,
-        body = Option(response.getBodyText).getOrElse("") // getBodyText returns null for empty-body responses
-      )
+    val httpRequest = request.headers.foldLeft(SimpleHttpRequest.create(method, request.url.toStringRaw)) {
+      case (req, (k, v)) =>
+        req.setHeader(k, v)
+        req
     }
+    Task
+      .deferFuture(client.executeToFuture(httpRequest))
+      .map { response =>
+        HttpClient.Response(
+          status = response.getCode,
+          body = Option(response.getBodyText).getOrElse("") // getBodyText returns null for empty-body responses
+        )
+      }
   }
 
   override def close(): Task[Unit] =
-    Task.delay(client.close())
+    Task
+      .delay(client.close())
+      .onErrorHandleWith(e => Task.eval(noRequestIdLogger.error("Error closing Apache CloseableHttpAsyncClient", e)))
+
 }
 
-private object ApacheBasedSimpleHttpClient extends RequestIdAwareLogging {
+extension (client: CloseableHttpAsyncClient)
+  def executeToFuture(request: SimpleHttpRequest): Future[SimpleHttpResponse] = {
+    val promise = Promise[SimpleHttpResponse]()
+    client.execute(
+      request,
+      new FutureCallback[SimpleHttpResponse] {
+        override def completed(result: SimpleHttpResponse): Unit = promise.success(result)
 
-  def create(config: Config): HttpClient = new ApacheBasedSimpleHttpClient(
-    newCloseableHttpAsyncClient(config)
-  )
+        override def failed(ex: Exception): Unit = promise.failure(ex)
+
+        override def cancelled(): Unit = promise.failure(new RuntimeException("HTTP request cancelled"))
+      }
+    )
+    promise.future
+  }
+
+private object ApacheBasedSimpleHttpClientCreator extends SimpleHttpClientCreator with RequestIdAwareLogging {
+
+  override def create(config: Config): HttpClient = new ApacheBasedSimpleHttpClient(newCloseableHttpAsyncClient(config))
 
   private def newCloseableHttpAsyncClient(config: Config): CloseableHttpAsyncClient = {
     try {

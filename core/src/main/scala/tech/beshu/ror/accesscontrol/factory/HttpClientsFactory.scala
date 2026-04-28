@@ -72,17 +72,21 @@ object HttpClientsFactory {
     )
   }
 
+  def default() = new DefaultHttpClientsFactory(ApacheBasedSimpleHttpClientCreator)
+
 }
 
-// todo: remove synchronized, use more sophisticated lock mechanism
-class DefaultHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
+private class DefaultHttpClientsFactory(simpleHttpClientCreator: SimpleHttpClientCreator)
+  extends HttpClientsFactory
+    with RequestIdAwareLogging {
 
+  private object lock
   private val existingClients = new CopyOnWriteArrayList[SimpleHttpClient[Task]]()
   private val isWorking = AtomicBoolean(true)
 
-  override def create(config: Config): HttpClient = synchronized {
+  override def create(config: Config): HttpClient = lock.synchronized {
     if (isWorking.get()) {
-      val client = ApacheBasedSimpleHttpClient.create(config)
+      val client = simpleHttpClientCreator.create(config)
       existingClients.add(client)
       new LoggingSimpleHttpClient[Task](client)
     } else {
@@ -91,13 +95,11 @@ class DefaultHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLo
   }
 
   override def shutdown(): Task[Unit] = {
-    val clients = synchronized {
+    val clients = lock.synchronized {
       isWorking.set(false)
       existingClients.iterator().asScala.toList
     }
-    Task.parSequenceUnordered(clients.map(_.close().onErrorHandleWith { e =>
-      Task.eval(noRequestIdLogger.error("Error closing HTTP client", e))
-    })).void
+    Task.parSequenceUnordered(clients.map(_.close())).void
   }
 
 }
@@ -124,10 +126,4 @@ private class LoggingSimpleHttpClient[F[_] : Async](delegate: SimpleHttpClient[F
   }
 
   override def close(): F[Unit] = delegate.close()
-}
-
-trait SimpleHttpClient[F[_]] {
-  def send(request: HttpClient.Request)
-          (implicit requestId: RequestId): F[HttpClient.Response]
-  def close(): F[Unit]
 }
