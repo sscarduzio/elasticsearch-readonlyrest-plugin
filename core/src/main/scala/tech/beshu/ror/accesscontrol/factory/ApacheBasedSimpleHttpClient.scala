@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import monix.eval.Task
+import cats.effect.{Async, ContextShift}
+import cats.implicits.{catsSyntaxApplicativeError, toFunctorOps}
 import org.apache.hc.client5.http.async.methods.{SimpleHttpRequest, SimpleHttpResponse}
 import org.apache.hc.client5.http.config.{ConnectionConfig, RequestConfig}
 import org.apache.hc.client5.http.impl.async.{CloseableHttpAsyncClient, HttpAsyncClients}
@@ -26,18 +27,20 @@ import org.apache.hc.core5.concurrent.FutureCallback
 import org.apache.hc.core5.ssl.SSLContextBuilder
 import org.apache.hc.core5.util.Timeout
 import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
+import tech.beshu.ror.accesscontrol.utils.AsyncOps.deferFuture
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 
-private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
-  extends SimpleHttpClient[Task] with RequestIdAwareLogging {
+private class ApacheBasedSimpleHttpClient[F[_] : Async : ContextShift](client: CloseableHttpAsyncClient)
+  extends SimpleHttpClient[F] with RequestIdAwareLogging {
 
   override def send(request: HttpClient.Request)
-                   (implicit requestId: RequestId): Task[HttpClient.Response] = {
+                   (implicit requestId: RequestId): F[HttpClient.Response] = {
     val method = request.method match {
       case Method.Get => "GET"
       case Method.Post => "POST"
@@ -47,7 +50,7 @@ private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
         req.setHeader(k, v)
         req
     }
-    Task
+    Async[F]
       .deferFuture(client.executeToFuture(httpRequest))
       .map { response =>
         HttpClient.Response(
@@ -57,10 +60,10 @@ private class ApacheBasedSimpleHttpClient(client: CloseableHttpAsyncClient)
       }
   }
 
-  override def close(): Task[Unit] =
-    Task
+  override def close(): F[Unit] =
+    Async[F]
       .delay(client.close())
-      .onErrorHandleWith(e => Task.eval(noRequestIdLogger.error("Error closing Apache CloseableHttpAsyncClient", e)))
+      .handleError(e => noRequestIdLogger.error("Error closing Apache CloseableHttpAsyncClient", e))
 
 }
 
@@ -80,9 +83,13 @@ extension (client: CloseableHttpAsyncClient)
     promise.future
   }
 
-private object ApacheBasedSimpleHttpClientCreator extends SimpleHttpClientCreator with RequestIdAwareLogging {
+private class ApacheBasedSimpleHttpClientCreator[F[_] : Async : ContextShift]
+  extends SimpleHttpClientCreator[F, ApacheBasedSimpleHttpClient[F]]
+    with RequestIdAwareLogging {
 
-  override def create(config: Config): HttpClient = new ApacheBasedSimpleHttpClient(newCloseableHttpAsyncClient(config))
+  override def create(config: Config): ApacheBasedSimpleHttpClient[F] = {
+    new ApacheBasedSimpleHttpClient(newCloseableHttpAsyncClient(config))
+  }
 
   private def newCloseableHttpAsyncClient(config: Config): CloseableHttpAsyncClient = {
     try {

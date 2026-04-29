@@ -18,27 +18,18 @@ package tech.beshu.ror.accesscontrol.factory
 
 import cats.effect.Async
 import cats.implicits.{catsSyntaxApplicativeError, toFunctorOps}
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.Url
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.*
-import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.{CopyOnWriteArrayList, TimeUnit}
+import java.util.concurrent.CopyOnWriteArrayList
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.language.postfixOps
-
-trait HttpClientsFactory {
-
-  def create(config: Config): HttpClient
-  def shutdown(): Task[Unit]
-}
 
 object HttpClientsFactory {
   type HttpClient = SimpleHttpClient[Task]
@@ -58,35 +49,20 @@ object HttpClientsFactory {
                               body: String)
   }
 
-  final case class Config(connectionTimeout: PositiveFiniteDuration,
-                          requestTimeout: PositiveFiniteDuration,
-                          connectionPoolSize: Int Refined Positive,
-                          validate: Boolean)
-
-  object Config {
-    val default: Config = Config(
-      connectionTimeout = positiveFiniteDuration(2, TimeUnit.SECONDS),
-      requestTimeout = positiveFiniteDuration(5, TimeUnit.SECONDS),
-      connectionPoolSize = positiveInt(30),
-      validate = true
-    )
-  }
-
-  def default() = new DefaultHttpClientsFactory(ApacheBasedSimpleHttpClientCreator)
+  def default() = new HttpClientsFactory(new ApacheBasedSimpleHttpClientCreator[Task])
 
 }
 
-private class DefaultHttpClientsFactory(simpleHttpClientCreator: SimpleHttpClientCreator)
-  extends HttpClientsFactory
-    with RequestIdAwareLogging {
+class HttpClientsFactory(httpClientCreator: SimpleHttpClientCreator[Task, HttpClient])
+  extends RequestIdAwareLogging {
 
   private object lock
   private val existingClients = new CopyOnWriteArrayList[SimpleHttpClient[Task]]()
   private val isWorking = AtomicBoolean(true)
 
-  override def create(config: Config): HttpClient = lock.synchronized {
+  def create(config: Config): HttpClient = lock.synchronized {
     if (isWorking.get()) {
-      val client = simpleHttpClientCreator.create(config)
+      val client = httpClientCreator.create(config)
       existingClients.add(client)
       new LoggingSimpleHttpClient[Task](client)
     } else {
@@ -94,7 +70,7 @@ private class DefaultHttpClientsFactory(simpleHttpClientCreator: SimpleHttpClien
     }
   }
 
-  override def shutdown(): Task[Unit] = {
+  def shutdown(): Task[Unit] = {
     val clients = lock.synchronized {
       isWorking.set(false)
       existingClients.iterator().asScala.toList

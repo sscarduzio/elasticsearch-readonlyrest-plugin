@@ -19,10 +19,10 @@ package tech.beshu.ror.mocks
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient, SimpleHttpClientCreator}
 
-object MockHttpClientsFactory extends HttpClientsFactory {
-  override def create(config: HttpClientsFactory.Config): HttpClient = new SimpleHttpClient[Task] {
+object MockHttpClientsFactory extends HttpClientsFactory(NoOpSimpleHttpClientCreator) {
+  override def create(config: SimpleHttpClient.Config): HttpClient = new SimpleHttpClient[Task] {
     override def send(request: HttpClient.Request)
                      (implicit requestId: RequestId): Task[HttpClient.Response] =
       throw new IllegalStateException("Cannot use it. It's just a mock")
@@ -32,7 +32,12 @@ object MockHttpClientsFactory extends HttpClientsFactory {
   override def shutdown(): Task[Unit] = Task.unit
 }
 
-class MockHttpClientsFactoryWithFixedHttpClient(httpClient: HttpClient) extends HttpClientsFactory {
-  override def create(config: HttpClientsFactory.Config): HttpClient = httpClient
+class MockHttpClientsFactoryWithFixedHttpClient(httpClient: HttpClient) extends HttpClientsFactory(NoOpSimpleHttpClientCreator) {
+  override def create(config: SimpleHttpClient.Config): HttpClient = httpClient
   override def shutdown(): Task[Unit] = Task.unit
+}
+
+private object NoOpSimpleHttpClientCreator extends SimpleHttpClientCreator[Task, HttpClient] {
+  override def create(config: SimpleHttpClient.Config): HttpClient =
+    throw new IllegalStateException("Should never be called")
 }

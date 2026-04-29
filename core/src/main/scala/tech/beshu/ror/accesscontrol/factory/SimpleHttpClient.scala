@@ -16,8 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
+import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.*
+
+import java.util.concurrent.TimeUnit
+import scala.language.postfixOps
 
 trait SimpleHttpClient[F[_]] {
   def send(request: HttpClient.Request)
@@ -26,6 +34,22 @@ trait SimpleHttpClient[F[_]] {
   def close(): F[Unit]
 }
 
-trait SimpleHttpClientCreator {
-  def create(config: Config): HttpClient
+object SimpleHttpClient {
+  final case class Config(connectionTimeout: PositiveFiniteDuration,
+                          requestTimeout: PositiveFiniteDuration,
+                          connectionPoolSize: Int Refined Positive,
+                          validate: Boolean)
+
+  object Config {
+    val default: Config = Config(
+      connectionTimeout = positiveFiniteDuration(2, TimeUnit.SECONDS),
+      requestTimeout = positiveFiniteDuration(5, TimeUnit.SECONDS),
+      connectionPoolSize = positiveInt(30),
+      validate = true
+    )
+  }
+}
+
+trait SimpleHttpClientCreator[F[_], +C <: SimpleHttpClient[F]] {
+  def create(config: Config): C
 }
