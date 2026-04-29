@@ -17,35 +17,19 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import cats.effect.Async
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
+import cats.implicits.{catsSyntaxApplicativeError, toFunctorOps}
 import io.lemonlabs.uri.Url
-import io.netty.util.HashedWheelTimer
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
-import tech.beshu.ror.utils.RequestIdAwareLogging
-import org.asynchttpclient.Dsl.asyncHttpClient
-import org.asynchttpclient.netty.channel.DefaultChannelPool
-import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient.Config
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.*
-import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
-import java.util.concurrent.{CopyOnWriteArrayList, TimeUnit}
-import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
-import scala.jdk.DurationConverters.*
-import scala.jdk.FutureConverters.*
+import java.util.concurrent.CopyOnWriteArrayList
+import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.language.postfixOps
-
-trait HttpClientsFactory {
-
-  def create(config: Config): HttpClient
-  def shutdown(): Unit
-}
 
 object HttpClientsFactory {
   type HttpClient = SimpleHttpClient[Task]
@@ -65,63 +49,35 @@ object HttpClientsFactory {
                               body: String)
   }
 
-  final case class Config(connectionTimeout: PositiveFiniteDuration,
-                          requestTimeout: PositiveFiniteDuration,
-                          connectionPoolSize: Int Refined Positive,
-                          validate: Boolean)
-
-  object Config {
-    val default: Config = Config(
-      connectionTimeout = positiveFiniteDuration(2, TimeUnit.SECONDS),
-      requestTimeout = positiveFiniteDuration(5, TimeUnit.SECONDS),
-      connectionPoolSize = positiveInt(30),
-      validate = true
-    )
-  }
+  def default() = new HttpClientsFactory(new ApacheBasedSimpleHttpClientCreator[Task])
 
 }
 
-// todo: remove synchronized, use more sophisticated lock mechanism
-class AsyncHttpClientsFactory extends HttpClientsFactory with RequestIdAwareLogging {
+class HttpClientsFactory(httpClientCreator: SimpleHttpClientCreator[Task, HttpClient])
+  extends RequestIdAwareLogging {
 
-  private val existingClients = new CopyOnWriteArrayList[AsyncHttpClient]()
+  private object lock
+  private val existingClients = new CopyOnWriteArrayList[SimpleHttpClient[Task]]()
   private val isWorking = AtomicBoolean(true)
 
-  override def create(config: Config): HttpClient = synchronized {
+  def create(config: Config): HttpClient = lock.synchronized {
     if (isWorking.get()) {
-      val asyncHttpClient = newAsyncHttpClient(config)
-      existingClients.add(asyncHttpClient)
-      new LoggingSimpleHttpClient[Task](new AsyncBasedSimpleHttpClient(asyncHttpClient))
+      val client = httpClientCreator.create(config)
+      existingClients.add(client)
+      new LoggingSimpleHttpClient[Task](client)
     } else {
       throw new IllegalStateException("Cannot create http client - factory was closed")
     }
   }
 
-  override def shutdown(): Unit = synchronized {
-    isWorking.set(false)
-    existingClients.iterator().asScala.foreach(_.close())
+  def shutdown(): Task[Unit] = {
+    val clients = lock.synchronized {
+      isWorking.set(false)
+      existingClients.iterator().asScala.toList
+    }
+    Task.parSequenceUnordered(clients.map(_.close())).void
   }
 
-  private def newAsyncHttpClient(config: Config) = {
-    try {
-      val timer = new HashedWheelTimer
-      val maxIdleTimeout = 60.seconds
-      val connectionTtl = -1.milliseconds
-      val cleanerPeriod = -1.milliseconds
-      val pool = new DefaultChannelPool(maxIdleTimeout.toJava, connectionTtl.toJava, DefaultChannelPool.PoolLeaseStrategy.FIFO, timer, cleanerPeriod.toJava)
-      asyncHttpClient {
-        new DefaultAsyncHttpClientConfig.Builder()
-          .setNettyTimer(timer)
-          .setChannelPool(pool)
-          .setUseInsecureTrustManager(!config.validate)
-          .build()
-      }
-    } catch {
-      case ex: Throwable =>
-        noRequestIdLogger.error(s"Failed to create AsyncHttpClient", ex)
-        throw ex
-    }
-  }
 }
 
 private class LoggingSimpleHttpClient[F[_] : Async](delegate: SimpleHttpClient[F])
@@ -146,34 +102,4 @@ private class LoggingSimpleHttpClient[F[_] : Async](delegate: SimpleHttpClient[F
   }
 
   override def close(): F[Unit] = delegate.close()
-}
-
-class AsyncBasedSimpleHttpClient(asyncHttpClient: AsyncHttpClient) extends SimpleHttpClient[Task] {
-
-  override def send(request: HttpClient.Request)
-                   (implicit requestId: RequestId): Task[HttpClient.Response] = {
-    val asyncRequestBase = request.method match {
-      case Method.Get => asyncHttpClient.prepareGet(request.url.toStringRaw)
-      case Method.Post => asyncHttpClient.preparePost(request.url.toStringRaw)
-    }
-    val asyncRequest = request.headers.foldLeft(asyncRequestBase) { (soFar, header) => soFar.setHeader(header._1, header._2) }.build()
-    Task
-      .deferFuture(asyncHttpClient.executeRequest(asyncRequest).toCompletableFuture.asScala)
-      .map { response =>
-        HttpClient.Response(
-          status = response.getStatusCode,
-          body = response.getResponseBody,
-        )
-      }
-  }
-
-  override def close(): Task[Unit] = {
-    Task.delay(asyncHttpClient.close())
-  }
-}
-
-trait SimpleHttpClient[F[_]] {
-  def send(request: HttpClient.Request)
-          (implicit requestId: RequestId): F[HttpClient.Response]
-  def close(): F[Unit]
 }

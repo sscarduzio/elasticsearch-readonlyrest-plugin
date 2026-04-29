@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, Core, CoreFactory, RawRorSettingsBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
 import tech.beshu.ror.es.EsEnv
@@ -134,7 +134,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private[ror] def loadRorEngine(settings: RawRorSettings,
                                  settingsIndex: RorSettingsIndex)
                                 (implicit requestId: RequestId): Task[Either[StartingFailure, Engine]] = {
-    val httpClientsFactory = new AsyncHttpClientsFactory
+    val httpClientsFactory = HttpClientsFactory.default()
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
     EitherT(
@@ -149,7 +149,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .value
   }
 
-  private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
+  private def createEngine(httpClientsFactory: HttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
@@ -236,13 +236,13 @@ object ReadonlyRest {
   }
 
   final class Engine(val core: Core,
-                     httpClientsFactory: AsyncHttpClientsFactory,
+                     httpClientsFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                      auditingTool: Option[AuditingTool])
                     (implicit scheduler: Scheduler) {
 
     private[ror] def shutdown(): Unit = {
-      httpClientsFactory.shutdown()
+      httpClientsFactory.shutdown().runAsyncAndForget
       ldapConnectionPoolProvider.close().runAsyncAndForget
       auditingTool.foreach(_.close().runAsyncAndForget)
     }
