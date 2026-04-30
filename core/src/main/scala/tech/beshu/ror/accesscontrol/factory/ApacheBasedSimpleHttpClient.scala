@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.utils.AsyncOps.deferFuture
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
 import scala.language.postfixOps
 
 private class ApacheBasedSimpleHttpClient[F[_] : Async : ContextShift](client: CloseableHttpAsyncClient)
@@ -63,7 +64,7 @@ private class ApacheBasedSimpleHttpClient[F[_] : Async : ContextShift](client: C
   override def close(): F[Unit] =
     Async[F]
       .delay(client.close())
-      .handleError(e => noRequestIdLogger.error("Error closing Apache CloseableHttpAsyncClient", e))
+      .handleError { case NonFatal(e) => noRequestIdLogger.error("Error closing Apache CloseableHttpAsyncClient", e) }
 
 }
 
@@ -118,7 +119,7 @@ private class ApacheBasedSimpleHttpClientCreator[F[_] : Async : ContextShift]
       val connManager = connManagerBuilder.build()
 
       val requestConfig = RequestConfig.custom()
-        .setConnectionRequestTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
+        .setConnectionRequestTimeout(Timeout.ONE_MILLISECOND) // fail fast when pool is exhausted (1ms, because 0ms means infinite wait)
         .setResponseTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
         .build()
 
@@ -130,7 +131,7 @@ private class ApacheBasedSimpleHttpClientCreator[F[_] : Async : ContextShift]
       client.start()
       client
     } catch {
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         noRequestIdLogger.error("Failed to create Apache HttpAsyncClient", ex)
         throw ex
     }
