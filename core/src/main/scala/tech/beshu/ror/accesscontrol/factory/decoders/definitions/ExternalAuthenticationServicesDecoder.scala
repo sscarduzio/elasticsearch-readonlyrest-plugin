@@ -21,7 +21,7 @@ import cats.implicits.*
 import io.circe.Decoder
 import io.lemonlabs.uri.Url
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
@@ -68,7 +68,7 @@ object ExternalAuthenticationServicesDecoder {
           httpSuccessCode <- c.downField("success_status_code").as[Option[Int]]
           cacheTtl <- c.downFieldAlternatives("cache_ttl_in_sec", "cache_ttl").as[Option[PositiveFiniteDuration]]
           validate <- c.downField("validate").as[Option[Boolean]]
-          httpClientConfig <- c.downField("http_connection_settings").as[Option[HttpClientsFactory.Config]]
+          httpClientConfig <- c.downField("http_connection_settings").as[Option[SimpleHttpClient.Config]]
         } yield (name, url, httpSuccessCode, cacheTtl, validate, httpClientConfig)
       }
       .emapE { case (name, url, httpSuccessCode, cacheTtl, validateOpt, httpClientConfigOpt) =>
@@ -76,11 +76,11 @@ object ExternalAuthenticationServicesDecoder {
           case (Some(_), Some(_)) =>
             Left(CoreCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
           case (Some(validate), None) =>
-            Right(HttpClientsFactory.Config.default.copy(validate = validate))
+            Right(SimpleHttpClient.Config.default.copy(validate = validate))
           case (None, Some(config)) =>
             Right(config)
           case (None, None) =>
-            Right(HttpClientsFactory.Config.default)
+            Right(SimpleHttpClient.Config.default)
         }
         httpClientConfig.map { config =>
           val httpClient = httpClientFactory.create(config)

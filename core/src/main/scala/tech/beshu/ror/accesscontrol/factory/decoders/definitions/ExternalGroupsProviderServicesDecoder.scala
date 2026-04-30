@@ -23,7 +23,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalGroupsProviderService.Config.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
@@ -141,25 +141,25 @@ object ExternalGroupsProviderServicesDecoder {
       .instance { c =>
         for {
           validate <- c.downField("validate").as[Option[Boolean]]
-          httpClientConfig <- c.downField("http_connection_settings").as[Option[HttpClientsFactory.Config]]
+          httpClientConfig <- c.downField("http_connection_settings").as[Option[SimpleHttpClient.Config]]
         } yield (validate, httpClientConfig)
       }
       .emapE {
         case (Some(_), Some(_)) =>
           Left(DefinitionsLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
         case (Some(validate), None) =>
-          Right(HttpClientsFactory.Config.default.copy(validate = validate))
+          Right(SimpleHttpClient.Config.default.copy(validate = validate))
         case (None, Some(config)) =>
           Right(config)
         case (None, None) =>
-          Right(HttpClientsFactory.Config.default)
+          Right(SimpleHttpClient.Config.default)
       }
       .map(ValidatedHttpClientConfig.apply)
       .mapError(DefinitionsLevelCreationError.apply)
       .decoder
   }
 
-  private final case class ValidatedHttpClientConfig(config: HttpClientsFactory.Config)
+  private final case class ValidatedHttpClientConfig(config: SimpleHttpClient.Config)
 
   private object defaults {
     val httpMethod: SupportedHttpMethod = SupportedHttpMethod.Get

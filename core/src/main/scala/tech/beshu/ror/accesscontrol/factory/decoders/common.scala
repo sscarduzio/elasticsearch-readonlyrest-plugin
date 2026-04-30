@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -264,18 +264,18 @@ object common extends RequestIdAwareLogging {
     positiveDecoder[Int](_.toLong)
   }
 
-  implicit val httpClientConfigDecoder: Decoder[HttpClientsFactory.Config] =
+  implicit val httpClientConfigDecoder: Decoder[SimpleHttpClient.Config] =
     Decoder.instance { c =>
       for {
         connectionTimeout <- c.downFieldAlternatives("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
         requestTimeout <- c.downFieldAlternatives("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout").as[Option[PositiveFiniteDuration]]
         connectionPoolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
         validate <- c.downField("validate").as[Option[Boolean]]
-      } yield HttpClientsFactory.Config(
-        connectionTimeout.getOrElse(HttpClientsFactory.Config.default.connectionTimeout),
-        requestTimeout.getOrElse(HttpClientsFactory.Config.default.requestTimeout),
-        connectionPoolSize.getOrElse(HttpClientsFactory.Config.default.connectionPoolSize),
-        validate.getOrElse(HttpClientsFactory.Config.default.validate)
+      } yield SimpleHttpClient.Config(
+        connectionTimeout.getOrElse(SimpleHttpClient.Config.default.connectionTimeout),
+        requestTimeout.getOrElse(SimpleHttpClient.Config.default.requestTimeout),
+        connectionPoolSize.getOrElse(SimpleHttpClient.Config.default.connectionPoolSize),
+        validate.getOrElse(SimpleHttpClient.Config.default.validate)
       )
     }
 
