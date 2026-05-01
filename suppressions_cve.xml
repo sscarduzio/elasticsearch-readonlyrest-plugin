@@ -115,7 +115,7 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
    Upgrading log4j-api to 2.25.4 without matching log4j-core causes runtime compatibility issues.
    This must be fixed by Elasticsearch upgrading to log4j-core:2.25.4+.
    ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-api@2\.11\.1.*$</packageUrl>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-api@2\.11\.2.*$</packageUrl>
         <cve>CVE-2020-9488</cve>
         <cve>CVE-2025-68161</cve>
         <cve>CVE-2026-34480</cve>
