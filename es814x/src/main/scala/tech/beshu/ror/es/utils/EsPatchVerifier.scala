@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.utils
 
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.slf4j.Logging
 import org.elasticsearch.common.settings.Settings
 import tech.beshu.ror.tools.core.patches.PatchingVerifier
 import tech.beshu.ror.tools.core.patches.PatchingVerifier.Error.{CannotVerifyIfPatched, EsNotPatched}

@@ -54,6 +54,7 @@ java {
 }
 
 dependencies {
+    api project(path: ':logging', configuration: 'default')
     api project(path: ':audit', configuration: 'default')
     api project(path: ':ror-shadowed-libs', configuration: 'shadow')
 
@@ -72,7 +73,6 @@ dependencies {
     api group: 'io.jsonwebtoken',               name: 'jjwt-impl',                           version: '0.13.0'
     api group: 'io.jsonwebtoken',               name: 'jjwt-orgjson',                        version: '0.13.0'
     api group: 'org.jooq',                      name: 'joor',                                version: '0.9.15'
-    api group: 'org.apache.logging.log4j',      name: 'log4j-api-scala_3',                   version: '13.1.0'
     api(group: 'org.apache.logging.log4j',      name: 'log4j-slf4j-impl',                    version: '2.11.2') {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
     }
@@ -96,7 +96,7 @@ dependencies {
     api group: 'org.bouncycastle',              name: 'bcutil-fips',                         version: '2.1.6'
 
     testImplementation  project(':tests-utils')
-    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.25.3'
+    testImplementation  group: 'org.apache.logging.log4j',   name: 'log4j-core',                     version: '2.25.4'
     testRuntimeOnly     group: 'ch.qos.logback',             name: 'logback-classic',                version: '1.5.23'
     testImplementation  group: 'com.typesafe.scala-logging', name: 'scala-logging_3',                version: '3.9.5'
     testImplementation  group: 'org.scalamock',              name: 'scalamock_3',                    version: '7.3.0'

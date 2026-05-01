@@ -1,0 +1,56 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+plugins {
+    id "readonlyrest.base-common-conventions"
+    id "java-library"
+}
+
+group = 'org.elasticsearch.plugin'
+version = pluginVersion
+
+repositories {
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+    maven { url 'https://jitpack.io' }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+dependencies {
+    api(group: 'org.apache.logging.log4j',      name: 'log4j-slf4j-impl',                    version: '2.11.2') {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+    }
+}
+
+configurations {
+    scalaCompilerPlugin {
+        transitive = false
+    }
+}
+
+tasks.withType(ScalaCompile).configureEach {
+    parameters -= ["-target:8"]
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
