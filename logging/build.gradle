@@ -47,7 +47,12 @@ configurations {
 }
 
 tasks.withType(ScalaCompile).configureEach {
-    parameters -= ["-target:8"]
+    // Use artifactView to safely access configuration files in Gradle 9.x
+    def pluginFiles = configurations.scalaCompilerPlugin.incoming.artifactView {
+        attributes { }
+    }.files
+    // Map plugin jars to -Xplugin parameter
+    List<String> parameters = pluginFiles.collect { '-Xplugin:' + it.absolutePath }
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {
