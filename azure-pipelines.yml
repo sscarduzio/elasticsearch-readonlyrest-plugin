@@ -3,13 +3,12 @@ variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+  isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
   isEpicBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
   dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
   GRADLE_USER_HOME: '$(Pipeline.Workspace)/.gradle'
-
-pr: none
 
 trigger:
   batch: false
@@ -17,7 +16,6 @@ trigger:
     include:
       - master
       - develop
-      - '*/pull/*'
   tags:
     exclude:
       - '*'
@@ -682,7 +680,7 @@ stages:
       and(
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
-        contains(variables['Build.SourceBranch'], '/pull/'),
+        eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
