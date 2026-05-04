@@ -64,6 +64,7 @@ test {
     if (enabled) {
         def module = project.properties['esModule']
         systemProperty "esModule", module
+        if (project.hasProperty('esVersion')) { systemProperty "esVersion", project.property('esVersion') }
 
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
