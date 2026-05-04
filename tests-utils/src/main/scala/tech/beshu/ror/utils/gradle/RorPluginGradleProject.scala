@@ -81,8 +81,12 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
     val connect = Try(connector.connect())
-    val extraArgs = Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
-    val result = connect.map(_.newBuild().withArguments(extraArgs*).forTasks(task).run())
+    val result = connect.map { c =>
+      val build = c.newBuild().forTasks(task)
+      Option(System.getProperty("esVersion"))
+        .fold(build)(v => build.withArguments(s"-PesVersion=$v"))
+        .run()
+    }
     connect.map(_.close())
     result.fold(throw _, _ => ())
   }
