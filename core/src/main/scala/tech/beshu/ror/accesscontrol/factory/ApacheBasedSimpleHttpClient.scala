@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.utils.AsyncOps.deferFuture
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.concurrent.{Future, Promise}
+import scala.util.control.Exception.catching
 import scala.util.control.NonFatal
 import scala.language.postfixOps
 
@@ -94,6 +95,7 @@ private class ApacheBasedSimpleHttpClientCreator[F[_] : Async : ContextShift]
 
   private def newCloseableHttpAsyncClient(config: Config): CloseableHttpAsyncClient = {
     try {
+      checkJdkNetAvailability()
       val connectionConfig =
         ConnectionConfig.custom()
           .setConnectTimeout(Timeout.ofMilliseconds(config.connectionTimeout.value.toMillis))
@@ -135,6 +137,21 @@ private class ApacheBasedSimpleHttpClientCreator[F[_] : Async : ContextShift]
         noRequestIdLogger.error("Failed to create Apache HttpAsyncClient", ex)
         throw ex
     }
+  }
+
+  private def checkJdkNetAvailability(): Unit = {
+    catching(classOf[ClassNotFoundException], classOf[NoClassDefFoundError])
+      .either(Class.forName("jdk.net.Sockets"))
+      .left
+      .foreach { ex =>
+        val message =
+          "jdk.net module is not accessible (jdk.net.Sockets cannot be loaded). " +
+          "Apache HttpClient 5 requires it. " +
+          "Add '--add-modules=jdk.net' to JVM startup options " +
+          "(ES_JAVA_OPTS environment variable or jvm.options.d/ror.options file)."
+        noRequestIdLogger.error(message)
+        throw new RuntimeException(message, ex)
+      }
   }
 
 }
