@@ -514,6 +514,7 @@ stages:
           matrix:
             WIN_IT_es92x:
               ES_MODULE: es92x
+              ES_VERSION: 9.3.3  # 9.3.4 broken on Windows (Elastic #144674), fix expected in 9.3.5
             WIN_IT_es90x:
               ES_MODULE: es90x
             WIN_IT_es818x:
@@ -547,6 +548,7 @@ stages:
           matrix:
             WIN_IT_es92x:
               ES_MODULE: es92x
+              ES_VERSION: 9.3.3  # 9.3.4 broken on Windows (Elastic #144674), fix expected in 9.3.5
             WIN_IT_es818x:
               ES_MODULE: es818x
             WIN_IT_es717x:
@@ -571,6 +573,7 @@ stages:
           matrix:
             WIN_IT_es92x:
               ES_MODULE: es92x
+              ES_VERSION: 9.3.3  # 9.3.4 broken on Windows (Elastic #144674), fix expected in 9.3.5
             WIN_IT_es91x:
               ES_MODULE: es91x
             WIN_IT_es90x:
