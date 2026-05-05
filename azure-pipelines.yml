@@ -461,15 +461,15 @@ stages:
               ROR_TASK: integration_es810x
             IT_es80x:
               ROR_TASK: integration_es80x
-            IT_es80x:
+            IT_es81x:
               ROR_TASK: integration_es81x
-            IT_es80x:
+            IT_es82x:
               ROR_TASK: integration_es82x
-            IT_es80x:
+            IT_es83x:
               ROR_TASK: integration_es83x
-            IT_es80x:
+            IT_es84x:
               ROR_TASK: integration_es84x
-            IT_es80x:
+            IT_es85x:
               ROR_TASK: integration_es85x
 
 #######################################################
