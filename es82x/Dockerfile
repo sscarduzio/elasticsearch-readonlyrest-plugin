@@ -40,7 +40,13 @@ RUN chmod +x /usr/local/bin/gosu \
     && rm -rf /usr/share/elasticsearch/jdk \
     && mkdir -p /usr/share/elasticsearch/jdk \
     && tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1 \
-    && rm /tmp/jdk.tar.gz
+    && rm /tmp/jdk.tar.gz \
+    # Ensure jdk.net module is available after replacing bundled Oracle JDK 18 with Corretto 19, \
+    # so Apache HttpClient 5's ReflectionUtils can access jdk.net.Sockets without throwing \
+    # NoClassDefFoundError (which is not caught by its static initializer). \
+    && mkdir -p /usr/share/elasticsearch/config/jvm.options.d \
+    && echo "--add-modules=jdk.net" > /usr/share/elasticsearch/config/jvm.options.d/ror.options \
+    && chown elasticsearch:elasticsearch /usr/share/elasticsearch/config/jvm.options.d/ror.options
 
 USER elasticsearch
 
