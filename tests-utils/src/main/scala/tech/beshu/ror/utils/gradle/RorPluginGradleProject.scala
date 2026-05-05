@@ -71,10 +71,10 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   def getModuleESVersion: String =
     Option(System.getProperty("esVersion"))
-      .filter(_ => isMainModule)
+      .filter(_ => isExplicitlyTargetedModule)
       .getOrElse(esProjectProperties.getProperty("latestSupportedEsVersion"))
 
-  private def isMainModule: Boolean =
+  private def isExplicitlyTargetedModule: Boolean =
     moduleName == System.getProperty("esModule")
 
   private def esProject(esProjectName: String) = new JFile(RorPluginGradleProject.getRootProject, esProjectName)
@@ -87,7 +87,7 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     val connect = Try(connector.connect())
     val result = connect.map { c =>
       val build = c.newBuild().forTasks(task)
-      (if (isMainModule) Option(System.getProperty("esVersion")) else None)
+      (if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")) else None)
         .fold(build)(v => build.withArguments(s"-PesVersion=$v"))
         .run()
     }
