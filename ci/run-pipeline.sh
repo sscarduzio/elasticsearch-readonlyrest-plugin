@@ -79,6 +79,10 @@ run_integration_tests() {
   ./gradlew "${gradleArgs[@]}" || (find . | grep hs_err | xargs cat && exit 1)
 }
 
+if [[ $ROR_TASK == "integration_es94x" ]]; then
+  run_integration_tests "es94x"
+fi
+
 if [[ $ROR_TASK == "integration_es92x" ]]; then
   run_integration_tests "es92x"
 fi
