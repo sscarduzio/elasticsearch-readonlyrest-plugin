@@ -38,13 +38,12 @@ import tech.beshu.ror.syntax.*
 class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                           esContext: EsContext,
                                           aclContext: AccessControlStaticContext,
-                                          override val threadPool: ThreadPool,
-                                          esqlRequestHelper: EsqlRequestHelper)
+                                          override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  private lazy val requestClassification = esqlRequestHelper.classifyEsqlRequest(actionRequest)
+  private lazy val requestClassification = EsqlRequestHelper.classifyEsqlRequest(actionRequest)
 
   override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
     requestClassification match {
@@ -73,7 +72,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
       case Right(r@EsqlRequestClassification.IndicesRelated(tables)) =>
         val filteredIndicesStrings = filteredIndices.stringify.toCovariantSet
         if (filteredIndicesStrings != r.indices) {
-          esqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
+          EsqlRequestHelper.modifyIndicesOf(request, tables, filteredIndicesStrings)
         } else {
           request
         }
@@ -102,7 +101,7 @@ class EsqlIndicesEsRequestContext private(actionRequest: ActionRequest with Comp
   private def applyFieldLevelSecurityTo(response: ActionResponse,
                                         fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     fieldLevelSecurity match {
-      case Some(fls) => esqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
+      case Some(fls) => EsqlRequestHelper.modifyResponseAccordingToFieldLevelSecurity(response, fls)
       case None => response
     }
   }
@@ -125,7 +124,6 @@ object EsqlIndicesEsRequestContext {
         arg.esContext,
         arg.aclContext,
         arg.threadPool,
-        new EsqlRequestHelper(arg.esContext.esVersion)
       ))
     } else {
       None

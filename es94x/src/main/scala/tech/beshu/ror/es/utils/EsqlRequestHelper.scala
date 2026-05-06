@@ -23,19 +23,17 @@ import org.joor.Reflect.*
 import org.joor.ReflectException
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.es.EsVersion
 import tech.beshu.ror.es.handler.response.FieldsFiltering
 import tech.beshu.ror.es.handler.response.FieldsFiltering.NonMetadataDocumentFields
-import tech.beshu.ror.es.utils.EsqlRequestHelper.{ClassificationError, EsqlRequestClassification, IndexTable}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-import java.util.regex.Pattern
 import java.util.List as JList
+import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-class EsqlRequestHelper(esVersion: EsVersion) {
+object EsqlRequestHelper {
 
   def modifyIndicesOf(request: CompositeIndicesRequest,
                       requestTables: NonEmptyList[IndexTable],
@@ -95,9 +93,14 @@ class EsqlRequestHelper(esVersion: EsVersion) {
 
   private final class EsqlParser(implicit classLoader: ClassLoader) {
 
-    private val underlyingObject =
+    private val underlyingObject = {
+      val esqlFunctionRegistryClass = classLoader.loadClass("org.elasticsearch.xpack.esql.expression.function.EsqlFunctionRegistry")
+      val esqlFunctionRegistry = onClass(esqlFunctionRegistryClass).create().get[Any]()
+      val esqlConfigClass = classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlConfig")
+      val esqlConfig = onClass(esqlConfigClass).create(esqlFunctionRegistry).get[Any]()
       onClass(classLoader.loadClass("org.elasticsearch.xpack.esql.parser.EsqlParser"))
-        .create().get[Any]()
+        .create(esqlConfig).get[Any]()
+    }
 
     def createStatementBasedOn(request: CompositeIndicesRequest): Either[ClassificationError, Statement] = {
       createStatement(request).map { statement =>
@@ -119,27 +122,12 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     }
 
     private def indicesFrom(statement: Any) = {
-      val plan = esVersion match {
-        case v if v >= EsVersion(9, 3, 0) => on(statement).call("plan").get[Any]()
-        case _ => statement
-      }
+      val plan = on(statement).call("plan").get[Any]()
       val preAnalysis = doPreAnalyze(newPreAnalyzer, plan)
-      esVersion match {
-        case v if v >= EsVersion(9, 3, 0) => indicesFromPreAnalysisForEsEqualOrAbove930(preAnalysis)
-        case _ => indicesFromPreAnalysisForEsBelow930(preAnalysis)
-      }
+      indicesFromPreAnalysis(preAnalysis)
     }
 
-    private def indicesFromPreAnalysisForEsBelow930(preAnalysis: Any) = {
-      val indexPattern = indexPatternFrom(preAnalysis)
-      val indexPatternString = indexPatternStringFrom(indexPattern)
-      NonEmptyList
-        .fromList(splitIntoIndices(indexPatternString))
-        .map(IndexTable(indexPatternString, _))
-        .toList
-    }
-
-    private def indicesFromPreAnalysisForEsEqualOrAbove930(preAnalysis: Any) = {
+    private def indicesFromPreAnalysis(preAnalysis: Any) = {
       val indexesMap = on(preAnalysis).get[java.util.Map[Any, Any]]("indexes")
       indexesMap.keySet().asScala.toList.flatMap { indexPattern =>
         val indexPatternString = on(indexPattern).call("indexPattern").get[String]()
@@ -160,15 +148,6 @@ class EsqlRequestHelper(esVersion: EsVersion) {
     private def doPreAnalyze(preAnalyzer: Any, statement: Any) = {
       on(preAnalyzer).call("preAnalyze", statement).get[Any]()
     }
-
-    private def indexPatternFrom(preAnalysis: Any) = {
-      on(preAnalysis).get[Any]("indexPattern")
-    }
-
-    private def indexPatternStringFrom(indexPattern: Any) = {
-      on(indexPattern).call("indexPattern").get[String]()
-    }
-
   }
 
   private sealed trait Statement
@@ -266,9 +245,6 @@ class EsqlRequestHelper(esVersion: EsVersion) {
       }
     }
   }
-}
-
-object EsqlRequestHelper {
 
   final case class IndexTable(tableStringInQuery: String, indices: NonEmptyList[String])
 

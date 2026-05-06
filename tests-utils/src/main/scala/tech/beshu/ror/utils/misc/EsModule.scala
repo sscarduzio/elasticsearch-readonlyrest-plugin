@@ -66,6 +66,8 @@ trait EsModulePatterns {
   val allEs8x = "^es8\\d+x$".r
   val allEs818x = "^es818x$".r
   val allEs9x = "^es9\\d+x$".r
+  val allEs9xAboveEs93x = "^es9([4-9]|[1-9][0-9])x$".r
+  val allEs9xBelowEs94x = "^es9[0-3]x$".r
   val allEs8xBelowEs84x = "^es8[0-3]x$".r
   val allEs8xBelowEs85x = "^es8[0-4]x$".r
   val allEs8xBelowEs87x = "^es8[0-6]x$".r
