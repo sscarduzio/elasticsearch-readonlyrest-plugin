@@ -78,7 +78,7 @@ import scala.util.{Failure, Success, Try}
 
 object TestsUtils {
 
-  implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
+  given loggingContext: LoggingContext = LoggingContext(Set.empty)
   val rorYamlParser = new YamlParser(Some(Megabytes(3)))
 
   val defaultEsVersionForTests: EsVersion = EsVersion(8, 17, 0)
@@ -188,7 +188,7 @@ object TestsUtils {
 
   def userId(str: NonEmptyString): User.Id = User.Id(str)
 
-  implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
+  given Conversion[FiniteDuration, Duration] = duration => Duration.ofMillis(duration.toMillis)
 
   def impersonatorDefFrom(userIdPattern: NonEmptyString,
                           impersonatorCredentials: Credentials,
@@ -362,7 +362,7 @@ object TestsUtils {
     }
   }
 
-  implicit class CurrentGroupToHeader(private val group: GroupId) extends AnyVal {
+  extension (group: GroupId) {
     def toCurrentGroupHeader: Header = currentGroupHeader(group.value.value)
   }
 
@@ -398,7 +398,7 @@ object TestsUtils {
     case Failure(ex) => throw new IllegalArgumentException(s"Cannot parse $value to Url: ${ex.getMessage}")
   }
 
-  implicit class NonEmptyListOps[T](private val value: T) extends AnyVal {
+  extension [T](value: T) {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
   }
 
@@ -471,9 +471,8 @@ object TestsUtils {
     EsEnv(esConfig.getOrElse(File("/config")), File("/modules"), defaultEsVersionForTests, defaultTestEsNodeSettings)
   }
 
-  implicit class ValueOrIllegalState[ERROR, SUCCESS](private val eitherT: EitherT[Task, ERROR, SUCCESS]) extends AnyVal {
-
-    def valueOrThrowIllegalState()(implicit scheduler: Scheduler): SUCCESS = {
+  extension [ERROR, SUCCESS](eitherT: EitherT[Task, ERROR, SUCCESS]) {
+    def valueOrThrowIllegalState()(using scheduler: Scheduler): SUCCESS = {
       eitherT.value.runSyncUnsafe() match {
         case Right(value) => value
         case Left(error) => throw new IllegalStateException(s"$error")
@@ -481,7 +480,7 @@ object TestsUtils {
     }
   }
 
-  implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
+  given Conversion[String, NonEmptyString] = NonEmptyString.unsafeFrom
 
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
     UserIdPatterns(

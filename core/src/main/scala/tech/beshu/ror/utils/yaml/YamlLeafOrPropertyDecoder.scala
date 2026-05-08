@@ -61,7 +61,7 @@ object YamlLeafOrPropertyOrEnvDecoder {
                             envVarsProvider: EnvVarsProvider): YamlLeafOrPropertyOrEnvDecoder[Option[T]] =
     json => {
       val inYaml       = JsonPathOps.focusAt(json, sectionPath).exists(j => !j.isNull)
-      val inProperties = propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsString(sectionPath) + ".")
+      val inProperties = propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsNonEmptyString(sectionPath).value + ".")
       val envPrefix    = JsonPathOps.pathPrefixToEnvVarPrefix(sectionPath)
       val inEnv        = envVarsProvider.hasEnvMatching(k => k.startsWith(envPrefix) && (k.length == envPrefix.length || k.charAt(envPrefix.length) != '_'))
       if (inYaml || inProperties || inEnv)
@@ -137,8 +137,8 @@ object YamlLeafOrPropertyOrEnvDecoder {
 
 object JsonPathOps {
 
-  def pathAsString(path: NonEmptyList[NonEmptyString]): String =
-    path.toList.map(_.value).mkString(".")
+  def pathAsNonEmptyString(path: NonEmptyList[NonEmptyString]): NonEmptyString =
+    NonEmptyString.unsafeFrom(path.toList.map(_.value).mkString("."))
 
   def pathToEnvVarName(path: NonEmptyList[NonEmptyString]): String =
     "ES_SETTING_" + path.toList.map(seg => seg.value.replace("_", "__").toUpperCase).mkString("_")
@@ -148,7 +148,7 @@ object JsonPathOps {
 
   def focusAt(json: Json, path: NonEmptyList[NonEmptyString]): Option[Json] = {
     val cursor = json.hcursor
-    cursor.downField(pathAsString(path)).focus
+    cursor.downField(pathAsNonEmptyString(path).value).focus
       .orElse(path.foldLeft[ACursor](cursor)((c, segment) => c.downField(segment.value)).focus)
   }
 
@@ -178,7 +178,7 @@ private final class OptionalYamlLeafOrPropertyOrEnvDecoder[T](path: NonEmptyList
                                                               envVarsProvider: EnvVarsProvider)
   extends YamlLeafOrPropertyOrEnvDecoder[Option[T]] {
 
-  private val propName   = NonEmptyString.unsafeFrom(JsonPathOps.pathAsString(path))
+  private val propName   = JsonPathOps.pathAsNonEmptyString(path)
   private val envVarName = JsonPathOps.pathToEnvVarName(path)
 
   override def decode(json: Json): Either[String, Option[T]] = {
@@ -226,7 +226,7 @@ private final class RequiredYamlLeafOrPropertyOrEnvDecoder[T](path: NonEmptyList
   override def decode(json: Json): Either[String, T] =
     optionalDecoder.decode(json).flatMap {
       case Some(value) => Right(value)
-      case None        => Left(s"Cannot find '.${JsonPathOps.pathAsString(path)}' path")
+      case None        => Left(s"Cannot find '.${JsonPathOps.pathAsNonEmptyString(path).value.show}' path")
     }
 }
 
@@ -236,7 +236,7 @@ private final class OptionalListYamlLeafOrPropertyOrEnvDecoder[T](path: NonEmpty
                                                                   envVarsProvider: EnvVarsProvider)
   extends YamlLeafOrPropertyOrEnvDecoder[Option[Set[T]]] {
 
-  private val propName   = NonEmptyString.unsafeFrom(JsonPathOps.pathAsString(path))
+  private val propName   = JsonPathOps.pathAsNonEmptyString(path)
   private val envVarName = JsonPathOps.pathToEnvVarName(path)
 
   override def decode(json: Json): Either[String, Option[Set[T]]] = {
