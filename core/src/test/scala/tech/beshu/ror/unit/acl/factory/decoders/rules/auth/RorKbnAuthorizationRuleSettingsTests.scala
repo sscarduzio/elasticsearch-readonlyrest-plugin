@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.KeyPairGenerator
@@ -267,6 +267,6 @@ class RorKbnAuthorizationRuleSettingsTests
 
   override implicit protected def envVarsProvider: EnvVarsProvider =
     TestsEnvVarsProvider.usingMap(Map(
-      "SECRET_RSA" -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
+      nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
     ))
 }

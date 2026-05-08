@@ -188,7 +188,7 @@ object TestsUtils {
 
   def userId(str: NonEmptyString): User.Id = User.Id(str)
 
-  given Conversion[FiniteDuration, Duration] = duration => Duration.ofMillis(duration.toMillis)
+  implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
   def impersonatorDefFrom(userIdPattern: NonEmptyString,
                           impersonatorCredentials: Credentials,
@@ -480,7 +480,7 @@ object TestsUtils {
     }
   }
 
-  given Conversion[String, NonEmptyString] = NonEmptyString.unsafeFrom
+  implicit def unsafeNes(str: String): NonEmptyString = NonEmptyString.unsafeFrom(str)
 
   def userIdPatterns(id: String, ids: String*): UserIdPatterns = {
     UserIdPatterns(

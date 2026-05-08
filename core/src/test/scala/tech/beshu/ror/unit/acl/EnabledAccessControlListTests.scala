@@ -49,7 +49,7 @@ import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetad
 import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyListMap
-import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.TestsUtils.{given, *}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.immutable.ListMap

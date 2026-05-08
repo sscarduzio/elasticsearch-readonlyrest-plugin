@@ -26,6 +26,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 import scala.language.postfixOps
@@ -67,9 +68,9 @@ object RorBootSettings extends ElasticsearchConfigLoaderSupport {
     }
 
     object consts {
-      val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
-      val rorNotStartedResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("not_started_response_code")
-      val rorFailedToStartResponseCode: NonEmptyString = NonEmptyString.unsafeFrom("failed_to_start_response_code")
+      val rorSection: NonEmptyString = nes("readonlyrest")
+      val rorNotStartedResponseCode: NonEmptyString = nes("not_started_response_code")
+      val rorFailedToStartResponseCode: NonEmptyString = nes("failed_to_start_response_code")
     }
 
     def rorBootSettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorBootSettings] = {

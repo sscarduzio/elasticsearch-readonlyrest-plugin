@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.settings.es
 
+import eu.timepit.refined.types.all.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -29,7 +30,7 @@ import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBas
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, withEsEnv, withTempConfigDir}
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, nes, unsafeNes, withEsEnv, withTempConfigDir}
 
 class RorSslSettingsTest
   extends AnyWordSpec with Inside {
@@ -216,10 +217,10 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           envVars = Map(
-            "ES_SETTING_READONLYREST_SSL_ENABLE"        -> "true",
-            "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "ror-keystore.jks",
-            "ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS" -> "readonlyrest1",
-            "ES_SETTING_READONLYREST_SSL_KEY__PASS"      -> "readonlyrest2"
+            nes("ES_SETTING_READONLYREST_SSL_ENABLE")        -> "true",
+            nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE") -> "ror-keystore.jks",
+            nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS") -> "readonlyrest1",
+            nes("ES_SETTING_READONLYREST_SSL_KEY__PASS")      -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
@@ -241,10 +242,10 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           envVars = Map(
-            "ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE"        -> "true",
-            "ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__FILE" -> "ror-keystore.jks",
-            "ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__PASS" -> "readonlyrest1",
-            "ES_SETTING_READONLYREST_SSL__INTERNODE_KEY__PASS"      -> "readonlyrest2"
+            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE")        -> "true",
+            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__FILE") -> "ror-keystore.jks",
+            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_KEYSTORE__PASS") -> "readonlyrest1",
+            nes("ES_SETTING_READONLYREST_SSL__INTERNODE_KEY__PASS")      -> "readonlyrest2"
           )
         )
         inside(ssl.internodeSsl) {
@@ -268,11 +269,11 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           envVars = Map(
-            "ES_SETTING_READONLYREST_FIPS__MODE"         -> "SSL_ONLY",
-            "ES_SETTING_READONLYREST_SSL_ENABLE"        -> "true",
-            "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "ror-keystore.jks",
-            "ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS" -> "readonlyrest1",
-            "ES_SETTING_READONLYREST_SSL_KEY__PASS"      -> "readonlyrest2"
+            nes("ES_SETTING_READONLYREST_FIPS__MODE")         -> "SSL_ONLY",
+            nes("ES_SETTING_READONLYREST_SSL_ENABLE")        -> "true",
+            nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE") -> "ror-keystore.jks",
+            nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__PASS") -> "readonlyrest1",
+            nes("ES_SETTING_READONLYREST_SSL_KEY__PASS")      -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
@@ -289,10 +290,10 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           properties = Map(
-            "readonlyrest.ssl.enable"        -> "true",
-            "readonlyrest.ssl.keystore_file" -> "ror-keystore.jks",
-            "readonlyrest.ssl.keystore_pass" -> "readonlyrest1",
-            "readonlyrest.ssl.key_pass"      -> "readonlyrest2"
+            nes("readonlyrest.ssl.enable")        -> "true",
+            nes("readonlyrest.ssl.keystore_file") -> "ror-keystore.jks",
+            nes("readonlyrest.ssl.keystore_pass") -> "readonlyrest1",
+            nes("readonlyrest.ssl.key_pass")      -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
@@ -314,10 +315,10 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           properties = Map(
-            "readonlyrest.ssl_internode.enable"        -> "true",
-            "readonlyrest.ssl_internode.keystore_file" -> "ror-keystore.jks",
-            "readonlyrest.ssl_internode.keystore_pass" -> "readonlyrest1",
-            "readonlyrest.ssl_internode.key_pass"      -> "readonlyrest2"
+            nes("readonlyrest.ssl_internode.enable")        -> "true",
+            nes("readonlyrest.ssl_internode.keystore_file") -> "ror-keystore.jks",
+            nes("readonlyrest.ssl_internode.keystore_pass") -> "readonlyrest1",
+            nes("readonlyrest.ssl_internode.key_pass")      -> "readonlyrest2"
           )
         )
         inside(ssl.internodeSsl) {
@@ -341,11 +342,11 @@ class RorSslSettingsTest
             |xpack.security.enabled: false
             |""".stripMargin,
           properties = Map(
-            "readonlyrest.fips_mode"         -> "SSL_ONLY",
-            "readonlyrest.ssl.enable"        -> "true",
-            "readonlyrest.ssl.keystore_file" -> "ror-keystore.jks",
-            "readonlyrest.ssl.keystore_pass" -> "readonlyrest1",
-            "readonlyrest.ssl.key_pass"      -> "readonlyrest2"
+            nes("readonlyrest.fips_mode")         -> "SSL_ONLY",
+            nes("readonlyrest.ssl.enable")        -> "true",
+            nes("readonlyrest.ssl.keystore_file") -> "ror-keystore.jks",
+            nes("readonlyrest.ssl.keystore_pass") -> "readonlyrest1",
+            nes("readonlyrest.ssl.key_pass")      -> "readonlyrest2"
           )
         )
         inside(ssl.externalSsl) {
@@ -664,8 +665,8 @@ class RorSslSettingsTest
 
   private def forceLoad(esConfigYaml: String,
                         rorSettingsYaml: String = basicRorSettings,
-                        properties: Map[String, String] = Map.empty,
-                        envVars: Map[String, String] = Map.empty) = {
+                        properties: Map[NonEmptyString, String] = Map.empty,
+                        envVars: Map[NonEmptyString, String] = Map.empty) = {
     load(esConfigYaml, rorSettingsYaml, properties, envVars) match {
       case Right(Some(sslSettings)) => sslSettings
       case Right(None)              => throw new IllegalStateException("No SSL settings to load")
@@ -675,8 +676,8 @@ class RorSslSettingsTest
 
   private def load(esConfigYaml: String,
                    rorSettingsYaml: String = basicRorSettings,
-                   properties: Map[String, String] = Map.empty,
-                   envVars: Map[String, String] = Map.empty) = {
+                   properties: Map[NonEmptyString, String] = Map.empty,
+                   envVars: Map[NonEmptyString, String] = Map.empty) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
       envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)

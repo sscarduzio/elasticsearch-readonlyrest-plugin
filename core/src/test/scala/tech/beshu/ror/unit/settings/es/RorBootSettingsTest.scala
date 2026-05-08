@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.settings.es
 
+import eu.timepit.refined.types.all.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
@@ -25,7 +26,7 @@ import tech.beshu.ror.settings.es.RorBootSettings
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
-import tech.beshu.ror.utils.TestsUtils.withEsEnv
+import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes, withEsEnv}
 
 class RorBootSettingsTest
   extends AnyWordSpec with Inside {
@@ -92,7 +93,7 @@ class RorBootSettingsTest
           """
             |node.name: n1_it
             |""".stripMargin,
-          properties = Map("readonlyrest.not_started_response_code" -> "503")
+          properties = Map(nes("readonlyrest.not_started_response_code") -> "503")
         )
 
         settings should be(Right(RorBootSettings(
@@ -105,7 +106,7 @@ class RorBootSettingsTest
           """
             |node.name: n1_it
             |""".stripMargin,
-          properties = Map("readonlyrest.failed_to_start_response_code" -> "503")
+          properties = Map(nes("readonlyrest.failed_to_start_response_code") -> "503")
         )
 
         settings should be(Right(RorBootSettings(
@@ -119,8 +120,8 @@ class RorBootSettingsTest
             |node.name: n1_it
             |""".stripMargin,
           properties = Map(
-            "readonlyrest.not_started_response_code" -> "503",
-            "readonlyrest.failed_to_start_response_code" -> "503"
+            nes("readonlyrest.not_started_response_code") -> "503",
+            nes("readonlyrest.failed_to_start_response_code") -> "503"
           )
         )
 
@@ -136,7 +137,7 @@ class RorBootSettingsTest
           """
             |node.name: n1_it
             |""".stripMargin,
-          envVars = Map("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "503")
+          envVars = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "503")
         )
 
         settings should be(Right(RorBootSettings(
@@ -149,7 +150,7 @@ class RorBootSettingsTest
           """
             |node.name: n1_it
             |""".stripMargin,
-          envVars = Map("ES_SETTING_READONLYREST_FAILED__TO__START__RESPONSE__CODE" -> "503")
+          envVars = Map(nes("ES_SETTING_READONLYREST_FAILED__TO__START__RESPONSE__CODE") -> "503")
         )
 
         settings should be(Right(RorBootSettings(
@@ -164,8 +165,8 @@ class RorBootSettingsTest
           |readonlyrest:
           |  not_started_response_code: 403
           |""".stripMargin,
-        properties = Map("readonlyrest.not_started_response_code" -> "503"),
-        envVars    = Map("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "503")
+        properties = Map(nes("readonlyrest.not_started_response_code") -> "503"),
+        envVars    = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "503")
       )
 
       settings should be(Right(RorBootSettings(
@@ -178,8 +179,8 @@ class RorBootSettingsTest
         """
           |node.name: n1_it
           |""".stripMargin,
-        properties = Map("readonlyrest.not_started_response_code" -> "503"),
-        envVars    = Map("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "403")
+        properties = Map(nes("readonlyrest.not_started_response_code") -> "503"),
+        envVars    = Map(nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "403")
       )
 
       settings should be(Right(RorBootSettings(
@@ -218,8 +219,8 @@ class RorBootSettingsTest
   }
 
   private def load(yaml: String,
-                   properties: Map[String, String] = Map.empty,
-                   envVars: Map[String, String] = Map.empty) = {
+                   properties: Map[NonEmptyString, String] = Map.empty,
+                   envVars: Map[NonEmptyString, String] = Map.empty) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
       envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)

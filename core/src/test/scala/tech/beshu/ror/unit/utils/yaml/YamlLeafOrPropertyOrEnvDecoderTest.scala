@@ -24,6 +24,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import squants.information.Kilobytes
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.yaml.{YamlLeafOrPropertyOrEnvDecoder, YamlParser}
 
@@ -54,7 +55,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.enable" -> "true"
+        nes("readonlyrest.ssl.enable") -> "true"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -68,7 +69,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       given PropertiesProvider = TestsPropertiesProvider.default
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "true"
+        nes("ES_SETTING_READONLYREST_SSL_ENABLE") -> "true"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -82,7 +83,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       given PropertiesProvider = TestsPropertiesProvider.default
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE" -> "503"
+        nes("ES_SETTING_READONLYREST_NOT__STARTED__RESPONSE__CODE") -> "503"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "not_started_response_code"),
@@ -112,10 +113,10 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       )
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.enable" -> "false"
+        nes("readonlyrest.ssl.enable") -> "false"
       ))
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "false"
+        nes("ES_SETTING_READONLYREST_SSL_ENABLE") -> "false"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -128,10 +129,10 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.enable" -> "true"
+        nes("readonlyrest.ssl.enable") -> "true"
       ))
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "false"
+        nes("ES_SETTING_READONLYREST_SSL_ENABLE") -> "false"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -164,7 +165,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.keystore_file" -> "ror.jks"
+        nes("readonlyrest.ssl.keystore_file") -> "ror.jks"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createRequiredValueDecoder(
         path = path("readonlyrest", "ssl", "keystore_file"),
@@ -178,7 +179,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       given PropertiesProvider = TestsPropertiesProvider.default
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "ror.jks"
+        nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE") -> "ror.jks"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createRequiredValueDecoder(
         path = path("readonlyrest", "ssl", "keystore_file"),
@@ -208,10 +209,10 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       )
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.keystore_file" -> "other.jks"
+        nes("readonlyrest.ssl.keystore_file") -> "other.jks"
       ))
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "another.jks"
+        nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE") -> "another.jks"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createRequiredValueDecoder(
         path = path("readonlyrest", "ssl", "keystore_file"),
@@ -224,10 +225,10 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.keystore_file" -> "from-property.jks"
+        nes("readonlyrest.ssl.keystore_file") -> "from-property.jks"
       ))
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE" -> "from-env.jks"
+        nes("ES_SETTING_READONLYREST_SSL_KEYSTORE__FILE") -> "from-env.jks"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createRequiredValueDecoder(
         path = path("readonlyrest", "ssl", "keystore_file"),
@@ -244,7 +245,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       given PropertiesProvider = TestsPropertiesProvider.default
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_ALLOWED__CIPHERS" -> "TLS_A,TLS_B"
+        nes("ES_SETTING_READONLYREST_SSL_ALLOWED__CIPHERS") -> "TLS_A,TLS_B"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
         path = path("readonlyrest", "ssl", "allowed_ciphers"),
@@ -257,10 +258,10 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.allowed_ciphers" -> "TLS_FROM_PROP"
+        nes("readonlyrest.ssl.allowed_ciphers") -> "TLS_FROM_PROP"
       ))
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_ALLOWED__CIPHERS" -> "TLS_FROM_ENV"
+        nes("ES_SETTING_READONLYREST_SSL_ALLOWED__CIPHERS") -> "TLS_FROM_ENV"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
         path = path("readonlyrest", "ssl", "allowed_ciphers"),
@@ -320,7 +321,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.allowed_ciphers" -> "TLS_A,TLS_B"
+        nes("readonlyrest.ssl.allowed_ciphers") -> "TLS_A,TLS_B"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
         path = path("readonlyrest", "ssl", "allowed_ciphers"),
@@ -340,7 +341,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       )
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.allowed_ciphers" -> "TLS_A,TLS_B"
+        nes("readonlyrest.ssl.allowed_ciphers") -> "TLS_A,TLS_B"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalListValueDecoder(
         path = path("readonlyrest", "ssl", "allowed_ciphers"),
@@ -404,7 +405,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "readonlyrest.ssl.enable" -> "true"
+        nes("readonlyrest.ssl.enable") -> "true"
       ))
       val inner = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -431,7 +432,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       given PropertiesProvider = TestsPropertiesProvider.default
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL_ENABLE" -> "true"
+        nes("ES_SETTING_READONLYREST_SSL_ENABLE") -> "true"
       ))
       val inner = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -447,7 +448,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       given PropertiesProvider = TestsPropertiesProvider.default
       // ES_SETTING_READONLYREST_SSL__INTERNODE_* belongs to readonlyrest.ssl_internode, not readonlyrest.ssl
       given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
-        "ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE" -> "true"
+        nes("ES_SETTING_READONLYREST_SSL__INTERNODE_ENABLE") -> "true"
       ))
       val inner = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "ssl", "enable"),
@@ -474,7 +475,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
   "createLegacyPropertyDecoder" should {
     "return the value from the JVM property" in {
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "com.readonlyrest.settings.refresh.interval" -> "30s"
+        nes("com.readonlyrest.settings.refresh.interval") -> "30s"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(
         legacyKey = NonEmptyString.unsafeFrom("com.readonlyrest.settings.refresh.interval"),
@@ -494,7 +495,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
     }
     "return a decoding error when the property value is invalid" in {
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "com.readonlyrest.settings.refresh.interval" -> "not-a-duration"
+        nes("com.readonlyrest.settings.refresh.interval") -> "not-a-duration"
       ))
       val decoder = YamlLeafOrPropertyOrEnvDecoder.createLegacyPropertyDecoder(
         legacyKey = NonEmptyString.unsafeFrom("com.readonlyrest.settings.refresh.interval"),
@@ -512,7 +513,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val json = parse("node.name: n1")
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "com.readonlyrest.settings.refresh.interval" -> "20s"
+        nes("com.readonlyrest.settings.refresh.interval") -> "20s"
       ))
       val first = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "load_from_index", "poll_interval"),
@@ -535,7 +536,7 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       )
 
       given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-        "com.readonlyrest.settings.refresh.interval" -> "20s"
+        nes("com.readonlyrest.settings.refresh.interval") -> "20s"
       ))
       val first = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
         path = path("readonlyrest", "load_from_index", "poll_interval"),

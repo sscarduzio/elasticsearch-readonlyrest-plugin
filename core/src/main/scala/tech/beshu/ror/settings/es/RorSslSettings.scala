@@ -27,6 +27,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.{FromString, RequestIdAwareLogging, SSLCertHelper}
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
@@ -209,26 +210,26 @@ object SslSettings {
 private object SslDecoders extends RequestIdAwareLogging {
 
   object consts {
-    val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
-    val fipsMode: NonEmptyString = NonEmptyString.unsafeFrom("fips_mode")
-    val externalSsl: NonEmptyString = NonEmptyString.unsafeFrom("ssl")
-    val internodeSsl: NonEmptyString = NonEmptyString.unsafeFrom("ssl_internode")
-    val keystoreFile: NonEmptyString = NonEmptyString.unsafeFrom("keystore_file")
-    val keystorePass: NonEmptyString = NonEmptyString.unsafeFrom("keystore_pass")
-    val truststoreFile: NonEmptyString = NonEmptyString.unsafeFrom("truststore_file")
-    val truststorePass: NonEmptyString = NonEmptyString.unsafeFrom("truststore_pass")
-    val keyPass: NonEmptyString = NonEmptyString.unsafeFrom("key_pass")
-    val keyAlias: NonEmptyString = NonEmptyString.unsafeFrom("key_alias")
-    val allowedCiphers: NonEmptyString = NonEmptyString.unsafeFrom("allowed_ciphers")
-    val allowedProtocols: NonEmptyString = NonEmptyString.unsafeFrom("allowed_protocols")
-    val certificateVerification: NonEmptyString = NonEmptyString.unsafeFrom("certificate_verification")
-    val hostnameVerification: NonEmptyString = NonEmptyString.unsafeFrom("hostname_verification")
-    val clientAuthentication: NonEmptyString = NonEmptyString.unsafeFrom("client_authentication")
-    val verification: NonEmptyString = NonEmptyString.unsafeFrom("verification")
-    val enable: NonEmptyString = NonEmptyString.unsafeFrom("enable")
-    val serverCertificateKeyFile: NonEmptyString = NonEmptyString.unsafeFrom("server_certificate_key_file")
-    val serverCertificateFile: NonEmptyString = NonEmptyString.unsafeFrom("server_certificate_file")
-    val clientTrustedCertificateFile: NonEmptyString = NonEmptyString.unsafeFrom("client_trusted_certificate_file")
+    val rorSection: NonEmptyString = nes("readonlyrest")
+    val fipsMode: NonEmptyString = nes("fips_mode")
+    val externalSsl: NonEmptyString = nes("ssl")
+    val internodeSsl: NonEmptyString = nes("ssl_internode")
+    val keystoreFile: NonEmptyString = nes("keystore_file")
+    val keystorePass: NonEmptyString = nes("keystore_pass")
+    val truststoreFile: NonEmptyString = nes("truststore_file")
+    val truststorePass: NonEmptyString = nes("truststore_pass")
+    val keyPass: NonEmptyString = nes("key_pass")
+    val keyAlias: NonEmptyString = nes("key_alias")
+    val allowedCiphers: NonEmptyString = nes("allowed_ciphers")
+    val allowedProtocols: NonEmptyString = nes("allowed_protocols")
+    val certificateVerification: NonEmptyString = nes("certificate_verification")
+    val hostnameVerification: NonEmptyString = nes("hostname_verification")
+    val clientAuthentication: NonEmptyString = nes("client_authentication")
+    val verification: NonEmptyString = nes("verification")
+    val enable: NonEmptyString = nes("enable")
+    val serverCertificateKeyFile: NonEmptyString = nes("server_certificate_key_file")
+    val serverCertificateFile: NonEmptyString = nes("server_certificate_file")
+    val clientTrustedCertificateFile: NonEmptyString = nes("client_trusted_certificate_file")
   }
 
   def rorSslDecoder(basePath: File)

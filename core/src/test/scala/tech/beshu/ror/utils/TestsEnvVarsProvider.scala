@@ -30,7 +30,7 @@ class TestsEnvVarsProvider(envMap: Map[EnvVarName, String]) extends EnvVarsProvi
 object TestsEnvVarsProvider {
   def default: TestsEnvVarsProvider = new TestsEnvVarsProvider(Map.empty)
 
-  def usingMap(map: Map[String, String]): TestsEnvVarsProvider = new TestsEnvVarsProvider(
-    map.map { case (key, value) => (EnvVarName(NonEmptyString.unsafeFrom(key)), value) }
+  def usingMap(map: Map[NonEmptyString, String]): TestsEnvVarsProvider = new TestsEnvVarsProvider(
+    map.map { case (key, value) => (EnvVarName(key), value) }
   )
 }

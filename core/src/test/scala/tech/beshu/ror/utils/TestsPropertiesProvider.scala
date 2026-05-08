@@ -28,7 +28,7 @@ class TestsPropertiesProvider(propertiesMap: Map[PropertiesProvider.PropName, St
 }
 object TestsPropertiesProvider {
   def default: TestsPropertiesProvider = new TestsPropertiesProvider(Map.empty)
-  def usingMap(map: Map[String, String]) = new TestsPropertiesProvider(
-    map.map { case (key, value) => (PropertiesProvider.PropName(NonEmptyString.unsafeFrom(key)), value) }
+  def usingMap(map: Map[NonEmptyString, String]) = new TestsPropertiesProvider(
+    map.map { case (key, value) => (PropertiesProvider.PropName(key), value) }
   )
 }

@@ -445,11 +445,11 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
 
   override implicit protected def envVarsProvider: EnvVarsProvider =
     TestsEnvVarsProvider.usingMap(Map(
-      "sys_group_1" -> "S1",
-      "sys_group_2" -> "ss2",
-      "READONLYREST_ENABLE" -> "true",
-      "USER1_PASS" -> "user1:passwd",
-      "LDAP_HOST" -> SingletonLdapContainers.ldap1.ldapHost,
-      "LDAP_PORT" -> s"${SingletonLdapContainers.ldap1.ldapPort}"
+      nes("sys_group_1") -> "S1",
+      nes("sys_group_2") -> "ss2",
+      nes("READONLYREST_ENABLE") -> "true",
+      nes("USER1_PASS") -> "user1:passwd",
+      nes("LDAP_HOST") -> SingletonLdapContainers.ldap1.ldapHost,
+      nes("LDAP_PORT") -> s"${SingletonLdapContainers.ldap1.ldapPort}"
     ))
 }

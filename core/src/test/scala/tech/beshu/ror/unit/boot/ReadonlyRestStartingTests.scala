@@ -1469,14 +1469,14 @@ class ReadonlyRestStartingTests
 
   private def createSystemContext(refreshInterval: Option[FiniteDuration] = None,
                                   maxYamlSize: Option[String] = None): SystemContext = {
-    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]) =
+    def mapWithIntervalFrom(refreshInterval: Option[FiniteDuration]): Map[NonEmptyString, String] =
       refreshInterval
-        .map(i => "com.readonlyrest.settings.refresh.interval" -> i.toSeconds.toString)
+        .map(i => nes("com.readonlyrest.settings.refresh.interval") -> i.toSeconds.toString)
         .toMap
 
-    def mapWithMaxYamlSize(maxYamlSize: Option[String]) =
+    def mapWithMaxYamlSize(maxYamlSize: Option[String]): Map[NonEmptyString, String] =
       maxYamlSize
-        .map(size => "com.readonlyrest.settings.maxSize" -> size)
+        .map(size => nes("com.readonlyrest.settings.maxSize") -> size)
         .toMap
 
     new SystemContext(propertiesProvider =
@@ -1484,8 +1484,8 @@ class ReadonlyRestStartingTests
         mapWithIntervalFrom(refreshInterval) ++
           mapWithMaxYamlSize(maxYamlSize) ++
           Map(
-            "com.readonlyrest.settings.loading.delay" -> "1",
-            "com.readonlyrest.settings.loading.attempts.count" -> "1"
+            nes("com.readonlyrest.settings.loading.delay") -> "1",
+            nes("com.readonlyrest.settings.loading.attempts.count") -> "1"
           )
       )
     )

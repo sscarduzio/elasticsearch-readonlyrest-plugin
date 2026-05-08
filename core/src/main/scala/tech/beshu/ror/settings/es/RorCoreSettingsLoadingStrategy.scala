@@ -25,10 +25,11 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
-import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
 import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
@@ -91,21 +92,21 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
     }
 
     private object legacyConsts {
-      val refreshInterval: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.refresh.interval")
-      val loadingDelay: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.delay")
-      val attemptsInterval: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.attempts.interval")
-      val attemptsCount: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.loading.attempts.count")
+      val refreshInterval: NonEmptyString = nes("com.readonlyrest.settings.refresh.interval")
+      val loadingDelay: NonEmptyString = nes("com.readonlyrest.settings.loading.delay")
+      val attemptsInterval: NonEmptyString = nes("com.readonlyrest.settings.loading.attempts.interval")
+      val attemptsCount: NonEmptyString = nes("com.readonlyrest.settings.loading.attempts.count")
     }
 
     private object consts {
-      val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
-      val forceLoadFromFileKey: NonEmptyString = NonEmptyString.unsafeFrom("force_load_from_file")
-      val loadFromIndexSection: NonEmptyString = NonEmptyString.unsafeFrom("load_from_index")
-      val retryStrategySection: NonEmptyString = NonEmptyString.unsafeFrom("initial_loading_retry_strategy")
-      val pollIntervalSection: NonEmptyString = NonEmptyString.unsafeFrom("poll_interval")
-      val attemptsIntervalKey: NonEmptyString = NonEmptyString.unsafeFrom("attempts_interval")
-      val attemptsCountKey: NonEmptyString = NonEmptyString.unsafeFrom("attempts_count")
-      val initialDelayKey: NonEmptyString = NonEmptyString.unsafeFrom("initial_delay")
+      val rorSection: NonEmptyString = nes("readonlyrest")
+      val forceLoadFromFileKey: NonEmptyString = nes("force_load_from_file")
+      val loadFromIndexSection: NonEmptyString = nes("load_from_index")
+      val retryStrategySection: NonEmptyString = nes("initial_loading_retry_strategy")
+      val pollIntervalSection: NonEmptyString = nes("poll_interval")
+      val attemptsIntervalKey: NonEmptyString = nes("attempts_interval")
+      val attemptsCountKey: NonEmptyString = nes("attempts_count")
+      val initialDelayKey: NonEmptyString = nes("initial_delay")
     }
 
     def loadingRorCoreStrategySettingsDecoder(systemContext: SystemContext): YamlLeafOrPropertyOrEnvDecoder[RorCoreSettingsLoadingStrategy] = {

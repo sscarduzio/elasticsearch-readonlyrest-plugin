@@ -28,6 +28,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
 final case class RorSettingsSourcesConfig(settingsIndex: RorSettingsIndex,
@@ -50,17 +51,17 @@ object RorSettingsSourcesConfig extends ElasticsearchConfigLoaderSupport {
     }
 
     object consts {
-      val rorSection: NonEmptyString = NonEmptyString.unsafeFrom("readonlyrest")
-      val settingsSection: NonEmptyString = NonEmptyString.unsafeFrom("settings")
-      val indexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("index_name")
-      val filePathKey: NonEmptyString = NonEmptyString.unsafeFrom("file_path")
-      val maxSizeKey: NonEmptyString = NonEmptyString.unsafeFrom("max_size")
+      val rorSection: NonEmptyString = nes("readonlyrest")
+      val settingsSection: NonEmptyString = nes("settings")
+      val indexNameKey: NonEmptyString = nes("index_name")
+      val filePathKey: NonEmptyString = nes("file_path")
+      val maxSizeKey: NonEmptyString = nes("max_size")
     }
 
     object legacyConsts {
-      val settingsIndexNameKey: NonEmptyString = NonEmptyString.unsafeFrom("settings_index")
-      val filePath: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.file.path")
-      val maxSize: NonEmptyString = NonEmptyString.unsafeFrom("com.readonlyrest.settings.maxSize")
+      val settingsIndexNameKey: NonEmptyString = nes("settings_index")
+      val filePath: NonEmptyString = nes("com.readonlyrest.settings.file.path")
+      val maxSize: NonEmptyString = nes("com.readonlyrest.settings.maxSize")
     }
 
     def rorSettingsSourcesConfigDecoder(systemContext: SystemContext,

@@ -28,6 +28,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.utils.FromString
+import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
@@ -100,7 +101,7 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
         val yaml = "node.name: my-node"
 
         given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-          "readonlyrest.settings.index_name" -> ".ror-from-property"
+          nes("readonlyrest.settings.index_name") -> ".ror-from-property"
         ))
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
@@ -115,7 +116,7 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
             |""".stripMargin
 
         given PropertiesProvider = TestsPropertiesProvider.usingMap(Map(
-          "readonlyrest.settings.index_name" -> ".ror-from-property"
+          nes("readonlyrest.settings.index_name") -> ".ror-from-property"
         ))
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
@@ -134,7 +135,7 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
         given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "index_name")
 
-        loadWith[Option[String]](yaml, envVars = Map("ROR_INDEX_NAME" -> ".ror-env-index")) should be(Right(Some(".ror-env-index")))
+        loadWith[Option[String]](yaml, envVars = Map(nes("ROR_INDEX_NAME") -> ".ror-env-index")) should be(Right(Some(".ror-env-index")))
       }
       "fail when the environment variable is not defined" in {
         val yaml =
@@ -192,7 +193,7 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
       decoder = FromString.string
     )
 
-  private def loadWith[A: YamlLeafOrPropertyOrEnvDecoder](content: String, envVars: Map[String, String] = Map.empty): Either[LoadingError, A] = {
+  private def loadWith[A: YamlLeafOrPropertyOrEnvDecoder](content: String, envVars: Map[NonEmptyString, String] = Map.empty): Either[LoadingError, A] = {
     given SystemContext = new SystemContext(envVarsProvider = TestsEnvVarsProvider.usingMap(envVars))
     File
       .temporaryFile()

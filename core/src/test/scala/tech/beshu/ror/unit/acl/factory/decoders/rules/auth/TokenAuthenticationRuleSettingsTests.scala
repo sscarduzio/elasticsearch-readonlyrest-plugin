@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.{anyTokenDef, authorizationTokenFrom, headerNameFrom, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.{anyTokenDef, authorizationTokenFrom, headerNameFrom, nes, unsafeNes}
 
 class TokenAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[TokenAuthenticationRule] {
@@ -345,5 +345,5 @@ class TokenAuthenticationRuleSettingsTests
   }
 
   override implicit protected def envVarsProvider: EnvVarsProvider =
-    TestsEnvVarsProvider.usingMap(Map("SECRET_TOKEN" -> "abc123XYZ"))
+    TestsEnvVarsProvider.usingMap(Map(nes("SECRET_TOKEN") -> "abc123XYZ"))
 }

@@ -339,6 +339,6 @@ class JwtAuthorizationRuleSettingsTests
 
   override implicit protected def envVarsProvider: EnvVarsProvider =
     TestsEnvVarsProvider.usingMap(Map(
-      "SECRET_RSA" -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
+      nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
     ))
 }

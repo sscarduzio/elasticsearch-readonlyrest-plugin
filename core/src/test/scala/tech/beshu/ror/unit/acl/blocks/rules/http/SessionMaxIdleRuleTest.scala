@@ -35,7 +35,7 @@ import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
 import tech.beshu.ror.utils.DurationOps.*
-import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.TestsUtils.{given, *}
 
 import java.time.*
 import java.util.UUID

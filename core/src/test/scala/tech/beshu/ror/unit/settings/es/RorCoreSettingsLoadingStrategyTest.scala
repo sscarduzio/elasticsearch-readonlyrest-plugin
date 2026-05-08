@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.settings.es
 
+import eu.timepit.refined.types.all.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -28,7 +29,7 @@ import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSett
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.*
 import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
-import tech.beshu.ror.utils.TestsUtils.withEsEnv
+import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes, withEsEnv}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -80,7 +81,7 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           """
             |node.name: n1_it
             |""".stripMargin,
-          properties = Map("readonlyrest.force_load_from_file" -> "true")
+          properties = Map(nes("readonlyrest.force_load_from_file") -> "true")
         )
 
         result should be(Right(ForceLoadingFromFileSettings))
@@ -114,10 +115,10 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           |node.name: n1_it
           |""".stripMargin,
         properties = Map(
-          "readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval" -> "10s",
-          "readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count"    -> "3",
-          "readonlyrest.load_from_index.initial_loading_retry_strategy.initial_delay"     -> "2s",
-          "readonlyrest.load_from_index.poll_interval"                                    -> "30s"
+          nes("readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_interval") -> "10s",
+          nes("readonlyrest.load_from_index.initial_loading_retry_strategy.attempts_count") -> "3",
+          nes("readonlyrest.load_from_index.initial_loading_retry_strategy.initial_delay") -> "2s",
+          nes("readonlyrest.load_from_index.poll_interval") -> "30s"
         )
       )
 
@@ -150,7 +151,7 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           """
             |node.name: n1_it
             |""".stripMargin,
-          properties = Map("readonlyrest.load_from_index.poll_interval" -> "0s")
+          properties = Map(nes("readonlyrest.load_from_index.poll_interval") -> "0s")
         )
 
         result should be(Right(LoadFromIndexWithFileFallback(
@@ -165,7 +166,7 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           """
             |node.name: n1_it
             |""".stripMargin,
-          envVars = Map("ES_SETTING_READONLYREST_FORCE__LOAD__FROM__FILE" -> "true")
+          envVars = Map(nes("ES_SETTING_READONLYREST_FORCE__LOAD__FROM__FILE") -> "true")
         )
 
         result should be(Right(ForceLoadingFromFileSettings))
@@ -175,7 +176,7 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
           """
             |node.name: n1_it
             |""".stripMargin,
-          envVars = Map("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL" -> "30s")
+          envVars = Map(nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL") -> "30s")
         )
 
         result should be(Right(LoadFromIndexWithFileFallback(
@@ -189,10 +190,10 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
             |node.name: n1_it
             |""".stripMargin,
           envVars = Map(
-            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__INTERVAL" -> "10s",
-            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__COUNT"    -> "3",
-            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_INITIAL__DELAY"     -> "2s",
-            "ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL"                                       -> "30s"
+            nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__INTERVAL") -> "10s",
+            nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_ATTEMPTS__COUNT") -> "3",
+            nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_INITIAL__LOADING__RETRY__STRATEGY_INITIAL__DELAY") -> "2s",
+            nes("ES_SETTING_READONLYREST_LOAD__FROM__INDEX_POLL__INTERVAL") -> "30s"
           )
         )
 
@@ -209,10 +210,10 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
     "read retry settings from legacy JVM system properties" when {
       "all legacy properties are set" in {
         val properties = Map(
-          "com.readonlyrest.settings.refresh.interval"         -> "20s",
-          "com.readonlyrest.settings.loading.delay"            -> "3s",
-          "com.readonlyrest.settings.loading.attempts.interval" -> "7s",
-          "com.readonlyrest.settings.loading.attempts.count"   -> "10"
+          nes("com.readonlyrest.settings.refresh.interval") -> "20s",
+          nes("com.readonlyrest.settings.loading.delay") -> "3s",
+          nes("com.readonlyrest.settings.loading.attempts.interval") -> "7s",
+          nes("com.readonlyrest.settings.loading.attempts.count") -> "10"
         )
         val result = load(
           """
@@ -232,7 +233,7 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
         )))
       }
       "legacy refresh interval is given as integer seconds" in {
-        val properties = Map("com.readonlyrest.settings.refresh.interval" -> "15")
+        val properties = Map(nes("com.readonlyrest.settings.refresh.interval") -> "15")
         val result = load(
           """
             |node.name: n1_it
@@ -247,7 +248,7 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
         )))
       }
       "legacy refresh interval of 0 disables refresh" in {
-        val properties = Map("com.readonlyrest.settings.refresh.interval" -> "0")
+        val properties = Map(nes("com.readonlyrest.settings.refresh.interval") -> "0")
         val result = load(
           """
             |node.name: n1_it
@@ -320,11 +321,11 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
   )
 
   private def load(yaml: String,
-                   properties: Map[String, String] = Map.empty,
-                   envVars: Map[String, String] = Map.empty) = {
+                   properties: Map[NonEmptyString, String] = Map.empty,
+                   envVars: Map[NonEmptyString, String] = Map.empty) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
-      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
+      envVarsProvider = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(yaml) { (esEnv, _) =>
       RorCoreSettingsLoadingStrategy.load(esEnv).runSyncUnsafe()

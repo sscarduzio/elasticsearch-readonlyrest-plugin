@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.settings.es
 
 import better.files.File
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -29,7 +30,7 @@ import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.Malform
 import tech.beshu.ror.settings.es.RorSettingsSourcesConfig
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
-import tech.beshu.ror.utils.TestsUtils.withEsEnv
+import tech.beshu.ror.utils.TestsUtils.{unsafeNes, withEsEnv}
 
 class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
 
@@ -73,9 +74,9 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           |node.name: n1_it
           |""".stripMargin,
         properties = Map(
-          "readonlyrest.settings.index_name" -> ".my-ror-index",
-          "readonlyrest.settings.file_path"  -> "/custom/path/readonlyrest.yml",
-          "readonlyrest.settings.max_size"   -> "10 MB"
+          nes("readonlyrest.settings.index_name") -> ".my-ror-index",
+          nes("readonlyrest.settings.file_path")  -> "/custom/path/readonlyrest.yml",
+          nes("readonlyrest.settings.max_size")   -> "10 MB"
         )
       )
 
@@ -107,7 +108,7 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           """
             |node.name: n1_it
             |""".stripMargin,
-          properties = Map("readonlyrest.settings.index_name" -> ".my-ror-index")
+          properties = Map(nes("readonlyrest.settings.index_name") -> ".my-ror-index")
         )
 
         result should be(Right(RorSettingsSourcesConfig(
@@ -123,7 +124,7 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           """
             |node.name: n1_it
             |""".stripMargin,
-          properties = Map("readonlyrest.settings.file_path" -> "/my/path/readonlyrest.yml")
+          properties = Map(nes("readonlyrest.settings.file_path") -> "/my/path/readonlyrest.yml")
         )
 
         result should be(Right(RorSettingsSourcesConfig(
@@ -139,7 +140,7 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           """
             |node.name: n1_it
             |""".stripMargin,
-          properties = Map("readonlyrest.settings.max_size" -> "10 MB")
+          properties = Map(nes("readonlyrest.settings.max_size") -> "10 MB")
         )
 
         result should be(Right(RorSettingsSourcesConfig(
@@ -151,7 +152,7 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
     }
     "load file path from legacy JVM property" when {
       "com.readonlyrest.settings.file.path is set" in {
-        val properties = Map("com.readonlyrest.settings.file.path" -> "/legacy/path/readonlyrest.yml")
+        val properties = Map(nes("com.readonlyrest.settings.file.path") -> "/legacy/path/readonlyrest.yml")
         val (_, result) = load(
           """
             |node.name: n1_it
@@ -169,7 +170,7 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
     }
     "load max size from legacy JVM property" when {
       "com.readonlyrest.settings.maxSize is set" in {
-        val properties = Map("com.readonlyrest.settings.maxSize" -> "5 MB")
+        val properties = Map(nes("com.readonlyrest.settings.maxSize") -> "5 MB")
         val (configDir, result) = load(
           """
             |node.name: n1_it
@@ -191,9 +192,9 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           |node.name: n1_it
           |""".stripMargin,
         envVars = Map(
-          "ES_SETTING_READONLYREST_SETTINGS_INDEX__NAME" -> ".my-ror-index",
-          "ES_SETTING_READONLYREST_SETTINGS_FILE__PATH"  -> "/custom/path/readonlyrest.yml",
-          "ES_SETTING_READONLYREST_SETTINGS_MAX__SIZE"   -> "10 MB"
+          nes("ES_SETTING_READONLYREST_SETTINGS_INDEX__NAME") -> ".my-ror-index",
+          nes("ES_SETTING_READONLYREST_SETTINGS_FILE__PATH")  -> "/custom/path/readonlyrest.yml",
+          nes("ES_SETTING_READONLYREST_SETTINGS_MAX__SIZE")   -> "10 MB"
         )
       )
 
@@ -223,8 +224,8 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
   }
 
   private def load(yaml: String,
-                   properties: Map[String, String] = Map.empty,
-                   envVars: Map[String, String] = Map.empty): (File, Either[LoadingError, RorSettingsSourcesConfig]) = {
+                   properties: Map[NonEmptyString, String] = Map.empty,
+                   envVars: Map[NonEmptyString, String] = Map.empty): (File, Either[LoadingError, RorSettingsSourcesConfig]) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
       envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
