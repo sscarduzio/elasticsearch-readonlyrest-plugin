@@ -20,7 +20,9 @@ import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.language.{implicitConversions, postfixOps}
 
@@ -29,16 +31,27 @@ final case class EsConfigBasedRorSettings(settingsSource: RorSettingsSourcesConf
                                           ssl: Option[RorSslSettings],
                                           rorCoreSettingsLoadingStrategy: RorCoreSettingsLoadingStrategy)
 
-object EsConfigBasedRorSettings {
+object EsConfigBasedRorSettings extends RequestIdAwareLogging {
 
   def from(esEnv: EsEnv)
           (implicit systemContext: SystemContext): Task[Either[LoadingError, EsConfigBasedRorSettings]] = {
-    val result = for {
+    for {
+     _ <- Task.delay(noRequestIdLogger.info("Loading ROR node settings ..."))
+     result <- doLoad(esEnv).value
+     _ <- result match {
+       case Right(settings) => Task.delay(noRequestIdLogger.debug(s"Loaded ROR node settings:\n${settings.show}"))
+       case Left(_) => Task.unit
+     }
+    } yield result
+  }
+
+  private def doLoad(esEnv: EsEnv)
+                    (implicit systemContext: SystemContext) = {
+    for {
       settingsSource <- EitherT(RorSettingsSourcesConfig.from(esEnv))
       bootSettings <- EitherT(RorBootSettings.load(esEnv))
       sslSettings <- EitherT(RorSslSettings.load(esEnv, settingsSource.settingsFile))
       loadingRorCoreStrategy <- EitherT(RorCoreSettingsLoadingStrategy.load(esEnv))
     } yield EsConfigBasedRorSettings(settingsSource, bootSettings, sslSettings, loadingRorCoreStrategy)
-    result.value
   }
 }
