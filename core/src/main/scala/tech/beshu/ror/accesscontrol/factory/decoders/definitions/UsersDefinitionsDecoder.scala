@@ -53,6 +53,8 @@ object UsersDefinitionsDecoder {
 
   import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder.*
 
+  val usersKey = "users"
+
   def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
                authProxyDefinitions: Definitions[ProxyAuth],
@@ -94,7 +96,7 @@ object UsersDefinitionsDecoder {
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
     DefinitionsBaseDecoder
-      .instance[Id, UserDef]("users")
+      .instance[Id, UserDef](usersKey)
       .emapE(validate(globalSettings, _))
   }
 
@@ -244,7 +246,7 @@ object UsersDefinitionsDecoder {
       .validate(definitions)
       .leftMap { validationErrors =>
         val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
-        DefinitionsLevelCreationError(Message(s"The `users` definition is malformed: $cause"))
+        DefinitionsLevelCreationError(Message(s"The `$usersKey` definition is malformed: $cause"))
       }
       .as(definitions)
   }

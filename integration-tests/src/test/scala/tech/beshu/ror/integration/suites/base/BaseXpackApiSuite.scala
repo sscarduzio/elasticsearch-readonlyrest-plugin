@@ -1055,7 +1055,7 @@ trait BaseXpackApiSuite
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "wildcard is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "wildcard is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x, allEs9xAboveEs93x) in {
             val result = dev2EsqlManager.execute("""FROM book* | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
@@ -1080,6 +1080,15 @@ trait BaseXpackApiSuite
         "esql query is malformed" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
           val result = adminEsqlManager.execute("""FROM unescaped-index.name | LIMIT 100""")
           result should have statusCode 400
+        }
+      }
+      "return empty result (implicitly forbidden)" when {
+        "user doesn't have access to given index" when {
+          "wildcard is used" excludeES(allEs6x, allEs7x, allEs8x, allEs9xBelowEs94x) in {
+            val result = dev2EsqlManager.execute("""FROM book* | LIMIT 100""")
+            result should have statusCode 200
+            result.rows should be (empty)
+          }
         }
       }
     }

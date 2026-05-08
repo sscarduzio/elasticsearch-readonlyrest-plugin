@@ -273,6 +273,11 @@ object CirceOps {
     object FieldListResult {
       case object NoField extends FieldListResult[Nothing]
       final case class FieldListValue[T](list: List[T]) extends FieldListResult[T]
+
+      extension [T](result: FieldListResult[T])
+        def toOption: Option[List[T]] = result match
+          case FieldListResult.NoField => None
+          case FieldListResult.FieldListValue(list) => Some(list)
     }
   }
 

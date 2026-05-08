@@ -15,7 +15,9 @@ steps:
       $env:ROR_LIBS_STORE_ACCESS_KEY_SECRET = $env:VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
       Write-Host ">>> $env:ES_MODULE"
-      .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
+      $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE"
+      if ($env:ES_VERSION) { $gradleArgs += "-PesVersion=$env:ES_VERSION" }
+      .\gradlew @gradleArgs
       if ($LASTEXITCODE -ne 0) {
         Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
           Get-Content $_.FullName

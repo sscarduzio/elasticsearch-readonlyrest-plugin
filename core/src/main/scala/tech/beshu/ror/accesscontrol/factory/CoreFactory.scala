@@ -44,7 +44,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
@@ -367,18 +367,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           }
           DecoderHelpers
             .decodeFieldList[BlockDecodingResult, Task](Attributes.acl, RulesLevelCreationError.apply)
-            .emapE {
-              case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl.show} section found")))
-              case FieldListValue(blocks) =>
-                NonEmptyList.fromList(blocks) match {
-                  case None =>
-                    Left(BlocksLevelCreationError(Message(s"${Attributes.acl.show} defined, but no block found")))
-                  case Some(neBlocks) =>
-                    neBlocks.map(_.block.name).toList.findDuplicates match {
-                      case Nil => Right(neBlocks)
-                      case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.show}")))
-                    }
-                }
+            .emapE { result =>
+              AclValidator
+                .validate(result.toOption, userDefs)
+                .leftMap(msgs => BlocksLevelCreationError(Message(msgs.toList.mkString("; "))))
+                .toEither
             }
         }
       } yield {
@@ -478,9 +471,9 @@ object RawRorSettingsBasedCoreFactory {
     }
   }
 
-  private case class BlockDecodingResult(block: Block,
-                                         localUsers: LocalUsers,
-                                         impersonationWarnings: ImpersonationWarningsReader)
+  private[factory] case class BlockDecodingResult(block: Block,
+                                                  localUsers: LocalUsers,
+                                                  impersonationWarnings: ImpersonationWarningsReader)
 
   private sealed trait RuleDecodingResult
   private object RuleDecodingResult {
@@ -489,7 +482,7 @@ object RawRorSettingsBasedCoreFactory {
     case object Skipped extends RuleDecodingResult
   }
 
-  private object Attributes {
+  private[factory] object Attributes {
     val rorSectionName = "readonlyrest"
     val acl = "access_control_rules"
 
