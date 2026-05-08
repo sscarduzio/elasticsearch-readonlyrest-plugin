@@ -152,6 +152,24 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(Some(true)))
     }
+    "prefer nested YAML over flat dot syntax when both are present" in {
+      val json = parse(
+        """
+          |readonlyrest.ssl.enable: false
+          |readonlyrest:
+          |  ssl:
+          |    enable: true
+          |""".stripMargin
+      )
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
   }
 
   "createRequiredValueDecoder" should {

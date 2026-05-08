@@ -108,6 +108,29 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
           assertSettingsNoPresent(settings)
         }
+        "flat dot-notation audit.enabled key inside readonlyrest block" in {
+          val settings = rorSettingsWithAuditUnsafe(
+            "audit.enabled: false"
+          )
+
+          assertSettingsNoPresent(settings)
+        }
+      }
+    }
+    "audit settings contain conflicting keys" should {
+      "be rejected when both nested 'audit: enabled' block and flat 'audit.enabled' key are present inside readonlyrest" in {
+        val settings = rorSettingsWithAuditUnsafe(
+          """
+            |  audit:
+            |    enabled: true
+            |  audit.enabled: true
+          """.stripMargin
+        )
+
+        assertInvalidSettings(
+          settings,
+          expectedErrorMessage = "Duplicated audit 'enabled' setting: use either the nested form 'audit: {enabled: ...}' or the flat form 'audit.enabled', not both"
+        )
       }
     }
     "audit is enabled" should {
@@ -139,6 +162,17 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |  audit:
                   |    enabled: true
                 """.stripMargin
+              )
+
+              assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "flat dot-notation audit.enabled key inside readonlyrest block" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                "audit.enabled: true"
               )
 
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
