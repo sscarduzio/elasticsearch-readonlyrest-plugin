@@ -54,14 +54,6 @@ import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
 
-  private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
-    implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, defaultTestEsNodeSettings)
-    new RawRorSettingsBasedCoreFactory(esEnv)
-  }
-
-  private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-
   "Audit settings" when {
     "audit is not configured" should {
       "be disabled by default" in {
@@ -2002,6 +1994,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
+  private lazy val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
+
+  private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
+    implicit val systemContext: SystemContext = SystemContext.default
+    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, defaultTestEsNodeSettings)
+    new RawRorSettingsBasedCoreFactory(esEnv)
+  }
+
   private def rorSettingsWithAuditUnsafe(auditSection: String) = {
     val rawSettings =
       s"""
@@ -2044,7 +2044,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       settings.auditSinks should be(expectedAuditSinks)
     }
   }
-
 
   private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
                                                                                       expectedIndexName: NonEmptyString,
@@ -2198,7 +2197,8 @@ private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAud
 }
 
 private class DummyAuditRequestContext(override val loggedInUserName: Option[String] = Some("logged_user"),
-                                       override val attemptedUserName: Option[String] = Some("basic auth user")) extends AuditRequestContext {
+                                       override val attemptedUserName: Option[String] = Some("basic auth user"))
+  extends AuditRequestContext {
   override def timestamp: Instant = Instant.now().minusSeconds(5)
 
   override def id: String = "trace_id_123"

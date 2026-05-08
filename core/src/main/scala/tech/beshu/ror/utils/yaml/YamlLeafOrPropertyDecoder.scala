@@ -166,8 +166,8 @@ object JsonPathOps {
 
   def focusAt(json: Json, path: NonEmptyList[NonEmptyString]): Option[Json] = {
     val cursor = json.hcursor
-    cursor.downField(pathAsNonEmptyString(path).value).focus
-      .orElse(path.foldLeft[ACursor](cursor)((c, segment) => c.downField(segment.value)).focus)
+    path.foldLeft[ACursor](cursor)((c, segment) => c.downField(segment.value)).focus
+      .orElse(cursor.downField(pathAsNonEmptyString(path).value).focus)
   }
 
   def existsAt(json: Json, path: NonEmptyList[NonEmptyString]): Boolean =
