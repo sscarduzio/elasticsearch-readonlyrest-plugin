@@ -68,6 +68,21 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
         settingsMaxSize = Megabytes(10)
       )))
     }
+    "load all settings from elasticsearch config using flat dot syntax" in {
+      val (_, result) = load(
+        """
+          |readonlyrest.settings.index_name: .my-ror-index
+          |readonlyrest.settings.file_path: /custom/path/readonlyrest.yml
+          |readonlyrest.settings.max_size: 10 MB
+          |""".stripMargin
+      )
+
+      result should be(Right(RorSettingsSourcesConfig(
+        settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
+        settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
+        settingsMaxSize = Megabytes(10)
+      )))
+    }
     "load all settings from JVM properties" in {
       val (_, result) = load(
         """

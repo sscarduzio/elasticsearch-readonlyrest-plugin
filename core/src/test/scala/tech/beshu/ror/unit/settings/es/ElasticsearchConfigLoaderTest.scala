@@ -75,6 +75,13 @@ class ElasticsearchConfigLoaderTest extends AnyWordSpec with Inside {
 
         loadWith[Option[String]](yaml) should be(Right(Some("/etc/ror/readonlyrest.yml")))
       }
+      "return the value when the path is expressed using flat dot syntax" in {
+        val yaml = "readonlyrest.settings.file_path: /etc/ror/readonlyrest.yml"
+
+        given YamlLeafOrPropertyOrEnvDecoder[Option[String]] = optionalAt("readonlyrest", "settings", "file_path")
+
+        loadWith[Option[String]](yaml) should be(Right(Some("/etc/ror/readonlyrest.yml")))
+      }
       "return None when the path is absent" in {
         val yaml = "node.name: my-node"
 

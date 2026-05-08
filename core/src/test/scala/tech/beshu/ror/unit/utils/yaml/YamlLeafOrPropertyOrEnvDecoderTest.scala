@@ -141,6 +141,35 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(Some(true)))
     }
+    "decode a value from YAML using flat dot syntax" in {
+      val json = parse("readonlyrest.ssl.enable: true")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
+    "prefer nested YAML over flat dot syntax when both are present" in {
+      val json = parse(
+        """
+          |readonlyrest:
+          |  ssl:
+          |    enable: true
+          |readonlyrest.ssl.enable: false
+          |""".stripMargin
+      )
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+
+      decoder.decode(json) should be(Right(Some(true)))
+    }
   }
 
   "createRequiredValueDecoder" should {
@@ -236,6 +265,17 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       )
 
       decoder.decode(json) should be(Right("from-property.jks"))
+    }
+    "decode a value from YAML using flat dot syntax" in {
+      val json = parse("readonlyrest.ssl.keystore_file: ror.jks")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val decoder = YamlLeafOrPropertyOrEnvDecoder.createRequiredValueDecoder(
+        path = path("readonlyrest", "ssl", "keystore_file"),
+        decoder = FromString.string
+      )
+
+      decoder.decode(json) should be(Right("ror.jks"))
     }
   }
 
@@ -469,6 +509,18 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
       val decoder = YamlLeafOrPropertyOrEnvDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
 
       decoder.decode(json) should be(Right(None))
+    }
+    "evaluate the inner decoder when section is present in YAML using flat dot syntax" in {
+      val json = parse("readonlyrest.ssl.enable: true")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      val inner = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+      val decoder = YamlLeafOrPropertyOrEnvDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
+
+      decoder.decode(json) should be(Right(Some(true)))
     }
   }
 

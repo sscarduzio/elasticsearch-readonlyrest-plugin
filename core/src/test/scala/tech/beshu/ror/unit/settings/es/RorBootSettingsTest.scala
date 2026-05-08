@@ -46,6 +46,19 @@ class RorBootSettingsTest
           rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`403`),
         )))
       }
+      "boot settings uses flat dot syntax" in {
+        val settings = load(
+          """
+            |readonlyrest.not_started_response_code: 503
+            |readonlyrest.failed_to_start_response_code: 503
+            |""".stripMargin
+        )
+
+        settings should be(Right(RorBootSettings(
+          rorNotStartedResponse = RorNotStartedResponse(RorNotStartedResponse.HttpCode.`503`),
+          rorFailedToStartResponse = RorFailedToStartResponse(RorFailedToStartResponse.HttpCode.`503`),
+        )))
+      }
       "boot settings contains failed to start response code" in {
         val settings = load(
           """

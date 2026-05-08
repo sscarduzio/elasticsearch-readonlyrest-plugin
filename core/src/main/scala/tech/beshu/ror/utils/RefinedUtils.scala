@@ -42,7 +42,7 @@ object RefinedUtils {
   }
 
   inline def nonNegativeInt(inline i: Int): Refined[Int, NonNegative] = {
-    inline if (i > 0) Refined.unsafeApply(i) else error("Int is not non-negative")
+    inline if (i >= 0) Refined.unsafeApply(i) else error("Int is not non-negative")
   }
 
   inline def positiveFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): PositiveFiniteDuration = {
@@ -50,7 +50,7 @@ object RefinedUtils {
   }
 
   inline def nonNegativeFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): NonNegativeFiniteDuration = {
-    inline if (length > 0) Duration(length, timeUnit).toRefinedNonNegativeUnsafe else error("FiniteDuration is not non-negative")
+    inline if (length >= 0) Duration(length, timeUnit).toRefinedNonNegativeUnsafe else error("FiniteDuration is not non-negative")
   }
 
   def positiveDecoder[T: Decoder : Show](valueToLong: T => Long): Decoder[T Refined Positive] =

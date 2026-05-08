@@ -76,6 +76,11 @@ class RorCoreSettingsLoadingStrategyTest extends AnyWordSpec with Inside {
 
         result should be(Right(ForceLoadingFromFileSettings))
       }
+      "force_load_from_file is set to true using flat dot syntax" in {
+        val result = load("readonlyrest.force_load_from_file: true")
+
+        result should be(Right(ForceLoadingFromFileSettings))
+      }
       "force_load_from_file is set to true via JVM property" in {
         val result = load(
           """
