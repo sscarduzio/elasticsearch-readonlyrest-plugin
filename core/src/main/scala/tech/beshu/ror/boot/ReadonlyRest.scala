@@ -39,7 +39,7 @@ import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, TestRorSettings}
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 import java.time.Instant
 

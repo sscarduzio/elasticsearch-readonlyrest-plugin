@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
                                         impersonatorsDef: Option[Definitions[ImpersonatorDef]],

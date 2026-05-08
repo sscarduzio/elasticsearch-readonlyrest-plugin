@@ -27,11 +27,11 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
-import tech.beshu.ror.utils.DurationOps.{NonNegativeFiniteDuration, PositiveFiniteDuration, RefinedDurationOps}
 import tech.beshu.ror.utils.FromString
-import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Failure, Success, Try}
@@ -85,10 +85,10 @@ object RorCoreSettingsLoadingStrategy extends ElasticsearchConfigLoaderSupport {
   private object decoders {
 
     object defaults {
-      val coreRefreshSettings: CoreRefreshSettings = CoreRefreshSettings.Enabled((5 second).toRefinedPositiveUnsafe)
-      val loadingDelay: LoadingDelay = LoadingDelay((5 second).toRefinedNonNegativeUnsafe)
-      val loadingAttemptsCount: LoadingAttemptsCount = LoadingAttemptsCount(Refined.unsafeApply(5))
-      val loadingAttemptsInterval = LoadingAttemptsInterval((5 second).toRefinedNonNegativeUnsafe)
+      val coreRefreshSettings: CoreRefreshSettings = CoreRefreshSettings.Enabled(positiveFiniteDuration(5, TimeUnit.SECONDS))
+      val loadingDelay: LoadingDelay = LoadingDelay(nonNegativeFiniteDuration(5, TimeUnit.SECONDS))
+      val loadingAttemptsCount: LoadingAttemptsCount = LoadingAttemptsCount(nonNegativeInt(5))
+      val loadingAttemptsInterval = LoadingAttemptsInterval(nonNegativeFiniteDuration(5, TimeUnit.SECONDS))
     }
 
     private object legacyConsts {

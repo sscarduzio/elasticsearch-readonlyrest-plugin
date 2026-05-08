@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.utils
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.Megabytes
-import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.FromString
 
 import scala.concurrent.duration.*

@@ -16,51 +16,24 @@
  */
 package tech.beshu.ror.utils
 
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.{NonNegative, Positive}
-
 import java.util.concurrent.TimeUnit as JTimeUnit
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Duration
 
 object DurationOps {
 
-  type PositiveFiniteDuration = FiniteDuration Refined Positive
-  type NonNegativeFiniteDuration = FiniteDuration Refined NonNegative
-
-  implicit class RefinedDurationOps(val duration: Duration) extends AnyVal {
-    def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {
-      case v: FiniteDuration if v.toMillis > 0 =>
-        Right(Refined.unsafeApply(v))
-      case _ =>
-        Left(s"Cannot map '${duration.toString}' to finite duration.")
-    }
-
-    def toRefinedPositiveUnsafe: PositiveFiniteDuration =
-      toRefinedPositive.fold(err => throw new IllegalArgumentException(err), identity)
-
-    def toRefineNonNegative: Either[String, NonNegativeFiniteDuration] = duration match {
-      case v: FiniteDuration if v.toMillis >= 0 =>
-        Right(Refined.unsafeApply(v))
-      case _ =>
-        Left(s"Cannot map '${duration.toString}' to finite duration.")
-    }
-
-    def toRefinedNonNegativeUnsafe: NonNegativeFiniteDuration =
-      toRefineNonNegative.fold(err => throw new IllegalArgumentException(err), identity)
-
+  extension (duration: Duration) {
     def inShortFormat: String = {
       val d = duration.toCoarsest
       val unit = d.unit match {
-        case JTimeUnit.DAYS => "d"
-        case JTimeUnit.HOURS => "h"
-        case JTimeUnit.MINUTES => "m"
-        case JTimeUnit.SECONDS => "s"
+        case JTimeUnit.DAYS         => "d"
+        case JTimeUnit.HOURS        => "h"
+        case JTimeUnit.MINUTES      => "m"
+        case JTimeUnit.SECONDS      => "s"
         case JTimeUnit.MILLISECONDS => "ms"
         case JTimeUnit.MICROSECONDS => "μs"
-        case JTimeUnit.NANOSECONDS => "ns"
+        case JTimeUnit.NANOSECONDS  => "ns"
       }
       s"${d.length}$unit"
     }
   }
-
 }

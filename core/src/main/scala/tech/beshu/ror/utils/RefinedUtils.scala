@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 
 import cats.Show
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.numeric.{NonNegative, Positive}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.*
@@ -27,9 +27,12 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 
 import scala.compiletime.error
-import scala.concurrent.duration.{FiniteDuration, TimeUnit}
+import scala.concurrent.duration.{Duration, FiniteDuration, TimeUnit}
 
 object RefinedUtils {
+  type PositiveFiniteDuration = FiniteDuration Refined Positive
+  type NonNegativeFiniteDuration = FiniteDuration Refined NonNegative
+
   inline def nes(inline str: String): NonEmptyString = {
     inline if (str == "") error("NonEmptyString creation error, empty String") else NonEmptyString.unsafeFrom(str)
   }
@@ -38,8 +41,16 @@ object RefinedUtils {
     inline if (i > 0) Refined.unsafeApply(i) else error("Int is not positive")
   }
 
-  inline def positiveFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): Refined[FiniteDuration, Positive] = {
-    inline if (length > 0) Refined.unsafeApply(FiniteDuration.apply(length, timeUnit)) else error("FiniteDuration is not positive")
+  inline def nonNegativeInt(inline i: Int): Refined[Int, NonNegative] = {
+    inline if (i > 0) Refined.unsafeApply(i) else error("Int is not non-negative")
+  }
+
+  inline def positiveFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): PositiveFiniteDuration = {
+    inline if (length > 0) Duration(length, timeUnit).toRefinedPositiveUnsafe else error("FiniteDuration is not positive")
+  }
+
+  inline def nonNegativeFiniteDuration(inline length: Long, inline timeUnit: TimeUnit): NonNegativeFiniteDuration = {
+    inline if (length > 0) Duration(length, timeUnit).toRefinedNonNegativeUnsafe else error("FiniteDuration is not non-negative")
   }
 
   def positiveDecoder[T: Decoder : Show](valueToLong: T => Long): Decoder[T Refined Positive] =
@@ -53,4 +64,26 @@ object RefinedUtils {
         }
       }
       .decoder
+
+  extension (duration: Duration) {
+    def toRefinedPositive: Either[String, PositiveFiniteDuration] = duration match {
+      case v: FiniteDuration if v.toMillis > 0 =>
+        Right(Refined.unsafeApply(v))
+      case _ =>
+        Left(s"Cannot map '${duration.toString}' to finite duration.")
+    }
+
+    def toRefinedPositiveUnsafe: PositiveFiniteDuration =
+      duration.toRefinedPositive.fold(err => throw new IllegalArgumentException(err), identity)
+
+    def toRefineNonNegative: Either[String, NonNegativeFiniteDuration] = duration match {
+      case v: FiniteDuration if v.toMillis >= 0 =>
+        Right(Refined.unsafeApply(v))
+      case _ =>
+        Left(s"Cannot map '${duration.toString}' to finite duration.")
+    }
+
+    def toRefinedNonNegativeUnsafe: NonNegativeFiniteDuration =
+      duration.toRefineNonNegative.fold(err => throw new IllegalArgumentException(err), identity)
+  }
 }

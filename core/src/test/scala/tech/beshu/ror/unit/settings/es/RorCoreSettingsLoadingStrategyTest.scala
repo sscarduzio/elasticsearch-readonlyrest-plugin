@@ -27,7 +27,7 @@ import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.*
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings.{Disabled, Enabled}
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.*
-import tech.beshu.ror.utils.DurationOps.RefinedDurationOps
+import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes, withEsEnv}
 

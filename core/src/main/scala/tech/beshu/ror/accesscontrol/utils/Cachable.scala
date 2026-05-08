@@ -21,7 +21,7 @@ import monix.catnap.Semaphore
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.annotation.nowarn

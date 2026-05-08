@@ -33,7 +33,8 @@ class RawRorSettingsYamlParser(maxSize: Information) {
 
   def fromString(content: String): Either[ParsingRorSettingsError, RawRorSettings] = {
     handleParseResult(yamlParser.parse(content))
-      .map(json => RawRorSettings(YamlOps.jsonWithOneLinerKeysToRegularJson(json), content))
+      .map(YamlOps.jsonWithOneLinerKeysToRegularJson)
+      .map(RawRorSettings(_, content))
   }
 
   private def handleParseResult(result: Either[ParsingFailure, Json]) = {
