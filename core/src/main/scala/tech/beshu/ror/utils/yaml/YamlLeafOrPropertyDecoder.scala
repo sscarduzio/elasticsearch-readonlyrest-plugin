@@ -60,10 +60,9 @@ object YamlLeafOrPropertyOrEnvDecoder {
                            (implicit propertiesProvider: PropertiesProvider,
                             envVarsProvider: EnvVarsProvider): YamlLeafOrPropertyOrEnvDecoder[Option[T]] =
     json => {
-      val inYaml       = JsonPathOps.focusAt(json, sectionPath).exists(j => !j.isNull)
-      val inProperties = propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsNonEmptyString(sectionPath).value + ".")
-      val envPrefix    = JsonPathOps.pathPrefixToEnvVarPrefix(sectionPath)
-      val inEnv        = envVarsProvider.hasEnvMatching(k => k.startsWith(envPrefix) && (k.length == envPrefix.length || k.charAt(envPrefix.length) != '_'))
+      lazy val inYaml       = doesSectionExistIn(json, sectionPath)
+      lazy val inProperties = doesSectionExistIn(propertiesProvider, sectionPath)
+      lazy val inEnv        = doesSectionExistIn(envVarsProvider, sectionPath)
       if (inYaml || inProperties || inEnv)
         inner.decode(json)
       else
@@ -92,6 +91,21 @@ object YamlLeafOrPropertyOrEnvDecoder {
 
   def pure[T](value: T): YamlLeafOrPropertyOrEnvDecoder[T] =
     _ => Right(value)
+
+  private def doesSectionExistIn(json: Json, sectionPath: NonEmptyList[NonEmptyString]) = {
+    JsonPathOps.focusAt(json, sectionPath).exists(j => !j.isNull)
+  }
+
+  private def doesSectionExistIn(propertiesProvider: PropertiesProvider,
+                                 sectionPath: NonEmptyList[NonEmptyString]) = {
+    propertiesProvider.hasPropertyWithPrefix(JsonPathOps.pathAsNonEmptyString(sectionPath).value + ".")
+  }
+
+  private def doesSectionExistIn(envVarsProvider: EnvVarsProvider,
+                                 sectionPath: NonEmptyList[NonEmptyString]) = {
+    val envPrefix = JsonPathOps.pathPrefixToEnvVarPrefix(sectionPath)
+    envVarsProvider.hasEnvMatching(k => k.startsWith(envPrefix) && (k.charAt(envPrefix.length) != '_'))
+  }
 
   implicit def apply[T](path: NonEmptyList[NonEmptyString])
                        (implicit valueCreator: FromString[T],

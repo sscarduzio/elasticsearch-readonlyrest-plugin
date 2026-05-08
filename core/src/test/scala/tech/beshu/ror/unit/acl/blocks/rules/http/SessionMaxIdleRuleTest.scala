@@ -34,11 +34,12 @@ import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
-import tech.beshu.ror.utils.DurationOps.*
-import tech.beshu.ror.utils.TestsUtils.{given, *}
+import tech.beshu.ror.utils.RefinedUtils.{PositiveFiniteDuration, positiveFiniteDuration}
+import tech.beshu.ror.utils.TestsUtils.*
 
 import java.time.*
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -50,7 +51,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
         implicit val _clock: Clock = fixedClock
         "ror cookie is not set" in {
           assertRule(
-            sessionMaxIdle = positive(10 minutes),
+            sessionMaxIdle = positiveFiniteDuration(10, TimeUnit.MINUTES),
             setRawCookie = rorSessionCookie.forUser1,
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             isMatched = true
@@ -59,7 +60,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
         "ror cookie is set, is valid and is not expired" when {
           "only this cookie is present" in {
             assertRule(
-              sessionMaxIdle = positive(5 minutes),
+              sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
               rawCookie = rorSessionCookie.forUser1,
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -68,7 +69,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
           }
           "there are another cookies" in {
             assertRule(
-              sessionMaxIdle = positive(5 minutes),
+              sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
               rawCookie = s"cookie1=test;${rorSessionCookie.forUser1};last_cookie=123",
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -81,7 +82,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
     "not match" when {
       "user is not logged" in {
         implicit val _clock: Clock = fixedClock
-        val rule = new SessionMaxIdleRule(Settings(positive(1 minute)), CaseSensitivity.Enabled)
+        val rule = new SessionMaxIdleRule(Settings(positiveFiniteDuration(1, TimeUnit.MINUTES)), CaseSensitivity.Enabled)
         val requestContext = mock[RequestContext]
         (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
         val blockContext = UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
@@ -90,7 +91,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
       "ror cookie is expired" in {
         implicit val _clock: Clock = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -100,7 +101,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
       "ror cookie of different user" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -110,7 +111,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
       "ror cookie signature is wrong" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.wrongSignature,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -120,7 +121,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
       "ror cookie is malformed" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.malformed,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -169,8 +170,6 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAs
       result should be (Denied(NotAuthorized))
     }
   }
-
-  private def positive(duration: FiniteDuration) = duration.toRefinedPositiveUnsafe
 
 }
 
