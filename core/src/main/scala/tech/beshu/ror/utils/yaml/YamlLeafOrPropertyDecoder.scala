@@ -104,8 +104,12 @@ object YamlLeafOrPropertyOrEnvDecoder {
   private def doesSectionExistIn(envVarsProvider: EnvVarsProvider,
                                  sectionPath: NonEmptyList[NonEmptyString]) = {
     val envPrefix = JsonPathOps.pathPrefixToEnvVarPrefix(sectionPath)
-    envVarsProvider.hasEnvMatching(k => k.startsWith(envPrefix) && (k.charAt(envPrefix.length) != '_'))
+    envVarsProvider.hasEnvMatching { envName =>
+      def startsNewSegment(suffix: String): Boolean = suffix.nonEmpty && !suffix.startsWith("_")
+      envName.startsWith(envPrefix) && startsNewSegment(envName.drop(envPrefix.length))
+    }
   }
+
 
   implicit def apply[T](path: NonEmptyList[NonEmptyString])
                        (implicit valueCreator: FromString[T],

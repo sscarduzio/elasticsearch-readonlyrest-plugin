@@ -492,6 +492,23 @@ class YamlLeafOrPropertyOrEnvDecoderTest extends AnyWordSpec {
 
       decoder.decode(json) should be(Right(None))
     }
+    "not falsely detect section presence when env var name exactly equals the section prefix" in {
+      val json = parse("node.name: n1")
+
+      given PropertiesProvider = TestsPropertiesProvider.default
+      // ES_SETTING_READONLYREST_SSL_ has the same length as the section prefix for readonlyrest.ssl
+      // so k.charAt(envPrefix.length) would throw StringIndexOutOfBoundsException without the length guard
+      given EnvVarsProvider = TestsEnvVarsProvider.usingMap(Map(
+        nes("ES_SETTING_READONLYREST_SSL_") -> "true"
+      ))
+      val inner = YamlLeafOrPropertyOrEnvDecoder.createOptionalValueDecoder(
+        path = path("readonlyrest", "ssl", "enable"),
+        decoder = FromString.boolean
+      )
+      val decoder = YamlLeafOrPropertyOrEnvDecoder.whenSectionPresent(path("readonlyrest", "ssl"))(inner)
+
+      decoder.decode(json) should be(Right(None))
+    }
   }
 
   "createLegacyPropertyDecoder" should {
