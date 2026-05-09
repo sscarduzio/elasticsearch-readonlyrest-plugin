@@ -492,7 +492,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     mockRequestContext(UserMetadataApiVersion.V2(licenseType))
   }
 
-  private def mockRequestContext(apiVersion: UserMetadataApiVersion) = {
+  private def mockRequestContext(details: UserMetadataRequestContext.Details) = {
     val rc = mock[MockUserMetadataRequestContext]
     (rc.initialBlockContext _)
       .expects(*)

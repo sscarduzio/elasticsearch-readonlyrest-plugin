@@ -37,7 +37,6 @@ import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.{Enterprise, Free, 
 import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps.*
@@ -95,10 +94,10 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
             val (executionResults, blocksHistory) = blockResults.unzip
             val history = History(blocksHistory.toVector)
             val matchedResults = executionResults.view.onlyMatched()
-            val handlingResult = context.apiVersion match {
-              case UserMetadataApiVersion.V2(Free | Pro | Enterprise(false)) =>
+            val handlingResult = context.details.licenseType match {
+              case Free | Pro | Enterprise(false) =>
                 determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
-              case UserMetadataApiVersion.V2(Enterprise(true)) =>
+              case Enterprise(true) =>
                 determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
             }
             handlingResult -> history

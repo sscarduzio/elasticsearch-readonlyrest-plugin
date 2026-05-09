@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataResponse, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.{CorrelationId, RorKbnLicenseType}
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.ForbiddenBlockMatch
@@ -84,9 +83,8 @@ class UserMetadataRequestHandler(engine: Engine,
   private def onAllow(requestContext: UserMetadataRequestContext,
                       userMetadata: UserMetadata): Unit = {
     logRequestProcessingTime(requestContext)
-    val UserMetadataApiVersion.V2(licenseType) = requestContext.apiVersion
     esContext.listener.onResponse(
-      new RRMetadataResponse(licenseType, userMetadata, esContext.correlationId.value)
+      new RRMetadataResponse(requestContext.details.licenseType, userMetadata, esContext.correlationId.value)
     )
   }
 
