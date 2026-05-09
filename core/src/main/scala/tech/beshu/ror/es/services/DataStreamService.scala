@@ -25,7 +25,7 @@ import tech.beshu.ror.es.services.DataStreamService.*
 import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.retryBackoffEither
 
 import scala.concurrent.duration.*

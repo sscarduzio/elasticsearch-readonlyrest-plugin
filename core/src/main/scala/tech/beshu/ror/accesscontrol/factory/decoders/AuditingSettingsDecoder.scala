@@ -44,7 +44,6 @@ import tech.beshu.ror.constants.EsFeatureVersions
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.yaml.YamlKeyDecoder
 
 import scala.annotation.nowarn
 import scala.util.{Failure, Success, Try}
@@ -58,18 +57,26 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     } yield auditSettings.orElse(deprecatedAuditSettings)
   }
 
-  private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
-    for {
-      isAuditEnabled <- YamlKeyDecoder[Boolean](
-        path = NonEmptyList.of("audit", "enabled"),
-        default = false
-      ).apply(c)
-      result <- if (isAuditEnabled) {
-        decodeAuditSettings(esEnv)(c).map(Some.apply)
-      } else {
-        Right(None)
-      }
-    } yield result
+  private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] =
+    Decoder.instance(c => readAuditEnabled(c).flatMap {
+      case Some(true) => decodeAuditSettings(esEnv)(c).map(Some.apply)
+      case _          => Right(None)
+    })
+
+  private def readAuditEnabled(c: HCursor): Decoder.Result[Option[Boolean]] = {
+    val nested = c.downField("audit").downField("enabled")
+    val flat   = c.downField("audit.enabled")
+    (nested.focus.isDefined, flat.focus.isDefined) match {
+      case (true, true)  =>
+        Left(DecodingFailure(
+          message = AclCreationErrorCoders.stringify(auditSettingsError(
+            "Duplicated audit 'enabled' setting: use either the nested form 'audit: {enabled: ...}' or the flat form 'audit.enabled', not both"
+          )),
+          ops = Nil
+        ))
+      case (true, false) => nested.as[Option[Boolean]]
+      case (false, _)    => flat.as[Option[Boolean]]
+    }
   }
 
   private def decodeAuditSettings(esEnv: EsEnv) = {

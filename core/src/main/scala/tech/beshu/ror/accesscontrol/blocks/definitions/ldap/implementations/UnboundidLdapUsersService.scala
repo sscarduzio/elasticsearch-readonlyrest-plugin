@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ops.logs.*
 import tech.beshu.ror.accesscontrol.domain.{RequestId, User}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RefinedUtils.*
 
 class UnboundidLdapUsersService private(override val id: LdapService#Id,

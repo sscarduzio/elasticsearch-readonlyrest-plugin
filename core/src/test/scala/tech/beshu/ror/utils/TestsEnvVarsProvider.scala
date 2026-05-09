@@ -17,18 +17,20 @@
 package tech.beshu.ror.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.providers.PropertiesProvider
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.providers.EnvVarsProvider
 
-class TestsPropertiesProvider(propertiesMap: Map[PropertiesProvider.PropName, String]) extends PropertiesProvider {
-  override def getProperty(name: PropertiesProvider.PropName): Option[String] = propertiesMap.get(name)
+class TestsEnvVarsProvider(envMap: Map[EnvVarName, String]) extends EnvVarsProvider {
+  override def getEnv(name: EnvVarName): Option[String] = envMap.get(name)
 
-  override def hasPropertyWithPrefix(prefix: String): Boolean = {
-    propertiesMap.keys.exists(_.value.value.startsWith(prefix))
-  }
+  override def hasEnvMatching(predicate: String => Boolean): Boolean =
+    envMap.keys.exists(k => predicate(k.value.value))
 }
-object TestsPropertiesProvider {
-  def default: TestsPropertiesProvider = new TestsPropertiesProvider(Map.empty)
-  def usingMap(map: Map[NonEmptyString, String]) = new TestsPropertiesProvider(
-    map.map { case (key, value) => (PropertiesProvider.PropName(key), value) }
+
+object TestsEnvVarsProvider {
+  def default: TestsEnvVarsProvider = new TestsEnvVarsProvider(Map.empty)
+
+  def usingMap(map: Map[NonEmptyString, String]): TestsEnvVarsProvider = new TestsEnvVarsProvider(
+    map.map { case (key, value) => (EnvVarName(key), value) }
   )
 }
