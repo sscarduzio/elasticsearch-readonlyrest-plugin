@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.request
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, Header, RorKbnLicenseType, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{Header, RorKbnLicenseType}
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersionCreationError.{NoRequestedHeaderValue, RorKbnLicenseTypeInvalidValue}
 
@@ -29,12 +29,7 @@ trait UserMetadataRequestContext extends RequestContext {
 
   def apiVersion: UserMetadataApiVersion
 
-  override def currentGroupId: Option[GroupIdLike.GroupId] = {
-    apiVersion match {
-      case UserMetadataApiVersion.V1 => super.currentGroupId
-      case UserMetadataApiVersion.V2(_) => None
-    }
-  }
+  override def currentGroupId = None
 
 }
 object UserMetadataRequestContext {
@@ -43,18 +38,13 @@ object UserMetadataRequestContext {
 
   sealed trait UserMetadataApiVersion
   object UserMetadataApiVersion {
-    case object V1 extends UserMetadataApiVersion // Old format (current_user)
     final case class V2(licenseType: RorKbnLicenseType) extends UserMetadataApiVersion // New format (user)
 
-    def from(requestPath: UriPath, licenseTypeHeader: Option[Header]): Either[UserMetadataApiVersionCreationError, UserMetadataApiVersion] = {
-      if (requestPath.isUserMetadataPath) {
-        for {
-          header <- licenseTypeHeader.toRight(left = NoRequestedHeaderValue)
-          licenseType <- RorKbnLicenseType.from(header.value.value).left.map { case () => RorKbnLicenseTypeInvalidValue }
-        } yield UserMetadataApiVersion.V2(licenseType)
-      } else {
-        Right(UserMetadataApiVersion.V1)
-      }
+    def from(licenseTypeHeader: Option[Header]): Either[UserMetadataApiVersionCreationError, UserMetadataApiVersion] = {
+      for {
+        header <- licenseTypeHeader.toRight(left = NoRequestedHeaderValue)
+        licenseType <- RorKbnLicenseType.from(header.value.value).left.map { case () => RorKbnLicenseTypeInvalidValue }
+      } yield UserMetadataApiVersion.V2(licenseType)
     }
   }
 

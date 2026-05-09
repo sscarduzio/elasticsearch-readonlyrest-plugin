@@ -32,7 +32,6 @@ import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMet
 class RestRRUserMetadataAction(settings: Settings, controller: RestController)
   extends BaseRestHandler(settings) with RestHandler {
 
-  register("GET", constants.CURRENT_USER_METADATA_PATH)
   register("GET", constants.USER_METADATA_PATH)
 
   override val getName: String = "ror-user-metadata-handler"

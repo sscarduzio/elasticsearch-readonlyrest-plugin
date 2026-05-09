@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.MetadataOrigin
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy, MetadataResponse, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.{Json as DomainJson, *}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -37,9 +36,8 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       "Free license removes all premium fields" in {
         val metadata = createUserMetadataWithAllFields()
         val result = MetadataResponse.fromAsCirceJson(
-          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Free),
+          licenseType = RorKbnLicenseType.Free,
           userMetadata = metadata,
-          currentGroupId = None,
           correlationId = CorrelationId(nes("test-id"))
         )
 
@@ -58,9 +56,8 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       "Pro license includes hidden_apps but not enterprise-only fields" in {
         val metadata = createUserMetadataWithAllFields()
         val result = MetadataResponse.fromAsCirceJson(
-          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Pro),
+          licenseType = RorKbnLicenseType.Pro,
           userMetadata = metadata,
-          currentGroupId = None,
           correlationId = CorrelationId(nes("test-id"))
         )
 
@@ -80,9 +77,8 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       "Enterprise license with multitenancy disabled includes all fields" in {
         val metadata = createUserMetadataWithAllFields()
         val result = MetadataResponse.fromAsCirceJson(
-          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false)),
+          licenseType = RorKbnLicenseType.Enterprise(multiTenancyEnabled = false),
           userMetadata = metadata,
-          currentGroupId = None,
           correlationId = CorrelationId(nes("test-id"))
         )
 
@@ -106,9 +102,8 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       "Enterprise license with multitenancy enabled returns USER_WITH_GROUPS" in {
         val metadata = createUserMetadataWithGroups()
         val result = MetadataResponse.fromAsCirceJson(
-          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true)),
+          licenseType = RorKbnLicenseType.Enterprise(multiTenancyEnabled = true),
           userMetadata = metadata,
-          currentGroupId = None,
           correlationId = CorrelationId(nes("test-id"))
         )
 
@@ -154,9 +149,8 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       "USER_WITHOUT_GROUPS" in {
         val metadata = createUserMetadataWithoutKibanaPolicy()
         val result = MetadataResponse.fromAsCirceJson(
-          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false)),
+          licenseType = RorKbnLicenseType.Enterprise(multiTenancyEnabled = false),
           userMetadata = metadata,
-          currentGroupId = None,
           correlationId = CorrelationId(nes("test-id"))
         )
 
@@ -173,9 +167,8 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       "USER_WITH_GROUPS" in {
         val metadata = createUserMetadataWithGroupsAndNoKibanaPolicy()
         val result = MetadataResponse.fromAsCirceJson(
-          version = UserMetadataApiVersion.V2(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true)),
+          licenseType = RorKbnLicenseType.Enterprise(multiTenancyEnabled = true),
           userMetadata = metadata,
-          currentGroupId = None,
           correlationId = CorrelationId(nes("test-id"))
         )
 

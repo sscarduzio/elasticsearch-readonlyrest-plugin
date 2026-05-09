@@ -37,7 +37,6 @@ class RestRRUserMetadataAction
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(GET, constants.CURRENT_USER_METADATA_PATH),
     new Route(GET, constants.USER_METADATA_PATH)
   ).asJava
 
