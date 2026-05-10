@@ -96,9 +96,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
             val matchedResults = executionResults.view.onlyMatched()
             val handlingResult = context.details.licenseType match {
               case Free | Pro | Enterprise(false) =>
-                determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
+                determineUserMetadataWithoutTenancyHandling(matchedResults, history)
               case Enterprise(true) =>
-                determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
+                determineUserMetadataWithTenancyHandling(matchedResults, history)
             }
             handlingResult -> history
           }
@@ -123,12 +123,12 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
   }
 
-  private def determineUserMetadataForApiV2WithoutTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
+  private def determineUserMetadataWithoutTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
                                                                   history: History[UserMetadataRequestBlockContext]) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = true)
   }
 
-  private def determineUserMetadataForApiV2WithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
+  private def determineUserMetadataWithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
                                                                history: History[UserMetadataRequestBlockContext]) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
       case allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
