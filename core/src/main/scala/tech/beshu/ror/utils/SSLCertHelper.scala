@@ -24,7 +24,7 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.ssl.{ClientAuth, SslContext, SslContextBuilder}
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
-import org.bouncycastle.openssl.PEMParser
+import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import tech.beshu.ror.settings.es.SslSettings
 import tech.beshu.ror.settings.es.SslSettings.*
@@ -271,9 +271,20 @@ object SSLCertHelper extends RequestIdAwareLogging {
       .use { privateKeyFileReader =>
         IO {
           val pemParser = new PEMParser(privateKeyFileReader)
-          val privateKeyInfo = PrivateKeyInfo.getInstance(pemParser.readObject())
           val converter = new JcaPEMKeyConverter()
-          converter.getPrivateKey(privateKeyInfo)
+          pemParser.readObject() match {
+            case keyPair: PEMKeyPair =>
+              // Traditional EC format (BEGIN EC PRIVATE KEY)
+              // Produced by: dehydrated, OpenSSL (ecparam command)
+              converter.getPrivateKey(keyPair.getPrivateKeyInfo)
+            case obj =>
+              // PKCS#8 format (BEGIN PRIVATE KEY)
+              // Produced by: certbot, OpenSSL (pkcs8 -topk8 command), Java keytool
+              // Also handles traditional RSA format (BEGIN RSA PRIVATE KEY)
+              // Produced by: OpenSSL (genrsa command)
+              val privateKeyInfo = PrivateKeyInfo.getInstance(obj)
+              converter.getPrivateKey(privateKeyInfo)
+          }
         }
       }
   }
