@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWi
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.Accessible
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.es.services.{ApiKeyService, EsClusterService, ServiceAccountTokenService}
 import tech.beshu.ror.es.services.EsClusterService.{Document, DocumentsAccessibility, IndexOrAlias, IndexUuid}
@@ -282,7 +281,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val details: UserMetadataRequestContext.Details = UserMetadataApiVersion.V2(RorKbnLicenseType.Free),
+                                                override val details: UserMetadataRequestContext.Details = UserMetadataRequestContext.Details(RorKbnLicenseType.Free),
                                                 override val esServices: EsServices = MockEsServices.dummy)
   extends UserMetadataRequestContext {
 

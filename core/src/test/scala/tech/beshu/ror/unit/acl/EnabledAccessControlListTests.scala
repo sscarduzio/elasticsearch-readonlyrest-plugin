@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -24,9 +24,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
-import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allowed, Forbidden, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allowed, Forbidden}
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
@@ -45,14 +43,12 @@ import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.Enterprise
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyListMap
 import tech.beshu.ror.utils.TestsUtils.{given, *}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.immutable.ListMap
 import scala.util.{Failure, Success, Try}
 
 class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside {
@@ -489,7 +485,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
   }
 
   private def mockUserMetadataRequestContext(licenseType: RorKbnLicenseType) = {
-    mockRequestContext(UserMetadataApiVersion.V2(licenseType))
+    mockRequestContext(UserMetadataRequestContext.Details(licenseType))
   }
 
   private def mockRequestContext(details: UserMetadataRequestContext.Details) = {
@@ -499,9 +495,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       .onCall { (block: Block) => UserMetadataRequestBlockContext(block, rc, BlockMetadata.empty, Set.empty, List.empty) }
       .anyNumberOfTimes()
 
-    (() => rc.apiVersion)
+    (() => rc.details)
       .expects()
-      .returning(apiVersion)
+      .returning(details)
       .anyNumberOfTimes()
 
     val rr = mock[RestRequest]
