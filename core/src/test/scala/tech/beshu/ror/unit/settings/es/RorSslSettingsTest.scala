@@ -150,7 +150,7 @@ class RorSslSettingsTest
               |readonlyrest.ssl.server_certificate_file: "traditional-ec-cert.pem"
               |readonlyrest.ssl.server_certificate_key_file: "traditional-ec-key.pem"
               |""".stripMargin,
-            certsDir = Some(File(getClass.getResource("/ssl/").toURI))
+            certsDir = Some(certsDir)
           ) { ssl =>
             inside(ssl.externalSsl) {
               case Some(sslSettings@ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
@@ -168,7 +168,7 @@ class RorSslSettingsTest
               |readonlyrest.ssl.server_certificate_file: "traditional-rsa-cert.pem"
               |readonlyrest.ssl.server_certificate_key_file: "traditional-rsa-key.pem"
               |""".stripMargin,
-            certsDir = Some(File(getClass.getResource("/ssl/").toURI))
+            certsDir = Some(certsDir)
           ) { ssl =>
             inside(ssl.externalSsl) {
               case Some(sslSettings@ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
