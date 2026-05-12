@@ -40,7 +40,7 @@ class LocalIndicesManager(requestContext: RequestContext,
   private lazy val cachedAllIndices: Set[LocalIndexName] =
     indicesSnapshot.indicesFor(indexAttributesFromRequest)
 
-  private lazy val cachedAllAliases: Set[LocalIndexName] = indicesSnapshot.aliases
+  private lazy val cachedAllAliases: Set[LocalIndexName] = indicesSnapshot.aliasesFor(indexAttributesFromRequest)
   private lazy val cachedIndicesPerAliasMap = indicesSnapshot.indicesPerAliasMapFor(indexAttributesFromRequest)
 
   private lazy val dataStreamsSnapshot = clusterService.localDataStreamsSnapshot
@@ -51,7 +51,7 @@ class LocalIndicesManager(requestContext: RequestContext,
   private lazy val cachedAllDataStreams: Set[LocalIndexName] =
     dataStreamsSnapshot.dataStreamsFor(indexAttributesFromRequest)
 
-  private lazy val cachedAllDataStreamAliases: Set[LocalIndexName] = dataStreamsSnapshot.dataStreamAliases
+  private lazy val cachedAllDataStreamAliases: Set[LocalIndexName] = dataStreamsSnapshot.dataStreamAliasesFor(indexAttributesFromRequest)
   private lazy val cachedDataStreamsPerAliasMap = dataStreamsSnapshot.dataStreamsPerAliasMapFor(indexAttributesFromRequest)
   private lazy val cachedBackingIndicesPerDataStreamMap = dataStreamsSnapshot.backingIndicesPerDataStreamMapFor(indexAttributesFromRequest)
 

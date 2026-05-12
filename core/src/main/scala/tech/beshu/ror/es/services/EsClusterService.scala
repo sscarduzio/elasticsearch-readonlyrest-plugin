@@ -217,6 +217,8 @@ object EsClusterService {
     private lazy val closedIndicesAndAliases = closed.flatMap(_.all)
     private lazy val openedIndices = opened.map(_.index)
     private lazy val closedIndices = closed.map(_.index)
+    private lazy val openedAliases = opened.flatMap(_.aliases)
+    private lazy val closedAliases = closed.flatMap(_.aliases)
 
     private lazy val fullIndicesPerAliasMap = indicesPerAliasMapFrom(raw)
     private lazy val openedIndicesPerAliasMap = indicesPerAliasMapFrom(opened)
@@ -233,6 +235,13 @@ object EsClusterService {
       if (usesAllIndexAttributes(filteredBy)) indices
       else if (filteredBy.contains(IndexAttribute.Opened)) openedIndices
       else if (filteredBy.contains(IndexAttribute.Closed)) closedIndices
+      else Set.empty
+    }
+
+    def aliasesFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
+      if (usesAllIndexAttributes(filteredBy)) aliases
+      else if (filteredBy.contains(IndexAttribute.Opened)) openedAliases
+      else if (filteredBy.contains(IndexAttribute.Closed)) closedAliases
       else Set.empty
     }
 
@@ -259,6 +268,11 @@ object EsClusterService {
 
     def dataStreamsFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
       if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) dataStreams
+      else Set.empty
+    }
+
+    def dataStreamAliasesFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
+      if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) dataStreamAliases
       else Set.empty
     }
 

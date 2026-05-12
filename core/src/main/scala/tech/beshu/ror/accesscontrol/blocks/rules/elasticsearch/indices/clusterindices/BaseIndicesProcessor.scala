@@ -189,8 +189,12 @@ trait BaseIndicesProcessor {
     if (resolvedRequestedNames.indices.nonEmpty) {
       tasks += filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(resolvedRequestedNames.indices)
     }
-    // Backing indices (.ds-*) don't appear in allIndices, so this must run unconditionally
-    tasks += filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured(requestedIndices)
+    // Backing indices (.ds-*) don't appear in allIndices so they're invisible to resolveRequestedNames.
+    // Run the backing-index check when real indices were resolved (mixed request) or when nothing resolved
+    // at all (pure backing-index request).
+    if (resolvedRequestedNames.indices.nonEmpty || resolvedRequestedNames.isEmpty) {
+      tasks += filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured(requestedIndices)
+    }
 
     if (resolvedRequestedNames.aliases.nonEmpty) {
       tasks += filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(resolvedRequestedNames.aliases)
@@ -400,7 +404,9 @@ object BaseIndicesProcessor {
   private final case class ResolvedRequestedNames[T <: ClusterIndexName](indices: Set[RequestedIndex[T]],
                                                                          aliases: Set[RequestedIndex[T]],
                                                                          dataStreams: Set[RequestedIndex[T]],
-                                                                         dataStreamAliases: Set[RequestedIndex[T]])
+                                                                         dataStreamAliases: Set[RequestedIndex[T]]) {
+    def isEmpty: Boolean = indices.isEmpty && aliases.isEmpty && dataStreams.isEmpty && dataStreamAliases.isEmpty
+  }
 
   trait IndicesManager[T <: ClusterIndexName] {
     final def allIndicesAndAliasesAndDataStreams(implicit requestId: RequestId): Task[Set[T]] = {
