@@ -33,6 +33,7 @@ import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.toCirceErrorOps
 import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant
 import scala.concurrent.duration.*

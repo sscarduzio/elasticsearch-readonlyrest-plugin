@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
-import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
@@ -42,8 +41,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.DurationOps.*
-import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 import tech.beshu.ror.utils.misc.JwtUtils.*
@@ -51,6 +49,7 @@ import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.Key
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -423,8 +422,8 @@ trait JwtTokenTests[RULE <: Rule, DEF <: JwtDef]
     (() => service.serviceTimeout)
       .expects()
       .anyNumberOfTimes()
-      .returning(Refined.unsafeApply(10 seconds))
-    val ttl = (1 hour).toRefinedPositiveUnsafe
+      .returning(positiveFiniteDuration(10, TimeUnit.SECONDS))
+    val ttl = positiveFiniteDuration(1, TimeUnit.HOURS)
     new CacheableExternalAuthenticationServiceDecorator(service, ttl)
   }
 }

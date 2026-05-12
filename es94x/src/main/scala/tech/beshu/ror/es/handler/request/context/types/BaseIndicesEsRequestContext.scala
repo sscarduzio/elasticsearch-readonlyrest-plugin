@@ -1,0 +1,98 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package tech.beshu.ror.es.handler.request.context.types
+
+import cats.data.NonEmptyList
+import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
+import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.handler.request.context.ModificationResult.ShouldBeInterrupted
+import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.syntax.*
+
+abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
+                                                               esContext: EsContext,
+                                                               aclContext: AccessControlStaticContext,
+                                                               override val threadPool: ThreadPool)
+  extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext)
+    with EsRequest[GeneralIndexRequestBlockContext] {
+
+  override def initialBlockContext(block: Block): GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
+    block = block,
+    requestContext = this,
+    blockMetadata = BlockMetadata.from(this),
+    responseHeaders = Set.empty,
+    responseTransformations = List.empty,
+    filteredIndices = discoverIndices,
+    allAllowedIndices = Set(ClusterIndexName.Local.wildcard),
+    allAllowedClusters = Set(ClusterName.Full.local),
+  )
+
+  override lazy val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(discoverIndices)
+
+  override def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+    if (aclContext.doesRequirePassword) {
+      val nonExistentIndex = discoverIndices.randomNonexistentLocalIndex()
+      if (nonExistentIndex.name.hasWildcard) {
+        val nonExistingIndices = NonEmptyList
+          .fromList(discoverIndices.map(_.randomNonexistentLocalIndex()).toList)
+          .getOrElse(NonEmptyList.of(nonExistentIndex))
+        update(actionRequest, nonExistingIndices, nonExistingIndices.map(_.name), allowedClusters)
+      } else {
+        ShouldBeInterrupted
+      }
+    } else {
+      val randomNonExistingIndex = discoverIndices.randomNonexistentLocalIndex()
+      update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name), allowedClusters)
+    }
+  }
+
+  override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
+    val result = for {
+      filteredIndices <- NonEmptyList.fromList(blockContext.filteredIndices.toList)
+      allAllowedIndices <- NonEmptyList.fromList(blockContext.allAllowedIndices.toList)
+    } yield update(actionRequest, filteredIndices, allAllowedIndices, blockContext.allAllowedClusters)
+
+    result.getOrElse {
+      logger.warn(s"empty list of indices produced, so we have to interrupt the request processing")
+      ShouldBeInterrupted
+    }
+  }
+
+  protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
+
+  protected def update(request: R,
+                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+                       allAllowedIndices: NonEmptyList[ClusterIndexName],
+                       allowedClusters: Set[ClusterName.Full]): ModificationResult
+
+  private lazy val discoverIndices: Set[RequestedIndex[ClusterIndexName]] = {
+    val indices = requestedIndicesFrom(actionRequest)
+      .orWildcardWhenEmpty
+      .skipRemoteIndicesIfNeeded(esContext)
+    logger.debug(s"Discovered indices: ${indices.show}")
+    indices
+  }
+}

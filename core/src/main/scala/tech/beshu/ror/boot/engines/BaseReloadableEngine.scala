@@ -35,6 +35,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.*
 
 import java.time.Instant
 import scala.concurrent.duration.*

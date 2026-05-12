@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, Imper
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.concurrent.duration.*

@@ -23,6 +23,7 @@ import scala.util.Try
 
 trait PropertiesProvider {
   def getProperty(name: PropName): Option[String]
+  def hasPropertyWithPrefix(prefix: String): Boolean
 }
 
 object PropertiesProvider {
@@ -33,6 +34,10 @@ object PropertiesProvider {
 object JvmPropertiesProvider extends PropertiesProvider {
   override def getProperty(name: PropName): Option[String] =
     Try(Option(System.getProperty(name.value.value))).toOption.flatten
+
+  override def hasPropertyWithPrefix(prefix: String): Boolean = {
+    Try(System.getProperties.stringPropertyNames().stream().anyMatch(_.startsWith(prefix))).getOrElse(false)
+  }
 }
 
 

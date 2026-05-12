@@ -38,7 +38,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.LdapRulesDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 // ------ ldap_authentication
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],

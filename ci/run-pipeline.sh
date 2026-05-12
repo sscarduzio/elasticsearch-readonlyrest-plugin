@@ -72,10 +72,16 @@ run_integration_tests() {
   fi
 
   ES_MODULE=$1
+  local gradleArgs=("--no-daemon" "ror-tools:test" "integration-tests:test" "-PesModule=$ES_MODULE")
+  [ -n "$ES_VERSION" ] && gradleArgs+=("-PesVersion=$ES_VERSION")
 
   echo ">>> $ES_MODULE => Running integration tests.."
-  ./gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$ES_MODULE" || (find . | grep hs_err | xargs cat && exit 1)
+  ./gradlew "${gradleArgs[@]}" || (find . | grep hs_err | xargs cat && exit 1)
 }
+
+if [[ $ROR_TASK == "integration_es94x" ]]; then
+  run_integration_tests "es94x"
+fi
 
 if [[ $ROR_TASK == "integration_es92x" ]]; then
   run_integration_tests "es92x"

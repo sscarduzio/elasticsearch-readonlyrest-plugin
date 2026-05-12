@@ -297,6 +297,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            IT_es94x:
+              ROR_TASK: integration_es94x
             IT_es92x:
               ROR_TASK: integration_es92x
             IT_es91x:
@@ -427,8 +429,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es92x:
-              ROR_TASK: integration_es92x
+            IT_es94x:
+              ROR_TASK: integration_es94x
             IT_es90x:
               ROR_TASK: integration_es90x
 
@@ -510,8 +512,11 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            WIN_IT_es94x:
+              ES_MODULE: es94x
             WIN_IT_es92x:
               ES_MODULE: es92x
+              ES_VERSION: 9.3.3  # 9.3.4 broken on Windows (Elastic #144674), fix expected in 9.3.5
             WIN_IT_es90x:
               ES_MODULE: es90x
             WIN_IT_es818x:
@@ -543,8 +548,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            WIN_IT_es92x:
-              ES_MODULE: es92x
+            WIN_IT_es94x:
+              ES_MODULE: es94x
             WIN_IT_es818x:
               ES_MODULE: es818x
             WIN_IT_es717x:
@@ -567,8 +572,11 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            WIN_IT_es94x:
+              ES_MODULE: es94x
             WIN_IT_es92x:
               ES_MODULE: es92x
+              ES_VERSION: 9.3.3  # 9.3.4 broken on Windows (Elastic #144674), fix expected in 9.3.5
             WIN_IT_es91x:
               ES_MODULE: es91x
             WIN_IT_es90x:
