@@ -110,7 +110,10 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     - CVE-2020-9488  affects log4j-core's SMTP appender
     - CVE-2025-68161 affects log4j-core's Socket Appender (TLS hostname verification)
     - CVE-2026-34480 affects log4j-core's XmlLayout
-   The plugin does not bundle log4j-core (it is provided by Elasticsearch at runtime).
+    - CVE-2026-34479 affects log4j-1.2-api Log4j1XmlLayout
+   The plugin:
+    - does not bundle log4j-core (it is provided by Elasticsearch at runtime)
+    - uses log4j-1.2-api only for tests, in an already patched version (for CVE-2026-34479)
    The actual vulnerabilities exists in Elasticsearch's log4j-core, which the plugin cannot fix.
    Upgrading log4j-api to 2.25.4 without matching log4j-core causes runtime compatibility issues.
    This must be fixed by Elasticsearch upgrading to log4j-core:2.25.4+.
@@ -119,5 +122,6 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2020-9488</cve>
         <cve>CVE-2025-68161</cve>
         <cve>CVE-2026-34480</cve>
+        <cve>CVE-2026-34479</cve>
     </suppress>
 </suppressions>
