@@ -78,6 +78,26 @@ class BaseIndicesProcessorTest extends AnyWordSpec {
       manager.dataStreamsPerAliasMapCalls shouldBe 0
       manager.backingIndicesPerDataStreamMapCalls shouldBe 0
     }
+
+    "skip backing index maps when requested data streams are allowed by name" in {
+      val requestedDataStream = RequestedIndex(localIndex("logs-ds"), excluded = false)
+      val manager = new CountingIndicesManager(
+        allIndicesAndAliasesValue = Set(localIndex("logs-000001"), localIndex("logs-alias")).toCovariantSet,
+        allIndicesValue = Set(localIndex("logs-000001")).toCovariantSet,
+        allAliasesValue = Set(localIndex("logs-alias")).toCovariantSet,
+        allDataStreamsAndDataStreamAliasesValue = Set(localIndex("logs-ds"), localIndex("logs-ds-alias")).toCovariantSet,
+        allDataStreamsValue = Set(localIndex("logs-ds")).toCovariantSet,
+        allDataStreamAliasesValue = Set(localIndex("logs-ds-alias")).toCovariantSet,
+        allowedIndicesMatcher = PatternsMatcher.create(Set(localIndex("logs-ds")))
+      )
+
+      val result = TestProcessor.run(MockRequestContext.indices, UniqueNonEmptyList.of(requestedDataStream))(using manager).runSyncUnsafe()
+
+      result shouldBe CanPass.Yes(Set(requestedDataStream))
+      manager.indicesPerAliasMapCalls shouldBe 0
+      manager.dataStreamsPerAliasMapCalls shouldBe 0
+      manager.backingIndicesPerDataStreamMapCalls shouldBe 0
+    }
   }
 
   private object TestProcessor extends BaseIndicesProcessor with RequestIdAwareLogging {
