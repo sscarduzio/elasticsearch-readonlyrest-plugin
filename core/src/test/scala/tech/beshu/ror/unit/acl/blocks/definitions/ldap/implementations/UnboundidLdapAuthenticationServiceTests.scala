@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 

@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.{LdapContainer, OpenLdapContainer, ToxiproxyContainer}
 import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError, ScheduledReloadError}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.atomic.AtomicReference

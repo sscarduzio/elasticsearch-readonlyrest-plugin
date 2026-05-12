@@ -119,7 +119,7 @@ tasks.register('uploadRorPluginToS3', Exec) {
     def pluginFileZip = distributionsDir + "/" + pluginFullName + ".zip"
     def pluginSha1 = distributionsDir + "/" + pluginFullName + ".zip.sha1"
     def pluginSha512 = distributionsDir + "/" + pluginFullName + ".zip.sha512"
-    def targetS3Dir = "build/" + pluginVersion + "/"
+    def targetS3Dir = pluginVersion + "/"
 
     commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
 }

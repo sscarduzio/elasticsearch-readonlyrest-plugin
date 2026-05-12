@@ -18,7 +18,7 @@ package tech.beshu.ror.settings.ror
 
 import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 import java.time.{Clock, Instant}
 

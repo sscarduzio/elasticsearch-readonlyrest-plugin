@@ -22,9 +22,10 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.utils.*
-import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -74,7 +75,7 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       (provider.getBy _).expects("key1").returning(1).twice()
 
       val cache = new SyncCacheableAction[String, Int](
-        ttl = (200 milliseconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(200, TimeUnit.MILLISECONDS),
         action = (key, _) => provider.getBy(key)
       )
 
@@ -192,7 +193,7 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       (provider.getBy _).expects("key1").returning(Task.now(1)).twice()
 
       val cache = new AsyncCacheableAction[String, Int](
-        ttl = (200 milliseconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(200, TimeUnit.MILLISECONDS),
         action = (key, _) => provider.getBy(key)
       )
 
@@ -297,11 +298,11 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       (provider.getBy _).expects("key1").returning(Task.now(1)).once()
 
       val cache = new AsyncCacheableActionWithTimeout[String, Int](
-        ttl = (10 seconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(10, TimeUnit.SECONDS),
         action = (key, _) => provider.getBy(key)
       )
 
-      val timeout = (5 seconds).toRefinedPositiveUnsafe
+      val timeout = positiveFiniteDuration(5, TimeUnit.SECONDS)
 
       val result = for {
         r1 <- cache.call("key1", timeout)
@@ -321,11 +322,11 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         .once()
 
       val cache = new AsyncCacheableActionWithTimeout[String, Int](
-        ttl = (10 seconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(10, TimeUnit.SECONDS),
         action = (key, _) => provider.getBy(key)
       )
 
-      val shortTimeout = (200 milliseconds).toRefinedPositiveUnsafe
+      val shortTimeout = positiveFiniteDuration(200, TimeUnit.MILLISECONDS)
 
       val result = cache.call("key1", shortTimeout).attempt.map { r =>
         r.isLeft should be (true)
@@ -341,12 +342,12 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       (provider.getBy _).expects("key1").returning(Task.now(1)).once()
 
       val cache = new AsyncCacheableActionWithKeyMappingAndTimeout[String, String, Int](
-        ttl = (10 seconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(10, TimeUnit.SECONDS),
         action = (key, _) => provider.getBy(key),
         keyMap = identity
       )
 
-      val timeout = (5 seconds).toRefinedPositiveUnsafe
+      val timeout = positiveFiniteDuration(5, TimeUnit.SECONDS)
 
       val result = for {
         r1 <- cache.call("key1", timeout)
@@ -365,12 +366,12 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       (provider.getBy _).expects("key1").returning(Task.now(1)).twice()
 
       val cache = new AsyncCacheableActionWithKeyMappingAndTimeout[String, String, Int](
-        ttl = (200 milliseconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(200, TimeUnit.MILLISECONDS),
         action = (key, _) => provider.getBy(key),
         keyMap = identity
       )
 
-      val timeout = (5 seconds).toRefinedPositiveUnsafe
+      val timeout = positiveFiniteDuration(5, TimeUnit.SECONDS)
 
       val result = for {
         r1 <- cache.call("key1", timeout)
@@ -391,12 +392,12 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         .once()
 
       val cache = new AsyncCacheableActionWithKeyMappingAndTimeout[String, String, Int](
-        ttl = (10 seconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(10, TimeUnit.SECONDS),
         action = (key, _) => provider.getBy(key),
         keyMap = identity
       )
 
-      val timeout = (5 seconds).toRefinedPositiveUnsafe
+      val timeout = positiveFiniteDuration(5, TimeUnit.SECONDS)
 
       val result = for {
         results <- Task.parSequenceUnordered(
@@ -416,12 +417,12 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         .once()
 
       val cache = new AsyncCacheableActionWithKeyMappingAndTimeout[String, String, Int](
-        ttl = (10 seconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(10, TimeUnit.SECONDS),
         action = (key, _) => provider.getBy(key),
         keyMap = identity
       )
 
-      val shortTimeout = (200 milliseconds).toRefinedPositiveUnsafe
+      val shortTimeout = positiveFiniteDuration(200, TimeUnit.MILLISECONDS)
 
       val result = cache.call("key1", shortTimeout).attempt.map { r =>
         r.isLeft should be (true)
@@ -434,12 +435,12 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       (provider.getBy _).expects("aaa").returning(Task.now(1)).once()
 
       val cache = new AsyncCacheableActionWithKeyMappingAndTimeout[String, Int, Int](
-        ttl = (10 seconds).toRefinedPositiveUnsafe,
+        ttl = positiveFiniteDuration(10, TimeUnit.SECONDS),
         action = (key, _) => provider.getBy(key),
         keyMap = _.length
       )
 
-      val timeout = (5 seconds).toRefinedPositiveUnsafe
+      val timeout = positiveFiniteDuration(5, TimeUnit.SECONDS)
 
       val result = for {
         r1 <- cache.call("aaa", timeout)

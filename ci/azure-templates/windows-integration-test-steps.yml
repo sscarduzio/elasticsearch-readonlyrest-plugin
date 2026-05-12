@@ -10,14 +10,24 @@ steps:
       jdkArchitectureOption: 'x64'
       jdkSourceOption: 'PreInstalled'
   - powershell: |
+      $env:ROR_LIBS_STORE_URL = $env:VAR_ROR_LIBS_STORE_URL
+      $env:ROR_LIBS_STORE_ACCESS_KEY_ID = $env:VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+      $env:ROR_LIBS_STORE_ACCESS_KEY_SECRET = $env:VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+
       Write-Host ">>> $env:ES_MODULE"
-      .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
+      $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE"
+      if ($env:ES_VERSION) { $gradleArgs += "-PesVersion=$env:ES_VERSION" }
+      .\gradlew @gradleArgs
       if ($LASTEXITCODE -ne 0) {
         Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
           Get-Content $_.FullName
         }
         exit 1
       }
+    env:
+      VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+      VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+      VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
   - task: PublishTestResults@2
     condition: failed()
     inputs:

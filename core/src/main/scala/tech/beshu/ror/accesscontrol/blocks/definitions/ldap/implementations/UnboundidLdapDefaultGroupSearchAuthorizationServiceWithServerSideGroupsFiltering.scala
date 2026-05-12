@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationSe
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, RequestId, User}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.TaskOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 

@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.doma
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ops.logs.*
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.GraphNodeAncestorsExplorer
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 

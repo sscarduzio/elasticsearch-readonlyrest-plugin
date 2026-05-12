@@ -31,10 +31,18 @@ steps:
       path: $(GRADLE_USER_HOME)
       cacheHitVar: GRADLE_CACHE_HIT
   - script: |
+      export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+      export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+      export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+      
       echo "[TEST] executing ROR_TASK = $ROR_TASK"
       ci/run-pipeline.sh
     env:
       GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+      VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+      VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+      VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+
   - task: PublishTestResults@2
     condition: failed()
     inputs:

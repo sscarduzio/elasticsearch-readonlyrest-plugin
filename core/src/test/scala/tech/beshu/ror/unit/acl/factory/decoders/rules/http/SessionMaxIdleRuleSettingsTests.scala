@@ -20,11 +20,10 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 
-import scala.concurrent.duration.*
+import java.util.concurrent.TimeUnit
 import scala.language.postfixOps
 
 class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[SessionMaxIdleRule] {
@@ -44,7 +43,7 @@ class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[Sessio
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.sessionMaxIdle should be((10 seconds).toRefinedPositiveUnsafe)
+            rule.settings.sessionMaxIdle should be(positiveFiniteDuration(10, TimeUnit.SECONDS))
           }
         )
       }
@@ -61,7 +60,7 @@ class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[Sessio
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.sessionMaxIdle should be((10 minutes).toRefinedPositiveUnsafe)
+            rule.settings.sessionMaxIdle should be(positiveFiniteDuration(10, TimeUnit.MINUTES))
           }
         )
       }

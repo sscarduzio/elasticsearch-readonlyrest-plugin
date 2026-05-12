@@ -21,7 +21,6 @@ import cats.data.EitherT
 import cats.implicits.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
-import io.netty.handler.codec.http.HttpResponseStatus
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
@@ -315,15 +314,15 @@ object MainSettingsApi {
       }
     }
 
-    def httpStatus: HttpResponseStatus = {
+    def httpStatus: MainSettingsApiResponseStatus = {
       response match {
-        case _: ForceReloadMainSettings => HttpResponseStatus.OK
-        case _: ProvideIndexMainSettings => HttpResponseStatus.OK
-        case _: ProvideFileMainSettings => HttpResponseStatus.OK
-        case _: ProvideAuditSettings => HttpResponseStatus.OK
-        case _: UpdateIndexMainSettings => HttpResponseStatus.OK
+        case _: ForceReloadMainSettings => MainSettingsApiResponseStatus.Ok
+        case _: ProvideIndexMainSettings => MainSettingsApiResponseStatus.Ok
+        case _: ProvideFileMainSettings => MainSettingsApiResponseStatus.Ok
+        case _: ProvideAuditSettings => MainSettingsApiResponseStatus.Ok
+        case _: UpdateIndexMainSettings => MainSettingsApiResponseStatus.Ok
         case failure: Failure => failure match {
-          case Failure.BadRequest(_) => HttpResponseStatus.BAD_REQUEST
+          case Failure.BadRequest(_) => MainSettingsApiResponseStatus.BadRequest
         }
       }
     }
@@ -371,6 +370,19 @@ object MainSettingsApi {
       case AuditIndexSchema.RorDefault => "rorDefault"
       case AuditIndexSchema.EcsV1 => "ecsV1"
       case AuditIndexSchema.Custom => "custom"
+    }
+  }
+
+  sealed trait MainSettingsApiResponseStatus {
+    def code(): Int
+  }
+
+  object MainSettingsApiResponseStatus {
+    case object Ok extends MainSettingsApiResponseStatus {
+      override def code(): Int = 200
+    }
+    case object BadRequest extends MainSettingsApiResponseStatus {
+      override def code(): Int = 400
     }
   }
 }

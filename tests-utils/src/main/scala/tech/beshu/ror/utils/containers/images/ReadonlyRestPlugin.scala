@@ -178,7 +178,7 @@ class ReadonlyRestPlugin(esVersion: String,
     def configureRorCustomIndexSettings(): EsConfigBuilder = {
       config.attributes.rorCustomSettingsIndex match {
         case Some(customRorIndex) =>
-          builder.add(s"readonlyrest.settings_index: $customRorIndex")
+          builder.add(s"readonlyrest.settings.index_name: $customRorIndex")
         case None =>
           builder
       }

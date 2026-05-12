@@ -43,10 +43,11 @@ import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
-import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 import tech.beshu.ror.utils.TestsUtils.*
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -124,7 +125,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestSettingsEngine(updatedRorSettings, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .forceReloadTestSettingsEngine(updatedRorSettings, positiveFiniteDuration(5, TimeUnit.MINUTES))(newRequestId())
               .runSyncUnsafe()
 
           forceReloadingResult.value shouldBe a[TestSettings.Present]
@@ -141,7 +142,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           (
             createReadonlyRestBoot(coreFactory, indexDocumentManager),
-            createEsConfigBasedRorSettings("/boot_tests/index_settings//custom_index_defined/")
+            createEsConfigBasedRorSettings("/boot_tests/index_settings/custom_index_defined/")
           )
         } { _ =>
           // nothing - just should start
@@ -156,7 +157,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           (
             createReadonlyRestBoot(coreFactory, indexDocumentManager),
-            createEsConfigBasedRorSettings("/boot_tests/index_settings//custom_index_defined/"),
+            createEsConfigBasedRorSettings("/boot_tests/index_settings/custom_index_defined/"),
             (indexDocumentManager, coreFactory)
           )
         } { case (rorInstance, (indexDocumentManager, coreFactory)) =>
@@ -181,7 +182,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           (
             createReadonlyRestBoot(coreFactory, indexDocumentManager),
-            createEsConfigBasedRorSettings("/boot_tests/index_settings//custom_index_defined/"),
+            createEsConfigBasedRorSettings("/boot_tests/index_settings/custom_index_defined/"),
             (indexDocumentManager, coreFactory)
           )
         } { case (rorInstance, (indexDocumentManager, coreFactory)) =>
@@ -191,7 +192,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestSettingsEngine(updatedRorSettings, (5 minutes).toRefinedPositiveUnsafe)(newRequestId())
+              .forceReloadTestSettingsEngine(updatedRorSettings, positiveFiniteDuration(5, TimeUnit.MINUTES))(newRequestId())
               .runSyncUnsafe()
 
           forceReloadingResult.value shouldBe a[TestSettings.Present]

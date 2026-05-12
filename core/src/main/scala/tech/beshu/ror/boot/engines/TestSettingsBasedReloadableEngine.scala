@@ -38,7 +38,7 @@ import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSaving
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError.SourceSpecificError
 import tech.beshu.ror.settings.ror.source.{IndexSettingsSource, TestSettingsIndexSource}
 import tech.beshu.ror.settings.ror.{RawRorSettings, TestRorSettings}
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[boot] class TestSettingsBasedReloadableEngine private(boot: ReadonlyRest,
