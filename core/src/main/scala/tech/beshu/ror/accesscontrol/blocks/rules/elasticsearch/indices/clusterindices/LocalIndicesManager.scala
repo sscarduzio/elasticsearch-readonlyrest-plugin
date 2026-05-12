@@ -34,38 +34,26 @@ class LocalIndicesManager(requestContext: RequestContext,
 
   private lazy val indicesSnapshot = clusterService.localIndicesSnapshot
 
-  // Indices — for the common case (no attribute filter) use the pre-computed flat sets from the snapshot;
-  // for filtered requests compute from the raw set (which carries attribute information).
-  private lazy val attributeFilteredIndices = {
-    if (indexAttributesFromRequest.nonEmpty) indicesSnapshot.raw.filter(i => indexAttributesFromRequest.contains(i.attribute))
-    else indicesSnapshot.raw
-  }
-  private lazy val cachedAllIndicesAndAliases: Set[LocalIndexName] = {
-    if (indexAttributesFromRequest.isEmpty) indicesSnapshot.indicesAndAliases
-    else attributeFilteredIndices.flatMap(_.all)
-  }
-  private lazy val cachedAllIndices: Set[LocalIndexName] = {
-    if (indexAttributesFromRequest.isEmpty) indicesSnapshot.indices
-    else attributeFilteredIndices.map(_.index)
-  }
+  private lazy val cachedAllIndicesAndAliases: Set[LocalIndexName] =
+    indicesSnapshot.indicesAndAliasesFor(indexAttributesFromRequest)
+
+  private lazy val cachedAllIndices: Set[LocalIndexName] =
+    indicesSnapshot.indicesFor(indexAttributesFromRequest)
+
   private lazy val cachedAllAliases: Set[LocalIndexName] = indicesSnapshot.aliases
+  private lazy val cachedIndicesPerAliasMap = indicesSnapshot.indicesPerAliasMapFor(indexAttributesFromRequest)
 
   private lazy val dataStreamsSnapshot = clusterService.localDataStreamsSnapshot
 
-  // Data streams — same pattern as indices above.
-  private lazy val attributeFilteredDataStreams = {
-    if (indexAttributesFromRequest.nonEmpty) dataStreamsSnapshot.raw.filter(ds => indexAttributesFromRequest.contains(ds.attribute))
-    else dataStreamsSnapshot.raw
-  }
-  private lazy val cachedAllDataStreamsAndAliases: Set[LocalIndexName] = {
-    if (indexAttributesFromRequest.isEmpty) dataStreamsSnapshot.dataStreamsAndAliases
-    else attributeFilteredDataStreams.flatMap(_.all)
-  }
-  private lazy val cachedAllDataStreams: Set[LocalIndexName] = {
-    if (indexAttributesFromRequest.isEmpty) dataStreamsSnapshot.dataStreams
-    else attributeFilteredDataStreams.map(_.dataStream)
-  }
+  private lazy val cachedAllDataStreamsAndAliases: Set[LocalIndexName] =
+    dataStreamsSnapshot.dataStreamsAndAliasesFor(indexAttributesFromRequest)
+
+  private lazy val cachedAllDataStreams: Set[LocalIndexName] =
+    dataStreamsSnapshot.dataStreamsFor(indexAttributesFromRequest)
+
   private lazy val cachedAllDataStreamAliases: Set[LocalIndexName] = dataStreamsSnapshot.dataStreamAliases
+  private lazy val cachedDataStreamsPerAliasMap = dataStreamsSnapshot.dataStreamsPerAliasMapFor(indexAttributesFromRequest)
+  private lazy val cachedBackingIndicesPerDataStreamMap = dataStreamsSnapshot.backingIndicesPerDataStreamMapFor(indexAttributesFromRequest)
 
   override def allIndicesAndAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllIndicesAndAliases)
@@ -77,7 +65,7 @@ class LocalIndicesManager(requestContext: RequestContext,
     Task.delay(cachedAllAliases)
 
   override def indicesPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
-    clusterService.indicesPerAliasMap(indexAttributesFromRequest)
+    Task.delay(cachedIndicesPerAliasMap)
 
   override def allDataStreamsAndDataStreamAliases(implicit requestId: RequestId): Task[Set[LocalIndexName]] =
     Task.delay(cachedAllDataStreamsAndAliases)
@@ -89,8 +77,8 @@ class LocalIndicesManager(requestContext: RequestContext,
     Task.delay(cachedAllDataStreamAliases)
 
   override def dataStreamsPerAliasMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
-    clusterService.dataStreamsPerAliasMap(indexAttributesFromRequest)
+    Task.delay(cachedDataStreamsPerAliasMap)
 
   override def backingIndicesPerDataStreamMap(implicit requestId: RequestId): Task[Map[LocalIndexName, Set[LocalIndexName]]] =
-    clusterService.backingIndicesPerDataStreamMap(indexAttributesFromRequest)
+    Task.delay(cachedBackingIndicesPerDataStreamMap)
 }
