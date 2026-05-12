@@ -18,6 +18,8 @@ package tech.beshu.ror
 
 import tech.beshu.ror.utils.set.{CovariantSet, CovariantSetConversions, CovariantSetInstances}
 
+import scala.collection.mutable
+
 object syntax
   extends CovariantSetConversions
   with CovariantSetInstances {
@@ -26,5 +28,6 @@ object syntax
   object Set {
     def empty[A]: CovariantSet[A] = CovariantSet.empty
     def apply[A](elems: A*): CovariantSet[A] = CovariantSet.from(elems)
+    def newBuilder[A]: mutable.Builder[A, CovariantSet[A]] = CovariantSet.newBuilder[A]
   }
 }
