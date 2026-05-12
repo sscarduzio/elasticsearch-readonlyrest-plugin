@@ -197,9 +197,9 @@ object EsClusterService {
   }
 
   final class LocalIndicesSnapshot(val raw: Set[FullLocalIndexWithAliases]) {
-    val indicesAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
-    val indices: Set[LocalIndexName] = raw.map(_.index)
-    val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
+    lazy val indicesAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    lazy val indices: Set[LocalIndexName] = raw.map(_.index)
+    lazy val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
 
     private lazy val opened = raw.filter(_.attribute == IndexAttribute.Opened)
     private lazy val closed = raw.filter(_.attribute == IndexAttribute.Closed)
@@ -236,9 +236,9 @@ object EsClusterService {
   }
 
   final class LocalDataStreamsSnapshot(val raw: Set[FullLocalDataStreamWithAliases]) {
-    val dataStreamsAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
-    val dataStreams: Set[LocalIndexName] = raw.map(_.dataStream)
-    val dataStreamAliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
+    lazy val dataStreamsAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    lazy val dataStreams: Set[LocalIndexName] = raw.map(_.dataStream)
+    lazy val dataStreamAliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
 
     private lazy val fullDataStreamsPerAliasMap = dataStreamsPerAliasMapFrom(raw)
     private lazy val fullBackingIndicesPerDataStreamMap = backingIndicesPerDataStreamMapFrom(raw)
