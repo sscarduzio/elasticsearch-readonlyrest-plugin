@@ -44,7 +44,9 @@ object IndexName {
   val wildcard: IndexName.Pattern = IndexName.Pattern.unsafeFromNes(nes("*"))
 
   final case class Full(name: NonEmptyString)
-    extends IndexName
+    extends IndexName {
+    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+  }
   object Full {
     def fromString(value: String): Option[Full] =
       NonEmptyString.unapply(value).map(Full.apply)
@@ -54,7 +56,9 @@ object IndexName {
   }
 
   final case class Pattern private(name: NonEmptyString)
-    extends IndexName
+    extends IndexName {
+    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+  }
   object Pattern {
     def fromString(value: String): Option[Pattern] =
       NonEmptyString.unapply(value).flatMap(fromNes)
@@ -224,7 +228,9 @@ object ClusterIndexName {
   object Remote {
     sealed trait ClusterName
     object ClusterName {
-      final case class Full private(value: NonEmptyString) extends ClusterName
+      final case class Full private(value: NonEmptyString) extends ClusterName {
+        override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+      }
       object Full {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
@@ -235,7 +241,9 @@ object ClusterIndexName {
         val local: Full = Full(NonEmptyString.unsafeFrom("(local)"))
       }
 
-      final case class Pattern private(value: NonEmptyString) extends ClusterName
+      final case class Pattern private(value: NonEmptyString) extends ClusterName {
+        override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+      }
       object Pattern {
         def fromString(value: String): Option[Pattern] = {
           NonEmptyString.unapply(value).flatMap(fromNes)
