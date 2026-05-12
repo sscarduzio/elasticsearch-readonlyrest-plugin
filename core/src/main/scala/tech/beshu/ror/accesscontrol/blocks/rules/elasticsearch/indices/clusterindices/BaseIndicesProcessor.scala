@@ -188,8 +188,9 @@ trait BaseIndicesProcessor {
 
     if (resolvedRequestedNames.indices.nonEmpty) {
       tasks += filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(resolvedRequestedNames.indices)
-      tasks += filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured(requestedIndices)
     }
+    // Backing indices (.ds-*) don't appear in allIndices, so this must run unconditionally
+    tasks += filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured(requestedIndices)
 
     if (resolvedRequestedNames.aliases.nonEmpty) {
       tasks += filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(resolvedRequestedNames.aliases)
