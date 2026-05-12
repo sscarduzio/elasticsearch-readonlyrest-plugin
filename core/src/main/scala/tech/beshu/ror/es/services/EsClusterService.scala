@@ -48,12 +48,12 @@ trait EsClusterService {
                               (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteIndices(filteredBy)
       .map { indices =>
-        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.ArrayBuffer[RemoteIndexName]]
+        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
         indices.foreach { remoteIndexWithAliases =>
           remoteIndexWithAliases.aliasesNames.foreach { alias =>
             collected.getOrElseUpdate(
               RemoteIndexName(alias, remoteIndexWithAliases.clusterName),
-              mutable.ArrayBuffer.empty[RemoteIndexName]
+              Set.newBuilder[RemoteIndexName]
             ) += RemoteIndexName(remoteIndexWithAliases.indexName, remoteIndexWithAliases.clusterName)
           }
         }
@@ -88,10 +88,10 @@ trait EsClusterService {
                                   (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteDataStreams(filteredBy)
       .map { dataStreams =>
-        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.ArrayBuffer[RemoteIndexName]]
+        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
         dataStreams.foreach { fullRemoteDataStream =>
           fullRemoteDataStream.aliases.foreach { alias =>
-            collected.getOrElseUpdate(alias, mutable.ArrayBuffer.empty[RemoteIndexName]) += fullRemoteDataStream.dataStream
+            collected.getOrElseUpdate(alias, Set.newBuilder[RemoteIndexName]) += fullRemoteDataStream.dataStream
           }
         }
         buildAliasMap(collected)
@@ -102,10 +102,10 @@ trait EsClusterService {
                                           (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
     remoteDataStreams(filteredBy)
       .map { dataStreams =>
-        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.ArrayBuffer[RemoteIndexName]]
+        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
         dataStreams.foreach { fullRemoteDataStream =>
           fullRemoteDataStream.indices.foreach { index =>
-            collected.getOrElseUpdate(fullRemoteDataStream.dataStream, mutable.ArrayBuffer.empty[RemoteIndexName]) += index
+            collected.getOrElseUpdate(fullRemoteDataStream.dataStream, Set.newBuilder[RemoteIndexName]) += index
           }
         }
         buildAliasMap(collected)
@@ -167,42 +167,39 @@ object EsClusterService {
     filteredBy.isEmpty || filteredBy == allIndexAttributes
 
   private def indicesPerAliasMapFrom(indices: Iterable[FullLocalIndexWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
-    val collected = mutable.HashMap.empty[LocalIndexName, mutable.ArrayBuffer[LocalIndexName]]
+    val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
     indices.foreach { indexWithAliases =>
       indexWithAliases.aliases.foreach { alias =>
-        collected.getOrElseUpdate(alias, mutable.ArrayBuffer.empty[LocalIndexName]) += indexWithAliases.index
+        collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += indexWithAliases.index
       }
     }
     buildAliasMap(collected)
   }
 
   private def dataStreamsPerAliasMapFrom(dataStreams: Iterable[FullLocalDataStreamWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
-    val collected = mutable.HashMap.empty[LocalIndexName, mutable.ArrayBuffer[LocalIndexName]]
+    val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
     dataStreams.foreach { dataStreamWithAliases =>
       dataStreamWithAliases.aliases.foreach { alias =>
-        collected.getOrElseUpdate(alias, mutable.ArrayBuffer.empty[LocalIndexName]) += dataStreamWithAliases.dataStream
+        collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += dataStreamWithAliases.dataStream
       }
     }
     buildAliasMap(collected)
   }
 
   private def backingIndicesPerDataStreamMapFrom(dataStreams: Iterable[FullLocalDataStreamWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
-    val collected = mutable.HashMap.empty[LocalIndexName, mutable.ArrayBuffer[LocalIndexName]]
+    val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
     dataStreams.foreach { fullDataStream =>
       fullDataStream.indices.foreach { index =>
-        collected.getOrElseUpdate(fullDataStream.dataStream, mutable.ArrayBuffer.empty[LocalIndexName]) += index
+        collected.getOrElseUpdate(fullDataStream.dataStream, Set.newBuilder[LocalIndexName]) += index
       }
     }
     buildAliasMap(collected)
   }
 
-  private def buildAliasMap[K, V](collected: mutable.HashMap[K, mutable.ArrayBuffer[V]]): Map[K, Set[V]] = {
+  private def buildAliasMap[K, V](collected: mutable.HashMap[K, mutable.Builder[V, Set[V]]]): Map[K, Set[V]] = {
     val mapBuilder = Map.newBuilder[K, Set[V]]
     mapBuilder.sizeHint(collected.size)
-    collected.foreach { case (k, buf) =>
-      val setBuilder = Set.newBuilder[V]
-      setBuilder.sizeHint(buf.size)
-      buf.foreach(setBuilder += _)
+    collected.foreach { case (k, setBuilder) =>
       mapBuilder += (k -> setBuilder.result())
     }
     mapBuilder.result()
