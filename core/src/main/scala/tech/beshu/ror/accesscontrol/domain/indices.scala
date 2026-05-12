@@ -582,18 +582,10 @@ final class FullLocalIndexWithAliases(val indexName: IndexName.Full,
                                       val attribute: IndexAttribute,
                                       val aliasesNames: Set[IndexName.Full]) {
   val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
-  val aliases: Set[ClusterIndexName.Local] = {
-    val b = Set.newBuilder[ClusterIndexName.Local]
-    b.sizeHint(aliasesNames.size)
-    aliasesNames.foreach(n => b += ClusterIndexName.Local(n))
-    b.result()
-  }
-  val all: Set[ClusterIndexName.Local] = {
-    val b = Set.newBuilder[ClusterIndexName.Local]
-    b.sizeHint(aliases.size + 1)
+  val aliases: Set[ClusterIndexName.Local] = Set.mapFrom(aliasesNames)(ClusterIndexName.Local.apply)
+  val all: Set[ClusterIndexName.Local] = Set.sized[ClusterIndexName.Local](aliases.size + 1) { b =>
     b += index
     aliases.foreach(b += _)
-    b.result()
   }
 }
 
@@ -602,18 +594,10 @@ final class FullRemoteIndexWithAliases(val clusterName: ClusterName.Full,
                                        val attribute: IndexAttribute,
                                        val aliasesNames: Set[IndexName.Full]) {
   val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
-  val aliases: Set[ClusterIndexName.Remote] = {
-    val b = Set.newBuilder[ClusterIndexName.Remote]
-    b.sizeHint(aliasesNames.size)
-    aliasesNames.foreach(n => b += ClusterIndexName.Remote(n, clusterName))
-    b.result()
-  }
-  val all: Set[ClusterIndexName.Remote] = {
-    val b = Set.newBuilder[ClusterIndexName.Remote]
-    b.sizeHint(aliases.size + 1)
+  val aliases: Set[ClusterIndexName.Remote] = Set.mapFrom(aliasesNames)(ClusterIndexName.Remote(_, clusterName))
+  val all: Set[ClusterIndexName.Remote] = Set.sized[ClusterIndexName.Remote](aliases.size + 1) { b =>
     b += index
     aliases.foreach(b += _)
-    b.result()
   }
 }
 
