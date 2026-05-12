@@ -190,7 +190,9 @@ sealed trait ClusterIndexName {
 }
 object ClusterIndexName {
 
-  final case class Local(value: IndexName) extends ClusterIndexName
+  final case class Local(value: IndexName) extends ClusterIndexName {
+    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+  }
   object Local {
 
     val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
@@ -216,7 +218,9 @@ object ClusterIndexName {
     implicit val matchableClusterIndexNameLocal: Matchable[ClusterIndexName.Local] = Matchable.matchable(_.stringify)
   }
 
-  final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName
+  final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName {
+    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+  }
   object Remote {
     sealed trait ClusterName
     object ClusterName {
