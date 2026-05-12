@@ -26,9 +26,8 @@ assert JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17) :
         "This project must run on JDK 17+ (found ${JavaVersion.current()})."
 
 rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
+include 'ror-managed-libs'
 include 'audit'
-include 'logging'
 include 'core'
 include 'es67x'
 include 'es70x'

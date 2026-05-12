@@ -54,9 +54,8 @@ java {
 }
 
 dependencies {
-    api project(path: ':logging', configuration: 'default')
     api project(path: ':audit', configuration: 'default')
-    api project(path: ':ror-shadowed-libs', configuration: 'shadow')
+    api project(path: ':ror-managed-libs', configuration: 'shadow')
 
     api group: 'com.github.pathikrit',          name: 'better-files_3',                      version: '3.9.2'
     api group: 'io.circe',                      name: 'circe-core_3',                        version: '0.14.15'
