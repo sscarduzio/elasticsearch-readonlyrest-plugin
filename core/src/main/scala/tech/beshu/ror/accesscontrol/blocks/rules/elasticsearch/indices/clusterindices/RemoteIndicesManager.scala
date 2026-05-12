@@ -18,11 +18,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusteri
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.BaseIndicesProcessor.IndicesManager
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
-import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
+
+import scala.collection.mutable
 
 class RemoteIndicesManager(requestContext: RequestContext,
                            override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName])
@@ -31,13 +34,14 @@ class RemoteIndicesManager(requestContext: RequestContext,
   private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
   private val clusterService = requestContext.esServices.clusterService
   private val indexAttributesFromRequest = requestContext.indexAttributes
+  private val allIndexAttributes: Set[IndexAttribute] = Set(IndexAttribute.Opened, IndexAttribute.Closed)
 
   // Indices — memoize filtered results and derived flat sets so work is done at most once per request.
   private lazy val cachedRemoteIndices =
     clusterService.allRemoteIndicesAndAliases
       .map { all =>
-        if (indexAttributesFromRequest.nonEmpty) all.filter(i => indexAttributesFromRequest.contains(i.attribute))
-        else all
+        if (indexAttributesFromRequest.isEmpty || indexAttributesFromRequest == allIndexAttributes) all
+        else all.filter(i => indexAttributesFromRequest.contains(i.attribute))
       }
       .memoize
 
@@ -52,12 +56,15 @@ class RemoteIndicesManager(requestContext: RequestContext,
       .map(_.flatMap(_.aliases))
       .memoize
 
+  private lazy val cachedIndicesPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+    cachedRemoteIndices.map(indicesPerAliasMapFrom).memoize
+
   // Data streams — same memoization pattern.
   private lazy val cachedRemoteDataStreams =
     clusterService.allRemoteDataStreamsAndAliases
       .map { all =>
-        if (indexAttributesFromRequest.nonEmpty) all.filter(ds => indexAttributesFromRequest.contains(ds.attribute))
-        else all
+        if (indexAttributesFromRequest.isEmpty || indexAttributesFromRequest.contains(IndexAttribute.Opened)) all
+        else Set.empty
       }
       .memoize
 
@@ -72,6 +79,12 @@ class RemoteIndicesManager(requestContext: RequestContext,
       .map(_.flatMap(_.aliases))
       .memoize
 
+  private lazy val cachedDataStreamsPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+    cachedRemoteDataStreams.map(dataStreamsPerAliasMapFrom).memoize
+
+  private lazy val cachedBackingIndicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+    cachedRemoteDataStreams.map(backingIndicesPerDataStreamMapFrom).memoize
+
   override def allIndicesAndAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] =
     cachedAllIndicesAndAliases
 
@@ -82,7 +95,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
     cachedAllAliases
 
   override def indicesPerAliasMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    clusterService.remoteIndicesPerAliasMap(indexAttributesFromRequest)
+    cachedIndicesPerAliasMap
 
   override def allDataStreamsAndDataStreamAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] =
     cachedAllDataStreamsAndAliases
@@ -94,8 +107,47 @@ class RemoteIndicesManager(requestContext: RequestContext,
     cachedAllDataStreamAliases
 
   override def dataStreamsPerAliasMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    clusterService.remoteDataStreamsPerAliasMap(indexAttributesFromRequest)
+    cachedDataStreamsPerAliasMap
 
   override def backingIndicesPerDataStreamMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    clusterService.remoteBackingIndicesPerDataStreamMap(indexAttributesFromRequest)
+    cachedBackingIndicesPerDataStreamMap
+
+  private def indicesPerAliasMapFrom(indices: Iterable[FullRemoteIndexWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
+    val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
+    indices.foreach { remoteIndexWithAliases =>
+      remoteIndexWithAliases.aliases.foreach { alias =>
+        collected.getOrElseUpdate(alias, Set.newBuilder[RemoteIndexName]) += remoteIndexWithAliases.index
+      }
+    }
+    buildAliasMap(collected)
+  }
+
+  private def dataStreamsPerAliasMapFrom(dataStreams: Iterable[FullRemoteDataStreamWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
+    val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
+    dataStreams.foreach { dataStreamWithAliases =>
+      dataStreamWithAliases.aliases.foreach { alias =>
+        collected.getOrElseUpdate(alias, Set.newBuilder[RemoteIndexName]) += dataStreamWithAliases.dataStream
+      }
+    }
+    buildAliasMap(collected)
+  }
+
+  private def backingIndicesPerDataStreamMapFrom(dataStreams: Iterable[FullRemoteDataStreamWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
+    val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
+    dataStreams.foreach { fullRemoteDataStream =>
+      fullRemoteDataStream.indices.foreach { index =>
+        collected.getOrElseUpdate(fullRemoteDataStream.dataStream, Set.newBuilder[RemoteIndexName]) += index
+      }
+    }
+    buildAliasMap(collected)
+  }
+
+  private def buildAliasMap[K, V](collected: mutable.HashMap[K, mutable.Builder[V, Set[V]]]): Map[K, Set[V]] = {
+    val mapBuilder = Map.newBuilder[K, Set[V]]
+    mapBuilder.sizeHint(collected.size)
+    collected.foreach { case (k, setBuilder) =>
+      mapBuilder += (k -> setBuilder.result())
+    }
+    mapBuilder.result()
+  }
 }

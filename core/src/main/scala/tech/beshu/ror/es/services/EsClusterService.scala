@@ -63,7 +63,7 @@ trait EsClusterService {
 
   private def remoteIndices(filteredBy: Set[IndexAttribute])
                            (implicit id: RequestId) = {
-    if (filteredBy.nonEmpty) {
+    if (filteredBy.nonEmpty && filteredBy != Set(IndexAttribute.Opened, IndexAttribute.Closed)) {
       allRemoteIndicesAndAliases.map(_.filter(i => filteredBy.contains(i.attribute)))
     } else {
       allRemoteIndicesAndAliases
@@ -114,10 +114,10 @@ trait EsClusterService {
 
   private def remoteDataStreams(filteredBy: Set[IndexAttribute])
                                (implicit id: RequestId) = {
-    if (filteredBy.nonEmpty) {
-      allRemoteDataStreamsAndAliases.map(_.filter(ds => filteredBy.contains(ds.attribute)))
-    } else {
+    if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) {
       allRemoteDataStreamsAndAliases
+    } else {
+      Task.now(Set.empty)
     }
   }
 
