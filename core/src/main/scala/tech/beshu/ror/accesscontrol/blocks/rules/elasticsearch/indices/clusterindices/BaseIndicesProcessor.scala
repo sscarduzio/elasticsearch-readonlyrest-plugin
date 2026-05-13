@@ -288,18 +288,15 @@ trait BaseIndicesProcessor {
       Task.now(Set.empty)
     } else {
       allowedIndicesManager.indicesPerAliasMap.map { aliasesPerIndex =>
-        val indicesOfRequestedAliases: Set[RequestedIndex[T]] =
+        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
+        allowedIndicesManager.allowedIndicesMatcher.filter(
           requestedAliases.iterator.flatMap { requestedAlias =>
             aliasesPerIndex
               .getOrElse(requestedAlias.name, Set.empty)
               .iterator
-              .map { alias => RequestedIndex(alias, requestedAlias.excluded) }
-          }.toCovariantSet
-
-        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
-        allowedIndicesManager
-          .allowedIndicesMatcher
-          .filter(indicesOfRequestedAliases)
+              .map(alias => RequestedIndex(alias, requestedAlias.excluded))
+          }
+        )
       }
     }
   }
@@ -320,14 +317,15 @@ trait BaseIndicesProcessor {
       Task.now(Set.empty)
     } else {
       allowedIndicesManager.dataStreamsPerAliasMap.map { aliasesPerDataStream =>
-        val dataStreamsOfRequestedAliases = requestedAliases.iterator.flatMap { requestedAlias =>
-          aliasesPerDataStream
-            .getOrElse(requestedAlias.name, Set.empty)
-            .iterator
-            .map(alias => RequestedIndex(alias, requestedAlias.excluded))
-        }.toCovariantSet
         implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
-        allowedIndicesManager.allowedIndicesMatcher.filter(dataStreamsOfRequestedAliases)
+        allowedIndicesManager.allowedIndicesMatcher.filter(
+          requestedAliases.iterator.flatMap { requestedAlias =>
+            aliasesPerDataStream
+              .getOrElse(requestedAlias.name, Set.empty)
+              .iterator
+              .map(alias => RequestedIndex(alias, requestedAlias.excluded))
+          }
+        )
       }
     }
   }

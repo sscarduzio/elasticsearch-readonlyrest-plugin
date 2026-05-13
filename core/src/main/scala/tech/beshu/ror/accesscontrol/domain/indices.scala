@@ -493,10 +493,12 @@ object ClusterIndexName {
     def filterBy(excluded: Option[PatternsMatcher[T]], included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
       lazy val excludedNames = excluded.fold(Set.empty[T])(_.filter(indices))
       val includedItems = included.fold(Set.empty[RequestedIndex[T]]) { m =>
-        m.filter(indices).iterator
-          .filterNot(excludedNames.contains)
-          .map(RequestedIndex(_, excluded = false))
-          .toCovariantSet
+        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
+        m.filter(
+          indices.iterator
+            .filterNot(excludedNames.contains)
+            .map(RequestedIndex(_, excluded = false))
+        )
       }
       if (includedItems.exists(_.name.hasWildcard))
         includedItems ++ excludedNames.iterator.map(RequestedIndex(_, excluded = true))
