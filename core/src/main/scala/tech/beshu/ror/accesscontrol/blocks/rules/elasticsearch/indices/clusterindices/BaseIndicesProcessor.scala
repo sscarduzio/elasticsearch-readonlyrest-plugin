@@ -96,26 +96,28 @@ trait BaseIndicesProcessor {
     Task.delay {
       logger.debug(s"Checking - none or all indices ...")
     } >>
-      allowedIndicesManager
-        .allIndicesAndAliasesAndDataStreams
-        .map { allIndicesAndAliasesAndDataStreams =>
-          logger.debug(s"... indices, aliases and data streams: [${allIndicesAndAliasesAndDataStreams.show}]")
-          if (requestedIndices.exists(_.name.allIndicesRequested)) {
-            val allowedIndices = allowedIndicesManager.allowedIndicesMatcher.filter(allIndicesAndAliasesAndDataStreams)
-            stop(
-              if (allowedIndices.nonEmpty) {
-                logger.debug(s"... matched [indices: ${requestedIndices.show}]. Stop")
-                CanPass.Yes(allowedIndices.map(RequestedIndex(_, excluded = false)))
-              } else {
-                logger.debug(s"... not matched. Index not found. Stop")
-                CanPass.No(IndexNotExist)
-              }
-            )
-          } else {
-            logger.debug(s"... not matched. Continue")
-            continue[Set[RequestedIndex[T]]]
-          }
+      (for {
+        indicesAndAliases    <- allowedIndicesManager.allIndicesAndAliases
+        dataStreamsAndAliases <- allowedIndicesManager.allDataStreamsAndDataStreamAliases
+      } yield {
+        logger.debug(s"... indices, aliases and data streams: [${(indicesAndAliases ++ dataStreamsAndAliases).show}]")
+        if (requestedIndices.exists(_.name.allIndicesRequested)) {
+          val allowedIndices = allowedIndicesManager.allowedIndicesMatcher
+            .filter(indicesAndAliases.view ++ dataStreamsAndAliases)
+          stop(
+            if (allowedIndices.nonEmpty) {
+              logger.debug(s"... matched [indices: ${requestedIndices.show}]. Stop")
+              CanPass.Yes(allowedIndices.map(RequestedIndex(_, excluded = false)))
+            } else {
+              logger.debug(s"... not matched. Index not found. Stop")
+              CanPass.No(IndexNotExist)
+            }
+          )
+        } else {
+          logger.debug(s"... not matched. Continue")
+          continue[Set[RequestedIndex[T]]]
         }
+      })
   }
 
   private def allIndicesMatchedByWildcard[T <: ClusterIndexName : Matchable : Show](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
@@ -287,11 +289,12 @@ trait BaseIndicesProcessor {
     } else {
       allowedIndicesManager.indicesPerAliasMap.map { aliasesPerIndex =>
         val indicesOfRequestedAliases: Set[RequestedIndex[T]] =
-          requestedAliases.flatMap { requestedAlias =>
+          requestedAliases.iterator.flatMap { requestedAlias =>
             aliasesPerIndex
               .getOrElse(requestedAlias.name, Set.empty)
+              .iterator
               .map { alias => RequestedIndex(alias, requestedAlias.excluded) }
-          }
+          }.toCovariantSet
 
         implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
         allowedIndicesManager
@@ -317,11 +320,12 @@ trait BaseIndicesProcessor {
       Task.now(Set.empty)
     } else {
       allowedIndicesManager.dataStreamsPerAliasMap.map { aliasesPerDataStream =>
-        val dataStreamsOfRequestedAliases = requestedAliases.flatMap(requestedAlias =>
+        val dataStreamsOfRequestedAliases = requestedAliases.iterator.flatMap { requestedAlias =>
           aliasesPerDataStream
             .getOrElse(requestedAlias.name, Set.empty)
+            .iterator
             .map(alias => RequestedIndex(alias, requestedAlias.excluded))
-        )
+        }.toCovariantSet
         implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
         allowedIndicesManager.allowedIndicesMatcher.filter(dataStreamsOfRequestedAliases)
       }
