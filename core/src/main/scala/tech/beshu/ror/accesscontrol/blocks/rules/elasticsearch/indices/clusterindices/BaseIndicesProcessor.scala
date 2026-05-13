@@ -164,19 +164,22 @@ trait BaseIndicesProcessor {
       }
   }
 
-  private def resolveRequestedNames[T <: ClusterIndexName](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
-                                                          (implicit requestId: RequestId,
-                                                           allowedIndicesManager: IndicesManager[T]): Task[ResolvedRequestedNames[T]] = {
+  private def resolveRequestedNames[T <: ClusterIndexName : Matchable](requestedIndices: UniqueNonEmptyList[RequestedIndex[T]])
+                                                                       (implicit requestId: RequestId,
+                                                                        allowedIndicesManager: IndicesManager[T]): Task[ResolvedRequestedNames[T]] = {
+    val (excl, incl) = requestedIndices.toList.partition(_.excluded)
+    val excludedMatcher = Option.when(excl.nonEmpty)(PatternsMatcher.create(excl.map(_.name)))
+    val includedMatcher = Option.when(incl.nonEmpty)(PatternsMatcher.create(incl.map(_.name)))
     for {
-      allIndices <- allowedIndicesManager.allIndices
-      allAliases <- allowedIndicesManager.allAliases
-      allDataStreams <- allowedIndicesManager.allDataStreams
+      allIndices           <- allowedIndicesManager.allIndices
+      allAliases           <- allowedIndicesManager.allAliases
+      allDataStreams        <- allowedIndicesManager.allDataStreams
       allDataStreamAliases <- allowedIndicesManager.allDataStreamAliases
     } yield ResolvedRequestedNames(
-      indices = allIndices.filterBy(requestedIndices),
-      aliases = allAliases.filterBy(requestedIndices),
-      dataStreams = allDataStreams.filterBy(requestedIndices),
-      dataStreamAliases = allDataStreamAliases.filterBy(requestedIndices)
+      indices           = allIndices.filterBy(excludedMatcher, includedMatcher),
+      aliases           = allAliases.filterBy(excludedMatcher, includedMatcher),
+      dataStreams        = allDataStreams.filterBy(excludedMatcher, includedMatcher),
+      dataStreamAliases = allDataStreamAliases.filterBy(excludedMatcher, includedMatcher)
     )
   }
 

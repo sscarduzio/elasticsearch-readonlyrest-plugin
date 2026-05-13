@@ -480,32 +480,28 @@ object ClusterIndexName {
     }
   }
 
-  extension [T <: ClusterIndexName](indices: Iterable[T])
+  extension [T <: ClusterIndexName : PatternsMatcher.Matchable](indices: Iterable[T])
     def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
-      val (excluded, included) = requestedIndices.toSet.partition(_.excluded)
-      val excludedRequestedIndices = if (excluded.nonEmpty) {
-        PatternsMatcher
-          .create(excluded.map(_.name))
-          .filter(indices)
-          .map(RequestedIndex(_, excluded = true))
-      } else {
-        Set.empty[RequestedIndex[T]]
-      }
-      val excludedIndicesNames = excludedRequestedIndices.map(_.name)
-      val includedRequestedIndices = if (included.nonEmpty) {
-        PatternsMatcher
-          .create(included.map(_.name))
-          .filter(indices)
-          .filterNot(index => excludedIndicesNames.contains(index))
+      val (excl, incl) = requestedIndices.toList.partition(_.excluded)
+      indices.filterBy(
+        excluded = Option.when(excl.nonEmpty)(PatternsMatcher.create(excl.map(_.name))),
+        included = Option.when(incl.nonEmpty)(PatternsMatcher.create(incl.map(_.name)))
+      )
+    }
+
+  extension [T <: ClusterIndexName](indices: Iterable[T])
+    def filterBy(excluded: Option[PatternsMatcher[T]], included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
+      lazy val excludedNames = excluded.fold(Set.empty[T])(_.filter(indices))
+      lazy val excludedItems = excludedNames.map(RequestedIndex(_, excluded = true))
+      val includedItems = included.fold(Set.empty[RequestedIndex[T]]) { m =>
+        m.filter(indices)
+          .filterNot(excludedNames.contains)
           .map(RequestedIndex(_, excluded = false))
-      } else {
-        Set.empty[RequestedIndex[T]]
       }
-      if (includedRequestedIndices.exists(_.name.hasWildcard)) {
-        includedRequestedIndices ++ excludedRequestedIndices
-      } else {
-        includedRequestedIndices
-      }
+      if (includedItems.exists(_.name.hasWildcard))
+        includedItems ++ excludedItems
+      else
+        includedItems
     }
 }
 
