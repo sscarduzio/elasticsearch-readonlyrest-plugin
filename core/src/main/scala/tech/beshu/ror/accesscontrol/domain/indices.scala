@@ -492,14 +492,14 @@ object ClusterIndexName {
   extension [T <: ClusterIndexName](indices: Iterable[T])
     def filterBy(excluded: Option[PatternsMatcher[T]], included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
       lazy val excludedNames = excluded.fold(Set.empty[T])(_.filter(indices))
-      lazy val excludedItems = excludedNames.map(RequestedIndex(_, excluded = true))
       val includedItems = included.fold(Set.empty[RequestedIndex[T]]) { m =>
-        m.filter(indices)
+        m.filter(indices).iterator
           .filterNot(excludedNames.contains)
           .map(RequestedIndex(_, excluded = false))
+          .toCovariantSet
       }
       if (includedItems.exists(_.name.hasWildcard))
-        includedItems ++ excludedItems
+        includedItems ++ excludedNames.iterator.map(RequestedIndex(_, excluded = true))
       else
         includedItems
     }
