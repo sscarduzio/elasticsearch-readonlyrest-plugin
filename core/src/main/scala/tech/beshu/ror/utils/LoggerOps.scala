@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils
 
-import org.apache.logging.log4j.scala.Logger
+import tech.beshu.ror.utils.slf4j.Logger
 
 import scala.language.implicitConversions
 
