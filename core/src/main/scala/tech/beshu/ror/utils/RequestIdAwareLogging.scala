@@ -18,7 +18,7 @@ package tech.beshu.ror.utils
 
 import cats.implicits.toShow
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logger
+import tech.beshu.ror.utils.slf4j.Logger
 import org.apache.logging.log4j.spi.ExtendedLogger
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.RequestId

@@ -19,7 +19,7 @@ plugins {
     id "readonlyrest.base-common-conventions"
 
     id "com.gradleup.shadow"        version "9.3.0"
-    id "java"
+    id "java-library"
     id "maven-publish"
 }
 
@@ -45,6 +45,10 @@ dependencies {
     shadowCompile group: 'com.fasterxml.jackson.core',          name: 'jackson-databind',           version: '2.20.1'
     shadowCompile group: 'org.yaml',                            name: 'snakeyaml',                  version: '2.5'
     shadowCompile group: 'com.jayway.jsonpath',                 name: 'json-path',                  version: '2.10.0'
+
+    api(group: 'org.apache.logging.log4j',      name: 'log4j-slf4j-impl',                    version: '2.11.2') {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+    }
 }
 
 shadowJar {
