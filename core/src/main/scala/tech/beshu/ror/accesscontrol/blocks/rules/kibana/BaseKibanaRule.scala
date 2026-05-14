@@ -41,7 +41,7 @@ abstract class BaseKibanaRule(val settings: Settings)
 
   import BaseKibanaRule.*
 
-  protected def shouldMatch: ProcessingContext = {
+  protected lazy val shouldMatch: ProcessingContext = {
     isUnrestrictedAccessConfigured ||
       isUserMetadataRequest ||
       isDevNullKibanaRelated ||
@@ -54,14 +54,14 @@ abstract class BaseKibanaRule(val settings: Settings)
       isKibanaIndexRequest
   }
 
-  private def isUnrestrictedAccessConfigured = ProcessingContext.create { (bc, _) =>
+  private lazy val isUnrestrictedAccessConfigured = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
     val result = settings.access === KibanaAccess.Unrestricted
     logger.debug(s"Is unrestricted access configured? ${result.show}")
     result
   }
 
-  private def isUserMetadataRequest = ProcessingContext.create { (bc, _) =>
+  private lazy val isUserMetadataRequest = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
     val requestPath = bc.requestContext.restRequest.path
     val result = requestPath.isCurrentUserMetadataPath || requestPath.isCurrentUserMetadataPath
@@ -69,38 +69,38 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
-  private def isKibanaIndexRequest = {
+  private lazy val isKibanaIndexRequest = {
     kibanaCanBeModified &&
       isTargetingKibana &&
       (isRoAction || isRwAction || isIndicesWriteAction)
   }
 
-  private def isAdminAccessEligible: ProcessingContext = {
+  private lazy val isAdminAccessEligible: ProcessingContext = {
     isAdminAccessConfigured && isAdminAction && isRequestAllowedForAdminAccess
   }
 
-  private def isAdminAccessConfigured = ProcessingContext.create { (bc, _) =>
+  private lazy val isAdminAccessConfigured = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
     val result = settings.access === KibanaAccess.Admin
     logger.debug(s"Is the admin access configured in the rule? ${result.show}")
     result
   }
 
-  private def isRequestAllowedForAdminAccess = {
+  private lazy val isRequestAllowedForAdminAccess = {
     doesRequestContainNoIndices ||
       isRequestRelatedToRorIndex ||
       isRequestRelatedToIndexManagementPath ||
       isRequestRelatedToTagsPath
   }
 
-  private def doesRequestContainNoIndices = ProcessingContext.create { (bc, _) =>
+  private lazy val doesRequestContainNoIndices = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
     val result = bc.indices.isEmpty
     logger.debug(s"Does request contain no indices? ${result.show}")
     result
   }
 
-  private def isRoNonStrictCase = {
+  private lazy val isRoNonStrictCase = {
     isTargetingKibana &&
       isAccessOtherThanRoStrictConfigured &&
       kibanaCannotBeModified &&
@@ -108,18 +108,18 @@ abstract class BaseKibanaRule(val settings: Settings)
       isNonStrictAction
   }
 
-  private def isAccessOtherThanRoStrictConfigured = ProcessingContext.create { (bc, _) =>
+  private lazy val isAccessOtherThanRoStrictConfigured = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
     val result = settings.access =!= ROStrict
     logger.debug(s"Is access other than ROStrict configured? ${result.show}")
     result
   }
 
-  private def isKibanaSimpleData = {
+  private lazy val isKibanaSimpleData = {
     kibanaCanBeModified && (isRelatedToKibanaSampleDataIndex || isRelatedToKibanaSampleDataStream)
   }
 
-  private def emptyIndicesMatch = {
+  private lazy val emptyIndicesMatch = {
     doesRequestContainNoIndices && {
       (kibanaCanBeModified && isRwAction) ||
         (isAdminAccessConfigured && isAdminAction)
@@ -127,7 +127,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   }
 
   // Save UI state in discover & Short urls
-  private def isNonStrictAllowedPath = ProcessingContext.create { (bc, kibanaIndexName) =>
+  private lazy val isNonStrictAllowedPath = ProcessingContext.create { (bc, kibanaIndexName) =>
     val path = bc.requestContext.restRequest.path
     val nonStrictAllowedPaths = Try(Pattern.compile(
       "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
@@ -142,7 +142,7 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
-  private def isTargetingKibana = ProcessingContext.create { (bc, kibanaIndexName) =>
+  private lazy val isTargetingKibana = ProcessingContext.create { (bc, kibanaIndexName) =>
     val result = if (bc.indices.nonEmpty) {
       bc.indices.forall(_.name.isRelatedToKibanaIndex(kibanaIndexName))
     } else {
@@ -153,15 +153,15 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
-  private def isRequestRelatedToRorIndex: ProcessingContext = {
+  private lazy val isRequestRelatedToRorIndex: ProcessingContext = {
     isRelatedToSingleIndex(settings.rorIndex.toLocal)
   }
 
-  private def isRequestRelatedToIndexManagementPath: ProcessingContext = {
+  private lazy val isRequestRelatedToIndexManagementPath: ProcessingContext = {
     isRequestRelatedToTagsPath("index_management")
   }
 
-  private def isRequestRelatedToTagsPath: ProcessingContext = {
+  private lazy val isRequestRelatedToTagsPath: ProcessingContext = {
     isRequestRelatedToTagsPath("tags")
   }
 
@@ -178,7 +178,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   }
 
   // Allow other actions if devnull is targeted to readers and writers
-  private def isDevNullKibanaRelated = {
+  private lazy val isDevNullKibanaRelated = {
     isRelatedToSingleIndex(devNullKibana.underlying)
   }
 
@@ -192,7 +192,7 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
-  private def isRelatedToKibanaSampleDataIndex = ProcessingContext.create { (bc, _) =>
+  private lazy val isRelatedToKibanaSampleDataIndex = ProcessingContext.create { (bc, _) =>
     val result = bc.indices.toList match {
       case Nil => false
       case head :: Nil => kibanaSampleDataIndexMatcher.`match`(head.name)
@@ -203,7 +203,7 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
-  private def isRelatedToKibanaSampleDataStream = ProcessingContext.create { (bc, _) =>
+  private lazy val isRelatedToKibanaSampleDataStream = ProcessingContext.create { (bc, _) =>
     val result = bc.dataStreams.toList match {
       case Nil => false
       case head :: Nil => kibanaSampleDataStreamMatcher.`match`(head)
@@ -214,51 +214,51 @@ abstract class BaseKibanaRule(val settings: Settings)
     result
   }
 
-  private def isRoAction = ProcessingContext.create { (bc, _) =>
+  private lazy val isRoAction = ProcessingContext.create { (bc, _) =>
     val result = roActionPatternsMatcher.`match`(bc.requestContext.action)
     given BlockContext = bc
     logger.debug(s"Is RO action? ${result.show}")
     result
   }
 
-  private def isClusterAction = ProcessingContext.create { (bc, _) =>
+  private lazy val isClusterAction = ProcessingContext.create { (bc, _) =>
     val result = clusterActionPatternsMatcher.`match`(bc.requestContext.action)
     given BlockContext = bc
     logger.debug(s"Is Cluster action? ${result.show}")
     result
   }
 
-  private def isRwAction = ProcessingContext.create { (bc, _) =>
+  private lazy val isRwAction = ProcessingContext.create { (bc, _) =>
     val result = rwActionPatternsMatcher.`match`(bc.requestContext.action)
     given BlockContext = bc
     logger.debug(s"Is RW action? ${result.show}")
     result
   }
 
-  private def isAdminAction = ProcessingContext.create { (bc, _) =>
+  private lazy val isAdminAction = ProcessingContext.create { (bc, _) =>
     val result = adminActionPatternsMatcher.`match`(bc.requestContext.action)
     given BlockContext = bc
     logger.debug(s"Is Admin action? ${result.show}")
     result
   }
 
-  private def isNonStrictAction = ProcessingContext.create { (bc, _) =>
+  private lazy val isNonStrictAction = ProcessingContext.create { (bc, _) =>
     val result = nonStrictActions.`match`(bc.requestContext.action)
     given BlockContext = bc
     logger.debug(s"Is non strict action? ${result.show}")
     result
   }
 
-  private def isIndicesWriteAction = ProcessingContext.create { (bc, _) =>
+  private lazy val isIndicesWriteAction = ProcessingContext.create { (bc, _) =>
     val result = indicesWriteAction.`match`(bc.requestContext.action)
     given BlockContext = bc
     logger.debug(s"Is indices write action? ${result.show}")
     result
   }
 
-  private def kibanaCannotBeModified = !kibanaCanBeModified
+  private lazy val kibanaCannotBeModified = !kibanaCanBeModified
 
-  private def kibanaCanBeModified = ProcessingContext.create { (bc, _) =>
+  private lazy val kibanaCanBeModified = ProcessingContext.create { (bc, _) =>
     val result = settings.access match {
       case RO | ROStrict | ApiOnly => false
       case RW | Admin | Unrestricted => true
