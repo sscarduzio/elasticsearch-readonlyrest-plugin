@@ -18,7 +18,7 @@ openssl req -new -x509 \
 -subj "/CN=test"
 
 # Traditional RSA key + cert
-openssl genrsa -out traditional-rsa-key.pem 2048
+openssl genrsa -traditional -out traditional-rsa-key.pem 2048
 openssl req -new -x509 \
 -key traditional-rsa-key.pem \
 -out traditional-rsa-cert.pem \

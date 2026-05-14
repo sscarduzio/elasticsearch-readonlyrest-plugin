@@ -274,14 +274,12 @@ object SSLCertHelper extends RequestIdAwareLogging {
           val converter = new JcaPEMKeyConverter()
           pemParser.readObject() match {
             case keyPair: PEMKeyPair =>
-              // Traditional EC format (BEGIN EC PRIVATE KEY)
-              // Produced by: dehydrated, OpenSSL (ecparam command)
+              // Traditional format: BEGIN EC PRIVATE KEY (SEC1) or BEGIN RSA PRIVATE KEY (PKCS#1)
+              // Produced by: dehydrated, OpenSSL (ecparam / genrsa -traditional commands)
               converter.getPrivateKey(keyPair.getPrivateKeyInfo)
             case obj =>
-              // PKCS#8 format (BEGIN PRIVATE KEY)
-              // Produced by: certbot, OpenSSL (pkcs8 -topk8 command), Java keytool
-              // Also handles traditional RSA format (BEGIN RSA PRIVATE KEY)
-              // Produced by: OpenSSL (genrsa command)
+              // PKCS#8 format: BEGIN PRIVATE KEY
+              // Produced by: certbot, Java keytool, OpenSSL (pkcs8 -topk8 command / genrsa on OpenSSL 3.x)
               val privateKeyInfo = PrivateKeyInfo.getInstance(obj)
               converter.getPrivateKey(privateKeyInfo)
           }
