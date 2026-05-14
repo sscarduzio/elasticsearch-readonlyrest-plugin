@@ -61,9 +61,8 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   override def contains(str: String): Boolean = patterns.exists(_ == str)
 
   private def filterWith[B](items: IterableOnce[B], conversion: Conversion[B]): Set[B] = {
-    val iter = items.iterator
-    if (compiled.matchAll) iter.toCovariantSet
-    else iter.filter(b => `match`(conversion(b))).toCovariantSet
+    if (compiled.matchAll) items.toCovariantSet
+    else items.iterator.filter(b => `match`(conversion(b))).toCovariantSet
   }
 
   private def globPatternFlags(cs: CaseSensitivity): Int = cs match {

@@ -63,6 +63,7 @@ trait CovariantSetConversions {
 
   extension [A](iterable: IterableOnce[A]) {
     def toCovariantSet: CovariantSet[A] = iterable match {
+      case cs: CovariantSet[A @unchecked] => cs
       case s: Set[A @unchecked] => new CovariantSet[A](s.asInstanceOf[Set[Any]])
       case other => new CovariantSet[A](other.iterator.toSet.asInstanceOf[Set[Any]])
     }
