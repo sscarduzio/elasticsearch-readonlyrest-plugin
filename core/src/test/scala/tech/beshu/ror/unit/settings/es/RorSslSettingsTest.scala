@@ -123,7 +123,7 @@ class RorSslSettingsTest
         }
         ssl.internodeSsl should be(None)
       }
-      "server uses different format's of private key" when {
+      "server uses different formats of private key" when {
         "PKCS#8 EC private key" in {
           val ssl = forceLoad(
             s"""
