@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.buildinfo
 
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.slf4j.Logging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
