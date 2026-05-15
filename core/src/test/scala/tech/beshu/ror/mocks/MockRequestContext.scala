@@ -281,7 +281,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val indexAttributes: Set[IndexAttribute] = Set.empty,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val details: UserMetadataRequestContext.Details = UserMetadataRequestContext.Details(RorKbnLicenseType.Free),
+                                                override val details: UserMetadataRequestContext.Details = UserMetadataRequestContext.Details(RorKbnLicenseType.Enterprise(true)),
                                                 override val esServices: EsServices = MockEsServices.dummy)
   extends UserMetadataRequestContext {
 
