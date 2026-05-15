@@ -44,6 +44,7 @@ target/
 
 // Crypto
 *.pem
+!/core/src/test/resources/ssl/*.pem
 *.pkcs8
 *.p12
 !/docker-envs/**/*.p12

@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.unit.settings.es
 
+import better.files.File
 import eu.timepit.refined.types.all.NonEmptyString
+import io.netty.buffer.ByteBufAllocator
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
@@ -24,13 +26,13 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RorSettingsFile
 import tech.beshu.ror.es.{EsEnv, EsNodeSettings}
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorSslSettings
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.{FileBasedSettings, KeystoreBasedSettings}
-import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
-import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
-import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
-import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, nes, unsafeNes, withEsEnv, withTempConfigDir}
+import tech.beshu.ror.utils.TestsUtils.{defaultEsVersionForTests, nes, withEsEnv, withTempConfigDir}
+import tech.beshu.ror.utils.{SSLCertHelper, TestsEnvVarsProvider, TestsPropertiesProvider}
 
 class RorSslSettingsTest
   extends AnyWordSpec with Inside {
@@ -120,6 +122,56 @@ class RorSslSettingsTest
             clientAuthenticationEnabled should be(false)
         }
         ssl.internodeSsl should be(None)
+      }
+      "server uses different formats of private key" when {
+        "PKCS#8 EC private key" in {
+          val ssl = forceLoad(
+            s"""
+              |xpack.security.enabled: false
+              |readonlyrest.ssl.enable: true
+              |readonlyrest.ssl.server_certificate_file: "${(certsDir / "pkcs8-ec-cert.pem").pathAsString}"
+              |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "pkcs8-ec-key.pem").pathAsString}"
+              |""".stripMargin
+          )
+          inside(ssl.externalSsl) {
+            case Some(sslSettings @ ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+              serverCertificateKeyFile.value.name should be("pkcs8-ec-key.pem")
+              serverCertificateFile.value.name should be("pkcs8-ec-cert.pem")
+              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
+          }
+        }
+        "traditional EC private key" in {
+          val ssl = forceLoad(
+            s"""
+              |xpack.security.enabled: false
+              |readonlyrest.ssl.enable: true
+              |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-ec-cert.pem").pathAsString}"
+              |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-ec-key.pem").pathAsString}"
+              |""".stripMargin
+          )
+          inside(ssl.externalSsl) {
+            case Some(sslSettings @ ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+              serverCertificateKeyFile.value.name should be("traditional-ec-key.pem")
+              serverCertificateFile.value.name should be("traditional-ec-cert.pem")
+              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
+          }
+        }
+        "traditional RSA private key" in {
+          val ssl = forceLoad(
+            s"""
+              |xpack.security.enabled: false
+              |readonlyrest.ssl.enable: true
+              |readonlyrest.ssl.server_certificate_file: "${(certsDir / "traditional-rsa-cert.pem").pathAsString}"
+              |readonlyrest.ssl.server_certificate_key_file: "${(certsDir / "traditional-rsa-key.pem").pathAsString}"
+              |""".stripMargin
+          )
+          inside(ssl.externalSsl) {
+            case Some(sslSettings @ ExternalSslSettings(FileBasedSettings(serverCertificateKeyFile, serverCertificateFile), None, _, _, clientAuthenticationEnabled, FipsMode.NonFips)) =>
+              serverCertificateKeyFile.value.name should be("traditional-rsa-key.pem")
+              serverCertificateFile.value.name should be("traditional-rsa-cert.pem")
+              assertServerSslContextCreatedCorrectly(sslSettings, clientAuthenticationEnabled)
+          }
+        }
       }
     }
     "be loaded from readonlyrest config file" when {
@@ -687,6 +739,13 @@ class RorSslSettingsTest
     }
   }
 
+  private def assertServerSslContextCreatedCorrectly(sslSettings: ExternalSslSettings, clientAuthenticationEnabled: Boolean): Unit = {
+    val sslContext = SSLCertHelper.prepareServerSSLContext(sslSettings, clientAuthenticationEnabled)
+    sslContext should not be null
+    sslContext.isServer should be(true)
+    noException should be thrownBy sslContext.newHandler(ByteBufAllocator.DEFAULT)
+  }
+
   private lazy val basicRorSettings =
     s"""
        |readonlyrest:
@@ -694,4 +753,7 @@ class RorSslSettingsTest
        |    - name: "ADMIN"
        |      auth_key: admin:admin
        |""".stripMargin
+
+  private lazy val certsDir = File(getClass.getResource("/ssl/"))
+
 }
