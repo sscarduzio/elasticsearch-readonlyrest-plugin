@@ -22,8 +22,9 @@ import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.accesscontrol.audit.AuditingTool
+import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.ExplicitlyDisabledAcl
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
@@ -184,7 +185,12 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           if (isSinkEnabled.getOrElse(true)) {
             AuditSink.Enabled(sinkConfig, sinkName)
           } else {
-            AuditSink.Disabled
+            sinkConfig match {
+              case Config.LogBasedSink(s, _) if s.isInstanceOf[AclAuditLogSerializer] =>
+                ExplicitlyDisabledAcl
+              case _ =>
+                AuditSink.Disabled
+            }
           }
         }
       }
@@ -229,8 +235,14 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
         case SerializerType.EcsSerializer =>
           c.downField("serializer").as[Option[AuditLogSerializer]](ecsSerializerDecoder)
+        case SerializerType.AclSerializer =>
+          c.downField("serializer").as[Option[AuditLogSerializer]](aclSerializerDecoder)
       }
     } yield result
+  }
+
+  private def aclSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { _ =>
+    Right(Some(new AclAuditLogSerializer))
   }
 
   private def ecsSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
@@ -312,9 +324,11 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             Right(SerializerType.ExtendedSyntaxConfigurableSerializer)
           case "ecs" =>
             Right(SerializerType.EcsSerializer)
+          case "acl" =>
+            Right(SerializerType.AclSerializer)
           case other =>
             Left(DecodingFailure(AclCreationErrorCoders.stringify(
-              auditSettingsError(s"Invalid serializer type '$other', allowed values [static, configurable, ecs]")
+              auditSettingsError(s"Invalid serializer type '$other', allowed values [static, configurable, ecs, acl]")
             ), Nil))
         }
       case Some(_) | None =>
@@ -332,6 +346,8 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     case object ExtendedSyntaxConfigurableSerializer extends SerializerType
 
     case object EcsSerializer extends SerializerType
+
+    case object AclSerializer extends SerializerType
   }
 
   private given ecsSerializerVersionDecoder: Decoder[EcsSerializerVersion] = Decoder.decodeString.map(_.toLowerCase).emap {

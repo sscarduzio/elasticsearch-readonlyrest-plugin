@@ -24,7 +24,7 @@ import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled, ExplicitlyDisabledAcl}
 import tech.beshu.ror.accesscontrol.audit.sink.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -40,15 +40,14 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 
-final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
+final class AuditingTool private(auditSinks: List[BaseAuditSink])
                                 (implicit loggingContext: LoggingContext,
                                  auditEnvironmentContext: AuditEnvironmentContext) {
 
   def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
     val auditResponseContext = toAuditResponse(response, auditEnvironmentContext)
     implicit val requestId: RequestId = response.requestContext.id.toRequestId
-    val sinks = activeSinksFor(response)
-    NonEmptyList.fromList(sinks) match {
+    NonEmptyList.fromList(activeSinksFor(response)) match {
       case Some(nel) => nel.parTraverse(_.submit(auditResponseContext)).map(_ => ())
       case None      => Task.unit
     }
@@ -85,9 +84,10 @@ final class AuditingTool private(auditSinks: NonEmptyList[BaseAuditSink])
   }
 
   def close(): Task[Unit] = {
-    auditSinks
-      .parTraverse(_.close())
-      .map((_: NonEmptyList[Unit]) => ())
+    NonEmptyList.fromList(auditSinks) match {
+      case Some(nel) => nel.parTraverse(_.close()).map((_: NonEmptyList[Unit]) => ())
+      case None      => Task.unit
+    }
   }
 
   private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): AuditResponseContext = {
@@ -214,6 +214,8 @@ object AuditingTool extends RequestIdAwareLogging {
 
       case object Disabled extends AuditSink
 
+      case object ExplicitlyDisabledAcl extends AuditSink
+
       sealed trait Config {
         def logSerializer: AuditLogSerializer
       }
@@ -261,16 +263,16 @@ object AuditingTool extends RequestIdAwareLogging {
   def create(settings: AuditSettings,
              auditSinkServiceCreator: AuditSinkServiceCreator)
             (implicit clock: Clock,
-             loggingContext: LoggingContext): Task[Either[NonEmptyList[CreationError], Option[AuditingTool]]] = {
+             loggingContext: LoggingContext): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
     createAuditSinks(settings, auditSinkServiceCreator).map {
-      _.map {
-          case Some(auditSinks) =>
-            implicit val auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(settings.esNodeSettings)
-            noRequestIdLogger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
-            Some(new AuditingTool(auditSinks))
-          case None =>
+      _.map { auditSinks =>
+          implicit val auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(settings.esNodeSettings)
+          if (auditSinks.isEmpty) {
             noRequestIdLogger.info("The audit is disabled because no output is enabled")
-            None
+          } else {
+            noRequestIdLogger.info(s"The audit is enabled with the given outputs: [${auditSinks.show}]")
+          }
+          new AuditingTool(auditSinks)
         }
         .toEither
         .leftMap { errors =>
@@ -281,7 +283,7 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private def createAuditSinks(settings: AuditSettings,
                                auditSinkServiceCreator: AuditSinkServiceCreator)
-                              (using Clock): Task[ValidatedNel[CreationError, Option[NonEmptyList[SupportedAuditSink]]]] = {
+                              (using Clock): Task[ValidatedNel[CreationError, List[SupportedAuditSink]]] = {
     settings
       .auditSinks
       .toList
@@ -302,7 +304,7 @@ object AuditingTool extends RequestIdAwareLogging {
           }
         case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName), name) =>
           Task.delay(new LogBasedAuditSink(serializer, loggerName, name).some.valid)
-        case Disabled =>
+        case Disabled | ExplicitlyDisabledAcl =>
           Task.pure(None.valid)
       }
       .sequence
@@ -317,7 +319,7 @@ object AuditingTool extends RequestIdAwareLogging {
         }
       }
       .map { case (errors, sinks) =>
-        NonEmptyList.fromList(errors).toInvalid(NonEmptyList.fromList(sinks))
+        NonEmptyList.fromList(errors).toInvalid(sinks)
       }
   }
 
@@ -350,11 +352,13 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
 
-  private given Show[SupportedAuditSink] = Show.show {
+  private given showSupportedAuditSink: Show[SupportedAuditSink] = Show.show {
     case _: EsIndexBasedAuditSink => "index"
     case _: LogBasedAuditSink => "log"
     case _: EsDataStreamBasedAuditSink => "data_stream"
   }
+
+  private given Show[List[SupportedAuditSink]] = sinks => sinks.map(_.show).mkString(", ")
 
   extension (userMetadata: UserMetadata) {
     def loggedUser: LoggedUser = userMetadata match {
