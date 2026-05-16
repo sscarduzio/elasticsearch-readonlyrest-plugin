@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import monix.eval.Task
 import org.apache.logging.log4j.{LogManager, Logger}
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.audit.AclAuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
@@ -31,7 +32,9 @@ private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
                                (implicit requestId: RequestId): Task[Unit] = Task {
-    logger.info(serializedEvent.toString)
+    val msg = serializedEvent.optString(AclAuditLogSerializer.messageField, null)
+    if (msg != null) logger.info(msg)
+    else logger.info(serializedEvent.toString)
   }
 
   override def close(): Task[Unit] = Task.unit

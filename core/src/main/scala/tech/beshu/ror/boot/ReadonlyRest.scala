@@ -20,13 +20,15 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
@@ -34,7 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
-import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.es.{EsEnv, EsNodeSettings}
 import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.*
@@ -45,7 +47,8 @@ import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
                    indexDocumentManager: IndexDocumentManager,
-                   auditSinkServiceCreator: AuditSinkServiceCreator)
+                   auditSinkServiceCreator: AuditSinkServiceCreator,
+                   fallbackEsNodeSettings: EsNodeSettings)
                   (implicit systemContext: SystemContext)
   extends RequestIdAwareLogging {
 
@@ -166,27 +169,44 @@ class ReadonlyRest(coreFactory: CoreFactory,
         new Engine(
           core = decoratedCore,
           httpClientsFactory = httpClientsFactory,
-          ldapConnectionPoolProvider,
-          auditingTool
+          ldapConnectionPoolProvider = ldapConnectionPoolProvider,
+          auditingTool = auditingTool
         )
       }
   }
 
   private def createAuditingTool(auditingSettings: Option[AuditSettings])
-                                (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
-    auditingSettings
-      .map { settings =>
-        AuditingTool.create(settings, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
-      }
-      .sequence
+                                (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
+    val settingsWithDefault = ensureDefaultAclSink(auditingSettings)
+    AuditingTool.create(settingsWithDefault, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
       .map {
-        _.sequence
-          .map(_.flatten)
-          .leftMap {
-            _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
-          }
+        _.leftMap {
+          _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
+        }
       }
   }
+
+  private def ensureDefaultAclSink(auditingSettings: Option[AuditSettings]): AuditSettings = {
+    val defaultAclSink = AuditSink.Enabled(
+      Config.LogBasedSink(new AclAuditLogSerializer, RorAuditLoggerName.default),
+      name = None
+    )
+    auditingSettings match {
+      case None =>
+        AuditSettings(NonEmptyList.one(defaultAclSink), fallbackEsNodeSettings)
+      case Some(settings) if hasExplicitAclSink(settings) =>
+        settings
+      case Some(settings) =>
+        settings.copy(auditSinks = defaultAclSink :: settings.auditSinks)
+    }
+  }
+
+  private def hasExplicitAclSink(settings: AuditSettings): Boolean =
+    settings.auditSinks.exists {
+      case AuditSink.Enabled(Config.LogBasedSink(s, _), _) => s.isInstanceOf[AclAuditLogSerializer]
+      case AuditSink.ExplicitlyDisabledAcl                  => true
+      case _                                                 => false
+    }
 
   private def inspectFlsEngine(engine: Engine)
                               (implicit requestId: RequestId): Unit = {
@@ -238,13 +258,13 @@ object ReadonlyRest {
   final class Engine(val core: Core,
                      httpClientsFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     auditingTool: Option[AuditingTool])
+                     auditingTool: AuditingTool)
                     (implicit scheduler: Scheduler) {
 
     private[ror] def shutdown(): Unit = {
       httpClientsFactory.shutdown().runAsyncAndForget
       ldapConnectionPoolProvider.close().runAsyncAndForget
-      auditingTool.foreach(_.close().runAsyncAndForget)
+      auditingTool.close().runAsyncAndForget
     }
   }
 
@@ -255,13 +275,14 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit systemContext: SystemContext): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
-    create(coreFactory, indexContentService, auditSinkServiceCreator)
+    new ReadonlyRest(coreFactory, indexContentService, auditSinkServiceCreator, env.esNodeSettings)
   }
 
   def create(coreFactory: CoreFactory,
              indexDocumentManager: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator)
             (implicit systemContext: SystemContext): ReadonlyRest = {
-    new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator)
+    new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator,
+      EsNodeSettings(nodeName = "unknown", clusterName = "unknown", xpackSecurityEnabled = false))
   }
 }

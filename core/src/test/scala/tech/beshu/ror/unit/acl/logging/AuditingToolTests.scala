@@ -72,7 +72,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
               }
-            ).runSyncUnsafe().toOption.flatten.get
+            ).runSyncUnsafe().toOption.get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow, logAllowedEvents = false)).runSyncUnsafe()
           }
           "custom serializer throws exception" in {
@@ -84,7 +84,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
               }
-            ).runSyncUnsafe().toOption.flatten.get
+            ).runSyncUnsafe().toOption.get
             an[IllegalArgumentException] should be thrownBy {
               auditingTool.audit(createAllowedResponseContext(Policy.Allow)).runSyncUnsafe()
             }
@@ -107,7 +107,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
               }
-            ).runSyncUnsafe().toOption.flatten.get
+            ).runSyncUnsafe().toOption.get
             auditingTool.audit(createAllowedResponseContext(Policy.Allow)).runSyncUnsafe()
           }
           "request was matched by forbidden rule" in {
@@ -126,7 +126,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
               }
-            ).runSyncUnsafe().toOption.flatten.get
+            ).runSyncUnsafe().toOption.get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = ForbiddenBy(
@@ -167,7 +167,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
               }
-            ).runSyncUnsafe().toOption.flatten.get
+            ).runSyncUnsafe().toOption.get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Forbidden(requestContext, History.empty)
@@ -190,7 +190,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
               }
-            ).runSyncUnsafe().toOption.flatten.get
+            ).runSyncUnsafe().toOption.get
 
             val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
             val responseContext = Errored(requestContext, new Exception("error"))
@@ -217,7 +217,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
               override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
             }
-          ).runSyncUnsafe().toOption.flatten.get
+          ).runSyncUnsafe().toOption.get
 
           val requestContextId = RequestContext.Id.fromString(UUID.randomUUID().toString)
           val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
@@ -233,7 +233,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       }
     }
     "no enabled outputs in settings" should {
-      "be disabled" in {
+      "create a tool with no active sinks" in {
         val creationResult = AuditingTool.create(
           settings = AuditSettings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled), defaultTestEsNodeSettings),
           auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
@@ -242,7 +242,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
           }
         ).runSyncUnsafe()
-        creationResult should be(Right(None))
+        creationResult.isRight should be(true)
       }
     }
   }

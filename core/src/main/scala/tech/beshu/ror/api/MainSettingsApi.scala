@@ -83,7 +83,7 @@ class MainSettingsApi(rorInstance: RorInstance,
         case Config.LogBasedSink(_, loggerName) =>
           Some(OtherAuditOutput(s"Logger with name [${loggerName.value.value}]"))
       }
-      case AuditSink.Disabled => None
+      case AuditSink.Disabled | AuditSink.ExplicitlyDisabledAcl => None
     }
     ProvideAuditSettings.AuditSettings(auditOutputs)
   }

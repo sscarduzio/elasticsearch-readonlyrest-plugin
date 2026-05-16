@@ -204,8 +204,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
 
         override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
       }
-    ).runSyncUnsafe().toOption.flatten.get
-    new AccessControlListLoggingDecorator(acl, Some(auditingTool))
+    ).runSyncUnsafe().toOption.get
+    new AccessControlListLoggingDecorator(acl, auditingTool)
   }
 
   private def captureProcessingMillis(jsonString: String) = {
