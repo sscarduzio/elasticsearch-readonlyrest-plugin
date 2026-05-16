@@ -71,7 +71,7 @@ class MainSettingsApi(rorInstance: RorInstance,
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
     val sinks = rorInstance.auditSettings.map(_.auditSinks.toList).getOrElse(List.empty)
     val auditOutputs = sinks.flatMap {
-      case AuditSink.Enabled(config) => config match {
+      case AuditSink.Enabled(config, _) => config match {
         case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
           Some(LocalAuditIndex(rorAuditIndexTemplate.rorAuditIndexPattern, AuditIndexSchema.from(logSerializer)))
         case Config.EsIndexBasedSink(_, _, _: AuditCluster.RemoteAuditCluster) =>

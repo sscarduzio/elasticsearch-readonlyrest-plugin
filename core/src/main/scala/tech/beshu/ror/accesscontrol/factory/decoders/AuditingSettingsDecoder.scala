@@ -24,6 +24,7 @@ import io.lemonlabs.uri.Uri
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
 import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDescriptorParser, ConfigurableAuditLogSerializer}
@@ -122,7 +123,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         case AuditSinkType.Log =>
           Config.LogBasedSink.default.asRight
       }
-      .map(AuditSink.Enabled.apply)
+      .map(config => AuditSink.Enabled(config))
   }
 
   private def auditSinkConfigExtendedDecoder(using EsVersion): Decoder[AuditSink] = {
@@ -178,15 +179,18 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             case AuditSinkType.Log => c.as[LogBasedSink]
           }
           isSinkEnabled <- c.downFieldAs[Option[Boolean]]("enabled")
+          sinkName <- c.downField("name").as[Option[Block.SinkName]]
         } yield {
           if (isSinkEnabled.getOrElse(true)) {
-            AuditSink.Enabled(sinkConfig)
+            AuditSink.Enabled(sinkConfig, sinkName)
           } else {
             AuditSink.Disabled
           }
         }
       }
   }
+
+  private given Decoder[Block.SinkName] = Decoder.decodeString.map(Block.SinkName.apply)
 
   private given Decoder[RorAuditDataStream] =
     SyncDecoderCreator
@@ -233,8 +237,8 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     for {
       version <- c.downField("version").as[Option[EcsSerializerVersion]]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer 'version' is invalid: $msg"))
-      allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
-        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
+      allowedEventMode <- decodeAllowedEventMode(c)
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"ECS serializer is used, but the 'allowed_events_serialization_mode' setting is invalid: $msg"))
       includeFullRequestContentOpt <- c.downField("include_full_request_content").as[Option[Boolean]]
       includeFullRequestContent = includeFullRequestContentOpt.getOrElse(false)
       serializer = version match {
@@ -248,13 +252,29 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private def extendedSyntaxConfigurableSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {
-      allowedEventMode <- c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
-        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'verbosity_level_serialization_mode' setting is invalid: $msg"))
+      allowedEventMode <- decodeAllowedEventMode(c)
+        .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'allowed_events_serialization_mode' setting is invalid: $msg"))
       fields <- c.downField("fields").as[Map[AuditFieldPath, AuditFieldValueDescriptor]]
         .left.map(withAuditingSettingsCreationErrorMessage(msg => s"Configurable serializer is used, but the 'fields' setting is missing or invalid: $msg"))
       serializer = new ConfigurableAuditLogSerializer(allowedEventMode, fields)
     } yield Some(serializer)
   }
+
+  private def decodeAllowedEventMode(c: HCursor): Decoder.Result[AllowedEventMode] = {
+    c.downField("allowed_events_serialization_mode").focus match {
+      case Some(_) =>
+        c.downField("allowed_events_serialization_mode").as[AllowedEventMode](allowedEventsSerializationModeDecoder)
+      case None =>
+        c.downField("verbosity_level_serialization_mode").as[AllowedEventMode]
+    }
+  }
+
+  private val allowedEventsSerializationModeDecoder: Decoder[AllowedEventMode] =
+    Decoder.decodeString.emap {
+      case "always"                  => Right(AllowedEventMode.IncludeAll)
+      case "based_on_block_settings" => Right(AllowedEventMode.Include(Set(Verbosity.Info)))
+      case other                     => Left(s"Unknown value '$other', allowed values are: [always, based_on_block_settings]")
+    }
 
   private def extendedSyntaxStaticSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {

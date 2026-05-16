@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
@@ -73,7 +73,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
               }
             ).runSyncUnsafe().toOption.flatten.get
-            auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, logAllowedEvents = false)).runSyncUnsafe()
           }
           "custom serializer throws exception" in {
             val auditingTool = AuditingTool.create(
@@ -86,7 +86,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               }
             ).runSyncUnsafe().toOption.flatten.get
             an[IllegalArgumentException] should be thrownBy {
-              auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
+              auditingTool.audit(createAllowedResponseContext(Policy.Allow)).runSyncUnsafe()
             }
           }
         }
@@ -108,7 +108,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
               }
             ).runSyncUnsafe().toOption.flatten.get
-            auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow)).runSyncUnsafe()
           }
           "request was matched by forbidden rule" in {
             val requestId = RequestId("mock-1")
@@ -135,8 +135,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 block = new Block(
                   Block.Name("mock-block"),
                   Block.Policy.Forbid(),
-                  Block.Verbosity.Info,
-                  Block.Audit.Enabled,
+                  Block.Audit.Enabled(),
                   NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
                 ),
                 requestContext = requestContext,
@@ -266,7 +265,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private lazy val someday = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
 
-  private def createAllowedResponseContext(policy: Block.Policy, verbosity: Block.Verbosity) = {
+  private def createAllowedResponseContext(policy: Block.Policy, logAllowedEvents: Boolean = true) = {
     val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
     AllowedBy(
       requestContext = requestContext,
@@ -274,8 +273,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         block = new Block(
           Block.Name("mock-block"),
           policy,
-          verbosity,
-          Block.Audit.Enabled,
+          Block.Audit.Enabled(logAllowedEvents),
           NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
         ),
         requestContext = requestContext,

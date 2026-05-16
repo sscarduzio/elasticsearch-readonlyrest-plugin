@@ -19,11 +19,13 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import monix.eval.Task
 import org.apache.logging.log4j.{LogManager, Logger}
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
-                                             loggerName: RorAuditLoggerName) extends BaseAuditSink(serializer) {
+                                             loggerName: RorAuditLoggerName,
+                                             sinkName: Option[Block.SinkName] = None) extends BaseAuditSink(serializer, sinkName) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
 

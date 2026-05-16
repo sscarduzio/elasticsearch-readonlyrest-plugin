@@ -394,6 +394,42 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
             )
           }
+          "configurable serializer with allowed_events_serialization_mode: based_on_block_settings" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      serializer:
+                |        type: configurable
+                |        allowed_events_serialization_mode: based_on_block_settings
+                |        fields:
+                |          message: "test"
+              """.stripMargin
+            )
+
+            val configuredSerializer = serializer(settings).asInstanceOf[ConfigurableAuditLogSerializer]
+            configuredSerializer.allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
+          }
+          "configurable serializer with allowed_events_serialization_mode: always" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      serializer:
+                |        type: configurable
+                |        allowed_events_serialization_mode: always
+                |        fields:
+                |          message: "test"
+              """.stripMargin
+            )
+
+            val configuredSerializer = serializer(settings).asInstanceOf[ConfigurableAuditLogSerializer]
+            configuredSerializer.allowedEventMode shouldBe AllowedEventMode.IncludeAll
+          }
         }
         "'index' output type defined" when {
           "only type is set" in {
@@ -790,6 +826,38 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
               val expectedJson = circeJsonWithIgnoredTimestamp(new JSONObject(expectedJsonStr))
               actualJson should be(expectedJson)
+            }
+            "ECS serializer with allowed_events_serialization_mode: based_on_block_settings" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      serializer:
+                  |        type: ecs
+                  |        allowed_events_serialization_mode: based_on_block_settings
+                """.stripMargin
+              )
+
+              val createdSerializer = serializer(settings)
+              createdSerializer.asInstanceOf[EcsV1AuditLogSerializer].allowedEventMode shouldBe AllowedEventMode.Include(Set(Verbosity.Info))
+            }
+            "ECS serializer with allowed_events_serialization_mode: always" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      serializer:
+                  |        type: ecs
+                  |        allowed_events_serialization_mode: always
+                """.stripMargin
+              )
+
+              val createdSerializer = serializer(settings)
+              createdSerializer.asInstanceOf[EcsV1AuditLogSerializer].allowedEventMode shouldBe AllowedEventMode.IncludeAll
             }
             "deprecated custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
