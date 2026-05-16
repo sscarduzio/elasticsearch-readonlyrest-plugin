@@ -57,8 +57,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val block = new Block(
           name = blockName,
           policy = Block.Policy.Allow,
-          verbosity = Block.Verbosity.Info,
-          audit = Block.Audit.Enabled,
+          
+          audit = Block.Audit.Enabled(),
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") ::
               passingRule("r2", withLoggedUser) ::
@@ -90,8 +90,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val block = new Block(
           name = blockName,
           policy = Block.Policy.Allow,
-          verbosity = Block.Verbosity.Info,
-          audit = Block.Audit.Enabled,
+          
+          audit = Block.Audit.Enabled(),
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule("r5") :: Nil
           )
@@ -121,8 +121,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        verbosity = Block.Verbosity.Info,
-        audit = Block.Audit.Enabled,
+        
+        audit = Block.Audit.Enabled(),
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
         )
@@ -160,8 +160,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        verbosity = Block.Verbosity.Info,
-        audit = Block.Audit.Enabled,
+        
+        audit = Block.Audit.Enabled(),
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", withLoggedUser) ::
             passingRule("r2") ::
@@ -201,8 +201,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        verbosity = Block.Verbosity.Info,
-        audit = Block.Audit.Enabled,
+        
+        audit = Block.Audit.Enabled(),
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))) ::
             passingRule("r2", _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))) ::

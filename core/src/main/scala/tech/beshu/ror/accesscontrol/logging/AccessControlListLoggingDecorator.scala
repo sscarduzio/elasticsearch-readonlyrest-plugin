@@ -22,7 +22,7 @@ import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.{AccessControlList, History}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
@@ -108,7 +108,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
     blockAuditSettings(responseContext) match {
       case Some(Block.Audit.Disabled) =>
         ()
-      case None | Some(Block.Audit.Enabled) =>
+      case None | Some(_: Block.Audit.Enabled) =>
         auditingTool.foreach {
           _
             .audit(responseContext)
@@ -139,7 +139,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
           case UserMetadata.WithGroups(groupsMetadata) =>
             val auditsFromGroupMetadataBlocks = groupsMetadata.values.map(_.metadataOrigin.blockContext.block.audit)
             Some {
-              if (auditsFromGroupMetadataBlocks.exists(_ == Block.Audit.Enabled)) Block.Audit.Enabled
+              if (auditsFromGroupMetadataBlocks.exists(_ == Block.Audit.Enabled())) Block.Audit.Enabled()
               else Block.Audit.Disabled
             }
         }
@@ -151,15 +151,12 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
   }
 
   private def isLoggableEntry(context: ResponseContext[_]): Boolean = {
-    def shouldBeLogged(block: Block) = {
-      block.verbosity match {
-        case Verbosity.Info => true
-        case Verbosity.Error => false
-      }
-    }
-
     context match {
-      case AllowedBy(_, blockContext, _) => shouldBeLogged(blockContext.block)
+      case AllowedBy(_, blockContext, _) =>
+        blockContext.block.audit match {
+          case e: Audit.Enabled => e.logAllowedEvents
+          case Audit.Disabled   => false
+        }
       case Allowed(_, _, _) => true
       case _: ForbiddenBy[_] | _: Forbidden[_] | _: Errored[_] | _: RequestedIndexNotExist[_] => true
     }

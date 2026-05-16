@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
@@ -212,31 +212,46 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                           (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
-    implicit val verbosityDecoder: Decoder[Verbosity] =
-      Decoder
-        .decodeString
-        .toSyncDecoder
-        .emapE[Verbosity] {
-          case "info" => Right(Verbosity.Info)
-          case "error" => Right(Verbosity.Error)
-          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")))
-        }
-        .decoder
+    implicit val sinkNameDecoder: Decoder[Block.SinkName] =
+      Decoder.decodeString.map(Block.SinkName.apply)
     implicit val blockAuditDecoder: Decoder[Block.Audit] =
       Decoder.instance { c =>
         for {
-          enabled <- c.downField("enabled").as[Boolean]
+          enabled            <- c.downField("enabled").as[Option[Boolean]]
+          logAllowedEvts     <- c.downField("log_allowed_events").as[Option[Boolean]]
+          enabledSinksRaw    <- c.downField("enabled_audit_sinks").as[Option[List[Block.SinkName]]]
+          disabledSinksRaw   <- c.downField("disabled_audit_sinks").as[Option[List[Block.SinkName]]]
+          _                  <- Either.cond(
+                                  !(enabledSinksRaw.isDefined && disabledSinksRaw.isDefined),
+                                  (),
+                                  decodingFailureFrom(BlocksLevelCreationError(Message(
+                                    "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
+                                  )))
+                                )
         } yield {
-          if (enabled) Block.Audit.Enabled else Block.Audit.Disabled
+          if (enabled.getOrElse(true))
+            Block.Audit.Enabled(logAllowedEvts.getOrElse(true), enabledSinksRaw.map(_.toSet), disabledSinksRaw.map(_.toSet))
+          else
+            Block.Audit.Disabled
         }
       }
+
     Decoder
       .instance { c =>
         val result = for {
-          name <- c.downField(Attributes.Block.name).as[Block.Name]
+          name   <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
-          verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          audit <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
+          legacyVerbosityAudit <- c.downField(Attributes.Block.verbosity).as[Option[String]].flatMap {
+            case None          => Right(None)
+            case Some("info")  => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
+            case Some("error") => Right(Some(Block.Audit.Enabled(logAllowedEvents = false)))
+            case Some(unknown) => Left(decodingFailureFrom(BlocksLevelCreationError(Message(
+              s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'."
+            ))))
+          }
+          auditFromConfig <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
+          // explicit audit section takes precedence over the legacy verbosity key
+          audit = auditFromConfig.orElse(legacyVerbosityAudit)
           rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, esEnv)
             .toSyncDecoder
             .decoder
@@ -248,7 +263,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .remove(Attributes.Block.audit)
               )
             ))
-          block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
+          block <- Block.createFrom(name, policy, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
           localUsers = LocalUsers.from(block),
