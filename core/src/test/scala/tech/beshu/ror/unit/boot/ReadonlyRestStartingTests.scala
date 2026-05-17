@@ -208,7 +208,7 @@ class ReadonlyRestStartingTests
             createCoreResult =
               Task
                 .sleep(100 millis)
-                .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None))) // very long creation
+                .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None, defaultTestEsNodeSettings))) // very long creation
           )
           mockSavingMainSettings(
             mockedIndexDocumentManager,
@@ -1417,8 +1417,7 @@ class ReadonlyRestStartingTests
             NonEmptyList.of(
               AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig1),
               AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig2)
-            ),
-            defaultTestEsNodeSettings
+            )
           ))
         )
 
@@ -1525,7 +1524,7 @@ class ReadonlyRestStartingTests
         (settings: RawRorSettings, _, _, _, _) => settings == loadedMainSettings
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, dependencies, auditingSettings))))
+      .returns(Task.now(Right(Core(accessControlMock, dependencies, auditingSettings, defaultTestEsNodeSettings))))
     mockedCoreFactory
   }
 

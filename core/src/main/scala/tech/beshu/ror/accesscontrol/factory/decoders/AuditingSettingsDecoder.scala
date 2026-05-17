@@ -45,7 +45,7 @@ import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.adapters.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.constants.EsFeatureVersions
-import tech.beshu.ror.es.{EsEnv, EsNodeSettings, EsVersion}
+import tech.beshu.ror.es.{EsEnv, EsVersion}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -84,19 +84,18 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   }
 
   private def decodeAuditSettings(esEnv: EsEnv) = {
-    decodeAuditSettingsWith(esEnv.esNodeSettings)(using auditSinkConfigSimpleDecoder(using esEnv.esVersion))
+    decodeAuditSettingsWith(using auditSinkConfigSimpleDecoder(using esEnv.esVersion))
       .handleErrorWith { error =>
         if (error.aclCreationError.isDefined) {
           // the schema was valid, but the config not
           Decoder.failed(error)
         } else {
-          decodeAuditSettingsWith(esEnv.esNodeSettings)(using auditSinkConfigExtendedDecoder(using esEnv.esVersion))
+          decodeAuditSettingsWith(using auditSinkConfigExtendedDecoder(using esEnv.esVersion))
         }
       }
   }
 
-  private def decodeAuditSettingsWith(esNodeSettings: EsNodeSettings)
-                                     (using Decoder[AuditSink]) = {
+  private def decodeAuditSettingsWith(using Decoder[AuditSink]) = {
     SyncDecoderCreator
       .instance {
         _.downField("audit").downField("outputs").as[Option[List[AuditSink]]]
@@ -105,12 +104,11 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         case Some(outputs) =>
           NonEmptyList
             .fromList(outputs.distinct)
-            .map(AuditingTool.AuditSettings(_, esNodeSettings))
+            .map(AuditingTool.AuditSettings(_))
             .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
           AuditingTool.AuditSettings(
-            NonEmptyList.of(AuditSink.Enabled(Block.SinkName.random(), EsIndexBasedSink.default)),
-            esNodeSettings
+            NonEmptyList.of(AuditSink.Enabled(Block.SinkName.random(), EsIndexBasedSink.default))
           ).asRight
       }
       .decoder
@@ -654,8 +652,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
                 auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
               )
             )
-          ),
-          esEnv.esNodeSettings
+          )
         )
       }
     }
