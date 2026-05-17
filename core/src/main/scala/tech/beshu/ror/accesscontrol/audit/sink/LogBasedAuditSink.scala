@@ -18,6 +18,10 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.apache.logging.log4j.{LogManager, Logger}
+import org.apache.logging.log4j.core.LoggerContext
+import org.apache.logging.log4j.core.appender.RollingFileAppender
+import org.apache.logging.log4j.core.appender.rolling.{CompositeTriggeringPolicy, DefaultRolloverStrategy, SizeBasedTriggeringPolicy}
+import org.apache.logging.log4j.core.layout.PatternLayout
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AclAuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
@@ -26,9 +30,52 @@ import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
                                              loggerName: RorAuditLoggerName,
-                                             sinkName: Option[Block.SinkName] = None) extends BaseAuditSink(serializer, sinkName) {
+                                             sinkName: Option[Block.SinkName] = None,
+                                             filePath: Option[java.nio.file.Path] = None,
+                                             maxFileSize: String = "100MB",
+                                             maxFiles: Int = 7) extends BaseAuditSink(serializer, sinkName) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
+  private val fileAppender: Option[RollingFileAppender] = filePath.map { path =>
+    buildAndStartAppender(loggerName.value.value, path, maxFileSize, maxFiles)
+  }
+
+  private def buildAndStartAppender(loggerName: String,
+                                    path: java.nio.file.Path,
+                                    maxFileSize: String,
+                                    maxFiles: Int): RollingFileAppender = {
+    val ctx = LogManager.getContext(false).asInstanceOf[LoggerContext]
+    val config = ctx.getConfiguration
+
+    val layout = PatternLayout.newBuilder()
+      .withPattern("%msg%n")
+      .withConfiguration(config)
+      .build()
+
+    val triggeringPolicy = CompositeTriggeringPolicy.createPolicy(
+      SizeBasedTriggeringPolicy.createPolicy(maxFileSize)
+    )
+
+    val rolloverStrategy = DefaultRolloverStrategy.newBuilder()
+      .withMax(maxFiles.toString)
+      .withConfig(config)
+      .build()
+
+    val appender = RollingFileAppenderFactory.create(
+      s"RorAuditFile-$loggerName",
+      path.toString,
+      path.toString + ".%i",
+      layout,
+      triggeringPolicy,
+      rolloverStrategy,
+      config
+    )
+
+    appender.start()
+    ctx.getLogger(loggerName).addAppender(appender)
+    ctx.updateLoggers()
+    appender
+  }
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
                                (implicit requestId: RequestId): Task[Unit] = Task {
@@ -37,5 +84,12 @@ private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
     else logger.info(serializedEvent.toString)
   }
 
-  override def close(): Task[Unit] = Task.unit
+  override def close(): Task[Unit] = Task.delay {
+    fileAppender.foreach { appender =>
+      val ctx = LogManager.getContext(false).asInstanceOf[LoggerContext]
+      ctx.getLogger(loggerName.value.value).removeAppender(appender)
+      ctx.updateLoggers()
+      appender.stop()
+    }
+  }
 }

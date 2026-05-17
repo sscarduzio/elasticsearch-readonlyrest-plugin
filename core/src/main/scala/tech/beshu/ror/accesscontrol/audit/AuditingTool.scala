@@ -246,7 +246,10 @@ object AuditingTool extends RequestIdAwareLogging {
         }
 
         final case class LogBasedSink(logSerializer: AuditLogSerializer,
-                                      loggerName: RorAuditLoggerName) extends Config
+                                      loggerName: RorAuditLoggerName,
+                                      filePath: Option[java.nio.file.Path] = None,
+                                      maxFileSize: String = "100MB",
+                                      maxFiles: Int = 7) extends Config
 
         object LogBasedSink {
           val default: LogBasedSink = LogBasedSink(
@@ -302,8 +305,9 @@ object AuditingTool extends RequestIdAwareLogging {
               // todo improvement - make this state impossible
               Task.raiseError(new IllegalStateException("Data stream audit sink is not supported in this version"))
           }
-        case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName), name) =>
-          Task.delay(new LogBasedAuditSink(serializer, loggerName, name).some.valid)
+        case Enabled(config: AuditSink.Config.LogBasedSink, name) =>
+          Task.delay(new LogBasedAuditSink(config.logSerializer, config.loggerName, name,
+                                           config.filePath, config.maxFileSize, config.maxFiles).some.valid)
         case Disabled | ExplicitlyDisabledAcl =>
           Task.pure(None.valid)
       }

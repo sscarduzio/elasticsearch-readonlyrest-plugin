@@ -338,6 +338,62 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedLoggerName = "custom_logger"
             )
           }
+          "file_path is set" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      file_path: /tmp/ror-audit-test.log
+              """.stripMargin
+            )
+
+            assertLogBasedAuditSinkFileSettingsPresent(
+              settings,
+              expectedLoggerName = "readonlyrest_audit",
+              expectedFilePath = Some(java.nio.file.Paths.get("/tmp/ror-audit-test.log")),
+              expectedMaxFileSize = "100MB",
+              expectedMaxFiles = 7
+            )
+          }
+          "file_path with custom rotation settings is set" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      file_path: /tmp/ror-audit-test.log
+                |      max_file_size: 50MB
+                |      max_files: 3
+              """.stripMargin
+            )
+
+            assertLogBasedAuditSinkFileSettingsPresent(
+              settings,
+              expectedLoggerName = "readonlyrest_audit",
+              expectedFilePath = Some(java.nio.file.Paths.get("/tmp/ror-audit-test.log")),
+              expectedMaxFileSize = "50MB",
+              expectedMaxFiles = 3
+            )
+          }
+          "file_path parent directory is not writable" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      file_path: /nonexistent_ror_test_dir/audit.log
+              """.stripMargin
+            )
+
+            assertInvalidSettings(
+              settings,
+              expectedErrorMessage = "The directory '/nonexistent_ror_test_dir' for audit 'file_path' '/nonexistent_ror_test_dir/audit.log' is not writable"
+            )
+          }
           "configurable serializer is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
@@ -2215,6 +2271,37 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       val sinkConfig = headSinkConfig.asInstanceOf[Config.LogBasedSink]
       sinkConfig.loggerName should be(RorAuditLoggerName(expectedLoggerName))
       sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
+    }
+  }
+
+  private def assertLogBasedAuditSinkFileSettingsPresent(settings: RawRorSettings,
+                                                         expectedLoggerName: NonEmptyString,
+                                                         expectedFilePath: Option[java.nio.file.Path],
+                                                         expectedMaxFileSize: String,
+                                                         expectedMaxFiles: Int) = {
+    val core = factory()
+      .createCoreFrom(
+        settings,
+        RorSettingsIndex(IndexName.Full(".readonlyrest")),
+        MockHttpClientsFactory,
+        MockLdapConnectionPoolProvider,
+        NoOpMocksProvider
+      )
+      .runSyncUnsafe()
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+      auditingSettings.auditSinks.size should be(1)
+
+      val headSink = auditingSettings.auditSinks.head
+      headSink shouldBe a[AuditSink.Enabled]
+
+      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+      headSinkConfig shouldBe a[Config.LogBasedSink]
+
+      val sinkConfig = headSinkConfig.asInstanceOf[Config.LogBasedSink]
+      sinkConfig.loggerName should be(RorAuditLoggerName(expectedLoggerName))
+      sinkConfig.filePath should be(expectedFilePath)
+      sinkConfig.maxFileSize should be(expectedMaxFileSize)
+      sinkConfig.maxFiles should be(expectedMaxFiles)
     }
   }
 

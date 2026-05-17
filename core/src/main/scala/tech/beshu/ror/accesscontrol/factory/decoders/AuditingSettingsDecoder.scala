@@ -139,11 +139,29 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     given Decoder[LogBasedSink] = Decoder.instance { c =>
       for {
         logSerializer <- c.as[Option[AuditLogSerializer]]
-        loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
-      } yield LogBasedSink(
-        logSerializer = logSerializer.getOrElse(LogBasedSink.default.logSerializer),
-        loggerName = loggerName.getOrElse(LogBasedSink.default.loggerName)
-      )
+        loggerName    <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
+        filePath      <- c.downField("file_path").as[Option[String]]
+                          .map(_.map(java.nio.file.Paths.get(_)))
+        maxFileSize   <- c.downField("max_file_size").as[Option[String]]
+        maxFiles      <- c.downField("max_files").as[Option[Int]]
+        sink = LogBasedSink(
+          logSerializer = logSerializer.getOrElse(LogBasedSink.default.logSerializer),
+          loggerName    = loggerName.getOrElse(LogBasedSink.default.loggerName),
+          filePath      = filePath,
+          maxFileSize   = maxFileSize.getOrElse("100MB"),
+          maxFiles      = maxFiles.getOrElse(7)
+        )
+        _ <- filePath match {
+          case Some(path) =>
+            val parent = path.getParent
+            if (parent != null && !java.nio.file.Files.isWritable(parent))
+              Left(DecodingFailure(AclCreationErrorCoders.stringify(
+                auditSettingsError(s"The directory '${parent}' for audit 'file_path' '${path}' is not writable")
+              ), Nil))
+            else Right(())
+          case None => Right(())
+        }
+      } yield sink
     }
 
     given Decoder[EsIndexBasedSink] = Decoder.instance { c =>
@@ -186,7 +204,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             AuditSink.Enabled(sinkConfig, sinkName)
           } else {
             sinkConfig match {
-              case Config.LogBasedSink(s, _) if s.isInstanceOf[AclAuditLogSerializer] =>
+              case s: Config.LogBasedSink if s.logSerializer.isInstanceOf[AclAuditLogSerializer] =>
                 ExplicitlyDisabledAcl
               case _ =>
                 AuditSink.Disabled

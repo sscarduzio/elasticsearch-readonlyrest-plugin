@@ -80,8 +80,8 @@ class MainSettingsApi(rorInstance: RorInstance,
           Some(LocalDataStream(ds.dataStream, AuditIndexSchema.from(logSerializer)))
         case Config.EsDataStreamBasedSink(_, ds, _: AuditCluster.RemoteAuditCluster) =>
           Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
-        case Config.LogBasedSink(_, loggerName) =>
-          Some(OtherAuditOutput(s"Logger with name [${loggerName.value.value}]"))
+        case s: Config.LogBasedSink =>
+          Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
       }
       case AuditSink.Disabled | AuditSink.ExplicitlyDisabledAcl => None
     }

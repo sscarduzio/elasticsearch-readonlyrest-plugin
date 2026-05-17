@@ -203,7 +203,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def hasExplicitAclSink(settings: AuditSettings): Boolean =
     settings.auditSinks.exists {
-      case AuditSink.Enabled(Config.LogBasedSink(s, _), _) => s.isInstanceOf[AclAuditLogSerializer]
+      case AuditSink.Enabled(s: Config.LogBasedSink, _) => s.logSerializer.isInstanceOf[AclAuditLogSerializer]
       case AuditSink.ExplicitlyDisabledAcl                  => true
       case _                                                 => false
     }
