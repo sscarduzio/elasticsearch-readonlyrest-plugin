@@ -230,6 +230,44 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
           logFileContent should include(requestContextId.value)
         }
+        "write audit log exclusively to the configured file_path via its RollingFileAppender" in {
+          // Use a logger name that has NO pre-configured Log4j appenders, so the
+          // RollingFileAppender we attach programmatically is the only possible writer.
+          val isolatedLoggerName = RorAuditLoggerName(nes("ror-audit-isolated-file-appender-test"))
+          val filePathAuditLog = File("/tmp/ror/audit_logs/test_isolated_file_path_audit.log")
+          filePathAuditLog.parent.createDirectories()
+          filePathAuditLog.overwrite("")
+
+          @nowarn("cat=deprecation")
+          val auditingTool = AuditingTool.create(
+            settings = AuditSettings(
+              NonEmptyList.of(
+                AuditSink.Enabled(Config.LogBasedSink(
+                  logSerializer = new DefaultAuditLogSerializer,
+                  loggerName = isolatedLoggerName,
+                  filePath = Some(filePathAuditLog.path)
+                ))
+              ),
+              defaultTestEsNodeSettings
+            ),
+            auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+              override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
+
+              override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
+            }
+          ).runSyncUnsafe().toOption.get
+
+          filePathAuditLog.contentAsString shouldBe empty
+
+          val requestContextId = RequestContext.Id.fromString(UUID.randomUUID().toString)
+          val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = requestContextId)
+          val responseContext = Errored(requestContext, new Exception("error"))
+
+          auditingTool.audit(responseContext).runSyncUnsafe()
+          auditingTool.close().runSyncUnsafe()
+
+          filePathAuditLog.contentAsString should include(requestContextId.value)
+        }
       }
     }
     "no enabled outputs in settings" should {
