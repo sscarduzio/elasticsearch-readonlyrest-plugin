@@ -37,6 +37,7 @@ import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditR
 import tech.beshu.ror.es.EsNodeSettings
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import eu.timepit.refined.types.numeric.PosInt
 
 import java.time.Clock
 
@@ -66,11 +67,11 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
 
   private def filterSinks(blockAudit: Option[Audit.Enabled]): List[BaseAuditSink] = {
     blockAudit match {
-      case None => auditSinks.toList
+      case None => auditSinks
       case Some(config) if config.enabledSinks.isEmpty && config.disabledSinks.isEmpty =>
-        auditSinks.toList
+        auditSinks
       case Some(config) =>
-        auditSinks.toList.filter { sink =>
+        auditSinks.filter { sink =>
           config.enabledSinks match {
             case Some(names) => names.contains(sink.name)
             case None =>
@@ -246,16 +247,23 @@ object AuditingTool extends RequestIdAwareLogging {
         }
 
         final case class LogBasedSink(logSerializer: AuditLogSerializer,
-                                      loggerName: RorAuditLoggerName,
-                                      filePath: Option[java.nio.file.Path] = None,
-                                      maxFileSize: String = "100MB",
-                                      maxFiles: Int = 7) extends Config
+                                      loggerName: RorAuditLoggerName) extends Config
 
         object LogBasedSink {
           val default: LogBasedSink = LogBasedSink(
             logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             loggerName = RorAuditLoggerName.default
           )
+        }
+
+        final case class RollingFileBasedSink(logSerializer: AuditLogSerializer,
+                                              loggerName: RorAuditLoggerName,
+                                              fileAppender: RollingFileBasedSink.FileAppenderConfig) extends Config
+
+        object RollingFileBasedSink {
+          final case class FileAppenderConfig(filePath: java.nio.file.Path,
+                                              maxFileSize: FileSize,
+                                              maxFiles: PosInt)
         }
       }
     }
@@ -306,8 +314,9 @@ object AuditingTool extends RequestIdAwareLogging {
               Task.raiseError(new IllegalStateException("Data stream audit sink is not supported in this version"))
           }
         case Enabled(name, config: AuditSink.Config.LogBasedSink) =>
-          Task.delay(new LogBasedAuditSink(name, config.logSerializer, config.loggerName,
-                                           config.filePath, config.maxFileSize, config.maxFiles).some.valid)
+          Task.delay(new LogBasedAuditSink(name, config.logSerializer, config.loggerName).some.valid)
+        case Enabled(name, config: AuditSink.Config.RollingFileBasedSink) =>
+          Task.delay(new RollingFileBasedAuditSink(name, config.logSerializer, config.loggerName, config.fileAppender).some.valid)
         case Disabled | ExplicitlyDisabledAcl =>
           Task.pure(None.valid)
       }
@@ -354,11 +363,12 @@ object AuditingTool extends RequestIdAwareLogging {
         ).map(_.leftMap(error => CreationError(error.message)).toValidated)
       }
 
-  private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
+  private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink | RollingFileBasedAuditSink
 
   private given showSupportedAuditSink: Show[SupportedAuditSink] = Show.show {
     case _: EsIndexBasedAuditSink => "index"
     case _: LogBasedAuditSink => "log"
+    case _: RollingFileBasedAuditSink => "log_file"
     case _: EsDataStreamBasedAuditSink => "data_stream"
   }
 
