@@ -26,11 +26,11 @@ import tech.beshu.ror.es.services.DataStreamBasedAuditSinkService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value
 
-private[audit] final class EsDataStreamBasedAuditSink private(serializer: AuditLogSerializer,
+private[audit] final class EsDataStreamBasedAuditSink private(sinkName: Block.SinkName,
+                                                              serializer: AuditLogSerializer,
                                                               rorAuditDataStream: RorAuditDataStream,
-                                                              auditSinkService: DataStreamBasedAuditSinkService,
-                                                              sinkName: Option[Block.SinkName])
-  extends BaseAuditSink(serializer, sinkName) {
+                                                              auditSinkService: DataStreamBasedAuditSinkService)
+  extends BaseAuditSink(sinkName, serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
                                (implicit requestId: RequestId): Task[Unit] = Task {
@@ -58,14 +58,14 @@ object EsDataStreamBasedAuditSink {
     }
   }
 
-  def create(serializer: AuditLogSerializer,
+  def create(sinkName: Block.SinkName,
+             serializer: AuditLogSerializer,
              rorAuditDataStream: RorAuditDataStream,
              auditSinkService: DataStreamBasedAuditSinkService,
-             auditCluster: AuditCluster,
-             sinkName: Option[Block.SinkName] = None): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = value {
+             auditCluster: AuditCluster): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = value {
     for {
       _ <- createRorAuditDataStreamIfNotExists(rorAuditDataStream, auditSinkService, auditCluster)
-      auditSink <- createAuditSink(serializer, rorAuditDataStream, auditSinkService, sinkName)
+      auditSink <- createAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService)
     } yield auditSink
   }
 
@@ -76,12 +76,12 @@ object EsDataStreamBasedAuditSink {
       .leftMap(errorMessages => CreationError(errorMessages, auditCluster))
   }
 
-  private def createAuditSink(serializer: AuditLogSerializer,
+  private def createAuditSink(sinkName: Block.SinkName,
+                              serializer: AuditLogSerializer,
                               rorAuditDataStream: RorAuditDataStream,
-                              auditSinkService: DataStreamBasedAuditSinkService,
-                              sinkName: Option[Block.SinkName]) = {
+                              auditSinkService: DataStreamBasedAuditSinkService) = {
     EitherT.right[CreationError](Task.delay(
-      new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService, sinkName)
+      new EsDataStreamBasedAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService)
     ))
   }
 }

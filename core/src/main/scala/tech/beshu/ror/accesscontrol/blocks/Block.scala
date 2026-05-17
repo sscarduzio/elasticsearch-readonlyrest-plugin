@@ -222,6 +222,9 @@ object Block {
   }
 
   final case class SinkName(value: String) extends AnyVal
+  object SinkName {
+    def random(): SinkName = SinkName(java.util.UUID.randomUUID().toString)
+  }
 
   sealed trait Audit
 

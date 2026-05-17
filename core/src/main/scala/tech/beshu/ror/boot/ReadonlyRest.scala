@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName, RorSettingsIndex}
@@ -188,8 +189,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def ensureDefaultAclSink(auditingSettings: Option[AuditSettings]): AuditSettings = {
     val defaultAclSink = AuditSink.Enabled(
-      Config.LogBasedSink(new AclAuditLogSerializer, RorAuditLoggerName.default),
-      name = None
+      Block.SinkName.random(),
+      Config.LogBasedSink(new AclAuditLogSerializer, RorAuditLoggerName.default)
     )
     auditingSettings match {
       case None =>
@@ -203,7 +204,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def hasExplicitAclSink(settings: AuditSettings): Boolean =
     settings.auditSinks.exists {
-      case AuditSink.Enabled(s: Config.LogBasedSink, _) => s.logSerializer.isInstanceOf[AclAuditLogSerializer]
+      case AuditSink.Enabled(_, s: Config.LogBasedSink) => s.logSerializer.isInstanceOf[AclAuditLogSerializer]
       case AuditSink.ExplicitlyDisabledAcl                  => true
       case _                                                 => false
     }
