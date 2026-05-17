@@ -82,6 +82,8 @@ class MainSettingsApi(rorInstance: RorInstance,
           Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
         case s: Config.LogBasedSink =>
           Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
+        case s: Config.RollingFileBasedSink =>
+          Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}] to file [${s.fileAppender.filePath}]"))
       }
       case AuditSink.Disabled | AuditSink.ExplicitlyDisabledAcl => None
     }

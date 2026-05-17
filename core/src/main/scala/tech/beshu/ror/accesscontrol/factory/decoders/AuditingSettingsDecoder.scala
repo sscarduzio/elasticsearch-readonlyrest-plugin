@@ -27,12 +27,14 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.ExplicitlyDisabledAcl
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink, RollingFileBasedSink}
 import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDescriptorParser, ConfigurableAuditLogSerializer}
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, ClusterMode, NodeCredentials, RemoteAuditCluster}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, FileSize, RorAuditDataStream, RorAuditIndexTemplate, RorAuditLoggerName}
+import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.refineV
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{AuditingSettingsCreationError, Reason}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.{lemonLabsUriDecoder, nonEmptyStringDecoder}
@@ -136,32 +138,47 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         .decoder
     }
 
-    given Decoder[LogBasedSink] = Decoder.instance { c =>
+    given Decoder[RollingFileBasedSink.FileAppenderConfig] = Decoder.instance { c =>
+      for {
+        filePath    <- c.downField("file_path").as[String].map(java.nio.file.Paths.get(_))
+        maxFileSize <- c.downField("max_file_size").as[String].flatMap { raw =>
+                        FileSize.from(raw).leftMap { case FileSize.CreationError.InvalidFormat(msg) =>
+                          DecodingFailure(AclCreationErrorCoders.stringify(
+                            auditSettingsError(s"Invalid audit 'max_file_size': $msg")
+                          ), Nil)
+                        }
+                      }
+        maxFiles    <- c.downField("max_files").as[Int].flatMap { n =>
+                        refineV[Positive](n).leftMap(_ =>
+                          DecodingFailure(AclCreationErrorCoders.stringify(
+                            auditSettingsError(s"Audit 'max_files' must be a positive integer, got: $n")
+                          ), Nil)
+                        )
+                      }
+        _ <- {
+          val parent = filePath.getParent
+          if (parent != null && !java.nio.file.Files.isWritable(parent))
+            Left(DecodingFailure(AclCreationErrorCoders.stringify(
+              auditSettingsError(s"The directory '${parent}' for audit 'file_path' '${filePath}' is not writable")
+            ), Nil))
+          else Right(())
+        }
+      } yield RollingFileBasedSink.FileAppenderConfig(filePath, maxFileSize, maxFiles)
+    }
+
+    given logBasedSinkConfigDecoder: Decoder[AuditSink.Config] = Decoder.instance { c =>
       for {
         logSerializer <- c.as[Option[AuditLogSerializer]]
         loggerName    <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
-        filePath      <- c.downField("file_path").as[Option[String]]
-                          .map(_.map(java.nio.file.Paths.get(_)))
-        maxFileSize   <- c.downField("max_file_size").as[Option[String]]
-        maxFiles      <- c.downField("max_files").as[Option[Int]]
-        sink = LogBasedSink(
-          logSerializer = logSerializer.getOrElse(LogBasedSink.default.logSerializer),
-          loggerName    = loggerName.getOrElse(LogBasedSink.default.loggerName),
-          filePath      = filePath,
-          maxFileSize   = maxFileSize.getOrElse("100MB"),
-          maxFiles      = maxFiles.getOrElse(7)
-        )
-        _ <- filePath match {
-          case Some(path) =>
-            val parent = path.getParent
-            if (parent != null && !java.nio.file.Files.isWritable(parent))
-              Left(DecodingFailure(AclCreationErrorCoders.stringify(
-                auditSettingsError(s"The directory '${parent}' for audit 'file_path' '${path}' is not writable")
-              ), Nil))
-            else Right(())
-          case None => Right(())
+        fileAppender  <- c.downField("file_appender").as[Option[RollingFileBasedSink.FileAppenderConfig]]
+      } yield {
+        val serializer = logSerializer.getOrElse(LogBasedSink.default.logSerializer)
+        val logger     = loggerName.getOrElse(LogBasedSink.default.loggerName)
+        fileAppender match {
+          case None     => LogBasedSink(serializer, logger)
+          case Some(fa) => RollingFileBasedSink(serializer, logger, fa)
         }
-      } yield sink
+      }
     }
 
     given Decoder[EsIndexBasedSink] = Decoder.instance { c =>
@@ -195,7 +212,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           sinkConfig <- sinkType match {
             case AuditSinkType.DataStream => c.as[EsDataStreamBasedSink]
             case AuditSinkType.Index => c.as[EsIndexBasedSink]
-            case AuditSinkType.Log => c.as[LogBasedSink]
+            case AuditSinkType.Log => c.as[AuditSink.Config](logBasedSinkConfigDecoder)
           }
           isSinkEnabled <- c.downFieldAs[Option[Boolean]]("enabled")
           sinkName <- c.downField("name").as[Option[Block.SinkName]]

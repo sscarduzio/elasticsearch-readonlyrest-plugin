@@ -34,7 +34,8 @@ import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, AuditFieldUtils}
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorSettingsIndex}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, FileSize, IndexName, RorAuditLoggerName, RorSettingsIndex}
+import tech.beshu.ror.utils.RefinedUtils.positiveInt
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.{Core, RawRorSettingsBasedCoreFactory, RorDependencies}
@@ -338,54 +339,65 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedLoggerName = "custom_logger"
             )
           }
-          "file_path is set" in {
+          "file_appender section is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      file_path: /tmp/ror-audit-test.log
+                |      file_appender:
+                |        file_path: /tmp/ror-audit-test.log
+                |        max_file_size: 100MB
+                |        max_files: 7
               """.stripMargin
             )
 
             assertLogBasedAuditSinkFileSettingsPresent(
               settings,
               expectedLoggerName = "readonlyrest_audit",
-              expectedFilePath = Some(java.nio.file.Paths.get("/tmp/ror-audit-test.log")),
-              expectedMaxFileSize = "100MB",
-              expectedMaxFiles = 7
+              expectedFileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
+                filePath = java.nio.file.Paths.get("/tmp/ror-audit-test.log"),
+                maxFileSize = FileSize.from("100MB").toOption.get,
+                maxFiles = positiveInt(7)
+              )
             )
           }
-          "file_path with custom rotation settings is set" in {
+          "file_appender section with custom rotation settings is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      file_path: /tmp/ror-audit-test.log
-                |      max_file_size: 50MB
-                |      max_files: 3
+                |      file_appender:
+                |        file_path: /tmp/ror-audit-test.log
+                |        max_file_size: 50MB
+                |        max_files: 3
               """.stripMargin
             )
 
             assertLogBasedAuditSinkFileSettingsPresent(
               settings,
               expectedLoggerName = "readonlyrest_audit",
-              expectedFilePath = Some(java.nio.file.Paths.get("/tmp/ror-audit-test.log")),
-              expectedMaxFileSize = "50MB",
-              expectedMaxFiles = 3
+              expectedFileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
+                filePath = java.nio.file.Paths.get("/tmp/ror-audit-test.log"),
+                maxFileSize = FileSize.from("50MB").toOption.get,
+                maxFiles = positiveInt(3)
+              )
             )
           }
-          "file_path parent directory is not writable" in {
+          "file_appender section has non-writable parent directory" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
                 |    enabled: true
                 |    outputs:
                 |    - type: log
-                |      file_path: /nonexistent_ror_test_dir/audit.log
+                |      file_appender:
+                |        file_path: /nonexistent_ror_test_dir/audit.log
+                |        max_file_size: 100MB
+                |        max_files: 7
               """.stripMargin
             )
 
@@ -2276,9 +2288,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def assertLogBasedAuditSinkFileSettingsPresent(settings: RawRorSettings,
                                                          expectedLoggerName: NonEmptyString,
-                                                         expectedFilePath: Option[java.nio.file.Path],
-                                                         expectedMaxFileSize: String,
-                                                         expectedMaxFiles: Int) = {
+                                                         expectedFileAppender: Config.RollingFileBasedSink.FileAppenderConfig) = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2295,13 +2305,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       headSink shouldBe a[AuditSink.Enabled]
 
       val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
-      headSinkConfig shouldBe a[Config.LogBasedSink]
+      headSinkConfig shouldBe a[Config.RollingFileBasedSink]
 
-      val sinkConfig = headSinkConfig.asInstanceOf[Config.LogBasedSink]
+      val sinkConfig = headSinkConfig.asInstanceOf[Config.RollingFileBasedSink]
       sinkConfig.loggerName should be(RorAuditLoggerName(expectedLoggerName))
-      sinkConfig.filePath should be(expectedFilePath)
-      sinkConfig.maxFileSize should be(expectedMaxFileSize)
-      sinkConfig.maxFiles should be(expectedMaxFiles)
+      sinkConfig.fileAppender should be(expectedFileAppender)
     }
   }
 

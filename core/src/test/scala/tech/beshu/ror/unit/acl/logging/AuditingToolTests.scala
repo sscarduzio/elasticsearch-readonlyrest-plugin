@@ -37,6 +37,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.FileSize
+import tech.beshu.ror.utils.RefinedUtils.positiveInt
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -242,10 +244,14 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val auditingTool = AuditingTool.create(
             settings = AuditSettings(
               NonEmptyList.of(
-                AuditSink.Enabled(Block.SinkName.random(), Config.LogBasedSink(
+                AuditSink.Enabled(Block.SinkName.random(), Config.RollingFileBasedSink(
                   logSerializer = new DefaultAuditLogSerializer,
                   loggerName = isolatedLoggerName,
-                  filePath = Some(filePathAuditLog.path)
+                  fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
+                    filePath = filePathAuditLog.path,
+                    maxFileSize = FileSize.from("100MB").toOption.get,
+                    maxFiles = positiveInt(7)
+                  )
                 ))
               ),
               defaultTestEsNodeSettings
