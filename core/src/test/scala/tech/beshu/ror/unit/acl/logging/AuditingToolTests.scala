@@ -205,7 +205,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val auditingTool = AuditingTool.create(
             settings = AuditSettings(
               NonEmptyList.of(
-                AuditSink.Enabled(Config.LogBasedSink(
+                AuditSink.Enabled(Block.SinkName.random(), Config.LogBasedSink(
                   new DefaultAuditLogSerializer,
                   RorAuditLoggerName.default
                 ))
@@ -242,7 +242,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           val auditingTool = AuditingTool.create(
             settings = AuditSettings(
               NonEmptyList.of(
-                AuditSink.Enabled(Config.LogBasedSink(
+                AuditSink.Enabled(Block.SinkName.random(), Config.LogBasedSink(
                   logSerializer = new DefaultAuditLogSerializer,
                   loggerName = isolatedLoggerName,
                   filePath = Some(filePathAuditLog.path)
@@ -287,12 +287,12 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private def auditSettings(serializer: AuditLogSerializer) = AuditSettings(
     auditSinks = NonEmptyList.of(
-      AuditSink.Enabled(Config.EsIndexBasedSink(
+      AuditSink.Enabled(Block.SinkName.random(), Config.EsIndexBasedSink(
         serializer,
         RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
         AuditCluster.LocalAuditCluster
       )),
-      AuditSink.Enabled(Config.EsDataStreamBasedSink(
+      AuditSink.Enabled(Block.SinkName.random(), Config.EsDataStreamBasedSink(
         serializer,
         RorAuditDataStream.from("test_ds").toOption.get,
         AuditCluster.LocalAuditCluster

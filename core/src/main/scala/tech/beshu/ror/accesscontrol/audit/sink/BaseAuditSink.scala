@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-private[audit] abstract class BaseAuditSink(auditLogSerializer: AuditLogSerializer,
-                                            val name: Option[Block.SinkName]) {
+private[audit] abstract class BaseAuditSink(val name: Block.SinkName,
+                                            auditLogSerializer: AuditLogSerializer) {
 
   final def submit(auditEvent: AuditResponseContext)(implicit requestId: RequestId): Task[Unit] = {
     safeRunSerializer(auditEvent)

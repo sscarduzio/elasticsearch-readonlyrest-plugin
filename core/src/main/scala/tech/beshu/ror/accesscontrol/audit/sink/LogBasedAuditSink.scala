@@ -28,12 +28,12 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
+private[audit] final class LogBasedAuditSink(sinkName: Block.SinkName,
+                                             serializer: AuditLogSerializer,
                                              loggerName: RorAuditLoggerName,
-                                             sinkName: Option[Block.SinkName] = None,
                                              filePath: Option[java.nio.file.Path] = None,
                                              maxFileSize: String = "100MB",
-                                             maxFiles: Int = 7) extends BaseAuditSink(serializer, sinkName) {
+                                             maxFiles: Int = 7) extends BaseAuditSink(sinkName, serializer) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
   private val fileAppender: Option[RollingFileAppender] = filePath.map { path =>

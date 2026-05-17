@@ -107,7 +107,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
           AuditingTool.AuditSettings(
-            NonEmptyList.of(AuditSink.Enabled(EsIndexBasedSink.default)),
+            NonEmptyList.of(AuditSink.Enabled(Block.SinkName.random(), EsIndexBasedSink.default)),
             esNodeSettings
           ).asRight
       }
@@ -124,7 +124,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         case AuditSinkType.Log =>
           Config.LogBasedSink.default.asRight
       }
-      .map(config => AuditSink.Enabled(config))
+      .map(config => AuditSink.Enabled(Block.SinkName.random(), config))
   }
 
   private def auditSinkConfigExtendedDecoder(using EsVersion): Decoder[AuditSink] = {
@@ -201,7 +201,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           sinkName <- c.downField("name").as[Option[Block.SinkName]]
         } yield {
           if (isSinkEnabled.getOrElse(true)) {
-            AuditSink.Enabled(sinkConfig, sinkName)
+            AuditSink.Enabled(sinkName.getOrElse(Block.SinkName.random()), sinkConfig)
           } else {
             sinkConfig match {
               case s: Config.LogBasedSink if s.logSerializer.isInstanceOf[AclAuditLogSerializer] =>
@@ -630,6 +630,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         } yield AuditingTool.AuditSettings(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
+              Block.SinkName.random(),
               EsIndexBasedSink(
                 logSerializer = logSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
                 rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
