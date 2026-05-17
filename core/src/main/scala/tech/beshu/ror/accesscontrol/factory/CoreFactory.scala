@@ -46,7 +46,7 @@ import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
-import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.es.{EsEnv, EsNodeSettings}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -55,7 +55,8 @@ import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControlList,
                       dependencies: RorDependencies,
-                      auditingSettings: Option[AuditingTool.AuditSettings])
+                      auditingSettings: Option[AuditingTool.AuditSettings],
+                      esNodeSettings: EsNodeSettings)
 
 trait CoreFactory {
   def createCoreFrom(rorSettings: RawRorSettings,
@@ -124,7 +125,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
         if (!enabled) {
-          AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None)))
+          AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None, esEnv.esNodeSettings)))
         } else {
           for {
             globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(settingsIndex))
@@ -412,7 +413,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             obfuscatedHeaders
           )
         ): AccessControlList
-        Core(accessControl, rorDependencies, auditingTools)
+        Core(accessControl, rorDependencies, auditingTools, esEnv.esNodeSettings)
       }
       decoder.apply(c)
     }

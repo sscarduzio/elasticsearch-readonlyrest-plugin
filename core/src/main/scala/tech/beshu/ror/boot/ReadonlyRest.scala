@@ -20,16 +20,12 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
-import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName, RorSettingsIndex}
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason
@@ -37,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest.*
-import tech.beshu.ror.es.{EsEnv, EsNodeSettings}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.*
@@ -48,8 +44,7 @@ import java.time.Instant
 
 class ReadonlyRest(coreFactory: CoreFactory,
                    indexDocumentManager: IndexDocumentManager,
-                   auditSinkServiceCreator: AuditSinkServiceCreator,
-                   fallbackEsNodeSettings: EsNodeSettings)
+                   auditSinkServiceCreator: AuditSinkServiceCreator)
                   (implicit systemContext: SystemContext)
   extends RequestIdAwareLogging {
 
@@ -157,7 +152,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    EitherT(createAuditingTool(core.auditingSettings))
+    EitherT(createAuditingTool(core))
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
@@ -165,7 +160,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
             auditingTool = auditingTool
           ),
           dependencies = core.dependencies,
-          auditingSettings = core.auditingSettings
+          auditingSettings = core.auditingSettings,
+          esNodeSettings = core.esNodeSettings
         )
         new Engine(
           core = decoratedCore,
@@ -176,38 +172,15 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
   }
 
-  private def createAuditingTool(auditingSettings: Option[AuditSettings])
+  private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
-    val settingsWithDefault = ensureDefaultAclSink(auditingSettings)
-    AuditingTool.create(settingsWithDefault, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
+    AuditingTool.create(core.auditingSettings, core.esNodeSettings, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
       .map {
         _.leftMap {
           _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
         }
       }
   }
-
-  private def ensureDefaultAclSink(auditingSettings: Option[AuditSettings]): AuditSettings = {
-    val defaultAclSink = AuditSink.Enabled(
-      Block.SinkName.random(),
-      Config.LogBasedSink(new AclAuditLogSerializer, RorAuditLoggerName.default)
-    )
-    auditingSettings match {
-      case None =>
-        AuditSettings(NonEmptyList.one(defaultAclSink), fallbackEsNodeSettings)
-      case Some(settings) if hasExplicitAclSink(settings) =>
-        settings
-      case Some(settings) =>
-        settings.copy(auditSinks = defaultAclSink :: settings.auditSinks)
-    }
-  }
-
-  private def hasExplicitAclSink(settings: AuditSettings): Boolean =
-    settings.auditSinks.exists {
-      case AuditSink.Enabled(_, s: Config.LogBasedSink) => s.logSerializer.isInstanceOf[AclAuditLogSerializer]
-      case AuditSink.ExplicitlyDisabledAcl                  => true
-      case _                                                 => false
-    }
 
   private def inspectFlsEngine(engine: Engine)
                               (implicit requestId: RequestId): Unit = {
@@ -276,14 +249,13 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit systemContext: SystemContext): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
-    new ReadonlyRest(coreFactory, indexContentService, auditSinkServiceCreator, env.esNodeSettings)
+    new ReadonlyRest(coreFactory, indexContentService, auditSinkServiceCreator)
   }
 
   def create(coreFactory: CoreFactory,
              indexDocumentManager: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator)
             (implicit systemContext: SystemContext): ReadonlyRest = {
-    new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator,
-      EsNodeSettings(nodeName = "unknown", clusterName = "unknown", xpackSecurityEnabled = false))
+    new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator)
   }
 }

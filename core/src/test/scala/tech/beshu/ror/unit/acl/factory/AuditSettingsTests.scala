@@ -194,7 +194,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings), _)) =>
             auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
@@ -1352,7 +1352,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings), _)) =>
             auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
@@ -1404,7 +1404,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings), _)) =>
             auditingSettings.auditSinks.size should be(2)
 
             val sink1 = auditingSettings.auditSinks.head
@@ -2163,7 +2163,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), None)) => }
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), None, _)) => }
   }
 
   private def assertSettings(settings: RawRorSettings, expectedAuditSinks: NonEmptyList[AuditSink]): Unit = {
@@ -2176,7 +2176,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(settings))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(settings), _)) =>
       settings.auditSinks should be(expectedAuditSinks)
     }
   }
@@ -2193,7 +2193,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings), _)) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
@@ -2222,7 +2222,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings), _)) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
@@ -2251,7 +2251,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       .runSyncUnsafe()
 
     core match {
-      case Right(Core(_, _, Some(auditingSettings))) =>
+      case Right(Core(_, _, Some(auditingSettings), _)) =>
         val headSink = auditingSettings.auditSinks.head
         val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
         headSinkConfig.logSerializer
@@ -2271,7 +2271,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings), _)) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
@@ -2298,7 +2298,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings), _)) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head

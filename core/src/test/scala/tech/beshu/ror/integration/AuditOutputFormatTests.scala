@@ -195,11 +195,11 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
           RorAuditDataStream.default,
           AuditCluster.LocalAuditCluster
         ))
-      ),
-      defaultTestEsNodeSettings
+      )
     )
     val auditingTool = AuditingTool.create(
-      settings = settings,
+      settings = Some(settings),
+      esNodeSettings = defaultTestEsNodeSettings,
       auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
         override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamBasedAuditSinkService
 
