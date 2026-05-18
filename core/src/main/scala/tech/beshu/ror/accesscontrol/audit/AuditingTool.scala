@@ -268,15 +268,22 @@ object AuditingTool extends RequestIdAwareLogging {
     }
   }
 
+  sealed trait AuditOutputsConfig
+
+  object AuditOutputsConfig {
+    case object NoOutputsConfigured extends AuditOutputsConfig
+    final case class WithOutputs(auditSinks: NonEmptyList[AuditSettings.AuditSink]) extends AuditOutputsConfig
+  }
+
   final case class CreationError(message: String) extends AnyVal
 
-  def create(settings: Option[AuditSettings],
+  def create(settings: Option[AuditOutputsConfig],
              esNodeSettings: EsNodeSettings,
              auditSinkServiceCreator: AuditSinkServiceCreator)
             (implicit clock: Clock,
              loggingContext: LoggingContext): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveSettings = withDefaultAclSink(settings)
-    createAuditSinks(effectiveSettings, auditSinkServiceCreator).map {
+    val effectiveSinks = applyDefaults(settings)
+    createAuditSinks(effectiveSinks, auditSinkServiceCreator).map {
       _.map { auditSinks =>
           implicit val auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(esNodeSettings)
           if (auditSinks.isEmpty) {
@@ -293,34 +300,39 @@ object AuditingTool extends RequestIdAwareLogging {
     }
   }
 
-  private def withDefaultAclSink(settings: Option[AuditSettings]): AuditSettings = {
-    val defaultAclSink = AuditSink.Enabled(
-      Block.SinkName.random(),
-      AuditSink.Config.LogBasedSink(new AclAuditLogSerializer, RorAuditLoggerName.default)
-    )
-    settings match {
-      case None =>
-        AuditSettings(NonEmptyList.one(defaultAclSink))
-      case Some(s) if hasExplicitAclSink(s) =>
-        s
-      case Some(s) =>
-        s.copy(auditSinks = defaultAclSink :: s.auditSinks)
-    }
+  private def applyDefaults(settings: Option[AuditOutputsConfig]): NonEmptyList[AuditSink] = settings match {
+    case None =>
+      NonEmptyList.one(defaultAclSink)
+    case Some(AuditOutputsConfig.NoOutputsConfigured) =>
+      ensureAclSink(NonEmptyList.one(defaultIndexStorageSink))
+    case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
+      ensureAclSink(sinks)
   }
 
-  private def hasExplicitAclSink(settings: AuditSettings): Boolean =
-    settings.auditSinks.exists {
+  private def ensureAclSink(sinks: NonEmptyList[AuditSink]): NonEmptyList[AuditSink] = {
+    val hasAcl = sinks.exists {
       case AuditSink.Enabled(_, s: AuditSink.Config.LogBasedSink) =>
         s.logSerializer.isInstanceOf[AclAuditLogSerializer]
       case AuditSink.ExplicitlyDisabledAcl => true
       case _                               => false
     }
+    if (hasAcl) sinks else defaultAclSink :: sinks
+  }
 
-  private def createAuditSinks(settings: AuditSettings,
+  private def defaultAclSink = AuditSink.Enabled(
+    Block.SinkName.random(),
+    AuditSink.Config.LogBasedSink(new AclAuditLogSerializer, RorAuditLoggerName.default)
+  )
+
+  private def defaultIndexStorageSink = AuditSink.Enabled(
+    Block.SinkName.random(),
+    AuditSink.Config.EsIndexBasedSink.default
+  )
+
+  private def createAuditSinks(sinks: NonEmptyList[AuditSink],
                                auditSinkServiceCreator: AuditSinkServiceCreator)
                               (using Clock): Task[ValidatedNel[CreationError, List[SupportedAuditSink]]] = {
-    settings
-      .auditSinks
+    sinks
       .toList
       .map[Task[Validated[CreationError, Option[SupportedAuditSink]]]] {
         case Enabled(name, config: AuditSink.Config.EsIndexBasedSink) =>

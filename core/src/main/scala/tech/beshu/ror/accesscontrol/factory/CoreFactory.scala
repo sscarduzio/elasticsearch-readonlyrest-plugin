@@ -55,7 +55,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControlList,
                       dependencies: RorDependencies,
-                      auditingSettings: Option[AuditingTool.AuditSettings],
+                      auditingSettings: Option[AuditingTool.AuditOutputsConfig],
                       esNodeSettings: EsNodeSettings)
 
 trait CoreFactory {

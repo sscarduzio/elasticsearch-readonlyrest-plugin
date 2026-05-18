@@ -23,6 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
@@ -183,7 +184,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private def auditedAcl(indexBasedAuditSinkService: IndexBasedAuditSinkService,
                          dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    val settings = AuditingTool.AuditSettings(
+    val settings = AuditOutputsConfig.WithOutputs(
       NonEmptyList.of(
         AuditSink.Enabled(Block.SinkName.random(), Config.EsIndexBasedSink(
           new BlockVerbosityAwareAuditLogSerializer,

@@ -23,6 +23,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.audit.AuditIndexSchema
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, DataStreamName, IndexPattern, RequestId}
@@ -69,7 +70,11 @@ class MainSettingsApi(rorInstance: RorInstance,
   }
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
-    val sinks = rorInstance.auditSettings.map(_.auditSinks.toList).getOrElse(List.empty)
+    val sinks = rorInstance.auditSettings match {
+      case Some(AuditOutputsConfig.NoOutputsConfigured) => List.empty
+      case Some(AuditOutputsConfig.WithOutputs(auditSinks)) => auditSinks.toList
+      case None => List.empty
+    }
     val auditOutputs = sinks.flatMap {
       case AuditSink.Enabled(_, config) => config match {
         case Config.EsIndexBasedSink(logSerializer, rorAuditIndexTemplate, AuditCluster.LocalAuditCluster) =>
