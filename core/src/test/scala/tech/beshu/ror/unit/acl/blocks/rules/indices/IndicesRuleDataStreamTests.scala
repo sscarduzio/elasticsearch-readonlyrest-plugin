@@ -349,6 +349,46 @@ trait IndicesRuleDataStreamTests {
           )
         )
       }
+      "regular index and backing index passed, both allowed by rule" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("my-index"), indexNameVar("test1_ds")),
+          requestIndices = Set(requestedIndex("my-index"), requestedIndex(".ds-test1_ds")),
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
+            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
+            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+          ))),
+          filteredRequestedIndices = Set(
+            requestedIndex("my-index"),
+            requestedIndex(".ds-test1_ds"),
+          )
+        )
+      }
+      "regular index and backing index passed, only regular index allowed by rule" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("my-index")),
+          requestIndices = Set(requestedIndex("my-index"), requestedIndex(".ds-test1_ds")),
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
+            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
+            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+          ))),
+          filteredRequestedIndices = Set(
+            requestedIndex("my-index"),
+          )
+        )
+      }
+      "regular index and backing index passed, only backing index allowed by rule" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("test1_ds")),
+          requestIndices = Set(requestedIndex("my-index"), requestedIndex(".ds-test1_ds")),
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
+            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
+            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+          ))),
+          filteredRequestedIndices = Set(
+            requestedIndex(".ds-test1_ds"),
+          )
+        )
+      }
       "cross cluster data stream is used together with local data stream" in {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("es_pl:test1*"), indexNameVar("local*")),

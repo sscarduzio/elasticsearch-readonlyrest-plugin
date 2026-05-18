@@ -53,7 +53,7 @@ trait AllClusterIndices extends BaseIndicesProcessor {
       case (None, None) =>
         val clusterService = requestContext.esServices.clusterService
         given RequestId = requestContext.id.toRequestId
-        if (clusterService.allIndicesAndAliases.nonEmpty || clusterService.allDataStreamsAndAliases.nonEmpty) {
+        if (clusterService.localIndicesSnapshot.raw.nonEmpty || clusterService.localDataStreamsSnapshot.raw.nonEmpty) {
           Task.now(ProcessResult.Ok(
             allAllowedIndices.map(RequestedIndex(_, excluded = false))
           ))
