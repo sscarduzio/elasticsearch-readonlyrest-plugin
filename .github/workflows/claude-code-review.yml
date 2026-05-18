@@ -43,4 +43,6 @@ jobs:
           show_full_output: true
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
+          # Restrict to gh CLI only — prevents prompt injection in PR diffs from running arbitrary shell commands
+          claude_args: '--allowedTools Bash(gh:*)'
 
