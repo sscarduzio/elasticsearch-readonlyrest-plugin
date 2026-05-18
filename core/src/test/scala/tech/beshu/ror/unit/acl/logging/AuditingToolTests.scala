@@ -27,7 +27,7 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
@@ -211,7 +211,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         "saved audit log to file defined in log4j settings" in {
           @nowarn("cat=deprecation")
           val auditingTool = AuditingTool.create(
-            settings = Some(AuditSettings(
+            settings = Some(AuditOutputsConfig.WithOutputs(
               NonEmptyList.of(
                 AuditSink.Enabled(Block.SinkName.random(), Config.LogBasedSink(
                   new DefaultAuditLogSerializer,
@@ -248,7 +248,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
           @nowarn("cat=deprecation")
           val auditingTool = AuditingTool.create(
-            settings = Some(AuditSettings(
+            settings = Some(AuditOutputsConfig.WithOutputs(
               NonEmptyList.of(
                 AuditSink.Enabled(Block.SinkName.random(), Config.RollingFileBasedSink(
                   logSerializer = new DefaultAuditLogSerializer,
@@ -285,7 +285,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     "no enabled outputs in settings" should {
       "create a tool with no active sinks" in {
         val creationResult = AuditingTool.create(
-          settings = Some(AuditSettings(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled))),
+          settings = Some(AuditOutputsConfig.WithOutputs(NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled))),
           esNodeSettings = defaultTestEsNodeSettings,
           auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
             override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
@@ -298,7 +298,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
     }
   }
 
-  private def auditSettings(serializer: AuditLogSerializer) = AuditSettings(
+  private def auditSettings(serializer: AuditLogSerializer) = AuditOutputsConfig.WithOutputs(
     auditSinks = NonEmptyList.of(
       AuditSink.Enabled(Block.SinkName.random(), Config.EsIndexBasedSink(
         serializer,

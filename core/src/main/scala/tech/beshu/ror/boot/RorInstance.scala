@@ -119,7 +119,7 @@ class RorInstance private(boot: ReadonlyRest,
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
-  def auditSettings: Option[AuditingTool.AuditSettings] = {
+  def auditSettings: Option[AuditingTool.AuditOutputsConfig] = {
     theMainSettingsEngine.engine.flatMap(_.core.auditingSettings)
   }
 

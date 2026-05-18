@@ -23,6 +23,7 @@ import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.ExplicitlyDisabledAcl
 import tech.beshu.ror.accesscontrol.blocks.Block
@@ -54,14 +55,14 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
-  def instance(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = {
+  def instance(esEnv: EsEnv): Decoder[Option[AuditOutputsConfig]] = {
     for {
       auditSettings <- auditSettingsDecoder(esEnv)
-      deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance(esEnv)
+      deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
     } yield auditSettings.orElse(deprecatedAuditSettings)
   }
 
-  private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] =
+  private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditOutputsConfig]] =
     Decoder.instance(c => readAuditEnabled(c).flatMap {
       case Some(true) => decodeAuditSettings(esEnv)(c).map(Some.apply)
       case _          => Right(None)
@@ -83,7 +84,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     }
   }
 
-  private def decodeAuditSettings(esEnv: EsEnv) = {
+  private def decodeAuditSettings(esEnv: EsEnv): Decoder[AuditOutputsConfig] = {
     decodeAuditSettingsWith(using auditSinkConfigSimpleDecoder(using esEnv.esVersion))
       .handleErrorWith { error =>
         if (error.aclCreationError.isDefined) {
@@ -95,7 +96,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       }
   }
 
-  private def decodeAuditSettingsWith(using Decoder[AuditSink]) = {
+  private def decodeAuditSettingsWith(using Decoder[AuditSink]): Decoder[AuditOutputsConfig] = {
     SyncDecoderCreator
       .instance {
         _.downField("audit").downField("outputs").as[Option[List[AuditSink]]]
@@ -104,12 +105,10 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         case Some(outputs) =>
           NonEmptyList
             .fromList(outputs.distinct)
-            .map(AuditingTool.AuditSettings(_))
+            .map(AuditOutputsConfig.WithOutputs(_))
             .toRight(auditSettingsError(s"The audit 'outputs' array cannot be empty"))
         case None =>
-          AuditingTool.AuditSettings(
-            NonEmptyList.of(AuditSink.Enabled(Block.SinkName.random(), EsIndexBasedSink.default))
-          ).asRight
+          AuditOutputsConfig.NoOutputsConfigured.asRight
       }
       .decoder
   }
@@ -634,7 +633,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   }
 
   private object DeprecatedAuditSettingsDecoder {
-    def instance(esEnv: EsEnv): Decoder[Option[AuditingTool.AuditSettings]] = Decoder.instance { c =>
+    def instance: Decoder[Option[AuditOutputsConfig]] = Decoder.instance { c =>
       whenEnabled(c) {
         for {
           auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)("index_template", fallbackKey = "audit_index_template")
@@ -642,7 +641,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           logSerializerInAuditSection <- c.downField("audit").success.map(_.as[Option[AuditLogSerializer]]).getOrElse(Right(None))
           logSerializer = logSerializerOutsideAuditSection.orElse(logSerializerInAuditSection)
           remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)("cluster", fallbackKey = "audit_cluster")
-        } yield AuditingTool.AuditSettings(
+        } yield AuditOutputsConfig.WithOutputs(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
               Block.SinkName.random(),
@@ -657,7 +656,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       }
     }
 
-    private def whenEnabled(cursor: HCursor)(decoding: => Decoder.Result[AuditingTool.AuditSettings]) = {
+    private def whenEnabled(cursor: HCursor)(decoding: => Decoder.Result[AuditingTool.AuditOutputsConfig]) = {
       for {
         isEnabled <- decodeOptionalSetting[Boolean](cursor)("collector", fallbackKey = "audit_collector")
         result <- if (isEnabled.getOrElse(false)) decoding.map(Some.apply) else Right(None)

@@ -36,6 +36,7 @@ import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, AuditSinkServiceCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.Block
@@ -1413,7 +1414,7 @@ class ReadonlyRestStartingTests
           "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
-          Some(AuditingTool.AuditSettings(
+          Some(AuditOutputsConfig.WithOutputs(
             NonEmptyList.of(
               AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig1),
               AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig2)
