@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -24,9 +24,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause
-import tech.beshu.ror.accesscontrol.AccessControlList.ForbiddenCause.OperationNotAllowed
-import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allowed, Forbidden, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allowed, Forbidden}
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
@@ -45,14 +43,12 @@ import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.Enterprise
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyListMap
 import tech.beshu.ror.utils.TestsUtils.{given, *}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-import scala.collection.immutable.ListMap
 import scala.util.{Failure, Success, Try}
 
 class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside {
@@ -60,367 +56,6 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
   import MockedBlockResult.*
 
   "The EnabledAccessControlList" when {
-    "current user metadata request is called" when {
-      "no current group is passed" when {
-        "all matched blocks have groups" should {
-          "return allow with only allowed groups (case 1)" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g3"), group("g4")))),
-              block("b5", Policy.Forbid(), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
-                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
-
-                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
-            }
-          }
-          "return allow with only allowed groups (case 2)" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b3", Policy.Allow, result = Mismatched),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g4"), group("g5")))),
-              block("b5", Policy.Forbid(), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
-                groupsMetadata.keys.toList should be(GroupId("g2") :: GroupId("g4") :: GroupId("g5") :: Nil)
-
-                groupsMetadata should contain(group("g2"), userId("u1"), "b2", Policy.Allow)
-                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
-                groupsMetadata should contain(group("g5"), userId("u1"), "b4", Policy.Allow)
-            }
-          }
-          "return forbidden when all matched groups are forbidden" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Forbid(Some("forbidden msg 2")), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b3", Policy.Allow, result = Mismatched),
-              block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
-            }
-          }
-        }
-        "all matched blocks have no groups" should {
-          "first matched block is an allow policy block" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Forbid(), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
-                loggedUser.id should be(userId("u1"))
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Allow)
-            }
-          }
-          "first matched block is a forbid policy block" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Forbid(Some("forbidden msg23")), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
-            }
-          }
-        }
-        "some matched blocks have groups, some - don't" should {
-          "return allow with collected groups from all matched blocks with groups until a block without groups matches" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b6", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
-                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
-
-                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
-            }
-          }
-          "return forbidden when forbid block with groups matches before any block without groups" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Forbid(Some("forbidden msg 2")), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
-            }
-          }
-          "return allow without groups when first matched block has no groups" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
-              block("b3", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Allowed(UserMetadata.WithoutGroups(loggedUser, None, None, MetadataOrigin(blockContext))) =>
-                loggedUser.id should be(userId("u1"))
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Allow)
-            }
-          }
-          "return forbidden when first matched block without groups is a forbid policy block" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
-              block("b3", Policy.Forbid(Some("forbidden msg 2")), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Matched(userId("u1"), UniqueList.empty)),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = None))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
-            }
-          }
-        }
-      }
-      "current group is passed" when {
-        "all matched blocks have groups" should {
-          "return allow with only allowed groups because allow block is matched by the current group" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g3"), group("g4")))),
-              block("b5", Policy.Forbid(), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g1"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
-                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g4") :: Nil)
-
-                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g4"), userId("u1"), "b4", Policy.Allow)
-            }
-          }
-          "return forbidden because the forbid block is matched by the current group" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b3", Policy.Allow, result = Mismatched),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g4"), group("g5")))),
-              block("b5", Policy.Forbid(Some("forbidden msg 2")), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g3"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
-            }
-          }
-          "return forbidden when all matched groups are forbidden and the forbid block is matched by the current group" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Forbid(Some("forbidden msg 2")), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b3", Policy.Allow, result = Mismatched),
-              block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b2"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 2")))
-            }
-          }
-        }
-        "all matched blocks have no groups" should {
-          "return forbidden by mismatched" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Forbid(), result = Mismatched),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case f@ForbiddenByMismatched(detailedCauses) =>
-                detailedCauses should be(ListMap(
-                  Block.Name("b2") -> AuthenticationFailed("mock failed"),
-                  Block.Name("b5") -> AuthenticationFailed("mock failed"),
-                ))
-                f.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
-            }
-          }
-        }
-        "some matched blocks have groups, some - don't" should {
-          "return allow with collected groups from all matched blocks with groups until a block without groups matches because an allow block is matched by the current group" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g3")))),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b6", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
-                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g3") :: GroupId("g2") :: Nil)
-
-                groupsMetadata should contain(group("g1"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g3"), userId("u1"), "b1", Policy.Allow)
-                groupsMetadata should contain(group("g2"), userId("u1"), "b3", Policy.Allow)
-            }
-          }
-          "return forbidden when forbid block with groups matches before any block without groups when a forbid block is matched by the current group" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
-              block("b2", Policy.Allow, result = Mismatched),
-              block("b3", Policy.Forbid(Some("forbidden msg 2")), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
-            }
-          }
-          "return forbidden by mismatched when no-groups block (allow type) is matched before with-groups one" in {
-            val acl = createAcl(
-              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
-              block("b3", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Forbid(), result = Matched(userId("u1"), UniqueList.empty)),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g2"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case f@ForbiddenByMismatched(detailedCauses) =>
-                detailedCauses should be(ListMap.empty)
-                f.causes should be(NonEmptySet.of[ForbiddenCause](OperationNotAllowed))
-            }
-          }
-          "return forbidden when no-groups block (forbid type) is matched before with-groups one" in {
-            val acl = createAcl(
-              block("b1", Policy.Forbid(Some("forbidden msg 1")), result = Matched(userId("u1"), UniqueList.empty)),
-              block("b2", Policy.Allow, result = Matched(userId("u1"), UniqueList.of(group("g1"), group("g2")))),
-              block("b3", Policy.Forbid(Some("forbidden msg 2")), result = Matched(userId("u1"), UniqueList.of(group("g2"), group("g3")))),
-              block("b4", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
-              block("b5", Policy.Forbid(Some("forbidden msg 3")), result = Matched(userId("u1"), UniqueList.empty)),
-            )
-
-            val (userMetadataRequestResult, _) = acl
-              .handleMetadataRequest(mockCurrentUserMetadataRequestContext(currentGroup = Some(group("g3"))))
-              .runSyncUnsafe()
-
-            inside(userMetadataRequestResult) {
-              case Forbidden(blockContext) =>
-                blockContext.block.name should be(Block.Name("b1"))
-                blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
-            }
-          }
-        }
-      }
-    }
     "user metadata request is called" when {
       "ROR KBN license is enterprise" when {
         "all matched blocks have groups" should {
@@ -850,35 +485,25 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
   }
 
   private def mockUserMetadataRequestContext(licenseType: RorKbnLicenseType) = {
-    mockRequestContext(UserMetadataApiVersion.V2(licenseType), None)
+    mockRequestContext(UserMetadataRequestContext.Details(licenseType))
   }
 
-  private def mockCurrentUserMetadataRequestContext(currentGroup: Option[Group]) = {
-    mockRequestContext(UserMetadataApiVersion.V1, currentGroup)
-  }
-
-  private def mockRequestContext(apiVersion: UserMetadataApiVersion,
-                                 currentGroup: Option[Group]) = {
+  private def mockRequestContext(details: UserMetadataRequestContext.Details) = {
     val rc = mock[MockUserMetadataRequestContext]
     (rc.initialBlockContext _)
       .expects(*)
       .onCall { (block: Block) => UserMetadataRequestBlockContext(block, rc, BlockMetadata.empty, Set.empty, List.empty) }
       .anyNumberOfTimes()
 
-    (() => rc.apiVersion)
+    (() => rc.details)
       .expects()
-      .returning(apiVersion)
+      .returning(details)
       .anyNumberOfTimes()
 
     val rr = mock[RestRequest]
     (() => rc.restRequest)
       .expects()
       .returning(rr)
-      .anyNumberOfTimes()
-
-    (() => rc.currentGroupId)
-      .expects()
-      .returning(currentGroup.map(_.id))
       .anyNumberOfTimes()
 
     (() => rc.action)

@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: ROR Internal API
   description: The API is designed for ROR KBN plugin. It should be treated as internal. It means that backward compatibility won't be a first-class thing for us.
-  version: 3.1.0
+  version: 4.0.0
 
 paths:
   /_readonlyrest/metadata/user:
@@ -14,7 +14,6 @@ paths:
         - **USER_WITH_GROUPS**: Only returned when the license type is exactly 'ent' AND the user belongs to groups. This response includes all groups with their respective metadata.
         - **USER_WITHOUT_GROUPS**: Returned for all other license types (free, pro, ent-disabled-multitenancy), regardless of whether the user has groups. Also returned for 'ent' license when the user has no groups.
 
-        Unlike /metadata/current_user, this returns all data in a single call without requiring the X-ROR-Current-Group header.
       tags:
         - ROR Kibana logging in
       parameters:
@@ -36,47 +35,6 @@ paths:
                   $ref: "#/components/examples/GetUserMetadataResponseEntDisabledMultitenancyExample"
                 GetUserWithoutGroupsMetadataResponseExample:
                   $ref: "#/components/examples/GetUserWithoutGroupsMetadataResponseExample"
-        403:
-          description: The request was forbidden by ROR's ACL
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ForbiddenRorResponse'
-              examples:
-                NoAclBlockWasMatchedForbiddenResponseExample:
-                  $ref: "#/components/examples/NoAclBlockWasMatchedForbiddenResponseExample"
-                ForbidBlockMatchedResponseExample:
-                  $ref: "#/components/examples/ForbidBlockMatchedResponseExample"
-                TestSettingsNotConfiguredForbiddenResponseExample:
-                  $ref: "#/components/examples/TestSettingsNotConfiguredForbiddenResponseExample"
-                ImpersonationNotSupportedResponseExample:
-                  $ref: "#/components/examples/ImpersonationNotSupportedResponseExample"
-                ImpersonationNotAllowedResponseExample:
-                  $ref: "#/components/examples/ImpersonationNotAllowedResponseExample"
-                RorIsNotStartedYetResponseExample:
-                  $ref: "#/components/examples/RorIsNotStartedYetResponseExample"
-                RorFailedToStartResponseExample:
-                  $ref: "#/components/examples/RorFailedToStartResponseExample"
-  /_readonlyrest/metadata/current_user:
-    get:
-      summary: Getting logged user metadata from ES ROR
-      description: The endpoint is used by ROR Kibana to figure out if user can be authenticated and authorized. In response metadata of the user are sent back to Kibana.
-      deprecated: true
-      tags:
-        - ROR Kibana logging in
-      parameters:
-        - $ref: '#/components/parameters/XRorCorrelationIdHeader'
-        - $ref: '#/components/parameters/XRorCurrentGroupHeader'
-      responses:
-        200:
-          description: Contains current user metadata or business error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetCurrentUserMetadataResponse'
-              examples:
-                GetCurrentUserMetadataResponseExample:
-                  $ref: "#/components/examples/GetCurrentUserMetadataResponseExample"
         403:
           description: The request was forbidden by ROR's ACL
           content:
