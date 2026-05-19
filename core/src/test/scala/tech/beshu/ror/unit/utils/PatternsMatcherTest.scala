@@ -153,25 +153,80 @@ class PatternsMatcherTest
         result should be(empty)
       }
     }
+    "should return all items when '*' pattern is present" in {
+      forAll("haystack") { (haystack: Set[String]) =>
+        val matcher = PatternsMatcher.create(List("*"))(caseSensitiveStringMatchable)
+        matcher.filter(haystack) shouldBe haystack
+      }
+    }
   }
-  testMatchersShouldMatchHaystack(List("Banana*Apple"), "BananaPearApple")
-  testMatchersShouldntMatchHaystack(List("Banana*Apple"), "PearBananaApple")
-  testMatchersShouldntMatchHaystack(List("Banana*Apple"), "BananaApplePear")
-  testMatchersShouldMatchHaystack(List("Banana*Apple"), "BananaApple")
-  testMatchersShouldMatchHaystack(List("ab*d"), "abcd")
-  testMatchersShouldMatchHaystack(List("abc*"), "abc")
-  testMatchersShouldMatchHaystack(List("ab*"), "ab")
-  testMatchersShouldMatchHaystack(List("ab"), "ab")
-  testMatchersShouldntMatchHaystack(Nil, "")
-  testMatchersShouldntMatchHaystack(Nil, "a")
-  testMatchersShouldntMatchHaystack(List(""), "b")
-  testMatchersShouldntMatchHaystack(List("a"), "")
-  testMatchersShouldMatchHaystack(List("a"), "a")
-  testMatchersShouldntMatchHaystack(List("ab"), "a")
-  testMatchersShouldntMatchHaystack(List("a"), "ab")
-  testMatchersShouldMatchHaystack(List("a*"), "ab")
-  testMatchersShouldntMatchHaystack(List("A*"), "ab")
-  testMatchersShouldntMatchHaystack(List("b"), "a")
+  "matchAll ('*')" should {
+    testMatchersShouldMatchHaystack(matchers = List("*"), haystack = "")
+    testMatchersShouldMatchHaystack(matchers = List("*"), haystack = "anything")
+  }
+
+  "exact patterns" should {
+    testMatchersShouldntMatchHaystack(matchers = Nil,         haystack = "")
+    testMatchersShouldntMatchHaystack(matchers = Nil,         haystack = "a")
+    testMatchersShouldntMatchHaystack(matchers = List(""),    haystack = "b")
+    testMatchersShouldMatchHaystack(matchers   = List("a"),   haystack = "a")
+    testMatchersShouldntMatchHaystack(matchers = List("a"),   haystack = "")
+    testMatchersShouldntMatchHaystack(matchers = List("a"),   haystack = "ab")
+    testMatchersShouldMatchHaystack(matchers   = List("ab"),  haystack = "ab")
+    testMatchersShouldntMatchHaystack(matchers = List("ab"),  haystack = "a")
+    testMatchersShouldntMatchHaystack(matchers = List("b"),   haystack = "a")
+    testCaseInsensitiveMatchersShouldMatchHaystack(matchers   = List("APPLE"), haystack = "apple")
+    testCaseInsensitiveMatchersShouldntMatchHaystack(matchers = List("APPLE"), haystack = "appl")
+  }
+
+  "prefix patterns (foo*)" should {
+    testMatchersShouldMatchHaystack(matchers   = List("a*"),   haystack = "ab")
+    testMatchersShouldMatchHaystack(matchers   = List("ab*"),  haystack = "ab")
+    testMatchersShouldMatchHaystack(matchers   = List("abc*"), haystack = "abc")
+    testMatchersShouldntMatchHaystack(matchers = List("A*"),   haystack = "ab")
+    testCaseInsensitiveMatchersShouldMatchHaystack(matchers   = List("APPLE*"), haystack = "apple-1")
+    testCaseInsensitiveMatchersShouldntMatchHaystack(matchers = List("APPLE*"), haystack = "green-apple")
+  }
+
+  "suffix patterns (*foo)" should {
+    testCaseInsensitiveMatchersShouldMatchHaystack(matchers   = List("*APPLE"), haystack = "green-apple")
+    testCaseInsensitiveMatchersShouldntMatchHaystack(matchers = List("*APPLE"), haystack = "apple-1")
+  }
+
+  "infix patterns (*foo*)" should {
+    testMatchersShouldMatchHaystack(matchers   = List("*foo*"), haystack = "bazfoobaz")
+    testMatchersShouldMatchHaystack(matchers   = List("*foo*"), haystack = "foo")
+    testMatchersShouldntMatchHaystack(matchers = List("*foo*"), haystack = "bar")
+    testCaseInsensitiveMatchersShouldMatchHaystack(matchers   = List("*APPLE*"), haystack = "green-apple-pie")
+    testCaseInsensitiveMatchersShouldntMatchHaystack(matchers = List("*APPLE*"), haystack = "banana")
+  }
+
+  "complex patterns (a*b, Banana*Apple, a?b)" should {
+    testMatchersShouldMatchHaystack(matchers   = List("Banana*Apple"), haystack = "BananaPearApple")
+    testMatchersShouldntMatchHaystack(matchers = List("Banana*Apple"), haystack = "PearBananaApple")
+    testMatchersShouldntMatchHaystack(matchers = List("Banana*Apple"), haystack = "BananaApplePear")
+    testMatchersShouldMatchHaystack(matchers   = List("Banana*Apple"), haystack = "BananaApple")
+    testMatchersShouldMatchHaystack(matchers   = List("ab*d"),         haystack = "abcd")
+    testMatchersShouldMatchHaystack(matchers   = List("a*b"),          haystack = "axb")
+    testMatchersShouldMatchHaystack(matchers   = List("a*b"),          haystack = "ab")
+    testMatchersShouldntMatchHaystack(matchers = List("a*b"),          haystack = "ax")
+    testMatchersShouldMatchHaystack(matchers   = List("a?b"),          haystack = "axb")
+    testMatchersShouldntMatchHaystack(matchers = List("a?b"),          haystack = "axxb")
+    testMatchersShouldntMatchHaystack(matchers = List("a?b"),          haystack = "ab")
+  }
+
+  private def testCaseInsensitiveMatchersShouldMatchHaystack(matchers: List[String], haystack: String): Unit =
+    testCaseInsensitiveMatchersMatchHaystack(matchers, haystack, result = true)
+
+  private def testCaseInsensitiveMatchersShouldntMatchHaystack(matchers: List[String], haystack: String): Unit =
+    testCaseInsensitiveMatchersMatchHaystack(matchers, haystack, result = false)
+
+  private def testCaseInsensitiveMatchersMatchHaystack(matchers: List[String], haystack: String, result: Boolean): Unit = {
+    s"$haystack should${if (!result) "n't" else ""} match $matchers (case insensitive)" in {
+      val matcher = PatternsMatcher.create(matchers)(caseInsensitiveStringMatchable)
+      matcher.`match`(haystack) shouldBe result
+    }
+  }
 
   private def testMatchersShouldMatchHaystack(matchers: List[String], haystack: String): Unit =
     testMatchersMatchHaystack(matchers, haystack, result = true)
