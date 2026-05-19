@@ -140,7 +140,7 @@ stages:
             env:
               ROR_TASK: cve_check
               var_nvd_api_key: $(NVD_API_KEY)
-              var_dependency_check_data_dir: $(dependencyCheckDataDir)
+              var_dependency_check_data_dir: /tmp/dependency-check-$(Build.BuildId)
               var_is_fork: $(System.PullRequest.IsFork)
               var_oss_index_username: $(OSS_INDEX_USERNAME)
               var_oss_index_password: $(OSS_INDEX_PASSWORD)
