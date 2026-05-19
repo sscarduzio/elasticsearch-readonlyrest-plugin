@@ -43,7 +43,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
         compiled.prefixes.exists(norm.startsWith) ||
         compiled.suffixes.exists(norm.endsWith) ||
         compiled.infixes.exists(norm.contains) ||
-        compiled.complex.exists(_.matches(raw))
+        compiled.complex.exists(_.matches(raw)) // raw (not norm): the glob engine handles case-insensitivity via globFlags
     }
   }
 
@@ -75,10 +75,10 @@ private[matchers] object GlobPatternsMatcher {
 
   private final case class Compiled(matchAll: Boolean,
                                     exact: Set[String],
-                                    prefixes: Array[String],
-                                    suffixes: Array[String],
-                                    infixes: Array[String],
-                                    complex: Array[MatchingEngine])
+                                    prefixes: Vector[String],
+                                    suffixes: Vector[String],
+                                    infixes: Vector[String],
+                                    complex: Vector[MatchingEngine])
 
   private object Compiled {
     def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
@@ -87,10 +87,10 @@ private[matchers] object GlobPatternsMatcher {
       Compiled(
         matchAll = kinds.contains(Kind.All),
         exact    = kinds.collect { case Kind.Exact(p)   => norm(p) }.toCovariantSet,
-        prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) }.toArray,
-        suffixes = kinds.collect { case Kind.Suffix(p)  => norm(p) }.toArray,
-        infixes  = kinds.collect { case Kind.Infix(p)   => norm(p) }.toArray,
-        complex  = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }.toArray
+        prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) },
+        suffixes = kinds.collect { case Kind.Suffix(p)  => norm(p) },
+        infixes  = kinds.collect { case Kind.Infix(p)   => norm(p) },
+        complex  = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }
       )
     }
   }

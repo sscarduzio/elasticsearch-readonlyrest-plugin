@@ -28,11 +28,11 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
-class MatcherWithWildcardsScalaTest
+class PatternsMatcherTest
   extends AnyWordSpec
     with ScalaCheckDrivenPropertyChecks {
 
-  import MatcherWithWildcardsScalaTest.*
+  import PatternsMatcherTest.*
 
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 1000, workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors()))
@@ -188,7 +188,7 @@ class MatcherWithWildcardsScalaTest
 
 }
 
-object MatcherWithWildcardsScalaTest {
+object PatternsMatcherTest {
   final case class WildcardPattern(private val value: NonEmptyList[String]) {
     lazy val toList: List[String] = value.toList
     lazy val string: String = toList.mkString
