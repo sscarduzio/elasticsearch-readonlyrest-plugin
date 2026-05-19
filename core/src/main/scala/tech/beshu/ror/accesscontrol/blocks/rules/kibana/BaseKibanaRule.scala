@@ -64,7 +64,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   private lazy val isUserMetadataRequest = ProcessingContext.create { (bc, _) =>
     given BlockContext = bc
     val requestPath = bc.requestContext.restRequest.path
-    val result = requestPath.isCurrentUserMetadataPath || requestPath.isCurrentUserMetadataPath
+    val result = requestPath.isUserMetadataPath
     logger.debug(s"Is is a ReadonlyREST's user metadata request? ${result.show}")
     result
   }

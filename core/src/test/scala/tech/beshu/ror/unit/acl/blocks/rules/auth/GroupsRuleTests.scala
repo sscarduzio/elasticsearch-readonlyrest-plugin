@@ -88,9 +88,15 @@ trait GroupsRuleTests[GL <: GroupsLogic : GroupsLogic.Creator]
     val blockContext = UserMetadataRequestBlockContext(
       block = mock[Block],
       requestContext = requestContext,
-      blockMetadata = loggedUser match {
-        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
-        case None => BlockMetadata.from(requestContext)
+      blockMetadata = {
+        val base = preferredGroupId match {
+          case Some(groupId) => BlockMetadata.from(requestContext).withCurrentGroupId(groupId)
+          case None => BlockMetadata.from(requestContext)
+        }
+        loggedUser match {
+          case Some(user) => base.withLoggedUser(DirectlyLoggedUser(user))
+          case None => base
+        }
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty

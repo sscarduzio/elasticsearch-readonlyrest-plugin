@@ -57,27 +57,6 @@ trait UserMetadataEndpointWithFreeKibanaSupportSuite
     }
   }
 
-  "ROR API current user metadata endpoint" should {
-    "return 403 with message about not supported KBN ROR plugin" when {
-      "user would have access, but now does not because of free Kibana" in {
-        val userMetadataManager = new RorApiManager(basicAuthClient("dev1", "test"), esVersionUsed)
-
-        val result = userMetadataManager.fetchCurrentUserMetadata()
-
-        result should have statusCode 403
-        result.responseJson should be(expectedNotSupportedKbnRorPluginJson)
-      }
-      "user does not have access" in {
-        val userMetadataManager = new RorApiManager(basicAuthClient("dev9", "test"), esVersionUsed)
-
-        val result = userMetadataManager.fetchCurrentUserMetadata()
-
-        result should have statusCode 403
-        result.responseJson should be(expectedNotSupportedKbnRorPluginJson)
-      }
-    }
-  }
-
   private def expectedNotSupportedKbnRorPluginJson = ujson.read(
     s"""
        |{

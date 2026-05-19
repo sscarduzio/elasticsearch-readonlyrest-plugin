@@ -18,26 +18,26 @@ package tech.beshu.ror.es.actions.rrmetadata
 
 import cats.implicits.*
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
-import tech.beshu.ror.accesscontrol.domain.{Header, UriPath}
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.{UserMetadataApiVersion, UserMetadataApiVersionCreationError}
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.DetailsCreationError
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.implicits.*
 
-class RRUserMetadataRequest(apiPath: UriPath,
-                            licenseTypeHeader: Option[Header])
+class RRUserMetadataRequest(licenseTypeHeader: Option[Header])
   extends ActionRequest with RorActionRequest {
 
-  lazy val apiVersion: UserMetadataApiVersion = {
-    UserMetadataApiVersion
-      .from(apiPath, licenseTypeHeader)
+  lazy val details: UserMetadataRequestContext.Details = {
+    UserMetadataRequestContext.Details
+      .from(licenseTypeHeader)
       .getOrElse(throw ShouldAlreadyBeValidatedIllegalState)
   }
 
   override def validate(): ActionRequestValidationException = {
-    UserMetadataApiVersion.from(apiPath, licenseTypeHeader) match {
-      case Left(UserMetadataApiVersionCreationError.NoRequestedHeaderValue) =>
+    UserMetadataRequestContext.Details.from(licenseTypeHeader) match {
+      case Left(DetailsCreationError.NoRequestedHeaderValue) =>
         wrongRorLicenseHeaderValidationException(cause = "missing")
-      case Left(UserMetadataApiVersionCreationError.RorKbnLicenseTypeInvalidValue) =>
+      case Left(DetailsCreationError.RorKbnLicenseTypeInvalidValue) =>
         wrongRorLicenseHeaderValidationException(cause = "invalid")
       case Right(_) =>
         null
