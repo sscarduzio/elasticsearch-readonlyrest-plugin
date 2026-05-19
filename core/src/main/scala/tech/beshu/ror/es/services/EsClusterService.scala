@@ -20,11 +20,11 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.{Local as LocalIndexName, Remote as RemoteIndexName}
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{FullLocalDataStreamWithAliases, FullRemoteDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.utils.{AsyncCacheableAction, SyncCacheableAction}
-import tech.beshu.ror.es.services.EsClusterService.{LocalDataStreamsSnapshot, LocalIndicesSnapshot, *}
+import tech.beshu.ror.es.services.EsClusterService.*
 import tech.beshu.ror.syntax.*
 
 import scala.collection.mutable
@@ -42,41 +42,9 @@ trait EsClusterService {
 
   def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]]
 
-  def remoteDataStreamsPerAliasMap(filteredBy: Set[IndexAttribute])
-                                  (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
-    remoteDataStreams(filteredBy)
-      .map { dataStreams =>
-        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
-        dataStreams.foreach { fullRemoteDataStream =>
-          fullRemoteDataStream.aliases.foreach { alias =>
-            collected.getOrElseUpdate(alias, Set.newBuilder[RemoteIndexName]) += fullRemoteDataStream.dataStream
-          }
-        }
-        buildAliasMap(collected)
-      }
-  }
-
-  def remoteBackingIndicesPerDataStreamMap(filteredBy: Set[IndexAttribute])
-                                          (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] = {
-    remoteDataStreams(filteredBy)
-      .map { dataStreams =>
-        val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
-        dataStreams.foreach { fullRemoteDataStream =>
-          fullRemoteDataStream.indices.foreach { index =>
-            collected.getOrElseUpdate(fullRemoteDataStream.dataStream, Set.newBuilder[RemoteIndexName]) += index
-          }
-        }
-        buildAliasMap(collected)
-      }
-  }
-
   def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot = new LocalIndicesSnapshot(allIndicesAndAliases)
 
   def localDataStreamsSnapshot(implicit id: RequestId): LocalDataStreamsSnapshot = new LocalDataStreamsSnapshot(allDataStreamsAndAliases)
-
-  final def allTemplates(implicit id: RequestId): Set[Template] = {
-    legacyTemplates ++ indexTemplates ++ componentTemplates
-  }
 
   def legacyTemplates(implicit id: RequestId): Set[Template.LegacyTemplate]
 
@@ -107,15 +75,6 @@ trait EsClusterService {
 
   protected [services] def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases]
 
-  private def remoteDataStreams(filteredBy: Set[IndexAttribute])
-                               (implicit id: RequestId) = {
-    if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) {
-      allRemoteDataStreamsAndAliases
-    } else {
-      Task.now(Set.empty)
-    }
-  }
-
 }
 
 object EsClusterService {
@@ -124,39 +83,116 @@ object EsClusterService {
   type DocumentsAccessibility = Map[DocumentWithIndex, DocumentAccessibility]
   type IndexUuid = String
 
-  private val allIndexAttributes: Set[IndexAttribute] = Set(IndexAttribute.Opened, IndexAttribute.Closed)
+  final class LocalIndicesSnapshot(val raw: Set[FullLocalIndexWithAliases]) {
 
-  private def usesAllIndexAttributes(filteredBy: Set[IndexAttribute]): Boolean =
-    filteredBy.isEmpty || filteredBy == allIndexAttributes
+    lazy val indicesAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    lazy val indices: Set[LocalIndexName] = raw.map(_.index)
+    lazy val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
 
-  private def indicesPerAliasMapFrom(indices: Iterable[FullLocalIndexWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
-    val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
-    indices.foreach { indexWithAliases =>
-      indexWithAliases.aliases.foreach { alias =>
-        collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += indexWithAliases.index
-      }
+    private lazy val opened = raw.filter(_.attribute == IndexAttribute.Opened)
+    private lazy val closed = raw.filter(_.attribute == IndexAttribute.Closed)
+
+    private lazy val closedIndicesAndAliases = closed.flatMap(_.all)
+    private lazy val openedIndicesAndAliases = opened.flatMap(_.all)
+
+    private lazy val openedIndices = opened.map(_.index)
+    private lazy val closedIndices = closed.map(_.index)
+
+    private lazy val openedAliases = opened.flatMap(_.aliases)
+    private lazy val closedAliases = closed.flatMap(_.aliases)
+
+    private lazy val fullIndicesPerAliasMap = indicesPerAliasMapFrom(raw)
+    private lazy val openedIndicesPerAliasMap = indicesPerAliasMapFrom(opened)
+    private lazy val closedIndicesPerAliasMap = indicesPerAliasMapFrom(closed)
+
+    def indicesAndAliasesFor(filteredBy: IndexAttributeFilter): Set[LocalIndexName] = filteredBy match {
+      case IndexAttributeFilter.All    => indicesAndAliases
+      case IndexAttributeFilter.Opened => openedIndicesAndAliases
+      case IndexAttributeFilter.Closed => closedIndicesAndAliases
     }
-    buildAliasMap(collected)
+
+    def indicesFor(filteredBy: IndexAttributeFilter): Set[LocalIndexName] = filteredBy match {
+      case IndexAttributeFilter.All    => indices
+      case IndexAttributeFilter.Opened => openedIndices
+      case IndexAttributeFilter.Closed => closedIndices
+    }
+
+    def aliasesFor(filteredBy: IndexAttributeFilter): Set[LocalIndexName] = filteredBy match {
+      case IndexAttributeFilter.All    => aliases
+      case IndexAttributeFilter.Opened => openedAliases
+      case IndexAttributeFilter.Closed => closedAliases
+    }
+
+    def indicesPerAliasMapFor(filteredBy: IndexAttributeFilter): Map[LocalIndexName, Set[LocalIndexName]] = filteredBy match {
+      case IndexAttributeFilter.All    => fullIndicesPerAliasMap
+      case IndexAttributeFilter.Opened => openedIndicesPerAliasMap
+      case IndexAttributeFilter.Closed => closedIndicesPerAliasMap
+    }
+
+    private def indicesPerAliasMapFrom(indices: Iterable[FullLocalIndexWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
+      val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
+      indices.foreach { indexWithAliases =>
+        indexWithAliases.aliases.foreach { alias =>
+          collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += indexWithAliases.index
+        }
+      }
+      buildAliasMap(collected)
+    }
+
   }
 
-  private def dataStreamsPerAliasMapFrom(dataStreams: Iterable[FullLocalDataStreamWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
-    val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
-    dataStreams.foreach { dataStreamWithAliases =>
-      dataStreamWithAliases.aliases.foreach { alias =>
-        collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += dataStreamWithAliases.dataStream
-      }
-    }
-    buildAliasMap(collected)
-  }
+  final class LocalDataStreamsSnapshot(val raw: Set[FullLocalDataStreamWithAliases]) {
+    lazy val dataStreamsAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
+    lazy val dataStreams: Set[LocalIndexName] = raw.map(_.dataStream)
+    lazy val dataStreamAliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
 
-  private def backingIndicesPerDataStreamMapFrom(dataStreams: Iterable[FullLocalDataStreamWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
-    val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
-    dataStreams.foreach { fullDataStream =>
-      fullDataStream.indices.foreach { index =>
-        collected.getOrElseUpdate(fullDataStream.dataStream, Set.newBuilder[LocalIndexName]) += index
-      }
+    private lazy val fullDataStreamsPerAliasMap = dataStreamsPerAliasMapFrom(raw)
+    private lazy val fullBackingIndicesPerDataStreamMap = backingIndicesPerDataStreamMapFrom(raw)
+
+    def dataStreamsAndAliasesFor(filteredBy: IndexAttributeFilter): Set[LocalIndexName] = filteredBy match {
+      case IndexAttributeFilter.Closed => Set.empty
+      case _                           => dataStreamsAndAliases
     }
-    buildAliasMap(collected)
+
+    def dataStreamsFor(filteredBy: IndexAttributeFilter): Set[LocalIndexName] = filteredBy match {
+      case IndexAttributeFilter.Closed => Set.empty
+      case _                           => dataStreams
+    }
+
+    def dataStreamAliasesFor(filteredBy: IndexAttributeFilter): Set[LocalIndexName] = filteredBy match {
+      case IndexAttributeFilter.Closed => Set.empty
+      case _                           => dataStreamAliases
+    }
+
+    def dataStreamsPerAliasMapFor(filteredBy: IndexAttributeFilter): Map[LocalIndexName, Set[LocalIndexName]] = filteredBy match {
+      case IndexAttributeFilter.Closed => Map.empty
+      case _                           => fullDataStreamsPerAliasMap
+    }
+
+    def backingIndicesPerDataStreamMapFor(filteredBy: IndexAttributeFilter): Map[LocalIndexName, Set[LocalIndexName]] = filteredBy match {
+      case IndexAttributeFilter.Closed => Map.empty
+      case _                           => fullBackingIndicesPerDataStreamMap
+    }
+
+    private def dataStreamsPerAliasMapFrom(dataStreams: Iterable[FullLocalDataStreamWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
+      val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
+      dataStreams.foreach { dataStreamWithAliases =>
+        dataStreamWithAliases.aliases.foreach { alias =>
+          collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += dataStreamWithAliases.dataStream
+        }
+      }
+      buildAliasMap(collected)
+    }
+
+    private def backingIndicesPerDataStreamMapFrom(dataStreams: Iterable[FullLocalDataStreamWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
+      val collected = mutable.HashMap.empty[LocalIndexName, mutable.Builder[LocalIndexName, Set[LocalIndexName]]]
+      dataStreams.foreach { fullDataStream =>
+        fullDataStream.indices.foreach { index =>
+          collected.getOrElseUpdate(fullDataStream.dataStream, Set.newBuilder[LocalIndexName]) += index
+        }
+      }
+      buildAliasMap(collected)
+    }
   }
 
   private def buildAliasMap[K, V](collected: mutable.HashMap[K, mutable.Builder[V, Set[V]]]): Map[K, Set[V]] = {
@@ -168,87 +204,6 @@ object EsClusterService {
     mapBuilder.result()
   }
 
-  final class LocalIndicesSnapshot(val raw: Set[FullLocalIndexWithAliases]) {
-    lazy val indicesAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
-    lazy val indices: Set[LocalIndexName] = raw.map(_.index)
-    lazy val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
-
-    private lazy val opened = raw.filter(_.attribute == IndexAttribute.Opened)
-    private lazy val closed = raw.filter(_.attribute == IndexAttribute.Closed)
-
-    private lazy val openedIndicesAndAliases = opened.flatMap(_.all)
-    private lazy val closedIndicesAndAliases = closed.flatMap(_.all)
-    private lazy val openedIndices = opened.map(_.index)
-    private lazy val closedIndices = closed.map(_.index)
-    private lazy val openedAliases = opened.flatMap(_.aliases)
-    private lazy val closedAliases = closed.flatMap(_.aliases)
-
-    private lazy val fullIndicesPerAliasMap = indicesPerAliasMapFrom(raw)
-    private lazy val openedIndicesPerAliasMap = indicesPerAliasMapFrom(opened)
-    private lazy val closedIndicesPerAliasMap = indicesPerAliasMapFrom(closed)
-
-    def indicesAndAliasesFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
-      if (usesAllIndexAttributes(filteredBy)) indicesAndAliases
-      else if (filteredBy.contains(IndexAttribute.Opened)) openedIndicesAndAliases
-      else if (filteredBy.contains(IndexAttribute.Closed)) closedIndicesAndAliases
-      else Set.empty
-    }
-
-    def indicesFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
-      if (usesAllIndexAttributes(filteredBy)) indices
-      else if (filteredBy.contains(IndexAttribute.Opened)) openedIndices
-      else if (filteredBy.contains(IndexAttribute.Closed)) closedIndices
-      else Set.empty
-    }
-
-    def aliasesFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
-      if (usesAllIndexAttributes(filteredBy)) aliases
-      else if (filteredBy.contains(IndexAttribute.Opened)) openedAliases
-      else if (filteredBy.contains(IndexAttribute.Closed)) closedAliases
-      else Set.empty
-    }
-
-    def indicesPerAliasMapFor(filteredBy: Set[IndexAttribute]): Map[LocalIndexName, Set[LocalIndexName]] = {
-      if (usesAllIndexAttributes(filteredBy)) fullIndicesPerAliasMap
-      else if (filteredBy.contains(IndexAttribute.Opened)) openedIndicesPerAliasMap
-      else if (filteredBy.contains(IndexAttribute.Closed)) closedIndicesPerAliasMap
-      else Map.empty
-    }
-  }
-
-  final class LocalDataStreamsSnapshot(val raw: Set[FullLocalDataStreamWithAliases]) {
-    lazy val dataStreamsAndAliases: Set[LocalIndexName] = raw.flatMap(_.all)
-    lazy val dataStreams: Set[LocalIndexName] = raw.map(_.dataStream)
-    lazy val dataStreamAliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
-
-    private lazy val fullDataStreamsPerAliasMap = dataStreamsPerAliasMapFrom(raw)
-    private lazy val fullBackingIndicesPerDataStreamMap = backingIndicesPerDataStreamMapFrom(raw)
-
-    def dataStreamsAndAliasesFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
-      if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) dataStreamsAndAliases
-      else Set.empty
-    }
-
-    def dataStreamsFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
-      if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) dataStreams
-      else Set.empty
-    }
-
-    def dataStreamAliasesFor(filteredBy: Set[IndexAttribute]): Set[LocalIndexName] = {
-      if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) dataStreamAliases
-      else Set.empty
-    }
-
-    def dataStreamsPerAliasMapFor(filteredBy: Set[IndexAttribute]): Map[LocalIndexName, Set[LocalIndexName]] = {
-      if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) fullDataStreamsPerAliasMap
-      else Map.empty
-    }
-
-    def backingIndicesPerDataStreamMapFor(filteredBy: Set[IndexAttribute]): Map[LocalIndexName, Set[LocalIndexName]] = {
-      if (filteredBy.isEmpty || filteredBy.contains(IndexAttribute.Opened)) fullBackingIndicesPerDataStreamMap
-      else Map.empty
-    }
-  }
 }
 
 class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends EsClusterService {
@@ -323,14 +278,6 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
     }
   )
 
-  private lazy val cacheableRemoteDataStreamsPerAliasMap = new AsyncCacheableAction[Set[IndexAttribute], Map[RemoteIndexName, Set[RemoteIndexName]]](
-    action = (filteredBy, id) => underlying.remoteDataStreamsPerAliasMap(filteredBy)(id)
-  )
-
-  private lazy val cacheableRemoteBackingIndicesPerDataStreamMap = new AsyncCacheableAction[Set[IndexAttribute], Map[RemoteIndexName, Set[RemoteIndexName]]](
-    action = (filteredBy, id) => underlying.remoteBackingIndicesPerDataStreamMap(filteredBy)(id)
-  )
-
   override def remoteClustersConfigured(implicit id: RequestId): Boolean =
     cacheableRemoteClustersConfigured.call(())
 
@@ -343,14 +290,6 @@ class CacheableEsClusterServiceDecorator(underlying: EsClusterService) extends E
 
   override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] =
     cacheableAllRemoteIndicesAndAliases.call(())
-
-  override def remoteDataStreamsPerAliasMap(filteredBy: Set[IndexAttribute])
-                                           (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    cacheableRemoteDataStreamsPerAliasMap.call(filteredBy)
-
-  override def remoteBackingIndicesPerDataStreamMap(filteredBy: Set[IndexAttribute])
-                                                   (implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
-    cacheableRemoteBackingIndicesPerDataStreamMap.call(filteredBy)
 
   override def localIndicesSnapshot(implicit id: RequestId): LocalIndicesSnapshot =
     cacheableLocalIndicesSnapshot.call(())

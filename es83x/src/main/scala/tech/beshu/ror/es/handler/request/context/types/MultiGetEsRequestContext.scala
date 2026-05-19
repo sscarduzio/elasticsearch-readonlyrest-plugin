@@ -64,13 +64,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     requestFieldsUsage = requestFieldsUsage
   )
 
-  override lazy val indexAttributes: Set[IndexAttribute] = {
-    // It may be a problem in some cases. We get all possible index attributes and we put them to one bag.
-    actionRequest
-      .getItems.asScala
-      .flatMap(indexAttributesFrom)
-      .toCovariantSet
-  }
+  override lazy val indexAttributes: IndexAttributeFilter =
+    actionRequest.getItems.asScala.toList.foldMap(indexAttributesFrom)
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
     discoveredIndexPacks

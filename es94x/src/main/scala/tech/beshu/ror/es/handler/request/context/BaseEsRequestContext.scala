@@ -21,9 +21,8 @@ import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.{EsServices, RorRestRequest}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.es.{EsServices, RorRestRequest}
 
 import java.time.Instant
 
@@ -53,11 +52,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     }
   }
 
-  override lazy val indexAttributes: Set[IndexAttribute] = {
-    esContext.actionRequest match {
-      case req: IndicesRequest => indexAttributesFrom(req)
-      case _ => Set.empty
-    }
+  override lazy val indexAttributes: IndexAttributeFilter = esContext.actionRequest match {
+    case req: IndicesRequest => indexAttributesFrom(req)
+    case _ => IndexAttributeFilter.All
   }
 
   override val esServices: EsServices = esContext.esServices
@@ -73,12 +70,11 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     }
   }
 
-  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
-    val wildcardOptions = request
-      .indicesOptions()
-      .wildcardOptions()
-
-    Option.when(wildcardOptions.matchOpen())(IndexAttribute.Opened: IndexAttribute).toCovariantSet ++
-      Option.when(wildcardOptions.matchClosed())(IndexAttribute.Closed: IndexAttribute).toCovariantSet
+  protected def indexAttributesFrom(request: IndicesRequest): IndexAttributeFilter = {
+    val wildcardOptions = request.indicesOptions().wildcardOptions()
+    IndexAttributeFilter.from(
+      wildcardOptions.matchOpen(),
+      wildcardOptions.matchClosed()
+    )
   }
 }

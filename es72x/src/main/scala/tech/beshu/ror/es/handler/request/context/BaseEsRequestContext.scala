@@ -21,12 +21,10 @@ import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.{EsServices, RorRestRequest}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.es.{EsServices, RorRestRequest}
 
 import java.time.Instant
-import scala.jdk.CollectionConverters.*
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
   extends RequestContext {
@@ -54,11 +52,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     }
   }
 
-  override lazy val indexAttributes: Set[IndexAttribute] = {
-    esContext.actionRequest match {
-      case req: IndicesRequest => indexAttributesFrom(req)
-      case _ => Set.empty
-    }
+  override lazy val indexAttributes: IndexAttributeFilter = esContext.actionRequest match {
+    case req: IndicesRequest => indexAttributesFrom(req)
+    case _ => IndexAttributeFilter.All
   }
 
   override val esServices: EsServices = esContext.esServices
@@ -74,9 +70,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     }
   }
 
-  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
-    Set.empty[IndexAttribute] ++
-      (if (request.indicesOptions().expandWildcardsOpen()) Set(IndexAttribute.Opened) else Set.empty) ++
-      (if (request.indicesOptions().expandWildcardsClosed()) Set(IndexAttribute.Opened) else Set.empty)
-  }
+  protected def indexAttributesFrom(request: IndicesRequest): IndexAttributeFilter = IndexAttributeFilter.from(
+    request.indicesOptions().expandWildcardsOpen(),
+    request.indicesOptions().expandWildcardsClosed()
+  )
 }

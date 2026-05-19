@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.Eq
+import cats.{Eq, Monoid}
 import cats.data.NonEmptyList
 import cats.implicits.*
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import enumeratum.{Enum, EnumEntry}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
@@ -382,7 +383,7 @@ object ClusterIndexName {
     def skipRemoteIndicesIfNeeded(esContext: BaseEsContext)
                                  (implicit id: RequestId): Set[RequestedIndex[ClusterIndexName]] = {
       val filtered = indices.filterNot(shouldSkipIndex(_, esContext))
-      if(indices.nonEmpty && filtered.isEmpty) {
+      if (indices.nonEmpty && filtered.isEmpty) {
         val nonExistentRemoteIndex: ClusterIndexName = ClusterIndexName.Local.randomNonexistentIndex("remote*")
         Set(RequestedIndex(nonExistentRemoteIndex, excluded = false))
       } else {
@@ -599,8 +600,34 @@ final class FullRemoteIndexWithAliases(val clusterName: ClusterName.Full,
   }
 }
 
-sealed trait IndexAttribute
-object IndexAttribute {
+sealed trait IndexAttribute extends EnumEntry
+object IndexAttribute extends Enum[IndexAttribute] {
   case object Opened extends IndexAttribute
   case object Closed extends IndexAttribute
+
+  override val values: IndexedSeq[IndexAttribute] = findValues
+}
+
+sealed trait IndexAttributeFilter
+object IndexAttributeFilter {
+  case object Opened extends IndexAttributeFilter
+  case object Closed extends IndexAttributeFilter
+  case object All extends IndexAttributeFilter
+
+  def from(expandWildcardsOpen: Boolean, expandWildcardsClosed: Boolean): IndexAttributeFilter = {
+    (expandWildcardsOpen, expandWildcardsClosed) match {
+      case (true, true) => IndexAttributeFilter.All
+      case (false, false) => IndexAttributeFilter.All
+      case (true, false) => IndexAttributeFilter.Opened
+      case (false, true) => IndexAttributeFilter.Closed
+    }
+  }
+
+  implicit val monoid: Monoid[IndexAttributeFilter] = Monoid.instance(
+    emptyValue = IndexAttributeFilter.All,
+    cmb = {
+      case (x, y) if x == y => x
+      case _ => All
+    }
+  )
 }

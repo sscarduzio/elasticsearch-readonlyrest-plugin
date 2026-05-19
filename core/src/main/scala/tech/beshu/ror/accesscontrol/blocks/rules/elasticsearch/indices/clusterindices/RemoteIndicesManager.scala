@@ -34,14 +34,16 @@ class RemoteIndicesManager(requestContext: RequestContext,
   private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
   private val clusterService = requestContext.esServices.clusterService
   private val indexAttributesFromRequest = requestContext.indexAttributes
-  private val allIndexAttributes: Set[IndexAttribute] = Set(IndexAttribute.Opened, IndexAttribute.Closed)
 
   // Indices — memoize filtered results and derived flat sets so work is done at most once per request.
   private lazy val cachedRemoteIndices =
     clusterService.allRemoteIndicesAndAliases
       .map { all =>
-        if (indexAttributesFromRequest.isEmpty || indexAttributesFromRequest == allIndexAttributes) all
-        else all.filter(i => indexAttributesFromRequest.contains(i.attribute))
+        indexAttributesFromRequest match {
+          case IndexAttributeFilter.All    => all
+          case IndexAttributeFilter.Opened => all.filter(_.attribute == IndexAttribute.Opened)
+          case IndexAttributeFilter.Closed => all.filter(_.attribute == IndexAttribute.Closed)
+        }
       }
       .memoize
 
@@ -63,8 +65,11 @@ class RemoteIndicesManager(requestContext: RequestContext,
   private lazy val cachedRemoteDataStreams =
     clusterService.allRemoteDataStreamsAndAliases
       .map { all =>
-        if (indexAttributesFromRequest.isEmpty || indexAttributesFromRequest.contains(IndexAttribute.Opened)) all
-        else Set.empty
+        indexAttributesFromRequest match {
+          case IndexAttributeFilter.Closed => Set.empty[FullRemoteDataStreamWithAliases]
+          case IndexAttributeFilter.Opened => all
+          case IndexAttributeFilter.All    => all
+        }
       }
       .memoize
 

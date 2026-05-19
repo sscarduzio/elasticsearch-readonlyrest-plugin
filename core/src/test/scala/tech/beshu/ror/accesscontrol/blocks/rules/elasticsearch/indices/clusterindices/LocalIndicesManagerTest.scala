@@ -22,6 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.IndexAttribute.{Closed, Opened}
+import tech.beshu.ror.accesscontrol.domain.IndexAttributeFilter
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
@@ -32,7 +33,7 @@ class LocalIndicesManagerTest extends AnyWordSpec {
   "LocalIndicesManager" should {
     "filter alias sets using request index attributes" in {
       val requestContext = MockRequestContext.indices
-        .copy(indexAttributes = Set(Closed))
+        .copy(indexAttributes = IndexAttributeFilter.Closed)
         .withEsServices(MockEsServices.`with`(MockEsServices.MockEsClusterService(
           allIndicesAndAliases = Set(
             fullLocalIndex("open-1", Opened, "alias-open", "alias-both"),

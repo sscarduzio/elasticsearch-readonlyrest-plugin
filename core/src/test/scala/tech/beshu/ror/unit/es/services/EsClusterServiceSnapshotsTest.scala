@@ -34,34 +34,34 @@ class EsClusterServiceSnapshotsTest extends AnyWordSpec {
         fullLocalIndex("closed-1", Closed, "alias-closed", "alias-both")
       ))
 
-      snapshot.indicesAndAliasesFor(Set.empty) shouldBe Set(
+      snapshot.indicesAndAliasesFor(IndexAttributeFilter.All) shouldBe Set(
         localIndex("open-1"),
         localIndex("closed-1"),
         localIndex("alias-open"),
         localIndex("alias-closed"),
         localIndex("alias-both")
       )
-      snapshot.indicesAndAliasesFor(Set(Opened)) shouldBe Set(
+      snapshot.indicesAndAliasesFor(IndexAttributeFilter.Opened) shouldBe Set(
         localIndex("open-1"),
         localIndex("alias-open"),
         localIndex("alias-both")
       )
-      snapshot.indicesAndAliasesFor(Set(Closed)) shouldBe Set(
+      snapshot.indicesAndAliasesFor(IndexAttributeFilter.Closed) shouldBe Set(
         localIndex("closed-1"),
         localIndex("alias-closed"),
         localIndex("alias-both")
       )
 
-      snapshot.indicesPerAliasMapFor(Set.empty) shouldBe Map(
+      snapshot.indicesPerAliasMapFor(IndexAttributeFilter.All) shouldBe Map(
         localIndex("alias-open") -> Set(localIndex("open-1")),
         localIndex("alias-closed") -> Set(localIndex("closed-1")),
         localIndex("alias-both") -> Set(localIndex("open-1"), localIndex("closed-1"))
       )
-      snapshot.indicesPerAliasMapFor(Set(Opened)) shouldBe Map(
+      snapshot.indicesPerAliasMapFor(IndexAttributeFilter.Opened) shouldBe Map(
         localIndex("alias-open") -> Set(localIndex("open-1")),
         localIndex("alias-both") -> Set(localIndex("open-1"))
       )
-      snapshot.indicesPerAliasMapFor(Set(Closed)) shouldBe Map(
+      snapshot.indicesPerAliasMapFor(IndexAttributeFilter.Closed) shouldBe Map(
         localIndex("alias-closed") -> Set(localIndex("closed-1")),
         localIndex("alias-both") -> Set(localIndex("closed-1"))
       )
@@ -78,22 +78,22 @@ class EsClusterServiceSnapshotsTest extends AnyWordSpec {
         )
       ))
 
-      snapshot.dataStreamsAndAliasesFor(Set.empty) shouldBe Set(
+      snapshot.dataStreamsAndAliasesFor(IndexAttributeFilter.All) shouldBe Set(
         localIndex("logs-app"),
         localIndex("logs-alias"),
         localIndex(".ds-logs-app-000001"),
         localIndex(".ds-logs-app-000002")
       )
-      snapshot.dataStreamsAndAliasesFor(Set(Closed)) shouldBe Set.empty[LocalIndexName]
+      snapshot.dataStreamsAndAliasesFor(IndexAttributeFilter.Closed) shouldBe Set.empty[LocalIndexName]
 
-      snapshot.dataStreamsPerAliasMapFor(Set.empty) shouldBe Map(
+      snapshot.dataStreamsPerAliasMapFor(IndexAttributeFilter.All) shouldBe Map(
         localIndex("logs-alias") -> Set(localIndex("logs-app"))
       )
-      snapshot.backingIndicesPerDataStreamMapFor(Set.empty) shouldBe Map(
+      snapshot.backingIndicesPerDataStreamMapFor(IndexAttributeFilter.All) shouldBe Map(
         localIndex("logs-app") -> Set(localIndex(".ds-logs-app-000001"), localIndex(".ds-logs-app-000002"))
       )
-      snapshot.dataStreamsPerAliasMapFor(Set(Closed)) shouldBe Map.empty[LocalIndexName, Set[LocalIndexName]]
-      snapshot.backingIndicesPerDataStreamMapFor(Set(Closed)) shouldBe Map.empty[LocalIndexName, Set[LocalIndexName]]
+      snapshot.dataStreamsPerAliasMapFor(IndexAttributeFilter.Closed) shouldBe Map.empty[LocalIndexName, Set[LocalIndexName]]
+      snapshot.backingIndicesPerDataStreamMapFor(IndexAttributeFilter.Closed) shouldBe Map.empty[LocalIndexName, Set[LocalIndexName]]
     }
   }
 

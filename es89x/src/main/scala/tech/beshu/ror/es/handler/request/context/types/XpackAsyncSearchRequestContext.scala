@@ -23,7 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, IndexAttribute, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, IndexAttributeFilter, RequestedIndex}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
@@ -40,7 +40,7 @@ class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
 
-  override lazy val indexAttributes: Set[IndexAttribute] = indexAttributesFrom(searchRequest)
+  override lazy val indexAttributes: IndexAttributeFilter = indexAttributesFrom(searchRequest)
 
   override protected def requestFieldsUsage: RequestFieldsUsage = searchRequest.checkFieldsUsage()
 
