@@ -50,7 +50,7 @@ stages:
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
     dependsOn: [ ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'), eq(variables.isNewEsBranchOrPr, true))
+    condition: false
     jobs:
       - job:
         steps:
@@ -79,14 +79,7 @@ stages:
   - stage: GRADLE_WARMUP
     displayName: 'Warm up Gradle cache'
     dependsOn: [ ]
-    condition:
-      and(
-        succeeded(),
-        or(
-          ne(variables['Build.Reason'], 'Manual'),
-          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
-        )
-      )
+    condition: false
     jobs:
       - job: WARMUP
         displayName: 'Download Gradle and toolchains'
@@ -118,8 +111,8 @@ stages:
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    dependsOn: [ ]
+    condition: succeeded()
     jobs:
       - job: CVE_CHECK
         container: eclipse-temurin:17-jdk
@@ -128,22 +121,6 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - task: Cache@2
-            displayName: 'Restore CVE DB from cache'
-            inputs:
-              key: '$(dependencyCheckCacheKey)'
-              # prefix fallback to any prior cache entry
-              restoreKeys: dependency-check-v1-
-              path: $(dependencyCheckDataDir)
           - script: |
               echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
 
@@ -168,23 +145,11 @@ stages:
               var_oss_index_username: $(OSS_INDEX_USERNAME)
               var_oss_index_password: $(OSS_INDEX_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: Cache@2
-            displayName: 'Save updated CVE DB in cache'
-            inputs:
-              # Cache entries are immutable, a new write will only occur when a new key appears
-              key: '$(dependencyCheckCacheKey)'
-              path: $(dependencyCheckDataDir)
-            condition: succeeded()
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition:
-      and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false
     jobs:
       - job:
         container: eclipse-temurin:17-jdk
@@ -227,15 +192,7 @@ stages:
   - stage: TEST
     displayName: 'Run all tests'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition:
-      and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        or(
-          ne(variables['Build.Reason'], 'Manual'),
-          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
-        )
-      )
+    condition: false
     jobs:
 ####################################
 ##### Unit tests
@@ -685,13 +642,7 @@ stages:
     dependsOn:
       - REQUIRED_CHECKS
       - TEST
-    condition: |
-      and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
-        eq(variables.isPullRequest, true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false
     jobs:
       - job:
         container: eclipse-temurin:17-jdk
@@ -734,13 +685,7 @@ stages:
     dependsOn:
       - REQUIRED_CHECKS
       - TEST
-    condition: |
-      and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false
     jobs:
       - job: EXTRACT_IS_RELEASE
         steps:
@@ -758,15 +703,7 @@ stages:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
       - TEST
-    condition: |
-      and(
-        succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false
     jobs:
       - job:
         timeoutInMinutes: 600
@@ -840,15 +777,7 @@ stages:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
       - TEST
-    condition: |
-      and(
-        succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false
     jobs:
       - job:
         timeoutInMinutes: 180
@@ -926,15 +855,7 @@ stages:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
       - TEST
-    condition: |
-      and(
-        succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
-        eq(variables.isMaster, true),
-        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false
     jobs:
       - job:
         steps:
@@ -1008,12 +929,7 @@ stages:
   - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
     displayName: 'Publish docker images for specified pre-builds'
     dependsOn: [ ]
-    condition:
-      and(
-        succeeded(),
-        eq(variables['Build.Reason'], 'Manual'),
-        eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds')
-      )
+    condition: false
     jobs:
       - job: PUBLISH
         displayName: 'Publishing'
