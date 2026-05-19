@@ -30,13 +30,6 @@ object syntax
     def apply[A](elems: A*): CovariantSet[A] = CovariantSet.from(elems)
     def newBuilder[A]: mutable.Builder[A, CovariantSet[A]] = CovariantSet.newBuilder[A]
 
-    /** Builder pre-sized for the expected element count — avoids HashSetBuilder resize chains. */
-    def newBuilder[A](sizeHint: Int): mutable.Builder[A, CovariantSet[A]] = {
-      val b = CovariantSet.newBuilder[A]
-      b.sizeHint(sizeHint)
-      b
-    }
-
     /** Build a Set using a pre-sized builder. Use when result size is known up front. */
     def sized[A](sizeHint: Int)(build: mutable.Builder[A, CovariantSet[A]] => Unit): CovariantSet[A] = {
       val b = newBuilder[A](sizeHint)
@@ -49,6 +42,13 @@ object syntax
       val b = newBuilder[B](source.size)
       source.foreach(a => b += f(a))
       b.result()
+    }
+
+    /** Builder pre-sized for the expected element count — avoids HashSetBuilder resize chains. */
+    private def newBuilder[A](sizeHint: Int): mutable.Builder[A, CovariantSet[A]] = {
+      val b = CovariantSet.newBuilder[A]
+      b.sizeHint(sizeHint)
+      b
     }
   }
 }

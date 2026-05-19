@@ -491,7 +491,8 @@ object ClusterIndexName {
     }
 
   extension [T <: ClusterIndexName](indices: Iterable[T])
-    def filterBy(excluded: Option[PatternsMatcher[T]], included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
+    def filterBy(excluded: Option[PatternsMatcher[T]],
+                 included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
       lazy val excludedNames = excluded.fold(Set.empty[T])(_.filter(indices))
       val includedItems = included.fold(Set.empty[RequestedIndex[T]]) { m =>
         implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)

@@ -27,11 +27,11 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
   import GlobPatternsMatcher.*
 
   private val matchable: Matchable[A] = implicitly[Matchable[A]]
-  override val caseSensitivity: CaseSensitivity = matchable.caseSensitivity
-  private val ignoreCase: Boolean = caseSensitivity == CaseSensitivity.Disabled
 
+  override val caseSensitivity: CaseSensitivity = matchable.caseSensitivity
   override val patterns: Iterable[String] = values.map(matchable.show)
 
+  private val ignoreCase: Boolean = caseSensitivity == CaseSensitivity.Disabled
   private val compiled: Compiled = Compiled.from(patterns, ignoreCase, globPatternFlags(caseSensitivity))
 
   override def `match`[B <: A](value: B): Boolean = {

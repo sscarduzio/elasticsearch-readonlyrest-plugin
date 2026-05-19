@@ -35,7 +35,6 @@ class RemoteIndicesManager(requestContext: RequestContext,
   private val clusterService = requestContext.esServices.clusterService
   private val indexAttributesFromRequest = requestContext.indexAttributes
 
-  // Indices — memoize filtered results and derived flat sets so work is done at most once per request.
   private lazy val cachedRemoteIndices =
     clusterService.allRemoteIndicesAndAliases
       .map { all =>
@@ -61,7 +60,6 @@ class RemoteIndicesManager(requestContext: RequestContext,
   private lazy val cachedIndicesPerAliasMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
     cachedRemoteIndices.map(indicesPerAliasMapFrom).memoize
 
-  // Data streams — same memoization pattern.
   private lazy val cachedRemoteDataStreams =
     clusterService.allRemoteDataStreamsAndAliases
       .map { all =>
