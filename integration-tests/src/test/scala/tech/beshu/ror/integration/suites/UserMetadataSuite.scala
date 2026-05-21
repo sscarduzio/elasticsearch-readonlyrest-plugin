@@ -129,6 +129,41 @@ class UserMetadataSuite
                |}
                |""".stripMargin))
         }
+        "single block with multiple groups using @{acl:current_group} variable" in {
+          val userMetadataManager = new RorApiManager(basicAuthClient("user6", "pass"), esVersionUsed)
+
+          val correlationId = UUID.randomUUID().toString
+          val result = userMetadataManager.fetchUserMetadata("ent", correlationId = Some(correlationId))
+
+          result should have statusCode 200
+          result.responseJson should be(ujson.read(
+            s"""
+               |{
+               |  "type":"USER_WITH_GROUPS",
+               |  "correlation_id":"$correlationId",
+               |  "groups":[
+               |    {
+               |      "group":{"id":"groupA","name":"groupA"},
+               |      "username":"user6",
+               |      "kibana":{
+               |        "access":"unrestricted",
+               |        "index":"user6_groupA_kibana_index",
+               |        "template_index":"user6_groupA_kibana_template_index"
+               |      }
+               |    },
+               |    {
+               |      "group":{"id":"groupB","name":"groupB"},
+               |      "username":"user6",
+               |      "kibana":{
+               |        "access":"unrestricted",
+               |        "index":"user6_groupB_kibana_index",
+               |        "template_index":"user6_groupB_kibana_template_index"
+               |      }
+               |    }
+               |  ]
+               |}
+               |""".stripMargin))
+        }
         "block with no available groups collected is matched" in {
           val userMetadataManager = new RorApiManager(basicAuthClient("user3", "pass"), esVersionUsed)
 
