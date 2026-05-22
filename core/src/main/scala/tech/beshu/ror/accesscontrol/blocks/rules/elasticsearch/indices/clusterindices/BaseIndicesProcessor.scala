@@ -233,12 +233,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](resolvedRequestedIndices: Set[RequestedIndex[T]])
-                                                                                                                    (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
-    Task.delay {
-      implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
-      allowedIndicesManager.allowedIndicesMatcher.filter(resolvedRequestedIndices)
-    }
-  }
+                                                                                                                    (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] =
+    filterByAllowedMatcher(resolvedRequestedIndices)
 
   private def filterAssumingThatIndicesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](resolvedBackingIndicesPerDataStream: Map[T, UniqueNonEmptyList[RequestedIndex[T]]])
                                                                                                                         (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
@@ -262,12 +258,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedAliases: Set[RequestedIndex[T]])
-                                                                                                                    (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
-    Task.delay {
-      implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
-      allowedIndicesManager.allowedIndicesMatcher.filter(requestedAliases)
-    }
-  }
+                                                                                                                    (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] =
+    filterByAllowedMatcher(requestedAliases)
 
   private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedAliases: Set[RequestedIndex[T]])
                                                                                                                     (implicit requestId: RequestId,
@@ -290,12 +282,8 @@ trait BaseIndicesProcessor {
   }
 
   private def filterAssumingThatAliasesAreRequestedAndDataStreamAliasesAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedAliases: Set[RequestedIndex[T]])
-                                                                                                                              (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
-    Task.delay {
-      implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
-      allowedIndicesManager.allowedIndicesMatcher.filter(requestedAliases)
-    }
-  }
+                                                                                                                              (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] =
+    filterByAllowedMatcher(requestedAliases)
 
   private def filterAssumingThatAliasesAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedAliases: Set[RequestedIndex[T]])
                                                                                                                         (implicit requestId: RequestId,
@@ -336,17 +324,23 @@ trait BaseIndicesProcessor {
               .map(backingIndex => RequestedIndex(backingIndex, requestedDataStreamName.excluded))
           }
 
-        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name.asInstanceOf[T])
+        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
         allowedIndicesManager.allowedIndicesMatcher.filter(indicesOfRequestedDataStream)
       }
     }
   }
 
   private def filterAssumingThatDataStreamsAreRequestedAndDataStreamsAreConfigured[T <: ClusterIndexName : Matchable : Show](requestedDataStreams: Set[RequestedIndex[T]])
-                                                                                                                            (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
+                                                                                                                            (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] =
+    filterByAllowedMatcher(requestedDataStreams)
+
+  // Directly filters the requested indices through the configured allowed-indices matcher (matching by name).
+  // Shared by the resolution branches where the requested names and the configured names are of the same kind.
+  private def filterByAllowedMatcher[T <: ClusterIndexName : Matchable : Show](requestedIndices: Set[RequestedIndex[T]])
+                                                                              (implicit allowedIndicesManager: IndicesManager[T]): Task[Set[RequestedIndex[T]]] = {
     Task.delay {
       implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
-      allowedIndicesManager.allowedIndicesMatcher.filter(requestedDataStreams)
+      allowedIndicesManager.allowedIndicesMatcher.filter(requestedIndices)
     }
   }
 
