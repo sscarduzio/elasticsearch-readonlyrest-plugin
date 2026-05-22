@@ -106,6 +106,16 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     </suppress>
     <suppress>
         <notes><![CDATA[
+   False positive: CVE-2026-42582 only affects netty-codec-http3, which is NOT a dependency of this project.
+   The flagged netty artifacts (netty-buffer, netty-codec, netty-codec-http, netty-codec-http2, netty-common,
+   netty-handler, netty-resolver, netty-transport, netty-transport-native-unix-common) at version 4.1.133.Final
+   are unaffected. Version 4.1.133.Final contains fix in the affected package anyway.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.netty/(netty-buffer|netty-codec|netty-codec-http|netty-codec-http2|netty-common|netty-handler|netty-resolver|netty-transport|netty-transport-native-unix-common)@.*$</packageUrl>
+        <cve>CVE-2026-42582</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
    file name: log4j-api-2.11.1.jar
     - CVE-2020-9488  affects log4j-core's SMTP appender
     - CVE-2025-68161 affects log4j-core's Socket Appender (TLS hostname verification)
