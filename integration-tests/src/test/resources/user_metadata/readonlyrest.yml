@@ -74,11 +74,31 @@ readonlyrest:
 
     - name: "User 6 - multi-group with current_group variable"
       users: ["user6"]
-      groups: [groupA, groupB]
+      groups: [group8, group9]
       kibana:
         access: unrestricted
         index: "user6_@{acl:current_group}_kibana_index"
         template_index: "user6_@{acl:current_group}_kibana_template_index"
+
+    - name: "User 7 - no explicit kibana index"
+      users: ["user7"]
+      groups: [group10]
+      kibana:
+        access: unrestricted
+
+    - name: "User 7 - group11 specific"
+      users: ["user7"]
+      groups_or: [group11]
+      kibana:
+        access: rw
+        index: "user7_@{acl:current_group}_kibana_index"
+
+    - name: "User 7 - group12 specific"
+      users: ["user7"]
+      groups_or: [group12]
+      kibana:
+        access: rw
+        index: "user7_@{acl:current_group}_kibana_index"
 
   users:
     - username: user1
@@ -102,5 +122,9 @@ readonlyrest:
       auth_key: user5:pass
 
     - username: user6
-      groups: ["groupA", "groupB"]
+      groups: ["group8", "group9"]
       auth_key: "user6:pass"
+
+    - username: user7
+      groups: ["group10", "group11", "group12"]
+      auth_key: "user7:pass"
