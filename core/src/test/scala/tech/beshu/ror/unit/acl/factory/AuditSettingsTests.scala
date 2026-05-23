@@ -27,7 +27,7 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.WithOutputs
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
