@@ -131,7 +131,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def determineUserMetadataWithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
-                                                               history: History[UserMetadataRequestBlockContext]) = {
+                                                       history: History[UserMetadataRequestBlockContext]) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
       case allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
         blockContext.block.policy match {

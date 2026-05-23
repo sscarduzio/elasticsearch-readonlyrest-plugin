@@ -22,6 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -31,7 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -70,6 +71,10 @@ class Block(val name: Name,
         }
         result -> blockHistory
       }
+  }
+
+  def evaluateMetadata(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(Decision[UserMetadataRequestBlockContext], BlockHistory[UserMetadataRequestBlockContext])] = {
+    ???
   }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule, blockContext: B) = {
