@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -35,6 +36,7 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.language.implicitConversions
 
@@ -49,8 +51,75 @@ class Block(val name: Name,
   import Lifter.*
 
   def evaluate[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(Decision[B], BlockHistory[B])] = {
-    val initBlockContext = requestContext.initialBlockContext(this)
-    rules
+    evaluateRules(rules.toList, requestContext.initialBlockContext(this))
+  }
+
+  /**
+   * Evaluates the block for a user metadata request. A single block can grant a user access to more than one group and
+   * some rules (eg. the kibana ones) may resolve runtime variables like `@{acl:current_group}` differently for each of
+   * them. To return correct, per-group metadata we:
+   *   1. run only the authentication/authorization rules of the block to discover the user's available groups,
+   *   2. re-run the whole block for each available group with that group set as the current one, so that every
+   *      group-dependent rule is resolved against the right group, and narrow the available groups of each result
+   *      down to the group it was evaluated for,
+   *   3. return one [[Decision]] per group.
+   * Blocks without an authentication/authorization rule (and so without groups), as well as blocks granting access to
+   * at most a single group, are evaluated just once.
+   */
+  def evaluateMetadata(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(NonEmptyList[Decision[UserMetadataRequestBlockContext]], BlockHistory[UserMetadataRequestBlockContext])] = {
+    if (containsAuthRule) {
+      collectAvailableGroups(requestContext).flatMap {
+        case groups if groups.size > 1 => evaluateMetadataForEachGroup(requestContext, groups)
+        case _ => evaluateMetadataAsSingleDecision(requestContext)
+      }
+    } else {
+      evaluateMetadataAsSingleDecision(requestContext)
+    }
+  }
+
+  private def evaluateMetadataAsSingleDecision(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]) = {
+    evaluate(requestContext).map { case (decision, history) => (NonEmptyList.one(decision), history) }
+  }
+
+  private def collectAvailableGroups(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[List[Group]] = {
+    val authRules = rules.toList.filter {
+      case _: Rule.AuthenticationRule => true
+      case _: Rule.AuthorizationRule => true
+      case _ => false
+    }
+    evaluateRules(authRules, requestContext.initialBlockContext(this)).map {
+      case (Decision.Permitted(blockContext), _) => blockContext.blockMetadata.availableGroups.toList
+      case (Decision.Denied(_), _) => List.empty
+    }
+  }
+
+  private def evaluateMetadataForEachGroup(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext],
+                                           groups: List[Group]): Task[(NonEmptyList[Decision[UserMetadataRequestBlockContext]], BlockHistory[UserMetadataRequestBlockContext])] = {
+    Task
+      .sequence {
+        groups.map { group =>
+          evaluateRules(rules.toList, requestContext.initialBlockContext(this).withBlockMetadata(_.withCurrentGroupId(group.id)))
+            .map { case (decision, history) => (narrowAvailableGroupsTo(decision, group), history) }
+        }
+      }
+      .map { results =>
+        (NonEmptyList.fromListUnsafe(results.map { case (decision, _) => decision }), results.head._2)
+      }
+  }
+
+  private def narrowAvailableGroupsTo(decision: Decision[UserMetadataRequestBlockContext],
+                                      group: Group): Decision[UserMetadataRequestBlockContext] = {
+    decision match {
+      case Decision.Permitted(blockContext) =>
+        Decision.Permitted(blockContext.withBlockMetadata(_.withAvailableGroups(UniqueList.of(group))))
+      case denied@Decision.Denied(_) =>
+        denied
+    }
+  }
+
+  private def evaluateRules[B <: BlockContext : BlockContextUpdater](rulesToCheck: List[Rule],
+                                                                     initBlockContext: B): Task[(Decision[B], BlockHistory[B])] = {
+    rulesToCheck
       .foldLeft(matched[B](Decision.Permitted(initBlockContext))) {
         case (currentResult, rule) =>
           for {
@@ -73,9 +142,12 @@ class Block(val name: Name,
       }
   }
 
-  def evaluateMetadata(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(Decision[UserMetadataRequestBlockContext], BlockHistory[UserMetadataRequestBlockContext])] = {
-    ???
-  }
+  private lazy val containsAuthRule: Boolean =
+    rules.exists {
+      case _: Rule.AuthenticationRule => true
+      case _: Rule.AuthorizationRule => true
+      case _ => false
+    }
 
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule, blockContext: B) = {
     implicit val blockContextImpl: B = blockContext

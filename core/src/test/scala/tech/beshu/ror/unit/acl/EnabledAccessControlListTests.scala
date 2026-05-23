@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -35,6 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.Grou
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -119,6 +121,26 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+            }
+          }
+        }
+        "a single block grants access to many groups using a current-group-dependent rule" should {
+          "resolve that rule independently for each group" in {
+            val acl = createAclWith(showBasicAuthPrompt = false)(
+              blockWithPerGroupKibanaIndex("b1", Policy.Allow, userId("u1"), UniqueList.of(group("g1"), group("g2"), group("g3"))),
+            )
+
+            val (userMetadataRequestResult, _) = acl
+              .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
+              .runSyncUnsafe()
+
+            inside(userMetadataRequestResult) {
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g2") :: GroupId("g3") :: Nil)
+
+                groupsMetadata(GroupId("g1")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g1")))
+                groupsMetadata(GroupId("g2")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g2")))
+                groupsMetadata(GroupId("g3")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g3")))
             }
           }
         }
@@ -426,14 +448,17 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     }
   }
 
-  private def createAcl(blocks: Block*) = {
+  private def createAcl(blocks: Block*): EnabledAccessControlList =
+    createAclWith(showBasicAuthPrompt = true)(blocks *)
+
+  private def createAclWith(showBasicAuthPrompt: Boolean)(blocks: Block*) = {
     val blocksNel = NonEmptyList.fromListUnsafe(blocks.toList)
     new EnabledAccessControlList(
       blocksNel,
       new AccessControlListStaticContext(
         blocks = blocksNel,
         globalSettings = GlobalSettings(
-          showBasicAuthPrompt = true,
+          showBasicAuthPrompt = showBasicAuthPrompt,
           forbiddenRequestMessage = "Forbidden",
           flsEngine = FlsEngine.default,
           settingsIndex = RorSettingsIndex(IndexName.Full(".readonlyrest")),
@@ -482,6 +507,44 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
 
     override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.now(Decision.Denied(AuthenticationFailed("mock failed")))
+  }
+
+  private def blockWithPerGroupKibanaIndex(name: String, policy: Block.Policy, userId: User.Id, groups: UniqueList[Group]) = {
+    new Block(
+      name = Block.Name(name),
+      policy = policy,
+      verbosity = Block.Verbosity.Info,
+      audit = Block.Audit.Enabled,
+      rules = NonEmptyList.of(authorizationRule(userId, groups), perGroupKibanaIndexRule)
+    )
+  }
+
+  // an authorization rule grants the user access to all the given groups (so that group discovery sees them)
+  private def authorizationRule(userId: User.Id, groups: UniqueList[Group]): Rule =
+    new Rule.AuthorizationRule with AuthorizationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name("groups")
+
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(Decision.Permitted(
+          blockContext.withBlockMetadata(_
+            .withLoggedUser(DirectlyLoggedUser(userId))
+            .withAvailableGroups(groups)
+          )
+        ))
+    }
+
+  // a rule that resolves the kibana index from the current group, like `index: "kibana_@{acl:current_group}"` would
+  private def perGroupKibanaIndexRule: Rule = new RegularRule {
+    override val name: Rule.Name = Rule.Name("kibana")
+
+    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      blockContext.blockMetadata.currentGroupId match {
+        case Some(groupId) =>
+          val index = kibanaIndexName(NonEmptyString.unsafeFrom(s"kibana_${groupId.value.value}"))
+          Task.now(Decision.Permitted(blockContext.withBlockMetadata(_.withKibanaIndex(index))))
+        case None =>
+          Task.now(Decision.Permitted(blockContext))
+      }
   }
 
   private def mockUserMetadataRequestContext(licenseType: RorKbnLicenseType) = {

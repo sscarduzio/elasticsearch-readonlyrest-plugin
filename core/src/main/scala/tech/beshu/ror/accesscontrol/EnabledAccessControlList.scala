@@ -30,10 +30,8 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.{MetadataOrigin, WithGroups}
-import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, KibanaPolicy}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.kibana.{KibanaIndexRule, KibanaTemplateIndexRule, KibanaUserDataRule}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.{Enterprise, Free, Pro}
 import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser}
@@ -93,7 +91,8 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
           .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
           .map(_.flatten)
           .map { blockResults =>
-            val (executionResults, blocksHistory) = blockResults.unzip
+            val executionResults = blockResults.flatMap { case (decisions, _) => decisions.toList }
+            val blocksHistory = blockResults.map { case (_, blockHistory) => blockHistory }
             val history = History(blocksHistory.toVector)
             val matchedResults = executionResults.view.onlyMatched()
             val handlingResult = context.details.licenseType match {
@@ -262,30 +261,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       group,
       permitted.loggedUser,
       blockMetadata.userOrigin,
-      resolveKibanaPolicyForGroup(group, context, blockMetadata),
+      blockMetadata.kibanaPolicy,
       MetadataOrigin(context)
     )
-  }
-
-  private def resolveKibanaPolicyForGroup(group: Group,
-                                           context: UserMetadataRequestBlockContext,
-                                           blockMetadata: BlockMetadata): Option[KibanaPolicy] = {
-    val rules = context.block.rules.toList
-    val indexTemplate = rules.collectFirst {
-      case r: KibanaUserDataRule => r.settings.kibanaIndex
-      case r: KibanaIndexRule    => r.settings.kibanaIndex
-    }
-    val templateIndexTemplate = rules.collectFirst {
-      case r: KibanaUserDataRule      => r.settings.kibanaTemplateIndex
-      case r: KibanaTemplateIndexRule => Some(r.settings.kibanaTemplateIndex)
-    }.flatten
-    blockMetadata.kibanaPolicy.map { policy =>
-      val contextWithGroup = context.copy(blockMetadata = blockMetadata.withCurrentGroupId(group.id))
-      policy.copy(
-        index = indexTemplate.fold(policy.index)(_.resolve(contextWithGroup).toOption),
-        templateIndex = templateIndexTemplate.fold(policy.templateIndex)(_.resolve(contextWithGroup).toOption)
-      )
-    }
   }
 
   private def createAllowResult(groupsMetadata: NonEmptyList[GroupMetadata]) = {
@@ -335,9 +313,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
 
   private def executeBlocksForUserMetadata(block: Block,
-                                           requestContext: RequestContext.Aux[UserMetadataRequestBlockContext]) = {
+                                           requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]) = {
     block
-      .evaluate(requestContext)
+      .evaluateMetadata(requestContext)
       .map(Some.apply)
       .onErrorRecover { case _ => None }
   }

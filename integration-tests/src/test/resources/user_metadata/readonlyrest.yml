@@ -100,6 +100,14 @@ readonlyrest:
         access: rw
         index: "user7_@{acl:current_group}_kibana_index"
 
+    - name: "User 8 - wildcard groups with current_group variable"
+      users: ["user8"]
+      groups: ["*"]
+      kibana:
+        access: unrestricted
+        index: "user8_@{acl:current_group}_kibana_index"
+        hide_apps: ["user8_app1"]
+
   users:
     - username: user1
       groups: ["group1", "group3"]
@@ -128,3 +136,7 @@ readonlyrest:
     - username: user7
       groups: ["group10", "group11", "group12"]
       auth_key: "user7:pass"
+
+    - username: user8
+      groups: ["group13", "group14", "group15"]
+      auth_key: "user8:pass"
