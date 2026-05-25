@@ -89,8 +89,13 @@ object EsClusterService {
     lazy val indices: Set[LocalIndexName] = raw.map(_.index)
     lazy val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
 
-    private lazy val opened = raw.filter(_.attribute == IndexAttribute.Opened)
-    private lazy val closed = raw.filter(_.attribute == IndexAttribute.Closed)
+    private lazy val (opened, closed) =
+      raw.foldLeft((Set.empty[FullLocalIndexWithAliases], Set.empty[FullLocalIndexWithAliases])) {
+        case ((o, c), index) => index.attribute match {
+          case IndexAttribute.Opened => (o + index, c)
+          case IndexAttribute.Closed => (o, c + index)
+        }
+      }
 
     private lazy val closedIndicesAndAliases = closed.flatMap(_.all)
     private lazy val openedIndicesAndAliases = opened.flatMap(_.all)
@@ -136,7 +141,7 @@ object EsClusterService {
           collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += indexWithAliases.index
         }
       }
-      buildAliasMap(collected)
+      collected.drainToMap
     }
 
   }
@@ -181,7 +186,7 @@ object EsClusterService {
           collected.getOrElseUpdate(alias, Set.newBuilder[LocalIndexName]) += dataStreamWithAliases.dataStream
         }
       }
-      buildAliasMap(collected)
+      collected.drainToMap
     }
 
     private def backingIndicesPerDataStreamMapFrom(dataStreams: Iterable[FullLocalDataStreamWithAliases]): Map[LocalIndexName, Set[LocalIndexName]] = {
@@ -191,17 +196,8 @@ object EsClusterService {
           collected.getOrElseUpdate(fullDataStream.dataStream, Set.newBuilder[LocalIndexName]) += index
         }
       }
-      buildAliasMap(collected)
+      collected.drainToMap
     }
-  }
-
-  private def buildAliasMap[K, V](collected: mutable.HashMap[K, mutable.Builder[V, Set[V]]]): Map[K, Set[V]] = {
-    val mapBuilder = Map.newBuilder[K, Set[V]]
-    mapBuilder.sizeHint(collected.size)
-    collected.foreach { case (k, setBuilder) =>
-      mapBuilder += (k -> setBuilder.result())
-    }
-    mapBuilder.result()
   }
 
 }

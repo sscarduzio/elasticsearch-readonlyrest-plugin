@@ -122,7 +122,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
         collected.getOrElseUpdate(alias, Set.newBuilder[RemoteIndexName]) += remoteIndexWithAliases.index
       }
     }
-    buildAliasMap(collected)
+    collected.drainToMap
   }
 
   private def dataStreamsPerAliasMapFrom(dataStreams: Iterable[FullRemoteDataStreamWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
@@ -132,7 +132,7 @@ class RemoteIndicesManager(requestContext: RequestContext,
         collected.getOrElseUpdate(alias, Set.newBuilder[RemoteIndexName]) += dataStreamWithAliases.dataStream
       }
     }
-    buildAliasMap(collected)
+    collected.drainToMap
   }
 
   private def backingIndicesPerDataStreamMapFrom(dataStreams: Iterable[FullRemoteDataStreamWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
@@ -142,15 +142,6 @@ class RemoteIndicesManager(requestContext: RequestContext,
         collected.getOrElseUpdate(fullRemoteDataStream.dataStream, Set.newBuilder[RemoteIndexName]) += index
       }
     }
-    buildAliasMap(collected)
-  }
-
-  private def buildAliasMap[K, V](collected: mutable.HashMap[K, mutable.Builder[V, Set[V]]]): Map[K, Set[V]] = {
-    val mapBuilder = Map.newBuilder[K, Set[V]]
-    mapBuilder.sizeHint(collected.size)
-    collected.foreach { case (k, setBuilder) =>
-      mapBuilder += (k -> setBuilder.result())
-    }
-    mapBuilder.result()
+    collected.drainToMap
   }
 }

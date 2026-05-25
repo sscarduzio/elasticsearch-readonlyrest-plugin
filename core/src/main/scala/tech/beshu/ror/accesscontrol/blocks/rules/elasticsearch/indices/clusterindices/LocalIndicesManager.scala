@@ -50,8 +50,8 @@ class LocalIndicesManager(requestContext: RequestContext,
     dataStreamsSnapshot.dataStreamsAndAliasesFor(indexAttributesFromRequest)
   private lazy val cachedAllDataStreams: Set[LocalIndexName] =
     dataStreamsSnapshot.dataStreamsFor(indexAttributesFromRequest)
-  private lazy val cachedAllDataStreamAliases: Set[LocalIndexName]
-  = dataStreamsSnapshot.dataStreamAliasesFor(indexAttributesFromRequest)
+  private lazy val cachedAllDataStreamAliases: Set[LocalIndexName] =
+    dataStreamsSnapshot.dataStreamAliasesFor(indexAttributesFromRequest)
   private lazy val cachedDataStreamsPerAliasMap =
     dataStreamsSnapshot.dataStreamsPerAliasMapFor(indexAttributesFromRequest)
   private lazy val cachedBackingIndicesPerDataStreamMap =

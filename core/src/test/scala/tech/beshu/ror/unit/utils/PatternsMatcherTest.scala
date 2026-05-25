@@ -161,8 +161,10 @@ class PatternsMatcherTest
     }
   }
   "matchAll ('*')" should {
-    testMatchersShouldMatchHaystack(matchers = List("*"), haystack = "")
-    testMatchersShouldMatchHaystack(matchers = List("*"), haystack = "anything")
+    testMatchersShouldMatchHaystack(matchers = List("*"),  haystack = "")
+    testMatchersShouldMatchHaystack(matchers = List("*"),  haystack = "anything")
+    testMatchersShouldMatchHaystack(matchers = List("**"), haystack = "")
+    testMatchersShouldMatchHaystack(matchers = List("**"), haystack = "anything")
   }
 
   "exact patterns" should {
@@ -213,6 +215,21 @@ class PatternsMatcherTest
     testMatchersShouldMatchHaystack(matchers   = List("a?b"),          haystack = "axb")
     testMatchersShouldntMatchHaystack(matchers = List("a?b"),          haystack = "axxb")
     testMatchersShouldntMatchHaystack(matchers = List("a?b"),          haystack = "ab")
+    // consecutive stars collapse to a single wildcard
+    testMatchersShouldMatchHaystack(matchers   = List("a**"),          haystack = "a")
+    testMatchersShouldMatchHaystack(matchers   = List("a**"),          haystack = "ab")
+    testMatchersShouldntMatchHaystack(matchers = List("a**"),          haystack = "b")
+    testMatchersShouldMatchHaystack(matchers   = List("a**b"),         haystack = "ab")
+    testMatchersShouldMatchHaystack(matchers   = List("a**b"),         haystack = "axb")
+    testMatchersShouldntMatchHaystack(matchers = List("a**b"),         haystack = "ax")
+    // '?' matches exactly one character
+    testMatchersShouldMatchHaystack(matchers   = List("?"),            haystack = "a")
+    testMatchersShouldntMatchHaystack(matchers = List("?"),            haystack = "")
+    testMatchersShouldntMatchHaystack(matchers = List("?"),            haystack = "ab")
+    // '*?' matches any non-empty string
+    testMatchersShouldMatchHaystack(matchers   = List("*?"),           haystack = "a")
+    testMatchersShouldMatchHaystack(matchers   = List("*?"),           haystack = "ab")
+    testMatchersShouldntMatchHaystack(matchers = List("*?"),           haystack = "")
   }
 
   private def testCaseInsensitiveMatchersShouldMatchHaystack(matchers: List[String], haystack: String): Unit =

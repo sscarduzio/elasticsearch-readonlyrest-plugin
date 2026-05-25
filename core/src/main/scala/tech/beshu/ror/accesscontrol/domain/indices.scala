@@ -40,7 +40,7 @@ import scala.util.matching.Regex
 import scala.util.Random
 
 private trait EagerHashCode { this: Product =>
-  override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 }
 
 sealed trait IndexName

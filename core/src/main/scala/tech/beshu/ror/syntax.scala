@@ -51,4 +51,13 @@ object syntax
       b
     }
   }
+
+  implicit class MutableHashMapBuilderOps[K, V, C](private val m: mutable.HashMap[K, mutable.Builder[V, C]]) extends AnyVal {
+    def drainToMap: scala.collection.immutable.Map[K, C] = {
+      val b = scala.collection.immutable.Map.newBuilder[K, C]
+      b.sizeHint(m.size)
+      m.foreach { case (k, v) => b += (k -> v.result()) }
+      b.result()
+    }
+  }
 }
