@@ -588,3 +588,11 @@ object IndexAttribute {
   case object Opened extends IndexAttribute
   case object Closed extends IndexAttribute
 }
+
+// TODO: remove this test utility before merging
+object DebugHelper {
+  def printIndices(indices: Set[_]): Unit = {
+    println(s"indices count: ${indices.size}")
+    indices.foreach(i => println(i.hashCode()))
+  }
+}
