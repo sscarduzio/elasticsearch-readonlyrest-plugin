@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.utils.{AsyncCacheableAction, SyncCacheableAction}
 import tech.beshu.ror.es.services.EsClusterService.*
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.drainToMap
 
 import scala.collection.mutable
 

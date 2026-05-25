@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWi
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.drainToMap
 
 import scala.collection.mutable
 
