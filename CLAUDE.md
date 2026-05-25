@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
@@ -35,18 +35,18 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 ./gradlew :eshome:clean
 ```
 
-**Requirements**: JDK 17+, Gradle (wrapper included)
+**Requirements**: JDK 17+, Gradle (wrapper included). Core module compiles with JDK 11 toolchain; ES plugin modules use JDK 17 toolchain.
 
 ## Module Architecture
 
-- **`core/`** — Shared security logic (Scala). Contains access control rules, settings parsing, API endpoints, field-level security, and boot/engine initialization. All ES modules depend on this.
+- **`core/`** — Shared security logic (Scala 3). Contains access control rules, settings parsing, API endpoints, field-level security, and boot/engine initialization. All ES modules depend on this.
 - **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to a specific ES version's internal APIs. Each module's `gradle.properties` defines `latestSupportedEsVersion`.
 - **`audit/`** — Audit event module, cross-compiled for Scala 2.11/2.12/2.13/3.3. Published to Maven Central separately.
-- **`ror-shadowed-libs/`** — Shaded dependencies (auto-relocated to `tech.beshu.ror` prefix via Shadow plugin).
-- **`integration-tests/`** — Docker-based integration tests using TestContainers. Runs sequentially (maxParallelForks=1).
-- **`tests-utils/`** — Shared test fixtures and utilities.
+- **`ror-shadowed-libs/`** — Shaded dependencies (auto-relocated to `tech.beshu.ror` prefix via Shadow plugin to avoid classpath conflicts with ES internals).
+- **`integration-tests/`** — Docker-based integration tests using TestContainers. Runs sequentially (`maxParallelForks=1`).
+- **`tests-utils/`** — Shared test fixtures and utilities (MockRequestContext, MockEsServices, etc.).
 - **`ror-tools/` / `ror-tools-core/`** — CLI tools and utilities.
-- **`eshome/`** — Local ES runner for IDE debugging. Config in `eshome/config/` (elasticsearch.yml, readonlyrest.yml).
+- **`eshome/`** — Local ES runner for IDE debugging. Config in `eshome/config/` (elasticsearch.yml, readonlyrest.yml). Must be cleaned when switching ES versions.
 - **`build-base/`** — Gradle convention plugins applied to all modules (`readonlyrest.base-common-conventions`, `readonlyrest.plugin-common-conventions`).
 
 ## Key Source Paths
@@ -61,17 +61,33 @@ Core Scala source: `core/src/main/scala/tech/beshu/ror/`
 
 ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/ReadonlyRestPlugin.scala`
 
-## Key Patterns
+## Key Patterns & Libraries
 
-- **Functional Scala**: Monadic error handling with Monix, circe for JSON, refined types for validation, enumeratum for enums
-- **Shadow/Shading**: All dependencies auto-relocated under `tech.beshu.ror` to avoid classpath conflicts with ES
-- **Strict compilation**: `-Xfatal-warnings` with unused imports/params/locals checks enabled
-- **License headers**: GNU GPL v3 headers required on all source files. Pre-commit hook runs `./gradlew license --rerun-tasks`
+- **Functional Scala**: Monix 3.4.1 (Task-based effects), circe 0.14.x (JSON), refined 0.11.x (validated types), enumeratum 1.9.x (sealed enums), Cats
+- **Enums**: always use `enumeratum` (`EnumEntry` / `Enum[T]`), not plain sealed traits with no `findValues`
+- **Effects**: all async work uses `monix.eval.Task` — never raw `Future`, never `println` (use structured logging)
+- **Shadow/Shading**: all dependencies auto-relocated under `tech.beshu.ror` prefix
+- **Strict compilation**: `-Xfatal-warnings` with unused imports/params/locals/privates checks — no warnings are acceptable
+- **License headers**: GNU GPL v3 headers required on all source files. Pre-commit hook runs `./gradlew license --rerun-tasks` automatically
+- **Internal Scala APIs**: avoid `scala.runtime.ScalaRunTime._*` and other `_`-prefixed runtime methods — they are implementation details
 - **Plugin ZIP output**: `es{version}x/build/distributions/readonlyrest-{pluginVersion}_es{esVersion}.zip`
+
+## Testing Conventions
+
+- **Framework**: ScalaTest with `AnyWordSpec`
+- **Mocks**: ScalaMock
+- **Property testing**: ScalaCheck via `scalatestplus`
+- **Integration tests**: TestContainers (Docker), always specify `-PesModule=esXXXx`
+- Test output is verbose by default (`showStandardStreams = true`, `exceptionFormat = full`)
+- Test utilities live in `tests-utils/` — use `MockRequestContext` and `MockEsServices` for unit tests, not real ES
 
 ## When Porting Changes Across ES Modules
 
-Many ES modules share similar code. When making changes to an ES-specific module, check if the same change needs to be applied to other `es{version}x` modules. The modules diverge based on ES internal API changes between versions, so porting is not always 1:1.
+Many ES modules share near-identical code. When changing an ES-specific module, check whether the same change applies to other `es{version}x` modules. Divergence is intentional when ES internal APIs differ between versions — porting is not always 1:1.
+
+## Configuration Loading
+
+Settings can be loaded from a local file (`FileSettingsSource`) or from an ES index (`IndexSettingsSource`). Dynamic reloading is triggered via `POST /_readonlyrest/admin/refreshconfig`. Test-mode config injection is available via `/_readonlyrest/admin/config/test`.
 
 ## Git Workflow
 
@@ -86,6 +102,5 @@ When performing a code review (e.g. via `/code-review`), follow these rules:
 - **Log every step**: narrate what you are doing as you go — which files you are reading, what you are looking for, what you found or did not find. Do not silently skip anything.
 - **Never give up silently**: if you hit an obstacle (diff too large, file unreadable, tool error, ambiguous code), say so explicitly and explain what you tried and why you could not resolve it. Do not paper over it with "No issues found."
 - **Read the full diff**: use `gh pr diff <number>` to get the complete diff. If it is large, process it in chunks — do not truncate.
-- **Apply project conventions**: flag deviations from the patterns in this file (enumeratum for enums, refined types, Monix, `-Xfatal-warnings` compliance, license headers, internal Scala APIs, etc.).
-- **Check for duplication**: look for the same logic implemented in multiple places across modules.
-- **Output format**: produce a structured report with sections per file or theme. If there are genuinely no issues, explain what you checked and why each area passed — do not just say "No issues found."
+- **Apply project conventions**: flag deviations from the patterns above — wrong enum style, raw `Future`/`println`, missing license headers, internal Scala API usage, `-Xfatal-warnings` violations, duplication across ES modules.
+- **Output format**: structured report with sections per file or theme. If there are genuinely no issues, explain what you checked and why each area passed — do not just say "No issues found."
