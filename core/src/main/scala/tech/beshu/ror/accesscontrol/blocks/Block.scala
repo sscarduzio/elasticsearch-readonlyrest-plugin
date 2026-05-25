@@ -36,7 +36,6 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.language.implicitConversions
 
@@ -99,7 +98,7 @@ class Block(val name: Name,
       .sequence {
         groups.map { group =>
           evaluateRules(rules.toList, requestContext.initialBlockContext(this).withBlockMetadata(_.withCurrentGroupId(group.id)))
-            .map { case (decision, history) => (narrowAvailableGroupsTo(decision, group), history) }
+            ///.map { case (decision, history) => (narrowAvailableGroupsTo(decision, group), history) }
         }
       }
       .map { results =>
@@ -107,15 +106,15 @@ class Block(val name: Name,
       }
   }
 
-  private def narrowAvailableGroupsTo(decision: Decision[UserMetadataRequestBlockContext],
-                                      group: Group): Decision[UserMetadataRequestBlockContext] = {
-    decision match {
-      case Decision.Permitted(blockContext) =>
-        Decision.Permitted(blockContext.withBlockMetadata(_.withAvailableGroups(UniqueList.of(group))))
-      case denied@Decision.Denied(_) =>
-        denied
-    }
-  }
+//  private def narrowAvailableGroupsTo(decision: Decision[UserMetadataRequestBlockContext],
+//                                      group: Group): Decision[UserMetadataRequestBlockContext] = {
+//    decision match {
+//      case Decision.Permitted(blockContext) =>
+//        Decision.Permitted(blockContext.withBlockMetadata(_.withAvailableGroups(UniqueList.of(group))))
+//      case denied@Decision.Denied(_) =>
+//        denied
+//    }
+//  }
 
   private def evaluateRules[B <: BlockContext : BlockContextUpdater](rulesToCheck: List[Rule],
                                                                      initBlockContext: B): Task[(Decision[B], BlockHistory[B])] = {
