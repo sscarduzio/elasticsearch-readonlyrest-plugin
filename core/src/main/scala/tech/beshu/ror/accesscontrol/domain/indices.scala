@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.domain
 
-import cats.{Eq, Monoid}
+import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits.*
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
@@ -39,15 +39,16 @@ import scala.language.postfixOps
 import scala.util.matching.Regex
 import scala.util.Random
 
+private trait EagerHashCode { this: Product =>
+  override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+}
+
 sealed trait IndexName
 object IndexName {
 
   val wildcard: IndexName.Pattern = IndexName.Pattern.unsafeFromNes(nes("*"))
 
-  final case class Full(name: NonEmptyString)
-    extends IndexName {
-    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
-  }
+  final case class Full(name: NonEmptyString) extends IndexName with EagerHashCode
   object Full {
     def fromString(value: String): Option[Full] =
       NonEmptyString.unapply(value).map(Full.apply)
@@ -56,10 +57,7 @@ object IndexName {
       Full(value)
   }
 
-  final case class Pattern private(name: NonEmptyString)
-    extends IndexName {
-    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
-  }
+  final case class Pattern private(name: NonEmptyString) extends IndexName with EagerHashCode
   object Pattern {
     def fromString(value: String): Option[Pattern] =
       NonEmptyString.unapply(value).flatMap(fromNes)
@@ -195,9 +193,7 @@ sealed trait ClusterIndexName {
 }
 object ClusterIndexName {
 
-  final case class Local(value: IndexName) extends ClusterIndexName {
-    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
-  }
+  final case class Local(value: IndexName) extends ClusterIndexName with EagerHashCode
   object Local {
 
     val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
@@ -223,15 +219,11 @@ object ClusterIndexName {
     implicit val matchableClusterIndexNameLocal: Matchable[ClusterIndexName.Local] = Matchable.matchable(_.stringify)
   }
 
-  final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName {
-    override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
-  }
+  final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName with EagerHashCode
   object Remote {
     sealed trait ClusterName
     object ClusterName {
-      final case class Full private(value: NonEmptyString) extends ClusterName {
-        override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
-      }
+      final case class Full private(value: NonEmptyString) extends ClusterName with EagerHashCode
       object Full {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
@@ -242,9 +234,7 @@ object ClusterIndexName {
         val local: Full = Full(NonEmptyString.unsafeFrom("(local)"))
       }
 
-      final case class Pattern private(value: NonEmptyString) extends ClusterName {
-        override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
-      }
+      final case class Pattern private(value: NonEmptyString) extends ClusterName with EagerHashCode
       object Pattern {
         def fromString(value: String): Option[Pattern] = {
           NonEmptyString.unapply(value).flatMap(fromNes)
@@ -618,17 +608,18 @@ object IndexAttributeFilter {
   def from(expandWildcardsOpen: Boolean, expandWildcardsClosed: Boolean): IndexAttributeFilter = {
     (expandWildcardsOpen, expandWildcardsClosed) match {
       case (true, true) => IndexAttributeFilter.All
+      // expand_wildcards=none: ROR must still resolve concrete names against all indices (open+closed) for ACL evaluation
       case (false, false) => IndexAttributeFilter.All
       case (true, false) => IndexAttributeFilter.Opened
       case (false, true) => IndexAttributeFilter.Closed
     }
   }
 
-  implicit val monoid: Monoid[IndexAttributeFilter] = Monoid.instance(
-    emptyValue = IndexAttributeFilter.All,
-    cmb = {
-      case (x, y) if x == y => x
-      case _ => All
-    }
-  )
+  def from(filters: IterableOnce[IndexAttributeFilter]): IndexAttributeFilter =
+    filters.iterator
+      .reduceOption {
+        case (x, y) if x == y => x
+        case _ => All
+      }
+      .getOrElse(All)
 }

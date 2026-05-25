@@ -61,7 +61,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   )
 
   override lazy val indexAttributes: IndexAttributeFilter =
-    actionRequest.requests().asScala.toList.foldMap(indexAttributesFrom)
+    IndexAttributeFilter.from(actionRequest.requests().asScala.map(indexAttributesFrom))
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
     discoveredIndexPacks
