@@ -90,13 +90,16 @@ object EsClusterService {
     lazy val indices: Set[LocalIndexName] = raw.map(_.index)
     lazy val aliases: Set[LocalIndexName] = raw.flatMap(_.aliases)
 
-    private lazy val (opened, closed) =
-      raw.foldLeft((Set.empty[FullLocalIndexWithAliases], Set.empty[FullLocalIndexWithAliases])) {
-        case ((o, c), index) => index.attribute match {
-          case IndexAttribute.Opened => (o + index, c)
-          case IndexAttribute.Closed => (o, c + index)
+    private lazy val (opened, closed) = {
+      val (opened, closed) = (Set.newBuilder[FullLocalIndexWithAliases], Set.newBuilder[FullLocalIndexWithAliases])
+      raw.foreach { index =>
+        index.attribute match {
+          case IndexAttribute.Opened => opened += index
+          case IndexAttribute.Closed => closed += index
         }
       }
+      (opened.result(), closed.result())
+    }
 
     private lazy val closedIndicesAndAliases = closed.flatMap(_.all)
     private lazy val openedIndicesAndAliases = opened.flatMap(_.all)
