@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.services.EsClusterService.*
@@ -47,25 +46,25 @@ class CacheableEsClusterServiceDecoratorTest
       }
     }
 
-    "allIndicesAndAliases is called" should {
+    "localIndicesSnapshot is called" should {
       "call underlying only once for repeated calls" in {
         val decorator = decoratorWith { svc =>
-          (svc.allIndicesAndAliases(_: RequestId)).expects(*).returning(Set.empty).once()
+          (svc.localIndicesSnapshot(_: RequestId)).expects(*).returning(new LocalIndicesSnapshot(Set.empty)).once()
         }
-        decorator.allIndicesAndAliases
-        decorator.allIndicesAndAliases
-        decorator.allIndicesAndAliases
+        decorator.localIndicesSnapshot
+        decorator.localIndicesSnapshot
+        decorator.localIndicesSnapshot
       }
     }
 
-    "allDataStreamsAndAliases is called" should {
+    "localDataStreamsSnapshot is called" should {
       "call underlying only once for repeated calls" in {
         val decorator = decoratorWith { svc =>
-          (svc.allDataStreamsAndAliases(_: RequestId)).expects(*).returning(Set.empty).once()
+          (svc.localDataStreamsSnapshot(_: RequestId)).expects(*).returning(new LocalDataStreamsSnapshot(Set.empty)).once()
         }
-        decorator.allDataStreamsAndAliases
-        decorator.allDataStreamsAndAliases
-        decorator.allDataStreamsAndAliases
+        decorator.localDataStreamsSnapshot
+        decorator.localDataStreamsSnapshot
+        decorator.localDataStreamsSnapshot
       }
     }
 

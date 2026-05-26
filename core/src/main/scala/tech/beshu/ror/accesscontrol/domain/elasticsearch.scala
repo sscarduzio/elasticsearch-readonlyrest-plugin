@@ -316,9 +316,13 @@ object DataStreamName {
                                                   backingIndices: Set[IndexName.Full]) {
     val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
     val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
-    val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
-    val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
-    val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
+    val aliases: Set[ClusterIndexName.Local] = Set.mapFrom(aliasesNames)(toLocalIndex)
+    val indices: Set[ClusterIndexName.Local] = Set.mapFrom(backingIndices)(ClusterIndexName.Local.apply)
+    val all: Set[ClusterIndexName.Local] = Set.sized[ClusterIndexName.Local](aliases.size + indices.size + 1) { b =>
+      b += dataStream
+      aliases.foreach(b += _)
+      indices.foreach(b += _)
+    }
 
     private def toLocalIndex(ds: DataStreamName.Full): ClusterIndexName.Local =
       ClusterIndexName.Local(IndexName.Full(ds.value))
@@ -330,9 +334,13 @@ object DataStreamName {
                                                    backingIndices: Set[IndexName.Full]) {
     val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
     val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
-    val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
-    val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
-    val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
+    val aliases: Set[ClusterIndexName.Remote] = Set.mapFrom(aliasesNames)(toRemoteIndex)
+    val indices: Set[ClusterIndexName.Remote] = Set.mapFrom(backingIndices)(ClusterIndexName.Remote(_, clusterName))
+    val all: Set[ClusterIndexName.Remote] = Set.sized[ClusterIndexName.Remote](aliases.size + indices.size + 1) { b =>
+      b += dataStream
+      aliases.foreach(b += _)
+      indices.foreach(b += _)
+    }
 
     private def toRemoteIndex(ds: DataStreamName.Full): ClusterIndexName.Remote =
       ClusterIndexName.Remote(IndexName.Full(ds.value), clusterName)

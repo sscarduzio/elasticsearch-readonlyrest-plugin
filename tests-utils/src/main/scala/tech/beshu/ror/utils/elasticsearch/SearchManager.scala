@@ -41,6 +41,9 @@ class SearchManager(client: RestClient,
   def search(indexNames: List[String]): SearchResult =
     call(createSearchRequest(indexNames), new SearchResult(_))
 
+  def search(indexName: String, expandWildcards: ExpandWildcards): SearchResult =
+    call(createSearchRequest(List(indexName), expandWildcards = Some(expandWildcards.value)), new SearchResult(_))
+
   def search(query: JSON): SearchResult =
     call(createSearchRequest(None, ujson.write(query)), new SearchResult(_))
 
@@ -123,13 +126,15 @@ class SearchManager(client: RestClient,
 
   private def createSearchRequest(indexNames: List[String],
                                   customSize: Option[Int] = None,
-                                  scroll: Option[FiniteDuration] = None) = {
+                                  scroll: Option[FiniteDuration] = None,
+                                  expandWildcards: Option[String] = None) = {
     val queryParams = Map(
       "size" -> (customSize match {
         case Some(value) => s"$value"
         case None => "100"
       })
-    ) ++ scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
+    ) ++ scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap ++
+      expandWildcards.map("expand_wildcards" -> _).toMap
     val path = indexNames match {
       case Nil => "/_search"
       case names => s"/${names.mkString(",")}/_search"
@@ -260,4 +265,11 @@ object SearchManager {
     def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
   }
 
+  sealed abstract class ExpandWildcards(val value: String)
+  object ExpandWildcards {
+    case object Open   extends ExpandWildcards("open")
+    case object Closed extends ExpandWildcards("closed")
+    case object All    extends ExpandWildcards("all")
+    case object None   extends ExpandWildcards("none")
+  }
 }

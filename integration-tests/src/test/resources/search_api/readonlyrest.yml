@@ -30,6 +30,10 @@ readonlyrest:
       indices: ["bla*"]
       auth_key: "perfmon:dev"
 
+    - name: "expand_wildcards tests"
+      auth_key: "expand-wc:test"
+      indices: ["alias-of-*", "idx-*"]
+
     - name: "myanmar_vietnam"
       auth_key: "VIET_MYAN:dev"
       kibana:

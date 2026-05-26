@@ -29,6 +29,8 @@ final case class CovariantSet[+A] private[set](private[set] val underlying: Set[
 
   override def iterableFactory: CovariantSetFactory = CovariantSet
   override def iterator: Iterator[A] = underlying.iterator.asInstanceOf[Iterator[A]]
+  override def knownSize: Int = underlying.size
+  override def size: Int = underlying.size
 }
 object CovariantSet extends CovariantSetFactory with CovariantSetInstances with CatsInstances {
 
@@ -61,6 +63,7 @@ trait CovariantSetConversions {
 
   extension [A](iterable: IterableOnce[A]) {
     def toCovariantSet: CovariantSet[A] = iterable match {
+      case cs: CovariantSet[A @unchecked] => cs
       case s: Set[A @unchecked] => new CovariantSet[A](s.asInstanceOf[Set[Any]])
       case other => new CovariantSet[A](other.iterator.toSet.asInstanceOf[Set[Any]])
     }

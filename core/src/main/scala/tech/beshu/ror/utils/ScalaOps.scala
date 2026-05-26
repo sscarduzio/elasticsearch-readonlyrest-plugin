@@ -29,6 +29,7 @@ import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 import java.util.Base64
 import scala.collection.immutable.{SortedSet, VectorMap}
+import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.{implicitConversions, postfixOps}
@@ -223,4 +224,13 @@ object ScalaOps {
 
   extension (t: EitherT.type)
     def liftTask[A](value: => A): EitherT[Task, Nothing, A] = EitherT(Task.delay(Right(value)))
+
+  extension[K, V, C] (m: mutable.HashMap[K, mutable.Builder[V, C]]) {
+    def drainToMap: Map[K, C] = {
+      val b = Map.newBuilder[K, C]
+      b.sizeHint(m.size)
+      m.foreach { case (k, v) => b += (k -> v.result()) }
+      b.result()
+    }
+  }
 }
