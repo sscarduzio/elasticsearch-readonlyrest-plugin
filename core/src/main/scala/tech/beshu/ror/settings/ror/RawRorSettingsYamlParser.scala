@@ -21,7 +21,7 @@ import io.circe.{Json, ParsingFailure}
 import squants.information.Information
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
-import tech.beshu.ror.utils.yaml.YamlParser
+import tech.beshu.ror.utils.yaml.{YamlOps, YamlParser}
 
 class RawRorSettingsYamlParser(maxSize: Information) {
 
@@ -33,6 +33,7 @@ class RawRorSettingsYamlParser(maxSize: Information) {
 
   def fromString(content: String): Either[ParsingRorSettingsError, RawRorSettings] = {
     handleParseResult(yamlParser.parse(content))
+      .map(YamlOps.jsonWithOneLinerKeysToRegularJson)
       .map(RawRorSettings(_, content))
   }
 

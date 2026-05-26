@@ -27,12 +27,13 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.L
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorSettingsIndex, User}
-import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
-import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
-import TestSettingsIndexSource.Const
 import tech.beshu.ror.es.services.IndexDocumentManager
+import tech.beshu.ror.settings.ror.TestRorSettings.Expiration
+import tech.beshu.ror.settings.ror.source.TestSettingsIndexSource.Const
+import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser, TestRorSettings}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.{PositiveFiniteDuration, toRefinedPositive}
 import tech.beshu.ror.utils.json.KeyCodec
 
 import java.time.format.DateTimeFormatter

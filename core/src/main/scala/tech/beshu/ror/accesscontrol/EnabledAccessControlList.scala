@@ -33,12 +33,10 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.{MetadataOrigin
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.{Enterprise, Free, Pro}
 import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps.*
@@ -71,22 +69,11 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         .run
         .map { case (blocksHistory, result) =>
           val handlingResult: RegularRequestResult[B] = result match {
-            case Decision.Permitted(blockContext) =>
-              blockContext.block.policy match {
-                case Policy.Allow => RegularRequestResult.Allowed(blockContext)
-                case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
-              }
-            case Decision.Denied(_) if wasDeniedDueToAliasNotFound(blocksHistory) =>
-              RegularRequestResult.AliasNotFound()
-            case Decision.Denied(_) if wasDeniedDueToTemplateNotFound(blocksHistory) =>
-              RegularRequestResult.TemplateNotFound()
-            case Decision.Denied(_) =>
-              wasDeniedDueToIndexNotFound(blocksHistory) match {
-                case Some(error) =>
-                  RegularRequestResult.IndexNotFound(error.allowedClusters)
-                case None =>
-                  RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
-              }
+            case Decision.Permitted(blockContext) => blockContext.block.policy match {
+              case Policy.Allow => RegularRequestResult.Allowed(blockContext)
+              case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
+            }
+            case Decision.Denied(_) => deniedResultFrom(blocksHistory)
           }
           handlingResult -> History(blocksHistory)
         }
@@ -107,46 +94,41 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
             val (executionResults, blocksHistory) = blockResults.unzip
             val history = History(blocksHistory.toVector)
             val matchedResults = executionResults.view.onlyMatched()
-            val handlingResult = context.apiVersion match {
-              case UserMetadataApiVersion.V1 =>
-                determineUserMetadataForApiV1(matchedResults, context.currentGroupId, history)
-              case UserMetadataApiVersion.V2(Free | Pro | Enterprise(false)) =>
-                determineUserMetadataForApiV2WithoutTenancyHandling(matchedResults, history)
-              case UserMetadataApiVersion.V2(Enterprise(true)) =>
-                determineUserMetadataForApiV2WithTenancyHandling(matchedResults, history)
+            val handlingResult = context.details.licenseType match {
+              case Free | Pro | Enterprise(false) =>
+                determineUserMetadataWithoutTenancyHandling(matchedResults, history)
+              case Enterprise(true) =>
+                determineUserMetadataWithTenancyHandling(matchedResults, history)
             }
             handlingResult -> history
           }
       }
     }
 
-  private def determineUserMetadataForApiV1(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
-                                            optPreferredGroupId: Option[GroupId],
-                                            history: History[UserMetadataRequestBlockContext]) = {
-    val result = determineUserMetadata(matched, history, ignoreGroupsHandling = false)
-    (result, optPreferredGroupId) match {
-      case (Allowed(_: UserMetadata.WithoutGroups), Some(currentGroupId)) =>
-        createForbiddenByMismatchedResult(history)
-      case (Allowed(withGroups@UserMetadata.WithGroups(groupsMetadata)), Some(currentGroupId)) =>
-        determineUserMetadataForCurrentGroup(withGroups, currentGroupId, history)
-      case (allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))), None) =>
-        blockContext.block.policy match {
-          case Policy.Allow => allow
-          case Policy.Forbid(_) => Forbidden(blockContext)
-        }
-      case (Allowed(withGroups@UserMetadata.WithGroups(groupsMetadata)), None) =>
-        determineUserMetadataForFirstAllowedGroup(withGroups, history)
-      case _ =>
-        result
-    }
+  private def deniedResultFrom[B <: BlockContext](blocksHistory: Vector[BlockHistory[B]]): RegularRequestResult[B] = {
+    val denialCauses = denialCausesFrom(blocksHistory)
+    val noImpersonation = !impersonationRelatedCauseExists(denialCauses)
+    if (noImpersonation && aliasNotFoundCauseExists(denialCauses))
+      RegularRequestResult.AliasNotFound()
+    else if (noImpersonation && templateNotFoundCauseExists(denialCauses))
+      RegularRequestResult.TemplateNotFound()
+    else if (noImpersonation) {
+      indexNotFoundCauseExists(denialCauses) match {
+        case Some(error) =>
+          RegularRequestResult.IndexNotFound(error.allowedClusters)
+        case None =>
+          RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
+      }
+    } else
+      RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
   }
 
-  private def determineUserMetadataForApiV2WithoutTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
+  private def determineUserMetadataWithoutTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
                                                                   history: History[UserMetadataRequestBlockContext]) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = true)
   }
 
-  private def determineUserMetadataForApiV2WithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
+  private def determineUserMetadataWithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
                                                                history: History[UserMetadataRequestBlockContext]) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
       case allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
@@ -158,23 +140,6 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         determineUserMetadataForFirstAllowedGroup(withGroups, history)
       case result =>
         result
-    }
-  }
-
-  private def determineUserMetadataForCurrentGroup(userMetadata: WithGroups,
-                                                   currentGroupId: GroupId,
-                                                   history: History[UserMetadataRequestBlockContext]) = {
-    userMetadata.groupsMetadata.get(currentGroupId) match {
-      case Some(groupMetadata) =>
-        if (groupMetadata.isAllowed) {
-          userMetadata
-            .excludeOtherThanAllowTypeGroups().map(Allowed.apply)
-            .getOrElse(createForbiddenByMismatchedResult(history))
-        } else {
-          createForbiddenBy(groupMetadata)
-        }
-      case None =>
-        createForbiddenByMismatchedResult(history)
     }
   }
 
@@ -253,12 +218,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
 
     private def gatherGroupMetadataPreservingOrder(): Seq[GroupMetadata] = {
-      blockResults.foldLeft(Vector.empty[GroupMetadata]) { case (acc, matched) =>
-        matched.result.context.blockMetadata.availableGroups
-          .foldLeft(acc) { case (acc, group) =>
-            acc :+ groupMetadataFrom(group, matched)
-          }
-      }
+      blockResults
+        .flatMap { matched => matched.result.context.blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)) }
+        .toSeq
     }
 
     private def allowedThroughFirstForbidden(): View[PermittedWithUser[UserMetadataRequestBlockContext]] = {
@@ -377,25 +339,6 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         case BlockHistory.Denied(block, decision, _) => Some(block.name -> decision.cause)
       }
     }
-  }
-
-  private def wasDeniedDueToIndexNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]): Option[Denied.Cause.IndexNotFound] = {
-    val causes = denialCausesFrom(history)
-    if (impersonationRelatedCauseExists(causes)) {
-      None
-    } else {
-      indexNotFoundCauseExists(causes)
-    }
-  }
-
-  private def wasDeniedDueToAliasNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
-    val causes = denialCausesFrom(history)
-    !impersonationRelatedCauseExists(causes) && aliasNotFoundCauseExists(causes)
-  }
-
-  private def wasDeniedDueToTemplateNotFound[B <: BlockContext](history: Iterable[BlockHistory[B]]) = {
-    val causes = denialCausesFrom(history)
-    !impersonationRelatedCauseExists(causes) && templateNotFoundCauseExists(causes)
   }
 
   private def indexNotFoundCauseExists(causes: Set[Denied.Cause]): Option[Denied.Cause.IndexNotFound] = {

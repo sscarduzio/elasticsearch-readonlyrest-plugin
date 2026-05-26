@@ -16,20 +16,24 @@
  */
 package tech.beshu.ror.unit.utils
 
+import cats.implicits.*
 import io.circe.Json
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import squants.information.{Bytes, Kilobytes}
-import tech.beshu.ror.utils.TestsUtils.*
+import squants.information.{Bytes, Kilobytes, Megabytes}
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.utils.yaml.YamlParser
+import tech.beshu.ror.implicits.*
 
 class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
+  private val settingsYamlParser = new RawRorSettingsYamlParser(Megabytes(1))
+  
   "Yaml parser" should {
     "return parsing failure error" when {
       "ROR settings has duplicated 'readonlyrest' section" in {
-        val result = rorSettingFrom(
+        val result = settingsYamlParser.fromString(
           """
             |readonlyrest:
             |
@@ -52,12 +56,12 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |""".stripMargin)
 
         inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'readonlyrest'")
+          case Left(error) =>
+            error.show should be("Settings content is malformed. Details: Duplicated key: 'readonlyrest'")
         }
       }
       "ROR settings has duplicated 'access_control_rules' section" in {
-        val result = rorSettingFrom(
+        val result = settingsYamlParser.fromString(
           """
             |readonlyrest:
             |
@@ -78,12 +82,12 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |""".stripMargin)
 
         inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'access_control_rules'")
+          case Left(error) =>
+            error.show should be("Settings content is malformed. Details: Duplicated key: 'access_control_rules'")
         }
       }
       "ROR settings has duplicated definition" in {
-        val result = rorSettingFrom(
+        val result = settingsYamlParser.fromString(
           """
             |readonlyrest:
             |
@@ -107,12 +111,12 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |""".stripMargin)
 
         inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'proxy_auth_configs'")
+          case Left(error) =>
+            error.show should be("Settings content is malformed. Details: Duplicated key: 'proxy_auth_configs'")
         }
       }
       "block has duplicated rule" in {
-        val result = rorSettingFrom(
+        val result = settingsYamlParser.fromString(
           """
             |readonlyrest:
             |
@@ -127,8 +131,8 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |""".stripMargin)
 
         inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'auth_key'")
+          case Left(error) =>
+            error.show should be("Settings content is malformed. Details: Duplicated key: 'auth_key'")
         }
       }
     }
@@ -160,7 +164,7 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |
             |""".stripMargin
 
-        val result = rorSettingFrom(rawConfig)
+        val result = settingsYamlParser.fromString(rawConfig)
 
         inside(result) {
           case Right(settings) => settings.rawYaml shouldBe rawConfig
@@ -198,8 +202,8 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
       val result = new YamlParser(Some(Bytes(10))).parse(yamlContent)
       inside(result) {
-        case Left(parsingFailure) =>
-          parsingFailure.message should be("The incoming YAML document exceeds the limit: 10 code points.")
+        case Left(error) =>
+          error.show should be("ParsingFailure: The incoming YAML document exceeds the limit: 10 code points.")
       }
     }
   }

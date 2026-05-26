@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
 import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.time.Duration as JavaDuration
 import scala.language.postfixOps
@@ -35,10 +36,12 @@ class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
   private val currentMockProvider = Atomic(CurrentMocksProviderConfiguration(SimpleMocksProvider(initial)))
 
   private lazy val cache: Cache[RequestId, MocksProvider] =
-    Caffeine.newBuilder()
-      .expireAfterWrite(JavaDuration.ofMinutes(1))
-      .executor(scheduler)
-      .build()
+    doPrivileged {
+      Caffeine.newBuilder()
+        .expireAfterWrite(JavaDuration.ofMinutes(1))
+        .executor(scheduler)
+        .build()
+    }
 
   @nowarn("msg=unused explicit parameter")
   def update(mocks: AuthServicesMocks): Unit = {

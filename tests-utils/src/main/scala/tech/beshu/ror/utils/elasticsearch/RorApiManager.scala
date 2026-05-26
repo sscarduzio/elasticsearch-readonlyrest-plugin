@@ -35,11 +35,6 @@ class RorApiManager(client: RestClient,
 
   final lazy val documentManager = new DocumentManager(client, esVersion)
 
-  def fetchCurrentUserMetadata(preferredGroupId: Option[String] = None,
-                               correlationId: Option[String] = None): RorApiJsonResponse = {
-    call(createCurrentUserMetadataRequest(preferredGroupId, correlationId), new RorApiJsonResponse(_))
-  }
-
   def fetchUserMetadata(licenseType: String, correlationId: Option[String] = None): RorApiJsonResponse = {
     call(createUserMetadataRequest(Some(licenseType), correlationId), new RorApiJsonResponse(_))
   }
@@ -120,14 +115,6 @@ class RorApiManager(client: RestClient,
       index = rorIndex,
       content = ujson.read(rorSettingsIndexDocumentContentFrom(settings))
     )
-  }
-
-  private def createCurrentUserMetadataRequest(preferredGroupId: Option[String],
-                                               correlationId: Option[String]) = {
-    val request = new HttpGet(client.from("/_readonlyrest/metadata/current_user"))
-    correlationId.foreach(request.addHeader("x-ror-correlation-id", _))
-    preferredGroupId.foreach(request.addHeader("x-ror-current-group", _))
-    request
   }
 
   private def createUserMetadataRequest(licenseType: Option[String],

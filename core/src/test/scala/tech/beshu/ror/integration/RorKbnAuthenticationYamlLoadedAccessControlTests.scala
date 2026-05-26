@@ -53,13 +53,6 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
       |      ror_kbn_authentication:
       |        name: "kbn2"
       |
-      |  users:
-      |  - username: "*"
-      |    groups: ["mapped_viewer_group"]
-      |    ror_kbn_auth:
-      |      name: "kbn2"
-      |      roles: ["viewer_group"]
-      |
       |  ror_kbn:
       |
       |    - name: kbn1

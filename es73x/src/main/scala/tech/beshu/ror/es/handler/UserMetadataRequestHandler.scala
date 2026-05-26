@@ -25,9 +25,7 @@ import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContent
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataResponse, UserMetadata}
-import tech.beshu.ror.accesscontrol.domain.CorrelationId
-import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.UserMetadataApiVersion
+import tech.beshu.ror.accesscontrol.domain.{CorrelationId, RorKbnLicenseType}
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.ForbiddenBlockMatch
@@ -86,7 +84,7 @@ class UserMetadataRequestHandler(engine: Engine,
                       userMetadata: UserMetadata): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onResponse(
-      new RRMetadataResponse(requestContext.apiVersion, userMetadata, requestContext.currentGroupId, esContext.correlationId.value)
+      new RRMetadataResponse(requestContext.details.licenseType, userMetadata, esContext.correlationId.value)
     )
   }
 
@@ -111,14 +109,13 @@ class UserMetadataRequestHandler(engine: Engine,
 
 }
 
-private class RRMetadataResponse(apiVersion: UserMetadataApiVersion,
+private class RRMetadataResponse(licenseType: RorKbnLicenseType,
                                  userMetadata: UserMetadata,
-                                 currentGroupId: Option[GroupId],
                                  correlationId: CorrelationId)
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val json = MetadataResponse.fromAsJavaJsonObject(apiVersion, userMetadata, currentGroupId, correlationId)
+    val json = MetadataResponse.fromAsJavaJsonObject(licenseType, userMetadata, correlationId)
     builder.map(json)
     builder
   }

@@ -68,7 +68,10 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings
 import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
-import tech.beshu.ror.settings.es.YamlFileBasedSettingsLoader
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
+import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, RorBootSettings, RorCoreSettingsLoadingStrategy, RorSettingsSourcesConfig, RorSslSettings}
+import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.settings.es.SslSettings
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
@@ -107,7 +110,13 @@ trait LogsShowInstances
 
   implicit def uniqueNonEmptyListShow[T: Show]: Show[UniqueNonEmptyList[T]] = Show.show(_.toList.show)
 
-  implicit def iterableLikeShow[T: Show, I <: Iterable[T]]: Show[I] = Show.show(_.map(_.show).mkString(", "))
+  implicit def iterableLikeShow[T: Show, I <: Iterable[T]]: Show[I] = Show.show { iterable =>
+    val sb = new java.lang.StringBuilder
+    val iter = iterable.iterator
+    if (iter.hasNext) sb.append(iter.next().show)
+    while (iter.hasNext) { sb.append(", "); sb.append(iter.next().show) }
+    sb.toString
+  }
 
   implicit def nonEmptyListShow[T: Show]: Show[NonEmptyList[T]] = Show.show(_.toList.show)
 
@@ -263,9 +272,9 @@ trait LogsShowInstances
     }
 
     def stringifyIndices = {
-      val idx = r.requestedIndices.toList.flatten.map(_.show)
+      val idx = r.requestedIndices.toList.flatten
       if (idx.isEmpty) "<N/A>"
-      else idx.mkString(",")
+      else idx.show
     }
 
     def stringifyUserGroup = {
@@ -289,7 +298,7 @@ trait LogsShowInstances
        | PTH:${r.restRequest.path.show},
        | CNT:${stringifyContentLength.show},
        | HDR:${r.restRequest.allHeaders.show},
-       | HIS:${history.blocks.map(h => blockHistoryShow(headerShow).show(h)).mkString(", ").show},
+       | HIS:${iterableLikeShow(blockHistoryShow(headerShow)).show(history.blocks)},
        | }""".oneLiner
   }
 
@@ -370,10 +379,9 @@ trait LogsShowInstances
         case BlockHistory.Permitted(_, _, _) => "MATCHED"
         case BlockHistory.Denied(_, denied, _) => s"NOT_MATCHED (${denied.cause.show})"
       }
-      val rulesHistoryItemsStr = h
-        .history
-        .map(_.show)
-        .mkStringOrEmptyString(" RULES:[", ", ", "]")
+      val rulesHistoryItemsStr =
+        if (h.history.isEmpty) ""
+        else s" RULES:[${h.history.show}]"
       val resolvedPart = h match {
         case BlockHistory.Permitted(_, decision, _) => decision.context.show match {
           case "" => ""
@@ -530,14 +538,87 @@ trait LogsShowInstances
 
   implicit val loadingAttemptsIntervalShow: Show[LoadingAttemptsInterval] = Show[FiniteDuration].contramap(_.value.value)
 
+  implicit val loadingRetryStrategySettingsShow: Show[RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings] = Show.show { s =>
+    s"attemptsInterval=${s.attemptsInterval.show}, attemptsCount=${s.attemptsCount.show}, delay=${s.delay.show}"
+  }
+
+  implicit val rorCoreSettingsLoadingStrategyShow: Show[RorCoreSettingsLoadingStrategy] = Show.show {
+    case RorCoreSettingsLoadingStrategy.ForceLoadingFromFileSettings => "force-load-from-file"
+    case RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(retry, refresh) =>
+      s"load-from-index(retry=[${retry.show}], coreRefresh=${refresh.show})"
+  }
+
+  implicit val fipsModeShow: Show[SslSettings.FipsMode] = Show.show {
+    case SslSettings.FipsMode.NonFips => "NON_FIPS"
+    case SslSettings.FipsMode.SslOnly => "SSL_ONLY"
+  }
+
+  implicit val serverCertificateSettingsShow: Show[SslSettings.ServerCertificateSettings] = Show.show {
+    case SslSettings.ServerCertificateSettings.KeystoreBasedSettings(file, _, alias, _) =>
+      s"keystore-based(file=${file.value}, alias=${alias.map(_.value).getOrElse("<default>")})"
+    case SslSettings.ServerCertificateSettings.FileBasedSettings(keyFile, certFile) =>
+      s"file-based(keyFile=${keyFile.value}, certFile=${certFile.value})"
+  }
+
+  implicit val clientCertificateSettingsShow: Show[SslSettings.ClientCertificateSettings] = Show.show {
+    case SslSettings.ClientCertificateSettings.TruststoreBasedSettings(file, _) =>
+      s"truststore-based(file=${file.value})"
+    case SslSettings.ClientCertificateSettings.FileBasedSettings(certFile) =>
+      s"file-based(certFile=${certFile.value})"
+  }
+
+  implicit val externalSslSettingsShow: Show[SslSettings.ExternalSslSettings] = Show.show { s =>
+    val protocols = if (s.allowedProtocols.isEmpty) "<default>" else s.allowedProtocols.map(_.value).mkString(",")
+    val ciphers = if (s.allowedCiphers.isEmpty) "<default>" else s.allowedCiphers.map(_.value).mkString(",")
+    s"serverCert=[${s.serverCertificateSettings.show}], clientCert=[${s.clientCertificateSettings.map(_.show).getOrElse("none")}], protocols=[$protocols], ciphers=[$ciphers], clientAuth=${s.clientAuthenticationEnabled}, fips=${s.fipsMode.show}"
+  }
+
+  implicit val internodeSslSettingsShow: Show[SslSettings.InternodeSslSettings] = Show.show { s =>
+    val protocols = if (s.allowedProtocols.isEmpty) "<default>" else s.allowedProtocols.map(_.value).mkString(",")
+    val ciphers = if (s.allowedCiphers.isEmpty) "<default>" else s.allowedCiphers.map(_.value).mkString(",")
+    s"serverCert=[${s.serverCertificateSettings.show}], clientCert=[${s.clientCertificateSettings.map(_.show).getOrElse("none")}], protocols=[$protocols], ciphers=[$ciphers], clientAuth=${s.clientAuthenticationEnabled}, certVerification=${s.certificateVerificationEnabled}, hostnameVerification=${s.hostnameVerificationEnabled}, fips=${s.fipsMode.show}"
+  }
+
+  implicit val rorSslSettingsShow: Show[RorSslSettings] = Show.show {
+    case RorSslSettings.OnlyExternalSslSettings(ssl) =>
+      s"external=[${ssl.show}]"
+    case RorSslSettings.OnlyInternodeSslSettings(ssl) =>
+      s"internode=[${ssl.show}]"
+    case RorSslSettings.ExternalAndInternodeSslSettings(external, internode) =>
+      s"external=[${external.show}], internode=[${internode.show}]"
+  }
+
+  implicit val rorSettingsSourcesConfigShow: Show[RorSettingsSourcesConfig] = Show.show { c =>
+    s"settingsIndex=${c.settingsIndex.index.show}, settingsFile=${c.settingsFile.file.show}, settingsMaxSize=${c.settingsMaxSize.show}"
+  }
+
+  implicit val rorBootSettingsShow: Show[RorBootSettings] = Show.show { s =>
+    def notStartedCode = s.rorNotStartedResponse.httpCode match {
+      case RorNotStartedResponse.HttpCode.`403` => "403"
+      case RorNotStartedResponse.HttpCode.`503` => "503"
+    }
+    def failedToStartCode = s.rorFailedToStartResponse.httpCode match {
+      case RorFailedToStartResponse.HttpCode.`403` => "403"
+      case RorFailedToStartResponse.HttpCode.`503` => "503"
+    }
+    s"notStartedHttpCode=$notStartedCode, failedToStartHttpCode=$failedToStartCode"
+  }
+
+  implicit val esConfigBasedRorSettingsShow: Show[EsConfigBasedRorSettings] = Show.show { s =>
+    s"""|settingsSource: ${s.settingsSource.show}
+        |boot: ${s.boot.show}
+        |ssl: ${s.ssl.show}
+        |coreSettingsLoadingStrategy: ${s.rorCoreSettingsLoadingStrategy.show}""".stripMargin
+  }
+
   implicit val testRorSettingsShow: Show[TestRorSettings] = Show.show(_.rawSettings.rawYaml)
 
   implicit val mainRorSettingsShow: Show[MainRorSettings] = Show.show(_.rawSettings.rawYaml)
 
-  implicit val esConfigBasedRorSettingsLoadingErrorShow: Show[YamlFileBasedSettingsLoader.LoadingError] = Show.show {
-    case YamlFileBasedSettingsLoader.LoadingError.FileNotFound(file) =>
+  implicit val esConfigBasedRorSettingsLoadingErrorShow: Show[ElasticsearchConfigLoader.LoadingError] = Show.show {
+    case ElasticsearchConfigLoader.LoadingError.FileNotFound(file) =>
       s"Cannot find settings file: [${file.show}]"
-    case YamlFileBasedSettingsLoader.LoadingError.MalformedSettings(file, message) =>
+    case ElasticsearchConfigLoader.LoadingError.MalformedSettings(file, message) =>
       s"Settings file is malformed: [${file.show}], ${message.show}"
   }
 

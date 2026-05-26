@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror
 
-import tech.beshu.ror.utils.set.{CovariantSet, CovariantSetExtensions, CovariantSetInstances}
+import tech.beshu.ror.utils.set.{CovariantSet, CovariantSetConversions, CovariantSetInstances}
 
 object syntax
-  extends CovariantSetExtensions
+  extends CovariantSetConversions
   with CovariantSetInstances {
 
   type Set[A] = CovariantSet[A]

@@ -1,3 +1,0 @@
-node.name: n1_it
-cluster.initial_master_nodes: n1_it
-xpack.security.enabled: false

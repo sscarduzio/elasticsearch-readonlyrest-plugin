@@ -19,7 +19,6 @@ package tech.beshu.ror.es.utils
 import org.elasticsearch.Version
 import org.elasticsearch.snapshots.SnapshotInfo
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.set.CovariantSet.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import org.joor.Reflect.on
 import java.util.List as JList

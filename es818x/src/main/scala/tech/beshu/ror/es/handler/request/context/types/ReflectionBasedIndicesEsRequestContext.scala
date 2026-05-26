@@ -77,7 +77,7 @@ object ReflectionBasedIndicesEsRequestContext {
       .orElse(getIndicesUsingField(request, fieldName = "indices"))
       .orElse(getIndexUsingMethod(request, methodName = "getIndex"))
       .orElse(getIndexUsingField(request, fieldName = "index"))
-      .map(indices => indices.toList.toCovariantSet.flatMap(RequestedIndex.fromString))
+      .map(indices => indices.toCovariantSet.flatMap(RequestedIndex.fromString))
   }
 
   private def getIndicesUsingMethod(request: ActionRequest, methodName: String) = {

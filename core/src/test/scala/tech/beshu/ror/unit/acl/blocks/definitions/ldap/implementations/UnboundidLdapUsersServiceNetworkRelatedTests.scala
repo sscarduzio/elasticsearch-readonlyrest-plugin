@@ -34,8 +34,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthenticat
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
+import tech.beshu.ror.utils.ScalaOps.{repeat, retry}
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.{LdapContainer, OpenLdapContainer, ToxiproxyContainer}
 import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
@@ -90,9 +90,13 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
           val authenticationService = createSimpleAuthenticationService()
           authenticationService.assertSuccessfulAuthentication
           ldap1ContainerWithToxiproxy.disableNetwork()
-          authenticationService.assertFailedAuthentication[LDAPSearchException, LDAPSearchException]
+          // When the network is cut, the SDK can fail two ways depending on timing:
+          // - connection detected dead at pool checkout → retried → throws LDAPSearchException
+          // - connection dies mid async-request → listener receives SearchResult(code=81) → fetchLdapUser converts it to LdapUnexpectedResult
+          authenticationService.assertFailedAuthentication[LdapUnexpectedResult, LDAPSearchException]
           ldap1ContainerWithToxiproxy.enableNetwork()
-          authenticationService.assertSuccessfulAuthentication
+          // Pool connections are dead after the outage; retry to allow reconnection time
+          retry(Task(authenticationService.assertSuccessfulAuthentication)).runSyncUnsafe()
         }
       }
       "be able to work when" - {

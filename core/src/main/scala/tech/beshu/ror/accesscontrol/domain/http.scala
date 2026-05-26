@@ -212,9 +212,6 @@ final case class UriPath private(value: NonEmptyString) {
   def isAuditEventPath: Boolean =
     this != UriPath.slashPath && value.value.startsWith(UriPath.auditEventPath.value.value)
 
-  def isCurrentUserMetadataPath: Boolean =
-    this != UriPath.slashPath && value.value.startsWith(UriPath.currentUserMetadataPath.value.value)
-
   def isUserMetadataPath: Boolean =
     this != UriPath.slashPath && value.value.startsWith(UriPath.userMetadataPath.value.value)
 
@@ -237,7 +234,6 @@ final case class UriPath private(value: NonEmptyString) {
       "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value.value).isDefined
 }
 object UriPath {
-  val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.CURRENT_USER_METADATA_PATH))
   val userMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.USER_METADATA_PATH))
   val auditEventPath = UriPath(NonEmptyString.unsafeFrom(constants.AUDIT_EVENT_COLLECTOR_PATH))
   val slashPath = UriPath(nes("/"))

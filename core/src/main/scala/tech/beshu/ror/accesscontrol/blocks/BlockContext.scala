@@ -40,15 +40,10 @@ sealed trait BlockContext {
   def responseTransformations: List[ResponseTransformation]
 
   def isCurrentGroupEligible(permittedGroupIds: GroupIds): Boolean = {
-    if (requestContext.restRequest.path.isCurrentUserMetadataPath) {
-      true
-    } else {
-      blockMetadata.currentGroupId match {
-        case Some(preferredGroupId) => permittedGroupIds.matches(preferredGroupId)
-        case None => true
-      }
+    blockMetadata.currentGroupId match {
+      case Some(preferredGroupId) => permittedGroupIds.matches(preferredGroupId)
+      case None => true
     }
-
   }
 
   def isCurrentGroupPotentiallyEligible(groupsLogic: GroupsLogic): Boolean = {

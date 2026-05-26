@@ -25,7 +25,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 import java.util.Base64
 import scala.collection.immutable.{SortedSet, VectorMap}
@@ -210,7 +210,7 @@ object ScalaOps {
       Option(value).flatMap(NonEmptyString.unapply)
     }
 
-    def oneLiner: String = value.stripMargin.replaceAll("\n", "")
+    def oneLiner: String = value.stripMargin.replace("\n", "")
 
     def removeTrailingSlashIfPresent(): String = {
       if (value.endsWith("/")) value.dropRight(1) else value

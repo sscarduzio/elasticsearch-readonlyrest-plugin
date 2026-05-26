@@ -1,5 +1,10 @@
 # ROR INTERNAL API CHANGELOG
 
+## 4.0.0
+
+Changes:
+* endpoint GET `/_readonlyrest/metadata/current_user` is now **removed** (was deprecated since version 3.1.0). Use `/_readonlyrest/metadata/user` instead.
+
 ## 3.1.0
 
 Changes:

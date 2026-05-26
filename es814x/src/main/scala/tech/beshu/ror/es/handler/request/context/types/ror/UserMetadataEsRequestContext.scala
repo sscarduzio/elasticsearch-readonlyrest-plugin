@@ -45,7 +45,7 @@ class UserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 
-  override def apiVersion: UserMetadataRequestContext.UserMetadataApiVersion = actionRequest.apiVersion
+  override def details: UserMetadataRequestContext.Details = actionRequest.details
 
   override protected def modifyRequest(blockContext: UserMetadataRequestBlockContext): ModificationResult = Modified
 }

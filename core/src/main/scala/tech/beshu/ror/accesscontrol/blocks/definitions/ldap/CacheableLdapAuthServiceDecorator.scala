@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.CacheableLdapAuthent
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService.AuthenticationResult
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.utils.{AsyncCacheableActionWithKeyMappingAndTimeout, AsyncCacheableActionWithTimeout}
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.nio.charset.Charset

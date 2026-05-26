@@ -43,6 +43,7 @@ object Action {
     val getSettingsAction: Action = EsAction("indices:monitor/settings/get")
     val monitorStateAction: Action = EsAction("cluster:monitor/state")
     val restoreSnapshotAction: Action = EsAction("cluster:admin/snapshot/restore")
+    val globalCheckpointSyncAction: Action = EsAction("indices:admin/seq_no/global_checkpoint_sync")
   }
 
   abstract sealed class RorAction(override val value: String) extends Action with EnumEntry
@@ -109,7 +110,19 @@ object Action {
       .getOrElse(EsAction(value))
   }
 
-  def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
+  def isInternal(actionString: String): Boolean =
+    actionString.startsWith("internal:") ||
+      // This operation is called by the TransportReplicationAction (optionally, controlled by syncGlobalCheckpointAfterOperation toggle).
+      // When called, it is executed directly in the calling thread's context, which means that it would go through ACL.
+      // It would have to be explicitly added to the list of allowed actions in order to work.
+      // It is treated as an internal action instead, so it does not have to be manually added to ACL rules.
+      //
+      // It can be considered as a bug, or at least a discrepancy, in ES logic:
+      //   - in a similar situation, the 'retention_lease_background_sync' action is explicitly wrapped in empty system context
+      //   - which means that action is treated correctly by default
+      //   - 'indices:admin/seq_no/global_checkpoint_sync' should be likely treated the same, but it is not, so we have to handle it here
+      actionString == EsAction.globalCheckpointSyncAction.value
+
   def isMonitorState(actionString: String): Boolean = actionString == EsAction.monitorStateAction.value
   def isXpackSecurity(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/security/")
   def isRollupAction(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/rollup/")
@@ -301,11 +314,11 @@ object DataStreamName {
   final case class FullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
                                                   aliasesNames: Set[DataStreamName.Full],
                                                   backingIndices: Set[IndexName.Full]) {
-    lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
-    lazy val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
-    lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
-    lazy val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
-    lazy val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
+    val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+    val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
+    val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
+    val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
+    val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
 
     private def toLocalIndex(ds: DataStreamName.Full): ClusterIndexName.Local =
       ClusterIndexName.Local(IndexName.Full(ds.value))
@@ -315,11 +328,11 @@ object DataStreamName {
                                                    dataStreamName: DataStreamName.Full,
                                                    aliasesNames: Set[DataStreamName.Full],
                                                    backingIndices: Set[IndexName.Full]) {
-    lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
-    lazy val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
-    lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
-    lazy val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
-    lazy val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
+    val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+    val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
+    val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
+    val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
+    val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
 
     private def toRemoteIndex(ds: DataStreamName.Full): ClusterIndexName.Remote =
       ClusterIndexName.Remote(IndexName.Full(ds.value), clusterName)

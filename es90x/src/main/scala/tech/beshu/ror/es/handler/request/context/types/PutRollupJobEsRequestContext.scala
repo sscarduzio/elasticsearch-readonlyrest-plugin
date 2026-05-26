@@ -49,7 +49,7 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
                                 filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
                                 allAllowedIndices: NonEmptyList[ClusterIndexName],
                                 allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    if (originIndices == filteredIndices.toList.toCovariantSet) {
+    if (originIndices == filteredIndices.toCovariantSet) {
       Modified
     } else {
       logger.error(s"Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
