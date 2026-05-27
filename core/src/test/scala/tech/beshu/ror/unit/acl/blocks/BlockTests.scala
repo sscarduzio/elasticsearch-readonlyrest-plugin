@@ -22,7 +22,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{Inside, TestSuite}
+import org.scalatest.{Assertion, Inside, TestSuite}
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{given, *}
+import tech.beshu.ror.utils.TestsUtils.{*, given}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -233,12 +233,12 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
     }
   }
 
-  private def assertPermitted[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name) = {
+  private def assertPermitted[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name): Unit = {
     ruleHistory.rule should be(hasRuleName)
-    inside(ruleHistory.decision) { case (Permitted(_)) => }
+    inside(ruleHistory.decision) { case Permitted(_) => }
   }
 
-  private def assertDenied[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name, hasCause: Cause) = {
+  private def assertDenied[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name, hasCause: Cause): Assertion = {
     ruleHistory.rule should be(hasRuleName)
     ruleHistory.decision should be(Denied(hasCause))
   }

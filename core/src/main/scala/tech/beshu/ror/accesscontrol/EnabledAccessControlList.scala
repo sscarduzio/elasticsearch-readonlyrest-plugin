@@ -323,8 +323,8 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                            requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]) = {
     block
       .evaluateMetadata(requestContext)
-      .map(Some.apply)
-      .onErrorRecover { case _ => None }
+      .map(_.toList)
+      .onErrorRecover { case _ => List.empty }
   }
 
   private def executeBlocksForRegularRequest[B <: BlockContext : BlockContextUpdater](block: Block,
