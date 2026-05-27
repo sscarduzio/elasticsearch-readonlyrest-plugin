@@ -35,8 +35,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.MetadataOrigin
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.AuthorizationImpersonationCustomSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RegularRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -44,11 +44,10 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.Enterprise
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyListMap
-import tech.beshu.ror.utils.TestsUtils.{given, *}
+import tech.beshu.ror.utils.TestsUtils.{*, given}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.{Failure, Success, Try}
@@ -449,7 +448,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
   }
 
   private def createAcl(blocks: Block*): EnabledAccessControlList =
-    createAclWith(showBasicAuthPrompt = true)(blocks *)
+    createAclWith(showBasicAuthPrompt = false)(blocks *)
 
   private def createAclWith(showBasicAuthPrompt: Boolean)(blocks: Block*) = {
     val blocksNel = NonEmptyList.fromListUnsafe(blocks.toList)
@@ -489,25 +488,39 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     )
   }
 
-  private def permittedRule(userId: User.Id, groups: UniqueList[Group]): Rule = new RegularRule {
-    override val name: Rule.Name = Rule.Name("auth")
+  private def permittedRule(userId: User.Id, groups: UniqueList[Group]): Rule =
+    new AuthRule with AuthenticationImpersonationCustomSupport with AuthorizationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name("auth")
 
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-      Task.now(Decision.Permitted(
-        blockContext.withBlockMetadata(_
-          .withLoggedUser(DirectlyLoggedUser(userId))
-          .withAvailableGroups(groups)
-        )
-      ))
+      override def localUsers: LocalUsers = LocalUsers.NotAvailable
+      override implicit def userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Disabled
+
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+        Task.now(Decision.Permitted(
+          blockContext.withBlockMetadata(_.withAvailableGroups(groups))
+        ))
+      }
+
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+        Task.now(Decision.Permitted(
+          blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(userId)))
+        ))
+      }
     }
-  }
 
-  private def deniedRule: Rule = new RegularRule {
-    override val name: Rule.Name = Rule.Name("auth")
+  private def deniedRule: Rule =
+    new AuthRule with AuthenticationImpersonationCustomSupport with AuthorizationImpersonationCustomSupport {
+      override val name: Rule.Name = Rule.Name("auth")
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-      Task.now(Decision.Denied(AuthenticationFailed("mock failed")))
-  }
+      override def localUsers: LocalUsers = LocalUsers.NotAvailable
+      override implicit def userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Disabled
+
+      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(Decision.Denied(AuthenticationFailed("mock failed")))
+
+      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(Decision.Denied(AuthenticationFailed("mock failed")))
+    }
 
   private def blockWithPerGroupKibanaIndex(name: String, policy: Block.Policy, userId: User.Id, groups: UniqueList[Group]) = {
     new Block(

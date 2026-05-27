@@ -91,8 +91,12 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
           .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
           .map(_.flatten)
           .map { blockResults =>
-            val executionResults = blockResults.flatMap { case (decisions, _) => decisions.toList }
-            val blocksHistory = blockResults.map { case (_, blockHistory) => blockHistory }
+            val executionResults = blockResults.flatMap { blockDecisions =>
+              blockDecisions.toList.map { case (decision, _) => decision }
+            }
+            val blocksHistory = blockResults.map { blockDecisions =>
+              blockDecisions.head match { case (_, blockHistory) => blockHistory }
+            }
             val history = History(blocksHistory.toVector)
             val matchedResults = executionResults.view.onlyMatched()
             val handlingResult = context.details.licenseType match {
@@ -220,7 +224,15 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
     private def gatherGroupMetadataPreservingOrder(): Seq[GroupMetadata] = {
       blockResults
-        .flatMap { matched => matched.result.context.blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)) }
+        .flatMap { matched =>
+          val blockMetadata = matched.result.context.blockMetadata
+          blockMetadata.currentGroupId match {
+            case None =>
+              blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)).toSeq
+            case Some(currentGroupId) =>
+              blockMetadata.availableGroups.find(_.id == currentGroupId).map(groupMetadataFrom(_, matched)).toSeq
+          }
+        }
         .toSeq
     }
 
