@@ -1,18 +1,17 @@
 name: Claude Code Review
 
+# Automated PR review by Claude Code.
+#
+# Trigger: every PR opened/updated by repo owners/members/collaborators.
+# External-fork PRs are skipped (see `if:` below) to prevent prompt injection
+# from untrusted PR content. The bot reads CLAUDE.md (project conventions +
+# explicit review methodology) before reviewing.
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
 
 jobs:
   claude-review:
-    # Only auto-review PRs from repo owner/collaborators (not external contributors)
     if: >-
       github.event.pull_request.author_association == 'OWNER' ||
       github.event.pull_request.author_association == 'COLLABORATOR' ||
@@ -37,12 +36,52 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment'
-          show_full_output: true
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # Restrict to read PR diff and post review comments only — prevents prompt injection in PR diffs from running arbitrary shell commands
-          claude_args: '--allowedTools Bash(gh:pr view*),Bash(gh:pr diff*),Bash(gh:pr comment*)'
+          # Direct prompt (not the marketplace `/code-review` plugin) so we can enforce
+          # the methodology in CLAUDE.md instead of being constrained by a plugin
+          # template that under-fires on substantial PRs.
+          #
+          # Tooling intentionally broad: gh for PR/CI introspection, scala-cli/node for
+          # empirical verification, file-reading tools so the bot can cross-reference
+          # call sites — without these the bot can only summarise the diff, which is
+          # what produced the "No issues found" non-reviews.
+          claude_args: |
+            --allowedTools "Bash(gh:*),Bash(scala-cli:*),Bash(node:*),Bash(grep:*),Bash(rg:*),Bash(find:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(git blame:*),Read,Grep,Glob"
+          prompt: |
+            You are reviewing pull request #${{ github.event.pull_request.number }} in
+            ${{ github.repository }}.
 
+            **Step 1 — read the methodology.** Open `CLAUDE.md` at the repo root and read
+            the **"Code Review Instructions"** section in full. That section is binding.
+            Do not skip it. Do not summarise it back to me. Just internalise it.
+
+            **Step 2 — gather context.** Run, at minimum:
+              - `gh pr view ${{ github.event.pull_request.number }} --json title,body,author,baseRefName,headRefName,additions,deletions,changedFiles,commits`
+              - `gh pr diff ${{ github.event.pull_request.number }}`
+              - `gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments`
+              - `gh pr checks ${{ github.event.pull_request.number }}` — and for any failing check, fetch the failing job's logs with `gh run view <run-id> --log-failed`
+              - `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews` — to see prior reviews so you don't repeat or contradict them
+
+            **Step 3 — review.** Apply the methodology in CLAUDE.md. Use `Read` on each
+            changed file (not just the hunks). Use `Grep`/`grep -rn` to cross-reference
+            callers, and to verify cross-ES-module consistency: when a change touches
+            `es{N}x/`, grep for the same file path in sibling `es{M}x/` modules to check
+            whether the fix needs to be replicated. If the diff includes a regex, parser,
+            or other testable artifact, run it empirically with `node -e` or `scala-cli`
+            (see the "What to actively hunt for" section in CLAUDE.md).
+
+            **Step 4 — post the review** using `gh pr comment ${{ github.event.pull_request.number }} --body-file <path>`.
+            Format strictly per the "Output format" section in CLAUDE.md:
+
+            1. **What I checked** — your audit trail (3–8 bullets)
+            2. **Findings** — ordered by severity, with file:line, evidence, suggestion
+            3. **What looks good** — one or two genuine sentences
+            4. **Open questions** — anything you couldn't determine from the diff alone
+
+            **Hard rule:** do NOT post `"No issues found"` without backing. If after
+            thorough investigation there genuinely are no issues, your response must
+            enumerate what you checked and why each area passed. A bare "No issues
+            found" response will be treated as a failed review.
+
+            **Hard rule:** if you hit an obstacle (tool error, file too large, ambiguous
+            code), say so explicitly in the review. Never silently skip.
+          show_full_output: true
