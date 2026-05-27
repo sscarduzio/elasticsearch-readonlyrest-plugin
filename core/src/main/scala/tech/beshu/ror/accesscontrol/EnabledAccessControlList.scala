@@ -322,7 +322,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   private def executeBlocksForUserMetadata(block: Block,
                                            requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]) = {
     block
-      .evaluateMetadata(requestContext)
+      .evaluateForMetadataRequest(requestContext)
       .map(_.toList)
       .onErrorRecover { case _ => List.empty }
   }
@@ -330,7 +330,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   private def executeBlocksForRegularRequest[B <: BlockContext : BlockContextUpdater](block: Block,
                                                                                       requestContext: RequestContext.Aux[B]): WriterT[Task, Vector[BlockHistory[B]], Decision[B]] = {
     for {
-      blockEvalDecision <- WriterT.liftF(block.evaluate(requestContext))
+      blockEvalDecision <- WriterT.liftF(block.evaluateForRegularRequest(requestContext))
       (decision, history) = blockEvalDecision
       aclProcessingResult <- lift(decision).tell(Vector(history))
     } yield aclProcessingResult

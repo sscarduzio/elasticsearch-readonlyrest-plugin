@@ -65,7 +65,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           )
         )
         val requestContext = MockRequestContext.indices
-        val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+        val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
           case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
@@ -95,7 +95,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           )
         )
         val requestContext = MockRequestContext.indices
-        val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+        val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
           case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
@@ -126,7 +126,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
@@ -168,7 +168,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
@@ -208,7 +208,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>

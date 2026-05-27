@@ -48,7 +48,7 @@ class Block(val name: Name,
 
   import Lifter.*
 
-  def evaluate[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(Decision[B], BlockHistory[B])] = {
+  def evaluateForRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(Decision[B], BlockHistory[B])] = {
     evaluateRules(rules.toList, requestContext.initialBlockContext(this), Vector.empty[RuleHistory[B]])
   }
 
@@ -65,7 +65,7 @@ class Block(val name: Name,
    *      presentation layer uses to attribute the resolved, group-specific metadata to the right group.
    *      Blocks without an authentication/authorization rule (and so without groups) are evaluated just once.
    */
-  def evaluateMetadata(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[NonEmptyList[(Decision[UserMetadataRequestBlockContext], BlockHistory[UserMetadataRequestBlockContext])]] = {
+  def evaluateForMetadataRequest(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[NonEmptyList[(Decision[UserMetadataRequestBlockContext], BlockHistory[UserMetadataRequestBlockContext])]] = {
     if (containsAuthRule) {
       evaluateRules(authRules, requestContext.initialBlockContext(this), Vector.empty[RuleHistory[UserMetadataRequestBlockContext]])
         .flatMap {
@@ -75,7 +75,7 @@ class Block(val name: Name,
             evaluateRemainingRulesPerAvailableGroup(authBlockContext, authBlockHistory.history)
         }
     } else {
-      evaluate(requestContext)
+      evaluateForRegularRequest(requestContext)
         .map { case (decision, history) => NonEmptyList.one((decision, history)) }
     }
   }
