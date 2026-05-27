@@ -607,6 +607,73 @@ class KibanaUserDataRuleSettingsTests
             }
           )
         }
+        "its value is a scalar string" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    auth_key: user:pass
+                |    kibana:
+                |      access: "ro"
+                |      metadata: "hello"
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.genericMetadata should be(Some(JsonTree.Value(AlreadyResolved(StringValue("hello")))))
+            }
+          )
+        }
+        "its value is a top-level array" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    auth_key: user:pass
+                |    kibana:
+                |      access: "ro"
+                |      metadata: ["a", "b"]
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.genericMetadata should be(Some(JsonTree.Array(List(
+                JsonTree.Value(AlreadyResolved(StringValue("a"))),
+                JsonTree.Value(AlreadyResolved(StringValue("b")))
+              ))))
+            }
+          )
+        }
+        "its value contains variable expressions" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    auth_key: user:pass
+                |    kibana:
+                |      access: "ro"
+                |      metadata:
+                |        username: "@{user}"
+                |        static: "literal"
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.genericMetadata.value match {
+                case JsonTree.Object(fields) =>
+                  fields("username") match {
+                    case JsonTree.Value(v) => v shouldBe a[ToBeResolved[_]]
+                    case other => fail(s"Expected JsonTree.Value but got $other")
+                  }
+                  fields("static") should be(JsonTree.Value(AlreadyResolved(StringValue("literal"))))
+                case other => fail(s"Expected JsonTree.Object but got $other")
+              }
+            }
+          )
+        }
       }
     }
     "not be able to be loaded from settings" when {
