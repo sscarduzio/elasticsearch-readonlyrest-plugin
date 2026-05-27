@@ -91,12 +91,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
           .parSequence(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
           .map(_.flatten)
           .map { blockResults =>
-            val executionResults = blockResults.flatMap { blockDecisions =>
-              blockDecisions.toList.map { case (decision, _) => decision }
-            }
-            val blocksHistory = blockResults.map { blockDecisions =>
-              blockDecisions.head match { case (_, blockHistory) => blockHistory }
-            }
+            val (executionResults, blocksHistory) = blockResults.unzip
             val history = History(blocksHistory.toVector)
             val matchedResults = executionResults.view.onlyMatched()
             val handlingResult = context.details.licenseType match {
