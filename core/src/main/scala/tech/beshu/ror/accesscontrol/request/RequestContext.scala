@@ -66,7 +66,7 @@ trait RequestContext {
 
   def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]]
 
-  def indexAttributes: Set[IndexAttribute]
+  def indexAttributes: IndexAttributeFilter
 
   def esServices: EsServices
 

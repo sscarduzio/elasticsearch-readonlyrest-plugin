@@ -32,14 +32,9 @@ private[ror] object AuditSerializationHelper {
   def serialize(responseContext: AuditResponseContext,
                 fieldGroups: Set[AuditFieldGroup],
                 allowedEventMode: AllowedEventMode): Option[JSONObject] = {
-    val fields = fieldGroups.flatMap {
-      case AuditFieldGroup.CommonFields => commonFields
-      case AuditFieldGroup.EsEnvironmentFields => esEnvironmentFields
-      case AuditFieldGroup.FullRequestContentFields => requestContentFields
-    }.toMap
     serialize(
       responseContext = responseContext,
-      fields = fields,
+      fields = fieldsByGroupSet(fieldGroups),
       allowedEventMode = allowedEventMode
     )
   }
@@ -411,5 +406,19 @@ private[ror] object AuditSerializationHelper {
   private val requestContentFields: Map[AuditFieldPath, AuditFieldValueDescriptor] = Map(
     AuditFieldPath("content") -> AuditFieldValueDescriptor.Content
   )
+
+  private lazy val fieldsByGroupSet: Map[Set[AuditFieldGroup], Map[AuditFieldPath, AuditFieldValueDescriptor]] =
+    Set[AuditFieldGroup](AuditFieldGroup.CommonFields, AuditFieldGroup.EsEnvironmentFields, AuditFieldGroup.FullRequestContentFields)
+      .subsets()
+      .map { subset =>
+        subset -> subset
+          .flatMap {
+            case AuditFieldGroup.CommonFields => commonFields
+            case AuditFieldGroup.EsEnvironmentFields => esEnvironmentFields
+            case AuditFieldGroup.FullRequestContentFields => requestContentFields
+          }
+          .toMap
+      }
+      .toMap
 
 }

@@ -22,9 +22,8 @@ import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.{EsServices, RorRestRequest}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.es.{EsServices, RorRestRequest}
 
 import java.time.Instant
 import scala.jdk.CollectionConverters.*
@@ -55,11 +54,9 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     }
   }
 
-  override lazy val indexAttributes: Set[IndexAttribute] = {
-    esContext.actionRequest match {
-      case req: IndicesRequest => indexAttributesFrom(req)
-      case _ => Set.empty
-    }
+  override lazy val indexAttributes: IndexAttributeFilter = esContext.actionRequest match {
+    case req: IndicesRequest => indexAttributesFrom(req)
+    case _ => IndexAttributeFilter.All
   }
 
   override val esServices: EsServices = esContext.esServices
@@ -75,15 +72,11 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     }
   }
 
-  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
-    request
-      .indicesOptions()
-      .expandWildcards().iterator().asScala
-      .flatMap {
-        case WildcardStates.OPEN => Some(IndexAttribute.Opened)
-        case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
-        case _ => None
-      }
-      .toCovariantSet
+  protected def indexAttributesFrom(request: IndicesRequest): IndexAttributeFilter = {
+    val wildcards = request.indicesOptions().expandWildcards().iterator().asScala.toSet
+    IndexAttributeFilter.from(
+      wildcards.contains(WildcardStates.OPEN),
+      wildcards.contains(WildcardStates.CLOSED)
+    )
   }
 }

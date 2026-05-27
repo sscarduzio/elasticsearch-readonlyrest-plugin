@@ -20,6 +20,7 @@ import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits.*
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import enumeratum.{Enum, EnumEntry}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local
@@ -38,13 +39,16 @@ import scala.language.postfixOps
 import scala.util.matching.Regex
 import scala.util.Random
 
+private trait EagerHashCode { this: Product =>
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+}
+
 sealed trait IndexName
 object IndexName {
 
   val wildcard: IndexName.Pattern = IndexName.Pattern.unsafeFromNes(nes("*"))
 
-  final case class Full(name: NonEmptyString)
-    extends IndexName
+  final case class Full(name: NonEmptyString) extends IndexName with EagerHashCode
   object Full {
     def fromString(value: String): Option[Full] =
       NonEmptyString.unapply(value).map(Full.apply)
@@ -53,8 +57,7 @@ object IndexName {
       Full(value)
   }
 
-  final case class Pattern private(name: NonEmptyString)
-    extends IndexName
+  final case class Pattern private(name: NonEmptyString) extends IndexName with EagerHashCode
   object Pattern {
     def fromString(value: String): Option[Pattern] =
       NonEmptyString.unapply(value).flatMap(fromNes)
@@ -190,7 +193,7 @@ sealed trait ClusterIndexName {
 }
 object ClusterIndexName {
 
-  final case class Local(value: IndexName) extends ClusterIndexName
+  final case class Local(value: IndexName) extends ClusterIndexName with EagerHashCode
   object Local {
 
     val wildcard: ClusterIndexName.Local = Local(IndexName.wildcard)
@@ -216,11 +219,11 @@ object ClusterIndexName {
     implicit val matchableClusterIndexNameLocal: Matchable[ClusterIndexName.Local] = Matchable.matchable(_.stringify)
   }
 
-  final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName
+  final case class Remote(value: IndexName, cluster: ClusterName) extends ClusterIndexName with EagerHashCode
   object Remote {
     sealed trait ClusterName
     object ClusterName {
-      final case class Full private(value: NonEmptyString) extends ClusterName
+      final case class Full private(value: NonEmptyString) extends ClusterName with EagerHashCode
       object Full {
         def fromString(value: String): Option[Full] =
           NonEmptyString.unapply(value).map(Full.apply)
@@ -231,7 +234,7 @@ object ClusterIndexName {
         val local: Full = Full(NonEmptyString.unsafeFrom("(local)"))
       }
 
-      final case class Pattern private(value: NonEmptyString) extends ClusterName
+      final case class Pattern private(value: NonEmptyString) extends ClusterName with EagerHashCode
       object Pattern {
         def fromString(value: String): Option[Pattern] = {
           NonEmptyString.unapply(value).flatMap(fromNes)
@@ -370,7 +373,7 @@ object ClusterIndexName {
     def skipRemoteIndicesIfNeeded(esContext: BaseEsContext)
                                  (implicit id: RequestId): Set[RequestedIndex[ClusterIndexName]] = {
       val filtered = indices.filterNot(shouldSkipIndex(_, esContext))
-      if(indices.nonEmpty && filtered.isEmpty) {
+      if (indices.nonEmpty && filtered.isEmpty) {
         val nonExistentRemoteIndex: ClusterIndexName = ClusterIndexName.Local.randomNonexistentIndex("remote*")
         Set(RequestedIndex(nonExistentRemoteIndex, excluded = false))
       } else {
@@ -468,32 +471,31 @@ object ClusterIndexName {
     }
   }
 
-  extension [T <: ClusterIndexName](indices: Iterable[T])
+  extension [T <: ClusterIndexName : PatternsMatcher.Matchable](indices: Iterable[T])
     def filterBy(requestedIndices: Iterable[RequestedIndex[T]]): Set[RequestedIndex[T]] = {
-      val (excluded, included) = requestedIndices.toSet.partition(_.excluded)
-      val excludedRequestedIndices = if (excluded.nonEmpty) {
-        PatternsMatcher
-          .create(excluded.map(_.name))
-          .filter(indices)
-          .map(RequestedIndex(_, excluded = true))
-      } else {
-        Set.empty[RequestedIndex[T]]
+      val (excl, incl) = requestedIndices.toList.partition(_.excluded)
+      indices.filterBy(
+        excluded = Option.when(excl.nonEmpty)(PatternsMatcher.create(excl.map(_.name))),
+        included = Option.when(incl.nonEmpty)(PatternsMatcher.create(incl.map(_.name)))
+      )
+    }
+
+  extension [T <: ClusterIndexName](indices: Iterable[T])
+    def filterBy(excluded: Option[PatternsMatcher[T]],
+                 included: Option[PatternsMatcher[T]]): Set[RequestedIndex[T]] = {
+      lazy val excludedNames = excluded.fold(Set.empty[T])(_.filter(indices))
+      val includedItems = included.fold(Set.empty[RequestedIndex[T]]) { m =>
+        implicit val conversion: PatternsMatcher[T]#Conversion[RequestedIndex[T]] = PatternsMatcher.Conversion.from(_.name)
+        m.filter(
+          indices.iterator
+            .filterNot(excludedNames.contains)
+            .map(RequestedIndex(_, excluded = false))
+        )
       }
-      val excludedIndicesNames = excludedRequestedIndices.map(_.name)
-      val includedRequestedIndices = if (included.nonEmpty) {
-        PatternsMatcher
-          .create(included.map(_.name))
-          .filter(indices)
-          .filterNot(index => excludedIndicesNames.contains(index))
-          .map(RequestedIndex(_, excluded = false))
-      } else {
-        Set.empty[RequestedIndex[T]]
-      }
-      if (includedRequestedIndices.exists(_.name.hasWildcard)) {
-        includedRequestedIndices ++ excludedRequestedIndices
-      } else {
-        includedRequestedIndices
-      }
+      if (includedItems.exists(_.name.hasWildcard))
+        includedItems ++ excludedNames.iterator.map(RequestedIndex(_, excluded = true))
+      else
+        includedItems
     }
 }
 
@@ -570,8 +572,11 @@ final class FullLocalIndexWithAliases(val indexName: IndexName.Full,
                                       val attribute: IndexAttribute,
                                       val aliasesNames: Set[IndexName.Full]) {
   val index: ClusterIndexName.Local = ClusterIndexName.Local(indexName)
-  val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(ClusterIndexName.Local.apply)
-  val all: Set[ClusterIndexName.Local] = aliases + index
+  val aliases: Set[ClusterIndexName.Local] = Set.mapFrom(aliasesNames)(ClusterIndexName.Local.apply)
+  val all: Set[ClusterIndexName.Local] = Set.sized[ClusterIndexName.Local](aliases.size + 1) { b =>
+    b += index
+    aliases.foreach(b += _)
+  }
 }
 
 final class FullRemoteIndexWithAliases(val clusterName: ClusterName.Full,
@@ -579,12 +584,42 @@ final class FullRemoteIndexWithAliases(val clusterName: ClusterName.Full,
                                        val attribute: IndexAttribute,
                                        val aliasesNames: Set[IndexName.Full]) {
   val index: ClusterIndexName.Remote = ClusterIndexName.Remote(indexName, clusterName)
-  val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(ClusterIndexName.Remote(_, clusterName))
-  val all: Set[ClusterIndexName.Remote] = aliases + index
+  val aliases: Set[ClusterIndexName.Remote] = Set.mapFrom(aliasesNames)(ClusterIndexName.Remote(_, clusterName))
+  val all: Set[ClusterIndexName.Remote] = Set.sized[ClusterIndexName.Remote](aliases.size + 1) { b =>
+    b += index
+    aliases.foreach(b += _)
+  }
 }
 
-sealed trait IndexAttribute
-object IndexAttribute {
+sealed trait IndexAttribute extends EnumEntry
+object IndexAttribute extends Enum[IndexAttribute] {
   case object Opened extends IndexAttribute
   case object Closed extends IndexAttribute
+
+  override val values: IndexedSeq[IndexAttribute] = findValues
+}
+
+sealed trait IndexAttributeFilter
+object IndexAttributeFilter {
+  case object Opened extends IndexAttributeFilter
+  case object Closed extends IndexAttributeFilter
+  case object All extends IndexAttributeFilter
+
+  def from(expandWildcardsOpen: Boolean, expandWildcardsClosed: Boolean): IndexAttributeFilter = {
+    (expandWildcardsOpen, expandWildcardsClosed) match {
+      case (true, true) => IndexAttributeFilter.All
+      // expand_wildcards=none: ROR must still resolve concrete names against all indices (open+closed) for ACL evaluation
+      case (false, false) => IndexAttributeFilter.All
+      case (true, false) => IndexAttributeFilter.Opened
+      case (false, true) => IndexAttributeFilter.Closed
+    }
+  }
+
+  def from(filters: IterableOnce[IndexAttributeFilter]): IndexAttributeFilter =
+    filters.iterator
+      .reduceOption {
+        case (x, y) if x == y => x
+        case _ => All
+      }
+      .getOrElse(All)
 }

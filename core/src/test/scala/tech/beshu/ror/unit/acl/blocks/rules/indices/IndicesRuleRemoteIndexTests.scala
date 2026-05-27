@@ -130,6 +130,58 @@ trait IndicesRuleRemoteIndexTests {
             allAllowedClusters = Set(clusterName("etl1"))
           )
         }
+        "full name remote index passed, same full name remote index configured, no real indices" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl1:my-index")),
+            requestIndices = Set(requestedIndex("etl1:my-index")),
+            filteredRequestedIndices = Set(requestedIndex("etl1:my-index")),
+            allAllowedClusters = Set(clusterName("etl1"))
+          )
+        }
+        "remote alias passed, remote index behind that alias configured" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl1:my-index")),
+            requestIndices = Set(requestedIndex("etl1:my-alias")),
+            esServices = Some(MockEsServices.`with`(MockEsClusterService(
+              allRemoteIndicesAndAliases = Set(
+                fullRemoteIndexWithAliases("etl1", "my-index", "my-alias")
+              ),
+              allRemoteClusterNames = Set(clusterName("etl1"))
+            ))),
+            filteredRequestedIndices = Set(requestedIndex("etl1:my-index")),
+            allAllowedClusters = Set(clusterName("etl1"))
+          )
+        }
+        "remote alias passed, remote alias configured" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl1:my-alias")),
+            requestIndices = Set(requestedIndex("etl1:my-alias")),
+            esServices = Some(MockEsServices.`with`(MockEsClusterService(
+              allRemoteIndicesAndAliases = Set(
+                fullRemoteIndexWithAliases("etl1", "my-index", "my-alias")
+              ),
+              allRemoteClusterNames = Set(clusterName("etl1"))
+            ))),
+            filteredRequestedIndices = Set(requestedIndex("etl1:my-alias")),
+            allAllowedClusters = Set(clusterName("etl1"))
+          )
+        }
+        "wildcard cluster and full name index passed, matching full name cluster and full name index configured" in {
+          assertMatchRuleForIndexRequest(
+            configured = NonEmptySet.of(indexNameVar("etl1:my-index")),
+            requestIndices = Set(requestedIndex("etl*:my-index")),
+            esServices = Some(MockEsServices.`with`(MockEsClusterService(
+              allRemoteIndicesAndAliases = Set(
+                fullRemoteIndexWithAliases("etl1", "my-index"),
+                fullRemoteIndexWithAliases("etl2", "my-index"),
+                fullRemoteIndexWithAliases("other", "my-index"),
+              ),
+              allRemoteClusterNames = Set(clusterName("etl1"), clusterName("etl2"), clusterName("other"))
+            ))),
+            filteredRequestedIndices = Set(requestedIndex("etl1:my-index")),
+            allAllowedClusters = Set(clusterName("etl1"))
+          )
+        }
       }
     }
     "not match" when {
@@ -155,6 +207,33 @@ trait IndicesRuleRemoteIndexTests {
             allRemoteClusterNames = Set(clusterName("etl1"), clusterName("other"))
           ))),
           allAllowedClusters = Set(clusterName("etl1"), clusterName("(local)"))
+        )
+      }
+      "remote cluster matches configured pattern but requested index is not allowed" in {
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("etl1:allowed-*")),
+          requestIndices = Set(requestedIndex("etl1:other-index")),
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
+            allRemoteIndicesAndAliases = Set(
+              fullRemoteIndexWithAliases("etl1", "other-index"),
+              fullRemoteIndexWithAliases("etl1", "allowed-index"),
+            ),
+            allRemoteClusterNames = Set(clusterName("etl1"))
+          ))),
+          allAllowedClusters = Set(clusterName("etl1"))
+        )
+      }
+      "requested cluster does not match configured cluster pattern" in {
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("etl1:my-index")),
+          requestIndices = Set(requestedIndex("other:my-index")),
+          esServices = Some(MockEsServices.`with`(MockEsClusterService(
+            allRemoteIndicesAndAliases = Set(
+              fullRemoteIndexWithAliases("other", "my-index"),
+            ),
+            allRemoteClusterNames = Set(clusterName("other"))
+          ))),
+          allAllowedClusters = Set.empty
         )
       }
     }

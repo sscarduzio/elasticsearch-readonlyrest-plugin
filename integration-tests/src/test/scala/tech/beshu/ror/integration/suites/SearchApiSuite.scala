@@ -24,6 +24,7 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
+import tech.beshu.ror.utils.elasticsearch.SearchManager.ExpandWildcards
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, EnhancedDataStreamManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, EsModule, Version}
@@ -51,6 +52,7 @@ class SearchApiSuite
   private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
   private lazy val perfmonIndexManager = new IndexManager(basicAuthClient("perfmon", "dev"), esVersionUsed)
   private lazy val vietMyanSearchManager = new SearchManager(basicAuthClient("VIET_MYAN", "dev"), esVersionUsed)
+  private lazy val expandWcSearchManager = new SearchManager(basicAuthClient("expand-wc", "test"), esVersionUsed)
 
   "_search" should {
     "be allowed" when {
@@ -205,6 +207,24 @@ class SearchApiSuite
     }
   }
 
+  "expand_wildcards" should {
+    // Verifies that ROR respects expand_wildcards=open when resolving wildcard patterns against
+    // the cluster state. ROR rewrites the request with the resolved concrete names, so if the
+    // filter is wrong it would include closed indices/aliases and cause ES to fail.
+    "return only open-index results when searching index wildcard with expand_wildcards=open" in {
+      val result = expandWcSearchManager.search("idx-*", ExpandWildcards.Open)
+
+      result should have statusCode 200
+      result.searchHits.size should be(1)
+    }
+    "return only open-alias results when searching alias wildcard with expand_wildcards=open" in {
+      val result = expandWcSearchManager.search("alias-of-*", ExpandWildcards.Open)
+
+      result should have statusCode 200
+      result.searchHits.size should be(1)
+    }
+  }
+
   "Real life tests" should {
     "pass" when {
       "it's a direct index query" in eventually {
@@ -335,6 +355,7 @@ object SearchApiSuite {
 
     createSearchEndpointIndicesAndExampleDocs(indexManager, documentManager)
     createRealLifeTestsDocumentsAndAliases(indexManager, documentManager)
+    createExpandWildcardsTestData(indexManager, documentManager)
   }
 
   private def createDataStreamAndDocuments(enhancedDataStreamManager: EnhancedDataStreamManager,
@@ -367,6 +388,16 @@ object SearchApiSuite {
     documentManager.createDoc("sys_logs-old", 1, ujson.read(s"""{ "message":"test4", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
 
     documentManager.createDoc("business_logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+  }
+
+  private def createExpandWildcardsTestData(indexManager: IndexManager,
+                                             documentManager: DocumentManager): Unit = {
+    documentManager.createDoc("idx-open", 1, ujson.read("""{"msg":"open-doc"}""")).force()
+    indexManager.createAliasOf("idx-open", "alias-of-open")
+
+    documentManager.createDoc("idx-closed", 1, ujson.read("""{"msg":"closed-doc"}""")).force()
+    indexManager.createAliasOf("idx-closed", "alias-of-closed")
+    indexManager.closeIndex("idx-closed")
   }
 
   private def createRealLifeTestsDocumentsAndAliases(indexManager: IndexManager,
