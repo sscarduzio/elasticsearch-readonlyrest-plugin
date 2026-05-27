@@ -77,7 +77,6 @@ class KibanaUserDataRuleSettingsTests
               |      index: ".kibana_custom"
               |      template_index: ".kibana_template"
               |      hide_apps: ["app1", "app2"]
-              |      allowed_api_paths: ["^/api/spaces/.*$"]
               |
               |""".stripMargin,
           assertion = rule => {
@@ -85,9 +84,7 @@ class KibanaUserDataRuleSettingsTests
             rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana_custom")))
             rule.settings.kibanaTemplateIndex should be(Some(AlreadyResolved(kibanaIndexName(".kibana_template"))))
             rule.settings.appsToHide should be(Set(FullNameKibanaApp("app1"), FullNameKibanaApp("app2")))
-            rule.settings.allowedApiPaths should be(
-              Set(KibanaAllowedApiPath(AllowedHttpMethod.Any, JavaRegex.compile("""^/api/spaces/.*$""").get))
-            )
+            rule.settings.allowedApiPaths should be(Set.empty)
             rule.settings.genericMetadata should be(None)
             rule.settings.rorIndex should be(RorSettingsIndex(IndexName.Full(".readonlyrest")))
           }
@@ -345,12 +342,12 @@ class KibanaUserDataRuleSettingsTests
                 |
                 |  - name: test_block1
                 |    kibana:
-                |      access: "ro"
+                |      access: "api_only"
                 |      allowed_api_paths: ["^/api/spaces/.*$"]
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.access should be(KibanaAccess.ApiOnly)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
@@ -371,12 +368,12 @@ class KibanaUserDataRuleSettingsTests
                 |
                 |  - name: test_block1
                 |    kibana:
-                |      access: "ro"
+                |      access: "api_only"
                 |      allowed_api_paths: ["/api/spaces?test=12.2"]
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.access should be(KibanaAccess.ApiOnly)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
@@ -400,14 +397,14 @@ class KibanaUserDataRuleSettingsTests
                 |
                 |  - name: test_block1
                 |    kibana:
-                |      access: "ro"
+                |      access: "api_only"
                 |      allowed_api_paths:
                 |        - http_method: GET
                 |          http_path: "/api/spaces?test=12.2"
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.access should be(KibanaAccess.ApiOnly)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
@@ -431,7 +428,7 @@ class KibanaUserDataRuleSettingsTests
                 |
                 |  - name: test_block1
                 |    kibana:
-                |      access: "ro"
+                |      access: "api_only"
                 |      allowed_api_paths:
                 |        - "^/api/spaces/.*$"
                 |        - http_method: GET
@@ -439,7 +436,7 @@ class KibanaUserDataRuleSettingsTests
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.access should be(KibanaAccess.ApiOnly)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
@@ -467,12 +464,12 @@ class KibanaUserDataRuleSettingsTests
                 |
                 |  - name: test_block1
                 |    kibana:
-                |      access: "ro"
+                |      access: "api_only"
                 |      allowed_api_paths: []
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.access should be(KibanaAccess.RO)
+              rule.settings.access should be(KibanaAccess.ApiOnly)
               rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName(".kibana")))
               rule.settings.kibanaTemplateIndex should be(None)
               rule.settings.appsToHide should be(Set.empty)
@@ -702,6 +699,28 @@ class KibanaUserDataRuleSettingsTests
                 |  - "app1"
                 |  - "app2"
                 |""".stripMargin)))
+          }
+        )
+      }
+      "'allowed_api_paths' is used with non-api_only access" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana:
+              |      access: ro
+              |      allowed_api_paths: ["^/api/spaces/.*$"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message(
+              "'allowed_api_paths' can only be used with 'access: api_only'"
+            )))
           }
         )
       }
