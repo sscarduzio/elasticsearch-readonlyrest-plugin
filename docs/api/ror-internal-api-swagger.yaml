@@ -1619,14 +1619,6 @@ components:
             name: users
         x-ror-kibana_index: .kibana_7.17_admin
         x-ror-kibana_access: admin
-        x-ror-kibana-allowed-api-paths:
-          - http_method: ANY
-            path_regex: "^/api/index_management/indices$"
-          - http_method: ANY
-            path_regex: >-
-              ^\/api\/spaces\/.*$
-          - http_method: GET
-            path_regex: "^/api/saved_objects/.*$"
         x-ror-kibana-metadata:
           key1: string
           key2: 1
