@@ -177,8 +177,8 @@ class Elasticsearch(val esVersion: String,
         file = esConfigFile
       )
       .copyFile(
-        destination = config.esConfigDir / "log4j2.properties",
-        file = log4jFileFromResources
+        destination = config.esConfigDir / "ror" / "log4j2.properties",
+        file = rorLog4jDropInFromResources
       )
       .user("root")
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
@@ -210,8 +210,8 @@ class Elasticsearch(val esVersion: String,
         file = esConfigFile
       )
       .copyFile(
-        destination = config.esConfigDir / "log4j2.properties",
-        file = log4jFileFromResources
+        destination = config.esConfigDir / "ror" / "log4j2.properties",
+        file = rorLog4jDropInFromResources
       )
       .user("root")
       // ES is started as Docker CMD, so elasticsearch user must have permission to read ES files.
@@ -299,11 +299,12 @@ class Elasticsearch(val esVersion: String,
       )
   }
 
-  private def log4jFileFromResources = {
-    fromResourceBy(
-      name = if (Version.greaterOrEqualThan(esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
-      else "log4j2_es_before_7.10.properties"
-    )
+  // ROR-specific logging only. It is dropped into a `ror` subdirectory of the ES config dir and
+  // merged with the stock ES `log4j2.properties` (ES recursively loads every file named
+  // `log4j2.properties` under the config dir). This keeps the stock logging config intact,
+  // including the per-component entitlement-logger suppression shipped by recent ES versions.
+  private def rorLog4jDropInFromResources = {
+    fromResourceBy(name = "ror-log4j2.properties")
   }
 
   // ES 7.15.1–7.17.6 and 8.0.x–8.4.x bundle JDK 17.0.0/17.0.1/17.0.2 or JDK 18, which have cgroup v2
