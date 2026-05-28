@@ -95,12 +95,6 @@ Settings can be loaded from a local file (`FileSettingsSource`) or from an ES in
 - Feature branches: `feature/RORDEV-{issue}` pattern
 - PRs target `develop`
 
-## Code Review Instructions
+## Code Review
 
-When performing a code review (e.g. via `/code-review`), follow these rules:
-
-- **Log every step**: narrate what you are doing as you go — which files you are reading, what you are looking for, what you found or did not find. Do not silently skip anything.
-- **Never give up silently**: if you hit an obstacle (diff too large, file unreadable, tool error, ambiguous code), say so explicitly and explain what you tried and why you could not resolve it. Do not paper over it with "No issues found."
-- **Read the full diff**: use `gh pr diff <number>` to get the complete diff. If it is large, process it in chunks — do not truncate.
-- **Apply project conventions**: flag deviations from the patterns above — wrong enum style, raw `Future`/`println`, missing license headers, internal Scala API usage, `-Xfatal-warnings` violations, duplication across ES modules.
-- **Output format**: structured report with sections per file or theme. If there are genuinely no issues, explain what you checked and why each area passed — do not just say "No issues found."
+For PR review work, invoke the **`ror-pr-review`** skill (`.claude/skills/ror-pr-review/SKILL.md`). It contains the binding review methodology, repo-specific bug heuristics, project-convention checklist, and required output format.
