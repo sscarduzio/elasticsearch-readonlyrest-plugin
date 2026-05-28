@@ -22,6 +22,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: read
+      id-token: write # required for OIDC token exchange with the Anthropic backend
       actions: read
 
     steps:
