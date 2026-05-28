@@ -22,7 +22,6 @@ jobs:
       contents: read
       pull-requests: write
       issues: read
-      id-token: write
       actions: read
 
     steps:
@@ -59,7 +58,7 @@ jobs:
               - `gh pr view ${{ github.event.pull_request.number }} --json title,body,author,baseRefName,headRefName,additions,deletions,changedFiles,commits`
               - `gh pr diff ${{ github.event.pull_request.number }}`
               - `gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments`
-              - `gh pr checks ${{ github.event.pull_request.number }}` — and for any failing check, fetch the failing job's logs with `gh run view <run-id> --log-failed`
+              - `gh pr checks ${{ github.event.pull_request.number }}` — and for any failing check, resolve the run-id with `gh run list --branch ${{ github.event.pull_request.head.ref }} --json databaseId,conclusion,status,headSha --limit 20`, then fetch logs with `gh run view <run-id> --log-failed`
               - `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews` — to see prior reviews so you don't repeat or contradict them
 
             **Step 3 — review.** Apply the methodology from the `ror-pr-review` skill.
