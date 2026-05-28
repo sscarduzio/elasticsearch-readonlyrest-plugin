@@ -115,7 +115,7 @@ class UserMetadataSuite
                |      "group":{"id":"group2","name":"group2"},
                |      "username":"user2",
                |      "kibana":{
-               |        "access":"ro",
+               |        "access":"api_only",
                |        "index":"user2_kibana_index",
                |        "hidden_apps":["user2_app1","user2_app2","/^Analytics\\\\|(?!(Maps)$$).*$$/"],
                |        "allowed_api_paths":[
@@ -506,7 +506,7 @@ class UserMetadataSuite
                |      "group":{"id":"group2","name":"group2"},
                |      "username":"user2",
                |      "kibana":{
-               |        "access":"ro",
+               |        "access":"api_only",
                |        "index":"user2_kibana_index",
                |        "hidden_apps":["user2_app1","user2_app2","/^Analytics\\\\|(?!(Maps)$$).*$$/"],
                |        "allowed_api_paths":[

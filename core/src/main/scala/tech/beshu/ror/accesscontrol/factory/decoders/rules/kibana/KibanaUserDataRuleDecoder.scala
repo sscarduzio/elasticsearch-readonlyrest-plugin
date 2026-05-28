@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.js.JsCompiler
@@ -57,11 +58,8 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
           kibanaIndex <- c.downField("index").as[Option[RuntimeSingleResolvableVariable[KibanaIndexName]]]
           kibanaTemplateIndex <- c.downField("template_index").as[Option[RuntimeSingleResolvableVariable[KibanaIndexName]]]
           appsToHide <- c.downField("hide_apps").as[Option[Set[KibanaApp]]]
-          allowedApiPaths <- c.downField("allowed_api_paths").as[Option[Set[KibanaAllowedApiPath]]]
-          metadataResolvableJsonRepresentation <- c.keys.flatMap(_.find(_ == "metadata")) match {
-            case Some(_) => c.downField("metadata").as[ResolvableJsonRepresentation].map(Some.apply)
-            case None => Right(None)
-          }
+          allowedApiPaths <- allowedApiPathsDecoder(access).apply(c)
+          metadataResolvableJsonRepresentation <- metadataDecoder.apply(c)
         } yield new KibanaUserDataRule(KibanaUserDataRule.Settings(
           access = access,
           kibanaIndex = kibanaIndex.getOrElse(RuntimeSingleResolvableVariable.AlreadyResolved(KibanaIndexName.default)),
@@ -78,7 +76,7 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
       .decoder
   }
 
-  private implicit lazy val kibanaAllowedApiPathLikeDecoder: Decoder[KibanaAllowedApiPath] = {
+  private implicit lazy val kibanaAllowedApiPathDecoder: Decoder[KibanaAllowedApiPath] = {
     implicit val simpleKibanaAllowedApiPathDecoder: Decoder[KibanaAllowedApiPath] =
       pathRegexDecoder.map(KibanaAllowedApiPath(AllowedHttpMethod.Any, _))
 
@@ -91,6 +89,21 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
 
     extendedKibanaAllowedApiDecoder.or(simpleKibanaAllowedApiPathDecoder)
   }
+
+  private def allowedApiPathsDecoder(access: KibanaAccess): Decoder[Option[Set[KibanaAllowedApiPath]]] =
+    Decoder.instance { c =>
+      val allowedApiPathsField = c.downField("allowed_api_paths")
+      access match {
+        case KibanaAccess.ApiOnly =>
+          allowedApiPathsField.as[Option[Set[KibanaAllowedApiPath]]]
+        case _ if allowedApiPathsField.succeeded =>
+          Left(decodingFailureFrom(RulesLevelCreationError(Message(
+            "'allowed_api_paths' can only be used with 'access: api_only'"
+          ))))
+        case _ =>
+          Right(None)
+      }
+    }
 
   private implicit lazy val pathRegexDecoder: Decoder[JavaRegex] =
     Decoder
@@ -133,4 +146,12 @@ class KibanaUserDataRuleDecoder(settingsIndex: RorSettingsIndex,
       Right(JavaRegex.buildFromLiteral(str.value))
     }
   }
+
+  private val metadataDecoder: Decoder[Option[ResolvableJsonRepresentation]] =
+    Decoder.instance { c =>
+      c.keys.flatMap(_.find(_ == "metadata")) match {
+        case Some(_) => c.downField("metadata").as[ResolvableJsonRepresentation].map(Some.apply)
+        case None => Right(None)
+      }
+    }
 }

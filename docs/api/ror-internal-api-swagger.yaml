@@ -783,7 +783,7 @@ components:
             $ref: '#/components/schemas/KibanaHiddenAppLike'
         allowed_api_paths:
           type: array
-          description: Kibana API paths allowed (supports regexes). Available for all license types.
+          description: Kibana API paths allowed (supports regexes). Only present when access is 'api_only'. Available for all license types.
           items:
             $ref: '#/components/schemas/KibanaAllowedApiPath'
         metadata:
@@ -1619,14 +1619,6 @@ components:
             name: users
         x-ror-kibana_index: .kibana_7.17_admin
         x-ror-kibana_access: admin
-        x-ror-kibana-allowed-api-paths:
-          - http_method: ANY
-            path_regex: "^/api/index_management/indices$"
-          - http_method: ANY
-            path_regex: >-
-              ^\/api\/spaces\/.*$
-          - http_method: GET
-            path_regex: "^/api/saved_objects/.*$"
         x-ror-kibana-metadata:
           key1: string
           key2: 1
@@ -1653,11 +1645,6 @@ components:
               index: .kibana_7.17_admin
               template_index: .kibana_7.17_template
               hidden_apps: []
-              allowed_api_paths:
-                - http_method: ANY
-                  path_regex: "^/api/index_management/indices$"
-                - http_method: GET
-                  path_regex: "^/api/saved_objects/.*$"
               metadata:
                 role: superuser
                 department: IT
@@ -1666,13 +1653,17 @@ components:
               name: management
             username: admin
             kibana:
-              access: rw
+              access: api_only
               index: .kibana_7.17_management
               template_index: .kibana_7.17_management_template
               hidden_apps:
                 - "Enterprise Search|Overview"
                 - "Observability"
-              allowed_api_paths: []
+              allowed_api_paths:
+                - http_method: ANY
+                  path_regex: "^/api/index_management/indices$"
+                - http_method: GET
+                  path_regex: "^/api/saved_objects/.*$"
               metadata:
                 role: manager
           - group:
@@ -1688,12 +1679,11 @@ components:
                 - "Enterprise Search|Overview"
                 - "Observability"
                 - "/^Analytics\\|(?!(Maps)$).*$/"
-              allowed_api_paths: []
               metadata: {}
 
     GetUserWithoutGroupsMetadataResponseExample:
       summary: User metadata (free license)
-      description: Response when X-ROR-KBN-License-Type is 'free'. Shows only basic fields (access, index, allowed_api_paths). No enterprise-only or pro features.
+      description: Response when X-ROR-KBN-License-Type is 'free'. Shows only basic fields (access, index). No enterprise-only or pro features.
       value:
         type: USER_WITHOUT_GROUPS
         correlation_id: 7D2695DF-C2CC-419A-9D0D-8A309D429786
@@ -1701,9 +1691,6 @@ components:
         kibana:
           access: admin
           index: .kibana_7.17_admin
-          allowed_api_paths:
-            - http_method: ANY
-              path_regex: "^/api/index_management/indices$"
 
     GetUserMetadataResponseProExample:
       summary: User metadata (pro license)
@@ -1718,11 +1705,6 @@ components:
           hidden_apps:
             - "Enterprise Search|Overview"
             - "Observability"
-          allowed_api_paths:
-            - http_method: ANY
-              path_regex: "^/api/index_management/indices$"
-            - http_method: GET
-              path_regex: "^/api/saved_objects/.*$"
 
     GetUserMetadataResponseEntDisabledMultitenancyExample:
       summary: User metadata (ent-disabled-multitenancy license)
@@ -1738,11 +1720,6 @@ components:
           template_index: .kibana_7.17_template
           hidden_apps:
             - "Enterprise Search|Overview"
-          allowed_api_paths:
-            - http_method: ANY
-              path_regex: "^/api/index_management/indices$"
-            - http_method: GET
-              path_regex: "^/api/saved_objects/.*$"
           metadata:
             role: superuser
             department: IT

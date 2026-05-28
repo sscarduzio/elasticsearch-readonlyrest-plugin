@@ -22,7 +22,7 @@ readonlyrest:
       users: ["user2"]
       groups: [group2, group3]
       kibana:
-        access: ro
+        access: api_only
         index: "user2_kibana_index"
         hide_apps: ["user2_app1", "user2_app2", "/^Analytics\\|(?!(Maps)$).*$/"]
         allowed_api_paths:
