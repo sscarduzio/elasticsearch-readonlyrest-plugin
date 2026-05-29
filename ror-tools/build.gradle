@@ -128,6 +128,11 @@ def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
 def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
 
 tasks.register('uploadArtifactsFromEsBinaries', Exec) {
+    // These libs are consumed back through the Maven repo declared in
+    // readonlyrest.plugin-common-conventions.gradle (ROR_LIBS_STORE_URL / BUCKET), so the upload
+    // must target the very same store - otherwise the published jar is not resolvable at read time.
+    environment 'ROR_ARTIFACTS_STORE_URL_OR_REGION', System.getenv('ROR_LIBS_STORE_URL') ?: 'https://dgp.serve.beshu.tech'
+    environment 'ROR_ARTIFACTS_STORE_BUCKET', System.getenv('BUCKET') ?: 'beshu'
     environment 'ROR_ARTIFACTS_STORE_PATH_PREFIX', ''
     commandLine '../ci/upload-files-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "ror/libs/" + netty4TransportArtifactDestinationPath
 }
