@@ -134,10 +134,7 @@ class Block(val name: Name,
       }
   }
 
-  private lazy val authRules: List[Rule] = rules.toList.filter(isAuthRule)
-
-  private lazy val regularRules: List[Rule] = rules.toList.filterNot(isAuthRule)
-
+  private lazy val (authRules, regularRules) = rules.toList.partition(isAuthRule)
   private lazy val containsAuthRule: Boolean = authRules.nonEmpty
 
   private def isAuthRule(rule: Rule): Boolean = rule match {
