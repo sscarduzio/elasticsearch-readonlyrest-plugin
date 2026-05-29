@@ -17,12 +17,13 @@
 package tech.beshu.ror.unit.acl.blocks
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{Inside, TestSuite}
+import org.scalatest.{Assertion, Inside}
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
@@ -35,18 +36,19 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockRuleFactory}
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.{given, *}
+import tech.beshu.ror.utils.TestsUtils.{*, given}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.Failure
 
-class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with BlockTestsMockFactory {
+class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with MockRuleFactory with MockFactory {
 
-  "A block execution result" should {
-    "be mismatched and contain all history, up to mismatched rule" when {
+  "A block evaluated for a regular request" should {
+    "be denied and contain all history, up to mismatched rule" when {
       "one of rules doesn't match" in {
         def withLoggedUser: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
           _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
@@ -65,7 +67,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           )
         )
         val requestContext = MockRequestContext.indices
-        val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+        val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
           case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
@@ -95,7 +97,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           )
         )
         val requestContext = MockRequestContext.indices
-        val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+        val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
           case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
@@ -114,7 +116,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         }
       }
     }
-    "be matched and contain all rules history from the block" in {
+    "be permitted and contain all rules history from the block" in {
       val blockName = Block.Name("test_block")
       val block = new Block(
         name = blockName,
@@ -126,7 +128,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
@@ -147,7 +149,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           blockContext.responseHeaders should be(Set.empty)
       }
     }
-    "be matched and contain all rules history from the block with modified block context" in {
+    "be permitted and contain all rules history from the block with modified block context" in {
       def withLoggedUser: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
         _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
 
@@ -168,7 +170,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
@@ -194,7 +196,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           blockContext.responseHeaders should be(Set.empty)
       }
     }
-    "be matched and contain all rules history from the block with overwritten logged user" in {
+    "be permitted and contain all rules history from the block with overwritten logged user" in {
       val blockName = Block.Name("test_block")
       val block = new Block(
         name = blockName,
@@ -208,7 +210,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         )
       )
       val requestContext = MockRequestContext.indices
-      val result = block.evaluate(requestContext).runSyncUnsafe(1 second)
+      val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {
         case (Decision.Permitted(blockContext), BlockHistory.Permitted(block, Decision.Permitted(_), rulesHistory)) =>
@@ -233,44 +235,125 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
     }
   }
 
-  private def assertPermitted[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name) = {
-    ruleHistory.rule should be(hasRuleName)
-    inside(ruleHistory.decision) { case (Permitted(_)) => }
+  "A block evaluated for a user metadata request" should {
+    "be permitted and return a single result for a block without an authentication/authorization rule" in {
+      val block = metadataBlock(
+        passingRule("r1"),
+        passingRule("r2")
+      )
+      val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
+
+      result.size should be(1)
+      inside(result.head) {
+        case (Decision.Permitted(_), BlockHistory.Permitted(_, Decision.Permitted(_), rulesHistory)) =>
+          rulesHistory.map(_.rule) should be(Vector(Rule.Name("r1"), Rule.Name("r2")))
+      }
+    }
+    "be denied and not run the remaining rules when the authentication/authorization rule denies" in {
+      val block = metadataBlock(
+        notPassingAuthRule("auth"),
+        perGroupKibanaIndexRule("kibana")
+      )
+      val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
+
+      result.size should be(1)
+      inside(result.head) {
+        case (Decision.Denied(cause), BlockHistory.Denied(_, Decision.Denied(_), rulesHistory)) =>
+          cause should be(Cause.AuthenticationFailed("mock failed"))
+          rulesHistory.map(_.rule) should be(Vector(Rule.Name("auth")))
+      }
+    }
+    "be permitted and return one result per available group, each carrying that group as the current one and the full rule history" in {
+      val groups = UniqueList.of(group("g1"), group("g2"), group("g3"))
+      val block = metadataBlock(
+        passingAuthRule("auth", userId("u1"), groups),
+        perGroupKibanaIndexRule("kibana")
+      )
+      val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
+
+      result.size should be(3)
+      result.toList.zip(groups.toList).foreach { case (perGroupResult, expectedGroup) =>
+        inside(perGroupResult) {
+          case (Decision.Permitted(blockContext), BlockHistory.Permitted(_, Decision.Permitted(_), rulesHistory)) =>
+            blockContext.blockMetadata.currentGroupId should be(Some(expectedGroup.id))
+            rulesHistory.map(_.rule) should be(Vector(Rule.Name("auth"), Rule.Name("kibana")))
+        }
+      }
+    }
+    "be permitted and return a single result when the authentication/authorization rule grants no group" in {
+      val block = metadataBlock(
+        passingAuthRule("auth", userId("u1"), UniqueList.empty),
+        perGroupKibanaIndexRule("kibana")
+      )
+      val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
+
+      result.size should be(1)
+      inside(result.head) {
+        case (Decision.Permitted(blockContext), BlockHistory.Permitted(_, Decision.Permitted(_), rulesHistory)) =>
+          blockContext.blockMetadata.currentGroupId should be(None)
+          rulesHistory.map(_.rule) should be(Vector(Rule.Name("auth"), Rule.Name("kibana")))
+      }
+    }
+    "be permitted and resolve a group-dependent rule to a different value for each group" in {
+      val groups = UniqueList.of(group("g1"), group("g2"), group("g3"))
+      val block = metadataBlock(
+        passingAuthRule("auth", userId("u1"), groups),
+        perGroupKibanaIndexRule("kibana")
+      )
+      val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
+
+      val resolvedKibanaIndices = result.toList.collect {
+        case (Decision.Permitted(blockContext), _) => blockContext.blockMetadata.kibanaPolicy.flatMap(_.index)
+      }
+      resolvedKibanaIndices should be(List(
+        Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g1"))),
+        Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g2"))),
+        Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g3")))
+      ))
+    }
+    "be permitted and execute the authentication/authorization rule exactly once regardless of the number of groups" in {
+      val authInvocations = new AtomicInteger(0)
+      val groups = UniqueList.of(group("g1"), group("g2"), group("g3"))
+      val block = metadataBlock(
+        passingAuthRule("auth", userId("u1"), groups, authInvocations),
+        perGroupKibanaIndexRule("kibana")
+      )
+      val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
+
+      result.size should be(3)
+      authInvocations.get() should be(1)
+    }
   }
 
-  private def assertDenied[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name, hasCause: Cause) = {
+  private def metadataBlock(rules: Rule*): Block =
+    new Block(
+      name = Block.Name("test_block"),
+      policy = Block.Policy.Allow,
+      verbosity = Block.Verbosity.Info,
+      audit = Block.Audit.Enabled,
+      rules = NonEmptyList.fromListUnsafe(rules.toList)
+    )
+
+  private def assertPermitted[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name): Unit = {
+    ruleHistory.rule should be(hasRuleName)
+    inside(ruleHistory.decision) { case Permitted(_) => }
+  }
+
+  private def assertDenied[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name, hasCause: Cause): Assertion = {
     ruleHistory.rule should be(hasRuleName)
     ruleHistory.decision should be(Denied(hasCause))
   }
-}
 
-trait BlockTestsMockFactory extends MockFactory {
-  this: TestSuite =>
-
-  protected def passingRule(ruleName: String,
-                            modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity) =
+  // Overload for tests that need to modify a GeneralIndexRequestBlockContext specifically
+  private def passingRule(ruleName: String,
+                          modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext): RegularRule =
     new RegularRule {
       override val name: Rule.Name = Rule.Name(ruleName)
 
-      override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         BlockContextUpdater[B] match {
           case GeneralIndexRequestBlockContextUpdater => Task.now(Permitted(modifyBlockContext(blockContext)))
           case _ => throw new IllegalStateException("Assuming that only GeneralIndexRequestBlockContext can be used in this test")
         }
     }
-
-  protected def notPassingRule(ruleName: String) = new RegularRule {
-    override val name: Rule.Name = Rule.Name(ruleName)
-
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-      Task.now(Denied(NotAuthorized))
-  }
-
-  protected def throwingRule(ruleName: String) = new RegularRule {
-    override val name: Rule.Name = Rule.Name(ruleName)
-
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-      Task.fromTry(Failure(new Exception("sth went wrong")))
-  }
-
 }

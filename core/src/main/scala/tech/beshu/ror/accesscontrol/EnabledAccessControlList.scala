@@ -34,11 +34,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, Autho
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.{Enterprise, Free, Pro}
-import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser}
+import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser, RequestId}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.collection.View
@@ -47,7 +49,7 @@ import scala.collection.immutable.ListMap
 class EnabledAccessControlList(val blocks: NonEmptyList[Block],
                                override val staticContext: AccessControlListStaticContext)
                               (implicit scheduler: Scheduler)
-  extends AccessControlList {
+  extends AccessControlList with RequestIdAwareLogging {
 
   override val description: String = "Enabled ROR ACL"
 
@@ -129,7 +131,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   }
 
   private def determineUserMetadataWithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
-                                                               history: History[UserMetadataRequestBlockContext]) = {
+                                                       history: History[UserMetadataRequestBlockContext]) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
       case allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
         blockContext.block.policy match {
@@ -219,7 +221,21 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
     private def gatherGroupMetadataPreservingOrder(): Seq[GroupMetadata] = {
       blockResults
-        .flatMap { matched => matched.result.context.blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)) }
+        .flatMap { matched =>
+          val blockMetadata = matched.result.context.blockMetadata
+          blockMetadata.currentGroupId match {
+            case None =>
+              blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)).toSeq
+            case Some(currentGroupId) =>
+              blockMetadata.availableGroups.find(_.id == currentGroupId) match {
+                case Some(group) => Seq(groupMetadataFrom(group, matched))
+                case None =>
+                  implicit val requestId: RequestId = matched.result.context.requestContext.id.toRequestId
+                  logger.warn(s"currentGroupId ${currentGroupId.show} not found in availableGroups for block ${matched.result.context.block.name.show} - this should not happen")
+                  Seq.empty
+              }
+          }
+        }
         .toSeq
     }
 
@@ -312,17 +328,21 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
 
   private def executeBlocksForUserMetadata(block: Block,
-                                           requestContext: RequestContext.Aux[UserMetadataRequestBlockContext]) = {
+                                           requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]) = {
     block
-      .evaluate(requestContext)
-      .map(Some.apply)
-      .onErrorRecover { case _ => None }
+      .evaluateForMetadataRequest(requestContext)
+      .map(_.toList)
+      .onErrorRecover { case scala.util.control.NonFatal(ex) =>
+        implicit val requestId: RequestId = requestContext.id.toRequestId
+        logger.debug(s"Block ${block.name.show} evaluation failed during metadata request", ex)
+        List.empty
+      }
   }
 
   private def executeBlocksForRegularRequest[B <: BlockContext : BlockContextUpdater](block: Block,
                                                                                       requestContext: RequestContext.Aux[B]): WriterT[Task, Vector[BlockHistory[B]], Decision[B]] = {
     for {
-      blockEvalDecision <- WriterT.liftF(block.evaluate(requestContext))
+      blockEvalDecision <- WriterT.liftF(block.evaluateForRegularRequest(requestContext))
       (decision, history) = blockEvalDecision
       aclProcessingResult <- lift(decision).tell(Vector(history))
     } yield aclProcessingResult

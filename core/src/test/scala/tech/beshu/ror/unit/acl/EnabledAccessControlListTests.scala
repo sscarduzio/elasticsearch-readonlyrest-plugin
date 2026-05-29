@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl
 
 import cats.data.NonEmptyList
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -27,31 +26,27 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControlList.UserMetadataRequestResult.{Allowed, Forbidden}
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.MetadataOrigin
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.Enterprise
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.orders.forbiddenCauseOrder
 import tech.beshu.ror.accesscontrol.request.{RestRequest, UserMetadataRequestContext}
+import tech.beshu.ror.mocks.MockRuleFactory
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.NonEmptyListMap
-import tech.beshu.ror.utils.TestsUtils.{given, *}
+import tech.beshu.ror.utils.TestsUtils.{*, given}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.{Failure, Success, Try}
 
-class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside {
+class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with Inside with MockRuleFactory {
 
   import MockedBlockResult.*
 
@@ -119,6 +114,26 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               case Forbidden(blockContext) =>
                 blockContext.block.name should be(Block.Name("b1"))
                 blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
+            }
+          }
+        }
+        "a single block grants access to many groups using a current-group-dependent rule" should {
+          "resolve that rule independently for each group" in {
+            val acl = createAclWith(showBasicAuthPrompt = false)(
+              blockWithPerGroupKibanaIndex("b1", Policy.Allow, userId("u1"), UniqueList.of(group("g1"), group("g2"), group("g3"))),
+            )
+
+            val (userMetadataRequestResult, _) = acl
+              .handleMetadataRequest(mockUserMetadataRequestContext(Enterprise(multiTenancyEnabled = true)))
+              .runSyncUnsafe()
+
+            inside(userMetadataRequestResult) {
+              case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
+                groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g2") :: GroupId("g3") :: Nil)
+
+                groupsMetadata(GroupId("g1")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g1")))
+                groupsMetadata(GroupId("g2")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g2")))
+                groupsMetadata(GroupId("g3")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g3")))
             }
           }
         }
@@ -426,14 +441,17 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     }
   }
 
-  private def createAcl(blocks: Block*) = {
+  private def createAcl(blocks: Block*): EnabledAccessControlList =
+    createAclWith(showBasicAuthPrompt = false)(blocks *)
+
+  private def createAclWith(showBasicAuthPrompt: Boolean)(blocks: Block*) = {
     val blocksNel = NonEmptyList.fromListUnsafe(blocks.toList)
     new EnabledAccessControlList(
       blocksNel,
       new AccessControlListStaticContext(
         blocks = blocksNel,
         globalSettings = GlobalSettings(
-          showBasicAuthPrompt = true,
+          showBasicAuthPrompt = showBasicAuthPrompt,
           forbiddenRequestMessage = "Forbidden",
           flsEngine = FlsEngine.default,
           settingsIndex = RorSettingsIndex(IndexName.Full(".readonlyrest")),
@@ -458,30 +476,20 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       verbosity = Block.Verbosity.Info,
       audit = Block.Audit.Enabled,
       rules = NonEmptyList.of(result match {
-        case MockedBlockResult.Matched(userId, groups) => permittedRule(userId, groups)
-        case MockedBlockResult.Mismatched => deniedRule
+        case MockedBlockResult.Matched(userId, groups) => passingAuthRule("auth", userId, groups)
+        case MockedBlockResult.Mismatched => notPassingAuthRule("auth")
       })
     )
   }
 
-  private def permittedRule(userId: User.Id, groups: UniqueList[Group]): Rule = new RegularRule {
-    override val name: Rule.Name = Rule.Name("auth")
-
-    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
-      Task.now(Decision.Permitted(
-        blockContext.withBlockMetadata(_
-          .withLoggedUser(DirectlyLoggedUser(userId))
-          .withAvailableGroups(groups)
-        )
-      ))
-    }
-  }
-
-  private def deniedRule: Rule = new RegularRule {
-    override val name: Rule.Name = Rule.Name("auth")
-
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-      Task.now(Decision.Denied(AuthenticationFailed("mock failed")))
+  private def blockWithPerGroupKibanaIndex(name: String, policy: Block.Policy, userId: User.Id, groups: UniqueList[Group]) = {
+    new Block(
+      name = Block.Name(name),
+      policy = policy,
+      verbosity = Block.Verbosity.Info,
+      audit = Block.Audit.Enabled,
+      rules = NonEmptyList.of(authorizationRule("groups", userId, groups), perGroupKibanaIndexRule("kibana"))
+    )
   }
 
   private def mockUserMetadataRequestContext(licenseType: RorKbnLicenseType) = {
