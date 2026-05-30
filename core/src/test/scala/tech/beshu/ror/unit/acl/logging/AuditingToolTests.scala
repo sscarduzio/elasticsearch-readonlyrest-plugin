@@ -50,6 +50,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 
+import java.nio.file.attribute.PosixFilePermission
 import java.time.*
 import java.util.UUID
 import scala.annotation.nowarn
@@ -282,6 +283,101 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         }
       }
     }
+    "rolling file sink is used" should {
+      "return a creation error" when {
+        "the parent directory does not exist" in {
+          // Log4j creates missing directories via Files.createDirectories, so to reliably
+          // prevent creation we need the grandparent to be non-writable.
+          val tempDir = File.newTemporaryDirectory("ror-audit-test-")
+          try {
+            tempDir.setPermissions(scala.collection.immutable.Set(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE))
+            assume(!tempDir.isWritable, "Skipping: running as root bypasses permission checks")
+            val subDir = tempDir / "subdir"
+            val logPath = (subDir / "audit.log").path
+
+            val result = AuditingTool.create(
+              settings = Some(rollingFileSinkSettings(logPath)),
+              esNodeSettings = defaultTestEsNodeSettings,
+              auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+                override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
+                override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
+              }
+            ).runSyncUnsafe()
+
+            result match {
+              case Left(errors) =>
+                errors.head.message should include("does not exist")
+                errors.head.message should include(subDir.path.toString)
+              case Right(_) =>
+                fail("Expected creation error but got success")
+            }
+          } finally {
+            tempDir.setPermissions(scala.collection.immutable.Set(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE))
+            tempDir.delete(swallowIOExceptions = true)
+          }
+        }
+
+        "the parent directory has no write permission" in {
+          val tempDir = File.newTemporaryDirectory("ror-audit-test-")
+          try {
+            tempDir.setPermissions(scala.collection.immutable.Set(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE))
+            assume(!tempDir.isWritable, "Skipping: running as root bypasses permission checks")
+            val logPath = (tempDir / "audit.log").path
+
+            val result = AuditingTool.create(
+              settings = Some(rollingFileSinkSettings(logPath)),
+              esNodeSettings = defaultTestEsNodeSettings,
+              auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+                override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
+                override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
+              }
+            ).runSyncUnsafe()
+
+            result match {
+              case Left(errors) =>
+                errors.head.message should include("no write permission")
+                errors.head.message should include(tempDir.path.toString)
+              case Right(_) =>
+                fail("Expected creation error but got success")
+            }
+          } finally {
+            tempDir.setPermissions(scala.collection.immutable.Set(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE))
+            tempDir.delete(swallowIOExceptions = true)
+          }
+        }
+
+        "the log file exists but is not writable" in {
+          val tempDir = File.newTemporaryDirectory("ror-audit-test-")
+          try {
+            val logFile = tempDir / "audit.log"
+            logFile.touch()
+            logFile.setPermissions(scala.collection.immutable.Set(PosixFilePermission.OWNER_READ))
+            assume(!logFile.isWritable, "Skipping: running as root bypasses permission checks")
+            val logPath = logFile.path
+
+            val result = AuditingTool.create(
+              settings = Some(rollingFileSinkSettings(logPath)),
+              esNodeSettings = defaultTestEsNodeSettings,
+              auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+                override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = mock[DataStreamBasedAuditSinkService]
+                override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
+              }
+            ).runSyncUnsafe()
+
+            result match {
+              case Left(errors) =>
+                errors.head.message should include("no write permission")
+                errors.head.message should include(logFile.path.toString)
+              case Right(_) =>
+                fail("Expected creation error but got success")
+            }
+          } finally {
+            tempDir.delete(swallowIOExceptions = true)
+          }
+        }
+      }
+    }
+
     "no enabled outputs in settings" should {
       "create a tool with no active sinks" in {
         val creationResult = AuditingTool.create(
@@ -339,6 +435,21 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   }
 
   private implicit val fixedClock: Clock = Clock.fixed(someday.toInstant, someday.getZone)
+
+  @nowarn("cat=deprecation")
+  private def rollingFileSinkSettings(filePath: java.nio.file.Path) = AuditOutputsConfig.WithOutputs(
+    NonEmptyList.of(
+      AuditSink.Enabled(Block.SinkName.random(), Config.RollingFileBasedSink(
+        logSerializer = new DefaultAuditLogSerializer,
+        loggerName = RorAuditLoggerName(nes("ror-audit-error-test")),
+        fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
+          filePath = filePath,
+          maxFileSize = FileSize.from("100MB").toOption.get,
+          maxFiles = positiveInt(7)
+        )
+      ))
+    )
+  )
 
   private lazy val throwingAuditLogSerializer = new AuditLogSerializer {
     override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
