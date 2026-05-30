@@ -352,7 +352,9 @@ object AuditingTool extends RequestIdAwareLogging {
         case Enabled(name, config: AuditSink.Config.LogBasedSink) =>
           Task.delay(new LogBasedAuditSink(name, config.logSerializer, config.loggerName).some.valid)
         case Enabled(name, config: AuditSink.Config.RollingFileBasedSink) =>
-          Task.delay(new RollingFileBasedAuditSink(name, config.logSerializer, config.loggerName, config.fileAppender).some.valid)
+          RollingFileBasedAuditSink
+            .create(name, config.logSerializer, config.loggerName, config.fileAppender)
+            .map(_.map(_.some).leftMap(e => CreationError(e.message)).toValidated)
         case Disabled | ExplicitlyDisabledAcl =>
           Task.pure(None.valid)
       }
