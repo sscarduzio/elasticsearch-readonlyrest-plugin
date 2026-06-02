@@ -38,9 +38,11 @@ private[audit] final class RollingFileBasedAuditSink private(sinkName: Block.Sin
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
                                (implicit requestId: RequestId): Task[Unit] = Task {
-    Option(serializedEvent.opt(AclAuditLogSerializer.messageField)) match {
-      case Some(msg: String) => logger.info(msg)
-      case _                 => logger.info(serializedEvent.toString)
+    serializer match {
+      case s: AclAuditLogSerializer =>
+        logger.info(s.formatMessage(event, logger.isDebugEnabled))
+      case _ =>
+        logger.info(serializedEvent.toString)
     }
   }
 

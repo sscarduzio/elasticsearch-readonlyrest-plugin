@@ -32,9 +32,11 @@ private[audit] final class LogBasedAuditSink(sinkName: Block.SinkName,
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
                                (implicit requestId: RequestId): Task[Unit] = Task {
-    Option(serializedEvent.opt(AclAuditLogSerializer.messageField)) match {
-      case Some(msg: String) => logger.info(msg)
-      case _                 => logger.info(serializedEvent.toString)
+    serializer match {
+      case s: AclAuditLogSerializer =>
+        logger.info(s"[${requestId.value}] ${s.formatMessage(event, logger.isDebugEnabled)}")
+      case _ =>
+        logger.info(serializedEvent.toString)
     }
   }
 
