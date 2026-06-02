@@ -163,6 +163,13 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       } yield RollingFileBasedSink.FileAppenderConfig(filePath, maxFileSize, maxFiles)
     }
 
+    given logSinkSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+      c.as[SerializerType].flatMap {
+        case SerializerType.AclSerializer => Right(Some(new AclAuditLogSerializer))
+        case _                            => c.as[Option[AuditLogSerializer]](auditLogSerializerDecoder)
+      }
+    }
+
     given logBasedSinkConfigDecoder: Decoder[AuditSink.Config] = Decoder.instance { c =>
       for {
         logSerializer <- c.as[Option[AuditLogSerializer]]
@@ -268,13 +275,11 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         case SerializerType.EcsSerializer =>
           c.downField("serializer").as[Option[AuditLogSerializer]](ecsSerializerDecoder)
         case SerializerType.AclSerializer =>
-          c.downField("serializer").as[Option[AuditLogSerializer]](aclSerializerDecoder)
+          Left(DecodingFailure(AclCreationErrorCoders.stringify(
+            auditSettingsError("ACL serializer can only be used with log-based sinks (type: log or type: log_file)")
+          ), Nil))
       }
     } yield result
-  }
-
-  private def aclSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { _ =>
-    Right(Some(new AclAuditLogSerializer))
   }
 
   private def ecsSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>

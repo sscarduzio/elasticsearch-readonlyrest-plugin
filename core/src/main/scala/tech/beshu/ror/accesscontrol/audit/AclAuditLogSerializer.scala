@@ -16,10 +16,13 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
+import cats.Show
 import org.json.JSONObject
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.accesscontrol.domain.{Header, RorAuditLoggerName}
+import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.constants
+import tech.beshu.ror.implicits.{headerShow, obfuscatedHeaderShow}
+import tech.beshu.ror.utils.RefinedUtils.nes
 
 class AclAuditLogSerializer extends AuditLogSerializer {
 
@@ -28,42 +31,21 @@ class AclAuditLogSerializer extends AuditLogSerializer {
       case allowed: AuditResponseContext.Allowed => allowed.verbosity != Verbosity.Info
       case _                                     => false
     }
-    if (suppress) None
-    else {
-      val msg = formatMessage(responseContext)
-      val json = new JSONObject()
-      json.put(AclAuditLogSerializer.messageField, msg)
-      Some(json)
-    }
+    if (suppress) None else Some(new JSONObject())
   }
 
-  private def formatMessage(ctx: AuditResponseContext): String = {
-    val reqStr = formatRequest(ctx.requestContext)
-    ctx match {
-      case ctx: AuditResponseContext.Allowed =>
-        s"${constants.ANSI_CYAN}ALLOWED by ${ctx.reason} req=$reqStr${constants.ANSI_RESET}"
-      case ctx: AuditResponseContext.ForbiddenBy =>
-        s"${constants.ANSI_PURPLE}FORBIDDEN by ${ctx.reason} req=$reqStr${constants.ANSI_RESET}"
-      case _: AuditResponseContext.Forbidden =>
-        s"${constants.ANSI_PURPLE}FORBIDDEN by default req=$reqStr${constants.ANSI_RESET}"
-      case _: AuditResponseContext.RequestedIndexNotExist =>
-        s"${constants.ANSI_PURPLE}INDEX NOT FOUND req=$reqStr${constants.ANSI_RESET}"
-      case _: AuditResponseContext.Errored =>
-        s"${constants.ANSI_YELLOW}ERRORED by error req=$reqStr${constants.ANSI_RESET}"
+  private[audit] def formatMessage(responseContext: AuditResponseContext, debugEnabled: Boolean): String = {
+    responseContext.requestContext match {
+      case ctx: AuditRequestContextBasedOnAclResult[?] =>
+        given Show[Header] = if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
+        ctx.aclMessageShow(debugEnabled).show(ctx.responseContext)
     }
-  }
-
-  private def formatRequest(req: AuditRequestContext): String = {
-    val user = req.loggedInUserName
-      .getOrElse(req.attemptedUserName.map(u => s"$u (attempted)").getOrElse("[no info about user]"))
-    val idx = if (req.indices.isEmpty) "<N/A>" else req.indices.toSeq.sorted.mkString(",")
-    val hasBrowser = req.requestHeaders.getValue("user-agent").isDefined
-    val xff = req.requestHeaders.getValue("x-forwarded-for").flatMap(_.headOption).getOrElse("null")
-    val cnt = if (req.contentLength == 0) "<N/A>" else s"<OMITTED, LENGTH=${req.contentLength}>"
-    s"""{ ID:${req.id}, TYP:${req.`type`}, CGR:<N/A>, USR:$user, BRS:$hasBrowser, ACT:${req.action}, OA:${req.remoteAddress}, XFF:$xff, DA:${req.localAddress}, IDX:$idx, MET:${req.httpMethod}, PTH:${req.uriPath}, CNT:$cnt, HIS:${req.history}, }"""
   }
 }
 
 object AclAuditLogSerializer {
-  val messageField = "acl_message"
+  // Preserved from the class that originally emitted ACL log entries, so existing
+  // log4j configurations targeting that logger name continue to work unchanged.
+  val defaultLoggerName: RorAuditLoggerName =
+    RorAuditLoggerName(nes("tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator"))
 }

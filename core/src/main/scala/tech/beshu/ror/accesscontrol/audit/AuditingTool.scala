@@ -102,7 +102,8 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             blockContext = Some(allowedBy.blockContext),
             matchedBlocks = Some(NonEmptyList.one(allowedBy.blockContext.block)),
             historyEntries = allowedBy.history,
-            generalAuditEvents = allowedBy.requestContext.generalAuditEvents
+            generalAuditEvents = allowedBy.requestContext.generalAuditEvents,
+            responseContext = responseContext,
           ),
           verbosity = toAuditVerbosity(allowedBy.blockContext.block.audit),
           reason = allowedBy.blockContext.block.show
@@ -116,7 +117,8 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             blockContext = None,
             matchedBlocks = Some(allow.userMetadata.matchedBlocks),
             historyEntries = allow.history,
-            generalAuditEvents = allow.requestContext.generalAuditEvents
+            generalAuditEvents = allow.requestContext.generalAuditEvents,
+            responseContext = responseContext,
           ),
           verbosity = AuditResponseContext.Verbosity.Info,
           reason = allow.userMetadata.reason,
@@ -129,7 +131,9 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = Some(forbiddenBy.blockContext),
             matchedBlocks = Some(NonEmptyList.one(forbiddenBy.blockContext.block)),
-            historyEntries = forbiddenBy.history),
+            historyEntries = forbiddenBy.history,
+            responseContext = responseContext,
+          ),
           verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.audit),
           reason = forbiddenBy.blockContext.block.show
         )
@@ -141,7 +145,8 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             matchedBlocks = None,
-            historyEntries = forbidden.history
+            historyEntries = forbidden.history,
+            responseContext = responseContext,
           )
         )
       case requestedIndexNotExist: ResponseContext.RequestedIndexNotExist[B] =>
@@ -152,7 +157,8 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             matchedBlocks = None,
-            historyEntries = requestedIndexNotExist.history
+            historyEntries = requestedIndexNotExist.history,
+            responseContext = responseContext,
           )
         )
       case errored: ResponseContext.Errored[B] =>
@@ -163,7 +169,8 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             auditEnvironmentContext = auditEnvironmentContext,
             blockContext = None,
             matchedBlocks = None,
-            historyEntries = History.empty
+            historyEntries = History.empty,
+            responseContext = responseContext,
           ),
           cause = errored.cause
         )
@@ -183,6 +190,7 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
                                                        blockContext: Option[B],
                                                        matchedBlocks: Option[NonEmptyList[Block]],
                                                        historyEntries: History[B],
+                                                       responseContext: ResponseContext[B],
                                                        generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
     new AuditRequestContextBasedOnAclResult(
       requestContext,
@@ -190,9 +198,10 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
       matchedBlocks,
       historyEntries,
       loggingContext,
+      responseContext,
       auditEnvironmentContext,
       generalAuditEvents,
-      involvesIndices(blockContext)
+      involvesIndices(blockContext),
     )
   }
 
@@ -312,7 +321,7 @@ object AuditingTool extends RequestIdAwareLogging {
   private def ensureAclSink(sinks: NonEmptyList[AuditSink]): NonEmptyList[AuditSink] = {
     val hasAcl = sinks.exists {
       case AuditSink.Enabled(_, s: AuditSink.Config.LogBasedSink) =>
-        s.logSerializer.isInstanceOf[AclAuditLogSerializer]
+        s.logSerializer match { case _: AclAuditLogSerializer => true; case _ => false }
       case AuditSink.ExplicitlyDisabledAcl => true
       case _                               => false
     }
@@ -321,7 +330,7 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private def defaultAclSink = AuditSink.Enabled(
     Block.SinkName.random(),
-    AuditSink.Config.LogBasedSink(new AclAuditLogSerializer, RorAuditLoggerName.default)
+    AuditSink.Config.LogBasedSink(new AclAuditLogSerializer, AclAuditLogSerializer.defaultLoggerName)
   )
 
   private def defaultIndexStorageSink = AuditSink.Enabled(
