@@ -1034,13 +1034,17 @@ stages:
             persistCredentials: true
           - bash: |
               TARGET_BRANCH="${{ parameters.targetBranch }}"
-              if [ -z "$(echo "$TARGET_BRANCH" | tr -d '[:space:]')" ]; then
-                echo "Error: targetBranch parameter is required"
-                exit 1
+              if [ -n "$(echo "$TARGET_BRANCH" | tr -d '[:space:]')" ]; then
+                if git ls-remote --exit-code --heads origin "$TARGET_BRANCH" > /dev/null 2>&1; then
+                  echo "Branch '$TARGET_BRANCH' found, checking out"
+                  git fetch origin "$TARGET_BRANCH"
+                  git checkout "$TARGET_BRANCH"
+                else
+                  echo "Branch '$TARGET_BRANCH' not found, falling back to develop"
+                  git fetch origin develop
+                  git checkout develop
+                fi
               fi
-              echo "Checking out branch: $TARGET_BRANCH"
-              git fetch origin "$TARGET_BRANCH"
-              git checkout "$TARGET_BRANCH"
             displayName: 'Checkout target branch'
           - task: JavaToolInstaller@0
             inputs:
