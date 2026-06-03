@@ -465,17 +465,6 @@ fi
 
 if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 
-  IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
-  for VERSION in "${VERSIONS[@]}"; do
-    if [ -n "$VERSION" ]; then
-      public_ror_prebuild_plugin "$VERSION"
-    fi
-  done
-
-fi
-
-if [[ $ROR_TASK == "publish_dev_docker_image" ]]; then
-
   if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
     echo "Error: BUILD_ROR_ES_VERSIONS is required"
     exit 1
