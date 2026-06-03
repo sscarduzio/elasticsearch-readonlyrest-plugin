@@ -1014,18 +1014,21 @@ stages:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
             condition: eq(404, variables.mvn_status)
 
-  - stage: PUBLISH_DEV_DOCKER_IMAGE
-    displayName: 'Build and publish dev docker image for a given branch and ES version'
-    dependsOn: []
+  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
+    displayName: 'Publish docker images for specified pre-builds'
+    dependsOn: [ ]
     condition:
       and(
         succeeded(),
         eq(variables['Build.Reason'], 'Manual'),
-        eq('${{ parameters.actionToPerform }}', 'publish_dev_docker_image')
+        or(
+          eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds'),
+          eq('${{ parameters.actionToPerform }}', 'publish_dev_docker_image')
+        )
       )
     jobs:
-      - job: PUBLISH_DEV
-        displayName: 'Build and publish'
+      - job: PUBLISH
+        displayName: 'Publishing'
         timeoutInMinutes: 600
         steps:
           - checkout: self
@@ -1035,13 +1038,11 @@ stages:
           - bash: |
               TARGET_BRANCH="${{ parameters.targetBranch }}"
               if [ -n "$(echo "$TARGET_BRANCH" | tr -d '[:space:]')" ]; then
-                if git ls-remote --exit-code --heads origin "$TARGET_BRANCH" > /dev/null 2>&1; then
+                if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
                   echo "Branch '$TARGET_BRANCH' found, checking out"
-                  git fetch origin "$TARGET_BRANCH"
                   git checkout "$TARGET_BRANCH"
                 else
                   echo "Branch '$TARGET_BRANCH' not found, falling back to develop"
-                  git fetch origin develop
                   git checkout develop
                 fi
               fi
@@ -1061,68 +1062,31 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              set -e
-
-              ES_VERSION="${{ parameters.esVersion }}"
-              if [ -z "$(echo "$ES_VERSION" | tr -d '[:space:],')" ]; then
-                echo "Error: esVersion parameter is required"
-                exit 1
-              fi
-
-              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
-                echo "Error: Failed to login to Docker registry"
-                exit 1
-              fi
-
-              export BUILD_ROR_ES_VERSIONS="$ES_VERSION"
-
-              echo "[PUBLISH_DEV_DOCKER_IMAGE] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Building and publishing dev docker image" && ci/run-pipeline.sh
-            env:
-              ROR_TASK: publish_dev_docker_image
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-
-  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
-    displayName: 'Publish docker images for specified pre-builds'
-    dependsOn: [ ]
-    condition:
-      and(
-        succeeded(),
-        eq(variables['Build.Reason'], 'Manual'),
-        eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds')
-      )
-    jobs:
-      - job: PUBLISH
-        displayName: 'Publishing'
-        timeoutInMinutes: "600"
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
               set -ex
 
-              docker login -u $var_docker_registry_user -p $var_docker_registry_password
+              VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
+              if [ -z "$(echo "$VERSIONS" | tr -d '[:space:],')" ]; then
+                VERSIONS="${{ parameters.esVersion }}"
+              fi
+
+              if [ -z "$(echo "$VERSIONS" | tr -d '[:space:],')" ]; then
+                echo "Error: No ES versions specified for publishing"
+                exit 1
+              fi
+
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
                 exit 1
               fi
 
-              export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
+              export BUILD_ROR_ES_VERSIONS="$VERSIONS"
 
-              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
-                echo "Error: No ES versions specified for publishing ROR pre-builds"
-                exit 1
-              fi
-
-              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
+              echo "[PRE_BUILDS_DOCKER_IMAGE_PUBLISHING] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
-            timeoutInMinutes: "600"
+            timeoutInMinutes: 600
             condition: succeeded()
             env:
               ROR_TASK: publish_pre_builds_docker_images
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
