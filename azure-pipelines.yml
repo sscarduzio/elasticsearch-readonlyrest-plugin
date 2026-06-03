@@ -34,24 +34,10 @@ parameters:
   - name: actionToPerform
     type: string
     displayName: '(Manual) action to perform'
-    default: 'publish_docker_image_pre_builds'
+    default: 'run_all_tests_on_linux'
     values:
-      - 'publish_docker_image_pre_builds'
-      - 'publish_dev_docker_image'
       - 'run_all_tests_on_linux'
       - 'run_all_tests_on_windows'
-  - name: preBuildVersionsForPublishingToDockerHub
-    type: string
-    displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
-    default: ' '
-  - name: targetBranch
-    type: string
-    displayName: 'Target branch to checkout and build from (for publish_dev_docker_image)'
-    default: ' '
-  - name: esVersion
-    type: string
-    displayName: 'ES version to build and publish to dev DockerHub (e.g., "9.4.2")'
-    default: ' '
 
 pool:
   vmImage: 'ubuntu-24.04'
@@ -1013,80 +999,3 @@ stages:
               VAR_GPG_KEY_ID: $(GPG_KEY_ID)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
             condition: eq(404, variables.mvn_status)
-
-  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
-    displayName: 'Publish docker images for specified pre-builds'
-    dependsOn: [ ]
-    condition:
-      and(
-        succeeded(),
-        eq(variables['Build.Reason'], 'Manual'),
-        or(
-          eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds'),
-          eq('${{ parameters.actionToPerform }}', 'publish_dev_docker_image')
-        )
-      )
-    jobs:
-      - job: PUBLISH
-        displayName: 'Publishing'
-        timeoutInMinutes: 600
-        steps:
-          - checkout: self
-            fetchDepth: 0
-            clean: false
-            persistCredentials: true
-          - bash: |
-              TARGET_BRANCH="${{ parameters.targetBranch }}"
-              if [ -n "$(echo "$TARGET_BRANCH" | tr -d '[:space:]')" ]; then
-                if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
-                  echo "Branch '$TARGET_BRANCH' found, checking out"
-                  git checkout "$TARGET_BRANCH"
-                else
-                  echo "Branch '$TARGET_BRANCH' not found, falling back to develop"
-                  git checkout develop
-                fi
-              fi
-            displayName: 'Checkout target branch'
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '17'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              set -ex
-
-              VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
-              if [ -z "$(echo "$VERSIONS" | tr -d '[:space:],')" ]; then
-                VERSIONS="${{ parameters.esVersion }}"
-              fi
-
-              if [ -z "$(echo "$VERSIONS" | tr -d '[:space:],')" ]; then
-                echo "Error: No ES versions specified for publishing"
-                exit 1
-              fi
-
-              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
-                echo "Error: Failed to login to Docker registry"
-                exit 1
-              fi
-
-              export BUILD_ROR_ES_VERSIONS="$VERSIONS"
-
-              echo "[PRE_BUILDS_DOCKER_IMAGE_PUBLISHING] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
-            timeoutInMinutes: 600
-            condition: succeeded()
-            env:
-              ROR_TASK: publish_pre_builds_docker_images
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
