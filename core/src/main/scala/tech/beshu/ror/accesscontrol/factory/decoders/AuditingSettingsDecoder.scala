@@ -25,7 +25,6 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.ExplicitlyDisabledAcl
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{EsDataStreamBasedSink, EsIndexBasedSink, LogBasedSink, RollingFileBasedSink}
@@ -54,6 +53,22 @@ import scala.annotation.nowarn
 import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends RequestIdAwareLogging {
+
+  def defaultAclLogDecoder: Decoder[Boolean] = Decoder.instance { c =>
+    val nested = c.downField("audit").downField("default_acl_log")
+    val flat   = c.downField("audit.default_acl_log")
+    (nested.focus.isDefined, flat.focus.isDefined) match {
+      case (true, true) =>
+        Left(DecodingFailure(
+          message = AclCreationErrorCoders.stringify(auditSettingsError(
+            "Duplicated audit 'default_acl_log' setting: use either the nested form 'audit: {default_acl_log: ...}' or the flat form 'audit.default_acl_log', not both"
+          )),
+          ops = Nil
+        ))
+      case (true, false) => nested.as[Option[Boolean]].map(_.getOrElse(true))
+      case (false, _)    => flat.as[Option[Boolean]].map(_.getOrElse(true))
+    }
+  }
 
   def instance(esEnv: EsEnv): Decoder[Option[AuditOutputsConfig]] = {
     for {
@@ -218,19 +233,12 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             case AuditSinkType.Index => c.as[EsIndexBasedSink]
             case AuditSinkType.Log => c.as[AuditSink.Config](logBasedSinkConfigDecoder)
           }
-          isSinkEnabled <- c.downFieldAs[Option[Boolean]]("enabled")
-          sinkName <- c.downField("name").as[Option[Block.SinkName]]
+          isSinkEnabledOpt <- c.downFieldAs[Option[Boolean]]("enabled")
+          sinkNameOpt <- c.downField("name").as[Option[Block.SinkName]]
         } yield {
-          if (isSinkEnabled.getOrElse(true)) {
-            AuditSink.Enabled(sinkName.getOrElse(Block.SinkName.random()), sinkConfig)
-          } else {
-            sinkConfig match {
-              case s: Config.LogBasedSink if s.logSerializer.isInstanceOf[AclAuditLogSerializer] =>
-                ExplicitlyDisabledAcl
-              case _ =>
-                AuditSink.Disabled
-            }
-          }
+          val isSinkEnabled = isSinkEnabledOpt.getOrElse(true)
+          val sinkName = sinkNameOpt.getOrElse(Block.SinkName.random())
+          if (isSinkEnabled) AuditSink.Enabled(sinkName, sinkConfig) else AuditSink.Disabled
         }
       }
   }

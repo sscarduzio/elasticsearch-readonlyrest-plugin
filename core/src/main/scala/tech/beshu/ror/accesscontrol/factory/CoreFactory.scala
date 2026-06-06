@@ -56,6 +56,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 final case class Core(accessControl: AccessControlList,
                       dependencies: RorDependencies,
                       auditingSettings: Option[AuditingTool.AuditOutputsConfig],
+                      defaultAclLog: Boolean,
                       esNodeSettings: EsNodeSettings)
 
 trait CoreFactory {
@@ -125,7 +126,17 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
         if (!enabled) {
-          AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None, esEnv.esNodeSettings)))
+          AsyncDecoderCreator.from(
+            Decoder.const(
+              Core(
+                accessControl = DisabledAccessControlList,
+                dependencies = RorDependencies.noOp,
+                auditingSettings = None,
+                defaultAclLog = true,
+                esNodeSettings = esEnv.esNodeSettings,
+              )
+            )
+          )
         } else {
           for {
             globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(settingsIndex))
@@ -338,6 +349,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           )
         )
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
+        defaultAclLog <- AsyncDecoderCreator.from(AuditingSettingsDecoder.defaultAclLogDecoder)
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         externalGroupsProviderServices <- AsyncDecoderCreator.from(ExternalGroupsProviderServicesDecoder.instance(httpClientFactory))
@@ -413,7 +425,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             obfuscatedHeaders
           )
         ): AccessControlList
-        Core(accessControl, rorDependencies, auditingTools, esEnv.esNodeSettings)
+        Core(accessControl, rorDependencies, auditingTools, defaultAclLog, esEnv.esNodeSettings)
       }
       decoder.apply(c)
     }
