@@ -208,7 +208,7 @@ class ReadonlyRestStartingTests
             createCoreResult =
               Task
                 .sleep(100 millis)
-                .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None, defaultTestEsNodeSettings))) // very long creation
+                .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None, defaultAclLog = true, defaultTestEsNodeSettings))) // very long creation
           )
           mockSavingMainSettings(
             mockedIndexDocumentManager,
@@ -1524,7 +1524,7 @@ class ReadonlyRestStartingTests
         (settings: RawRorSettings, _, _, _, _) => settings == loadedMainSettings
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, dependencies, auditingSettings, defaultTestEsNodeSettings))))
+      .returns(Task.now(Right(Core(accessControlMock, dependencies, auditingSettings, defaultAclLog = true, defaultTestEsNodeSettings))))
     mockedCoreFactory
   }
 

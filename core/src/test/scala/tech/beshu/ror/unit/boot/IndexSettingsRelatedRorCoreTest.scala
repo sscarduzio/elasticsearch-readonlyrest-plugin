@@ -214,7 +214,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
         (settings: RawRorSettings, _, _, _, _) => settings == rawRorSettings
       })
       .once()
-      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, None, defaultTestEsNodeSettings))))
+      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, None, defaultAclLog = true, defaultTestEsNodeSettings))))
     mockedCoreFactory
   }
 
