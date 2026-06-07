@@ -47,7 +47,7 @@ public final class RollingFileAppenderFactory {
         return RollingFileAppender.newBuilder()
                 .withFileName(fileName)
                 .withFilePattern(filePattern)
-                .withLayout(layout)
+                .setLayout(layout)
                 .withPolicy(policy)
                 .withStrategy(strategy)
                 .setName(name)

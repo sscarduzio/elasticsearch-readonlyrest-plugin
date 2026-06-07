@@ -118,7 +118,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |""".stripMargin)
         inside(createCore(settings)) {
-          case Right(Core(acl: EnabledAccessControlList, _, _, _)) =>
+          case Right(Core(acl: EnabledAccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.policy should be(Block.Policy.Allow)
@@ -156,7 +156,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |""".stripMargin)
         inside(createCore(settings)) {
-          case Right(Core(acl: EnabledAccessControlList, _, _, _)) =>
+          case Right(Core(acl: EnabledAccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.policy should be(Block.Policy.Forbid(None))
@@ -439,7 +439,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           |""".stripMargin)
 
       inside(createCore(settings)) {
-        case Right(Core(acl: EnabledAccessControlList, _, _, _)) =>
+        case Right(Core(acl: EnabledAccessControlList, _, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid(None))
@@ -470,7 +470,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |""".stripMargin)
 
         inside(createCore(settings, new MockHttpClientsFactoryWithFixedHttpClient(mock[SimpleHttpClient[Task]]))) {
-          case Right(Core(acl: EnabledAccessControlList, _, _, _)) =>
+          case Right(Core(acl: EnabledAccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.rules should have size 2

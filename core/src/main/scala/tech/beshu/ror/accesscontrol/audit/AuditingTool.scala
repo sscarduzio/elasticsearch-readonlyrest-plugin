@@ -319,7 +319,7 @@ object AuditingTool extends RequestIdAwareLogging {
   private def applyDefaults(settings: Option[AuditOutputsConfig], defaultAclLog: Boolean): List[AuditSink] = {
     val sinks = settings match {
       case None => List.empty
-      case Some(AuditOutputsConfig.NoOutputsConfigured) => List.empty
+      case Some(AuditOutputsConfig.NoOutputsConfigured) => List(defaultIndexStorageSink)
       case Some(AuditOutputsConfig.WithOutputs(sinks)) => sinks.toList
     }
     if (defaultAclLog) defaultAclSink :: sinks else sinks

@@ -90,7 +90,7 @@ class MainSettingsApi(rorInstance: RorInstance,
         case s: Config.RollingFileBasedSink =>
           Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}] to file [${s.fileAppender.filePath}]"))
       }
-      case AuditSink.Disabled | AuditSink.ExplicitlyDisabledAcl => None
+      case AuditSink.Disabled => None
     }
     ProvideAuditSettings.AuditSettings(auditOutputs)
   }
