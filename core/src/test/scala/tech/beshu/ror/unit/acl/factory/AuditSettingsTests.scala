@@ -27,7 +27,8 @@ import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.WithOutputs
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
@@ -74,6 +75,31 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         )
 
         assertSettingsNoPresent(settings)
+      }
+      "have defaultAclLog enabled by default" in {
+        val settings = rorSettingsFromUnsafe(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    type: allow
+            |    auth_key: admin:container
+            |
+          """.stripMargin
+        )
+
+        val core = factory()
+          .createCoreFrom(
+            settings,
+            RorSettingsIndex(IndexName.Full(".readonlyrest")),
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider,
+            NoOpMocksProvider
+          )
+          .runSyncUnsafe()
+        inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, true, _))) => }
       }
     }
     "audit is disabled" should {
@@ -184,7 +210,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
             auditSinks.size should be(3)
 
             val sink1 = auditSinks.head
@@ -1342,7 +1368,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
             auditSinks.size should be(3)
 
             val sink1 = auditSinks.head
@@ -1394,7 +1420,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               NoOpMocksProvider
             )
             .runSyncUnsafe()
-          inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+          inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
             auditSinks.size should be(2)
 
             val sink1 = auditSinks.head
@@ -1407,6 +1433,51 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
             sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
+          }
+        }
+        "default_acl_log is true by default" should {
+          "produce defaultAclLog=true when audit is enabled with outputs and no explicit default_acl_log" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: index
+              """.stripMargin
+            )
+
+            val core = factory()
+              .createCoreFrom(
+                settings,
+                RorSettingsIndex(IndexName.Full(".readonlyrest")),
+                MockHttpClientsFactory,
+                MockLdapConnectionPoolProvider,
+                NoOpMocksProvider
+              )
+              .runSyncUnsafe()
+            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), true, _))) =>
+              auditSinks.size should be(1)
+              auditSinks.head shouldBe a[AuditSink.Enabled]
+            }
+          }
+          "produce defaultAclLog=true when audit is disabled and no explicit default_acl_log" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: false
+              """.stripMargin
+            )
+
+            val core = factory()
+              .createCoreFrom(
+                settings,
+                RorSettingsIndex(IndexName.Full(".readonlyrest")),
+                MockHttpClientsFactory,
+                MockLdapConnectionPoolProvider,
+                NoOpMocksProvider
+              )
+              .runSyncUnsafe()
+            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, true, _))) => }
           }
         }
         "default_acl_log is set to false" should {
@@ -1430,7 +1501,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 NoOpMocksProvider
               )
               .runSyncUnsafe()
-            inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), false, _)) =>
+            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), false, _))) =>
               auditSinks.size should be(1)
               auditSinks.head shouldBe a[AuditSink.Enabled]
               auditSinks.head.asInstanceOf[AuditSink.Enabled].config shouldBe a[Config.EsIndexBasedSink]
@@ -1454,7 +1525,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 NoOpMocksProvider
               )
               .runSyncUnsafe()
-            inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(AuditOutputsConfig.NoOutputsConfigured), false, _)) => }
+            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(AuditOutputsConfig.NoOutputsConfigured), false, _))) => }
           }
           "work with flat dot-notation key" in {
             val settings = rorSettingsWithAuditUnsafe(
@@ -1470,7 +1541,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 NoOpMocksProvider
               )
               .runSyncUnsafe()
-            inside(core) { case Right(Core(_, RorDependencies(_, _, _), None, false, _)) => }
+            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, false, _))) => }
           }
           "work regardless of audit enabled flag" in {
             val settings = rorSettingsWithAuditUnsafe(
@@ -1490,7 +1561,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 NoOpMocksProvider
               )
               .runSyncUnsafe()
-            inside(core) { case Right(Core(_, RorDependencies(_, _, _), None, false, _)) => }
+            inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, false, _))) => }
           }
           "reject duplicate default_acl_log key" in {
             val settings = rorSettingsWithAuditUnsafe(
@@ -2252,7 +2323,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), None, _, _)) => }
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, _, _))) => }
   }
 
   private def assertSettings(settings: RawRorSettings, expectedAuditSinks: NonEmptyList[AuditSink]): Unit = {
@@ -2265,7 +2336,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
       auditSinks should be(expectedAuditSinks)
     }
   }
@@ -2280,7 +2351,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(AuditOutputsConfig.NoOutputsConfigured), _, _)) => }
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(AuditOutputsConfig.NoOutputsConfigured), _, _))) => }
   }
 
   private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
@@ -2295,7 +2366,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head
@@ -2324,7 +2395,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head
@@ -2353,7 +2424,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       .runSyncUnsafe()
 
     core match {
-      case Right(Core(_, _, Some(WithOutputs(auditSinks)), _, _)) =>
+      case Right(Core(_, _, AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
         val headSink = auditSinks.head
         val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
         headSinkConfig.logSerializer
@@ -2373,7 +2444,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head
@@ -2400,7 +2471,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         NoOpMocksProvider
       )
       .runSyncUnsafe()
-    inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(WithOutputs(auditSinks)), _, _)) =>
+    inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
       auditSinks.size should be(1)
 
       val headSink = auditSinks.head

@@ -160,9 +160,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
             auditingTool = auditingTool
           ),
           dependencies = core.dependencies,
-          auditingSettings = core.auditingSettings,
-          defaultAclLog = core.defaultAclLog,
-          esNodeSettings = core.esNodeSettings
+          auditingConfig = core.auditingConfig,
         )
         new Engine(
           core = decoratedCore,
@@ -175,7 +173,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private def createAuditingTool(core: Core)
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
-    AuditingTool.create(core.auditingSettings, core.esNodeSettings, auditSinkServiceCreator, core.defaultAclLog)(using systemContext.clock, loggingContext)
+    AuditingTool.create(core.auditingConfig, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
       .map {
         _.leftMap {
           _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))

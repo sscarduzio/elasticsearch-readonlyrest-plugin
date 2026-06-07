@@ -23,7 +23,7 @@ import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool}
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
@@ -54,7 +54,19 @@ import scala.util.{Failure, Success, Try}
 
 object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
-  def defaultAclLogDecoder: Decoder[Boolean] = Decoder.instance { c =>
+  def instance(esEnv: EsEnv): Decoder[AuditingConfig] = {
+    for {
+      auditSettings <- auditSettingsDecoder(esEnv)
+      deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
+      defaultAclLog <- defaultAclLogDecoder
+    } yield AuditingConfig(
+      outputsConfig = auditSettings.orElse(deprecatedAuditSettings),
+      defaultAclLog = defaultAclLog,
+      esNodeSettings = esEnv.esNodeSettings,
+    )
+  }
+
+  private def defaultAclLogDecoder: Decoder[Boolean] = Decoder.instance { c =>
     val nested = c.downField("audit").downField("default_acl_log")
     val flat   = c.downField("audit.default_acl_log")
     (nested.focus.isDefined, flat.focus.isDefined) match {
@@ -68,13 +80,6 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       case (true, false) => nested.as[Option[Boolean]].map(_.getOrElse(true))
       case (false, _)    => flat.as[Option[Boolean]].map(_.getOrElse(true))
     }
-  }
-
-  def instance(esEnv: EsEnv): Decoder[Option[AuditOutputsConfig]] = {
-    for {
-      auditSettings <- auditSettingsDecoder(esEnv)
-      deprecatedAuditSettings <- DeprecatedAuditSettingsDecoder.instance
-    } yield auditSettings.orElse(deprecatedAuditSettings)
   }
 
   private def auditSettingsDecoder(esEnv: EsEnv): Decoder[Option[AuditOutputsConfig]] =
