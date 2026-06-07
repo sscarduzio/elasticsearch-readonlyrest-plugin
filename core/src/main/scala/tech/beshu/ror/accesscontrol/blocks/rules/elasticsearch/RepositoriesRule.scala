@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, staticallyResolvedValues}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
@@ -42,6 +42,12 @@ class RepositoriesRule(val settings: Settings)
   override val name: Rule.Name = RepositoriesRule.Name.name
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+
+  // Built once when the allowed repositories are statically configured (no runtime
+  // variables); otherwise the matcher is created per request from the resolved values.
+  private val staticAllowedRepositoriesMatcher: Option[PatternsMatcher[RepositoryName]] =
+    staticallyResolvedValues(settings.allowedRepositories.toNonEmptyList)
+      .map(values => PatternsMatcher.create(values))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
@@ -87,7 +93,7 @@ class RepositoriesRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.check(
         repositoriesToCheck,
-        PatternsMatcher.create(allowedRepositories)
+        staticAllowedRepositoriesMatcher.getOrElse(PatternsMatcher.create(allowedRepositories))
       ) match {
         case CheckResult.Ok(processedRepositories) if requestContext.isReadOnlyRequest =>
           Right(processedRepositories)

@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeDataStreamsFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeDataStreamsFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, staticallyResolvedValues}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
@@ -44,6 +44,12 @@ class DataStreamsRule(val settings: Settings)
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeDataStreamsFilterScalaAdapter(
     new ZeroKnowledgeIndexFilter(true)
   )
+
+  // Built once when the allowed data streams are statically configured (no runtime
+  // variables); otherwise the matcher is created per request from the resolved values.
+  private val staticAllowedDataStreamsMatcher: Option[PatternsMatcher[DataStreamName]] =
+    staticallyResolvedValues(settings.allowedDataStreams.toNonEmptyList)
+      .map(values => PatternsMatcher.create(values))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
@@ -75,7 +81,7 @@ class DataStreamsRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.check(
         dataStreamsToCheck,
-        PatternsMatcher.create(allowedDataStreams)
+        staticAllowedDataStreamsMatcher.getOrElse(PatternsMatcher.create(allowedDataStreams))
       ) match {
         case CheckResult.Ok(processedDataStreams) if requestContext.isReadOnlyRequest =>
           Right(processedDataStreams)

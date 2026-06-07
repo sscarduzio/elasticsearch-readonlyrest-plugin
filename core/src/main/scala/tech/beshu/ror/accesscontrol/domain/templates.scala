@@ -91,7 +91,7 @@ object TemplateOperation {
     extends TemplateOperation
 }
 
-final case class TemplateName(value: NonEmptyString)
+final case class TemplateName(value: NonEmptyString) extends EagerHashCode
 object TemplateName {
   def fromString(value: String): Option[TemplateName] = {
     NonEmptyString.from(value).map(TemplateName.apply).toOption
@@ -100,7 +100,7 @@ object TemplateName {
   implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
 }
 
-final case class TemplateNamePattern(value: NonEmptyString) {
+final case class TemplateNamePattern(value: NonEmptyString) extends EagerHashCode {
   private lazy val matcher = TemplateNamePatternMatcher.create(Set(this))
 
   def matches(templateName: TemplateName): Boolean = matcher.`match`(templateName)

@@ -106,27 +106,25 @@ trait AllClusterIndices extends BaseIndicesProcessor {
   }
 
   private def splitIntoRemoteAndLocalIndices(indices: Iterable[ClusterIndexName]) = {
-    indices.foldLeft((Set.empty[ClusterIndexName.Remote], Set.empty[ClusterIndexName.Local])) {
-      case ((remoteIndicesList, localIndicesList), currentIndex) =>
-        currentIndex match {
-          case local: ClusterIndexName.Local =>
-            (remoteIndicesList, localIndicesList + local)
-          case remote: ClusterIndexName.Remote =>
-            (remoteIndicesList + remote, localIndicesList)
-        }
+    val remoteIndices = Set.newBuilder[ClusterIndexName.Remote]
+    val localIndices = Set.newBuilder[ClusterIndexName.Local]
+    indices.foreach {
+      case local: ClusterIndexName.Local => localIndices += local
+      case remote: ClusterIndexName.Remote => remoteIndices += remote
     }
+    (remoteIndices.result(), localIndices.result())
   }
 
   private def splitIntoRequestedRemoteAndLocalIndices(indices: Iterable[RequestedIndex[ClusterIndexName]]) = {
-    indices.foldLeft((Set.empty[RequestedIndex[ClusterIndexName.Remote]], Set.empty[RequestedIndex[ClusterIndexName.Local]])) {
-      case ((remoteIndicesList, localIndicesList), currentIndex) =>
-        currentIndex.name match {
-          case local: ClusterIndexName.Local =>
-            (remoteIndicesList, localIndicesList + RequestedIndex(local, currentIndex.excluded))
-          case remote: ClusterIndexName.Remote =>
-            (remoteIndicesList + RequestedIndex(remote, currentIndex.excluded), localIndicesList)
-        }
+    val remoteIndices = Set.newBuilder[RequestedIndex[ClusterIndexName.Remote]]
+    val localIndices = Set.newBuilder[RequestedIndex[ClusterIndexName.Local]]
+    indices.foreach { requestedIndex =>
+      requestedIndex.name match {
+        case local: ClusterIndexName.Local => localIndices += RequestedIndex(local, requestedIndex.excluded)
+        case remote: ClusterIndexName.Remote => remoteIndices += RequestedIndex(remote, requestedIndex.excluded)
+      }
     }
+    (remoteIndices.result(), localIndices.result())
   }
 
 }

@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, D
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeMatchFilterScalaAdapter}
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, staticallyResolvedValues}
 import tech.beshu.ror.syntax.*
 
 class SnapshotsRule(val settings: Settings)
@@ -38,6 +38,12 @@ class SnapshotsRule(val settings: Settings)
   override val name: Rule.Name = SnapshotsRule.Name.name
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
+
+  // Built once when the allowed snapshots are statically configured (no runtime
+  // variables); otherwise the matcher is created per request from the resolved values.
+  private val staticAllowedSnapshotsMatcher: Option[PatternsMatcher[SnapshotName]] =
+    staticallyResolvedValues(settings.allowedSnapshots.toNonEmptyList)
+      .map(values => PatternsMatcher.create(values))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
@@ -61,7 +67,7 @@ class SnapshotsRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.alterSnapshotsIfNecessary(
         blockContext.snapshots,
-        PatternsMatcher.create(allowedSnapshots)
+        staticAllowedSnapshotsMatcher.getOrElse(PatternsMatcher.create(allowedSnapshots))
       ) match {
         case NotAltered() =>
           Permitted(blockContext)

@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.kibana
 
 import cats.Id
 import cats.data.ReaderT
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
@@ -27,9 +28,11 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.*
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName.*
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.regex.Pattern
+import scala.concurrent.ExecutionContext.global
 import scala.util.Try
 
 trait KibanaRelatedRule {
@@ -129,11 +132,7 @@ abstract class BaseKibanaRule(val settings: Settings)
   // Save UI state in discover & Short urls
   private lazy val isNonStrictAllowedPath = ProcessingContext.create { (bc, kibanaIndexName) =>
     val path = bc.requestContext.restRequest.path
-    val nonStrictAllowedPaths = Try(Pattern.compile(
-      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
-        .replace("@kibana_index", kibanaIndexName.stringify)
-    )).toOption
-    val result = nonStrictAllowedPaths match {
+    val result = nonStrictAllowedPathsPatternFor(kibanaIndexName) match {
       case Some(paths) => paths.matcher(path.value.value).find()
       case None => false
     }
@@ -274,6 +273,31 @@ object BaseKibanaRule {
 
   abstract class Settings(val access: KibanaAccess,
                           val rorIndex: RorSettingsIndex)
+
+  // The regex only varies by the Kibana index name (typically a single, static value),
+  // so the compiled Pattern is cached per Kibana index instead of being recompiled on
+  // every non-strict path check.
+  private val nonStrictAllowedPathsRegexTemplate =
+    "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
+
+  private val nonStrictAllowedPathsPatternCache: Cache[KibanaIndexName, Option[Pattern]] =
+    doPrivileged {
+      Caffeine.newBuilder()
+        .executor(global)
+        .maximumSize(1000)
+        .build[KibanaIndexName, Option[Pattern]]()
+    }
+
+  private def nonStrictAllowedPathsPatternFor(kibanaIndexName: KibanaIndexName): Option[Pattern] = {
+    Option(nonStrictAllowedPathsPatternCache.getIfPresent(kibanaIndexName))
+      .getOrElse {
+        val compiled = Try(Pattern.compile(
+          nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", kibanaIndexName.stringify)
+        )).toOption
+        nonStrictAllowedPathsPatternCache.put(kibanaIndexName, compiled)
+        compiled
+      }
+  }
 
   type ProcessingContext = ReaderT[Id, (BlockContext, KibanaIndexName), Boolean]
   object ProcessingContext {

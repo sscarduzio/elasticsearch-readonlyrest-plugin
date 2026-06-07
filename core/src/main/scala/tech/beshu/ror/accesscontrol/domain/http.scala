@@ -42,9 +42,9 @@ object CorrelationId {
   implicit val show: Show[CorrelationId] = Show.show(_.value.value)
 }
 
-final case class Header(name: Header.Name, value: NonEmptyString)
+final case class Header(name: Header.Name, value: NonEmptyString) extends EagerHashCode
 object Header {
-  final case class Name(value: NonEmptyString)
+  final case class Name(value: NonEmptyString) extends EagerHashCode
   object Name {
     val authorization = Name(nes("Authorization"))
     val xApiKeyHeaderName = Header.Name(nes("X-Api-Key"))
