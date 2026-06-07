@@ -39,12 +39,67 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
     else {
       val raw = matchable.show(value)
       val norm = if (ignoreCase) raw.toLowerCase else raw
-      compiled.exact.contains(norm) ||
-        compiled.prefixes.exists(norm.startsWith) ||
-        compiled.suffixes.exists(norm.endsWith) ||
-        compiled.infixes.exists(norm.contains) ||
-        compiled.complex.exists(_.matches(raw)) // raw (not norm): the glob engine handles case-insensitivity via globFlags
+      matchesExact(norm) ||
+        matchesPrefix(norm) ||
+        matchesSuffix(norm) ||
+        matchesInfix(norm) ||
+        matchesComplex(raw) // raw (not norm): the glob engine handles case-insensitivity via globFlags
     }
+  }
+
+  // The hot inner loops below use a plain `while` over `Array`s and the same
+  // `String.startsWith`/`endsWith`/`indexOf` calls the previous `Iterable.exists`
+  // closures used. This drops the per-call closure allocations and Vector iterator
+  // overhead while leaning on those String methods (JIT intrinsics) — matching
+  // semantics are unchanged.
+
+  private def matchesExact(norm: String): Boolean = {
+    val exact = compiled.exact
+    exact.nonEmpty && exact.contains(norm)
+  }
+
+  private def matchesPrefix(norm: String): Boolean = {
+    val arr = compiled.prefixes
+    var i = 0
+    var found = false
+    while (!found && i < arr.length) {
+      found = norm.startsWith(arr(i))
+      i += 1
+    }
+    found
+  }
+
+  private def matchesSuffix(norm: String): Boolean = {
+    val arr = compiled.suffixes
+    var i = 0
+    var found = false
+    while (!found && i < arr.length) {
+      found = norm.endsWith(arr(i))
+      i += 1
+    }
+    found
+  }
+
+  private def matchesInfix(norm: String): Boolean = {
+    val arr = compiled.infixes
+    var i = 0
+    var found = false
+    while (!found && i < arr.length) {
+      found = norm.indexOf(arr(i)) >= 0
+      i += 1
+    }
+    found
+  }
+
+  private def matchesComplex(raw: String): Boolean = {
+    val arr = compiled.complex
+    var i = 0
+    var found = false
+    while (!found && i < arr.length) {
+      found = arr(i).matches(raw)
+      i += 1
+    }
+    found
   }
 
   override def `match`[B: Conversion](value: B): Boolean = {
@@ -73,12 +128,15 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
 
 private[matchers] object GlobPatternsMatcher {
 
+  // All buckets are pre-normalized (lower-cased when case-insensitive) so matching can
+  // compare against an equally-normalized candidate. Stored as Arrays so the hot match
+  // loops iterate without allocating Vector iterators or `exists` closures.
   private final case class Compiled(matchAll: Boolean,
                                     exact: Set[String],
-                                    prefixes: Vector[String],
-                                    suffixes: Vector[String],
-                                    infixes: Vector[String],
-                                    complex: Vector[MatchingEngine])
+                                    prefixes: Array[String],
+                                    suffixes: Array[String],
+                                    infixes: Array[String],
+                                    complex: Array[MatchingEngine])
 
   private object Compiled {
     def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
@@ -87,10 +145,10 @@ private[matchers] object GlobPatternsMatcher {
       Compiled(
         matchAll = kinds.contains(Kind.All),
         exact    = kinds.collect { case Kind.Exact(p)   => norm(p) }.toCovariantSet,
-        prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) },
-        suffixes = kinds.collect { case Kind.Suffix(p)  => norm(p) },
-        infixes  = kinds.collect { case Kind.Infix(p)   => norm(p) },
-        complex  = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }
+        prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) }.toArray,
+        suffixes = kinds.collect { case Kind.Suffix(p)  => norm(p) }.toArray,
+        infixes  = kinds.collect { case Kind.Infix(p)   => norm(p) }.toArray,
+        complex  = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }.toArray
       )
     }
   }
