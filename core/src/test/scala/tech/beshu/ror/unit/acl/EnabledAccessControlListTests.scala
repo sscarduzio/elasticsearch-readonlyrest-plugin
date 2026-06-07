@@ -485,8 +485,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
     new Block(
       name = Block.Name(name),
       policy = policy,
-      verbosity = Block.Verbosity.Info,
-      audit = Block.Audit.Enabled,
+      audit = Block.Audit.Enabled(),
       rules = NonEmptyList.of(authorizationRule("groups", userId, groups), perGroupKibanaIndexRule("kibana"))
     )
   }

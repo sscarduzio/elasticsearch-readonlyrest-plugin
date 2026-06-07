@@ -329,8 +329,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
     new Block(
       name = Block.Name("test_block"),
       policy = Block.Policy.Allow,
-      verbosity = Block.Verbosity.Info,
-      audit = Block.Audit.Enabled,
+      audit = Block.Audit.Enabled(),
       rules = NonEmptyList.fromListUnsafe(rules.toList)
     )
 
