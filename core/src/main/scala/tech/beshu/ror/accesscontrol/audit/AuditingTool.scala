@@ -184,10 +184,10 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
   }
 
   private def toAuditVerbosity(audit: Audit): AuditResponseContext.Verbosity = audit match {
-    case e: Audit.Enabled =>
-      if (e.logAllowedEvents) AuditResponseContext.Verbosity.Info else AuditResponseContext.Verbosity.Error
+    case Audit.Enabled(logAllowedEvents, _, _) =>
+      if (logAllowedEvents) AuditResponseContext.Verbosity.Info else AuditResponseContext.Verbosity.Error
     case Audit.Disabled =>
-      AuditResponseContext.Verbosity.Error
+      AuditResponseContext.Verbosity.Info
   }
 
   private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],
