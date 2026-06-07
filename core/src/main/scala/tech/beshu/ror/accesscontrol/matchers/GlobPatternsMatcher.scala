@@ -131,18 +131,22 @@ private[matchers] object GlobPatternsMatcher {
   // All buckets are pre-normalized (lower-cased when case-insensitive) so matching can
   // compare against an equally-normalized candidate. Stored as Arrays so the hot match
   // loops iterate without allocating Vector iterators or `exists` closures.
-  private final case class Compiled(matchAll: Boolean,
-                                    exact: Set[String],
-                                    prefixes: Array[String],
-                                    suffixes: Array[String],
-                                    infixes: Array[String],
-                                    complex: Array[MatchingEngine])
+  // Plain class (not `case class`): it holds `Array` fields, for which the compiler-derived
+  // case-class `equals`/`hashCode`/`copy` would use reference identity — a value-like façade
+  // over reference semantics. It is created once per matcher and never compared or copied, so
+  // a plain class keeps that intent explicit and avoids the latent trap.
+  private final class Compiled(val matchAll: Boolean,
+                               val exact: Set[String],
+                               val prefixes: Array[String],
+                               val suffixes: Array[String],
+                               val infixes: Array[String],
+                               val complex: Array[MatchingEngine])
 
   private object Compiled {
     def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
       def norm(s: String) = if (ignoreCase) s.toLowerCase else s
       val kinds = patterns.iterator.map(Kind.of).toVector
-      Compiled(
+      new Compiled(
         matchAll = kinds.contains(Kind.All),
         exact    = kinds.collect { case Kind.Exact(p)   => norm(p) }.toCovariantSet,
         prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) }.toArray,

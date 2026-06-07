@@ -39,7 +39,11 @@ private[http] abstract class BaseHeaderRule
 
   protected def isFulfilled(accessRequirement: AccessRequirement[Header],
                             requestHeaders: Set[Header]): Boolean = {
-    val matches = compiledMatcherByRequirement.getOrElse(accessRequirement, matcherFor(accessRequirement.value))
+    // Direct lookup (no `getOrElse` fallback): a subclass that passes a requirement it did not
+    // enumerate in `headerAccessRequirements` is a programming error, and we want it to fail fast
+    // here rather than silently fall back to building a matcher per request (the very cost this
+    // precompilation removes). With the current subclasses this lookup always hits.
+    val matches = compiledMatcherByRequirement(accessRequirement)
     accessRequirement match {
       case AccessRequirement.MustBePresent(_) => requestHeaders.exists(matches)
       case AccessRequirement.MustBeAbsent(_) => requestHeaders.forall(!matches(_))

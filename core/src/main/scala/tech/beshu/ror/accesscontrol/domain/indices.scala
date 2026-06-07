@@ -117,14 +117,11 @@ object KibanaIndexName {
     s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
   )
 
-  private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
-    Option(kibanaIndicesRegexesCache.getIfPresent(kibanaIndex))
-      .getOrElse {
-        val kibanaIndicesRegexes = createKibanaRelatedIndicesRegexes(kibanaIndex)
-        kibanaIndicesRegexesCache.put(kibanaIndex, kibanaIndicesRegexes)
-        kibanaIndicesRegexes
-      }
-  }
+  private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) =
+    // Caffeine's atomic loader compiles the regex vector at most once per Kibana index even under
+    // concurrent first access, instead of the racy `getIfPresent`/`put` (both threads miss, both
+    // compile). Matches the pattern used by `nonStrictAllowedPathsPatternCache` in `BaseKibanaRule`.
+    kibanaIndicesRegexesCache.get(kibanaIndex, createKibanaRelatedIndicesRegexes)
 
   extension (indexName: ClusterIndexName)
     def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {

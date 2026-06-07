@@ -30,8 +30,10 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
-    maven { url 'https://jitpack.io' }
+    // The S3 bucket is required because this module depends on `:core`, whose transitive
+    // artifacts (ES libs, shaded deps) are published there and resolved against this module's
+    // repository list. `jitpack.io` and the gradle libs-releases repo are not needed by any
+    // declared or transitive dependency of the benchmark module.
     maven {
         url = "s3://" + (System.env.BUCKET ?: "beshu") + "/build"
         authentication {

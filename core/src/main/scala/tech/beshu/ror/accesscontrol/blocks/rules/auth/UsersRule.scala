@@ -39,7 +39,7 @@ class UsersRule(val settings: Settings,
   // variables); otherwise the matcher is created per request from the resolved values.
   private val staticUserIdsMatcher: Option[PatternsMatcher[User.Id]] =
     staticallyResolvedValues(settings.userIds.toNonEmptyList)
-      .map(values => PatternsMatcher.create(values))
+      .map(values => PatternsMatcher.create(values.toSet)) // `.toSet` to dedup, consistent with the dynamic path below
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.blockMetadata.loggedUser match {
