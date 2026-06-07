@@ -289,14 +289,15 @@ object BaseKibanaRule {
     }
 
   private def nonStrictAllowedPathsPatternFor(kibanaIndexName: KibanaIndexName): Option[Pattern] = {
-    Option(nonStrictAllowedPathsPatternCache.getIfPresent(kibanaIndexName))
-      .getOrElse {
-        val compiled = Try(Pattern.compile(
-          nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", kibanaIndexName.stringify)
-        )).toOption
-        nonStrictAllowedPathsPatternCache.put(kibanaIndexName, compiled)
-        compiled
-      }
+    // Caffeine's atomic loader guarantees the pattern is compiled at most once per
+    // Kibana index even under concurrent access. `None` (the compile-failure sentinel)
+    // is a valid non-null value, so it is stored and retrieved like any other entry.
+    nonStrictAllowedPathsPatternCache.get(
+      kibanaIndexName,
+      _ => Try(Pattern.compile(
+        nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", kibanaIndexName.stringify)
+      )).toOption
+    )
   }
 
   type ProcessingContext = ReaderT[Id, (BlockContext, KibanaIndexName), Boolean]

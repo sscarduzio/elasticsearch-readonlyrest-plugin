@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule.{AllowedDataStreams, Settings}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
@@ -46,10 +46,12 @@ class DataStreamsRule(val settings: Settings)
   )
 
   // Built once when the allowed data streams are statically configured (no runtime
-  // variables); otherwise the matcher is created per request from the resolved values.
-  private val staticAllowedDataStreamsMatcher: Option[PatternsMatcher[DataStreamName]] =
+  // variables); otherwise the matcher (and the wildcard short-circuit) is computed
+  // per request from the resolved values. When static, the per-request `resolveAll`
+  // is bypassed entirely (matching `UsersRule`).
+  private val staticAllowedDataStreams: Option[AllowedDataStreams] =
     staticallyResolvedValues(settings.allowedDataStreams.toNonEmptyList)
-      .map(values => PatternsMatcher.create(values))
+      .map(values => AllowedDataStreams.from(values.toCovariantSet))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
@@ -62,8 +64,11 @@ class DataStreamsRule(val settings: Settings)
 
   private def checkDataStreams[B <: BlockContext](blockContext: DataStreamRequestBlockContext)
                                                  (implicit ev: DataStreamRequestBlockContext <:< B): Decision[B] = {
+    val allowedDataStreams = staticAllowedDataStreams.getOrElse {
+      AllowedDataStreams.from(resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toCovariantSet)
+    }
     checkAllowedDataStreams(
-      resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toCovariantSet,
+      allowedDataStreams,
       blockContext.dataStreams,
       blockContext.requestContext
     ) match {
@@ -72,16 +77,16 @@ class DataStreamsRule(val settings: Settings)
     }
   }
 
-  private def checkAllowedDataStreams(allowedDataStreams: Set[DataStreamName],
+  private def checkAllowedDataStreams(allowedDataStreams: AllowedDataStreams,
                                       dataStreamsToCheck: Set[DataStreamName],
                                       requestContext: RequestContext) = {
     implicit val requestContextImpl: RequestContext = requestContext
-    if (allowedDataStreams.contains(DataStreamName.All) || allowedDataStreams.contains(DataStreamName.Wildcard)) {
+    if (allowedDataStreams.hasWildcard) {
       Right(dataStreamsToCheck)
     } else {
       zeroKnowledgeMatchFilter.check(
         dataStreamsToCheck,
-        staticAllowedDataStreamsMatcher.getOrElse(PatternsMatcher.create(allowedDataStreams))
+        allowedDataStreams.matcher
       ) match {
         case CheckResult.Ok(processedDataStreams) if requestContext.isReadOnlyRequest =>
           Right(processedDataStreams)
@@ -108,4 +113,17 @@ object DataStreamsRule {
   }
 
   final case class Settings(allowedDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]])
+
+  // Bundles the wildcard short-circuit flag with the matcher so both can be precomputed
+  // once for static configurations. The matcher is lazy so the wildcard path (which
+  // short-circuits before matching) never pays for building it.
+  private final class AllowedDataStreams(val hasWildcard: Boolean, allowedDataStreams: Set[DataStreamName]) {
+    lazy val matcher: PatternsMatcher[DataStreamName] = PatternsMatcher.create(allowedDataStreams)
+  }
+  private object AllowedDataStreams {
+    def from(allowedDataStreams: Set[DataStreamName]): AllowedDataStreams = {
+      val hasWildcard = allowedDataStreams.contains(DataStreamName.All) || allowedDataStreams.contains(DataStreamName.Wildcard)
+      new AllowedDataStreams(hasWildcard, allowedDataStreams)
+    }
+  }
 }

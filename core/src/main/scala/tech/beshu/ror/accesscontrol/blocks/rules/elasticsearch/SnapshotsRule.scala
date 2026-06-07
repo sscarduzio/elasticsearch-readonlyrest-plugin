@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
-import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule.{AllowedSnapshots, Settings}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
@@ -40,34 +40,36 @@ class SnapshotsRule(val settings: Settings)
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
   // Built once when the allowed snapshots are statically configured (no runtime
-  // variables); otherwise the matcher is created per request from the resolved values.
-  private val staticAllowedSnapshotsMatcher: Option[PatternsMatcher[SnapshotName]] =
+  // variables); otherwise the matcher (and the wildcard short-circuit) is computed
+  // per request from the resolved values. When static, the per-request `resolveAll`
+  // is bypassed entirely (matching `UsersRule`).
+  private val staticAllowedSnapshots: Option[AllowedSnapshots] =
     staticallyResolvedValues(settings.allowedSnapshots.toNonEmptyList)
-      .map(values => PatternsMatcher.create(values))
+      .map(values => AllowedSnapshots.from(values.toCovariantSet))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.UserMetadataRequestBlockContextUpdater =>
         Permitted(blockContext)
       case BlockContextUpdater.SnapshotRequestBlockContextUpdater =>
-        checkAllowedSnapshots(
-          resolveAll(settings.allowedSnapshots.toNonEmptyList, blockContext).toCovariantSet,
-          blockContext
-        )
+        val allowedSnapshots = staticAllowedSnapshots.getOrElse {
+          AllowedSnapshots.from(resolveAll(settings.allowedSnapshots.toNonEmptyList, blockContext).toCovariantSet)
+        }
+        checkAllowedSnapshots(allowedSnapshots, blockContext)
       case _ =>
         Permitted(blockContext)
     }
   }
 
-  private def checkAllowedSnapshots[B <: BlockContext](allowedSnapshots: Set[SnapshotName],
+  private def checkAllowedSnapshots[B <: BlockContext](allowedSnapshots: AllowedSnapshots,
                                                        blockContext: SnapshotRequestBlockContext)
                                                       (implicit ev: SnapshotRequestBlockContext <:< B): Decision[B] = {
-    if (allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)) {
+    if (allowedSnapshots.hasWildcard) {
       Permitted(blockContext)
     } else {
       zeroKnowledgeMatchFilter.alterSnapshotsIfNecessary(
         blockContext.snapshots,
-        staticAllowedSnapshotsMatcher.getOrElse(PatternsMatcher.create(allowedSnapshots))
+        allowedSnapshots.matcher
       ) match {
         case NotAltered() =>
           Permitted(blockContext)
@@ -87,4 +89,17 @@ object SnapshotsRule {
   }
 
   final case class Settings(allowedSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]])
+
+  // Bundles the wildcard short-circuit flag with the matcher so both can be precomputed
+  // once for static configurations. The matcher is lazy so the wildcard path (which
+  // short-circuits before matching) never pays for building it.
+  private final class AllowedSnapshots(val hasWildcard: Boolean, allowedSnapshots: Set[SnapshotName]) {
+    lazy val matcher: PatternsMatcher[SnapshotName] = PatternsMatcher.create(allowedSnapshots)
+  }
+  private object AllowedSnapshots {
+    def from(allowedSnapshots: Set[SnapshotName]): AllowedSnapshots = {
+      val hasWildcard = allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)
+      new AllowedSnapshots(hasWildcard, allowedSnapshots)
+    }
+  }
 }
