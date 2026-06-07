@@ -38,4 +38,12 @@ configuration of the rest of the project — any issue only surfaces when `:benc
 ## Benchmarks
 
 - `GlobPatternsMatcherBenchmark` — single-candidate `match` and bulk `filter` for small/large
-  allowed-pattern sets, case-sensitive and case-insensitive.
+  allowed-pattern sets, case-sensitive and case-insensitive. Targets the inner match-loop
+  rewrite (`Array` + `while` instead of `Vector` + `exists(closure)`).
+
+- `RuleStaticResolutionBenchmark` — the per-request work for a **statically configured**
+  `DataStreamsRule`/`RepositoriesRule`/`SnapshotsRule`: the old path
+  (`resolveAll(...).toCovariantSet` + `PatternsMatcher.create` on every request) vs the new
+  path (reuse the matcher precomputed once at rule construction). Quantifies the
+  `resolveAll`-bypass optimization. Run with `-prof gc` to see the per-request allocation
+  removed on the static path.
