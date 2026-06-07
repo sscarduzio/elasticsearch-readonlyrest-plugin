@@ -47,3 +47,14 @@ configuration of the rest of the project — any issue only surfaces when `:benc
   path (reuse the matcher precomputed once at rule construction). Quantifies the
   `resolveAll`-bypass optimization. Run with `-prof gc` to see the per-request allocation
   removed on the static path.
+
+- `HeaderRuleMatchBenchmark` — the per-request `headers_and`/`headers_or` matching cost: the old
+  path (`PatternsMatcher.create(value :: Nil)` per requirement×header comparison) vs the new path
+  (value matchers compiled once at `BaseHeaderRule` construction). Few- and many-requirement
+  scenarios show the win scales with the number of configured headers; it is primarily an
+  allocation reduction (~50–58% B/op) with a modest time gain (`-prof gc` shows the allocation
+  removed).
+
+> **Note:** the JMH source generator (`jmhGenerate`) does not clean its output between runs, so
+> after renaming/removing a `@Benchmark` method run `./gradlew :benchmarks:clean` once before
+> `:benchmarks:jmh`.

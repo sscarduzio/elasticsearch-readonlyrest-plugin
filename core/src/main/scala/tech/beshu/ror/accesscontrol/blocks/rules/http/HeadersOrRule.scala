@@ -36,6 +36,9 @@ class HeadersOrRule(val settings: Settings)
 
   override val name: Rule.Name = HeadersOrRule.Name.name
 
+  override protected val headerAccessRequirements: Iterable[AccessRequirement[Header]] =
+    settings.headerAccessRequirements.toSortedSet
+
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
       when = {

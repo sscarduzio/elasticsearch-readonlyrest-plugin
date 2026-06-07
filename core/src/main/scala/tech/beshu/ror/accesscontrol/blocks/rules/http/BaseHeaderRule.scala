@@ -26,24 +26,31 @@ import tech.beshu.ror.syntax.*
 private[http] abstract class BaseHeaderRule
   extends RegularRule {
 
+  // The configured header requirements (and therefore their value-matching globs) are
+  // static for the lifetime of the rule. Precompile each requirement's value matcher once
+  // at construction instead of building a fresh single-element `PatternsMatcher` for every
+  // (requirement x request header) pair on every request.
+  protected def headerAccessRequirements: Iterable[AccessRequirement[Header]]
+
+  // `lazy` because `headerAccessRequirements` is provided by a subclass `val`, which is not
+  // yet initialized while this base-class constructor runs.
+  private lazy val compiledMatcherByRequirement: Map[AccessRequirement[Header], Header => Boolean] =
+    headerAccessRequirements.iterator.map(req => req -> matcherFor(req.value)).toMap
+
   protected def isFulfilled(accessRequirement: AccessRequirement[Header],
                             requestHeaders: Set[Header]): Boolean = {
+    val matches = compiledMatcherByRequirement.getOrElse(accessRequirement, matcherFor(accessRequirement.value))
     accessRequirement match {
-      case AccessRequirement.MustBePresent(requiredHeader) =>
-        requestHeaders.exists(matches(requiredHeader, _))
-      case AccessRequirement.MustBeAbsent(forbiddenHeader) =>
-        requestHeaders.forall(!matches(forbiddenHeader, _))
+      case AccessRequirement.MustBePresent(_) => requestHeaders.exists(matches)
+      case AccessRequirement.MustBeAbsent(_) => requestHeaders.forall(!matches(_))
     }
   }
 
-  private def matches(pattern: Header, header: Header) = {
-    if (pattern.name === header.name) {
-      implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
-      PatternsMatcher
-        .create(pattern.value.value :: Nil)
-        .`match`(header.value.value)
-    } else {
-      false
-    }
+  // Header-name comparison is case-insensitive (per `Header.Name`'s `Eq`) and the value
+  // comparison is case-sensitive — exactly the original per-request `matches` semantics.
+  private def matcherFor(pattern: Header): Header => Boolean = {
+    implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
+    val valueMatcher = PatternsMatcher.create(pattern.value.value :: Nil)
+    header => header.name === pattern.name && valueMatcher.`match`(header.value.value)
   }
 }
