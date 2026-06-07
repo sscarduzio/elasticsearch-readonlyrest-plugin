@@ -120,7 +120,7 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   def auditSettings: Option[AuditingTool.AuditOutputsConfig] = {
-    theMainSettingsEngine.engine.flatMap(_.core.auditingSettings)
+    theMainSettingsEngine.engine.flatMap(_.core.auditingConfig.outputsConfig)
   }
 
   def stop(): Task[Unit] = {

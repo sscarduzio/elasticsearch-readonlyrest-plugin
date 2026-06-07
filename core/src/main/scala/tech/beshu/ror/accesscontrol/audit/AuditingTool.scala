@@ -288,18 +288,20 @@ object AuditingTool extends RequestIdAwareLogging {
     final case class WithOutputs(auditSinks: NonEmptyList[AuditSettings.AuditSink]) extends AuditOutputsConfig
   }
 
+  final case class AuditingConfig(outputsConfig: Option[AuditOutputsConfig],
+                                  defaultAclLog: Boolean,
+                                  esNodeSettings: EsNodeSettings)
+
   final case class CreationError(message: String) extends AnyVal
 
-  def create(settings: Option[AuditOutputsConfig],
-             esNodeSettings: EsNodeSettings,
-             auditSinkServiceCreator: AuditSinkServiceCreator,
-             defaultAclLog: Boolean)
+  def create(config: AuditingConfig,
+             auditSinkServiceCreator: AuditSinkServiceCreator)
             (implicit clock: Clock,
              loggingContext: LoggingContext): Task[Either[NonEmptyList[CreationError], AuditingTool]] = {
-    val effectiveSinks = applyDefaults(settings, defaultAclLog)
+    val effectiveSinks = applyDefaults(config.outputsConfig, config.defaultAclLog)
     createAuditSinks(effectiveSinks, auditSinkServiceCreator).map {
       _.map { auditSinks =>
-          implicit val auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(esNodeSettings)
+          implicit val auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(config.esNodeSettings)
           if (auditSinks.isEmpty) {
             noRequestIdLogger.info("The audit is disabled because no output is enabled")
           } else {

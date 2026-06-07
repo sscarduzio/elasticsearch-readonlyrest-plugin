@@ -46,7 +46,7 @@ import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
-import tech.beshu.ror.es.{EsEnv, EsNodeSettings}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -55,9 +55,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControlList,
                       dependencies: RorDependencies,
-                      auditingSettings: Option[AuditingTool.AuditOutputsConfig],
-                      defaultAclLog: Boolean,
-                      esNodeSettings: EsNodeSettings)
+                      auditingConfig: AuditingTool.AuditingConfig)
 
 trait CoreFactory {
   def createCoreFrom(rorSettings: RawRorSettings,
@@ -131,9 +129,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
               Core(
                 accessControl = DisabledAccessControlList,
                 dependencies = RorDependencies.noOp,
-                auditingSettings = None,
-                defaultAclLog = true,
-                esNodeSettings = esEnv.esNodeSettings,
+                auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, esEnv.esNodeSettings),
               )
             )
           )
@@ -348,8 +344,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
-        defaultAclLog <- AsyncDecoderCreator.from(AuditingSettingsDecoder.defaultAclLogDecoder)
+        auditingConfig <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         externalGroupsProviderServices <- AsyncDecoderCreator.from(ExternalGroupsProviderServicesDecoder.instance(httpClientFactory))
@@ -425,7 +420,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             obfuscatedHeaders
           )
         ): AccessControlList
-        Core(accessControl, rorDependencies, auditingTools, defaultAclLog, esEnv.esNodeSettings)
+        Core(accessControl, rorDependencies, auditingConfig)
       }
       decoder.apply(c)
     }
