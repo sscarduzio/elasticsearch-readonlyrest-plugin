@@ -122,8 +122,9 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
           case UserMetadata.WithGroups(groupsMetadata) =>
             val auditsFromGroupMetadataBlocks = groupsMetadata.values.map(_.metadataOrigin.blockContext.block.audit)
             Some {
-              if (auditsFromGroupMetadataBlocks.exists(_ == Block.Audit.Enabled())) Block.Audit.Enabled()
-              else Block.Audit.Disabled
+              auditsFromGroupMetadataBlocks
+                .collectFirst { case e: Block.Audit.Enabled => e }
+                .getOrElse(Block.Audit.Disabled)
             }
         }
       case ForbiddenBy(_, blockContext, _) => Some(blockContext.block.audit)

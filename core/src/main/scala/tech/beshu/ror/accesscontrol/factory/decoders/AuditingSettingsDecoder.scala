@@ -186,7 +186,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
     given logSinkSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
       c.as[SerializerType].flatMap {
         case SerializerType.AclSerializer => Right(Some(new AclAuditLogSerializer))
-        case _                            => c.as[Option[AuditLogSerializer]](auditLogSerializerDecoder)
+        case st                           => decodeNonAclSerializer(st, c)
       }
     }
 
@@ -276,24 +276,24 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       .decoder
 
   given auditLogSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
-    for {
-      serializerTypeStr <- c.as[SerializerType]
-      result <- serializerTypeStr match {
-        case SerializerType.SimpleSyntaxStaticSerializer =>
-          c.as[Option[AuditLogSerializer]](simpleSyntaxSerializerDecoder)
-        case SerializerType.ExtendedSyntaxStaticSerializer =>
-          c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxStaticSerializerDecoder)
-        case SerializerType.ExtendedSyntaxConfigurableSerializer =>
-          c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
-        case SerializerType.EcsSerializer =>
-          c.downField("serializer").as[Option[AuditLogSerializer]](ecsSerializerDecoder)
-        case SerializerType.AclSerializer =>
-          Left(DecodingFailure(AclCreationErrorCoders.stringify(
-            auditSettingsError("ACL serializer can only be used with log-based sinks (type: log or type: log_file)")
-          ), Nil))
-      }
-    } yield result
+    c.as[SerializerType].flatMap(decodeNonAclSerializer(_, c))
   }
+
+  private def decodeNonAclSerializer(serializerType: SerializerType, c: HCursor): Decoder.Result[Option[AuditLogSerializer]] =
+    serializerType match {
+      case SerializerType.SimpleSyntaxStaticSerializer =>
+        c.as[Option[AuditLogSerializer]](simpleSyntaxSerializerDecoder)
+      case SerializerType.ExtendedSyntaxStaticSerializer =>
+        c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxStaticSerializerDecoder)
+      case SerializerType.ExtendedSyntaxConfigurableSerializer =>
+        c.downField("serializer").as[Option[AuditLogSerializer]](extendedSyntaxConfigurableSerializerDecoder)
+      case SerializerType.EcsSerializer =>
+        c.downField("serializer").as[Option[AuditLogSerializer]](ecsSerializerDecoder)
+      case SerializerType.AclSerializer =>
+        Left(DecodingFailure(AclCreationErrorCoders.stringify(
+          auditSettingsError("ACL serializer can only be used with log-based sinks (type: log)")
+        ), Nil))
+    }
 
   private def ecsSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
     for {

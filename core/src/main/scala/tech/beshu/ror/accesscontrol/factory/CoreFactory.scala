@@ -25,6 +25,8 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -400,6 +402,30 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
+
+        val globalSinkNames: Set[Block.SinkName] = auditingConfig.outputsConfig match {
+          case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
+            sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
+          case _ => Set.empty
+        }
+        blocks.toList.foreach { block =>
+          block.audit match {
+            case Block.Audit.Enabled(_, Some(enabledSinks), _) =>
+              val unknown = enabledSinks -- globalSinkNames
+              if (unknown.nonEmpty)
+                noRequestIdLogger.warn(
+                  s"Block '${block.name.value}': 'enabled_audit_sinks' references [${unknown.map(_.value).mkString(", ")}] that do not match any named audit output — no audit events will be produced for this block"
+                )
+            case Block.Audit.Enabled(_, _, Some(disabledSinks)) =>
+              val unknown = disabledSinks -- globalSinkNames
+              if (unknown.nonEmpty)
+                noRequestIdLogger.warn(
+                  s"Block '${block.name.value}': 'disabled_audit_sinks' references [${unknown.map(_.value).mkString(", ")}] that do not match any named audit output"
+                )
+            case _ => ()
+          }
+        }
+
         val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
 
         val rorDependencies = RorDependencies(

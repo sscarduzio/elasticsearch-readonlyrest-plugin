@@ -40,7 +40,7 @@ private[audit] final class RollingFileBasedAuditSink private(sinkName: Block.Sin
                                (implicit requestId: RequestId): Task[Unit] = Task {
     serializer match {
       case s: AclAuditLogSerializer =>
-        logger.info(s.formatMessage(event, logger.isDebugEnabled))
+        logger.info(s"[${requestId.value}] ${s.formatMessage(event, logger.isDebugEnabled)}")
       case _ =>
         logger.info(serializedEvent.toString)
     }
