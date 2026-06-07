@@ -1,0 +1,41 @@
+# benchmarks
+
+JMH micro-benchmarks for `core` ACL hot paths.
+
+The benchmarks run against the **real** production classes (e.g. `GlobPatternsMatcher` via the
+public `PatternsMatcher.create` factory), so the numbers reflect the actual code, not a re-implementation.
+
+## Running
+
+```bash
+# quick run, all benchmarks (2 forks, 5 warmup + 5 measurement iterations)
+./gradlew :benchmarks:jmh
+
+# run a subset and tune JMH options via -PjmhArgs (a single quoted string of JMH CLI args)
+./gradlew :benchmarks:jmh -PjmhArgs="GlobPatternsMatcher -f 2 -wi 5 -i 5"
+
+# include the GC profiler to see allocation rate (B/op) — the metric most affected
+# by the array+while vs Vector+exists(closure) change
+./gradlew :benchmarks:jmh -PjmhArgs="GlobPatternsMatcher -prof gc"
+```
+
+`-PjmhArgs` accepts any [JMH CLI options](https://github.com/openjdk/jmh): a benchmark-name
+regex, `-f` forks, `-wi`/`-i` warmup/measurement iterations, `-prof gc|stack|...`, `-rf json -rff out.json`, etc.
+
+## How it is wired
+
+This module deliberately uses **plain `JavaExec`/`JavaCompile` tasks** instead of a third-party JMH
+Gradle plugin:
+
+1. `jmhGenerate` runs JMH's ASM bytecode generator over the compiled `@Benchmark` classes
+   (works with Scala bytecode) to produce the JMH infrastructure.
+2. `jmhCompileGenerated` compiles the generated Java.
+3. `jmh` runs `org.openjdk.jmh.Main`.
+
+Because nothing here applies a Gradle plugin, having this module in the build cannot affect
+configuration of the rest of the project — any issue only surfaces when `:benchmarks:jmh` is run.
+
+## Benchmarks
+
+- `GlobPatternsMatcherBenchmark` — single-candidate `match` and bulk `filter` for small/large
+  allowed-pattern sets, case-sensitive and case-insensitive.
