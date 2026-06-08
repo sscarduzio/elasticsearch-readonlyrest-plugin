@@ -39,6 +39,8 @@ class AclAuditLogSerializer extends AuditLogSerializer {
       case ctx: AuditRequestContextBasedOnAclResult[?] =>
         given Show[Header] = if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
         ctx.aclMessageShow(debugEnabled).show(ctx.responseContext)
+      case ctx =>
+        throw new IllegalStateException(s"Unsupported AuditRequestContext type: ${ctx.getClass.getName}")
     }
   }
 }

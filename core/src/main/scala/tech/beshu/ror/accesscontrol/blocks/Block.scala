@@ -223,6 +223,7 @@ object Block {
 
   final case class SinkName(value: String) extends AnyVal
   object SinkName {
+    val defaultAclLog: SinkName = SinkName("default_acl_log")
     def random(): SinkName = SinkName(java.util.UUID.randomUUID().toString)
   }
 

@@ -291,23 +291,34 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                                     auditingConfig: AuditingTool.AuditingConfig): AsyncDecoder[Unit] =
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
-        val globalSinkNames: scala.collection.Set[Block.SinkName] = auditingConfig.outputsConfig match {
+        val configuredSinkNames: scala.collection.Set[Block.SinkName] = auditingConfig.outputsConfig match {
           case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
             sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
           case _ => scala.collection.Set.empty
         }
+        val globalSinkNames: scala.collection.Set[Block.SinkName] =
+          if (auditingConfig.defaultAclLog) configuredSinkNames + Block.SinkName.defaultAclLog
+          else configuredSinkNames
         val errors = blocksNel.toList.map(_.block).flatMap { block =>
           block.audit match {
             case Block.Audit.Enabled(_, Some(enabledSinks), _) =>
-              val unknown = enabledSinks -- globalSinkNames
-              if (unknown.nonEmpty)
-                List(s"Block '${block.name.value}': 'enabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
-              else Nil
+              if (enabledSinks.isEmpty)
+                List(s"Block '${block.name.value}': 'enabled_audit_sinks' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'")
+              else {
+                val unknown = enabledSinks -- globalSinkNames
+                if (unknown.nonEmpty)
+                  List(s"Block '${block.name.value}': 'enabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+                else Nil
+              }
             case Block.Audit.Enabled(_, _, Some(disabledSinks)) =>
-              val unknown = disabledSinks -- globalSinkNames
-              if (unknown.nonEmpty)
-                List(s"Block '${block.name.value}': 'disabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
-              else Nil
+              if (disabledSinks.isEmpty)
+                List(s"Block '${block.name.value}': 'disabled_audit_sinks' cannot be empty")
+              else {
+                val unknown = disabledSinks -- globalSinkNames
+                if (unknown.nonEmpty)
+                  List(s"Block '${block.name.value}': 'disabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+                else Nil
+              }
             case _ => Nil
           }
         }
