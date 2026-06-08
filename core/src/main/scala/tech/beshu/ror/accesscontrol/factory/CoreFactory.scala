@@ -291,12 +291,12 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                                     auditingConfig: AuditingTool.AuditingConfig): AsyncDecoder[Unit] =
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
-        val globalSinkNames: Set[Block.SinkName] = auditingConfig.outputsConfig match {
+        val globalSinkNames: scala.collection.Set[Block.SinkName] = auditingConfig.outputsConfig match {
           case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
             sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
-          case _ => Set.empty
+          case _ => scala.collection.Set.empty
         }
-        val errors = blocksNel.toList.flatMap { block =>
+        val errors = blocksNel.toList.map(_.block).flatMap { block =>
           block.audit match {
             case Block.Audit.Enabled(_, Some(enabledSinks), _) =>
               val unknown = enabledSinks -- globalSinkNames
