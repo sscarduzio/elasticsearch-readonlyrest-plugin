@@ -32,15 +32,10 @@ parameters:
   - name: actionToPerform
     type: string
     displayName: '(Manual) action to perform'
-    default: 'publish_docker_image_pre_builds'
+    default: 'run_all_tests_on_linux'
     values:
-      - 'publish_docker_image_pre_builds'
       - 'run_all_tests_on_linux'
       - 'run_all_tests_on_windows'
-  - name: preBuildVersionsForPublishingToDockerHub
-    type: string
-    displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
-    default: ' '
 
 pool:
   vmImage: 'ubuntu-24.04'
@@ -1002,46 +997,3 @@ stages:
               VAR_GPG_KEY_ID: $(GPG_KEY_ID)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
             condition: eq(404, variables.mvn_status)
-
-  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
-    displayName: 'Publish docker images for specified pre-builds'
-    dependsOn: [ ]
-    condition:
-      and(
-        succeeded(),
-        eq(variables['Build.Reason'], 'Manual'),
-        eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds')
-      )
-    jobs:
-      - job: PUBLISH
-        displayName: 'Publishing'
-        timeoutInMinutes: "600"
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              set -ex
-
-              docker login -u $var_docker_registry_user -p $var_docker_registry_password
-              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
-                echo "Error: Failed to login to Docker registry"
-                exit 1
-              fi
-
-              export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
-
-              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
-                echo "Error: No ES versions specified for publishing ROR pre-builds"
-                exit 1
-              fi
-
-              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
-            timeoutInMinutes: "600"
-            condition: succeeded()
-            env:
-              ROR_TASK: publish_pre_builds_docker_images
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)

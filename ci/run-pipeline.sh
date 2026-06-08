@@ -465,6 +465,11 @@ fi
 
 if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 
+  if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
+    echo "Error: BUILD_ROR_ES_VERSIONS is required"
+    exit 1
+  fi
+
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
     if [ -n "$VERSION" ]; then
