@@ -21,7 +21,7 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
-import org.testcontainers.containers.{GenericContainer, Network}
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
@@ -88,7 +88,7 @@ abstract class EsContainer(val esVersion: String,
         container.addExposedPort(9300)
         container.addExposedPort(8000)
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
-        container.setNetwork(Network.SHARED)
+        container.setNetwork(TestNetwork.perFork)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
         // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
         container.withCreateContainerCmdModifier { cmd =>
