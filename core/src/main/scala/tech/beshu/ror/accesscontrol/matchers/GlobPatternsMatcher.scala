@@ -20,6 +20,7 @@ import com.hrakaroo.glob.{GlobPattern, MatchingEngine}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.existsWith
 
 private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A])
   extends PatternsMatcher[A] {
@@ -47,60 +48,14 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
     }
   }
 
-  // The hot inner loops below use a plain `while` over `Array`s and the same
-  // `String.startsWith`/`endsWith`/`indexOf` calls the previous `Iterable.exists`
-  // closures used. This drops the per-call closure allocations and Vector iterator
-  // overhead while leaning on those String methods (JIT intrinsics) — matching
-  // semantics are unchanged.
-
-  private def matchesExact(norm: String): Boolean = {
-    val exact = compiled.exact
-    exact.nonEmpty && exact.contains(norm)
-  }
-
-  private def matchesPrefix(norm: String): Boolean = {
-    val arr = compiled.prefixes
-    var i = 0
-    var found = false
-    while (!found && i < arr.length) {
-      found = norm.startsWith(arr(i))
-      i += 1
-    }
-    found
-  }
-
-  private def matchesSuffix(norm: String): Boolean = {
-    val arr = compiled.suffixes
-    var i = 0
-    var found = false
-    while (!found && i < arr.length) {
-      found = norm.endsWith(arr(i))
-      i += 1
-    }
-    found
-  }
-
-  private def matchesInfix(norm: String): Boolean = {
-    val arr = compiled.infixes
-    var i = 0
-    var found = false
-    while (!found && i < arr.length) {
-      found = norm.indexOf(arr(i)) >= 0
-      i += 1
-    }
-    found
-  }
-
-  private def matchesComplex(raw: String): Boolean = {
-    val arr = compiled.complex
-    var i = 0
-    var found = false
-    while (!found && i < arr.length) {
-      found = arr(i).matches(raw)
-      i += 1
-    }
-    found
-  }
+  // `Array.existsWith` (ScalaOps) is an allocation-free indexed `while` with an inlined predicate,
+  // calling the same `String.startsWith`/`endsWith`/`indexOf`/glob-engine methods (JIT intrinsics)
+  // the previous `Iterable.exists` closures used — without the closure + iterator allocations.
+  private def matchesExact(norm: String): Boolean = compiled.exact.contains(norm)
+  private def matchesPrefix(norm: String): Boolean = compiled.prefixes.existsWith(norm.startsWith)
+  private def matchesSuffix(norm: String): Boolean = compiled.suffixes.existsWith(norm.endsWith)
+  private def matchesInfix(norm: String): Boolean = compiled.infixes.existsWith(norm.indexOf(_) >= 0)
+  private def matchesComplex(raw: String): Boolean = compiled.complex.existsWith(_.matches(raw))
 
   override def `match`[B: Conversion](value: B): Boolean = {
     val conv = implicitly[Conversion[B]]

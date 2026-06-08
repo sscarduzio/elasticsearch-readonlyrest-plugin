@@ -16,53 +16,49 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.accesscontrol.blocks.rules.http.BaseHeaderRule.{CompiledRequirement, Settings}
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
-private[http] abstract class BaseHeaderRule
+abstract class BaseHeaderRule(val settings: Settings)
   extends RegularRule {
 
-  // The configured header requirements (and therefore their value-matching globs) are
-  // static for the lifetime of the rule. Precompile each requirement's value matcher once
-  // at construction instead of building a fresh single-element `PatternsMatcher` for every
-  // (requirement x request header) pair on every request.
-  protected def headerAccessRequirements: Iterable[AccessRequirement[Header]]
+  // Each requirement's value matcher is compiled once at construction (the configured requirements
+  // are static for the rule's lifetime) instead of building a fresh single-element `PatternsMatcher`
+  // for every (requirement x request header) pair on every request. The pairing of a requirement
+  // with its matcher is the only thing `isFulfilled` ever sees, so a "missing matcher" is impossible
+  // by construction (no runtime lookup, no fallback).
+  protected val compiledRequirements: NonEmptyList[CompiledRequirement] =
+    settings.headerAccessRequirements.toNonEmptyList.map(CompiledRequirement.compile)
 
-  // `lazy` because `headerAccessRequirements` is provided by a subclass `val`, which is not
-  // yet initialized while this base-class constructor runs.
-  private lazy val compiledMatcherByRequirement: Map[AccessRequirement[Header], Header => Boolean] =
-    headerAccessRequirements.iterator.map(req => req -> matcherFor(req.value)).toMap
-
-  protected def isFulfilled(accessRequirement: AccessRequirement[Header],
-                            requestHeaders: Set[Header]): Boolean = {
-    // Direct lookup (no silent `getOrElse(matcherFor(...))` fallback): a subclass that passes a
-    // requirement it did not enumerate in `headerAccessRequirements` is a programming error, and we
-    // want it to fail fast here rather than silently rebuild a matcher per request (the very cost
-    // this precompilation removes). The explicit message makes that contract violation legible
-    // instead of surfacing as a bare `NoSuchElementException`. With the current subclasses this
-    // lookup always hits.
-    val matches = compiledMatcherByRequirement.getOrElse(
-      accessRequirement,
-      throw new IllegalStateException(
-        s"Precompilation miss for header requirement [$accessRequirement]. A BaseHeaderRule subclass " +
-          "must enumerate in `headerAccessRequirements` every requirement it passes to `isFulfilled`."
-      )
-    )
-    accessRequirement match {
-      case AccessRequirement.MustBePresent(_) => requestHeaders.exists(matches)
-      case AccessRequirement.MustBeAbsent(_) => requestHeaders.forall(!matches(_))
+  protected def isFulfilled(requirement: CompiledRequirement, requestHeaders: Set[Header]): Boolean =
+    requirement.accessRequirement match {
+      case AccessRequirement.MustBePresent(_) => requestHeaders.exists(requirement.matches)
+      case AccessRequirement.MustBeAbsent(_) => requestHeaders.forall(!requirement.matches(_))
     }
-  }
+}
 
-  // Header-name comparison is case-insensitive (per `Header.Name`'s `Eq`) and the value
-  // comparison is case-sensitive — exactly the original per-request `matches` semantics.
-  private def matcherFor(pattern: Header): Header => Boolean = {
-    implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
-    val valueMatcher = PatternsMatcher.create(pattern.value.value :: Nil)
-    header => header.name === pattern.name && valueMatcher.`match`(header.value.value)
+object BaseHeaderRule {
+
+  final case class Settings(headerAccessRequirements: NonEmptySet[AccessRequirement[Header]])
+
+  // A header requirement paired with its precompiled value matcher. Header-name comparison is
+  // case-insensitive (per `Header.Name`'s `Eq`) and the value comparison is case-sensitive — exactly
+  // the original per-request matching semantics.
+  final case class CompiledRequirement(accessRequirement: AccessRequirement[Header], matches: Header => Boolean)
+  object CompiledRequirement {
+    def compile(accessRequirement: AccessRequirement[Header]): CompiledRequirement = {
+      val pattern = accessRequirement.value
+      implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
+      val valueMatcher = PatternsMatcher.create(pattern.value.value :: Nil)
+      val matches: Header => Boolean =
+        header => header.name === pattern.name && valueMatcher.`match`(header.value.value)
+      CompiledRequirement(accessRequirement, matches)
+    }
   }
 }

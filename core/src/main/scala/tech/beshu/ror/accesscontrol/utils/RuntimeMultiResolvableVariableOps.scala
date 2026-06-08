@@ -36,18 +36,10 @@ object RuntimeMultiResolvableVariableOps {
       }
   }
 
-  /**
-   * Returns the fully resolved values when every variable is a static constant
-   * (i.e. does not depend on the request/block context). In that case the result
-   * is identical for every request, so structures derived from it (e.g. a
-   * `PatternsMatcher`) can be built once up front instead of on every request.
-   * Returns `None` when at least one value must be resolved per request.
-   */
-  def staticallyResolvedValues[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]]): Option[List[T]] =
+  def resolveAllIfPreResolved[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]]): Option[NonEmptyList[T]] =
     variables
-      .toList
       .traverse {
-        case AlreadyResolved(values) => Some(values.toList)
+        case AlreadyResolved(values) => Some(values)
         case ToBeResolved(_) => None
       }
       .map(_.flatten)

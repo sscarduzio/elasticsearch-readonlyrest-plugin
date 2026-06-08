@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, D
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeMatchFilterScalaAdapter}
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, staticallyResolvedValues}
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.syntax.*
 
 class SnapshotsRule(val settings: Settings)
@@ -39,13 +39,11 @@ class SnapshotsRule(val settings: Settings)
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  // Built once when the allowed snapshots are statically configured (no runtime
-  // variables); otherwise the matcher (and the wildcard short-circuit) is computed
-  // per request from the resolved values. When static, the per-request `resolveAll`
-  // is bypassed entirely (matching `UsersRule`).
+  // Optimization: when the allowed snapshots are pre-resolved, build the matcher once instead of
+  // per request.
   private val staticAllowedSnapshots: Option[AllowedSnapshots] =
-    staticallyResolvedValues(settings.allowedSnapshots.toNonEmptyList)
-      .map(values => AllowedSnapshots.from(values.toCovariantSet))
+    resolveAllIfPreResolved(settings.allowedSnapshots.toNonEmptyList)
+      .map(snapshots => AllowedSnapshots.from(snapshots.toList.toCovariantSet))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
@@ -90,10 +88,8 @@ object SnapshotsRule {
 
   final case class Settings(allowedSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]])
 
-  // Bundles the wildcard short-circuit flag with the matcher so both can be precomputed
-  // once for static configurations. The matcher is lazy so the wildcard path (which
-  // short-circuits before matching) never pays for building it.
-  private final class AllowedSnapshots(val hasWildcard: Boolean, allowedSnapshots: Set[SnapshotName]) {
+  // The matcher is lazy so the wildcard path (which short-circuits before matching) never builds it.
+  private final class AllowedSnapshots private(val hasWildcard: Boolean, allowedSnapshots: Set[SnapshotName]) {
     lazy val matcher: PatternsMatcher[SnapshotName] = PatternsMatcher.create(allowedSnapshots)
   }
   private object AllowedSnapshots {

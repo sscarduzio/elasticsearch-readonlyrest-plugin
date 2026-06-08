@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, staticallyResolvedValues}
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
@@ -43,13 +43,11 @@ class RepositoriesRule(val settings: Settings)
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
-  // Built once when the allowed repositories are statically configured (no runtime
-  // variables); otherwise the matcher (and the wildcard short-circuit) is computed
-  // per request from the resolved values. When static, the per-request `resolveAll`
-  // is bypassed entirely (matching `UsersRule`).
+  // Optimization: when the allowed repositories are pre-resolved, build the matcher once instead
+  // of per request.
   private val staticAllowedRepositories: Option[AllowedRepositories] =
-    staticallyResolvedValues(settings.allowedRepositories.toNonEmptyList)
-      .map(values => AllowedRepositories.from(values.toCovariantSet))
+    resolveAllIfPreResolved(settings.allowedRepositories.toNonEmptyList)
+      .map(repositories => AllowedRepositories.from(repositories.toList.toCovariantSet))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
@@ -61,11 +59,6 @@ class RepositoriesRule(val settings: Settings)
         Permitted(blockContext)
     }
   }
-
-  private def allowedRepositoriesFor(blockContext: BlockContext): AllowedRepositories =
-    staticAllowedRepositories.getOrElse {
-      AllowedRepositories.from(resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet)
-    }
 
   private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)
                                                   (implicit ev: RepositoryRequestBlockContext <:< B): Decision[B] = {
@@ -90,6 +83,11 @@ class RepositoriesRule(val settings: Settings)
       case Left(_) => Denied(Cause.NotAuthorized)
     }
   }
+
+  private def allowedRepositoriesFor(blockContext: BlockContext): AllowedRepositories =
+    staticAllowedRepositories.getOrElse {
+      AllowedRepositories.from(resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet)
+    }
 
   private def checkAllowedRepositories(allowedRepositories: AllowedRepositories,
                                        repositoriesToCheck: Set[RepositoryName],
@@ -129,10 +127,8 @@ object RepositoriesRule {
 
   final case class Settings(allowedRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]])
 
-  // Bundles the wildcard short-circuit flag with the matcher so both can be precomputed
-  // once for static configurations. The matcher is lazy so the wildcard path (which
-  // short-circuits before matching) never pays for building it.
-  private final class AllowedRepositories(val hasWildcard: Boolean, allowedRepositories: Set[RepositoryName]) {
+  // The matcher is lazy so the wildcard path (which short-circuits before matching) never builds it.
+  private final class AllowedRepositories private(val hasWildcard: Boolean, allowedRepositories: Set[RepositoryName]) {
     lazy val matcher: PatternsMatcher[RepositoryName] = PatternsMatcher.create(allowedRepositories)
   }
   private object AllowedRepositories {

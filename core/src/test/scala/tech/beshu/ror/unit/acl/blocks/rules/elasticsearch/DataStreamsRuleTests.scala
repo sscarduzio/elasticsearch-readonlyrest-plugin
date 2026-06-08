@@ -151,9 +151,6 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
       }
     }
     "match a runtime variable" when {
-      // Dynamic path: the configured value is a `ToBeResolved` runtime variable (`@{user}`), so the
-      // rule resolves it per request via `resolveAll` (the `getOrElse` fallback) rather than the
-      // precomputed static matcher. Guards the non-static branch left unchanged by the optimization.
       "it resolves to the requested data stream" in {
         assertMatchRule(
           configuredDataStreams = NonEmptySet.one(dataStreamNameVar("@{user}")),
