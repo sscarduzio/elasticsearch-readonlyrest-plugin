@@ -55,20 +55,16 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
   }
 
   private def activeSinksFor[B <: BlockContext](response: ResponseContext[B]): List[BaseAuditSink] = {
-    val blockAuditEnabled: Option[Audit.Enabled] = response match {
-      case allowedBy: ResponseContext.AllowedBy[B] =>
-        allowedBy.blockContext.block.audit match {
-          case e: Audit.Enabled => Some(e);
-          case _ => None
-        }
-      case forbiddenBy: ResponseContext.ForbiddenBy[B] =>
-        forbiddenBy.blockContext.block.audit match {
-          case e: Audit.Enabled => Some(e);
-          case _ => None
-        }
+    val blockAudit: Option[Audit] = response match {
+      case allowedBy: ResponseContext.AllowedBy[B] => Some(allowedBy.blockContext.block.audit)
+      case forbiddenBy: ResponseContext.ForbiddenBy[B] => Some(forbiddenBy.blockContext.block.audit)
       case _ => None
     }
-    filterSinks(blockAuditEnabled)
+    blockAudit match {
+      case Some(Audit.Disabled) => List.empty
+      case Some(e: Audit.Enabled) => filterSinks(Some(e))
+      case None => filterSinks(None)
+    }
   }
 
   private def filterSinks(blockAudit: Option[Audit.Enabled]): List[BaseAuditSink] = {
@@ -90,12 +86,7 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
     }
   }
 
-  def close(): Task[Unit] = {
-    NonEmptyList.fromList(auditSinks) match {
-      case Some(nel) => nel.parTraverse(_.close()).map((_: NonEmptyList[Unit]) => ())
-      case None => Task.unit
-    }
-  }
+  def close(): Task[Unit] = auditSinks.traverse(_.close()).void
 
   private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): AuditResponseContext = {
     responseContext match {
@@ -326,7 +317,7 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   private def defaultAclSink = AuditSink.Enabled(
-    Block.SinkName.random(),
+    Block.SinkName.defaultAclLog,
     AuditSink.Config.LogBasedSink(new AclAuditLogSerializer, AclAuditLogSerializer.defaultLoggerName)
   )
 

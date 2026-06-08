@@ -67,13 +67,13 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   }
 
   private def defaultAclLogDecoder: Decoder[Boolean] = Decoder.instance { c =>
-    val nested = c.downField("audit").downField("default_acl_log")
-    val flat   = c.downField("audit.default_acl_log")
+    val nested = c.downField("audit").downField("default_acl_log_enabled")
+    val flat   = c.downField("audit.default_acl_log_enabled")
     (nested.focus.isDefined, flat.focus.isDefined) match {
       case (true, true) =>
         Left(DecodingFailure(
           message = AclCreationErrorCoders.stringify(auditSettingsError(
-            "Duplicated audit 'default_acl_log' setting: use either the nested form 'audit: {default_acl_log: ...}' or the flat form 'audit.default_acl_log', not both"
+            "Duplicated audit 'default_acl_log_enabled' setting: use either the nested form 'audit: {default_acl_log_enabled: ...}' or the flat form 'audit.default_acl_log_enabled', not both"
           )),
           ops = Nil
         ))

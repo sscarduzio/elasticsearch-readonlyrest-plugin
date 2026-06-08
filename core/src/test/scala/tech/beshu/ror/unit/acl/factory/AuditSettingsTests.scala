@@ -1434,8 +1434,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
           }
         }
-        "default_acl_log is true by default" should {
-          "produce defaultAclLog=true when audit is enabled with outputs and no explicit default_acl_log" in {
+        "default_acl_log_enabled is true by default" should {
+          "produce defaultAclLog=true when audit is enabled with outputs and no explicit default_acl_log_enabled" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
@@ -1459,7 +1459,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               auditSinks.head shouldBe a[AuditSink.Enabled]
             }
           }
-          "produce defaultAclLog=true when audit is disabled and no explicit default_acl_log" in {
+          "produce defaultAclLog=true when audit is disabled and no explicit default_acl_log_enabled" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
@@ -1479,13 +1479,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, true, _))) => }
           }
         }
-        "default_acl_log is set to false" should {
+        "default_acl_log_enabled is set to false" should {
           "suppress default ACL log injection when outputs are configured" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
                 |    enabled: true
-                |    default_acl_log: false
+                |    default_acl_log_enabled: false
                 |    outputs:
                 |    - type: index
               """.stripMargin
@@ -1511,7 +1511,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               """
                 |  audit:
                 |    enabled: true
-                |    default_acl_log: false
+                |    default_acl_log_enabled: false
               """.stripMargin
             )
 
@@ -1528,7 +1528,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           }
           "work with flat dot-notation key" in {
             val settings = rorSettingsWithAuditUnsafe(
-              "audit.default_acl_log: false"
+              "audit.default_acl_log_enabled: false"
             )
 
             val core = factory()
@@ -1547,7 +1547,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               """
                 |  audit:
                 |    enabled: false
-                |    default_acl_log: false
+                |    default_acl_log_enabled: false
               """.stripMargin
             )
 
@@ -1562,19 +1562,19 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               .runSyncUnsafe()
             inside(core) { case Right(Core(_, RorDependencies(_, _, _), AuditingConfig(None, false, _))) => }
           }
-          "reject duplicate default_acl_log key" in {
+          "reject duplicate default_acl_log_enabled key" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
                 |  audit:
                 |    enabled: true
-                |    default_acl_log: false
-                |  audit.default_acl_log: false
+                |    default_acl_log_enabled: false
+                |  audit.default_acl_log_enabled: false
               """.stripMargin
             )
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Duplicated audit 'default_acl_log' setting: use either the nested form 'audit: {default_acl_log: ...}' or the flat form 'audit.default_acl_log', not both"
+              expectedErrorMessage = "Duplicated audit 'default_acl_log_enabled' setting: use either the nested form 'audit: {default_acl_log_enabled: ...}' or the flat form 'audit.default_acl_log_enabled', not both"
             )
           }
         }
