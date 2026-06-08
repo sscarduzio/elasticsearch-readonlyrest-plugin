@@ -1,0 +1,22 @@
+# Minimal standalone pipeline: prove the self-hosted Default pool dispatches jobs.
+# Single stage, single job, pinned to the Default pool. No toolchains, no checkpoints.
+trigger: none
+pr: none
+
+stages:
+  - stage: SELF_HOSTED_SMOKE
+    displayName: 'Self-hosted pool smoke'
+    dependsOn: [ ]
+    jobs:
+      - job: selfhosted_smoke
+        displayName: 'Run on self-hosted Default pool'
+        pool:
+          name: 'Default'
+        steps:
+          - checkout: none
+          - script: |
+              echo "Running on self-hosted agent: $(Agent.Name)"
+              echo "Machine: $(Agent.MachineName) / OS: $(Agent.OS)"
+              uname -a
+              docker --version || echo "no docker"
+            displayName: 'Confirm self-hosted execution'
