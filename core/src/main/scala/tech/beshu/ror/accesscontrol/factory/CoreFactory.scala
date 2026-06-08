@@ -251,14 +251,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         val result = for {
           name   <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
-          legacyVerbosityAudit <- c.downField(Attributes.Block.verbosity).as[Option[String]].flatMap {
-            case None          => Right(None)
-            case Some("info")  => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
-            case Some("error") => Right(Some(Block.Audit.Enabled(logAllowedEvents = false)))
-            case Some(unknown) => Left(decodingFailureFrom(BlocksLevelCreationError(Message(
-              s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'."
-            ))))
-          }
+          legacyVerbosityAudit <- c.downField(Attributes.Block.verbosity).as[Option[Block.Audit]](legacyVerbosityAuditDecoder)
           auditFromConfig <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
           // explicit audit section takes precedence over the legacy verbosity key
           audit = auditFromConfig.orElse(legacyVerbosityAudit)
@@ -282,6 +275,46 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
+
+  private val legacyVerbosityAuditDecoder: Decoder[Option[Block.Audit]] = Decoder.instance { c =>
+    c.as[Option[String]].flatMap {
+      case None          => Right(None)
+      case Some("info")  => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
+      case Some("error") => Right(Some(Block.Audit.Enabled(logAllowedEvents = false)))
+      case Some(unknown) => Left(decodingFailureFrom(BlocksLevelCreationError(Message(
+        s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'."
+      ))))
+    }
+  }
+
+  private def auditSinkNamesDecoder(blocksNel: NonEmptyList[BlockDecodingResult],
+                                    auditingConfig: AuditingTool.AuditingConfig): AsyncDecoder[Unit] =
+    AsyncDecoderCreator.instance[Unit] { _ =>
+      Task.now {
+        val globalSinkNames: Set[Block.SinkName] = auditingConfig.outputsConfig match {
+          case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
+            sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
+          case _ => Set.empty
+        }
+        val errors = blocksNel.toList.flatMap { block =>
+          block.audit match {
+            case Block.Audit.Enabled(_, Some(enabledSinks), _) =>
+              val unknown = enabledSinks -- globalSinkNames
+              if (unknown.nonEmpty)
+                List(s"Block '${block.name.value}': 'enabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+              else Nil
+            case Block.Audit.Enabled(_, _, Some(disabledSinks)) =>
+              val unknown = disabledSinks -- globalSinkNames
+              if (unknown.nonEmpty)
+                List(s"Block '${block.name.value}': 'disabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+              else Nil
+            case _ => Nil
+          }
+        }
+        if (errors.isEmpty) Right(())
+        else Left(decodingFailureFrom(BlocksLevelCreationError(Message(errors.mkString("; ")))))
+      }
+    }
 
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
@@ -399,32 +432,10 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .toEither
             }
         }
+        _ <- auditSinkNamesDecoder(blocksNel, auditingConfig)
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
-
-        val globalSinkNames: Set[Block.SinkName] = auditingConfig.outputsConfig match {
-          case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
-            sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
-          case _ => Set.empty
-        }
-        blocks.toList.foreach { block =>
-          block.audit match {
-            case Block.Audit.Enabled(_, Some(enabledSinks), _) =>
-              val unknown = enabledSinks -- globalSinkNames
-              if (unknown.nonEmpty)
-                noRequestIdLogger.warn(
-                  s"Block '${block.name.value}': 'enabled_audit_sinks' references [${unknown.map(_.value).mkString(", ")}] that do not match any named audit output — no audit events will be produced for this block"
-                )
-            case Block.Audit.Enabled(_, _, Some(disabledSinks)) =>
-              val unknown = disabledSinks -- globalSinkNames
-              if (unknown.nonEmpty)
-                noRequestIdLogger.warn(
-                  s"Block '${block.name.value}': 'disabled_audit_sinks' references [${unknown.map(_.value).mkString(", ")}] that do not match any named audit output"
-                )
-            case _ => ()
-          }
-        }
 
         val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
 
