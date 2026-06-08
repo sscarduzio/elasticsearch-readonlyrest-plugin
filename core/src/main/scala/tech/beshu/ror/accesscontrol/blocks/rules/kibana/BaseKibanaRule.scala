@@ -295,7 +295,11 @@ object BaseKibanaRule {
     nonStrictAllowedPathsPatternCache.get(
       kibanaIndexName,
       _ => Try(Pattern.compile(
-        nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", kibanaIndexName.stringify)
+        // `@kibana_index` only ever appears as a literal path segment in the template, so the index
+        // name is quoted: any regex metacharacter in it (e.g. the `.` in `.kibana`) must match
+        // literally, never act as a pattern. Without quoting, `.` would match any char and names
+        // containing `(`, `[`, `\`, ... would compile to a wrong pattern or fail to compile.
+        nonStrictAllowedPathsRegexTemplate.replace("@kibana_index", Pattern.quote(kibanaIndexName.stringify))
       )).toOption
     )
   }

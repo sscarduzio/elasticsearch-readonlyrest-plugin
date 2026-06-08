@@ -39,11 +39,19 @@ private[http] abstract class BaseHeaderRule
 
   protected def isFulfilled(accessRequirement: AccessRequirement[Header],
                             requestHeaders: Set[Header]): Boolean = {
-    // Direct lookup (no `getOrElse` fallback): a subclass that passes a requirement it did not
-    // enumerate in `headerAccessRequirements` is a programming error, and we want it to fail fast
-    // here rather than silently fall back to building a matcher per request (the very cost this
-    // precompilation removes). With the current subclasses this lookup always hits.
-    val matches = compiledMatcherByRequirement(accessRequirement)
+    // Direct lookup (no silent `getOrElse(matcherFor(...))` fallback): a subclass that passes a
+    // requirement it did not enumerate in `headerAccessRequirements` is a programming error, and we
+    // want it to fail fast here rather than silently rebuild a matcher per request (the very cost
+    // this precompilation removes). The explicit message makes that contract violation legible
+    // instead of surfacing as a bare `NoSuchElementException`. With the current subclasses this
+    // lookup always hits.
+    val matches = compiledMatcherByRequirement.getOrElse(
+      accessRequirement,
+      throw new IllegalStateException(
+        s"Precompilation miss for header requirement [$accessRequirement]. A BaseHeaderRule subclass " +
+          "must enumerate in `headerAccessRequirements` every requirement it passes to `isFulfilled`."
+      )
+    )
     accessRequirement match {
       case AccessRequirement.MustBePresent(_) => requestHeaders.exists(matches)
       case AccessRequirement.MustBeAbsent(_) => requestHeaders.forall(!matches(_))
