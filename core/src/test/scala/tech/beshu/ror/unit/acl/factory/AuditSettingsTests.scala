@@ -402,25 +402,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
             )
           }
-          "file_appender section has non-writable parent directory" in {
-            val settings = rorSettingsWithAuditUnsafe(
-              """
-                |  audit:
-                |    enabled: true
-                |    outputs:
-                |    - type: log
-                |      file_appender:
-                |        file_path: /nonexistent_ror_test_dir/audit.log
-                |        max_file_size: 100MB
-                |        max_files: 7
-              """.stripMargin
-            )
-
-            assertInvalidSettings(
-              settings,
-              expectedErrorMessage = "The directory '/nonexistent_ror_test_dir' for audit 'file_path' '/nonexistent_ror_test_dir/audit.log' is not writable"
-            )
-          }
           "configurable serializer is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """

@@ -61,10 +61,22 @@ object RollingFileBasedAuditSink {
   def create(sinkName: Block.SinkName,
              serializer: AuditLogSerializer,
              loggerName: RorAuditLoggerName,
-             config: FileAppenderConfig): Task[Either[CreationError, RollingFileBasedAuditSink]] =
-    buildAndRegisterAppender(loggerName, config)
-      .map(appender => Right(new RollingFileBasedAuditSink(sinkName, serializer, loggerName, appender)))
-      .onErrorHandle(_ => Left(CreationError(appenderCreationErrorMessage(config.filePath))))
+             config: FileAppenderConfig): Task[Either[CreationError, RollingFileBasedAuditSink]] = {
+    val parent = config.filePath.getParent
+    val preCheckError: Option[CreationError] = parent match {
+      case null                          => None
+      case dir if !dir.toFile.exists()   => Some(CreationError(s"Cannot create audit log file '${config.filePath}': directory '$dir' does not exist"))
+      case dir if !dir.toFile.canWrite   => Some(CreationError(s"Cannot create audit log file '${config.filePath}': no write permission on directory '$dir'"))
+      case _                             => None
+    }
+    preCheckError match {
+      case Some(err) => Task.pure(Left(err))
+      case None =>
+        buildAndRegisterAppender(loggerName, config)
+          .map(appender => Right(new RollingFileBasedAuditSink(sinkName, serializer, loggerName, appender)))
+          .onErrorHandle(_ => Left(CreationError(appenderCreationErrorMessage(config.filePath))))
+    }
+  }
 
   private def buildAndRegisterAppender(loggerName: RorAuditLoggerName,
                                        config: FileAppenderConfig): Task[RollingFileAppender] =

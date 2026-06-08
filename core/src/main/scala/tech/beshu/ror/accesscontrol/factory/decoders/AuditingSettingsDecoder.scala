@@ -172,14 +172,6 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
                           ), Nil)
                         )
                       }
-        _ <- {
-          val parent = filePath.getParent
-          if (parent != null && !java.nio.file.Files.isWritable(parent))
-            Left(DecodingFailure(AclCreationErrorCoders.stringify(
-              auditSettingsError(s"The directory '${parent}' for audit 'file_path' '${filePath}' is not writable")
-            ), Nil))
-          else Right(())
-        }
       } yield RollingFileBasedSink.FileAppenderConfig(filePath, maxFileSize, maxFiles)
     }
 
