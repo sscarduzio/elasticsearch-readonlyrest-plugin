@@ -33,9 +33,9 @@ function retag_dev_image {
 # bypasses the skip.
 #
 # Tags produced (all but the Gradle push are cheap registry-side manifest copies):
-#   - <esVersion>-ror-<gitShortSha>     immutable source identity (probed for the skip)
-#   - <esVersion>-ror-<pluginVersion>   canonical "latest", always repointed at this source
-#   - <esVersion>-ror-<imageTag>        optional alias, only when an image tag arg is given
+#   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
+#   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
+#   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
 function publish_ror_prebuild_plugin {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     echo "Usage: publish_ror_prebuild_plugin <ES version> [image tag]"
@@ -83,13 +83,9 @@ function publish_ror_prebuild_plugin {
     fi
   fi
 
-  # Always (re)point the canonical "latest" tag at the source we just identified/built. On the skip path
-  # this is what makes the run idempotent; on the build path it is a no-op (canonical already == source).
-  if ! retag_dev_image "$SOURCE_TAG" "$CANONICAL_TAG"; then
-    echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${CANONICAL_TAG}"
-    return 5
-  fi
-
+  # Apply the optional caller-supplied alias on BOTH paths (built or skipped). The caller fetches the image
+  # by this tag, so it must exist and point at this commit's image: we always derive it from SOURCE_TAG
+  # (the commit identity), and the imagetools exit status guarantees it was created before we return.
   if [ -n "$IMAGE_TAG" ]; then
     if ! retag_dev_image "$SOURCE_TAG" "${ES_VERSION}-ror-${IMAGE_TAG}"; then
       echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}"
