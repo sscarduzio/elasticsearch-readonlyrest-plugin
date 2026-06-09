@@ -1,3 +1,11 @@
+# Single source of truth for the CI toolchains image (bump the tag here on a JDK/Gradle change).
+# Declared as a container resource (NOT a variable) because the job-level `container:` property is
+# resolved at compile time and does not expand $(variables).
+resources:
+  containers:
+    - container: rortoolchains
+      image: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+
 variables:
   system.debug: 'true'
   ssh_file: '~/.ssh/gh_deploy_key.priv'
@@ -8,18 +16,47 @@ variables:
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
   dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
-  GRADLE_USER_HOME: '$(Pipeline.Workspace)/.gradle'
+  # Use the Gradle home baked into the CI image (ci/Dockerfile.toolchains): it already contains the
+  # Gradle distribution + resolved plugins/dependencies, so download-free tasks run with `--offline`
+  # and never hit a flaky external CDN. (Override per-build with ROR_GRADLE_OFFLINE=false to refresh
+  # the cache when dependencies change.)
+  GRADLE_USER_HOME: '/opt/gradle-home'
+  # Disable toolchain auto-download (fail fast instead of hitting the adoptium CDN). The CI-image
+  # JDK locations are NOT set here — they live in the image's baked GRADLE_USER_HOME/gradle.properties
+  # (reliably honoured, unlike installations.paths via GRADLE_OPTS), so they apply only to the Linux
+  # container jobs and never leak to the bare Windows jobs (which use a workspace-local GRADLE_USER_HOME).
+  GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
 
 trigger:
-  batch: false
+  # Coalesce rapid pushes into one run (Azure has no auto-cancel for branch runs).
+  batch: true
   branches:
     include:
       - master
       - develop
+      - 'epic/*'
       - '*/epic/*'
   tags:
     exclude:
       - '*'
+  paths:
+    include:
+      - '*'
+    exclude:
+      - 'docs/*'
+      - '*.md'
+      - '*/*/*.md'
+
+pr:
+  # A new commit cancels the prior in-progress PR run instead of stacking another
+  # full run on the queue (GitHub default; set explicitly so it is version-controlled).
+  autoCancel: true
+  branches:
+    include:
+      - master
+      - develop
+      - 'epic/*'
+      - '*/epic/*'
   paths:
     include:
       - '*'
@@ -84,54 +121,35 @@ stages:
       )
     jobs:
       - job: WARMUP
-        displayName: 'Download Gradle and toolchains'
-        container: eclipse-temurin:17-jdk
-        timeoutInMinutes: 30
+        displayName: 'Verify baked Gradle home and toolchains'
+        container: rortoolchains
+        timeoutInMinutes: 10
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
+          # Verify the baked offline Gradle home is present/usable (failure => rebuild the image).
           - bash: |
-              set +e
-              apt-get update && apt-get install -y git curl
-              echo "Warming up Gradle and toolchains..."
-              ./gradlew --no-daemon -q help
-              exit 0
-            displayName: 'Download Gradle and toolchains (best effort)'
-            condition: ne(variables.GRADLE_CACHE_HIT, 'true')
+              set -e
+              echo "Baked GRADLE_USER_HOME=$GRADLE_USER_HOME"
+              ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "No baked Gradle dist in image"; exit 1; }
+              ./gradlew --no-daemon --offline -q help
+            displayName: 'Verify offline Gradle home (no downloads)'
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: CVE_CHECK
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - task: Cache@2
             displayName: 'Restore CVE DB from cache'
             inputs:
@@ -176,27 +194,18 @@ stages:
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
     condition:
       and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
@@ -224,7 +233,7 @@ stages:
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
     condition:
       and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
           ne(variables['Build.Reason'], 'Manual'),
@@ -242,22 +251,13 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
           )
         displayName: 'Unit tests'
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 30
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
@@ -285,7 +285,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -315,7 +315,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -371,7 +371,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -417,7 +417,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -441,7 +441,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -469,7 +469,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -500,6 +500,12 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -535,6 +541,12 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -559,6 +571,12 @@ stages:
             and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -644,6 +662,12 @@ stages:
             and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -659,7 +683,11 @@ stages:
               jdkSourceOption: 'PreInstalled'
           - powershell: |
                     Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon core:test
+                    # Override the Linux toolchains-image settings that are invalid on Windows
+                    # (installations.paths=/opt/java/... and GRADLE_USER_HOME=/opt/gradle-home).
+                    .\gradlew --no-daemon core:test `
+                      "-Dorg.gradle.java.installations.paths=" `
+                      "-Dorg.gradle.java.installations.auto-download=true"
                     if ($LASTEXITCODE -ne 0) {
                       Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
                         Get-Content $_.FullName
@@ -687,21 +715,12 @@ stages:
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
+        container: rortoolchains
         timeoutInMinutes: 180
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
@@ -762,26 +781,18 @@ stages:
       )
     jobs:
       - job:
+        # Self-hosted Default pool + toolchains container: agents sit next to the
+        # artifact storage (fast uploads) and the container has all 4 JDKs + baked
+        # cache, removing the bare-agent JDK-discovery / lost-cache risks (review).
+        pool:
+          name: 'Default'
+        container: rortoolchains
         timeoutInMinutes: 600
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '17'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
@@ -798,7 +809,7 @@ stages:
                 echo "Error: Failed to login to Docker registry"
                 exit 1
               fi
-        
+
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
@@ -844,6 +855,10 @@ stages:
       )
     jobs:
       - job:
+        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
+        pool:
+          name: 'Default'
+        container: rortoolchains
         timeoutInMinutes: 180
         steps:
           - checkout: self
@@ -851,26 +866,8 @@ stages:
             clean: false
             persistCredentials: true
             timeoutInMinutes: 180
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '17'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
-
-              echo ">>>> Installing dependencies with apt-get"
-              apt-get update && apt-get install -y git file
-              git status && echo ">>> Git installed correctly!"
 
               export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
@@ -930,41 +927,22 @@ stages:
       )
     jobs:
       - job:
+        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
+        # Maven publish compiles :audit (JDK 8) / :core (JDK 11); the container
+        # supplies those toolchains + the baked Gradle cache.
+        pool:
+          name: 'Default'
+        container: rortoolchains
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '17'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          # Populate the global variable mvn_status for later
-          - script: |
-              PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
-              URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
-              echo "Maven artifact URL to check: $URL"
-              MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
-              echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
-
-          - script: |
-              echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
-            condition: eq(200, variables.mvn_status)
-
-          - script: |
-              echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
-            condition: eq(404, variables.mvn_status)
-
+          # NOTE: the old pre-check here probed the decommissioned oss.sonatype.org endpoint; it
+          # returned neither 200 nor 404, so every gated step silently SKIPPED and releases could
+          # ship without Maven artifacts while the stage stayed green. Removed: run-pipeline.sh's
+          # publish_maven_artifacts already does the artifact-existence check correctly (against
+          # repo1.maven.org) and skips/publishes accordingly.
           - task: DownloadSecureFile@1
             name: pgp
             displayName: 'Download secret.pgp secret file'
@@ -972,13 +950,14 @@ stages:
               secureFile: 'secret.pgp'
 
           - script: |
+              # Runs inside the toolchains container as root, so no sudo needed (and the image
+              # does not ship sudo). Previously this stage ran on a bare agent where sudo existed.
               echo Installing $(pgp.secureFilePath) to directory...
-              sudo chown root:root $(pgp.secureFilePath)
-              sudo chmod a+r $(pgp.secureFilePath)
+              chown root:root $(pgp.secureFilePath)
+              chmod a+r $(pgp.secureFilePath)
               mkdir .travis
-              sudo ln -s -t .travis/ $(pgp.secureFilePath)
+              ln -s -t .travis/ $(pgp.secureFilePath)
               echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
-            condition: eq(404, variables.mvn_status)
 
           - script: |
               echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
@@ -996,4 +975,3 @@ stages:
               VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
               VAR_GPG_KEY_ID: $(GPG_KEY_ID)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-            condition: eq(404, variables.mvn_status)
