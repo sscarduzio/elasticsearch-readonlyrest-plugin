@@ -1,0 +1,26 @@
+// Init script used ONLY when priming the CI image's Gradle cache (ci/Dockerfile.toolchains).
+// It registers a `resolveCiDependencies` task on every project that resolves all *resolvable*
+// dependency configurations (compile/test/runtime classpaths, etc.) so their artifacts land in
+// GRADLE_USER_HOME/caches/modules-2 -- WITHOUT compiling anything. This warms the dependency
+// cache so CI builds can run `--offline`.
+//
+// It lives here (an init script applied via `--init-script`) rather than in build-base so it has
+// ZERO footprint on the shipped build: it only exists during the image-build priming step.
+//
+// Best-effort by design: a configuration that cannot resolve offline-relevant artifacts (e.g. an
+// ES distribution fetched at runtime) is skipped rather than failing the prime.
+allprojects { p ->
+    p.tasks.register('resolveCiDependencies') {
+        group = 'ci'
+        description = 'Resolve all resolvable dependency configurations to warm the cache (no compile).'
+        doLast {
+            p.configurations.findAll { it.canBeResolved }.each { cfg ->
+                try {
+                    cfg.resolve()
+                } catch (Exception t) {
+                    logger.lifecycle("[resolveCiDependencies] skipped ${p.path}:${cfg.name} -> ${t.class.simpleName}")
+                }
+            }
+        }
+    }
+}

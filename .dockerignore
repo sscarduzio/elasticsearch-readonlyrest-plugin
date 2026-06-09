@@ -1,0 +1,14 @@
+# Build context for ci/Dockerfile.toolchains is the repo root (it needs settings.gradle +
+# */build.gradle to prime deps). Exclude the heavy generated dirs to keep the context small.
+# NOTE: .git is intentionally NOT excluded — the :audit project's configuration installs a git
+# hook and fails ("Can't find hooks directory .git/hooks") if .git is absent from the context.
+**/build
+.gradle
+**/.gradle
+eshome/build
+eshome/data
+**/*.zip
+**/distributions
+**/.idea
+**/*.iml
+.DS_Store

@@ -40,9 +40,19 @@ echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
 # Log file friendly Gradle output
 export TERM=dumb
 
+# Run download-free tasks against the image's pre-seeded Gradle home so they never touch the
+# network (no Gradle dist / JDK / plugin / dependency download -> no flaky-CDN build failures).
+# Default on; export ROR_GRADLE_OFFLINE=false to opt out (e.g. when bumping a dependency, so the
+# cache can be refreshed). NOT applied to tasks that legitimately fetch from the network: the CVE
+# check (NVD data) and anything pulling ES binaries (integration tests, buildRorPlugin, publish).
+OFFLINE_FLAG=""
+if [[ "${ROR_GRADLE_OFFLINE:-true}" == "true" ]]; then
+  OFFLINE_FLAG="--offline"
+fi
+
 if [[ $ROR_TASK == "license_check" ]]; then
   echo ">>> Check all license headers are in place"
-  ./gradlew --no-daemon license
+  ./gradlew --no-daemon $OFFLINE_FLAG license
 fi
 
 if [[ $ROR_TASK == "cve_check" ]]; then
@@ -52,17 +62,17 @@ fi
 
 if [[ $ROR_TASK == "compile_codebase_check" ]]; then
   echo ">>> Running compile codebase.."
-  ./gradlew --no-daemon classes
+  ./gradlew --no-daemon $OFFLINE_FLAG classes
 fi
 
 if [[ $ROR_TASK == "audit_build_check" ]]; then
   echo ">>> Running audit module cross build.."
-  ./gradlew --no-daemon --stacktrace audit:crossBuildAssemble
+  ./gradlew --no-daemon $OFFLINE_FLAG --stacktrace audit:crossBuildAssemble
 fi
 
 if [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  ./gradlew --no-daemon --stacktrace core:test audit:test
+  ./gradlew --no-daemon $OFFLINE_FLAG --stacktrace core:test audit:test
 fi
 
 run_integration_tests() {
