@@ -75,7 +75,9 @@ test {
         suite 'tech.beshu.ror.integration.suites.*'
     }
     outputs.upToDateWhen { false }
-    maxParallelForks = 1
+    // Per-fork Docker network isolation (TestNetwork.perFork) makes >1 fork safe.
+    // Default 2 (Azure hosted runners are 2 vCPU); override with IT_MAX_PARALLEL_FORKS.
+    maxParallelForks = (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '2').toInteger()
 }
 
 dependencies {
