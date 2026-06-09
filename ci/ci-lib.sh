@@ -2,7 +2,7 @@
 
 CI_DIR=$(dirname "$0")
 
-function checkTagNotExist {
+checkTagNotExist() {
   GIT_TAG="$1"
 
   # Check if this tag already exists, so we don't overwrite builds
@@ -12,7 +12,7 @@ function checkTagNotExist {
   fi
 }
 
-function tag {
+tag() {
   GIT_TAG="$1"
 
   checkTagNotExist "$GIT_TAG"
@@ -27,7 +27,7 @@ function tag {
 }
 
 # not used at the moment - it may be needed laterok,
-function upload_using_aws_s3_uploader {
+upload_using_aws_s3_uploader() {
   LOCAL_FILE="$1"
   S3_PATH="$2"
 
@@ -44,7 +44,39 @@ function upload_using_aws_s3_uploader {
   "$CI_DIR"/s3-uploader.sh "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
 }
 
-function upload_using_deltaglider_uploader {
+# Build & publish the ROR ES pre-build (dev) Docker image for the given ES version, tagged
+# `beshultd/elasticsearch-readonlyrest-dev:<ES_VERSION>-ror-<pluginVersion>`. Used by both the
+# `publish_pre_builds_docker_images` task and the e2e flow (run_e2e_tests).
+public_ror_prebuild_plugin() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES version should I release plugin for?"
+    return 1
+  fi
+
+  local ES_VERSION=$1
+
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+    echo "Invalid ES version format. Expected format: X.Y.Z"
+    return 2
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker daemon not running or not logged in"
+    return 3
+  fi
+
+  echo ""
+  echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION:"
+
+  if ! ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+    echo "Failed to publish plugin prebuild Docker image"
+    return 4
+  fi
+
+  docker system prune -fa
+}
+
+upload_using_deltaglider_uploader() {
   LOCAL_FILE="$1"
   S3_PATH=$(echo "$2" | sed 's:/*$::')
   FILE_NAME=$(basename "$LOCAL_FILE")

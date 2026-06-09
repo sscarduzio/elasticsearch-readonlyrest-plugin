@@ -776,13 +776,13 @@ stages:
                 exit 1
               fi
 
-              echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for ES $E2E_ES_VERSION"
+              echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for ELK $E2E_ELK_VERSION"
               ci/run-pipeline.sh
             env:
               ROR_TASK: run_e2e_tests
               E2E_TARGET_BRANCH: develop
               ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
-              GH_TOKEN: $(KBN_REPO_DISPATCH_TOKEN)
+              KBN_REPO_GH_TOKEN: $(KBN_REPO_DISPATCH_TOKEN)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
@@ -790,7 +790,7 @@ stages:
           maxParallel: 99
           matrix:
             E2E_es94x:
-              E2E_ES_VERSION: '9.4.2'
+              E2E_ELK_VERSION: '9.4.2'
 
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'
