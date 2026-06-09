@@ -20,7 +20,7 @@ import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
-import tech.beshu.ror.accesscontrol.blocks.rules.http.BaseHeaderRule.{CompiledRequirement, Settings}
+import tech.beshu.ror.accesscontrol.blocks.rules.http.BaseHeaderRule.{CompiledHeaderRequirementMatcher, Settings}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -40,7 +40,7 @@ class HeadersAndRule(settings: Settings)
       when = {
         val requestHeaders = blockContext.requestContext.restRequest.allHeaders
         compiledRequirements.forall { requirement =>
-          val result = isFulfilled(requirement, requestHeaders)
+          val result = requirement.isFulfilledBy(requestHeaders)
           if (!result) logAccessRequirementNotFulfilled(requirement, blockContext.requestContext)
           result
         }
@@ -48,7 +48,7 @@ class HeadersAndRule(settings: Settings)
     )
   }
 
-  private def logAccessRequirementNotFulfilled(requirement: CompiledRequirement,
+  private def logAccessRequirementNotFulfilled(requirement: CompiledHeaderRequirementMatcher,
                                                requestContext: RequestContext): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
     implicit val requestContextImpl: RequestContext = requestContext
