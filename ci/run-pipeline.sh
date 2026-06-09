@@ -478,3 +478,133 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
   done
 
 fi
+
+# Repos used by the e2e flow
+E2E_KBN_REPO="sscarduzio/readonlyrest_kbn"
+E2E_KBN_PUBLISH_WORKFLOW="publish-pre-builds.yml"
+E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
+E2E_KBN_DEV_IMAGE_REPO="beshultd/kibana-readonlyrest-dev"
+
+docker_image_exists() {
+  docker manifest inspect "$1" >/dev/null 2>&1
+}
+
+# Make sure the ROR KBN dev Docker image for the given ES/KBN version + ROR version is available on
+# Docker Hub. If it is missing, order its build in the ROR KBN repo and wait until the image shows up.
+ensure_kbn_prebuild_image() {
+  if [ "$#" -ne 3 ]; then
+    echo "Usage: ensure_kbn_prebuild_image <es/kbn version> <ror version> <target branch>"
+    return 1
+  fi
+
+  local KBN_VERSION=$1
+  local ROR_VERSION=$2
+  local TARGET_BRANCH=$3
+  local KBN_IMAGE="${E2E_KBN_DEV_IMAGE_REPO}:${KBN_VERSION}-ror-${ROR_VERSION}"
+
+  echo ""
+  echo ">>> Ensuring ROR KBN dev image is available: $KBN_IMAGE"
+
+  if docker_image_exists "$KBN_IMAGE"; then
+    echo ">>> ROR KBN dev image already present in Docker Hub, no need to order a build"
+    return 0
+  fi
+
+  if [ -z "$GH_TOKEN" ]; then
+    echo "ERROR: ROR KBN dev image is missing and GH_TOKEN is not set, cannot order the build"
+    return 2
+  fi
+
+  echo ">>> ROR KBN dev image is missing, ordering its build ($E2E_KBN_REPO / $E2E_KBN_PUBLISH_WORKFLOW, branch: $TARGET_BRANCH)"
+  if ! gh workflow run "$E2E_KBN_PUBLISH_WORKFLOW" \
+        -R "$E2E_KBN_REPO" \
+        -f "kbn_versions=$KBN_VERSION" \
+        -f "target_branch=$TARGET_BRANCH"; then
+    echo "ERROR: Failed to dispatch the ROR KBN pre-build workflow"
+    return 3
+  fi
+
+  # The KBN publish workflow allows up to 600 min; cap our wait so a failed/aborted KBN build does not
+  # hang this job indefinitely. We rely on the image appearing in Docker Hub as the completion signal.
+  local WAIT_TIMEOUT_SECONDS=$((90 * 60))
+  local POLL_INTERVAL_SECONDS=30
+  local WAITED=0
+
+  echo ">>> Waiting for $KBN_IMAGE to appear in Docker Hub (timeout: $((WAIT_TIMEOUT_SECONDS / 60)) min)"
+  while ! docker_image_exists "$KBN_IMAGE"; do
+    if [ "$WAITED" -ge "$WAIT_TIMEOUT_SECONDS" ]; then
+      echo "ERROR: Timed out after $((WAITED / 60)) min waiting for $KBN_IMAGE."
+      echo "       Check the '$E2E_KBN_PUBLISH_WORKFLOW' run in $E2E_KBN_REPO (branch: $TARGET_BRANCH)."
+      echo "       Note: the ROR KBN pluginVersion on that branch must match ROR version $ROR_VERSION."
+      return 4
+    fi
+    sleep "$POLL_INTERVAL_SECONDS"
+    WAITED=$((WAITED + POLL_INTERVAL_SECONDS))
+  done
+
+  echo ">>> ROR KBN dev image is now available: $KBN_IMAGE"
+}
+
+# Clone the e2e tests repo and run the Cypress suite against an environment that uses the dev images of
+# both ROR plugins (ES + KBN) for the given version.
+run_e2e_against_dev_images() {
+  if [ "$#" -ne 2 ]; then
+    echo "Usage: run_e2e_against_dev_images <es/kbn version> <ror version>"
+    return 1
+  fi
+
+  local ELK_VERSION=$1
+  local ROR_VERSION=$2
+
+  if [ -z "$ROR_ACTIVATION_KEY" ]; then
+    echo "ERROR: ROR_ACTIVATION_KEY is not set (required to run the e2e Cypress tests)"
+    return 2
+  fi
+
+  local E2E_DIR
+  E2E_DIR=$(mktemp -d)
+
+  echo ""
+  echo ">>> Cloning e2e tests repo into $E2E_DIR"
+  git clone --depth 1 "$E2E_TESTS_REPO" "$E2E_DIR"
+
+  echo ">>> Running e2e tests (docker env, dev images) for ELK $ELK_VERSION with ROR $ROR_VERSION"
+  (
+    cd "$E2E_DIR"
+    ./runner.sh \
+      --run e2e \
+      --env docker \
+      --elk "$ELK_VERSION" \
+      --ror-es "$ROR_VERSION" \
+      --ror-kbn "$ROR_VERSION" \
+      --mode dev
+  )
+}
+
+if [[ $ROR_TASK == "run_e2e_tests" ]]; then
+
+  if ! [[ $E2E_ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+    echo "Invalid E2E_ES_VERSION format. Expected format: X.Y.Z"
+    exit 1
+  fi
+
+  E2E_TARGET_BRANCH="${E2E_TARGET_BRANCH:-develop}"
+  ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+
+  echo ">>> Running e2e tests for ES $E2E_ES_VERSION (ROR $ROR_VERSION)"
+
+  # 1) Make sure the matching ROR KBN dev image exists (order its build and wait if it does not)
+  ensure_kbn_prebuild_image "$E2E_ES_VERSION" "$ROR_VERSION" "$E2E_TARGET_BRANCH"
+
+  # 2) Build & publish the ROR ES dev image from this repo
+  ES_IMAGE="beshultd/elasticsearch-readonlyrest-dev:${E2E_ES_VERSION}-ror-${ROR_VERSION}"
+  if docker_image_exists "$ES_IMAGE"; then
+    echo ">>> ROR ES dev image already present in Docker Hub: $ES_IMAGE"
+  else
+    public_ror_prebuild_plugin "$E2E_ES_VERSION"
+  fi
+
+  # 3) Run the e2e tests against the env built from both dev images
+  run_e2e_against_dev_images "$E2E_ES_VERSION" "$ROR_VERSION"
+
+fi

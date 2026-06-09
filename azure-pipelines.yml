@@ -722,6 +722,76 @@ stages:
             BUILD_6xx:
               ROR_TASK: build_es6xx
 
+  - stage: E2E_TESTS
+    displayName: 'Run e2e tests'
+    dependsOn:
+      - REQUIRED_CHECKS
+      - TEST
+    condition:
+      and(
+        succeeded('REQUIRED_CHECKS'),
+        succeeded('TEST'),
+        or(
+          eq(variables.isEpicBranchOrPr, true),
+          eq(variables.isDevelop, true),
+          eq(variables.isMaster, true),
+          eq(variables.isPullRequest, true)
+        ),
+        ne(variables['Build.Reason'], 'Manual')
+      )
+    jobs:
+      - job:
+        displayName: 'E2E tests (docker env)'
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - task: NodeTool@0
+            displayName: 'Use Node.js 24.11.0'
+            inputs:
+              versionSpec: '24.11.0'
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
+          - script: |
+              set -e
+
+              corepack enable || npm install -g yarn
+
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
+
+              echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for ES $E2E_ES_VERSION"
+              ci/run-pipeline.sh
+            env:
+              ROR_TASK: run_e2e_tests
+              E2E_TARGET_BRANCH: develop
+              ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
+              GH_TOKEN: $(KBN_REPO_DISPATCH_TOKEN)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+        strategy:
+          maxParallel: 99
+          matrix:
+            E2E_es94x:
+              E2E_ES_VERSION: '9.4.2'
+
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'
     dependsOn:
