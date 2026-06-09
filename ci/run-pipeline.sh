@@ -379,13 +379,23 @@ release_ror_plugin() {
   cleanup_docker_and_build
 }
 
+# Repo of the ROR ES pre-build dev image. Must match each module's `preBuildDockerImageVersion` repo in
+# es<ver>x/build.gradle (that is where Gradle actually pushes the canonical <esVersion>-ror-<pluginVersion>).
+ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
+
+# Build & publish the ROR ES pre-build Docker image for the given ES version. Gradle publishes it as
+# $ES_DEV_IMAGE_REPO:<esVersion>-ror-<pluginVersion>. If an optional image tag is given, the published
+# image is ALSO tagged as $ES_DEV_IMAGE_REPO:<esVersion>-ror-<imageTag> (a registry-side retag via
+# `docker buildx imagetools create`, no rebuild) so callers can pin a custom/immutable tag (e.g. a commit
+# SHA) on top of the canonical pluginVersion tag.
 public_ror_prebuild_plugin() {
-  if [ "$#" -ne 1 ]; then
-    echo "What ES version should I release plugin for?"
+  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "Usage: public_ror_prebuild_plugin <ES version> [image tag]"
     return 1
   fi
 
   local ES_VERSION=$1
+  local IMAGE_TAG="${2:-}"
 
   if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
     echo "Invalid ES version format. Expected format: X.Y.Z"
@@ -403,6 +413,18 @@ public_ror_prebuild_plugin() {
   if ! ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
     echo "Failed to publish plugin prebuild Docker image"
     return 4
+  fi
+
+  if [ -n "$IMAGE_TAG" ]; then
+    local ROR_VERSION
+    ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+    local SOURCE_IMAGE="${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${ROR_VERSION}"
+    local TAGGED_IMAGE="${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}"
+    echo ">>> Tagging published image $SOURCE_IMAGE as $TAGGED_IMAGE"
+    if ! docker buildx imagetools create -t "$TAGGED_IMAGE" "$SOURCE_IMAGE"; then
+      echo "Failed to tag prebuild Docker image as $TAGGED_IMAGE"
+      return 5
+    fi
   fi
 
   docker system prune -fa
@@ -470,10 +492,13 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
     exit 1
   fi
 
+  # IMAGE_TAG is optional; its pipeline default is a single space, so normalize whitespace-only to empty.
+  IMAGE_TAG="$(echo "${IMAGE_TAG:-}" | tr -d '[:space:]')"
+
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
     if [ -n "$VERSION" ]; then
-      public_ror_prebuild_plugin "$VERSION"
+      public_ror_prebuild_plugin "$VERSION" "$IMAGE_TAG"
     fi
   done
 
