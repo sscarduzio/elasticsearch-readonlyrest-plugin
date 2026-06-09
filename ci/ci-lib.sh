@@ -89,7 +89,7 @@ function publish_ror_prebuild_plugin {
   if [ -n "$IMAGE_TAG" ]; then
     if ! retag_dev_image "$SOURCE_TAG" "${ES_VERSION}-ror-${IMAGE_TAG}"; then
       echo "Failed to tag prebuild Docker image as ${ES_DEV_IMAGE_REPO}:${ES_VERSION}-ror-${IMAGE_TAG}"
-      return 5
+      return 6
     fi
   fi
 }
