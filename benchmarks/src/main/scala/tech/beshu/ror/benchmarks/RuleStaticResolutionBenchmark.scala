@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, staticallyResolvedValues}
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
  * configured — no `@{user}`-style runtime variables, the common case).
  *
  * It compares the two per-request code paths directly, using the real production
- * helpers (`resolveAll`, `staticallyResolvedValues`, `PatternsMatcher.create`) on real
+ * helpers (`resolveAll`, `resolveAllIfPreResolved`, `PatternsMatcher.create`) on real
  * `AlreadyResolved[DataStreamName]` settings — no rule/mock machinery, because for a
  * static config `AlreadyResolved.resolve` returns its value and never touches the
  * `BlockContext` (so a null context is safe and never dereferenced here).
@@ -87,8 +87,8 @@ class RuleStaticResolutionBenchmark {
   }
 
   private def precompute(settings: NonEmptyList[RuntimeMultiResolvableVariable[DataStreamName]]): PatternsMatcher[DataStreamName] =
-    staticallyResolvedValues(settings)
-      .map(values => PatternsMatcher.create(values.toCovariantSet))
+    resolveAllIfPreResolved(settings)
+      .map(values => PatternsMatcher.create(values.toList.toCovariantSet))
       .getOrElse(throw new IllegalStateException("expected static settings"))
 
   // --- OLD path: resolve + build matcher on every request -------------------------
