@@ -88,6 +88,37 @@ wait_for_kbn_prebuild_image() {
   echo ">>> ROR KBN dev image is now available: $KBN_IMAGE"
 }
 
+# Build & publish the ROR ES dev image from this repo and make it available under a commit-specific tag.
+# We tag it with the commit SHA so each commit gets its own immutable image: this guarantees we test the
+# current code (a stable pluginVersion tag would be reused/clobbered across commits and parallel runs)
+# while still letting same-commit re-runs reuse the already-built image. The build itself is done by
+# public_ror_prebuild_plugin (defined in ci-lib.sh), which pushes the pluginVersion-tagged manifest; we
+# then retag that manifest registry-side to the commit-specific tag with `docker buildx imagetools create`.
+ensure_ror_es_dev_image() {
+  if [ "$#" -ne 3 ]; then
+    echo "Usage: ensure_ror_es_dev_image <elk version> <ror version> <ror-es image version>"
+    return 1
+  fi
+
+  local ELK_VERSION=$1
+  local ROR_VERSION=$2
+  local ROR_ES_VERSION=$3
+  local ES_IMAGE="${E2E_ES_DEV_IMAGE_REPO}:${ELK_VERSION}-ror-${ROR_ES_VERSION}"
+
+  echo ""
+  echo ">>> Ensuring ROR ES dev image is available: $ES_IMAGE"
+  if docker_image_exists "$ES_IMAGE"; then
+    echo ">>> ROR ES dev image for this commit already present in Docker Hub, skipping build"
+    return 0
+  fi
+
+  public_ror_prebuild_plugin "$ELK_VERSION"
+  echo ">>> Re-tagging ROR ES dev image with commit SHA: $ES_IMAGE"
+  docker buildx imagetools create \
+    -t "$ES_IMAGE" \
+    "${E2E_ES_DEV_IMAGE_REPO}:${ELK_VERSION}-ror-${ROR_VERSION}"
+}
+
 # Clone the e2e tests repo and run the Cypress suite against an environment that uses the dev images of
 # both ROR plugins (ES + KBN) for the given version.
 run_e2e_against_dev_images() {
@@ -146,26 +177,10 @@ run_e2e_tests() {
   #    proceeds in parallel while we build the ES image below.
   order_kbn_prebuild_image "$E2E_ELK_VERSION" "$ROR_VERSION" "$TARGET_BRANCH"
 
-  # 2) Build & publish the ROR ES dev image from this repo (this fills the KBN build window). We tag it
-  #    with the commit SHA so each commit gets its own immutable image: this guarantees we test the current
-  #    code (a stable pluginVersion tag would be reused/clobbered across commits and parallel runs) while
-  #    still letting same-commit re-runs reuse the already-built image.
-  local GIT_SHA
-  GIT_SHA=$(git rev-parse --short HEAD)
-  local ROR_ES_VERSION="${ROR_VERSION}-${GIT_SHA}"
-  local ES_IMAGE="${E2E_ES_DEV_IMAGE_REPO}:${E2E_ELK_VERSION}-ror-${ROR_ES_VERSION}"
-
-  echo ""
-  echo ">>> Ensuring ROR ES dev image is available: $ES_IMAGE"
-  if docker_image_exists "$ES_IMAGE"; then
-    echo ">>> ROR ES dev image for this commit already present in Docker Hub, skipping build"
-  else
-    public_ror_prebuild_plugin "$E2E_ELK_VERSION"
-    echo ">>> Re-tagging ROR ES dev image with commit SHA: $ES_IMAGE"
-    docker buildx imagetools create \
-      -t "$ES_IMAGE" \
-      "${E2E_ES_DEV_IMAGE_REPO}:${E2E_ELK_VERSION}-ror-${ROR_VERSION}"
-  fi
+  # 2) Build & publish the ROR ES dev image from this repo (this fills the KBN build window). It is tagged
+  #    with the commit SHA so each commit gets its own immutable image (see ensure_ror_es_dev_image).
+  local ROR_ES_VERSION="${ROR_VERSION}-$(git rev-parse --short HEAD)"
+  ensure_ror_es_dev_image "$E2E_ELK_VERSION" "$ROR_VERSION" "$ROR_ES_VERSION"
 
   # 3) Now block until the KBN image (ordered in step 1) is available on Docker Hub
   wait_for_kbn_prebuild_image "$KBN_IMAGE" "$ROR_VERSION"
