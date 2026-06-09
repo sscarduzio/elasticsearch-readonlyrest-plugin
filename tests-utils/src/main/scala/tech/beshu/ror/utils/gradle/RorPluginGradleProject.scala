@@ -84,12 +84,23 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
+    // On CI the toolchains image bakes the Gradle distribution + offline cache into GRADLE_USER_HOME
+    // and marks it with a `.ror-ci-baked` sentinel (written by ci/Dockerfile.toolchains only after the
+    // cache passed offline validation). Point this nested Tooling-API build at that home + --offline so
+    // it reuses the baked distribution instead of downloading gradle-x-all.zip from services.gradle.org.
+    // The sentinel (not bare directory existence) is the contract: a developer with a relocated
+    // GRADLE_USER_HOME keeps the default online behaviour.
+    val bakedGradleHome = Option(System.getenv("GRADLE_USER_HOME"))
+      .map(new JFile(_))
+      .filter(home => new JFile(home, ".ror-ci-baked").isFile)
+    bakedGradleHome.foreach(connector.useGradleUserHomeDir)
     val connect = Try(connector.connect())
     val result = connect.map { c =>
+      val args =
+        (if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList else Nil) ++
+          (if (bakedGradleHome.isDefined) List("--offline") else Nil)
       val build = c.newBuild().forTasks(task)
-      (if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")) else None)
-        .fold(build)(v => build.withArguments(s"-PesVersion=$v"))
-        .run()
+      (if (args.nonEmpty) build.withArguments(args*) else build).run()
     }
     connect.map(_.close())
     result.fold(throw _, _ => ())
