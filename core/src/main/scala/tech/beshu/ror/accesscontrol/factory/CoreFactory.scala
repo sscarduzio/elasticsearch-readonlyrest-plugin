@@ -297,7 +297,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           case _ => scala.collection.Set.empty
         }
         val globalSinkNames: scala.collection.Set[Block.SinkName] =
-          if (auditingConfig.defaultAclLog) configuredSinkNames + Block.SinkName.defaultAclLog
+          if (auditingConfig.defaultAclLog) configuredSinkNames ++ Set(Block.SinkName.defaultAclLog)
           else configuredSinkNames
         val errors = blocksNel.toList.map(_.block).flatMap { block =>
           block.audit match {
