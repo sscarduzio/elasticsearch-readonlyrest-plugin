@@ -251,7 +251,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         val result = for {
           name   <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
-          legacyVerbosityAudit <- c.downField(Attributes.Block.verbosity).as[Option[Block.Audit]](legacyVerbosityAuditDecoder)
+          legacyVerbosityAudit <- c.as[Option[Block.Audit]](legacyVerbosityAuditDecoder)
           auditFromConfig <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
           // explicit audit section takes precedence over the legacy verbosity key
           audit = auditFromConfig.orElse(legacyVerbosityAudit)
@@ -277,7 +277,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
   }
 
   private val legacyVerbosityAuditDecoder: Decoder[Option[Block.Audit]] = Decoder.instance { c =>
-    c.as[Option[String]].flatMap {
+    c.downField(Attributes.Block.verbosity).as[Option[String]].flatMap {
       case None          => Right(None)
       case Some("info")  => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
       case Some("error") => Right(Some(Block.Audit.Enabled(logAllowedEvents = false)))
