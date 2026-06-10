@@ -271,6 +271,62 @@ stages:
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
 
+####################################
+##### Performance smoke (advisory)
+####################################
+      # Advisory allocation gate on PRs touching core/ or benchmarks/ (see benchmarks/README.md).
+      # Flip to blocking after burn-in by removing `continueOnError: true` from the jmhSmoke step.
+      - job: PERF_SMOKE
+        condition:
+          and(
+            succeeded(),
+            eq(variables['Build.Reason'], 'PullRequest')
+          )
+        displayName: 'Performance smoke (advisory)'
+        container: eclipse-temurin:17-jdk
+        timeoutInMinutes: 45
+        steps:
+          - checkout: self
+            fetchDepth: 2
+            clean: false
+            persistCredentials: true
+          # Azure has no per-job path filter: detect relevant changes via the PR merge commit.
+          - script: |
+              CHANGED=$(git diff --name-only HEAD^1 HEAD 2>/dev/null || echo "unknown")
+              echo "Changed files:"; echo "$CHANGED"
+              if echo "$CHANGED" | grep -qE '^(core/|benchmarks/|unknown)'; then
+                echo "##vso[task.setvariable variable=PERF_RELEVANT]true"
+              else
+                echo "No core/ or benchmarks/ changes - skipping perf smoke"
+              fi
+            displayName: 'Detect core/benchmarks changes'
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            condition: eq(variables.PERF_RELEVANT, 'true')
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
+          - script: |
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              ci/run-pipeline.sh
+            displayName: 'Run perf smoke + allocation gate'
+            condition: eq(variables.PERF_RELEVANT, 'true')
+            continueOnError: true
+            env:
+              ROR_TASK: perf_smoke
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish perf smoke results'
+            condition: eq(variables.PERF_RELEVANT, 'true')
+            continueOnError: true
+            inputs:
+              pathToPublish: 'benchmarks/build/jmh'
+              artifactName: 'perf-smoke'
+
 #######################################################
 ##### Integration tests for ES 9.x on master/develop
 #######################################################
