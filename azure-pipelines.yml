@@ -781,6 +781,9 @@ stages:
             env:
               ROR_TASK: run_e2e_tests
               E2E_TARGET_BRANCH: $(Build.SourceBranchName)
+              # System.JobAttempt increments on each retry of the same build, keeping the run tag unique
+              # even when a failed stage is re-run (Build.BuildId stays the same across retries).
+              E2E_BUILD_ID: $(Build.BuildId)-$(System.JobAttempt)
               ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
               KBN_REPO_GH_TOKEN: $(KBN_REPO_DISPATCH_TOKEN)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)

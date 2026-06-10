@@ -457,6 +457,5 @@ fi
 
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
   # Helpers live in ci/e2e-lib.sh (sourced at the top of this script).
-  # BUILD_BUILDID is an Azure Pipelines automatic variable (Build.BuildId → env BUILD_BUILDID).
-  run_e2e_tests "$E2E_ELK_VERSION" "${E2E_TARGET_BRANCH:-develop}" "$BUILD_BUILDID"
+  run_e2e_tests "$E2E_ELK_VERSION" "${E2E_TARGET_BRANCH:-develop}" "$E2E_BUILD_ID"
 fi

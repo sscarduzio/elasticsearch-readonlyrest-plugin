@@ -129,7 +129,7 @@ run_e2e_against_dev_images() {
 # Args: <elk version> <target branch> <build id>
 #   elk version   — ELK version to test (X.Y.Z)
 #   target branch — KBN branch to build from (e.g. develop)
-#   build id      — Azure Build.BuildId; used as the per-run image tag suffix (run-<id>)
+#   build id      — E2E_BUILD_ID (Build.BuildId-System.JobAttempt); unique per attempt (run-<id>)
 run_e2e_tests() {
   if [ "$#" -ne 3 ]; then
     echo "Usage: run_e2e_tests <elk version> <target branch> <build id>"
