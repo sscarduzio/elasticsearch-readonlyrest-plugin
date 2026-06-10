@@ -55,6 +55,30 @@ configuration of the rest of the project — any issue only surfaces when `:benc
   allocation reduction (~50–58% B/op) with a modest time gain (`-prof gc` shows the allocation
   removed).
 
+- `AclEvaluationBenchmark` — end-to-end evaluation of 10 blocks × 4 cheap sync rules through four
+  evaluators over identical inputs: the production path (incl. its `doPrivileged` async hop), the
+  same production scaffolding measured synchronously, a replica of the pre-short-circuit folds,
+  and a hand-rolled tail-recursive evaluator without WriterT (the upper bound of a WriterT
+  removal). All evaluators are asserted to agree on the decision in `@Setup`.
+
+- `IndicesRuleResolutionBenchmark` — the per-request cost the `AllowedClusterIndices` holder
+  removes for a statically configured `IndicesRule`: `resolveAll` + local/remote split + glob
+  compilation per request vs a single match against the precomputed matchers.
+
+- `JwtParserBenchmark` — `Jwts.parser().verifyWith(...).build()` per request (the old
+  `BaseJwtRule`/`BaseRorKbnRule` behavior) vs a parser prebuilt on the shared definition, for
+  HMAC-SHA256 and RSA-2048. The newPath numbers document the per-verification floor.
+
+- `HeaderNameEqBenchmark` — the case-insensitive `Header.Name` Eq before (lowercase both sides
+  per comparison) vs after (precomputed `lowerCased` field), over a 20-header scan.
+
+- `EagerHashCodeBenchmark` — what `EagerHashCode` on `RequestedIndex` buys: `Set.contains` with
+  reused instances (cached hash amortized) vs an identically shaped plain case class, plus a
+  create-then-lookup variant showing the eager-at-construction cost.
+
+- `BasicAuthDecodeBenchmark` — the `basicAuth` header scan + Base64 decode run once per
+  basic-auth block (old extension def, 5 blocks modeled) vs once per request (lazy val).
+
 > **Note:** the JMH source generator (`jmhGenerate`) does not clean its output between runs, so
 > after renaming/removing a `@Benchmark` method run `./gradlew :benchmarks:clean` once before
 > `:benchmarks:jmh`.
