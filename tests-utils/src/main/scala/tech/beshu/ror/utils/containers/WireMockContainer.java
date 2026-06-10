@@ -63,7 +63,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
                 .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
         );
 
-    cont.setNetwork(TestNetwork$.MODULE$.perFork());
+    cont.setNetwork(TestNetwork$.MODULE$.perJvm());
     return cont.withLogConsumer(s -> System.out.print("[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
   }
 

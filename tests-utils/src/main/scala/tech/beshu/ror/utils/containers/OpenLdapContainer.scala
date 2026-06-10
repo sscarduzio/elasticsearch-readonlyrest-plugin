@@ -63,7 +63,7 @@ object OpenLdapContainer {
 
   def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldapContainer = new OpenLdapContainer(name, ldapInitScript)
-    ldapContainer.container.setNetwork(TestNetwork.perFork)
+    ldapContainer.container.setNetwork(TestNetwork.perJvm)
     ldapContainer
   }
 
@@ -86,7 +86,7 @@ class NonStoppableOpenLdapContainer(name: String, ldapInitScript: InitScriptSour
 object NonStoppableOpenLdapContainer {
   def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldap = new NonStoppableOpenLdapContainer(name, ldapInitScript)
-    ldap.container.setNetwork(TestNetwork.perFork)
+    ldap.container.setNetwork(TestNetwork.perJvm)
     ldap.privateStart()
     ldap
   }

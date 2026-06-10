@@ -37,7 +37,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     waitStrategy = Some(new ToxiproxyApiWaitStrategy())
   ) with LazyLogging {
 
-  container.setNetwork(TestNetwork.perFork)
+  container.setNetwork(TestNetwork.perJvm)
   container.withStartupTimeout(Duration.ofSeconds(120))
 
   private var innerContainerProxy: Option[Proxy] = None

@@ -75,9 +75,12 @@ test {
         suite 'tech.beshu.ror.integration.suites.*'
     }
     outputs.upToDateWhen { false }
-    // Per-fork Docker network isolation (TestNetwork.perFork) makes >1 fork safe.
-    // Default 2 (Azure hosted runners are 2 vCPU); override with IT_MAX_PARALLEL_FORKS.
-    maxParallelForks = (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '2').toInteger()
+    // The maiflai runner maps this to ScalaTest suite THREADS in ONE JVM (-PS<n>), NOT forked JVMs:
+    // >1 is unsafe today (concurrent suites share the singleton ES container, duplicate cluster
+    // names and one Docker network). IT_MAX_PARALLEL_FORKS is an experiment-only override; Windows
+    // is always 1 (fixed ES host ports). Real per-JVM forking is a planned follow-up.
+    boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
+    maxParallelForks = isWindows ? 1 : (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '1').toInteger()
 }
 
 dependencies {

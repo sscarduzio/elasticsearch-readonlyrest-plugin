@@ -88,7 +88,7 @@ abstract class EsContainer(val esVersion: String,
         container.addExposedPort(9300)
         container.addExposedPort(8000)
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
-        container.setNetwork(TestNetwork.perFork)
+        container.setNetwork(TestNetwork.perJvm)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
         // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
         container.withCreateContainerCmdModifier { cmd =>

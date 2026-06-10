@@ -19,32 +19,31 @@ package tech.beshu.ror.utils.containers
 import org.testcontainers.containers.Network
 
 /**
- * Docker network shared by all containers within a single test JVM (Gradle test fork), but
- * ISOLATED between forks.
+ * Docker network shared by all containers created within this test JVM.
  *
- * Why this exists: integration suites wire containers together by network alias derived from the
- * cluster name (e.g. `discovery.seed_hosts`, `<node>:9300`, LDAP/Toxiproxy hostnames). Those
- * cluster names are fixed per suite type, not per fork. With the previous `Network.SHARED`
- * (a single process-wide network) this was fine while tests ran serially (`maxParallelForks = 1`),
- * but under parallel forks two forks running the same multi-node/cross-cluster suite would put
- * containers with the SAME alias on the SAME network — Docker round-robins the duplicate alias and
- * a node in one fork's cluster can discover/join another fork's node, cross-wiring clusters and
- * causing flaky failures.
+ * Suites wire containers together by network alias derived from the cluster name (e.g.
+ * `discovery.seed_hosts`, `<node>:9300`, LDAP/Toxiproxy hostnames), and those names are fixed
+ * per suite type (several suites use `ROR1`). Unlike the previous `Network.SHARED` (one global,
+ * reused network), this is a uniquely-named (UUID) network created per JVM, so two test JVMs can
+ * never cross-wire clusters through duplicate aliases.
  *
- * Each test fork is a separate JVM, so a process-wide `lazy val` here yields exactly one network
- * per fork; aliases only ever collide within a fork (where the containers genuinely belong
- * together and run sequentially). This makes `maxParallelForks > 1` safe.
+ * NOTE: today there is exactly ONE test JVM — the maiflai scalatest runner maps
+ * `maxParallelForks` to in-JVM suite THREADS (ScalaTest `-PS<n>`), not forked JVMs — so this
+ * isolation becomes load-bearing only once integration tests move to real per-JVM forking
+ * (Gradle-native test execution; planned follow-up). Until then `maxParallelForks` must stay 1:
+ * concurrent suites in one JVM would share this network AND the singleton ES container.
  */
 object TestNetwork {
 
-  // One network per test JVM (= per Gradle test fork). `newNetwork()` yields a uniquely-named
-  // (UUID) Docker network, so different forks never share one even when running the same suite.
-  // A fork-id label is attached purely to make the isolation visible in `docker network ls`.
-  lazy val perFork: Network = {
+  // `org.gradle.test.worker` is set only inside real Gradle test-worker JVMs; under the maiflai
+  // runner it is absent ("local"). Kept as a label so per-worker networks are identifiable in
+  // `docker network ls` once real forking lands. Uniqueness comes from the UUID network name,
+  // not from this label.
+  lazy val perJvm: Network = {
     val workerId = Option(System.getProperty("org.gradle.test.worker")).getOrElse("local")
     Network
       .builder()
-      .createNetworkCmdModifier(cmd => cmd.withLabels(java.util.Map.of("ror-test-fork", workerId)))
+      .createNetworkCmdModifier(cmd => cmd.withLabels(java.util.Map.of("ror-test-jvm", workerId)))
       .build()
   }
 }
