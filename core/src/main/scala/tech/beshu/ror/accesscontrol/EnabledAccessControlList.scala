@@ -55,19 +55,20 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])] =
     doPrivileged {
-      blocks
-        .tail
-        .foldLeft(executeBlocksForRegularRequest(blocks.head, context)) { case (currentResult, block) =>
-          for {
-            prevBlocksExecutionResult <- currentResult
-            newCurrentResult <- prevBlocksExecutionResult match {
-              case Decision.Denied(_) =>
-                executeBlocksForRegularRequest(block, context)
-              case Decision.Permitted(_) =>
-                lift(prevBlocksExecutionResult)
+      // Recursion instead of a fold: a Permitted decision returns immediately, skipping the per-block
+      // wrapping of the remaining blocks (which never run and add no history anyway).
+      def executeBlocks(block: Block, remainingBlocks: List[Block]): WriterT[Task, Vector[BlockHistory[B]], Decision[B]] =
+        executeBlocksForRegularRequest(block, context).flatMap {
+          case permitted@Decision.Permitted(_) =>
+            lift(permitted)
+          case denied@Decision.Denied(_) =>
+            remainingBlocks match {
+              case nextBlock :: rest => executeBlocks(nextBlock, rest)
+              case Nil => lift(denied)
             }
-          } yield newCurrentResult
         }
+
+      executeBlocks(blocks.head, blocks.tail)
         .run
         .map { case (blocksHistory, result) =>
           val handlingResult: RegularRequestResult[B] = result match {
