@@ -39,9 +39,10 @@ object KibanaActionMatchers {
       "indices:admin/data_stream/lifecycle/get",
       "cluster:admin/component_template/get",
       "indices:admin/index_template/get",
+      "cluster:admin/scripts/painless/context",
       "indices:admin/*/explain",
       "indices:data/read/xpack/rollup/get/*",
-      "indices:monitor/*"
+      "indices:monitor/*",
     ).map(Action.apply)
   }
 
@@ -62,6 +63,7 @@ object KibanaActionMatchers {
         "indices:admin/index_template/*",
         "cluster:admin/component_template/*",
         "cluster:admin/migration/get_system_feature",
+        "cluster:admin/scripts/painless/execute"
       ).map(Action.apply)
   }
 
