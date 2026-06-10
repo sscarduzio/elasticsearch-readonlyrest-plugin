@@ -2,10 +2,10 @@ name: Claude Code Review
 
 # Automated PR review by Claude Code.
 #
-# Trigger: every PR opened/updated by repo owners/members/collaborators.
-# External-fork PRs are skipped (see `if:` below) to prevent prompt injection
-# from untrusted PR content. The bot reads CLAUDE.md (project conventions +
-# explicit review methodology) before reviewing.
+# Trigger: PR pushes by repo owners/members/collaborators, ONLY when the head
+# commit message contains "@claude review" (opt-in — reviews are expensive and
+# noisy on every push). External-fork PRs are skipped (see `if:` below) to
+# prevent prompt injection from untrusted PR content.
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
@@ -31,8 +31,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Review is opt-in: run only when the PR's head commit message asks for it.
+      - name: Gate on "@claude review" in head commit message
+        id: gate
+        run: |
+          MSG=$(git log -1 --format=%B ${{ github.event.pull_request.head.sha }} 2>/dev/null || true)
+          if printf '%s' "$MSG" | grep -qiF '@claude review'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Head commit message lacks '@claude review' — skipping review."
+          fi
+
       - name: Run Claude Code Review
         id: claude-review
+        if: steps.gate.outputs.run == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
