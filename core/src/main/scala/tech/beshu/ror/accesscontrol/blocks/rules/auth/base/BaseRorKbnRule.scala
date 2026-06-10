@@ -17,13 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import cats.implicits.toShow
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.security.Keys
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
-import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseRorKbnRule.*
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, Decision}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -79,16 +76,10 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
 
   private def claimsFrom(token: Jwt.Token, rorKbn: RorKbnDef)
                         (implicit requestId: RequestId) = {
-    Try(parser(rorKbn).parseSignedClaims(token.value.value).getPayload)
+    Try(rorKbn.parser.parseSignedClaims(token.value.value).getPayload)
       .toEither
       .map(Jwt.Payload.apply)
       .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
-  }
-
-  private def parser(rorKbn: RorKbnDef) = rorKbn.checkMethod match {
-    case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
-    case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
-    case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
   }
 }
 

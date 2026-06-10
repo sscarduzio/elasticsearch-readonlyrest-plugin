@@ -18,8 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth.base
 
 import cats.data.EitherT
 import cats.implicits.toShow
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.security.Keys
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
@@ -97,12 +95,7 @@ trait BaseJwtRule extends RequestIdAwareLogging {
 
   private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)
                                            (implicit requestId: RequestId) = {
-    val parser = jwt.checkMethod match {
-      case NoCheck(_) => Jwts.parser().unsecured().build()
-      case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
-      case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
-      case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
-    }
+    val parser = jwt.parser
 
     def causeFrom(ex: Throwable): Cause = {
       logBadToken(ex, token)
