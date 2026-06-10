@@ -19,26 +19,24 @@ package tech.beshu.ror.utils.containers
 import org.testcontainers.containers.Network
 
 /**
- * Docker network shared by all containers created within this test JVM.
+ * Docker network shared by all containers created within this test JVM, ISOLATED between JVMs.
  *
  * Suites wire containers together by network alias derived from the cluster name (e.g.
  * `discovery.seed_hosts`, `<node>:9300`, LDAP/Toxiproxy hostnames), and those names are fixed
  * per suite type (several suites use `ROR1`). Unlike the previous `Network.SHARED` (one global,
- * reused network), this is a uniquely-named (UUID) network created per JVM, so two test JVMs can
- * never cross-wire clusters through duplicate aliases.
+ * reused network), this is a uniquely-named (UUID) network created per JVM.
  *
- * NOTE: today there is exactly ONE test JVM — the maiflai scalatest runner maps
- * `maxParallelForks` to in-JVM suite THREADS (ScalaTest `-PS<n>`), not forked JVMs — so this
- * isolation becomes load-bearing only once integration tests move to real per-JVM forking
- * (Gradle-native test execution; planned follow-up). Until then `maxParallelForks` must stay 1:
- * concurrent suites in one JVM would share this network AND the singleton ES container.
+ * Integration tests run through Gradle's native test machinery (JUnit Platform scalatest
+ * engine), so `maxParallelForks > 1` spawns REAL worker JVMs. Each worker then gets its own
+ * network, its own singleton ES container and its own DNS namespace — alias-colliding suites
+ * can never cross-wire clusters across workers, and within one worker suites run sequentially,
+ * exactly like the serial baseline.
  */
 object TestNetwork {
 
-  // `org.gradle.test.worker` is set only inside real Gradle test-worker JVMs; under the maiflai
-  // runner it is absent ("local"). Kept as a label so per-worker networks are identifiable in
-  // `docker network ls` once real forking lands. Uniqueness comes from the UUID network name,
-  // not from this label.
+  // `org.gradle.test.worker` is set inside Gradle test-worker JVMs ("local" outside Gradle,
+  // e.g. when run from an IDE). A label only — uniqueness comes from the UUID network name.
+  // It makes per-worker networks identifiable in `docker network ls`.
   lazy val perJvm: Network = {
     val workerId = Option(System.getProperty("org.gradle.test.worker")).getOrElse("local")
     Network

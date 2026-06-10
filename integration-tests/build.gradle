@@ -1,7 +1,5 @@
 plugins {
     id "readonlyrest.base-common-conventions"
-
-    id "com.github.maiflai.scalatest"    version "0.33"
 }
 
 repositories {
@@ -61,26 +59,30 @@ sourceSets {
 test {
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
+    def module = enabled ? project.properties['esModule'] : null
     if (enabled) {
-        def module = project.properties['esModule']
         systemProperty "esModule", module
         def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
         if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
 
-        tags {
-            exclude 'tech.beshu.tags.ExcludeESModule.' + module
-            exclude 'tech.beshu.tags.IgnoreOnWindows'
+        filter { includeTestsMatching 'tech.beshu.ror.integration.suites.*' }
+    }
+    // ScalaTest runs through Gradle's native test machinery (JUnit Platform + scalatest engine),
+    // replacing the maiflai plugin which ran ONE JVM with maxParallelForks as ScalaTest threads.
+    // ScalaTest tags map to JUnit Platform tags, so the per-module exclusions keep working.
+    useJUnitPlatform {
+        includeEngines 'scalatest'
+        if (module != null) {
+            excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
         }
-
-        suite 'tech.beshu.ror.integration.suites.*'
     }
     outputs.upToDateWhen { false }
-    // The maiflai runner maps this to ScalaTest suite THREADS in ONE JVM (-PS<n>), NOT forked JVMs:
-    // >1 is unsafe today (concurrent suites share the singleton ES container, duplicate cluster
-    // names and one Docker network). IT_MAX_PARALLEL_FORKS is an experiment-only override; Windows
-    // is always 1 (fixed ES host ports). Real per-JVM forking is a planned follow-up.
+    // With native test execution maxParallelForks creates REAL worker JVMs, each with its own
+    // TestNetwork.perJvm network and singleton ES. Default stays 1 (CI parity with develop);
+    // IT_MAX_PARALLEL_FORKS opts in on bigger machines. Windows is always 1 (fixed ES host ports).
     boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
     maxParallelForks = isWindows ? 1 : (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '1').toInteger()
+    maxHeapSize = '2g'
 }
 
 dependencies {
@@ -89,7 +91,8 @@ dependencies {
     testImplementation  group: 'jakarta.xml.bind',              name: 'jakarta.xml.bind-api',       version: '2.3.2'
     testImplementation  group: 'org.glassfish.jaxb',            name: 'jaxb-runtime',               version: '2.3.2'
     testImplementation  group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.5.22'
-    testRuntimeOnly     group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
+    testRuntimeOnly     group: 'co.helmethair',                 name: 'scalatest-junit-runner',     version: '0.2.0'
+    testRuntimeOnly     group: 'org.junit.platform',            name: 'junit-platform-launcher',    version: '1.10.2'
     testImplementation  group: 'org.scala-lang',                name: 'scala3-library_3',           version: '3.3.7'
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }
