@@ -1,7 +1,7 @@
 #!/bin/bash -ex
 
 source "$(dirname "$0")/ci-lib.sh"
-source "$(dirname "$0")/e2e-lib.sh"
+source "$(dirname "$0")/e2e-tests-lib.sh"
 
 trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
 
