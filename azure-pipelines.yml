@@ -780,7 +780,7 @@ stages:
               ci/run-pipeline.sh
             env:
               ROR_TASK: run_e2e_tests
-              E2E_TARGET_BRANCH: develop
+              E2E_TARGET_BRANCH: $(Build.SourceBranchName)
               ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
               KBN_REPO_GH_TOKEN: $(KBN_REPO_DISPATCH_TOKEN)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
