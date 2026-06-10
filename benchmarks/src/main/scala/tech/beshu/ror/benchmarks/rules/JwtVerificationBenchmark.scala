@@ -1,0 +1,99 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package tech.beshu.ror.benchmarks.rules
+
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.security.Keys
+import monix.execution.Scheduler.Implicits.global
+import org.openjdk.jmh.annotations.*
+import org.openjdk.jmh.infra.Blackhole
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision
+import tech.beshu.ror.accesscontrol.blocks.definitions.{AuthenticationJwtDef, JwtDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthenticationRule
+import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.benchmarks.support.BenchmarkSupport.*
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.json.JsonPath
+
+import java.security.{KeyPair, KeyPairGenerator, SecureRandom}
+import java.util.concurrent.TimeUnit
+
+/**
+ * Tier-1 KPI: one `jwt_authentication` rule check — token extraction, signature verification and
+ * user-claim lookup — for HMAC-SHA256 and RSA-2048. Sets the floor for a future claims cache.
+ */
+@State(Scope.Thread)
+@BenchmarkMode(Array(Mode.AverageTime))
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Fork(2)
+class JwtVerificationBenchmark {
+
+  private var hmacRule: JwtAuthenticationRule = scala.compiletime.uninitialized
+  private var rsaRule: JwtAuthenticationRule = scala.compiletime.uninitialized
+  private var hmacContext: GeneralNonIndexRequestBlockContext = scala.compiletime.uninitialized
+  private var rsaContext: GeneralNonIndexRequestBlockContext = scala.compiletime.uninitialized
+
+  private def ruleOf(checkMethod: SignatureCheckMethod): JwtAuthenticationRule =
+    new JwtAuthenticationRule(
+      JwtAuthenticationRule.Settings(AuthenticationJwtDef(
+        JwtDef.Name(nes("benchmark-jwt")),
+        AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(AuthorizationTokenPrefix.bearer)),
+        checkMethod,
+        userClaim = Jwt.ClaimName(JsonPath("sub").get)
+      )),
+      CaseSensitivity.Enabled
+    )
+
+  private def contextOf(token: String): GeneralNonIndexRequestBlockContext = {
+    val headers = (1 to 18).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i"))).toCovariantSet +
+      Header(Header.Name.authorization, nes(s"Bearer $token"))
+    new NonIndexRequestContext(headers).initialBlockContext(null)
+  }
+
+  @Setup(Level.Trial)
+  def setup(): Unit = {
+    val hmacRawKey = new Array[Byte](32)
+    new SecureRandom().nextBytes(hmacRawKey)
+    val generator = KeyPairGenerator.getInstance("RSA")
+    generator.initialize(2048)
+    val rsaKeyPair: KeyPair = generator.generateKeyPair()
+
+    val hmacToken = Jwts.builder().subject("user1").claim("groups", "g1,g2").signWith(Keys.hmacShaKeyFor(hmacRawKey)).compact()
+    val rsaToken = Jwts.builder().subject("user1").claim("groups", "g1,g2").signWith(rsaKeyPair.getPrivate).compact()
+
+    hmacRule = ruleOf(SignatureCheckMethod.Hmac(hmacRawKey))
+    rsaRule = ruleOf(SignatureCheckMethod.Rsa(rsaKeyPair.getPublic))
+    hmacContext = contextOf(hmacToken)
+    rsaContext = contextOf(rsaToken)
+
+    require(hmacRule.check(hmacContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]], "expected HMAC auth to pass")
+    require(rsaRule.check(rsaContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]], "expected RSA auth to pass")
+  }
+
+  @Benchmark
+  def hmac256(bh: Blackhole): Unit =
+    bh.consume(hmacRule.check(hmacContext).runSyncUnsafe())
+
+  @Benchmark
+  def rsa2048(bh: Blackhole): Unit =
+    bh.consume(rsaRule.check(rsaContext).runSyncUnsafe())
+}
