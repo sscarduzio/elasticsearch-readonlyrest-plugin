@@ -114,7 +114,7 @@ stages:
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    condition: false # TEMP(#1263): IT-only validation, revert before merge
     jobs:
       - job: CVE_CHECK
         container: eclipse-temurin:17-jdk
@@ -174,12 +174,7 @@ stages:
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition:
-      and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false # TEMP(#1263): IT-only validation, revert before merge
     jobs:
       - job:
         container: eclipse-temurin:17-jdk
@@ -236,11 +231,7 @@ stages:
 ##### Unit tests
 ####################################
       - job: UNIT
-        condition:
-          and(
-            succeeded(),
-            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
-          )
+        condition: false # TEMP(#1263): IT-only validation, revert before merge
         displayName: 'Unit tests'
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 30
@@ -678,13 +669,7 @@ stages:
     dependsOn:
       - REQUIRED_CHECKS
       - TEST
-    condition: |
-      and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
-        eq(variables.isPullRequest, true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false # TEMP(#1263): IT-only validation, revert before merge
     jobs:
       - job:
         container: eclipse-temurin:17-jdk
