@@ -87,13 +87,14 @@ wait_for_kbn_prebuild_image() {
 # Clone the e2e tests repo and run the Cypress suite against dev images of both plugins.
 # Both images are identified by the same run tag so the same per-run alias is passed to both sides.
 run_e2e_against_dev_images() {
-  if [ "$#" -ne 2 ]; then
-    echo "Usage: run_e2e_against_dev_images <elk version> <run tag>"
+  if [ "$#" -ne 3 ]; then
+    echo "Usage: run_e2e_against_dev_images <elk version> <run tag> <target branch>"
     return 1
   fi
 
   local ELK_VERSION=$1
   local RUN_TAG=$2
+  local TARGET_BRANCH=$3
 
   if [ -z "${ROR_ACTIVATION_KEY:-}" ]; then
     echo "ERROR: ROR_ACTIVATION_KEY is not set (required to run the e2e Cypress tests)"
@@ -104,8 +105,12 @@ run_e2e_against_dev_images() {
   E2E_DIR=$(mktemp -d)
 
   echo ""
-  echo ">>> Cloning e2e tests repo into $E2E_DIR"
-  git clone --depth 1 "$E2E_TESTS_REPO" "$E2E_DIR"
+  if ! git clone --depth 1 --branch "$TARGET_BRANCH" "$E2E_TESTS_REPO" "$E2E_DIR" 2>/dev/null; then
+    echo ">>> Branch '$TARGET_BRANCH' not found in e2e repo, falling back to master"
+    git clone --depth 1 --branch master "$E2E_TESTS_REPO" "$E2E_DIR"
+  else
+    echo ">>> Cloned e2e tests repo (branch: $TARGET_BRANCH) into $E2E_DIR"
+  fi
 
   echo ">>> Running e2e tests: ELK $ELK_VERSION, image tag: $RUN_TAG"
   (
@@ -154,5 +159,5 @@ run_e2e_tests() {
   wait_for_kbn_prebuild_image "$ELK_VERSION" "$RUN_TAG"
 
   # Step 4: run the e2e suite against both dev images (now both available as <version>-ror-<RUN_TAG>).
-  run_e2e_against_dev_images "$ELK_VERSION" "$RUN_TAG"
+  run_e2e_against_dev_images "$ELK_VERSION" "$RUN_TAG" "$TARGET_BRANCH"
 }
