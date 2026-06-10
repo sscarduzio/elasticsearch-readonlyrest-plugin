@@ -94,7 +94,7 @@ publish_ror_prebuild_plugin() {
   fi
 }
 
-checkTagNotExist {
+checkTagNotExist() {
   GIT_TAG="$1"
 
   # Check if this tag already exists, so we don't overwrite builds
