@@ -71,7 +71,8 @@ object KibanaActionMatchers {
       "cluster:*/xpack/*",
       "indices:admin/template/get*",
       "cluster:*/info",
-      "cluster:*/get"
+      "cluster:*/get",
+      "cluster:*/simulate"
     ).map(Action.apply)
   }
 
