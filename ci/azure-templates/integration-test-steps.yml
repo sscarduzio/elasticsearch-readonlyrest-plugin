@@ -26,6 +26,12 @@ steps:
       export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
       export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
+      # Authenticated Docker Hub pulls (testcontainers/docker-java read DOCKER_AUTH_CONFIG):
+      # avoids the per-IP anonymous rate limit shared across all Azure hosted agents.
+      if [ -n "$VAR_DOCKER_HUB_RO_TOKEN" ]; then
+        export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf '%s:%s' "$VAR_DOCKER_HUB_USER" "$VAR_DOCKER_HUB_RO_TOKEN" | base64 -w0)\"}}}"
+      fi
+
       echo "[TEST] executing ROR_TASK = $ROR_TASK"
       ci/run-pipeline.sh
     env:
@@ -33,6 +39,8 @@ steps:
       VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+      VAR_DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+      VAR_DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
 
   - task: PublishTestResults@2
     condition: failed()
