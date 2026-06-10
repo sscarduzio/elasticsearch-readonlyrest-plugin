@@ -59,20 +59,18 @@ sourceSets {
 test {
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
-    def module = enabled ? project.properties['esModule'] : null
     if (enabled) {
+        def module = project.properties['esModule']
         systemProperty "esModule", module
         def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
         if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
 
         filter { includeTestsMatching 'tech.beshu.ror.integration.suites.*' }
-    }
-    // ScalaTest runs through Gradle's native test machinery (JUnit Platform + scalatest engine),
-    // replacing the maiflai plugin which ran ONE JVM with maxParallelForks as ScalaTest threads.
-    // ScalaTest tags map to JUnit Platform tags, so the per-module exclusions keep working.
-    useJUnitPlatform {
-        includeEngines 'scalatest'
-        if (module != null) {
+        // ScalaTest runs through Gradle's native test machinery (JUnit Platform + scalatest engine),
+        // replacing the maiflai plugin which ran ONE JVM with maxParallelForks as ScalaTest threads.
+        // ScalaTest tags map to JUnit Platform tags, so the per-module exclusions keep working.
+        useJUnitPlatform {
+            includeEngines 'scalatest'
             excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
         }
     }
@@ -89,6 +87,9 @@ test {
     // IT_MAX_PARALLEL_FORKS opts in on bigger machines. Windows is always 1 (fixed ES host ports).
     boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
     maxParallelForks = isWindows ? 1 : (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '1').toInteger()
+    // 2g per WORKER JVM (Gradle's 512m default is too small for the IT client stack; maiflai's
+    // javaexec had no cap). Heap multiplies with forks: keep IT_MAX_PARALLEL_FORKS x (2g + ~1.2g
+    // per ES container) well under host RAM before raising it.
     maxHeapSize = '2g'
 }
 
