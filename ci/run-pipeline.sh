@@ -442,10 +442,14 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
     exit 1
   fi
 
+  # IMAGE_TAG is optional; its pipeline default is a single space, so normalize whitespace-only to empty.
+  IMAGE_TAG="$(echo "${IMAGE_TAG:-}" | tr -d '[:space:]')"
+
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
     if [ -n "$VERSION" ]; then
-      public_ror_prebuild_plugin "$VERSION"
+      publish_ror_prebuild_plugin "$VERSION" "$IMAGE_TAG"
+      docker system prune -fa
     fi
   done
 
