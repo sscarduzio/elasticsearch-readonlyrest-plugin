@@ -379,35 +379,6 @@ release_ror_plugin() {
   cleanup_docker_and_build
 }
 
-public_ror_prebuild_plugin() {
-  if [ "$#" -ne 1 ]; then
-    echo "What ES version should I release plugin for?"
-    return 1
-  fi
-
-  local ES_VERSION=$1
-
-  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-    echo "Invalid ES version format. Expected format: X.Y.Z"
-    return 2
-  fi
-
-  if ! docker info >/dev/null 2>&1; then
-    echo "Docker daemon not running or not logged in"
-    return 3
-  fi
-
-  echo ""
-  echo "PUBLISHING ROR PRE-BUILD for ES $ES_VERSION:"
-
-  if ! ./gradlew publishEsRorPreBuildDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
-    echo "Failed to publish plugin prebuild Docker image"
-    return 4
-  fi
-
-  docker system prune -fa
-}
-
 if [[ $ROR_TASK == "release_es9xx" ]]; then
   release_ror_plugins "ci/supported-es-versions/es9x.txt"
 fi
@@ -470,10 +441,14 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
     exit 1
   fi
 
+  # IMAGE_TAG is optional; its pipeline default is a single space, so normalize whitespace-only to empty.
+  IMAGE_TAG="$(echo "${IMAGE_TAG:-}" | tr -d '[:space:]')"
+
   IFS=', ' read -r -a VERSIONS <<< "$BUILD_ROR_ES_VERSIONS"
   for VERSION in "${VERSIONS[@]}"; do
     if [ -n "$VERSION" ]; then
-      public_ror_prebuild_plugin "$VERSION"
+      publish_ror_prebuild_plugin "$VERSION" "$IMAGE_TAG"
+      docker system prune -fa
     fi
   done
 
