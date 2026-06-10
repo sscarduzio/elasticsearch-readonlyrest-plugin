@@ -125,3 +125,38 @@ tasks.register('jmh', JavaExec) {
     }
 }
 
+def smokeRaw    = layout.buildDirectory.file("jmh/smoke-raw.json")
+def smokeRecord = layout.buildDirectory.file("jmh/smoke-record.json")
+def smokeReport = layout.buildDirectory.file("jmh/smoke-compare.md")
+
+// 4) PR smoke subset: ci-smoke.txt regexes at the kpis.yml canonical @Param sizes, with -prof gc.
+tasks.register('jmhSmoke', JavaExec) {
+    group = 'benchmark'
+    description = 'Runs the PR-smoke benchmark subset (ci-smoke.txt) and the allocation gate'
+    dependsOn 'jmhCompileGenerated'
+    finalizedBy 'jmhCompare'
+    mainClass = 'org.openjdk.jmh.Main'
+    classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
+    doFirst { smokeRaw.get().asFile.parentFile.mkdirs() }
+    def regexes = file('ci-smoke.txt').readLines()
+            .collect { it.trim() }
+            .findAll { it && !it.startsWith('#') }
+    args = regexes + [
+            '-p', 'blocks=100', '-p', 'patterns=100', '-p', 'requestedIndices=50',
+            '-p', 'configuredGroups=100', '-p', 'userGroups=100',
+            '-f', '1', '-wi', '3', '-i', '3', '-prof', 'gc',
+            '-rf', 'json', '-rff', smokeRaw.get().asFile.absolutePath
+    ]
+}
+
+// 5) Reduce the smoke result to a run record and compare B/op against the committed baseline.
+tasks.register('jmhCompare', Exec) {
+    group = 'benchmark'
+    description = 'Extracts the smoke run record and runs the allocation gate (tools/compare.py)'
+    workingDir = projectDir
+    commandLine 'bash', '-c',
+            "python3 tools/extract.py --input '${smokeRaw.get().asFile}' " +
+            "--output '${smokeRecord.get().asFile}' --jmh-args 'jmhSmoke' && " +
+            "python3 tools/compare.py --record '${smokeRecord.get().asFile}' " +
+            "--baseline baselines/alloc-baseline.json --markdown '${smokeReport.get().asFile}'"
+}
