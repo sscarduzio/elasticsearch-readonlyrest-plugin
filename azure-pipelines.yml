@@ -776,13 +776,12 @@ stages:
                 exit 1
               fi
 
-              echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for ELK $E2E_ELK_VERSION"
+              echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE"
               ci/run-pipeline.sh
             env:
               ROR_TASK: run_e2e_tests
+              E2E_ES_MODULE: $(E2E_ES_MODULE)
               E2E_TARGET_BRANCH: $(Build.SourceBranchName)
-              # System.JobAttempt increments on each retry of the same build, keeping the run tag unique
-              # even when a failed stage is re-run (Build.BuildId stays the same across retries).
               E2E_BUILD_ID: $(Build.BuildId)-$(System.JobAttempt)
               ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
               KBN_REPO_GH_TOKEN: $(KBN_REPO_DISPATCH_TOKEN)
@@ -793,7 +792,7 @@ stages:
           maxParallel: 99
           matrix:
             E2E_es94x:
-              E2E_ELK_VERSION: '9.4.2'
+              E2E_ES_MODULE: 'es94x'
 
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'

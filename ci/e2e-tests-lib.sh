@@ -128,7 +128,7 @@ run_e2e_against_dev_images() {
 # Entry point for the `run_e2e_tests` task in run-pipeline.sh.
 # Args: <elk version> <target branch> <build id>
 #   elk version   — ELK version to test (X.Y.Z)
-#   target branch — KBN branch to build from (e.g. develop)
+#   target branch — KBN branch to build from
 #   build id      — E2E_BUILD_ID (Build.BuildId-System.JobAttempt); unique per attempt (run-<id>)
 run_e2e_tests() {
   if [ "$#" -ne 3 ]; then

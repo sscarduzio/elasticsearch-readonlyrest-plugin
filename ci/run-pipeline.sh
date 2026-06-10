@@ -456,6 +456,7 @@ if [[ $ROR_TASK == "publish_pre_builds_docker_images" ]]; then
 fi
 
 if [[ $ROR_TASK == "run_e2e_tests" ]]; then
-  # Helpers live in ci/e2e-lib.sh (sourced at the top of this script).
-  run_e2e_tests "$E2E_ELK_VERSION" "${E2E_TARGET_BRANCH:-develop}" "$E2E_BUILD_ID"
+  # Helpers live in ci/e2e-tests-lib.sh (sourced at the top of this script).
+  E2E_ELK_VERSION=$(grep '^latestSupportedEsVersion=' "${E2E_ES_MODULE:?E2E_ES_MODULE is not set}/gradle.properties" | awk -F= '{print $2}')
+  run_e2e_tests "$E2E_ELK_VERSION" "${E2E_TARGET_BRANCH:?E2E_TARGET_BRANCH is not set}" "$E2E_BUILD_ID"
 fi
