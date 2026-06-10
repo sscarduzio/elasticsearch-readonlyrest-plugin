@@ -57,7 +57,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val block = new Block(
           name = blockName,
           policy = Block.Policy.Allow,
-          
           audit = Block.Audit.Enabled(),
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") ::
@@ -121,7 +120,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        
         audit = Block.Audit.Enabled(),
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
@@ -160,7 +158,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        
         audit = Block.Audit.Enabled(),
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", withLoggedUser) ::

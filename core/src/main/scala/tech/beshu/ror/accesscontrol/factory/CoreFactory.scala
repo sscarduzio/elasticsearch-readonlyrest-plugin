@@ -21,12 +21,12 @@ import cats.kernel.Monoid
 import io.circe.*
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -46,13 +46,12 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
 import tech.beshu.ror.accesscontrol.utils.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.ScalaOps.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControlList,
@@ -227,29 +226,39 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
     implicit val blockAuditDecoder: Decoder[Block.Audit] =
       Decoder.instance { c =>
         for {
-          enabled            <- c.downField("enabled").as[Option[Boolean]]
-          logAllowedEvts     <- c.downField("log_allowed_events").as[Option[Boolean]]
-          enabledSinksRaw    <- c.downField("enabled_audit_sinks").as[Option[List[Block.SinkName]]]
-          disabledSinksRaw   <- c.downField("disabled_audit_sinks").as[Option[List[Block.SinkName]]]
-          _                  <- Either.cond(
-                                  !(enabledSinksRaw.isDefined && disabledSinksRaw.isDefined),
-                                  (),
-                                  decodingFailureFrom(BlocksLevelCreationError(Message(
-                                    "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
-                                  )))
-                                )
+          enabledOpt <- c.downField("enabled").as[Option[Boolean]]
+          enabled = enabledOpt.getOrElse(true)
+          logAllowedEventsOpt <- c.downField("log_allowed_events").as[Option[Boolean]]
+          logAllowedEvents = logAllowedEventsOpt.getOrElse(true)
+          enabledSinksRaw <- c.downField("enabled_audit_sinks").as[Option[List[Block.SinkName]]]
+          disabledSinksRaw <- c.downField("disabled_audit_sinks").as[Option[List[Block.SinkName]]]
+          enabledAuditSinks <- (enabledSinksRaw, disabledSinksRaw) match {
+            case (Some(_), Some(_)) =>
+              Left(
+                decodingFailureFrom(BlocksLevelCreationError(Message(
+                  "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
+                )))
+              )
+            case (Some(enabledSinks), None) =>
+              Right(EnabledAuditSinks.Selected(enabledSinks.toSet))
+            case (None, Some(disabledSinks)) =>
+              Right(EnabledAuditSinks.AllExcept(disabledSinks.toSet))
+            case (None, None) =>
+              Right(EnabledAuditSinks.All)
+          }
         } yield {
-          if (enabled.getOrElse(true))
-            Block.Audit.Enabled(logAllowedEvts.getOrElse(true), enabledSinksRaw.map(_.toSet), disabledSinksRaw.map(_.toSet))
-          else
+          if (enabled) {
+            Block.Audit.Enabled(logAllowedEvents, enabledAuditSinks)
+          } else {
             Block.Audit.Disabled
+          }
         }
       }
 
     Decoder
       .instance { c =>
         val result = for {
-          name   <- c.downField(Attributes.Block.name).as[Block.Name]
+          name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           legacyVerbosityAudit <- c.as[Option[Block.Audit]](legacyVerbosityAuditDecoder)
           auditFromConfig <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
@@ -278,8 +287,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private val legacyVerbosityAuditDecoder: Decoder[Option[Block.Audit]] = Decoder.instance { c =>
     c.downField(Attributes.Block.verbosity).as[Option[String]].flatMap {
-      case None          => Right(None)
-      case Some("info")  => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
+      case None => Right(None)
+      case Some("info") => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
       case Some("error") => Right(Some(Block.Audit.Enabled(logAllowedEvents = false)))
       case Some(unknown) => Left(decodingFailureFrom(BlocksLevelCreationError(Message(
         s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'."
@@ -301,7 +310,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           else configuredSinkNames
         val errors = blocksNel.toList.map(_.block).flatMap { block =>
           block.audit match {
-            case Block.Audit.Enabled(_, Some(enabledSinks), _) =>
+            case Block.Audit.Enabled(_, EnabledAuditSinks.Selected(enabledSinks)) =>
               if (enabledSinks.isEmpty)
                 List(s"Block '${block.name.value}': 'enabled_audit_sinks' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'")
               else {
@@ -310,7 +319,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                   List(s"Block '${block.name.value}': 'enabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
                 else Nil
               }
-            case Block.Audit.Enabled(_, _, Some(disabledSinks)) =>
+            case Block.Audit.Enabled(_, EnabledAuditSinks.AllExcept(disabledSinks)) =>
               if (disabledSinks.isEmpty)
                 List(s"Block '${block.name.value}': 'disabled_audit_sinks' cannot be empty")
               else {
@@ -485,17 +494,25 @@ object RawRorSettingsBasedCoreFactory {
   object CoreCreationError {
 
     final case class GeneralReadonlyrestSettingsError(reason: Reason) extends CoreCreationError
+
     final case class DefinitionsLevelCreationError(reason: Reason) extends CoreCreationError
+
     final case class BlocksLevelCreationError(reason: Reason) extends CoreCreationError
+
     final case class RulesLevelCreationError(reason: Reason) extends CoreCreationError
+
     final case class ValueLevelCreationError(reason: Reason) extends CoreCreationError
+
     final case class AuditingSettingsCreationError(reason: Reason) extends CoreCreationError
 
     sealed trait Reason
+
     object Reason {
 
       final case class Message(value: String) extends Reason
+
       final case class MalformedValue private(value: String) extends Reason
+
       object MalformedValue {
         def fromString(raw: String): MalformedValue = {
           val normalized = raw.replaceAll("\r\n?", "\n")
@@ -547,9 +564,12 @@ object RawRorSettingsBasedCoreFactory {
                                                   impersonationWarnings: ImpersonationWarningsReader)
 
   private sealed trait RuleDecodingResult
+
   private object RuleDecodingResult {
     final case class Result(value: Decoder.Result[RuleDefinition[Rule]]) extends RuleDecodingResult
+
     case object UnknownRule extends RuleDecodingResult
+
     case object Skipped extends RuleDecodingResult
   }
 

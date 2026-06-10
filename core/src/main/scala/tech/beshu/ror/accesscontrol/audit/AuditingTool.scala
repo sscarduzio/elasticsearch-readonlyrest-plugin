@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.audit.sink.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -69,19 +70,16 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
 
   private def filterSinks(blockAudit: Option[Audit.Enabled]): List[BaseAuditSink] = {
     blockAudit match {
-      case None => auditSinks
-      case Some(config) if config.enabledSinks.isEmpty && config.disabledSinks.isEmpty =>
+      case None =>
         auditSinks
       case Some(config) =>
-        auditSinks.filter { sink =>
-          config.enabledSinks match {
-            case Some(names) => names.contains(sink.name)
-            case None =>
-              config.disabledSinks match {
-                case Some(names) => !names.contains(sink.name)
-                case None => true
-              }
-          }
+        config.enabledAuditSinks match {
+          case EnabledAuditSinks.All =>
+            auditSinks
+          case EnabledAuditSinks.Selected(enabledSinks) =>
+            auditSinks.filter(sink => enabledSinks.contains(sink.name))
+          case EnabledAuditSinks.AllExcept(disabledSinks) =>
+            auditSinks.filter(sink => !disabledSinks.contains(sink.name))
         }
     }
   }
@@ -175,7 +173,7 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
   }
 
   private def toAuditVerbosity(audit: Audit): AuditResponseContext.Verbosity = audit match {
-    case Audit.Enabled(logAllowedEvents, _, _) =>
+    case Audit.Enabled(logAllowedEvents, _) =>
       if (logAllowedEvents) AuditResponseContext.Verbosity.Info else AuditResponseContext.Verbosity.Error
     case Audit.Disabled =>
       AuditResponseContext.Verbosity.Info

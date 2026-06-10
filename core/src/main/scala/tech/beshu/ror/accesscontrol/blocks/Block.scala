@@ -22,6 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
@@ -231,8 +232,19 @@ object Block {
 
   object Audit {
     final case class Enabled(logAllowedEvents: Boolean = true,
-                             enabledSinks: Option[Set[SinkName]] = None,
-                             disabledSinks: Option[Set[SinkName]] = None) extends Audit
+                             enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All) extends Audit
+
+    object Enabled {
+      sealed trait EnabledAuditSinks
+
+      object EnabledAuditSinks {
+        case object All extends EnabledAuditSinks
+
+        final case class Selected(enabledSinks: Set[SinkName]) extends EnabledAuditSinks
+
+        final case class AllExcept(disabledSinks: Set[SinkName]) extends EnabledAuditSinks
+      }
+    }
 
     case object Disabled extends Audit
 
