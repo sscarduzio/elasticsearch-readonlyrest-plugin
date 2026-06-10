@@ -77,6 +77,13 @@ test {
         }
     }
     outputs.upToDateWhen { false }
+    // Live console output (suite/test progress, container logs, full failures). maiflai printed
+    // ScalaTest output directly; native test execution is SILENT without this block (same as core's).
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
     // With native test execution maxParallelForks creates REAL worker JVMs, each with its own
     // TestNetwork.perJvm network and singleton ES. Default stays 1 (CI parity with develop);
     // IT_MAX_PARALLEL_FORKS opts in on bigger machines. Windows is always 1 (fixed ES host ports).
