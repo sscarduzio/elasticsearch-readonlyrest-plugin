@@ -163,9 +163,6 @@ class RepositoriesRuleTests extends AnyWordSpec with Inside with MockFactory {
       }
     }
     "match a runtime variable" when {
-      // Dynamic path: the configured value is a `ToBeResolved` runtime variable (`@{user}`), so the
-      // rule resolves it per request via `resolveAll` (the `getOrElse` fallback) rather than the
-      // precomputed static matcher. Guards the non-static branch left unchanged by the optimization.
       "it resolves to the requested repository" in {
         assertMatchRule(
           configuredRepositories = NonEmptySet.one(repositoryNameVar("@{user}")),

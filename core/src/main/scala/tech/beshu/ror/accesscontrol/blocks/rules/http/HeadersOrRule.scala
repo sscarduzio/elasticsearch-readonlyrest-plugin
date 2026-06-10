@@ -39,7 +39,7 @@ class HeadersOrRule(settings: Settings)
     Decision.permit(`with` = blockContext)(
       when = {
         val requestHeaders = blockContext.requestContext.restRequest.allHeaders
-        val result = compiledRequirements.exists(_.isFulfilledBy(requestHeaders))
+        val result = settings.compiledRequirements.exists(_.isFulfilledBy(requestHeaders))
         if (!result) logAccessRequirementsNotFulfilled(blockContext.requestContext)
         result
       }
@@ -49,7 +49,7 @@ class HeadersOrRule(settings: Settings)
   private def logAccessRequirementsNotFulfilled(requestContext: RequestContext): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
     implicit val requestContextImpl: RequestContext = requestContext
-    val requirements = compiledRequirements.map(_.accessRequirement)
+    val requirements = settings.compiledRequirements.map(_.accessRequirement)
     logger.debug(s"Request headers don't fulfil any of header access requirements: ${requirements.show}")
   }
 }

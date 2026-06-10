@@ -19,23 +19,17 @@ package tech.beshu.ror.accesscontrol.blocks.rules.http
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.http.BaseHeaderRule.{CompiledHeaderRequirementMatcher, Settings}
+import tech.beshu.ror.accesscontrol.blocks.rules.http.BaseHeaderRule.Settings
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
 abstract class BaseHeaderRule(val settings: Settings)
-  extends RegularRule {
-
-  protected val compiledRequirements: NonEmptyList[CompiledHeaderRequirementMatcher] =
-    settings.compiledRequirements
-}
+  extends RegularRule
 
 object BaseHeaderRule {
 
-  // Requirements are compiled once in the smart constructor (they are static for the rule's lifetime)
-  // instead of building a fresh single-element `PatternsMatcher` per (requirement x header) on every request.
   final class Settings private(val compiledRequirements: NonEmptyList[CompiledHeaderRequirementMatcher]) {
     def headerAccessRequirements: NonEmptyList[AccessRequirement[Header]] =
       compiledRequirements.map(_.accessRequirement)
@@ -45,8 +39,6 @@ object BaseHeaderRule {
       new Settings(headerAccessRequirements.toNonEmptyList.map(CompiledHeaderRequirementMatcher.compile))
   }
 
-  // A header requirement paired with its precompiled value matcher. Header-name comparison is
-  // case-insensitive (per `Header.Name`'s `Eq`); value comparison is case-sensitive.
   private[http] final class CompiledHeaderRequirementMatcher private(val accessRequirement: AccessRequirement[Header],
                                                                      matches: Header => Boolean) {
     def isFulfilledBy(requestHeaders: Set[Header]): Boolean =

@@ -39,7 +39,7 @@ class HeadersAndRule(settings: Settings)
     Decision.permit(`with` = blockContext)(
       when = {
         val requestHeaders = blockContext.requestContext.restRequest.allHeaders
-        compiledRequirements.forall { requirement =>
+        settings.compiledRequirements.forall { requirement =>
           val result = requirement.isFulfilledBy(requestHeaders)
           if (!result) logAccessRequirementNotFulfilled(requirement, blockContext.requestContext)
           result

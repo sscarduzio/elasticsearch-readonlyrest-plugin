@@ -40,11 +40,9 @@ import java.util.concurrent.TimeUnit
  *    (what `BaseHeaderRule.matches` did before).
  *  - `newPath_precompiledMatcher`   : reuse value matchers compiled once at construction.
  *
- * Models a `headers_and`-style "all must be present" check: every requirement is scanned against
- * every request header. The request includes headers whose NAMES match the requirements (so the
- * value glob is actually evaluated — and, on the old path, actually built — rather than being
- * short-circuited away by the name check) but whose VALUES miss, forcing a full scan. Add
- * `-prof gc` to see the per-request allocation removed.
+ * Models a `headers_and`-style "all must be present" check: the request satisfies every
+ * requirement with the matching header placed last, so each inner scan is full and the outer
+ * `forall` traverses all requirements. Add `-prof gc` to see the per-request allocation removed.
  */
 @State(Scope.Thread)
 @BenchmarkMode(Array(Mode.AverageTime, Mode.Throughput))
