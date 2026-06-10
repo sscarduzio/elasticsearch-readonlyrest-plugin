@@ -80,7 +80,7 @@ object IndexName {
   }
 }
 
-final case class KibanaIndexName(underlying: ClusterIndexName.Local)
+final case class KibanaIndexName(underlying: ClusterIndexName.Local) extends EagerHashCode
 object KibanaIndexName {
 
   val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
@@ -137,7 +137,7 @@ object KibanaIndexName {
     def stringify: String = kibanaIndexName.underlying.stringify
 }
 
-final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
+final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean) extends EagerHashCode
 object RequestedIndex {
 
   implicit val eq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
