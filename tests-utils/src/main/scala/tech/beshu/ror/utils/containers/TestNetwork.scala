@@ -19,24 +19,13 @@ package tech.beshu.ror.utils.containers
 import org.testcontainers.containers.Network
 
 /**
- * Docker network shared by all containers created within this test JVM, ISOLATED between JVMs.
- *
- * Suites wire containers together by network alias derived from the cluster name (e.g.
- * `discovery.seed_hosts`, `<node>:9300`, LDAP/Toxiproxy hostnames), and those names are fixed
- * per suite type (several suites use `ROR1`). Unlike the previous `Network.SHARED` (one global,
- * reused network), this is a uniquely-named (UUID) network created per JVM.
- *
- * Integration tests run through Gradle's native test machinery (JUnit Platform scalatest
- * engine), so `maxParallelForks > 1` spawns REAL worker JVMs. Each worker then gets its own
- * network, its own singleton ES container and its own DNS namespace — alias-colliding suites
- * can never cross-wire clusters across workers, and within one worker suites run sequentially,
- * exactly like the serial baseline.
+ * One uniquely-named (UUID) Docker network per test JVM (vs the old global `Network.SHARED`),
+ * so parallel test workers can't cross-wire clusters whose suites reuse the same aliases (e.g. `ROR1_1`).
  */
 object TestNetwork {
 
-  // `org.gradle.test.worker` is set inside Gradle test-worker JVMs ("local" outside Gradle,
-  // e.g. when run from an IDE). A label only — uniqueness comes from the UUID network name.
-  // It makes per-worker networks identifiable in `docker network ls`.
+  // workerId: set by Gradle test workers, "local" outside Gradle. Label aids `docker network ls`;
+  // uniqueness comes from the UUID network name.
   lazy val perJvm: Network = {
     val workerId = Option(System.getProperty("org.gradle.test.worker")).getOrElse("local")
     Network

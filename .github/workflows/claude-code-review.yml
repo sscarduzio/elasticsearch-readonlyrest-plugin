@@ -1,11 +1,7 @@
 name: Claude Code Review
 
-# Automated PR review by Claude Code.
-#
-# Trigger: PR pushes by repo owners/members/collaborators, ONLY when the head
-# commit message contains "@claude review" (opt-in — reviews are expensive and
-# noisy on every push). External-fork PRs are skipped (see `if:` below) to
-# prevent prompt injection from untrusted PR content.
+# Automated PR review by Claude Code. Opt-in: fires only when the head commit message
+# contains "@claude review". External-fork PRs are skipped (prompt-injection guard).
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]

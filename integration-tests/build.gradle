@@ -66,30 +66,25 @@ test {
         if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
 
         filter { includeTestsMatching 'tech.beshu.ror.integration.suites.*' }
-        // ScalaTest runs through Gradle's native test machinery (JUnit Platform + scalatest engine),
-        // replacing the maiflai plugin which ran ONE JVM with maxParallelForks as ScalaTest threads.
-        // ScalaTest tags map to JUnit Platform tags, so the per-module exclusions keep working.
+        // Gradle-native test machinery (replaces maiflai's one-JVM runner); ScalaTest tags map to JUnit tags.
         useJUnitPlatform {
             includeEngines 'scalatest'
             excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
         }
     }
     outputs.upToDateWhen { false }
-    // Live console output (suite/test progress, container logs, full failures). maiflai printed
-    // ScalaTest output directly; native test execution is SILENT without this block (same as core's).
+    // Live console output — native test execution is silent without this (same block as core's).
     testLogging {
         showStandardStreams = true
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-    // With native test execution maxParallelForks creates REAL worker JVMs, each with its own
-    // TestNetwork.perJvm network and singleton ES. Default stays 1 (CI parity with develop);
-    // IT_MAX_PARALLEL_FORKS opts in on bigger machines. Windows is always 1 (fixed ES host ports).
+    // Real worker JVMs, each with its own TestNetwork.perJvm + singleton ES. Default 1 = develop
+    // parity; IT_MAX_PARALLEL_FORKS opts in on bigger machines; Windows pinned (fixed ES ports).
     boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
     maxParallelForks = isWindows ? 1 : (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '1').toInteger()
-    // 2g per WORKER JVM (Gradle's 512m default is too small for the IT client stack; maiflai's
-    // javaexec had no cap). Heap multiplies with forks: keep IT_MAX_PARALLEL_FORKS x (2g + ~1.2g
-    // per ES container) well under host RAM before raising it.
+    // Per WORKER JVM (Gradle's 512m default is too small). Multiplies with forks:
+    // keep IT_MAX_PARALLEL_FORKS x (2g + ~1.2g per ES container) under host RAM.
     maxHeapSize = '2g'
 }
 
