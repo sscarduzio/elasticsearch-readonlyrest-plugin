@@ -21,8 +21,6 @@ steps:
     fetchDepth: 1
     clean: false
     persistCredentials: true
-  # No Cache@2 restore: the Gradle cache is baked into the image at GRADLE_USER_HOME.
-  # Restoring over that root-owned dir failed with "denied" and killed every IT leg.
   - script: |
       export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
       export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID

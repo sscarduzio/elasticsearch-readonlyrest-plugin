@@ -3,7 +3,7 @@
 # resolved at compile time and does not expand $(variables).
 resources:
   containers:
-    - container: rortoolchains
+    - container: ror-toolchains
       image: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
 
 variables:
@@ -16,7 +16,7 @@ variables:
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
   dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
-  # Use the Gradle home baked into the CI image (ci/Dockerfile.toolchains): it already contains the
+  # Use the Gradle home baked into the CI image (ci/toolchains/JdkToolchains.Dockerfile): it already contains the
   # Gradle distribution + resolved plugins/dependencies, so download-free tasks run with `--offline`
   # and never hit a flaky external CDN. (Override per-build with ROR_GRADLE_OFFLINE=false to refresh
   # the cache when dependencies change.)
@@ -73,6 +73,7 @@ parameters:
     values:
       - 'run_all_tests_on_linux'
       - 'run_all_tests_on_windows'
+      - 'build_toolchains_image'
 
 pool:
   vmImage: 'ubuntu-24.04'
@@ -108,8 +109,40 @@ stages:
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
 
-  - stage: GRADLE_WARMUP
-    displayName: 'Warm up Gradle cache'
+  # Manual-only: builds & pushes the CI toolchains image (ci/toolchains/JdkToolchains.Dockerfile).
+  # Run with actionToPerform=build_toolchains_image after a JDK/Gradle/dependency change, then
+  # bump the image tag in the `resources.containers` block above.
+  - stage: BUILD_TOOLCHAINS_IMAGE
+    displayName: 'Build & push CI toolchains image'
+    dependsOn: [ ]
+    condition: and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'build_toolchains_image'))
+    jobs:
+      - job: BUILD_AND_PUSH
+        timeoutInMinutes: 240
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+          - bash: |
+              sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache
+              docker system prune -af
+              df -h /
+            displayName: 'Free up disk space'
+          - script: |
+              set -e
+              # The image tag lives in the resources.containers block of this file (single source of truth)
+              IMAGE=$(grep -oE 'beshultd/ror-ci-toolchains:[^ ]+' azure-pipelines.yml | head -1)
+              echo ">>> Building $IMAGE"
+              docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$IMAGE" .
+              echo "$var_docker_registry_password" | docker login -u "$var_docker_registry_user" --password-stdin
+              docker push "$IMAGE"
+            displayName: 'docker build & push'
+            env:
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+
+  - stage: TOOLCHAINS_VERIFY
+    displayName: 'Verify toolchains image'
     dependsOn: [ ]
     condition:
       and(
@@ -120,9 +153,9 @@ stages:
         )
       )
     jobs:
-      - job: WARMUP
+      - job: TOOLCHAINS_VERIFY
         displayName: 'Verify baked Gradle home and toolchains'
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 10
         steps:
           - checkout: self
@@ -140,11 +173,11 @@ stages:
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
+    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: CVE_CHECK
-        container: rortoolchains
+        container: ror-toolchains
         steps:
           - checkout: self
             fetchDepth: 1
@@ -191,16 +224,16 @@ stages:
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
-    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
+    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         ne(variables['Build.Reason'], 'Manual')
       )
     jobs:
       - job:
-        container: rortoolchains
+        container: ror-toolchains
         steps:
           - checkout: self
             fetchDepth: 1
@@ -230,11 +263,11 @@ stages:
 
   - stage: TEST
     displayName: 'Run all tests'
-    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
+    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
           ne(variables['Build.Reason'], 'Manual'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
@@ -251,7 +284,7 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
           )
         displayName: 'Unit tests'
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 30
         steps:
           - checkout: self
@@ -285,7 +318,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -315,7 +348,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -371,7 +404,7 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -417,7 +450,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -441,7 +474,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -469,7 +502,7 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
@@ -715,7 +748,7 @@ stages:
       )
     jobs:
       - job:
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 180
         steps:
           - checkout: self
@@ -786,7 +819,7 @@ stages:
         # cache, removing the bare-agent JDK-discovery / lost-cache risks (review).
         pool:
           name: 'Default'
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 600
         steps:
           - checkout: self
@@ -858,7 +891,7 @@ stages:
         # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
         pool:
           name: 'Default'
-        container: rortoolchains
+        container: ror-toolchains
         timeoutInMinutes: 180
         steps:
           - checkout: self
@@ -932,7 +965,7 @@ stages:
         # supplies those toolchains + the baked Gradle cache.
         pool:
           name: 'Default'
-        container: rortoolchains
+        container: ror-toolchains
         steps:
           - checkout: self
             fetchDepth: 1
