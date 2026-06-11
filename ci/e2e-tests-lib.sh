@@ -33,8 +33,9 @@ dispatch_kbn_prebuild_image() {
   local TARGET_BRANCH=$2
   local RUN_TAG=$3
 
-  if [ -z "${KBN_REPO_GH_TOKEN:-}" ]; then
-    echo "ERROR: KBN_REPO_GH_TOKEN is not set (required to dispatch the ROR KBN pre-build workflow)"
+  if [ -z "${KBN_REPO_GH_TOKEN:-}" ] || [[ "${KBN_REPO_GH_TOKEN}" == '$('* ]]; then
+    echo "ERROR: KBN_REPO_GH_TOKEN is not set or was not resolved by the pipeline (required to dispatch the ROR KBN pre-build workflow)"
+    echo "       Make sure KBN_REPO_DISPATCH_TOKEN is defined as a secret variable in Azure DevOps."
     return 2
   fi
 
