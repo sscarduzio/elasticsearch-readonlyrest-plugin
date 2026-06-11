@@ -17,6 +17,7 @@ Source of truth: `beshu-tech/readonlyrest-internal/development_guide.md`. This s
   - `🧐**Enhancement** (ES) full support for ES Snapshots and Restore APIs`
   - `🐞**Fix** (KBN) fix crash in error handling`
 - Pipelines must pass. Set the next pre-version before opening the PR.
+- PRs are squash-and-merged into `develop`; `master` carries stable versions only (mechanics: see the `ror-release` skill; internal architecture: `ror-internals`).
 - New ES version support: PR must come from the main repo (not a fork — `ES_S3_UP` needs S3 credentials); add the version to `bin/upload_es_artifacts.sh`.
 
 ## Review culture (the core rule)
