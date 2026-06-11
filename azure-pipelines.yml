@@ -219,7 +219,7 @@ stages:
             AUDIT_BUILD_CHECK:
               ROR_TASK: audit_build_check
 
-  - stage: TEST
+  - stage: ES_TESTS
     displayName: 'Run all tests'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
     condition:
@@ -259,7 +259,7 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              echo "[ES_TESTS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: core_tests
@@ -677,11 +677,11 @@ stages:
     displayName: 'Build ROR plugins'
     dependsOn:
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
         succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        succeeded('ES_TESTS'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
       )
@@ -726,11 +726,11 @@ stages:
     displayName: 'Run e2e tests'
     dependsOn:
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition:
       and(
         succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        succeeded('ES_TESTS'),
         or(
           eq(variables.isEpicBranchOrPr, true),
           eq(variables.isDevelop, true),
@@ -798,11 +798,13 @@ stages:
     displayName: 'Determine if this is release run'
     dependsOn:
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
+      - E2E_TESTS
     condition: |
       and(
         succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        succeeded('ES_TESTS'),
+        succeeded('E2E_TESTS'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
       )
@@ -822,12 +824,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        succeeded('ES_TESTS'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
         ne(variables['Build.Reason'], 'Manual')
@@ -904,12 +906,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        succeeded('ES_TESTS'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')
@@ -990,12 +992,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        succeeded('ES_TESTS'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')

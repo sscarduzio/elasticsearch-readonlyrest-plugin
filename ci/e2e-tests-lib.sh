@@ -1,4 +1,4 @@
-#!/bin/bash -e
+# Sourced by run-pipeline.sh — do not execute directly.
 
 # E2E tests helpers used by the `run_e2e_tests` task in run-pipeline.sh.
 #
@@ -17,15 +17,12 @@ E2E_KBN_PUBLISH_WORKFLOW="publish-pre-builds.yml"
 E2E_TESTS_REPO="https://github.com/beshu-tech/readonlyrest-e2e-tests.git"
 E2E_KBN_DEV_IMAGE_REPO="beshultd/kibana-readonlyrest-dev"
 
-# Checks whether an image tag exists in the remote registry without pulling it.
-docker_image_exists() {
-  docker manifest inspect "$1" >/dev/null 2>&1
-}
-
 # Dispatch the ROR KBN pre-build workflow for the given version and run tag. Does not wait for it.
 # We always dispatch — even when the canonical image exists — so the per-run alias tag is guaranteed
 # to exist by the time the poll in wait_for_kbn_prebuild_image succeeds. The workflow's skip
 # optimization means a "no KBN changes" dispatch only does a cheap registry-side retag.
+# target_branch may be a feature branch that doesn't exist in the KBN repo (e.g. on ES-only PRs);
+# the KBN publish-pre-builds workflow falls back to develop for unknown branches.
 dispatch_kbn_prebuild_image() {
   if [ "$#" -ne 3 ]; then
     echo "Usage: dispatch_kbn_prebuild_image <kbn version> <target branch> <run tag>"
