@@ -220,7 +220,7 @@ stages:
               ROR_TASK: audit_build_check
 
   - stage: ES_TESTS
-    displayName: 'Run all tests'
+    displayName: 'Run all ES-only tests'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
     condition:
       and(
@@ -673,71 +673,17 @@ stages:
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
 
-  - stage: BUILD_ROR
-    displayName: 'Build ROR plugins'
-    dependsOn:
-      - REQUIRED_CHECKS
-      - ES_TESTS
-    condition: |
-      and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('ES_TESTS'),
-        eq(variables.isPullRequest, true),
-        ne(variables['Build.Reason'], 'Manual')
-      )
-    jobs:
-      - job:
-        container: eclipse-temurin:17-jdk
-        timeoutInMinutes: 180
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              set -e
-
-              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-
-        strategy:
-          maxParallel: 99
-          matrix:
-            BUILD_9xx:
-              ROR_TASK: build_es9xx
-            BUILD_8xx:
-              ROR_TASK: build_es8xx
-            BUILD_7xx:
-              ROR_TASK: build_es7xx
-            BUILD_6xx:
-              ROR_TASK: build_es6xx
-
   - stage: E2E_TESTS
     displayName: 'Run e2e tests'
-    dependsOn:
-      - REQUIRED_CHECKS
-      - ES_TESTS
+    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
     condition:
       and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('ES_TESTS'),
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
+        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
-          eq(variables.isEpicBranchOrPr, true),
-          eq(variables.isDevelop, true),
-          eq(variables.isMaster, true),
-          eq(variables.isPullRequest, true)
-        ),
-        ne(variables['Build.Reason'], 'Manual')
+          ne(variables['Build.Reason'], 'Manual'),
+          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
+        )
       )
     jobs:
       - job:
@@ -793,6 +739,55 @@ stages:
           matrix:
             E2E_es94x:
               E2E_ES_MODULE: 'es94x'
+
+  - stage: BUILD_ROR
+    displayName: 'Build ROR plugins'
+    dependsOn:
+      - REQUIRED_CHECKS
+      - ES_TESTS
+    condition: |
+      and(
+        succeeded('REQUIRED_CHECKS'),
+        succeeded('ES_TESTS'),
+        eq(variables.isPullRequest, true),
+        ne(variables['Build.Reason'], 'Manual')
+      )
+    jobs:
+      - job:
+        container: eclipse-temurin:17-jdk
+        timeoutInMinutes: 180
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
+          - script: |
+              set -e
+
+              echo "[BUILD_ROR] executing ROR_TASK = $ROR_TASK"
+              echo ">>> ($ROR_TASK) Building ROR plugins" && ci/run-pipeline.sh
+            env:
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+
+        strategy:
+          maxParallel: 99
+          matrix:
+            BUILD_9xx:
+              ROR_TASK: build_es9xx
+            BUILD_8xx:
+              ROR_TASK: build_es8xx
+            BUILD_7xx:
+              ROR_TASK: build_es7xx
+            BUILD_6xx:
+              ROR_TASK: build_es6xx
 
   - stage: DETERMINE_CI_TYPE
     displayName: 'Determine if this is release run'
