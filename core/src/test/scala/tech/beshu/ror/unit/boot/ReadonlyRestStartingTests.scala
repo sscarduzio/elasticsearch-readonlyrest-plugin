@@ -56,7 +56,7 @@ import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSett
 import tech.beshu.ror.es.services.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.IndexDocumentManager.*
-import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexDocumentManager}
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService, IndexDocumentManager}
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.ror.RawRorSettings
@@ -1446,17 +1446,18 @@ class ReadonlyRestStartingTests
         val dataStreamService1 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = NotAcknowledged)
         val dataStreamService2 = mockedDataSteamService(dataStreamExists = false, componentTemplateResult = NotAcknowledged)
 
-        val auditSinkServiceCreator = mock[DataStreamAndIndexBasedAuditSinkServiceCreator]
+        val mockedSinkService1 = mockedDataStreamAuditSinkService(dataStreamService1)
+        val mockedSinkService2 = mockedDataStreamAuditSinkService(dataStreamService2)
 
-        (auditSinkServiceCreator.dataStream _)
-          .expects(dataStreamSinkConfig1.auditCluster)
-          .once()
-          .returns(mockedDataStreamAuditSinkService(dataStreamService1))
-
-        (auditSinkServiceCreator.dataStream _)
-          .expects(dataStreamSinkConfig2.auditCluster)
-          .once()
-          .returns(mockedDataStreamAuditSinkService(dataStreamService2))
+        val auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+          override protected def index(cluster: AuditCluster): IndexBasedAuditSinkService =
+            throw new IllegalStateException("index should not be called in this test")
+          override protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = cluster match {
+            case c if c == dataStreamSinkConfig1.auditCluster => mockedSinkService1
+            case c if c == dataStreamSinkConfig2.auditCluster => mockedSinkService2
+            case other => throw new IllegalStateException(s"Unexpected cluster: $other")
+          }
+        }
 
         implicit val systemContext: SystemContext = createSystemContext()
         val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager], auditSinkServiceCreator)
@@ -1496,7 +1497,7 @@ class ReadonlyRestStartingTests
             NonEmptyList.of(
               AuditSink.Enabled(dataStreamSinkConfig),
             ),
-            testEsNodeSettings
+            defaultTestEsNodeSettings
           ))
         )
 
@@ -1509,7 +1510,48 @@ class ReadonlyRestStartingTests
           case Left(StartingFailure(message, _)) =>
             val expectedMessage =
               s"""Errors:
-                 |Audit cluster healthcheck failed for remote cluster http://$wiremockHost/c1n1, http://$wiremockHost/c2n1. Details: Configured remote cluster for audit contains ES nodes belonging to different ES clusters. One audit sink can use only nodes from one cluster. See https://docs.readonlyrest.com/elasticsearch/audit#custom-audit-cluster""".stripMarginAndReplaceWindowsLineBreak
+                 |Audit cluster healthcheck failed for remote cluster http://$wiremockHost/c1n1, http://$wiremockHost/c2n1. Details: Configured remote cluster for audit contains ES nodes belonging to different ES clusters (found cluster UUIDs: [1AU0JjWGTyeUBi-6-cnW8g, FsCx9_26TnGqsw7Qp_ClrA]). One audit sink can use only nodes from one cluster. See https://docs.readonlyrest.com/elasticsearch/audit#custom-audit-cluster""".stripMarginAndReplaceWindowsLineBreak
+            message should be(expectedMessage)
+        }
+      }
+      "audit remote clusters are mixed even when ignore_es_connectivity_problems is enabled" in {
+        val dataStreamSinkConfig = AuditSink.Config.EsDataStreamBasedSink.default.copy(
+          auditCluster = AuditCluster.RemoteAuditCluster(
+            nodes = UniqueNonEmptyList.of(
+              AuditClusterNode(Uri.parse(s"http://$wiremockHost/c1n1")),
+              AuditClusterNode(Uri.parse(s"http://$wiremockHost/c2n1")),
+            ),
+            mode = ClusterMode.RoundRobin,
+            credentials = Some(NodeCredentials("admin", "pass")),
+            ignoreClusterConnectivityProblems = true
+          )
+        )
+
+        val auditSinkServiceCreator = mock[DataStreamAndIndexBasedAuditSinkServiceCreator]
+
+        val coreFactory = mockCoreFactory(
+          mockedCoreFactory = mock[CoreFactory],
+          "/boot_tests/forced_file_loading_with_audit/readonlyrest.yml",
+          mockEnabledAccessControl,
+          RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
+          Some(AuditingTool.AuditSettings(
+            NonEmptyList.of(
+              AuditSink.Enabled(dataStreamSinkConfig),
+            ),
+            defaultTestEsNodeSettings
+          ))
+        )
+
+        implicit val systemContext: SystemContext = createSystemContext()
+        val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager], auditSinkServiceCreator)
+        val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
+
+        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+        inside(result) {
+          case Left(StartingFailure(message, _)) =>
+            val expectedMessage =
+              s"""Errors:
+                 |Audit cluster healthcheck failed for remote cluster http://$wiremockHost/c1n1, http://$wiremockHost/c2n1. Details: Configured remote cluster for audit contains ES nodes belonging to different ES clusters (found cluster UUIDs: [1AU0JjWGTyeUBi-6-cnW8g, FsCx9_26TnGqsw7Qp_ClrA]). One audit sink can use only nodes from one cluster. See https://docs.readonlyrest.com/elasticsearch/audit#custom-audit-cluster""".stripMarginAndReplaceWindowsLineBreak
             message should be(expectedMessage)
         }
       }

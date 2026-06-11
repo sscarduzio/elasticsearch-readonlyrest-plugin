@@ -259,7 +259,7 @@ class RemoteClusterAuditingToolsSuite
           }
         }
       }
-      "reload audit settings when one node is unreachable and ignore_es_connectivity_problems is enabled" in {
+      "fail to reload audit settings when all nodes are unreachable and ignore_es_connectivity_problems is enabled" in {
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
 
@@ -273,9 +273,13 @@ class RemoteClusterAuditingToolsSuite
           replacements = Map("ignore_es_connectivity_problems: false" -> "ignore_es_connectivity_problems: true")
         )
 
-        rorApiManager.updateRorInIndexSettings(updatedConfig).forceOKStatusOrSettingsAlreadyLoaded()
+        rorApiManager.updateRorInIndexSettings(updatedConfig)
+          .forceOKWithFailure(
+            s"Unable to configure audit output using a data stream in remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
+              s"Details: [Unable to determine if data stream audit_data_stream exists., Unable to determine if data stream audit_data_stream exists.]"
+          )
       }
-      "fail to reload audit settings when one node is unreachable and ignore_es_connectivity_problems is disabled" in {
+      "reload audit settings when one node is unreachable and ignore_es_connectivity_problems is disabled" in {
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
         auditNode1.enableNetwork()
@@ -285,12 +289,7 @@ class RemoteClusterAuditingToolsSuite
 
         auditNode1.disableNetwork()
 
-        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml)
-          .forceOKWithFailure(
-            s"Audit cluster healthcheck failed for remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
-              s"Details: " +
-              s"Unexpected connection error from audit node: ${auditNodeAddressFromConfig(auditNode1)}"
-          )
+        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOkStatus()
       }
       "fail to reload audit settings when all nodes are unreachable and ignore_es_connectivity_problems is disabled" in {
         val auditNode1 = proxiedContainers(0)

@@ -138,7 +138,7 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
       .map {
         _.map(client => new RestClientDataStreamService(client))
       }
-      .map(AuditDataStreamCreator.remote(_, remoteCluster.ignoreClusterConnectivityProblems))
+      .map(AuditDataStreamCreator.remote(_))
   }
 
   private def createRestClient(remoteCluster: AuditCluster.RemoteAuditCluster, hosts: NonEmptyList[HttpHost]): RestClient = {

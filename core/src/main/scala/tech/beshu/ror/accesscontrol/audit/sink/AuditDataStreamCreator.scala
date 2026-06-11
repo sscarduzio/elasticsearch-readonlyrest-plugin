@@ -31,16 +31,19 @@ import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.TimeUnit
-import scala.collection.parallel.CollectionConverters.*
 
-final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService], ignoreEsConnectivityProblems: Boolean) extends RequestIdAwareLogging {
+final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) extends RequestIdAwareLogging {
 
   def createIfNotExists(dataStreamName: RorAuditDataStream): Task[Either[NonEmptyList[ErrorMessage], Unit]] = {
     services
       .toList
       .map(createIfNotExists(_, dataStreamName))
       .sequence
-      .map(_.map(_.leftMap(NonEmptyList.one)).combineAll.toEither)
+      .map { results =>
+        val (errors, successes) = results.map(_.toEither).separate
+        if (successes.nonEmpty) Right(())
+        else Left(NonEmptyList.fromListUnsafe(errors))
+      }
   }
 
   private def createIfNotExists(service: DataStreamService, dataStreamName: RorAuditDataStream): Task[Validated[ErrorMessage, Unit]] = {
@@ -56,8 +59,8 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService], ig
           setupDataStream(service, settings)
         case Left(ex) =>
           val errorMessage = s"Unable to determine if data stream ${dataStreamName.dataStream.show} exists."
-          Task.delay(noRequestIdLogger.info(errorMessage, ex))
-            .as(Validated.cond(ignoreEsConnectivityProblems, (), ErrorMessage(errorMessage)))
+          Task.delay(noRequestIdLogger.error(errorMessage, ex))
+            .as(ErrorMessage(errorMessage).invalid)
       }
   }
 
@@ -142,11 +145,10 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService], ig
 object AuditDataStreamCreator {
 
   def local(service: DataStreamService): AuditDataStreamCreator =
-    AuditDataStreamCreator(NonEmptyList.one(service), ignoreEsConnectivityProblems = false)
+    new AuditDataStreamCreator(NonEmptyList.one(service))
 
-  def remote(services: NonEmptyList[DataStreamService], ignoreClusterConnectivityProblems: Boolean): AuditDataStreamCreator = {
-    AuditDataStreamCreator(services, ignoreClusterConnectivityProblems)
-  }
+  def remote(services: NonEmptyList[DataStreamService]): AuditDataStreamCreator =
+    new AuditDataStreamCreator(services)
 
   final case class ErrorMessage(message: String) extends AnyVal
 }

@@ -915,7 +915,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "ignore_es_connectivity_problems flag is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -924,7 +923,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |        nodes: ["1.1.1.1", "2.2.2.2", "3.3.3.3"]
                   |        mode: round-robin
                   |        ignore_es_connectivity_problems: true
-                  |
                 """.stripMargin
               )
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
@@ -1142,7 +1140,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "extended syntax for cluster with failover mode" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
