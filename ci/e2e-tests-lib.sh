@@ -94,8 +94,9 @@ run_e2e_against_dev_images() {
   local RUN_TAG=$2
   local TARGET_BRANCH=$3
 
-  if [ -z "${ROR_ACTIVATION_KEY:-}" ]; then
-    echo "ERROR: ROR_ACTIVATION_KEY is not set (required to run the e2e Cypress tests)"
+  if [ -z "${ROR_ACTIVATION_KEY:-}" ] || [[ "${ROR_ACTIVATION_KEY}" == '$('* ]]; then
+    echo "ERROR: ROR_ACTIVATION_KEY is not set or was not resolved by the pipeline (required to run the e2e Cypress tests)"
+    echo "       Make sure ROR_ACTIVATION_KEY is defined as a secret variable in Azure DevOps."
     return 2
   fi
 
