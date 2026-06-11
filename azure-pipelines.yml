@@ -717,7 +717,7 @@ stages:
               E2E_TARGET_BRANCH: $(Build.SourceBranchName)
               E2E_BUILD_ID: $(Build.BuildId)-$(System.JobAttempt)
               ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
-              KBN_REPO_GH_TOKEN: $(KBN_REPO_DISPATCH_TOKEN)
+              KBN_REPO_GH_TOKEN: $(KBN_REPO_GH_TOKEN)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
