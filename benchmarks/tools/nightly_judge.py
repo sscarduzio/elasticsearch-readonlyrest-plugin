@@ -158,8 +158,9 @@ def main():
 
     if violations:
         for kpi_id, median, new_value in violations:
+            delta_pct = ((new_value - median) / median * 100) if median else float('inf')
             message = (f"KPI regression: {kpi_id} {median:.2f} -> {new_value:.2f} us/op "
-                       f"({(new_value - median) / median * 100:+.1f}% vs rolling median)")
+                       f"({delta_pct:+.1f}% vs rolling median)")
             print(f"##vso[task.logissue type=error]{message}" if on_azure else f"ERROR: {message}",
                   file=sys.stderr if not on_azure else sys.stdout)
         if last_good_sha:

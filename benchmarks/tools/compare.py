@@ -59,6 +59,15 @@ def main():
     tol_abs = float(baseline.get("toleranceAbsBytes", 64))
     on_azure = bool(os.environ.get("TF_BUILD"))
 
+    # B/op can shift across arch/OS, so warn (never fail) when this run's env differs from the baseline's.
+    base_env, rec_env = baseline.get("source", {}).get("env", {}), record.get("env", {})
+    mismatched = [k for k in ("arch", "os") if base_env.get(k) and rec_env.get(k) and base_env[k] != rec_env[k]]
+    if mismatched:
+        diffs = ", ".join(f"{k}: baseline={base_env[k]!r} vs run={rec_env[k]!r}" for k in mismatched)
+        message = f"alloc baseline env mismatch ({diffs}); regenerate with compare.py --write-baseline on the CI agent"
+        print(f"##vso[task.logissue type=warning]{message}" if on_azure else f"WARNING: {message}",
+              file=sys.stdout if on_azure else sys.stderr)
+
     rows, regressions, improvements = [], [], []
     for key, ref in sorted(baseline.get("benchmarks", {}).items()):
         ref_bop = float(ref["b_op"])
