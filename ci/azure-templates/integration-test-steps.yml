@@ -28,7 +28,7 @@ steps:
 
       # Authenticated Docker Hub pulls (testcontainers/docker-java read DOCKER_AUTH_CONFIG):
       # avoids the per-IP anonymous rate limit shared across all Azure hosted agents.
-      if [ -n "$VAR_DOCKER_HUB_RO_TOKEN" ]; then
+      if [ -n "$VAR_DOCKER_HUB_RO_TOKEN" ] && [ -n "$VAR_DOCKER_HUB_USER" ]; then
         export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf '%s:%s' "$VAR_DOCKER_HUB_USER" "$VAR_DOCKER_HUB_RO_TOKEN" | base64 -w0)\"}}}"
       fi
 
