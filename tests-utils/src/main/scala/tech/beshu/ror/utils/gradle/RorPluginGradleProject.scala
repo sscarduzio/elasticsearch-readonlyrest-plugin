@@ -85,7 +85,7 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
     // On CI the toolchains image bakes the Gradle distribution + offline cache into GRADLE_USER_HOME
-    // and marks it with a `.ror-ci-baked` sentinel (written by ci/Dockerfile.toolchains only after the
+    // and marks it with a `.ror-ci-baked` sentinel (written by ci/toolchains/JdkToolchains.Dockerfile only after the
     // cache passed offline validation). Point this nested Tooling-API build at that home + --offline so
     // it reuses the baked distribution instead of downloading gradle-x-all.zip from services.gradle.org.
     // The sentinel (not bare directory existence) is the contract: a developer with a relocated
