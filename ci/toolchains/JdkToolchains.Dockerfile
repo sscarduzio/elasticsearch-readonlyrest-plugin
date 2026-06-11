@@ -16,9 +16,9 @@
 #   * JDK 21  -> ES 9.x adapters                                      (ES 9.x bundles Java 21)
 #
 # Build context MUST be the repo root (the build needs settings.gradle/*/build.gradle to
-# resolve dependencies during the priming step). Build & push via the manual
-# BUILD_TOOLCHAINS_IMAGE stage in azure-pipelines.yml (actionToPerform=build_toolchains_image),
-# or locally:
+# resolve dependencies during the priming step). Built & pushed by the BUILD_TOOLCHAINS_IMAGE
+# stage in azure-pipelines.yml — weekly on a schedule (keeps the baked cache fresh) or manually
+# (actionToPerform=build_toolchains_image) — or locally:
 #
 #   docker build -f ci/toolchains/JdkToolchains.Dockerfile -t beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1 .
 #   docker push beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
@@ -70,8 +70,8 @@ ENV GRADLE_USER_HOME=/opt/gradle-home
 #      script -- which has zero footprint on the shipped build) resolves all resolvable
 #      configurations of all projects into caches/modules-2 without compiling.
 # Both run with toolchain auto-download off (all JDKs are already baked in). Anything that still
-# misses at CI time would need the network, which is why the pipeline keeps `--offline`
-# overridable via ROR_GRADLE_OFFLINE=false to refresh the cache.
+# misses at CI time (e.g. a dep bumped since the last rebuild) falls back to the network; the
+# weekly scheduled rebuild of this image keeps that stale window short.
 FROM base AS gradle-prime
 # Bake the image's JDK locations into the GRADLE_USER_HOME gradle.properties. This is read reliably
 # at CI time (installations.paths via GRADLE_OPTS is NOT reliably honoured), applies only to jobs
@@ -89,30 +89,30 @@ RUN cd /tmp/ror-src \
       -Dorg.gradle.java.installations.auto-download=false \
       -Dorg.gradle.java.installations.paths=/opt/java/jdk8,/opt/java/jdk11,/opt/java/openjdk,/opt/java/jdk21 \
       help resolveCiDependencies \
- # Cache the full classpath of every task the pipeline runs with `--offline` (run-pipeline.sh):
+ # Cache the full classpath of every download-free task the pipeline runs (run-pipeline.sh):
  #   compile_codebase_check -> `classes`     (every module's compile deps, incl. per-ES-version
  #                                            transport-netty4 etc. — and the Scala compiler bridge,
  #                                            resolved via a detached config only when a compile runs)
  #   core_tests             -> `testClasses` (every module's test-only deps, without running tests)
  #   audit_build_check      -> `audit:crossBuildAssemble` (2.11/2.12/2.13/3 bridges + cross deps)
- # Integration tests are NOT offline (they fetch ES binaries + private libs at runtime), so not primed here.
+ # Integration tests fetch ES binaries + private libs at runtime, so they are not primed here.
  && ./gradlew --no-daemon --console=plain --max-workers=1 \
       -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1 \
       -Dorg.gradle.java.installations.auto-download=false \
       -Dorg.gradle.java.installations.paths=/opt/java/jdk8,/opt/java/jdk11,/opt/java/openjdk,/opt/java/jdk21 \
       classes testClasses \
       :audit:crossBuildAssemble \
- # Self-validate OFFLINE the exact classpaths the --offline CI tasks need, so an incomplete cache fails
- # THIS image build instead of a CI run later. core/audit build outputs are wiped first so the offline
+ # Self-validate OFFLINE the exact classpaths the primed CI tasks need, so an incomplete cache fails
+ # THIS image build instead of degrading a CI run later. core/audit build outputs are wiped first so the offline
  # pass genuinely RE-COMPILES (exercising offline Scala compiler-bridge resolution) instead of
  # short-circuiting on UP-TO-DATE outputs from the online prime above.
  && rm -rf /tmp/ror-src/core/build /tmp/ror-src/audit/build \
  && ./gradlew --no-daemon --console=plain --offline --max-workers=1 \
       -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1 \
       classes testClasses :audit:crossBuildAssemble \
- # Sentinel marking this Gradle home as the CI-baked offline cache. RorPluginGradleProject keys its
- # nested-build offline mode on this file (NOT on bare GRADLE_USER_HOME existence, which would force
- # --offline on any dev with a relocated Gradle home). Written only after offline validation passed.
+ # Sentinel marking this Gradle home as the CI-baked cache. RorPluginGradleProject keys its
+ # nested-build Gradle-home reuse on this file (NOT on bare GRADLE_USER_HOME existence, which would
+ # hijack any dev's relocated Gradle home). Written only after offline validation passed.
  && touch "$GRADLE_USER_HOME/.ror-ci-baked" \
  && rm -rf "$GRADLE_USER_HOME"/caches/*/scripts "$GRADLE_USER_HOME"/daemon \
  && find "$GRADLE_USER_HOME" -name "*.lock" -delete 2>/dev/null || true \
@@ -123,5 +123,5 @@ RUN cd /tmp/ror-src \
 # ---- final image: toolchains + the primed Gradle home, WITHOUT the repo sources ------------
 FROM base
 COPY --from=gradle-prime /opt/gradle-home /opt/gradle-home
-# At CI time: point GRADLE_USER_HOME at /opt/gradle-home and run build tasks with `--offline`
-# (download-free tasks only — NOT integration tests / buildRorPlugin, which fetch ES binaries).
+# At CI time: point GRADLE_USER_HOME at /opt/gradle-home — warm-cache builds make no network
+# calls; cache misses fall back to the network until the next scheduled image rebuild.

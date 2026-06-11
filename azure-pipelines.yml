@@ -17,9 +17,10 @@ variables:
   dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
   # Use the Gradle home baked into the CI image (ci/toolchains/JdkToolchains.Dockerfile): it already contains the
-  # Gradle distribution + resolved plugins/dependencies, so download-free tasks run with `--offline`
-  # and never hit a flaky external CDN. (Override per-build with ROR_GRADLE_OFFLINE=false to refresh
-  # the cache when dependencies change.)
+  # Gradle distribution + resolved plugins/dependencies, so in the common (warm-cache) case builds make
+  # no network calls to flaky external CDNs. Cache misses (e.g. a dep bumped since the last image
+  # rebuild) fall back to the network naturally; the scheduled BUILD_TOOLCHAINS_IMAGE run keeps that
+  # stale window short.
   GRADLE_USER_HOME: '/opt/gradle-home'
   # Disable toolchain auto-download (fail fast instead of hitting the adoptium CDN). The CI-image
   # JDK locations are NOT set here — they live in the image's baked GRADLE_USER_HOME/gradle.properties
@@ -65,6 +66,17 @@ pr:
       - '*.md'
       - '*/*/*.md'
 
+# Scheduled rebuild of the CI toolchains image (BUILD_TOOLCHAINS_IMAGE only; every other stage is
+# gated on Build.Reason != 'Schedule'). Keeps the baked Gradle cache fresh without manual action:
+# a dep bumped during the week falls back to the network until the next rebuild closes the gap.
+schedules:
+  - cron: '0 3 * * 1'
+    displayName: 'Weekly CI toolchains image rebuild'
+    branches:
+      include:
+        - develop
+    always: true
+
 parameters:
   - name: actionToPerform
     type: string
@@ -83,7 +95,7 @@ stages:
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
     dependsOn: [ ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'), eq(variables.isNewEsBranchOrPr, true))
+    condition: and(succeeded(), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
     jobs:
       - job:
         steps:
@@ -109,13 +121,17 @@ stages:
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
 
-  # Manual-only: builds & pushes the CI toolchains image (ci/toolchains/JdkToolchains.Dockerfile).
-  # Run with actionToPerform=build_toolchains_image after a JDK/Gradle/dependency change, then
-  # bump the image tag in the `resources.containers` block above.
+  # Builds & pushes the CI toolchains image (ci/toolchains/JdkToolchains.Dockerfile). Runs on the
+  # weekly schedule (cache refresh) or manually with actionToPerform=build_toolchains_image after a
+  # JDK/Gradle change (then bump the image tag in the `resources.containers` block above).
   - stage: BUILD_TOOLCHAINS_IMAGE
     displayName: 'Build & push CI toolchains image'
     dependsOn: [ ]
-    condition: and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'build_toolchains_image'))
+    condition:
+      or(
+        eq(variables['Build.Reason'], 'Schedule'),
+        and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'build_toolchains_image'))
+      )
     jobs:
       - job: BUILD_AND_PUSH
         timeoutInMinutes: 240
@@ -148,7 +164,7 @@ stages:
       and(
         succeeded(),
         or(
-          ne(variables['Build.Reason'], 'Manual'),
+          notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
         )
       )
@@ -161,20 +177,21 @@ stages:
           - checkout: self
             fetchDepth: 1
             clean: false
-          # Verify the baked offline Gradle home is present/usable (failure => rebuild the image).
+          # Verify the baked Gradle home is present/usable (failure => rebuild the image). No --offline:
+          # a stale cache must fall back to the network in the test jobs, not block the whole pipeline here.
           - bash: |
               set -e
               echo "Baked GRADLE_USER_HOME=$GRADLE_USER_HOME"
               ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "No baked Gradle dist in image"; exit 1; }
-              ./gradlew --no-daemon --offline -q help
-            displayName: 'Verify offline Gradle home (no downloads)'
+              ./gradlew --no-daemon -q help
+            displayName: 'Verify baked Gradle home'
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
     dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
         container: ror-toolchains
@@ -229,7 +246,7 @@ stages:
       and(
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
@@ -269,7 +286,7 @@ stages:
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
-          ne(variables['Build.Reason'], 'Manual'),
+          notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
         )
       )
@@ -744,7 +761,7 @@ stages:
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
@@ -784,7 +801,7 @@ stages:
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job: EXTRACT_IS_RELEASE
@@ -810,7 +827,7 @@ stages:
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
@@ -884,7 +901,7 @@ stages:
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
@@ -956,7 +973,7 @@ stages:
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
