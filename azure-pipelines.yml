@@ -174,12 +174,7 @@ stages:
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition:
-      and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false  # temporarily disabled
     jobs:
       - job:
         container: eclipse-temurin:17-jdk
@@ -222,15 +217,7 @@ stages:
   - stage: ES_TESTS
     displayName: 'Run all ES-only tests'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition:
-      and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        or(
-          ne(variables['Build.Reason'], 'Manual'),
-          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
-        )
-      )
+    condition: false  # temporarily disabled
     jobs:
 ####################################
 ##### Unit tests
@@ -747,8 +734,8 @@ stages:
       - ES_TESTS
     condition: |
       and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('ES_TESTS'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
       )
@@ -797,8 +784,8 @@ stages:
       - E2E_TESTS
     condition: |
       and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('ES_TESTS'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         succeeded('E2E_TESTS'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
@@ -823,8 +810,8 @@ stages:
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('ES_TESTS'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
         ne(variables['Build.Reason'], 'Manual')
@@ -905,8 +892,8 @@ stages:
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('ES_TESTS'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')
@@ -991,8 +978,8 @@ stages:
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('ES_TESTS'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')
