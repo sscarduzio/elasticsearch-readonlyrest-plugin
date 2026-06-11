@@ -541,8 +541,9 @@ class DataStreamServiceTest
     service
   }
 
-  extension (c: AuditDataStreamCreator.type) {
-    def create(service: DataStreamService): AuditDataStreamCreator = AuditDataStreamCreator(NonEmptyList.of(service))
+  extension (c : AuditDataStreamCreator.type) {
+    def create(service: DataStreamService): AuditDataStreamCreator =
+      AuditDataStreamCreator(NonEmptyList.of(service))
   }
 
   extension (service: MockableDataStreamService) {

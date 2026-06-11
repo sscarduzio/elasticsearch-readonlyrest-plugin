@@ -97,7 +97,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def auditSinkServiceCreator: AuditSinkServiceCreator = new IndexBasedAuditSinkServiceCreator {
-    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = cluster match {
+    override protected def index(cluster: AuditCluster): IndexBasedAuditSinkService = cluster match {
       case AuditCluster.LocalAuditCluster =>
         new NodeClientBasedAuditSinkService(client, threadPool)
       case remote: AuditCluster.RemoteAuditCluster =>

@@ -183,7 +183,6 @@ final class RestClientDataStreamService(client: RestClient) extends DataStreamSe
     )
   }
 
-
   private def execute[A](value: => Task[A]) = Task(value).flatten
 
   private def handleRequest[A](request: Request)(

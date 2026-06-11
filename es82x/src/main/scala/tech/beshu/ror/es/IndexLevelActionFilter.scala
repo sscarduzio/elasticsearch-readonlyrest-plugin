@@ -99,9 +99,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def auditSinkServiceCreator: AuditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
-    override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
+    override protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = createService(cluster)
 
-    override def index(cluster: AuditCluster): IndexBasedAuditSinkService = createService(cluster)
+    override protected def index(cluster: AuditCluster): IndexBasedAuditSinkService = createService(cluster)
 
     private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
       cluster match {

@@ -220,6 +220,8 @@ class RorApiManager(client: RestClient,
   final class RorApiResponseWithBusinessStatus(override val response: HttpResponse)
     extends JsonResponse(response) {
 
+    import org.scalatest.matchers.should.Matchers.*
+
     def forceOkStatus(): this.type = {
       force()
       if (businessStatus =!= "OK") {
@@ -243,6 +245,23 @@ class RorApiManager(client: RestClient,
         throw new IllegalStateException(
           s"""
              |Expected business status 'OK' or info about already loaded settings, but got:"
+             |
+             |HTTP $responseCode
+             |${responseJson.toString()}
+             |""".stripMargin
+        )
+      }
+    }
+
+    def forceOKWithFailure(failureMessage: String): this.type = {
+      force()
+      if (businessStatus === "KO") {
+        message should include(failureMessage)
+        this
+      } else {
+        throw new IllegalStateException(
+          s"""
+             |Expected business status 'ko', but got:"
              |
              |HTTP $responseCode
              |${responseJson.toString()}

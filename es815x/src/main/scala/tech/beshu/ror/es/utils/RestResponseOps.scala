@@ -37,6 +37,11 @@ object RestResponseOps {
     }
 
     def errorType: Option[String] = Try(entityJson("error")("type").str).toOption
+
+    def isRetryable: Boolean = statusCode match {
+      case 502 | 503 | 504 => true
+      case _ => false
+    }
   }
 
   extension (request: Request) {
