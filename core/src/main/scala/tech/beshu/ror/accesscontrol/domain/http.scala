@@ -46,7 +46,7 @@ final case class Header(name: Header.Name, value: NonEmptyString) extends EagerH
 object Header {
   final case class Name(value: NonEmptyString) extends EagerHashCode {
     // Precomputed so the case-insensitive `Eq` below does not lowercase both sides on every comparison.
-    val lowerCased: String = value.value.toLowerCase(Locale.US)
+    lazy val lowerCased: String = value.value.toLowerCase(Locale.US)
   }
   object Name {
     val authorization = Name(nes("Authorization"))
