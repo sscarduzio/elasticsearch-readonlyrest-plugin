@@ -80,7 +80,8 @@ public class ReflecUtils {
 
   private static Method exploreClassMethods(Class<?> c, String methodName, Class<?> returnClass) {
     // Explore methods without the performance cost of throwing field not found exceptions..
-    // The native implementation is O(n), so we do likewise, but without the exception object creation.
+    // The native implementation is O(n), so we do likewise,
+    // but without the exception object creation.
     String cacheKey = c.getName() + methodName + returnClass.getName();
     Method theMethod = methodsCache.get(cacheKey);
     if (theMethod != null) {
