@@ -23,10 +23,9 @@ variables:
   # TODO(manual): replace with the designated pinned agent name before registering the pipeline.
   PERF_AGENT_NAME: 'az-ror-perf-1'
 
+# az-* pool for now (records segment by per-host env fingerprint); pin one agent later for a single series.
 pool:
   name: 'Default'
-  demands:
-    - Agent.Name -equals $(PERF_AGENT_NAME)
 
 jobs:
   - job: NIGHTLY_PERF
