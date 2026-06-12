@@ -74,7 +74,7 @@ schedules:
     displayName: 'Weekly CI toolchains image rebuild'
     branches:
       include:
-        - master
+        - develop
     always: true
 
 parameters:
