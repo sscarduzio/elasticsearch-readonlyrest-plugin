@@ -759,6 +759,7 @@ components:
       description: Kibana-related metadata for the user/group
       required:
         - access
+        - index
       properties:
         access:
           type: string

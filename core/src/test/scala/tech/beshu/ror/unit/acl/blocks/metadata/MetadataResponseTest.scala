@@ -160,7 +160,8 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
             |  "correlation_id": "test-id",
             |  "username": "admin",
             |  "kibana": {
-            |    "access": "unrestricted"
+            |    "access": "unrestricted",
+            |    "index": ".kibana"
             |  }
             |}""".stripMargin)
       }
@@ -180,12 +181,12 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
             |    {
             |      "group": { "id": "admins", "name": "Administrators" },
             |      "username": "admin",
-            |      "kibana": { "access": "unrestricted" }
+            |      "kibana": { "access": "unrestricted", "index": ".kibana" }
             |    },
             |    {
             |      "group": { "id": "users", "name": "Users" },
             |      "username": "admin",
-            |      "kibana": { "access": "unrestricted" }
+            |      "kibana": { "access": "unrestricted", "index": ".kibana" }
             |    }
             |  ]
             |}""".stripMargin)
