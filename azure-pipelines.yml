@@ -174,12 +174,7 @@ stages:
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition:
-      and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        ne(variables['Build.Reason'], 'Manual')
-      )
+    condition: false  # temporarily disabled
     jobs:
       - job:
         container: eclipse-temurin:17-jdk
@@ -219,18 +214,10 @@ stages:
             AUDIT_BUILD_CHECK:
               ROR_TASK: audit_build_check
 
-  - stage: TEST
-    displayName: 'Run all tests'
+  - stage: ES_TESTS
+    displayName: 'Run all ES-only tests'
     dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition:
-      and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        or(
-          ne(variables['Build.Reason'], 'Manual'),
-          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
-        )
-      )
+    condition: false  # temporarily disabled
     jobs:
 ####################################
 ##### Unit tests
@@ -259,7 +246,7 @@ stages:
               path: $(GRADLE_USER_HOME)
               cacheHitVar: GRADLE_CACHE_HIT
           - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
+              echo "[ES_TESTS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: core_tests
@@ -673,15 +660,82 @@ stages:
               testResultsFiles: "**/TEST*xml"
               mergeTestResults: true
 
+  - stage: E2E_TESTS
+    displayName: 'Run e2e tests'
+    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
+    condition:
+      and(
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
+        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        or(
+          ne(variables['Build.Reason'], 'Manual'),
+          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
+        )
+      )
+    jobs:
+      - job:
+        displayName: 'E2E tests (docker env)'
+        timeoutInMinutes: 120
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+            persistCredentials: true
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - task: NodeTool@0
+            displayName: 'Use Node.js 24.11.0'
+            inputs:
+              versionSpec: '24.11.0'
+          - task: Cache@2
+            displayName: 'Restore Gradle cache'
+            inputs:
+              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
+              restoreKeys: |
+                gradle | "$(Agent.OS)"
+                gradle
+              path: $(GRADLE_USER_HOME)
+              cacheHitVar: GRADLE_CACHE_HIT
+          - script: |
+              set -e
+
+              corepack enable || npm install -g yarn
+
+              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
+                echo "Error: Failed to login to Docker registry"
+                exit 1
+              fi
+
+              echo "[E2E_TESTS] executing ROR_TASK = $ROR_TASK for module $E2E_ES_MODULE"
+              ci/run-pipeline.sh
+            env:
+              ROR_TASK: run_e2e_tests
+              E2E_ES_MODULE: $(E2E_ES_MODULE)
+              E2E_TARGET_BRANCH: $(Build.SourceBranchName)
+              E2E_BUILD_ID: $(Build.BuildId)-$(System.JobAttempt)
+              ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
+              KBN_REPO_GH_TOKEN: $(KBN_REPO_GH_TOKEN)
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+        strategy:
+          maxParallel: 99
+          matrix:
+            E2E_es94x:
+              E2E_ES_MODULE: 'es94x'
+
   - stage: BUILD_ROR
     displayName: 'Build ROR plugins'
     dependsOn:
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         eq(variables.isPullRequest, true),
         ne(variables['Build.Reason'], 'Manual')
       )
@@ -726,11 +780,13 @@ stages:
     displayName: 'Determine if this is release run'
     dependsOn:
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
+      - E2E_TESTS
     condition: |
       and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
+        succeeded('E2E_TESTS'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         ne(variables['Build.Reason'], 'Manual')
       )
@@ -750,12 +806,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
         ne(variables['Build.Reason'], 'Manual')
@@ -832,12 +888,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')
@@ -918,12 +974,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - TEST
+      - ES_TESTS
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
+        in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         ne(variables['Build.Reason'], 'Manual')

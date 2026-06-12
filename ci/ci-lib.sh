@@ -2,7 +2,7 @@
 
 CI_DIR=$(dirname "$0")
 
-function docker_image_exists {
+docker_image_exists() {
   docker manifest inspect "$1" >/dev/null 2>&1
 }
 
@@ -11,7 +11,7 @@ function docker_image_exists {
 ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
-function retag_dev_image {
+retag_dev_image() {
   if [ "$#" -ne 2 ]; then
     echo "Usage: retag_dev_image <source tag> <target tag>"
     return 1
@@ -36,7 +36,7 @@ function retag_dev_image {
 #   - <esVersion>-ror-<pluginVersion>   canonical "latest", pushed by Gradle (only on a real build)
 #   - <esVersion>-ror-<gitShortSha>     immutable source identity, frozen from canonical (probed for the skip)
 #   - <esVersion>-ror-<imageTag>        optional alias to the source image, when an image tag arg is given
-function publish_ror_prebuild_plugin {
+publish_ror_prebuild_plugin() {
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     echo "Usage: publish_ror_prebuild_plugin <ES version> [image tag]"
     return 1
@@ -94,7 +94,7 @@ function publish_ror_prebuild_plugin {
   fi
 }
 
-function checkTagNotExist {
+checkTagNotExist() {
   GIT_TAG="$1"
 
   # Check if this tag already exists, so we don't overwrite builds
@@ -104,7 +104,7 @@ function checkTagNotExist {
   fi
 }
 
-function tag {
+tag() {
   GIT_TAG="$1"
 
   checkTagNotExist "$GIT_TAG"
@@ -118,8 +118,8 @@ function tag {
   return 0
 }
 
-# not used at the moment - it may be needed laterok,
-function upload_using_aws_s3_uploader {
+# not used at the moment - it may be needed later,
+upload_using_aws_s3_uploader() {
   LOCAL_FILE="$1"
   S3_PATH="$2"
 
@@ -136,7 +136,7 @@ function upload_using_aws_s3_uploader {
   "$CI_DIR"/s3-uploader.sh "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
 }
 
-function upload_using_deltaglider_uploader {
+upload_using_deltaglider_uploader() {
   LOCAL_FILE="$1"
   S3_PATH=$(echo "$2" | sed 's:/*$::')
   FILE_NAME=$(basename "$LOCAL_FILE")
