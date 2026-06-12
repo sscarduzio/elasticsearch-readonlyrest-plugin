@@ -19,14 +19,13 @@ package tech.beshu.ror.accesscontrol.logging
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult}
-import tech.beshu.ror.accesscontrol.{AccessControlList, History}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.RorKbnPluginNotSupported
+import tech.beshu.ror.accesscontrol.{AccessControlList, History}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.TaskOps.*
@@ -98,40 +97,12 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
 
   private def log[B <: BlockContext](responseContext: ResponseContext[B]): Unit = {
     given ResponseContext[B] = responseContext
-    blockAuditSettings(responseContext) match {
-      case Some(Block.Audit.Disabled) =>
-        ()
-      case None | Some(_: Block.Audit.Enabled) =>
-        auditingTool
-          .audit(responseContext)
-          .runAsync {
-            case Right(_) =>
-            case Left(ex) =>
-              logger.warn(s"Auditing issue", ex)
-          }
-    }
-  }
-
-  private def blockAuditSettings[B <: BlockContext](responseContext: ResponseContext[B]): Option[Block.Audit] = {
-    responseContext match {
-      case AllowedBy(_, blockContext, _) => Some(blockContext.block.audit)
-      case Allowed(_, userMetadata, _) =>
-        userMetadata match {
-          case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
-            Some(metadataOrigin.blockContext.block.audit)
-          case UserMetadata.WithGroups(groupsMetadata) =>
-            val auditsFromGroupMetadataBlocks = groupsMetadata.values.map(_.metadataOrigin.blockContext.block.audit)
-            Some {
-              auditsFromGroupMetadataBlocks
-                .collectFirst { case e: Block.Audit.Enabled => e }
-                .getOrElse(Block.Audit.Disabled)
-            }
-        }
-      case ForbiddenBy(_, blockContext, _) => Some(blockContext.block.audit)
-      case Forbidden(_, _) => None
-      case RequestedIndexNotExist(_, _) => None
-      case Errored(_, _) => None
-    }
+    auditingTool
+      .audit(responseContext)
+      .runAsync {
+        case Right(_) => ()
+        case Left(ex) => logger.warn(s"Auditing issue", ex)
+      }
   }
 
   override val staticContext: AccessControlList.AccessControlStaticContext = underlying.staticContext

@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
+import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning, UnresolvedBlock}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
@@ -275,10 +275,10 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .remove(Attributes.Block.audit)
               )
             ))
-          block <- Block.createFrom(name, policy, audit, rules).left.map(decodingFailureFrom(_))
+          block <- UnresolvedBlock.createFrom(name, policy, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
-          localUsers = LocalUsers.from(block),
+          localUsers = block.rules.map(LocalUsers.from).combineAll,
           impersonationWarnings = new BlockImpersonationWarningsReader(block.name, rules)
         )
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
@@ -454,8 +454,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         }
         _ <- auditSinkNamesDecoder(blocksNel, auditingConfig)
       } yield {
-        val blocks = blocksNel.map(_.block)
-        blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
+        val unresolvedBlocks = blocksNel.map(_.block)
+        unresolvedBlocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
+        val blocks = unresolvedBlocks.map(_.resolve(Nil))
 
         val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
 
@@ -559,7 +560,7 @@ object RawRorSettingsBasedCoreFactory {
     }
   }
 
-  private[factory] case class BlockDecodingResult(block: Block,
+  private[factory] case class BlockDecodingResult(block: UnresolvedBlock,
                                                   localUsers: LocalUsers,
                                                   impersonationWarnings: ImpersonationWarningsReader)
 

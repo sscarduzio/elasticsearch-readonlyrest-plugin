@@ -27,12 +27,11 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.audit.sink.*
-import tech.beshu.ror.accesscontrol.blocks.Block.Audit
-import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
+import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
@@ -42,49 +41,44 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 
-final class AuditingTool private(auditSinks: List[BaseAuditSink])
+final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
                                 (implicit loggingContext: LoggingContext,
                                  auditEnvironmentContext: AuditEnvironmentContext) {
 
   def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
-    val auditResponseContext = toAuditResponse(response, auditEnvironmentContext)
-    implicit val requestId: RequestId = response.requestContext.id.toRequestId
     NonEmptyList.fromList(activeSinksFor(response)) match {
-      case Some(nel) => nel.parTraverse(_.submit(auditResponseContext)).map(_ => ())
-      case None => Task.unit
-    }
-  }
-
-  private def activeSinksFor[B <: BlockContext](response: ResponseContext[B]): List[BaseAuditSink] = {
-    val blockAudit: Option[Audit] = response match {
-      case allowedBy: ResponseContext.AllowedBy[B] => Some(allowedBy.blockContext.block.audit)
-      case forbiddenBy: ResponseContext.ForbiddenBy[B] => Some(forbiddenBy.blockContext.block.audit)
-      case _ => None
-    }
-    blockAudit match {
-      case Some(Audit.Disabled) => List.empty
-      case Some(e: Audit.Enabled) => filterSinks(Some(e))
-      case None => filterSinks(None)
-    }
-  }
-
-  private def filterSinks(blockAudit: Option[Audit.Enabled]): List[BaseAuditSink] = {
-    blockAudit match {
+      case Some(nel) =>
+        val auditResponseContext = toAuditResponse(response, auditEnvironmentContext)
+        implicit val requestId: RequestId = response.requestContext.id.toRequestId
+        nel.parTraverse(_.submit(auditResponseContext)).map(_ => ())
       case None =>
-        auditSinks
-      case Some(config) =>
-        config.enabledAuditSinks match {
-          case EnabledAuditSinks.All =>
-            auditSinks
-          case EnabledAuditSinks.Selected(enabledSinks) =>
-            auditSinks.filter(sink => enabledSinks.contains(sink.name))
-          case EnabledAuditSinks.AllExcept(disabledSinks) =>
-            auditSinks.filter(sink => !disabledSinks.contains(sink.name))
-        }
+        Task.unit
     }
   }
 
-  def close(): Task[Unit] = auditSinks.traverse(_.close()).void
+  private def activeSinksFor[B <: BlockContext](responseContext: ResponseContext[B]): List[Block.AuditSink] = {
+    responseContext match {
+      case AllowedBy(_, blockContext, _) =>
+        blockContext.block.auditSinks
+      case Allowed(_, userMetadata, _) =>
+        userMetadata match {
+          case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
+            metadataOrigin.blockContext.block.auditSinks
+          case UserMetadata.WithGroups(groupsMetadata) =>
+            groupsMetadata.values.toList
+              .map(_.metadataOrigin.blockContext.block)
+              .toSet
+              .flatMap(_.auditSinks)
+              .toList
+        }
+      case ForbiddenBy(_, blockContext, _) => blockContext.block.auditSinks
+      case Forbidden(_, _) => List.empty
+      case RequestedIndexNotExist(_, _) => List.empty
+      case Errored(_, _) => List.empty
+    }
+  }
+
+  def close(): Task[Unit] = sinks.traverse(_.close()).void
 
   private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): AuditResponseContext = {
     responseContext match {
@@ -100,7 +94,7 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents,
             responseContext = responseContext,
           ),
-          verbosity = toAuditVerbosity(allowedBy.blockContext.block.audit),
+          verbosity = toAuditVerbosity(allowedBy.blockContext.block.logAllowedEvents),
           reason = allowedBy.blockContext.block.show
         )
       case allow: ResponseContext.Allowed[B] =>
@@ -129,7 +123,7 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
             historyEntries = forbiddenBy.history,
             responseContext = responseContext,
           ),
-          verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.audit),
+          verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.logAllowedEvents),
           reason = forbiddenBy.blockContext.block.show
         )
       case forbidden: ResponseContext.Forbidden[B] =>
@@ -172,11 +166,9 @@ final class AuditingTool private(auditSinks: List[BaseAuditSink])
     }
   }
 
-  private def toAuditVerbosity(audit: Audit): AuditResponseContext.Verbosity = audit match {
-    case Audit.Enabled(logAllowedEvents, _) =>
-      if (logAllowedEvents) AuditResponseContext.Verbosity.Info else AuditResponseContext.Verbosity.Error
-    case Audit.Disabled =>
-      AuditResponseContext.Verbosity.Info
+  private def toAuditVerbosity(logAllowedEvents: Boolean): AuditResponseContext.Verbosity = {
+    if (logAllowedEvents) AuditResponseContext.Verbosity.Info
+    else AuditResponseContext.Verbosity.Error
   }
 
   private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],

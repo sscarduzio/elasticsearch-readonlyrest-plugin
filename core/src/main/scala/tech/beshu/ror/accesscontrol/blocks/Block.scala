@@ -21,6 +21,8 @@ import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
@@ -39,10 +41,57 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.language.implicitConversions
 
-class Block(val name: Name,
-            val policy: Policy,
-            val audit: Audit,
-            val rules: NonEmptyList[Rule])
+class UnresolvedBlock(val name: Block.Name,
+                      val policy: Block.Policy,
+                      val rules: NonEmptyList[Rule],
+                      val audit: Block.Audit)
+                     (implicit val loggingContext: LoggingContext) {
+
+  def resolve(allSinks: List[Block.AuditSink]): Block = {
+    val resolvedSinks = audit match {
+      case Audit.Disabled                                     => Nil
+      case Audit.Enabled(_, EnabledAuditSinks.All)            => allSinks
+      case Audit.Enabled(_, EnabledAuditSinks.Selected(on))   => allSinks.filter(s => on.contains(s.name))
+      case Audit.Enabled(_, EnabledAuditSinks.AllExcept(off)) => allSinks.filter(s => !off.contains(s.name))
+    }
+    val logAllowedEvents = audit match {
+      case Audit.Enabled(logAllowedEvents, _) => logAllowedEvents
+      case Audit.Disabled => true
+    }
+    new Block(name, policy, rules, logAllowedEvents, resolvedSinks)(loggingContext)
+  }
+
+}
+
+object UnresolvedBlock {
+
+  def createFrom(name: Block.Name,
+                 policy: Option[Block.Policy],
+                 audit: Option[Block.Audit],
+                 rules: NonEmptyList[Block.RuleDefinition[Rule]])
+                (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, UnresolvedBlock] = {
+    val sortedRules = rules.sorted
+    BlockValidator.validate(name, sortedRules) match {
+      case Validated.Valid(_) =>
+        Right(new UnresolvedBlock(
+          name = name,
+          policy = policy.getOrElse(Block.Policy.Allow),
+          audit = audit.getOrElse(Block.Audit.Enabled()),
+          rules = sortedRules.map(_.rule)
+        ))
+      case Validated.Invalid(errors) =>
+        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
+        Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
+    }
+  }
+
+}
+
+class Block(val name: Block.Name,
+            val policy: Block.Policy,
+            val rules: NonEmptyList[Rule],
+            val logAllowedEvents: Boolean,
+            val auditSinks: List[Block.AuditSink])
            (implicit val loggingContext: LoggingContext)
   extends RequestIdAwareLogging {
 
@@ -172,32 +221,11 @@ class Block(val name: Name,
 
 object Block {
 
-  def createFrom(name: Name,
-                 policy: Option[Policy],
-                 audit: Option[Audit],
-                 rules: NonEmptyList[RuleDefinition[Rule]])
-                (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
-    val sortedRules = rules.sorted
-    BlockValidator.validate(name, sortedRules) match {
-      case Validated.Valid(_) =>
-        Right(createBlockInstance(name, policy, audit, sortedRules))
-      case Validated.Invalid(errors) =>
-        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
-        Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
-    }
+  trait AuditSink {
+    def name: SinkName
+    def submit(event: AuditResponseContext)
+              (implicit requestId: RequestId): Task[Unit]
   }
-
-  private def createBlockInstance(name: Name,
-                                  policy: Option[Policy],
-                                  audit: Option[Audit],
-                                  rules: NonEmptyList[RuleDefinition[Rule]])
-                                 (implicit loggingContext: LoggingContext) =
-    new Block(
-      name = name,
-      policy = policy.getOrElse(Block.Policy.Allow),
-      audit = audit.getOrElse(Block.Audit.Enabled()),
-      rules = rules.map(_.rule)
-    )
 
   final case class Name(value: String) extends AnyVal
 
