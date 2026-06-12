@@ -21,6 +21,7 @@ plugins {
     id "org.owasp.dependencycheck"
     id "maven-publish"
     id "scala"
+    id "com.diffplug.spotless"
 }
 
 repositories {
@@ -29,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'org.scala-lang',     name: 'scala3-library_3',      version: '3.3.7'
+    implementation "org.scala-lang:scala3-library_3:3.3.7"
 }
 
 tasks.withType(ScalaCompile).configureEach {
@@ -90,17 +91,67 @@ dependencyCheck {
 githook {
     hooks {
         "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
+            shell = """
+                ./gradlew license --rerun-tasks || exit 1
+                STAGED=\$(git diff --cached --name-only --diff-filter=ACMR -- '*.scala' '*.java' | tr '\\n' ',' | sed 's/,\$//')
+                if [ -n "\$STAGED" ]; then
+                    ./gradlew spotlessApply -PspotlessStagedFiles="\$STAGED" || exit 1
+                    echo "\$STAGED" | tr ',' '\\n' | xargs git add
+                fi
+            """
         }
     }
 }
 
 license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
+    header = rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders = true
     useDefaultMappings = false
+    includes(['**/*.java', '**/*.scala'])
     mapping {
         java = 'SLASHSTAR_STYLE'
         scala = 'SLASHSTAR_STYLE'
     }
+}
+
+def stagedFilesFor = { String ext ->
+    if (!project.hasProperty('spotlessStagedFiles')) return null
+    def projectPrefix = rootProject.projectDir.toURI()
+        .relativize(project.projectDir.toURI()).toString()
+    (project.property('spotlessStagedFiles') as String)
+        .split(',')
+        .findAll { it.startsWith(projectPrefix) && it.endsWith(ext) }
+        .collect { rootProject.file(it) }
+        .findAll { it.exists() }
+}
+
+spotless {
+    java {
+        googleJavaFormat().reorderImports(false).formatJavadoc(false)
+        removeUnusedImports()
+        importOrder('', 'java|javax')
+        def files = stagedFilesFor('.java')
+        // null = property not set, format everything; empty = no staged files in this project,
+        // use non-matching glob so Spotless skips this project without falling back to all files
+        if (files != null) target(files.isEmpty() ? ['**/__no_staged_files__'] : files)
+    }
+    scala {
+        scalafmt("3.11.1").configFile("${rootProject.projectDir}/.scalafmt.conf")
+        def files = stagedFilesFor('.scala')
+        // null = property not set, format everything; empty = no staged files in this project,
+        // use non-matching glob so Spotless skips this project without falling back to all files
+        if (files != null) target(files.isEmpty() ? ['**/__no_staged_files__'] : files)
+    }
+}
+
+tasks.register("formatCode") {
+    group = "verification"
+    description = "Format all sources (alias for spotlessApply)"
+    dependsOn "spotlessApply"
+}
+
+tasks.register("formatCodeCheck") {
+    group = "verification"
+    description = "Check all sources are formatted (alias for spotlessCheck)"
+    dependsOn "spotlessCheck"
 }
