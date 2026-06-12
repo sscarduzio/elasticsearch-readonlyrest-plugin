@@ -23,10 +23,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
@@ -182,30 +184,29 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
   private def auditedAcl(indexBasedAuditSinkService: IndexBasedAuditSinkService,
                          dataStreamBasedAuditSinkService: DataStreamBasedAuditSinkService) = {
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
-    val settings = AuditingTool.AuditSettings(
+    val settings = AuditOutputsConfig.WithOutputs(
       NonEmptyList.of(
-        AuditSink.Enabled(Config.EsIndexBasedSink(
+        AuditSink.Enabled(Block.SinkName.random(), Config.EsIndexBasedSink(
           new BlockVerbosityAwareAuditLogSerializer,
           RorAuditIndexTemplate.default,
           AuditCluster.LocalAuditCluster
         )),
-        AuditSink.Enabled(Config.EsDataStreamBasedSink(
+        AuditSink.Enabled(Block.SinkName.random(), Config.EsDataStreamBasedSink(
           new BlockVerbosityAwareAuditLogSerializer,
           RorAuditDataStream.default,
           AuditCluster.LocalAuditCluster
         ))
-      ),
-      defaultTestEsNodeSettings
+      )
     )
     val auditingTool = AuditingTool.create(
-      settings = settings,
+      config = AuditingConfig(Some(settings), defaultAclLog = true, defaultTestEsNodeSettings),
       auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
         override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService = dataStreamBasedAuditSinkService
 
         override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
       }
-    ).runSyncUnsafe().toOption.flatten.get
-    new AccessControlListLoggingDecorator(acl, Some(auditingTool))
+    ).runSyncUnsafe().toOption.get
+    new AccessControlListLoggingDecorator(acl, auditingTool)
   }
 
   private def captureProcessingMillis(jsonString: String) = {

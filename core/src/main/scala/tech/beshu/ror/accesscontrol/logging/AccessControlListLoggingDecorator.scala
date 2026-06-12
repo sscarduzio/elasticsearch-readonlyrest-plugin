@@ -16,17 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import cats.Show
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.{AccessControlList, History}
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.RorKbnPluginNotSupported
@@ -37,9 +34,8 @@ import tech.beshu.ror.utils.TaskOps.*
 import scala.util.{Failure, Success}
 
 class AccessControlListLoggingDecorator(val underlying: AccessControlList,
-                                        auditingTool: Option[AuditingTool])
-                                       (implicit loggingContext: LoggingContext,
-                                        scheduler: Scheduler)
+                                        auditingTool: AuditingTool)
+                                       (implicit scheduler: Scheduler)
   extends AccessControlList with RequestIdAwareLogging {
 
   override def description: String = underlying.description
@@ -101,32 +97,19 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
   }
 
   private def log[B <: BlockContext](responseContext: ResponseContext[B]): Unit = {
-    implicit val responseContextImpl: ResponseContext[B] = responseContext
-    if (isLoggableEntry(responseContext)) {
-      logger.info(logLevelDebugAwareResponseContextShow[B].show(responseContext))
-    }
+    given ResponseContext[B] = responseContext
     blockAuditSettings(responseContext) match {
       case Some(Block.Audit.Disabled) =>
         ()
-      case None | Some(Block.Audit.Enabled) =>
-        auditingTool.foreach {
-          _
-            .audit(responseContext)
-            .runAsync {
-              case Right(_) =>
-              case Left(ex) =>
-                logger.warn(s"Auditing issue", ex)
-            }
-        }
+      case None | Some(_: Block.Audit.Enabled) =>
+        auditingTool
+          .audit(responseContext)
+          .runAsync {
+            case Right(_) =>
+            case Left(ex) =>
+              logger.warn(s"Auditing issue", ex)
+          }
     }
-  }
-
-  private implicit val showHeader: Show[Header] =
-    if (logger.delegate.isDebugEnabled()) headerShow
-    else obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
-
-  private def logLevelDebugAwareResponseContextShow[B <: BlockContext]: Show[ResponseContext[B]] = {
-    responseContextShow(logger.delegate.isDebugEnabled())
   }
 
   private def blockAuditSettings[B <: BlockContext](responseContext: ResponseContext[B]): Option[Block.Audit] = {
@@ -139,29 +122,15 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
           case UserMetadata.WithGroups(groupsMetadata) =>
             val auditsFromGroupMetadataBlocks = groupsMetadata.values.map(_.metadataOrigin.blockContext.block.audit)
             Some {
-              if (auditsFromGroupMetadataBlocks.exists(_ == Block.Audit.Enabled)) Block.Audit.Enabled
-              else Block.Audit.Disabled
+              auditsFromGroupMetadataBlocks
+                .collectFirst { case e: Block.Audit.Enabled => e }
+                .getOrElse(Block.Audit.Disabled)
             }
         }
       case ForbiddenBy(_, blockContext, _) => Some(blockContext.block.audit)
       case Forbidden(_, _) => None
       case RequestedIndexNotExist(_, _) => None
       case Errored(_, _) => None
-    }
-  }
-
-  private def isLoggableEntry(context: ResponseContext[_]): Boolean = {
-    def shouldBeLogged(block: Block) = {
-      block.verbosity match {
-        case Verbosity.Info => true
-        case Verbosity.Error => false
-      }
-    }
-
-    context match {
-      case AllowedBy(_, blockContext, _) => shouldBeLogged(blockContext.block)
-      case Allowed(_, _, _) => true
-      case _: ForbiddenBy[_] | _: Forbidden[_] | _: Errored[_] | _: RequestedIndexNotExist[_] => true
     }
   }
 

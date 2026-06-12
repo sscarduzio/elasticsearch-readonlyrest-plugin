@@ -20,10 +20,9 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
@@ -153,7 +152,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                            core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    EitherT(createAuditingTool(core.auditingSettings))
+    EitherT(createAuditingTool(core))
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
@@ -161,30 +160,24 @@ class ReadonlyRest(coreFactory: CoreFactory,
             auditingTool = auditingTool
           ),
           dependencies = core.dependencies,
-          auditingSettings = core.auditingSettings
+          auditingConfig = core.auditingConfig,
         )
         new Engine(
           core = decoratedCore,
           httpClientsFactory = httpClientsFactory,
-          ldapConnectionPoolProvider,
-          auditingTool
+          ldapConnectionPoolProvider = ldapConnectionPoolProvider,
+          auditingTool = auditingTool
         )
       }
   }
 
-  private def createAuditingTool(auditingSettings: Option[AuditSettings])
-                                (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
-    auditingSettings
-      .map { settings =>
-        AuditingTool.create(settings, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
-      }
-      .sequence
+  private def createAuditingTool(core: Core)
+                                (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
+    AuditingTool.create(core.auditingConfig, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
       .map {
-        _.sequence
-          .map(_.flatten)
-          .leftMap {
-            _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
-          }
+        _.leftMap {
+          _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
+        }
       }
   }
 
@@ -238,13 +231,13 @@ object ReadonlyRest {
   final class Engine(val core: Core,
                      httpClientsFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     auditingTool: Option[AuditingTool])
+                     auditingTool: AuditingTool)
                     (implicit scheduler: Scheduler) {
 
     private[ror] def shutdown(): Unit = {
       httpClientsFactory.shutdown().runAsyncAndForget
       ldapConnectionPoolProvider.close().runAsyncAndForget
-      auditingTool.foreach(_.close().runAsyncAndForget)
+      auditingTool.close().runAsyncAndForget
     }
   }
 
@@ -255,7 +248,7 @@ object ReadonlyRest {
              env: EsEnv)
             (implicit systemContext: SystemContext): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
-    create(coreFactory, indexContentService, auditSinkServiceCreator)
+    new ReadonlyRest(coreFactory, indexContentService, auditSinkServiceCreator)
   }
 
   def create(coreFactory: CoreFactory,

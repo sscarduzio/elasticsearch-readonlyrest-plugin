@@ -25,7 +25,9 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
@@ -55,7 +57,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(accessControl: AccessControlList,
                       dependencies: RorDependencies,
-                      auditingSettings: Option[AuditingTool.AuditSettings])
+                      auditingConfig: AuditingTool.AuditingConfig)
 
 trait CoreFactory {
   def createCoreFrom(rorSettings: RawRorSettings,
@@ -124,7 +126,15 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
         if (!enabled) {
-          AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None)))
+          AsyncDecoderCreator.from(
+            Decoder.const(
+              Core(
+                accessControl = DisabledAccessControlList,
+                dependencies = RorDependencies.noOp,
+                auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, esEnv.esNodeSettings),
+              )
+            )
+          )
         } else {
           for {
             globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(settingsIndex))
@@ -212,31 +222,39 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                           (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
-    implicit val verbosityDecoder: Decoder[Verbosity] =
-      Decoder
-        .decodeString
-        .toSyncDecoder
-        .emapE[Verbosity] {
-          case "info" => Right(Verbosity.Info)
-          case "error" => Right(Verbosity.Error)
-          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")))
-        }
-        .decoder
+    implicit val sinkNameDecoder: Decoder[Block.SinkName] =
+      Decoder.decodeString.map(Block.SinkName.apply)
     implicit val blockAuditDecoder: Decoder[Block.Audit] =
       Decoder.instance { c =>
         for {
-          enabled <- c.downField("enabled").as[Boolean]
+          enabled            <- c.downField("enabled").as[Option[Boolean]]
+          logAllowedEvts     <- c.downField("log_allowed_events").as[Option[Boolean]]
+          enabledSinksRaw    <- c.downField("enabled_audit_sinks").as[Option[List[Block.SinkName]]]
+          disabledSinksRaw   <- c.downField("disabled_audit_sinks").as[Option[List[Block.SinkName]]]
+          _                  <- Either.cond(
+                                  !(enabledSinksRaw.isDefined && disabledSinksRaw.isDefined),
+                                  (),
+                                  decodingFailureFrom(BlocksLevelCreationError(Message(
+                                    "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
+                                  )))
+                                )
         } yield {
-          if (enabled) Block.Audit.Enabled else Block.Audit.Disabled
+          if (enabled.getOrElse(true))
+            Block.Audit.Enabled(logAllowedEvts.getOrElse(true), enabledSinksRaw.map(_.toSet), disabledSinksRaw.map(_.toSet))
+          else
+            Block.Audit.Disabled
         }
       }
+
     Decoder
       .instance { c =>
         val result = for {
-          name <- c.downField(Attributes.Block.name).as[Block.Name]
+          name   <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
-          verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          audit <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
+          legacyVerbosityAudit <- c.as[Option[Block.Audit]](legacyVerbosityAuditDecoder)
+          auditFromConfig <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
+          // explicit audit section takes precedence over the legacy verbosity key
+          audit = auditFromConfig.orElse(legacyVerbosityAudit)
           rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, esEnv)
             .toSyncDecoder
             .decoder
@@ -248,7 +266,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .remove(Attributes.Block.audit)
               )
             ))
-          block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
+          block <- Block.createFrom(name, policy, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
           localUsers = LocalUsers.from(block),
@@ -257,6 +275,57 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
+
+  private val legacyVerbosityAuditDecoder: Decoder[Option[Block.Audit]] = Decoder.instance { c =>
+    c.downField(Attributes.Block.verbosity).as[Option[String]].flatMap {
+      case None          => Right(None)
+      case Some("info")  => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
+      case Some("error") => Right(Some(Block.Audit.Enabled(logAllowedEvents = false)))
+      case Some(unknown) => Left(decodingFailureFrom(BlocksLevelCreationError(Message(
+        s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'."
+      ))))
+    }
+  }
+
+  private def auditSinkNamesDecoder(blocksNel: NonEmptyList[BlockDecodingResult],
+                                    auditingConfig: AuditingTool.AuditingConfig): AsyncDecoder[Unit] =
+    AsyncDecoderCreator.instance[Unit] { _ =>
+      Task.now {
+        val configuredSinkNames: scala.collection.Set[Block.SinkName] = auditingConfig.outputsConfig match {
+          case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
+            sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
+          case _ => scala.collection.Set.empty
+        }
+        val globalSinkNames: scala.collection.Set[Block.SinkName] =
+          if (auditingConfig.defaultAclLog) configuredSinkNames ++ Set(Block.SinkName.defaultAclLog)
+          else configuredSinkNames
+        val errors = blocksNel.toList.map(_.block).flatMap { block =>
+          block.audit match {
+            case Block.Audit.Enabled(_, Some(enabledSinks), _) =>
+              if (enabledSinks.isEmpty)
+                List(s"Block '${block.name.value}': 'enabled_audit_sinks' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'")
+              else {
+                val unknown = enabledSinks -- globalSinkNames
+                if (unknown.nonEmpty)
+                  List(s"Block '${block.name.value}': 'enabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+                else Nil
+              }
+            case Block.Audit.Enabled(_, _, Some(disabledSinks)) =>
+              if (disabledSinks.isEmpty)
+                List(s"Block '${block.name.value}': 'disabled_audit_sinks' cannot be empty")
+              else {
+                val unknown = disabledSinks -- globalSinkNames
+                if (unknown.nonEmpty)
+                  List(s"Block '${block.name.value}': 'disabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+                else Nil
+              }
+            case _ => Nil
+          }
+        }
+        if (errors.isEmpty) Right(())
+        else Left(decodingFailureFrom(BlocksLevelCreationError(Message(errors.mkString("; ")))))
+      }
+    }
 
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
@@ -321,7 +390,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
+        auditingConfig <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         externalGroupsProviderServices <- AsyncDecoderCreator.from(ExternalGroupsProviderServicesDecoder.instance(httpClientFactory))
@@ -374,9 +443,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .toEither
             }
         }
+        _ <- auditSinkNamesDecoder(blocksNel, auditingConfig)
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
+
         val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
 
         val rorDependencies = RorDependencies(
@@ -397,7 +468,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             obfuscatedHeaders
           )
         ): AccessControlList
-        Core(accessControl, rorDependencies, auditingTools)
+        Core(accessControl, rorDependencies, auditingConfig)
       }
       decoder.apply(c)
     }

@@ -40,7 +40,6 @@ import scala.language.implicitConversions
 
 class Block(val name: Name,
             val policy: Policy,
-            val verbosity: Verbosity,
             val audit: Audit,
             val rules: NonEmptyList[Rule])
            (implicit val loggingContext: LoggingContext)
@@ -174,14 +173,13 @@ object Block {
 
   def createFrom(name: Name,
                  policy: Option[Policy],
-                 verbosity: Option[Verbosity],
                  audit: Option[Audit],
                  rules: NonEmptyList[RuleDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(name, sortedRules) match {
       case Validated.Valid(_) =>
-        Right(createBlockInstance(name, policy, verbosity, audit, sortedRules))
+        Right(createBlockInstance(name, policy, audit, sortedRules))
       case Validated.Invalid(errors) =>
         implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
         Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
@@ -190,15 +188,13 @@ object Block {
 
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
-                                  verbosity: Option[Verbosity],
                                   audit: Option[Audit],
                                   rules: NonEmptyList[RuleDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name = name,
       policy = policy.getOrElse(Block.Policy.Allow),
-      verbosity = verbosity.getOrElse(Block.Verbosity.Info),
-      audit = audit.getOrElse(Block.Audit.Enabled),
+      audit = audit.getOrElse(Block.Audit.Enabled()),
       rules = rules.map(_.rule)
     )
 
@@ -225,18 +221,18 @@ object Block {
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
   }
 
-  sealed trait Verbosity
-  object Verbosity {
-    case object Info extends Verbosity
-    case object Error extends Verbosity
-
-    implicit val eq: Eq[Verbosity] = Eq.fromUniversalEquals
+  final case class SinkName(value: String) extends AnyVal
+  object SinkName {
+    val defaultAclLog: SinkName = SinkName("default_acl_log")
+    def random(): SinkName = SinkName(java.util.UUID.randomUUID().toString)
   }
 
   sealed trait Audit
 
   object Audit {
-    case object Enabled extends Audit
+    final case class Enabled(logAllowedEvents: Boolean = true,
+                             enabledSinks: Option[Set[SinkName]] = None,
+                             disabledSinks: Option[Set[SinkName]] = None) extends Audit
 
     case object Disabled extends Audit
 

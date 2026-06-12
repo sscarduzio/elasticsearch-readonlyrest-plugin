@@ -31,6 +31,7 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsFile}
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
@@ -214,7 +215,7 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
         (settings: RawRorSettings, _, _, _, _) => settings == rawRorSettings
       })
       .once()
-      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, None))))
+      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)))))
     mockedCoreFactory
   }
 

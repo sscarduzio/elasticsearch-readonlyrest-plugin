@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.History.BlockHistory
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, LoggedUser}
+import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, Headers}
 import tech.beshu.ror.implicits.*
@@ -35,7 +36,8 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
                                                                             loggedUser: Option[LoggedUser],
                                                                             matchedBlocks: Option[NonEmptyList[Block]],
                                                                             aclProcessingHistory: History[B],
-                                                                            loggingContext: LoggingContext,
+                                                                            private[audit] val loggingContext: LoggingContext,
+                                                                            private[audit] val responseContext: ResponseContext[B],
                                                                             override val auditEnvironmentContext: AuditEnvironmentContext,
                                                                             override val generalAuditEvents: JSONObject,
                                                                             override val involvesIndices: Boolean)
@@ -100,4 +102,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requ
       }
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
+
+  private[audit] def aclMessageShow(debugEnabled: Boolean)(using Show[Header]): Show[ResponseContext[B]] =
+    responseContextShow[B](debugEnabled)
 }

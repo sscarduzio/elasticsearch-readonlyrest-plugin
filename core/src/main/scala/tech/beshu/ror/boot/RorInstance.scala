@@ -119,8 +119,8 @@ class RorInstance private(boot: ReadonlyRest,
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
-  def auditSettings: Option[AuditingTool.AuditSettings] = {
-    theMainSettingsEngine.engine.flatMap(_.core.auditingSettings)
+  def auditSettings: Option[AuditingTool.AuditOutputsConfig] = {
+    theMainSettingsEngine.engine.flatMap(_.core.auditingConfig.outputsConfig)
   }
 
   def stop(): Task[Unit] = {
