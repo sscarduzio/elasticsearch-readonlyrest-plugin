@@ -248,7 +248,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       blockResults
         .find { m =>
           val context = m.result.context
-          context.block.policy == Policy.Allow && context.blockMetadata.kibanaPolicy.flatMap(_.index).isDefined
+          context.block.policy == Policy.Allow && context.blockMetadata.kibanaPolicy.isDefined
         }
         .orElse(blockResults.headOption)
     }
@@ -262,7 +262,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
     private def firstAllowedWithKibanaIndexOrHead(): Option[GroupMetadata] = {
       metadata
-        .find(m => m.metadataOrigin.blockContext.block.policy == Policy.Allow && m.kibanaPolicy.flatMap(_.index).isDefined)
+        .find(m => m.metadataOrigin.blockContext.block.policy == Policy.Allow && m.kibanaPolicy.isDefined)
         .orElse(metadata.headOption)
     }
   }

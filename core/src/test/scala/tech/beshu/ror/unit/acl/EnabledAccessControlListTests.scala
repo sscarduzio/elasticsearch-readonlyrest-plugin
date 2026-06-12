@@ -131,9 +131,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
                 groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g2") :: GroupId("g3") :: Nil)
 
-                groupsMetadata(GroupId("g1")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g1")))
-                groupsMetadata(GroupId("g2")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g2")))
-                groupsMetadata(GroupId("g3")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g3")))
+                groupsMetadata(GroupId("g1")).kibanaPolicy.map(_.index) should be(Some(kibanaIndexName("kibana_g1")))
+                groupsMetadata(GroupId("g2")).kibanaPolicy.map(_.index) should be(Some(kibanaIndexName("kibana_g2")))
+                groupsMetadata(GroupId("g3")).kibanaPolicy.map(_.index) should be(Some(kibanaIndexName("kibana_g3")))
             }
           }
         }

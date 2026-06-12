@@ -200,7 +200,7 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       userOrigin = Some(UserOrigin(nes("jwt-issuer"))),
       kibanaPolicy = Some(KibanaPolicy(
         access = KibanaAccess.Admin,
-        index = Some(kibanaIndexName(nes(".kibana"))),
+        index = kibanaIndexName(nes(".kibana")),
         templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
         hiddenApps = Set(KibanaApp.FullNameKibanaApp(nes("Enterprise Search"))),
         allowedApiPaths = Set.empty,
@@ -219,7 +219,7 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       userOrigin = Some(UserOrigin(nes("jwt-issuer"))),
       kibanaPolicy = Some(KibanaPolicy(
         access = KibanaAccess.Admin,
-        index = Some(kibanaIndexName(nes(".kibana"))),
+        index = kibanaIndexName(nes(".kibana")),
         templateIndex = Some(kibanaIndexName(nes(".kibana_template"))),
         hiddenApps = Set(KibanaApp.FullNameKibanaApp(nes("Enterprise Search"))),
         allowedApiPaths = Set.empty,
@@ -236,7 +236,7 @@ class MetadataResponseTest extends AnyWordSpec with Matchers with MockFactory {
       userOrigin = None,
       kibanaPolicy = Some(KibanaPolicy(
         access = KibanaAccess.Admin,
-        index = Some(kibanaIndexName(nes(".kibana_users"))),
+        index = kibanaIndexName(nes(".kibana_users")),
         templateIndex = Some(kibanaIndexName(nes(".kibana_users_template"))),
         hiddenApps = Set.empty,
         allowedApiPaths = Set.empty,
