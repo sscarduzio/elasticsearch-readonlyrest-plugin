@@ -308,7 +308,7 @@ trait LogsShowInstances
         showOption("group", bc.blockMetadata.currentGroupId) ::
         showNamedIterable("av_groups", bc.blockMetadata.availableGroups.toList.map(_.id)) ::
         showNamedIterable("indices", bc.indices) :: // todo: for sure it's ok?
-        showOption("kibana_idx", bc.blockMetadata.kibanaPolicy.flatMap(_.index)) ::
+        showOption("kibana_idx", bc.blockMetadata.kibanaPolicy.map(_.index)) ::
         showOption("fls", bc.fieldLevelSecurity) ::
         showNamedIterable("response_hdr", bc.responseHeaders) ::
         showNamedIterable("repositories", bc.repositories) ::

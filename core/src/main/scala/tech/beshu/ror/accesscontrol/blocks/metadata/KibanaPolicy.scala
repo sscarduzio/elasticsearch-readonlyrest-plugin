@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.{KibanaAccess, KibanaAllowedApiPath, 
 import tech.beshu.ror.syntax.Set
 
 final case class KibanaPolicy(access: KibanaAccess,
-                              index: Option[KibanaIndexName],
+                              index: KibanaIndexName,
                               templateIndex: Option[KibanaIndexName],
                               hiddenApps: Set[KibanaApp],
                               allowedApiPaths: Set[KibanaAllowedApiPath],
@@ -29,7 +29,7 @@ final case class KibanaPolicy(access: KibanaAccess,
 object KibanaPolicy {
   def default: KibanaPolicy = KibanaPolicy(
     access = KibanaAccess.Unrestricted,
-    index = None,
+    index = KibanaIndexName.default,
     templateIndex = None,
     hiddenApps = Set.empty,
     allowedApiPaths = Set.empty,

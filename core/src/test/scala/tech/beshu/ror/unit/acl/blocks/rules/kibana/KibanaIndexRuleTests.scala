@@ -46,7 +46,7 @@ class KibanaIndexRuleTests
         inside(result) {
           case Permitted(blockContext: UserMetadataRequestBlockContext) =>
             assertBlockContext(blockContext)(
-              kibanaPolicy = Some(KibanaPolicy.default.copy(index = Some(kibanaIndexName("kibana_index"))))
+              kibanaPolicy = Some(KibanaPolicy.default.copy(index = kibanaIndexName("kibana_index")))
             )
         }
       }
