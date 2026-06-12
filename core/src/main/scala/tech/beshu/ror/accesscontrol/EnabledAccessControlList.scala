@@ -166,7 +166,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     if (ignoreGroupsHandling || withGroups.isEmpty) {
       val firstFittingMatch = withLoggedUsers
         .allowedThroughFirstForbidden()
-        .firstAllowedWithKibanaIndexOrHead()
+        .firstAllowedWithKibanaPolicyOrHead()
 
       firstFittingMatch match {
         case Some(m) if m.result.context._1.policy == Policy.Allow =>
@@ -181,7 +181,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         .flatMap { case (group, metadataCollection) =>
           metadataCollection
             .allowedThroughFirstForbidden()
-            .firstAllowedWithKibanaIndexOrHead()
+            .firstAllowedWithKibanaPolicyOrHead()
             .map(group -> _)
         }
         .values
@@ -244,7 +244,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       allowed ++ rest.headOption.toList
     }
 
-    private def firstAllowedWithKibanaIndexOrHead(): Option[PermittedWithUser[UserMetadataRequestBlockContext]] = {
+    private def firstAllowedWithKibanaPolicyOrHead(): Option[PermittedWithUser[UserMetadataRequestBlockContext]] = {
       blockResults
         .find { m =>
           val context = m.result.context
@@ -260,7 +260,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       allowed ++ rest.headOption.toList
     }
 
-    private def firstAllowedWithKibanaIndexOrHead(): Option[GroupMetadata] = {
+    private def firstAllowedWithKibanaPolicyOrHead(): Option[GroupMetadata] = {
       metadata
         .find(m => m.metadataOrigin.blockContext.block.policy == Policy.Allow && m.kibanaPolicy.isDefined)
         .orElse(metadata.headOption)
