@@ -318,12 +318,14 @@ object AuditingTool extends RequestIdAwareLogging {
     )
   }
 
-  private def createDataStreamSink(
-      config: AuditSink.Config.EsDataStreamBasedSink,
-      service: DataStreamBasedAuditSinkService
-  ): Task[Either[CreationError, SupportedAuditSink]] =
+  private def createDataStreamSink(config: AuditSink.Config.EsDataStreamBasedSink,
+                                   service: DataStreamBasedAuditSinkService): Task[Either[CreationError, SupportedAuditSink]] =
     EsDataStreamBasedAuditSink
-      .create(config.logSerializer, config.rorAuditDataStream, service, config.auditCluster)
+
+        .create(config.logSerializer,
+        config.rorAuditDataStream,
+        service,
+        config.auditCluster)
       .map(_.leftMap(error => CreationError(error.message)))
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink

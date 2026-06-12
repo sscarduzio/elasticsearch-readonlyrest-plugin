@@ -120,13 +120,13 @@ final class AuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsF
           )
         )
       case Ior.Right(infos) =>
-        checkClusterUuids(infos).leftMap { details =>
+        ensureNodesFromSameCluster(infos).leftMap { details =>
           Error.ConfigurationError(
             s"Audit cluster healthcheck failed for remote cluster ${cluster.show}. Details: $details"
           )
         }
       case Ior.Both(_, infos) =>
-        checkClusterUuids(infos) match {
+        ensureNodesFromSameCluster(infos) match {
           case Right(()) =>
             logger.warn("Some audit cluster nodes are unreachable, but auditing will proceed using the remaining nodes")
             Right(())
@@ -140,7 +140,7 @@ final class AuditRemoteClusterConnectivityCheck(httpClientsFactory: HttpClientsF
     }
   }
 
-  private def checkClusterUuids(infos: NonEmptyList[AuditNodeInfo]): Either[String, Unit] = {
+  private def ensureNodesFromSameCluster(infos: NonEmptyList[AuditNodeInfo]): Either[String, Unit] = {
     val nodesByClusterUuid = infos.groupBy(_.info.clusterUuid)
     Either.cond(
       nodesByClusterUuid.size == 1,
@@ -187,26 +187,6 @@ object AuditRemoteClusterConnectivityCheck {
   object Error {
     final case class ConnectivityError(message: String) extends Error
     final case class ConfigurationError(message: String) extends Error
-  }
-
-  private given Show[AuditClusterNode] = Show.show { n =>
-    val url = n.toUrl
-    url.authorityOption match {
-      case Some(authority) =>
-        url
-          .withAuthority(
-            authority.copy(userInfo = None)(
-              using UriConfig.default
-            )
-          )
-          .toUrl
-          .show
-      case None => url.show
-    }
-  }
-
-  private given Show[RemoteAuditCluster] = Show.show { cluster =>
-    cluster.nodes.toList.map(_.show).show
   }
 
   private final case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)

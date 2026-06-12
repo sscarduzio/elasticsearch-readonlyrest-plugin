@@ -726,4 +726,15 @@ trait LogsShowInstances extends cats.instances.AllInstances {
     case SettingsSavingError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
 
+  implicit val auditClusterNodeShow: Show[AuditClusterNode] = Show.show { n =>
+    val url = n.toUrl
+    url.authorityOption match {
+      case Some(authority) => url.withAuthority(authority.copy(userInfo = None)(using UriConfig.default)).toUrl.show
+      case None => url.show
+    }
+  }
+
+  implicit val remoteAuditClusterShow: Show[RemoteAuditCluster] = Show.show { cluster =>
+    cluster.nodes.toList.map(_.show).show
+  }
 }
