@@ -396,9 +396,6 @@ trait LogsShowInstances
     case Allow => "ALLOW"
     case Forbid(_) => "FORBID"
   }
-  implicit val unresolvedBlockShow: Show[UnresolvedBlock] = Show.show { b =>
-    s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}] }"
-  }
   implicit val blockShow: Show[Block] = Show.show { b =>
     s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}] }"
   }

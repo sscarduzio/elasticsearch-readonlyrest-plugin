@@ -20,9 +20,9 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditingConfig
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
+import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.mocks.{AuthServicesMocks, MutableMocksProviderWithCachePerRequest}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorSettingsIndex}
@@ -39,6 +39,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Instant
 
@@ -136,44 +137,42 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val httpClientsFactory = HttpClientsFactory.default()
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
-    EitherT(
-      coreFactory
-        .createCoreFrom(settings, settingsIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
-    )
-      .flatMap(core => createEngine(httpClientsFactory, ldapConnectionPoolProvider, core))
-      .semiflatTap { engine =>
-        Task(inspectFlsEngine(engine))
-      }
+    (for {
+      auditingSettings <- EitherT(coreFactory.createAuditingSettingsFrom(settings))
+      obfuscatedHeaders <- EitherT(coreFactory.createObfuscatedHeadersFrom(settings))
+      loggingContext = LoggingContext(obfuscatedHeaders)
+      auditingTool <- EitherT(createAuditingTool(auditingSettings)(loggingContext))
+      core <- EitherT(coreFactory.createCoreFrom(settings, settingsIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider, auditingTool))
+      engine = createEngine(httpClientsFactory, ldapConnectionPoolProvider, core, auditingTool)
+    } yield engine)
+      .semiflatTap { engine => Task(inspectFlsEngine(engine)) }
       .leftMap(handleLoadingCoreErrors)
       .value
   }
 
   private def createEngine(httpClientsFactory: HttpClientsFactory,
                            ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
-    implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
-    EitherT(createAuditingTool(core))
-      .map { auditingTool =>
-        val decoratedCore = Core(
-          accessControl = new AccessControlListLoggingDecorator(
-            underlying = core.accessControl,
-            auditingTool = auditingTool
-          ),
-          dependencies = core.dependencies,
-          auditingConfig = core.auditingConfig,
-        )
-        new Engine(
-          core = decoratedCore,
-          httpClientsFactory = httpClientsFactory,
-          ldapConnectionPoolProvider = ldapConnectionPoolProvider,
-          auditingTool = auditingTool
-        )
-      }
+                           core: Core,
+                           auditingTool: AuditingTool): Engine = {
+    val decoratedCore = Core(
+      accessControl = new AccessControlListLoggingDecorator(
+        underlying = core.accessControl,
+        auditingTool = auditingTool
+      ),
+      dependencies = core.dependencies,
+      auditingConfig = core.auditingConfig,
+    )
+    new Engine(
+      core = decoratedCore,
+      httpClientsFactory = httpClientsFactory,
+      ldapConnectionPoolProvider = ldapConnectionPoolProvider,
+      auditingTool = auditingTool
+    )
   }
 
-  private def createAuditingTool(core: Core)
+  private def createAuditingTool(auditingConfig: AuditingConfig)
                                 (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
-    AuditingTool.create(core.auditingConfig, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
+    AuditingTool.create(auditingConfig, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
       .map {
         _.leftMap {
           _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
