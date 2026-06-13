@@ -55,6 +55,13 @@ kpis:
     gate: alloc-baseline
     rationale: Allocation pressure of the composite enterprise scenario.
 
+  - id: acl.enterprise.deny.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.acl.EnterpriseScenarioBenchmark.denyPath
+    metric: us_op
+    gate: nightly-median
+    rationale: Worst real customer deny path - all 100 blocks x 100 groups x 120 patterns walked to exhaustion.
+
   - id: indices.rule.match.time
     tier: 1
     benchmark: tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.matchPath{patterns=100,requestedIndices=50}
@@ -76,12 +83,26 @@ kpis:
     gate: nightly-median
     rationale: Groups rule at 100x100 - per block, composes multiplicatively with long ACLs.
 
+  - id: groups.rule.eval.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.GroupsRuleBenchmark.matchPath{configuredGroups=100,userGroups=100}
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of the groups rule at 100x100 - paid per block on long ACLs.
+
   - id: jwt.verify.hmac.time
     tier: 1
     benchmark: tech.beshu.ror.benchmarks.rules.JwtVerificationBenchmark.hmac256
     metric: us_op
     gate: nightly-median
     rationale: Full jwt_authentication rule check (HMAC-SHA256); feeds the claims-cache decision.
+
+  - id: jwt.verify.hmac.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.JwtVerificationBenchmark.hmac256
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of HMAC-SHA256 jwt verification on the auth path.
 
   - id: jwt.verify.rsa.time
     tier: 1
@@ -132,3 +153,10 @@ kpis:
     metric: us_op
     gate: nightly-median
     rationale: Actions-rule miss cost - paid once per block on the deny path.
+
+  - id: actions.rule.miss.alloc
+    tier: 2
+    benchmark: tech.beshu.ror.benchmarks.rules.ActionsRuleBenchmark.actionMissed
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Allocation pressure of an actions-rule miss - the per-block deny-path floor.

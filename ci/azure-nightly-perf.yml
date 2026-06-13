@@ -23,9 +23,13 @@ variables:
   # TODO(manual): replace with the designated pinned agent name before registering the pipeline.
   PERF_AGENT_NAME: 'az-ror-perf-1'
 
-# az-* pool for now (records segment by per-host env fingerprint); pin one agent later for a single series.
+# Pin to ONE agent so the series has a single hardware fingerprint (the whole nightly design).
+# Until the agent in PERF_AGENT_NAME is provisioned this demand keeps the pipeline queued rather
+# than letting it run on an arbitrary host and silently segment the series by env fingerprint.
 pool:
   name: 'Default'
+  demands:
+    - Agent.Name -equals $(PERF_AGENT_NAME)
 
 jobs:
   - job: NIGHTLY_PERF
@@ -74,6 +78,11 @@ jobs:
              && git add README.md && git commit -m "perf-ci: bootstrap benchmark-history")
           fi
 
+          # Publish HISTORY_DIR as soon as the worktree exists — before the push, which can fail on
+          # a network error or rebase conflict. The judge/dashboard steps then still see the local
+          # history (incl. this run's freshly-committed record) instead of an empty glob.
+          echo "##vso[task.setvariable variable=HISTORY_DIR]$(System.DefaultWorkingDirectory)/../bench-history"
+
           mkdir -p "../bench-history/$(dirname "$REC")"
           cp benchmarks/build/jmh/nightly-record.json "../bench-history/$REC"
           cd ../bench-history
@@ -82,7 +91,6 @@ jobs:
           # Single writer; one rebase-retry covers any racing manual run.
           git push origin HEAD:benchmark-history \
             || (git pull --rebase origin benchmark-history && git push origin HEAD:benchmark-history)
-          echo "##vso[task.setvariable variable=HISTORY_DIR]$(System.DefaultWorkingDirectory)/../bench-history"
         displayName: 'Commit run record to benchmark-history'
 
       - script: |

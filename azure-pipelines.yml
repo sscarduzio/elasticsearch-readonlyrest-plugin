@@ -283,6 +283,9 @@ stages:
             eq(variables['Build.Reason'], 'PullRequest')
           )
         displayName: 'Performance smoke (advisory)'
+        # Inherits the global hosted pool (vmImage: ubuntu-24.04). The allocation gate's B/op
+        # numbers are hardware-sensitive, so the baseline in benchmarks/baselines/alloc-baseline.json
+        # must be re-seeded on this same image — if the global pool changes, re-seed the baseline.
         container: eclipse-temurin:17-jdk
         timeoutInMinutes: 45
         steps:

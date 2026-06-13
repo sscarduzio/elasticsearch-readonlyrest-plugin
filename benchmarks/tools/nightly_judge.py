@@ -27,8 +27,7 @@ def parse_kpis(path):
     kpis, current = [], None
     with open(path) as f:
         for raw in f:
-            line = raw.rstrip("\n")
-            stripped = line.strip()
+            stripped = raw.strip()
             if not stripped or stripped.startswith("#"):
                 continue
             if stripped.startswith("- "):

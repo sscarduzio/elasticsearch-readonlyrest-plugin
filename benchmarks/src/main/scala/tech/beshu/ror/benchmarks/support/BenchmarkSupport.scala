@@ -63,10 +63,14 @@ object BenchmarkSupport {
   sealed abstract class BaseBenchRequestContext(headers: Set[Header],
                                                 override val action: Action) extends RequestContext {
     override val restRequest: RestRequest = new BenchRestRequest(headers)
-    override val timestamp: Instant = Instant.now()
+    // Fixed sentinels, not Instant.now()/CorrelationId.random: neither is read on the ACL hot
+    // path (only in audit/metadata), and CorrelationId.random draws from SecureRandom — which on
+    // BasicAuthDecodeBenchmark (the one context built inside @Benchmark) would otherwise add UUID
+    // generation cost to every measured iteration and masquerade as a basic-auth regression.
+    override val timestamp: Instant = Instant.EPOCH
     override val taskId: Long = 0L
     override val id: RequestContext.Id = RequestContext.Id.fromString("benchmark")
-    override val rorKibanaSessionId: CorrelationId = CorrelationId.random
+    override val rorKibanaSessionId: CorrelationId = CorrelationId(nes("benchmark-session-id"))
     override val `type`: Type = Type("SearchRequest")
     override val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
     override val indexAttributes: IndexAttributeFilter = IndexAttributeFilter.All

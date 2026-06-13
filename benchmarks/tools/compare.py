@@ -37,7 +37,9 @@ def main():
         baseline = load(args.baseline) if os.path.exists(args.baseline) else {}
         new_baseline = {
             "schema": 1,
-            "provisional": baseline.get("provisional", False),
+            # An explicit --write-baseline is the authoritative re-seed (reviewed like code),
+            # so it clears the provisional flag rather than inheriting the old value forever.
+            "provisional": False,
             "generatedAt": record["timestamp"],
             "source": {
                 "srcSha": record["srcSha"],
@@ -68,12 +70,13 @@ def main():
         print(f"##vso[task.logissue type=warning]{message}" if on_azure else f"WARNING: {message}",
               file=sys.stdout if on_azure else sys.stderr)
 
-    rows, regressions, improvements = [], [], []
+    rows, regressions, improvements, missing = [], [], [], []
     for key, ref in sorted(baseline.get("benchmarks", {}).items()):
         ref_bop = float(ref["b_op"])
         got = measured.get(key)
         if got is None:
             rows.append((key, ref_bop, None, None, "MISSING"))
+            missing.append(key)
             continue
         got_bop = float(got["b_op"])
         delta = got_bop - ref_bop
@@ -124,8 +127,23 @@ def main():
         else:
             print(f"WARNING: {message}", file=sys.stderr)
 
-    if regressions:
-        print(f"\n{len(regressions)} allocation regression(s) found", file=sys.stderr)
+    # A baselined benchmark missing from the record means it was renamed/removed; without this
+    # it would silently leave the gate (a rename otherwise escapes the contract entirely).
+    for key in missing:
+        message = (f"alloc baseline entry missing from run: {key}; if the benchmark was renamed or "
+                   f"removed, regenerate baselines/alloc-baseline.json in this PR")
+        if on_azure:
+            print(f"##vso[task.logissue type=warning]{message}")
+        else:
+            print(f"WARNING: {message}", file=sys.stderr)
+
+    if regressions or missing:
+        problems = []
+        if regressions:
+            problems.append(f"{len(regressions)} allocation regression(s)")
+        if missing:
+            problems.append(f"{len(missing)} missing baseline entry(ies)")
+        print(f"\nallocation gate: FAIL ({', '.join(problems)})", file=sys.stderr)
         return 1
     print("\nallocation gate: PASS")
     return 0

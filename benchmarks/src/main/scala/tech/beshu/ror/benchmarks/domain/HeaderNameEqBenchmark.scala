@@ -52,7 +52,9 @@ class HeaderNameEqBenchmark {
   def findHeaderScan(bh: Blackhole): Unit = {
     var i = 0
     var found = false
-    while (i < names.length) {
+    // Short-circuit like production `find(_.name === name)`; otherwise the cost stays at the full
+    // 20 comparisons even if a future maintainer moves the target earlier in the array.
+    while (i < names.length && !found) {
       if (eq.eqv(names(i), target)) found = true
       i += 1
     }

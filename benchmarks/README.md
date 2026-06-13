@@ -69,7 +69,11 @@ Two gates use them:
    period flip it to blocking by removing that line. **Baseline policy**: a PR that knowingly
    changes allocation behavior regenerates the baseline in the same PR
    (`python3 tools/compare.py --record <record> --baseline baselines/alloc-baseline.json
-   --write-baseline`) and the diff is reviewed like code.
+   --write-baseline`) and the diff is reviewed like code. `compare.py` gates on **every** key in
+   `alloc-baseline.json` and fails if a baselined benchmark is missing from the run (a rename can't
+   silently escape). Each alloc-baseline key has a matching `metric: b_op` / `gate: alloc-baseline`
+   entry in `kpis.yml`, so kpis.yml stays the single reviewed contract for what is gated — keep the
+   two in sync when adding or removing an allocation gate.
 2. **Nightly time series (time, single writer)** — `ci/azure-nightly-perf.yml` runs the full
    suite on ONE pinned self-hosted agent (one hardware fingerprint), commits a reduced run
    record per night to the `benchmark-history` orphan branch (one file per run, append-only,
