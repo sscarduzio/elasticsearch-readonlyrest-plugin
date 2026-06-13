@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -46,6 +46,12 @@ class FieldsRule(val settings: Settings)
     with RequestIdAwareLogging {
 
   override val name: Rule.Name = FieldsRule.Name.name
+
+  // Optimization: when the fields are pre-resolved, build the restrictions once instead of per request.
+  private val staticFieldsRestrictions: Option[FieldsRestrictions] =
+    resolveAllIfPreResolved(settings.fields.toNonEmptyList)
+      .flatMap(fields => UniqueNonEmptyList.from(fields.toList))
+      .map(FieldsRestrictions(_, settings.accessMode))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.requestContext match {
@@ -73,10 +79,14 @@ class FieldsRule(val settings: Settings)
 
   private def processFilterableBlockContext[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B): Decision[B] = {
     implicit val blockContextImpl: B = blockContext
-    val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
-    UniqueNonEmptyList.from(maybeResolvedFields) match {
-      case Some(resolvedFields) =>
-        processBlockContextUsingDefinedFLSMode(blockContext, resolvedFields)
+    val maybeFieldsRestrictions = staticFieldsRestrictions.orElse {
+      UniqueNonEmptyList
+        .from(resolveAll(settings.fields.toNonEmptyList, blockContext))
+        .map(FieldsRestrictions(_, settings.accessMode))
+    }
+    maybeFieldsRestrictions match {
+      case Some(fieldsRestrictions) =>
+        processBlockContextUsingDefinedFLSMode(blockContext, fieldsRestrictions)
       case None =>
         logger.warn(s"Could not resolve any variable for field rule.")
         reject()
@@ -84,8 +94,7 @@ class FieldsRule(val settings: Settings)
   }
 
   private def processBlockContextUsingDefinedFLSMode[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
-                                                                                                                             resolvedFields: UniqueNonEmptyList[DocumentField]): Decision[B] = {
-    val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
+                                                                                                                             fieldsRestrictions: FieldsRestrictions): Decision[B] = {
     settings.flsEngine match {
       case FlsEngine.Lucene =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = FlsAtLuceneLevelApproach)

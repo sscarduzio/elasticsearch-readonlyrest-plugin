@@ -17,8 +17,10 @@
 package tech.beshu.ror.accesscontrol.utils
 
 import cats.data.NonEmptyList
+import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 
 object RuntimeMultiResolvableVariableOps {
 
@@ -33,4 +35,12 @@ object RuntimeMultiResolvableVariableOps {
         }
       }
   }
+
+  def resolveAllIfPreResolved[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]]): Option[NonEmptyList[T]] =
+    variables
+      .traverse {
+        case AlreadyResolved(values) => Some(values)
+        case ToBeResolved(_) => None
+      }
+      .map(_.flatten)
 }

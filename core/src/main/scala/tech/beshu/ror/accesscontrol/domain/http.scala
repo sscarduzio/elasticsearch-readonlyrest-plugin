@@ -42,9 +42,12 @@ object CorrelationId {
   implicit val show: Show[CorrelationId] = Show.show(_.value.value)
 }
 
-final case class Header(name: Header.Name, value: NonEmptyString)
+final case class Header(name: Header.Name, value: NonEmptyString) extends EagerHashCode
 object Header {
-  final case class Name(value: NonEmptyString)
+  final case class Name(value: NonEmptyString) extends EagerHashCode {
+    // Precomputed so the case-insensitive `Eq` below does not lowercase both sides on every comparison.
+    lazy val lowerCased: String = value.value.toLowerCase(Locale.US)
+  }
   object Name {
     val authorization = Name(nes("Authorization"))
     val xApiKeyHeaderName = Header.Name(nes("X-Api-Key"))
@@ -62,7 +65,7 @@ object Header {
     val correlationId = Name(nes("x-ror-correlation-id"))
     val rorKbnLicenseType = Name(nes("x-ror-kbn-license-type"))
 
-    implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
+    implicit val eqName: Eq[Name] = Eq.by(_.lowerCased)
   }
 
   def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)

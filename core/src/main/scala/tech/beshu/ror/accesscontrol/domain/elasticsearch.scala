@@ -37,7 +37,7 @@ sealed trait Action {
   def value: String
 }
 object Action {
-  final case class EsAction(override val value: String) extends Action
+  final case class EsAction(override val value: String) extends Action with EagerHashCode
   object EsAction {
     val fieldCapsAction: Action = EsAction("indices:data/read/field_caps")
     val getSettingsAction: Action = EsAction("indices:monitor/settings/get")
@@ -159,11 +159,11 @@ final case class DocumentWithIndex(index: ClusterIndexName, documentId: Document
 
 sealed trait RepositoryName
 object RepositoryName {
-  final case class Full private(value: NonEmptyString) extends RepositoryName
+  final case class Full private(value: NonEmptyString) extends RepositoryName with EagerHashCode
   object Full {
     def fromNes(value: NonEmptyString): Full = Full(value)
   }
-  final case class Pattern private(value: NonEmptyString) extends RepositoryName
+  final case class Pattern private(value: NonEmptyString) extends RepositoryName with EagerHashCode
   object Pattern {
     def fromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
@@ -208,11 +208,11 @@ object RepositoryName {
 
 sealed trait SnapshotName
 object SnapshotName {
-  final case class Full private(value: NonEmptyString) extends SnapshotName
+  final case class Full private(value: NonEmptyString) extends SnapshotName with EagerHashCode
   object Full {
     def fromNes(value: NonEmptyString): Full = Full(value)
   }
-  final case class Pattern private(value: NonEmptyString) extends SnapshotName
+  final case class Pattern private(value: NonEmptyString) extends SnapshotName with EagerHashCode
   object Pattern {
     def fromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
@@ -256,7 +256,7 @@ object SnapshotName {
 
 sealed trait DataStreamName
 object DataStreamName {
-  final case class Full private(value: NonEmptyString) extends DataStreamName
+  final case class Full private(value: NonEmptyString) extends DataStreamName with EagerHashCode
   object Full {
     def fromString(value: String): Option[DataStreamName.Full] = {
       NonEmptyString.unapply(value).map(fromNes)
@@ -267,7 +267,7 @@ object DataStreamName {
     }
   }
 
-  final case class Pattern private(value: NonEmptyString) extends DataStreamName
+  final case class Pattern private(value: NonEmptyString) extends DataStreamName with EagerHashCode
   object Pattern {
     def fromNes(value: NonEmptyString): Pattern = Pattern(value)
   }

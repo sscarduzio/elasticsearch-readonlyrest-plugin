@@ -20,6 +20,7 @@ import com.hrakaroo.glob.{GlobPattern, MatchingEngine}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.ScalaOps.existsWith
 
 private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A])
   extends PatternsMatcher[A] {
@@ -39,13 +40,22 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
     else {
       val raw = matchable.show(value)
       val norm = if (ignoreCase) raw.toLowerCase else raw
-      compiled.exact.contains(norm) ||
-        compiled.prefixes.exists(norm.startsWith) ||
-        compiled.suffixes.exists(norm.endsWith) ||
-        compiled.infixes.exists(norm.contains) ||
-        compiled.complex.exists(_.matches(raw)) // raw (not norm): the glob engine handles case-insensitivity via globFlags
+      matchesExact(norm) ||
+        matchesPrefix(norm) ||
+        matchesSuffix(norm) ||
+        matchesInfix(norm) ||
+        matchesComplex(raw) // raw (not norm): the glob engine handles case-insensitivity via globFlags
     }
   }
+
+  // `Array.existsWith` (ScalaOps) is an allocation-free indexed `while` with an inlined predicate,
+  // calling the same `String.startsWith`/`endsWith`/`indexOf`/glob-engine methods (JIT intrinsics)
+  // the previous `Iterable.exists` closures used — without the closure + iterator allocations.
+  private def matchesExact(norm: String): Boolean = compiled.exact.contains(norm)
+  private def matchesPrefix(norm: String): Boolean = compiled.prefixes.existsWith(norm.startsWith)
+  private def matchesSuffix(norm: String): Boolean = compiled.suffixes.existsWith(norm.endsWith)
+  private def matchesInfix(norm: String): Boolean = compiled.infixes.existsWith(norm.indexOf(_) >= 0)
+  private def matchesComplex(raw: String): Boolean = compiled.complex.existsWith(_.matches(raw))
 
   override def `match`[B: Conversion](value: B): Boolean = {
     val conv = implicitly[Conversion[B]]
@@ -73,24 +83,31 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
 
 private[matchers] object GlobPatternsMatcher {
 
-  private final case class Compiled(matchAll: Boolean,
-                                    exact: Set[String],
-                                    prefixes: Vector[String],
-                                    suffixes: Vector[String],
-                                    infixes: Vector[String],
-                                    complex: Vector[MatchingEngine])
+  // All buckets are pre-normalized (lower-cased when case-insensitive) so matching can
+  // compare against an equally-normalized candidate. Stored as Arrays so the hot match
+  // loops iterate without allocating Vector iterators or `exists` closures.
+  // Plain class (not `case class`): it holds `Array` fields, for which the compiler-derived
+  // case-class `equals`/`hashCode`/`copy` would use reference identity — a value-like façade
+  // over reference semantics. It is created once per matcher and never compared or copied, so
+  // a plain class keeps that intent explicit and avoids the latent trap.
+  private final class Compiled(val matchAll: Boolean,
+                               val exact: Set[String],
+                               val prefixes: Array[String],
+                               val suffixes: Array[String],
+                               val infixes: Array[String],
+                               val complex: Array[MatchingEngine])
 
   private object Compiled {
     def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
       def norm(s: String) = if (ignoreCase) s.toLowerCase else s
       val kinds = patterns.iterator.map(Kind.of).toVector
-      Compiled(
+      new Compiled(
         matchAll = kinds.contains(Kind.All),
         exact    = kinds.collect { case Kind.Exact(p)   => norm(p) }.toCovariantSet,
-        prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) },
-        suffixes = kinds.collect { case Kind.Suffix(p)  => norm(p) },
-        infixes  = kinds.collect { case Kind.Infix(p)   => norm(p) },
-        complex  = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }
+        prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) }.toArray,
+        suffixes = kinds.collect { case Kind.Suffix(p)  => norm(p) }.toArray,
+        infixes  = kinds.collect { case Kind.Infix(p)   => norm(p) }.toArray,
+        complex  = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }.toArray
       )
     }
   }

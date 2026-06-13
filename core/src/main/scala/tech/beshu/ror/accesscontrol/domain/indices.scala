@@ -39,10 +39,6 @@ import scala.language.postfixOps
 import scala.util.matching.Regex
 import scala.util.Random
 
-private trait EagerHashCode { this: Product =>
-  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
-}
-
 sealed trait IndexName
 object IndexName {
 
@@ -84,7 +80,7 @@ object IndexName {
   }
 }
 
-final case class KibanaIndexName(underlying: ClusterIndexName.Local)
+final case class KibanaIndexName(underlying: ClusterIndexName.Local) extends EagerHashCode
 object KibanaIndexName {
 
   val devNullKibana: KibanaIndexName = KibanaIndexName(Local(IndexName.Full(nes(".kibana-devnull"))))
@@ -121,14 +117,11 @@ object KibanaIndexName {
     s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
   )
 
-  private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
-    Option(kibanaIndicesRegexesCache.getIfPresent(kibanaIndex))
-      .getOrElse {
-        val kibanaIndicesRegexes = createKibanaRelatedIndicesRegexes(kibanaIndex)
-        kibanaIndicesRegexesCache.put(kibanaIndex, kibanaIndicesRegexes)
-        kibanaIndicesRegexes
-      }
-  }
+  private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) =
+    // Caffeine's atomic loader compiles the regex vector at most once per Kibana index even under
+    // concurrent first access, instead of the racy `getIfPresent`/`put` (both threads miss, both
+    // compile). Matches the pattern used by `nonStrictAllowedPathsPatternCache` in `BaseKibanaRule`.
+    kibanaIndicesRegexesCache.get(kibanaIndex, createKibanaRelatedIndicesRegexes)
 
   extension (indexName: ClusterIndexName)
     def isRelatedToKibanaIndex(kibanaIndex: KibanaIndexName): Boolean = {
@@ -144,7 +137,7 @@ object KibanaIndexName {
     def stringify: String = kibanaIndexName.underlying.stringify
 }
 
-final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean)
+final case class RequestedIndex[+T <: ClusterIndexName](name: T, excluded: Boolean) extends EagerHashCode
 object RequestedIndex {
 
   implicit val eq: Eq[RequestedIndex[ClusterIndexName]] = Eq.by(r => (r.name, r.excluded))
