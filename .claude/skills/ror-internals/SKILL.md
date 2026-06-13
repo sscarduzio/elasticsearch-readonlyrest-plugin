@@ -1,15 +1,19 @@
 ---
 name: ror-internals
-description: ReadonlyREST internal architecture knowledge — kibana_access rule semantics and decision tree, FLS engine strategies, correlation-ID header contract, ROR admin API endpoints and their ES action names. Use when coding or reviewing changes to the kibana rules, FLS/fields rule, audit logging, or the _readonlyrest admin/metadata APIs.
+description: ReadonlyREST internal architecture knowledge — kibana rule semantics and decision tree (BaseKibanaRule.shouldMatch, shared by the kibana and legacy kibana_access rules), FLS engine strategies, correlation-ID header contract, ROR admin API endpoints and their ES action names. Use when coding or reviewing changes to the kibana rules, FLS/fields rule, audit logging, or the _readonlyrest admin/metadata APIs.
 ---
 
 # ROR Internals (ES plugin)
 
 Distilled from `beshu-tech/readonlyrest-internal/architecture/` and `api/`. Treat as design intent; the code is authority (update this on discrepancy).
 
-## kibana_access rule
+## kibana rule
 
-Code: `core/.../blocks/rules/kibana/KibanaAccessRule.scala`; action groups in `Constants.java` (`CLUSTER_ACTIONS`, `ADMIN_ACTIONS`, `RW_ACTIONS`, `RO_ACTIONS`).
+Shared decision tree (`shouldMatch`): `core/.../blocks/rules/kibana/BaseKibanaRule.scala`. Two concrete rules extend it:
+- **Current**: `KibanaUserDataRule.scala` — YAML name `kibana`.
+- **Legacy**: `KibanaAccessRule.scala` — YAML name `kibana_access`, `@deprecated` since `1.48.0`.
+
+Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (`roActionPatternsMatcher`, `rwActionPatternsMatcher`, `clusterActionPatternsMatcher`, `adminActionPatternsMatcher`, `nonStrictActions`, `indicesWriteAction`) — there is no `Constants.java`.
 
 - Omitting `kibana_access` ≡ `unrestricted`. The explicit `unrestricted` value exists so YAML anchor/template blocks can **override** a templated `rw` default.
 - Design intent of all restricted levels: the kibana index is writable (saved objects must work), all other "data indices" are **read-only** — protect against accidental data loss. Special-case writable indices exist (e.g. reporting).
@@ -19,23 +23,27 @@ Code: `core/.../blocks/rules/kibana/KibanaAccessRule.scala`; action groups in `C
 |-----------|-----------|-----------|------|-----------|------|
 | admin | full | read only | full | read only | full |
 | rw | full | read only | full | read only | none |
-| ro | full | read only | full | none | none |
+| ro | non-strict only¹ | read only | full | none | none |
 | ro_strict | read only | read only | none | none | none |
 
-Decision tree (simplified):
+¹ `ro` cannot modify the kibana index in general (`kibanaCanBeModified = false`). It only permits a narrow allow-list of saved-object writes via `isRoNonStrictCase` (step 8) — discover UI state, short URLs, index-pattern/url/config doc updates. It is not full kibana-index write access.
 
-- unrestricted → ALLOW
-- user-metadata API (login) → ALLOW
-- RO_ACTIONS or CLUSTER_ACTIONS → ALLOW
-- no indices involved → ALLOW
-- Kibana sample-data creation → ALLOW
-- index is kibana_index and level ≠ ro_strict → ALLOW
-- RO/RW action targeting kibana_index → ALLOW
-- action starts with `indices:data/write` → REJECT
-- level=admin and action in ADMIN_ACTIONS → ALLOW
-- else REJECT
+Decision tree — `shouldMatch` is a short-circuit OR chain (first match → ALLOW; if none match → REJECT). Order below mirrors `BaseKibanaRule.shouldMatch` exactly:
+
+1. `isUnrestrictedAccessConfigured` — access level is `unrestricted`.
+2. `isUserMetadataRequest` — ROR user-metadata path (login).
+3. `isDevNullKibanaRelated` — request targets the internal `.kibana-devnull` index.
+4. `isRoAction` — action matches `roActionPatternsMatcher`.
+5. `isClusterAction` — action matches `clusterActionPatternsMatcher`.
+6. `emptyIndicesMatch` — request has **no indices** AND ((kibana writable AND RW action) OR (admin access AND admin action)). Not a blanket allow.
+7. `isKibanaSimpleData` — kibana writable AND request is a Kibana sample-data index/stream.
+8. `isRoNonStrictCase` — targets kibana index, level ≠ `ro_strict`, kibana not modifiable, non-strict allowed path AND non-strict action (saves discover UI state / short URLs).
+9. `isAdminAccessEligible` — admin access configured AND admin action AND request allowed for admin (no-index, ROR index, index-management or tags path).
+10. `isKibanaIndexRequest` — kibana writable AND targeting kibana index AND (RO OR RW OR `indices:data/write/*` action).
 
 **Changing the order of these checks is a behavioral change** — review accordingly.
+
+Note: `indices:data/write/*` is **not** blanket-rejected — it's allowed via step 10 (writable kibana index) and is also a member of `adminActionPatternsMatcher` (step 9).
 
 ## FLS (fields rule) engines
 
