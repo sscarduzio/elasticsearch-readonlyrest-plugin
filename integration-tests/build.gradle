@@ -1,7 +1,5 @@
 plugins {
     id "readonlyrest.base-common-conventions"
-
-    id "com.github.maiflai.scalatest"    version "0.33"
 }
 
 repositories {
@@ -67,15 +65,27 @@ test {
         def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
         if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
 
-        tags {
-            exclude 'tech.beshu.tags.ExcludeESModule.' + module
-            exclude 'tech.beshu.tags.IgnoreOnWindows'
+        filter { includeTestsMatching 'tech.beshu.ror.integration.suites.*' }
+        // Gradle-native test machinery (replaces maiflai's one-JVM runner); ScalaTest tags map to JUnit tags.
+        useJUnitPlatform {
+            includeEngines 'scalatest'
+            excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
         }
-
-        suite 'tech.beshu.ror.integration.suites.*'
     }
     outputs.upToDateWhen { false }
-    maxParallelForks = 1
+    // Live console output — native test execution is silent without this (same block as core's).
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
+    // Real worker JVMs, each with its own TestNetwork.perJvm + singleton ES. Default 1 = develop
+    // parity; IT_MAX_PARALLEL_FORKS opts in on bigger machines; Windows pinned (fixed ES ports).
+    boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
+    maxParallelForks = isWindows ? 1 : (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '1').toInteger()
+    // Per WORKER JVM (Gradle's 512m default is too small). Multiplies with forks:
+    // keep IT_MAX_PARALLEL_FORKS x (2g + ~1.2g per ES container) under host RAM.
+    maxHeapSize = '2g'
 }
 
 dependencies {
@@ -84,7 +94,8 @@ dependencies {
     testImplementation  group: 'jakarta.xml.bind',              name: 'jakarta.xml.bind-api',       version: '2.3.2'
     testImplementation  group: 'org.glassfish.jaxb',            name: 'jaxb-runtime',               version: '2.3.2'
     testImplementation  group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.5.22'
-    testRuntimeOnly     group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
+    testRuntimeOnly     group: 'co.helmethair',                 name: 'scalatest-junit-runner',     version: '0.2.0'
+    testRuntimeOnly     group: 'org.junit.platform',            name: 'junit-platform-launcher',    version: '1.10.2'
     testImplementation  group: 'org.scala-lang',                name: 'scala3-library_3',           version: '3.3.7'
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }

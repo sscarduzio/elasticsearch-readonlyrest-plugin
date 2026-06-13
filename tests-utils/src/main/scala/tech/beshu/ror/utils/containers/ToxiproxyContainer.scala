@@ -22,7 +22,6 @@ import eu.rekawek.toxiproxy.model.{ToxicDirection, toxic}
 import eu.rekawek.toxiproxy.{Proxy, ToxiproxyClient}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.{WaitStrategy, WaitStrategyTarget}
 import tech.beshu.ror.utils.containers.ToxiproxyContainer.{httpApiPort, proxiedPort}
 import tech.beshu.ror.utils.misc.ScalaUtils.*
@@ -38,7 +37,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
     waitStrategy = Some(new ToxiproxyApiWaitStrategy())
   ) with LazyLogging {
 
-  container.setNetwork(Network.SHARED)
+  container.setNetwork(TestNetwork.perJvm)
   container.withStartupTimeout(Duration.ofSeconds(120))
 
   private var innerContainerProxy: Option[Proxy] = None
