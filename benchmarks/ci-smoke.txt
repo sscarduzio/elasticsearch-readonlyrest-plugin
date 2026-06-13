@@ -1,0 +1,13 @@
+# JMH include regexes for the PR smoke subset (~5-8 min with -f 1 -wi 3 -i 3 -prof gc).
+# Tier-1 KPI coverage; param values are pinned to the kpis.yml canonical sizes by jmhSmoke.
+# Each line is a Java regex (JMH Pattern.compile) matched against <fqcn>.<method>; dots are
+# escaped so a future class can't be matched by an accidental wildcard at a package separator.
+# Lines starting with '#' and blank lines are ignored.
+tech\.beshu\.ror\.benchmarks\.acl\.AclEvaluationBenchmark\.permitPath
+tech\.beshu\.ror\.benchmarks\.acl\.AclEvaluationBenchmark\.denyPath
+tech\.beshu\.ror\.benchmarks\.acl\.EnterpriseScenarioBenchmark\.permitPath
+tech\.beshu\.ror\.benchmarks\.acl\.EnterpriseScenarioBenchmark\.denyPath
+tech\.beshu\.ror\.benchmarks\.rules\.IndicesRuleResolutionBenchmark\.matchPath
+tech\.beshu\.ror\.benchmarks\.rules\.GroupsRuleBenchmark\.matchPath
+tech\.beshu\.ror\.benchmarks\.rules\.JwtVerificationBenchmark\.hmac256
+tech\.beshu\.ror\.benchmarks\.rules\.ActionsRuleBenchmark\.actionMissed

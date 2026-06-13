@@ -1,0 +1,162 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+// JMH benchmark module for the `core` ACL hot paths.
+//
+// Wiring is done with plain JavaExec/JavaCompile tasks (no third-party Gradle plugin)
+// so that simply having this module on the build can never break configuration of the
+// rest of the project — any problem here only surfaces when the `jmh` task is actually run.
+//
+// Run:   ./gradlew :benchmarks:jmh
+//        ./gradlew :benchmarks:jmh -PjmhArgs="GlobPatternsMatcher -f 2 -wi 5 -i 5 -prof gc"
+
+plugins {
+    id "scala"
+}
+
+repositories {
+    mavenCentral()
+    // The S3 bucket is required because this module depends on `:core`, whose transitive
+    // artifacts (ES libs, shaded deps) are published there and resolved against this module's
+    // repository list. `jitpack.io` and the gradle libs-releases repo are not needed by any
+    // declared or transitive dependency of the benchmark module.
+    maven {
+        url = "s3://" + (System.env.BUCKET ?: "beshu") + "/build"
+        authentication {
+            awsIm(AwsImAuthentication)
+        }
+        metadataSources {
+            artifact()
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+ext {
+    jmhVersion = '1.37'
+}
+
+dependencies {
+    implementation project(':core')
+    implementation group: 'org.scala-lang',   name: 'scala3-library_3',         version: '3.3.7'
+    implementation group: 'org.openjdk.jmh',   name: 'jmh-core',                 version: jmhVersion
+    implementation group: 'org.openjdk.jmh',   name: 'jmh-generator-bytecode',   version: jmhVersion
+}
+
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.additionalParameters = [
+            "-feature",
+            "-Xfatal-warnings",
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wunused:nowarn"
+    ]
+}
+
+def benchClasses = layout.buildDirectory.dir("classes/scala/main")
+def jmhGenSrc     = layout.buildDirectory.dir("generated/jmh/sources")
+def jmhGenRes     = layout.buildDirectory.dir("generated/jmh/resources")
+def jmhGenClasses = layout.buildDirectory.dir("generated/jmh/classes")
+
+// 1) Scan compiled @Benchmark classes and generate the JMH infrastructure
+//    (BenchmarkList + *_jmhTest sources). ASM-based, so it works with Scala bytecode.
+tasks.register('jmhGenerate', JavaExec) {
+    group = 'benchmark'
+    dependsOn tasks.named('classes')
+    mainClass = 'org.openjdk.jmh.generators.bytecode.JmhBytecodeGenerator'
+    classpath = sourceSets.main.runtimeClasspath
+    doFirst {
+        jmhGenSrc.get().asFile.mkdirs()
+        jmhGenRes.get().asFile.mkdirs()
+    }
+    args = [
+            benchClasses.get().asFile.absolutePath,
+            jmhGenSrc.get().asFile.absolutePath,
+            jmhGenRes.get().asFile.absolutePath
+    ]
+    outputs.dir(jmhGenSrc)
+    outputs.dir(jmhGenRes)
+}
+
+// 2) Compile the generated JMH Java sources.
+tasks.register('jmhCompileGenerated', JavaCompile) {
+    group = 'benchmark'
+    dependsOn 'jmhGenerate'
+    source = fileTree(jmhGenSrc)
+    classpath = sourceSets.main.runtimeClasspath
+    destinationDirectory = jmhGenClasses
+}
+
+// 3) Run JMH. Pass JMH CLI args via -PjmhArgs="..."; defaults to a quick, fork-isolated run.
+tasks.register('jmh', JavaExec) {
+    group = 'benchmark'
+    description = 'Runs JMH benchmarks (override with -PjmhArgs="<regex> -f 2 -wi 5 -i 5 ...")'
+    dependsOn 'jmhCompileGenerated'
+    mainClass = 'org.openjdk.jmh.Main'
+    classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
+    if (project.hasProperty('jmhArgs')) {
+        args = project.property('jmhArgs').toString().trim().split('\\s+').toList()
+    } else {
+        args = ['-f', '2', '-wi', '5', '-i', '5']
+    }
+}
+
+def smokeRaw    = layout.buildDirectory.file("jmh/smoke-raw.json")
+def smokeRecord = layout.buildDirectory.file("jmh/smoke-record.json")
+def smokeReport = layout.buildDirectory.file("jmh/smoke-compare.md")
+
+// 4) PR smoke subset: ci-smoke.txt regexes at the kpis.yml canonical @Param sizes, with -prof gc.
+tasks.register('jmhSmoke', JavaExec) {
+    group = 'benchmark'
+    description = 'Runs the PR-smoke benchmark subset (ci-smoke.txt) and the allocation gate'
+    dependsOn 'jmhCompileGenerated'
+    finalizedBy 'jmhCompare'
+    mainClass = 'org.openjdk.jmh.Main'
+    classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
+    doFirst { smokeRaw.get().asFile.parentFile.mkdirs() }
+    def regexes = file('ci-smoke.txt').readLines()
+            .collect { it.trim() }
+            .findAll { it && !it.startsWith('#') }
+    args = regexes + [
+            '-p', 'blocks=100', '-p', 'patterns=100', '-p', 'requestedIndices=50',
+            '-p', 'configuredGroups=100', '-p', 'userGroups=100',
+            '-f', '1', '-wi', '3', '-i', '3', '-prof', 'gc',
+            '-rf', 'json', '-rff', smokeRaw.get().asFile.absolutePath
+    ]
+}
+
+// 5) Reduce the smoke result to a run record and compare B/op against the committed baseline.
+tasks.register('jmhCompare', Exec) {
+    group = 'benchmark'
+    description = 'Extracts the smoke run record and runs the allocation gate (tools/compare.py)'
+    workingDir = projectDir
+    commandLine 'bash', '-c',
+            "python3 tools/extract.py --input '${smokeRaw.get().asFile}' " +
+            "--output '${smokeRecord.get().asFile}' --jmh-args 'jmhSmoke' && " +
+            "python3 tools/compare.py --record '${smokeRecord.get().asFile}' " +
+            "--baseline baselines/alloc-baseline.json --markdown '${smokeReport.get().asFile}'"
+}

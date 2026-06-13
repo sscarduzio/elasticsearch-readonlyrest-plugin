@@ -1,0 +1,42 @@
+{
+ "benchmarks": {
+  "tech.beshu.ror.benchmarks.acl.AclEvaluationBenchmark.denyPath{blocks=100}": {
+   "b_op": 843355.4
+  },
+  "tech.beshu.ror.benchmarks.acl.AclEvaluationBenchmark.permitPath{blocks=100}": {
+   "b_op": 802581.7
+  },
+  "tech.beshu.ror.benchmarks.acl.EnterpriseScenarioBenchmark.permitPath": {
+   "b_op": 30152416.5
+  },
+  "tech.beshu.ror.benchmarks.rules.ActionsRuleBenchmark.actionMissed": {
+   "b_op": 184.0
+  },
+  "tech.beshu.ror.benchmarks.rules.GroupsRuleBenchmark.matchPath{configuredGroups=100,userGroups=100}": {
+   "b_op": 302448.6
+  },
+  "tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.matchPath{patterns=100,requestedIndices=50}": {
+   "b_op": 122672.4
+  },
+  "tech.beshu.ror.benchmarks.rules.JwtVerificationBenchmark.hmac256": {
+   "b_op": 72736.0
+  }
+ },
+ "generatedAt": "2026-06-10T21:46:27Z",
+ "provisional": true,
+ "schema": 1,
+ "source": {
+  "env": {
+   "arch": "arm64",
+   "cpus": 10,
+   "fingerprint": "b7ba5ddc413f",
+   "host": "leibniz.local",
+   "jdk": "openjdk version \"25.0.2\" 2026-01-20",
+   "os": "Darwin 24.6.0"
+  },
+  "jmhArgs": "-f 1 -wi 2 -i 2 -prof gc (seed)",
+  "srcSha": "df81468daa07fa876c9dd38f11febdbad40b4946"
+ },
+ "toleranceAbsBytes": 64,
+ "tolerancePct": 5.0
+}
