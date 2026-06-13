@@ -22,7 +22,20 @@ Code: `core/.../blocks/rules/kibana/KibanaAccessRule.scala`; action groups in `C
 | ro | full | read only | full | none | none |
 | ro_strict | read only | read only | none | none | none |
 
-Decision tree (simplified): unrestricted → ALLOW; user-metadata API (login) → ALLOW; RO_ACTIONS or CLUSTER_ACTIONS → ALLOW; no indices involved → ALLOW; Kibana sample-data creation → ALLOW; index is kibana_index and level ≠ ro_strict → ALLOW; RO/RW action targeting kibana_index → ALLOW; action starts with `indices:data/write` → REJECT; level=admin and action in ADMIN_ACTIONS → ALLOW; else REJECT. **Changing the order of these checks is a behavioral change** — review accordingly.
+Decision tree (simplified):
+
+- unrestricted → ALLOW
+- user-metadata API (login) → ALLOW
+- RO_ACTIONS or CLUSTER_ACTIONS → ALLOW
+- no indices involved → ALLOW
+- Kibana sample-data creation → ALLOW
+- index is kibana_index and level ≠ ro_strict → ALLOW
+- RO/RW action targeting kibana_index → ALLOW
+- action starts with `indices:data/write` → REJECT
+- level=admin and action in ADMIN_ACTIONS → ALLOW
+- else REJECT
+
+**Changing the order of these checks is a behavioral change** — review accordingly.
 
 ## FLS (fields rule) engines
 

@@ -32,7 +32,20 @@ Source of truth: `beshu-tech/readonlyrest-internal/development_guide.md`. This s
 
 ## Task lifecycle (Jira: RORDEV board)
 
-Analysis (always first: reproduce BUGs — flag in Jira if >8h; design-check FEATUREs) → estimate in hours in `Story point estimate` (skip if <16h; INVESTIGATIONs report progress every 24h instead) → implementation → testing → PR → review → customer notification → close (PR link in Jira, move to DONE). One task in `IN PROGRESS` at a time; blocked → `ON HOLD` **with a comment written for someone not involved in the ticket**. Tag every task `R&D` or `Support` (Support = reactive to a user/customer initiative). Track time in Clockify: `[Action] [What] – [Why/Context]`.
+**Workflow:**
+
+1. **Analysis** (always first): reproduce BUGs — flag in Jira if >8h; design-check FEATUREs.
+2. **Estimate** in hours in `Story point estimate` (skip if <16h; INVESTIGATIONs report progress every 24h instead).
+3. **Implementation** → **testing** → **PR** → **review**.
+4. **Customer notification**.
+5. **Close**: PR link in Jira, move to DONE.
+
+**Rules:**
+
+- One task in `IN PROGRESS` at a time.
+- Blocked → `ON HOLD` **with a comment written for someone not involved in the ticket**.
+- Tag every task `R&D` or `Support` (Support = reactive to a user/customer initiative).
+- Track time in Clockify: `[Action] [What] – [Why/Context]`.
 
 ## Kibana feature-enablement principles
 
