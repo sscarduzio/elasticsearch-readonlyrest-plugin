@@ -87,7 +87,7 @@ class GroupsRuleBenchmark {
     val context = new NonIndexRequestContext(
       realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1"))))
     )
-    blockContext = context.initialBlockContext(null)
+    blockContext = context.initialBlockContext(noBlock)
     require(
       rule.check(blockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
       "expected the groups rule to match"

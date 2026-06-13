@@ -16,6 +16,13 @@ import sys
 UPLOT_CSS = "https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css"
 UPLOT_JS = "https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"
 
+
+def script_json(obj):
+    """json.dumps for embedding inside a <script> tag: neutralise any `</` so a stray
+    `</script>` in a KPI id/rationale can't terminate the tag early (kpis.yml is maintainer-
+    controlled, so this is correctness, not XSS defence)."""
+    return json.dumps(obj).replace("</", "<\\/")
+
 PALETTE = ["#2965cc", "#d13913", "#29a634", "#8f398f", "#d99e0b", "#00b3a4", "#7157d9"]
 
 HTML_TEMPLATE = """<!doctype html>
@@ -183,8 +190,8 @@ def main():
         uplot_css=UPLOT_CSS,
         uplot_js=UPLOT_JS,
         run_count=len(records),
-        data_json=json.dumps({"kpis": build_panels(records, kpis)}),
-        palette_json=json.dumps(PALETTE),
+        data_json=script_json({"kpis": build_panels(records, kpis)}),
+        palette_json=script_json(PALETTE),
     )
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w") as f:

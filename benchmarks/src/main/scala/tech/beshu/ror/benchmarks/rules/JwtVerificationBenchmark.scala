@@ -66,7 +66,7 @@ class JwtVerificationBenchmark {
   private def contextOf(token: String): GeneralNonIndexRequestBlockContext = {
     val headers = (1 to 18).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i"))).toCovariantSet +
       Header(Header.Name.authorization, nes(s"Bearer $token"))
-    new NonIndexRequestContext(headers).initialBlockContext(null)
+    new NonIndexRequestContext(headers).initialBlockContext(noBlock)
   }
 
   @Setup(Level.Trial)

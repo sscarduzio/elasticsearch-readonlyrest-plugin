@@ -51,8 +51,8 @@ class ActionsRuleBenchmark {
     rule = new ActionsRule(ActionsRule.Settings(NonEmptySet.of(actions.head, actions.tail*)))
 
     val headers = realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1"))))
-    matchingContext = new NonIndexRequestContext(headers).initialBlockContext(null)
-    missingContext = new NonIndexRequestContext(headers, Action("cluster:monitor/health")).initialBlockContext(null)
+    matchingContext = new NonIndexRequestContext(headers).initialBlockContext(noBlock)
+    missingContext = new NonIndexRequestContext(headers, Action("cluster:monitor/health")).initialBlockContext(noBlock)
 
     require(rule.check(matchingContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]], "expected match")
     require(rule.check(missingContext).runSyncUnsafe().isInstanceOf[Decision.Denied[?]], "expected miss")

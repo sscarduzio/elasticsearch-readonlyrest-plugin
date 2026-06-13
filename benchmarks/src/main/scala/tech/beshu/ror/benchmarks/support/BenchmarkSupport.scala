@@ -45,6 +45,14 @@ object BenchmarkSupport {
 
   val searchAction: Action = Action("indices:data/read/search")
 
+  // The single-rule benchmarks call `initialBlockContext(noBlock)` because the owning `Block` is
+  // never dereferenced on the measured path — `rule.check` reads only the block context, while
+  // `blockContext.block` is touched solely by audit/logging. Building a real `Block` here would need
+  // a NonEmptyList[Rule] + an implicit LoggingContext for a field that is never read. Routed through
+  // this named constant so the intent is explicit and grep-able: if a future rule-eval change starts
+  // reading `blockContext.block`, all of these sites NPE together and this is where to fix it.
+  val noBlock: Block = null
+
   // Realistic request header shape: 18 filler headers + one custom header + basic-auth credentials.
   def realisticHeaders(credentials: Credentials): Set[Header] =
     (1 to 18).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i"))).toCovariantSet +
@@ -99,6 +107,9 @@ object BenchmarkSupport {
   }
 
   // Empty-cluster stub: authorizing concrete (non-wildcard) index names never expands these lists.
+  // The two nulls are serviceAccountTokenService and apiKeyService — not invoked by any rule on the
+  // measured ACL path (only the auth_account_token / api_key rules touch them, none of which the KPI
+  // benchmarks exercise), so they are left unstubbed rather than carrying empty fakes.
   lazy val emptyEsServices: EsServices = new EsServices(emptyClusterService, null, null)
 
   private lazy val emptyClusterService: EsClusterService = new EsClusterService {

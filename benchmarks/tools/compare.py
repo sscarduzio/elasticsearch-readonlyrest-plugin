@@ -69,6 +69,14 @@ def main():
         message = f"alloc baseline env mismatch ({diffs}); regenerate with compare.py --write-baseline on the CI agent"
         print(f"##vso[task.logissue type=warning]{message}" if on_azure else f"WARNING: {message}",
               file=sys.stdout if on_azure else sys.stderr)
+        # During burn-in the baseline is still the provisional arm64/Darwin seed; comparing its
+        # B/op against an x86_64/Linux run produces noise rows (spurious REGRESSION/improved) that
+        # erode trust. Make the gate an explicit, documented no-op until it is re-seeded on the
+        # CI agent rather than emitting misleading numbers.
+        if baseline.get("provisional"):
+            print("allocation gate SKIPPED: baseline is provisional and its env mismatches this run; "
+                  "re-seed with compare.py --write-baseline on the CI agent to activate the gate")
+            return 0
 
     rows, regressions, improvements, missing = [], [], [], []
     for key, ref in sorted(baseline.get("benchmarks", {}).items()):

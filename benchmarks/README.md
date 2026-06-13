@@ -71,9 +71,20 @@ Two gates use them:
    (`python3 tools/compare.py --record <record> --baseline baselines/alloc-baseline.json
    --write-baseline`) and the diff is reviewed like code. `compare.py` gates on **every** key in
    `alloc-baseline.json` and fails if a baselined benchmark is missing from the run (a rename can't
-   silently escape). Each alloc-baseline key has a matching `metric: b_op` / `gate: alloc-baseline`
+   silently escape). Every alloc-baseline key has a matching `metric: b_op` / `gate: alloc-baseline`
    entry in `kpis.yml`, so kpis.yml stays the single reviewed contract for what is gated — keep the
-   two in sync when adding or removing an allocation gate.
+   two in sync when adding or removing an allocation gate. While the baseline is still `provisional`
+   and its `source.env` (currently arm64/Darwin seed) differs from the run's, `compare.py` emits the
+   env-mismatch warning and **skips** the comparison entirely (explicit no-op, exit 0) rather than
+   comparing wrong-platform numbers; the gate activates on the first `--write-baseline` re-seed on
+   the CI agent.
+
+   **Enterprise deny-path alloc — deferred to the re-seed.** `EnterpriseScenarioBenchmark.denyPath`
+   (the heaviest path, ~30 MB/op) is in `ci-smoke.txt` so the smoke run measures its allocations,
+   but it is intentionally **not yet** in `alloc-baseline.json` or `kpis.yml` as an alloc gate — its
+   B/op must be measured on the CI agent, not seeded from the arm64 dev box. Until the authoritative
+   `--write-baseline` runs there it shows as `NEW (not in baseline)` (informational, non-gating);
+   add the `acl.enterprise.deny.alloc` KPI entry alongside the baseline key in that same re-seed PR.
 2. **Nightly time series (time, single writer)** — `ci/azure-nightly-perf.yml` runs the full
    suite on ONE pinned self-hosted agent (one hardware fingerprint), commits a reduced run
    record per night to the `benchmark-history` orphan branch (one file per run, append-only,

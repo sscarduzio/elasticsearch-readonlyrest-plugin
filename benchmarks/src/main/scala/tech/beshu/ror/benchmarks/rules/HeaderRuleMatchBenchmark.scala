@@ -58,7 +58,7 @@ class HeaderRuleMatchBenchmark {
     // Filler headers first; the headers satisfying the requirements come last, so scans are full.
     val filler = (0 until math.max(0, 20 - requirements)).map(i => Header(Header.Name(nes(s"X-Filler-$i")), nes(s"value-$i")))
     val matching = (0 until requirements).map(i => Header(Header.Name(nes(s"X-Required-$i")), nes(s"allowed-$i-x")))
-    blockContext = new NonIndexRequestContext((filler ++ matching).toCovariantSet).initialBlockContext(null)
+    blockContext = new NonIndexRequestContext((filler ++ matching).toCovariantSet).initialBlockContext(noBlock)
 
     require(
       rule.check(blockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
