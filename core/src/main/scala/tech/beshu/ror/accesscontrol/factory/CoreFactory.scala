@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
-import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning, UnresolvedBlock}
+import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
@@ -59,77 +59,68 @@ final case class Core(accessControl: AccessControlList,
                       auditingConfig: AuditingTool.AuditingConfig)
 
 trait CoreFactory {
-  def createAuditingSettingsFrom(rorSettings: RawRorSettings): Task[Either[NonEmptyList[CoreCreationError], AuditingConfig]]
-
-  def createObfuscatedHeadersFrom(rorSettings: RawRorSettings): Task[Either[NonEmptyList[CoreCreationError], Set[Header.Name]]]
-
   def createCoreFrom(rorSettings: RawRorSettings,
                      rorSettingsIndex: RorSettingsIndex,
                      httpClientFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     mocksProvider: MocksProvider,
-                     auditingTool: AuditingTool): Task[Either[NonEmptyList[CoreCreationError], Core]]
+                     mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
 }
 
 class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                                     (implicit systemContext: SystemContext)
   extends CoreFactory with RequestIdAwareLogging {
 
-  private lazy val resolver = new JsonStaticVariablesResolver(
-    systemContext.envVarsProvider,
-    TransformationCompiler.withoutAliases(systemContext.variablesFunctions),
-  )
-
-  override def createAuditingSettingsFrom(rorSettings: RawRorSettings): Task[Either[NonEmptyList[CoreCreationError], AuditingConfig]] = {
-    extractFromRorSection(rorSettings, createAuditingSettingsFromSettingsJson)
-  }
-
-  private def createAuditingSettingsFromSettingsJson(settingsJson: Json): Task[Either[DecodingFailure, AuditingConfig]] = {
-    val decoder = for {
-      enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
-      core <- if (!enabled) {
-        AsyncDecoderCreator.from(Decoder.const(AuditingTool.AuditingConfig(None, defaultAclLog = true, esEnv.esNodeSettings)))
-      } else {
-        AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
-      }
-    } yield core
-    decoder(HCursor.fromJson(settingsJson))
-  }
-
-  override def createObfuscatedHeadersFrom(rorSettings: RawRorSettings): Task[Either[NonEmptyList[CoreCreationError], Set[Header.Name]]] = {
-    extractFromRorSection(rorSettings, createObfuscatedHeadersFromSettingsJson)
-  }
-
-  private def createObfuscatedHeadersFromSettingsJson(settingsJson: Json): Task[Either[DecodingFailure, Set[Header.Name]]] = {
-    val decoder = for {
-      enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
-      value <- if (!enabled) {
-        AsyncDecoderCreator.from(Decoder.const(Set.empty))
-      } else {
-        AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
-      }
-    } yield value
-    decoder(HCursor.fromJson(settingsJson))
-  }
-
   override def createCoreFrom(rorSettings: RawRorSettings,
                               rorSettingsIndex: RorSettingsIndex,
                               httpClientFactory: HttpClientsFactory,
                               ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                              mocksProvider: MocksProvider,
-                              auditingTool: AuditingTool): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
-    extractFromRorSection(
-      rorSettings,
-      createFrom(_, rorSettingsIndex, httpClientFactory, ldapConnectionPoolProvider, mocksProvider, auditingTool)
+                              mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
+    rorSettings.settingsJson \\ Attributes.rorSectionName match {
+      case Nil => createCoreFromRorSection(
+        rorSettings.settingsJson,
+        rorSettingsIndex,
+        httpClientFactory,
+        ldapConnectionPoolProvider,
+        mocksProvider,
+      )
+      case rorSection :: Nil => createCoreFromRorSection(
+        rorSection,
+        rorSettingsIndex,
+        httpClientFactory,
+        ldapConnectionPoolProvider,
+        mocksProvider,
+      )
+      case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
+    }
+  }
+
+  private def createCoreFromRorSection(rorSection: Json,
+                                       rorSettingsIndex: RorSettingsIndex,
+                                       httpClientFactory: HttpClientsFactory,
+                                       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+                                       mocksProvider: MocksProvider) = {
+    val resolver = new JsonStaticVariablesResolver(
+      systemContext.envVarsProvider,
+      TransformationCompiler.withoutAliases(systemContext.variablesFunctions),
     )
+    resolver.resolve(rorSection) match {
+      case Right(resolvedRorSection) =>
+        createFrom(resolvedRorSection, rorSettingsIndex, httpClientFactory, ldapConnectionPoolProvider, mocksProvider).map {
+          case Right(settings) =>
+            Right(settings)
+          case Left(failure) =>
+            Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
+        }
+      case Left(errors) =>
+        Task.now(Left(errors.map(e => GeneralReadonlyrestSettingsError(Message(e.msg)))))
+    }
   }
 
   private def createFrom(settingsJson: Json,
                          settingsIndex: RorSettingsIndex,
                          httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                         mocksProvider: MocksProvider,
-                         auditingTool: AuditingTool) = {
+                         mocksProvider: MocksProvider) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
@@ -146,7 +137,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         } else {
           for {
             globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(settingsIndex))
-            core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider, auditingTool)
+            core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
           } yield core
         }
     } yield core
@@ -284,7 +275,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
                 .remove(Attributes.Block.audit)
               )
             ))
-          block <- UnresolvedBlock.createFrom(name, policy, audit, rules).left.map(decodingFailureFrom(_))
+          block <- Block.createFrom(name, policy, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
           localUsers = block.rules.map(LocalUsers.from).combineAll,
@@ -397,10 +388,11 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
   private def coreDecoder(httpClientFactory: HttpClientsFactory,
                           ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                           globalSettings: GlobalSettings,
-                          mocksProvider: MocksProvider,
-                          auditingTool: AuditingTool): AsyncDecoder[Core] = {
+                          mocksProvider: MocksProvider): AsyncDecoder[Core] = {
     AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
+        obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
+        loggingContext = LoggingContext(obfuscatedHeaders)
         dynamicVariableTransformationAliases <-
           AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create(systemContext.variablesFunctions))
         variableCreator = new RuntimeResolvableVariableCreator(
@@ -432,7 +424,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           globalSettings,
           esEnv
         ))
-        obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocksNel <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           implicit val blockAsyncDecoder: AsyncDecoder[BlockDecodingResult] = AsyncDecoderCreator.from {
@@ -464,8 +455,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         }
         _ <- auditSinkNamesDecoder(blocksNel, auditingConfig)
       } yield {
-        val unresolvedBlocks = blocksNel.map(_.block)
-        val blocks = unresolvedBlocks.map(_.resolve(auditingTool.sinks))
+        val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
 
         val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
@@ -491,24 +481,6 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         Core(accessControl, rorDependencies, auditingConfig)
       }
       decoder.apply(c)
-    }
-  }
-
-  private def extractFromRorSection[T](rorSettings: RawRorSettings,
-                                       extract: Json => Task[Either[DecodingFailure, T]]): Task[Either[NonEmptyList[CoreCreationError], T]] = {
-    val decode = (json: Json) => resolver.resolve(json) match {
-      case Right(resolvedRorSection) => extract(json).map {
-        case Right(value) =>
-          Right(value)
-        case Left(failure) =>
-          Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
-      }
-      case Left(errors) => Task.now(Left(errors.map(e => GeneralReadonlyrestSettingsError(Message(e.msg)))))
-    }
-    rorSettings.settingsJson \\ Attributes.rorSectionName match {
-      case Nil => decode(rorSettings.settingsJson)
-      case rorSection :: Nil => decode(rorSection)
-      case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
     }
   }
 
@@ -588,7 +560,7 @@ object RawRorSettingsBasedCoreFactory {
     }
   }
 
-  private[factory] case class BlockDecodingResult(block: UnresolvedBlock,
+  private[factory] case class BlockDecodingResult(block: Block,
                                                   localUsers: LocalUsers,
                                                   impersonationWarnings: ImpersonationWarningsReader)
 

@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.audit.sink.*
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -94,7 +95,7 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
             generalAuditEvents = allowedBy.requestContext.generalAuditEvents,
             responseContext = responseContext,
           ),
-          verbosity = toAuditVerbosity(allowedBy.blockContext.block.logAllowedEvents),
+          verbosity = toAuditVerbosity(allowedBy.blockContext.block.audit),
           reason = allowedBy.blockContext.block.show
         )
       case allow: ResponseContext.Allowed[B] =>
@@ -123,7 +124,7 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
             historyEntries = forbiddenBy.history,
             responseContext = responseContext,
           ),
-          verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.logAllowedEvents),
+          verbosity = toAuditVerbosity(forbiddenBy.blockContext.block.audit),
           reason = forbiddenBy.blockContext.block.show
         )
       case forbidden: ResponseContext.Forbidden[B] =>
@@ -166,9 +167,11 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
     }
   }
 
-  private def toAuditVerbosity(logAllowedEvents: Boolean): AuditResponseContext.Verbosity = {
-    if (logAllowedEvents) AuditResponseContext.Verbosity.Info
-    else AuditResponseContext.Verbosity.Error
+  private def toAuditVerbosity(audit: Audit): AuditResponseContext.Verbosity = audit match {
+    case Audit.Enabled(logAllowedEvents, _) =>
+      if (logAllowedEvents) AuditResponseContext.Verbosity.Info else AuditResponseContext.Verbosity.Error
+    case Audit.Disabled =>
+      AuditResponseContext.Verbosity.Info
   }
 
   private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],
@@ -198,8 +201,6 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
 }
 
 object AuditingTool extends RequestIdAwareLogging {
-
-  final case class AuditSettings(auditSinks: NonEmptyList[AuditSettings.AuditSink])
 
   object AuditSettings {
 

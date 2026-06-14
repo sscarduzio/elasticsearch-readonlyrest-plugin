@@ -63,7 +63,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
               notPassingRule("r3") ::
               passingRule("r4") :: Nil
           ),
-          logAllowedEvents = true,
+          audit = Block.Audit.Enabled(),
           auditSinks = List.empty,
         )
         val requestContext = MockRequestContext.indices
@@ -93,7 +93,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule("r5") :: Nil
           ),
-          logAllowedEvents = true,
+          audit = Block.Audit.Enabled(),
           auditSinks = List.empty,
         )
         val requestContext = MockRequestContext.indices
@@ -124,7 +124,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
         ),
-        logAllowedEvents = true,
+        audit = Block.Audit.Enabled(),
         auditSinks = List.empty,
       )
       val requestContext = MockRequestContext.indices
@@ -166,7 +166,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
             passingRule("r3", withIndices) ::
             Nil
         ),
-        logAllowedEvents = true,
+        audit = Block.Audit.Enabled(),
         auditSinks = List.empty,
       )
       val requestContext = MockRequestContext.indices
@@ -206,7 +206,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
             passingRule("r2", _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))) ::
             Nil
         ),
-        logAllowedEvents = true,
+        audit = Block.Audit.Enabled(),
         auditSinks = List.empty,
       )
       val requestContext = MockRequestContext.indices
@@ -330,7 +330,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       name = Block.Name("test_block"),
       policy = Block.Policy.Allow,
       rules = NonEmptyList.fromListUnsafe(rules.toList),
-      logAllowedEvents = true,
+      audit = Block.Audit.Enabled(),
       auditSinks = List.empty,
     )
 

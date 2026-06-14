@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.{NonEmptyList, ValidatedNel}
-import tech.beshu.ror.accesscontrol.blocks.UnresolvedBlock
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.{Attributes, BlockDecodingResult}
@@ -48,13 +48,13 @@ object AclValidator {
         }
     }
 
-  private def validateThereAreNoBlockDuplicates(blocks: List[UnresolvedBlock]): ValidatedNel[String, Unit] =
+  private def validateThereAreNoBlockDuplicates(blocks: List[Block]): ValidatedNel[String, Unit] =
     blocks.map(_.name).findDuplicates match {
       case Nil => ().validNel
       case duplicates => s"Blocks must have unique names. Duplicates: ${duplicates.show}".invalidNel
     }
 
-  private def validateThatUsersConfigSectionIsUsedWhenPresent(blocks: List[UnresolvedBlock],
+  private def validateThatUsersConfigSectionIsUsedWhenPresent(blocks: List[Block],
                                                               userDefs: Definitions[UserDef]): ValidatedNel[String, Unit] = {
     val thereAreUserDefinitions = userDefs.items.nonEmpty
     lazy val thereIsGroupsRule = blocks.flatMap(_.rules.toList).collect {

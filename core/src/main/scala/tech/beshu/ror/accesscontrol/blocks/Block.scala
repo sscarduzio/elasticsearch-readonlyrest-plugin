@@ -41,61 +41,25 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.language.implicitConversions
 
-class UnresolvedBlock(val name: Block.Name,
-                      val policy: Block.Policy,
-                      val rules: NonEmptyList[Rule],
-                      val audit: Block.Audit)
-                     (implicit val loggingContext: LoggingContext) {
-
-  def resolve(allSinks: List[Block.AuditSink]): Block = {
-    val resolvedSinks = audit match {
-      case Audit.Disabled                                     => Nil
-      case Audit.Enabled(_, EnabledAuditSinks.All)            => allSinks
-      case Audit.Enabled(_, EnabledAuditSinks.Selected(on))   => allSinks.filter(s => on.contains(s.name))
-      case Audit.Enabled(_, EnabledAuditSinks.AllExcept(off)) => allSinks.filter(s => !off.contains(s.name))
-    }
-    val logAllowedEvents = audit match {
-      case Audit.Enabled(logAllowedEvents, _) => logAllowedEvents
-      case Audit.Disabled => true
-    }
-    new Block(name, policy, rules, logAllowedEvents, resolvedSinks)(loggingContext)
-  }
-
-}
-
-object UnresolvedBlock {
-
-  def createFrom(name: Block.Name,
-                 policy: Option[Block.Policy],
-                 audit: Option[Block.Audit],
-                 rules: NonEmptyList[Block.RuleDefinition[Rule]])
-                (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, UnresolvedBlock] = {
-    val sortedRules = rules.sorted
-    BlockValidator.validate(name, sortedRules) match {
-      case Validated.Valid(_) =>
-        Right(new UnresolvedBlock(
-          name = name,
-          policy = policy.getOrElse(Block.Policy.Allow),
-          audit = audit.getOrElse(Block.Audit.Enabled()),
-          rules = sortedRules.map(_.rule)
-        ))
-      case Validated.Invalid(errors) =>
-        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
-        Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
-    }
-  }
-
-}
-
 class Block(val name: Block.Name,
             val policy: Block.Policy,
             val rules: NonEmptyList[Rule],
-            val logAllowedEvents: Boolean,
+            val audit: Block.Audit,
             val auditSinks: List[Block.AuditSink])
            (implicit val loggingContext: LoggingContext)
   extends RequestIdAwareLogging {
 
   import Lifter.*
+
+  def withResolvedAuditSinks(allSinks: List[Block.AuditSink]): Block = {
+    val resolvedSinks = audit match {
+      case Audit.Disabled => Nil
+      case Audit.Enabled(_, EnabledAuditSinks.All) => allSinks
+      case Audit.Enabled(_, EnabledAuditSinks.Selected(on)) => allSinks.filter(s => on.contains(s.name))
+      case Audit.Enabled(_, EnabledAuditSinks.AllExcept(off)) => allSinks.filter(s => !off.contains(s.name))
+    }
+    new Block(name, policy, rules, audit, resolvedSinks)(loggingContext)
+  }
 
   def evaluateForRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(Decision[B], BlockHistory[B])] = {
     evaluateRules(rules.toList, requestContext.initialBlockContext(this), Vector.empty[RuleHistory[B]])
@@ -248,6 +212,27 @@ object Block {
     final case class Forbid(responseMessage: Option[String] = None) extends Policy
 
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
+  }
+
+  def createFrom(name: Block.Name,
+                 policy: Option[Block.Policy],
+                 audit: Option[Block.Audit],
+                 rules: NonEmptyList[Block.RuleDefinition[Rule]])
+                (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
+    val sortedRules = rules.sorted
+    BlockValidator.validate(name, sortedRules) match {
+      case Validated.Valid(_) =>
+        Right(new Block(
+          name = name,
+          policy = policy.getOrElse(Block.Policy.Allow),
+          rules = sortedRules.map(_.rule),
+          audit = audit.getOrElse(Block.Audit.Enabled()),
+          auditSinks = List.empty,
+        ))
+      case Validated.Invalid(errors) =>
+        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
+        Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
+    }
   }
 
   final case class SinkName(value: String) extends AnyVal

@@ -477,7 +477,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
         case MockedBlockResult.Matched(userId, groups) => passingAuthRule("auth", userId, groups)
         case MockedBlockResult.Mismatched => notPassingAuthRule("auth")
       }),
-      logAllowedEvents = true,
+      audit = Block.Audit.Enabled(),
       auditSinks = List.empty,
     )
   }
@@ -487,7 +487,7 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
       name = Block.Name(name),
       policy = policy,
       rules = NonEmptyList.of(authorizationRule("groups", userId, groups), perGroupKibanaIndexRule("kibana")),
-      logAllowedEvents = true,
+      audit = Block.Audit.Enabled(),
       auditSinks = List.empty,
     )
   }
