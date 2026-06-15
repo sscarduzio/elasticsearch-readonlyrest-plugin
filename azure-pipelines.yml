@@ -92,10 +92,29 @@ pool:
 
 stages:
 
+  # Deterministic supersede guard: closes Azure's at-queue-time autoCancel race for PR runs by
+  # cancelling older in-progress runs of the same PR (and self-cancelling if a newer run already
+  # exists). Runs FIRST so no agent time / container pull is wasted on a superseded run. Only
+  # affects PullRequest runs; branch runs rely on `trigger.batch` and are skipped by the script.
+  - stage: SUPERSEDE_GUARD
+    displayName: 'Cancel superseded PR runs'
+    dependsOn: [ ]
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job:
+        displayName: 'Supersede guard'
+        steps:
+          - checkout: self
+            fetchDepth: 1
+          - script: ci/cancel-superseded-runs.sh
+            displayName: 'Cancel older in-progress runs for this PR'
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
-    dependsOn: [ ]
-    condition: and(succeeded(), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
+    dependsOn: [ SUPERSEDE_GUARD ]
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
     jobs:
       - job:
         steps:
@@ -159,10 +178,10 @@ stages:
 
   - stage: TOOLCHAINS_VERIFY
     displayName: 'Verify toolchains image'
-    dependsOn: [ ]
+    dependsOn: [ SUPERSEDE_GUARD ]
     condition:
       and(
-        succeeded(),
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         or(
           notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
