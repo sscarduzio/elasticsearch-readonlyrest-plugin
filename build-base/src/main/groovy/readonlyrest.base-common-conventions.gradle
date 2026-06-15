@@ -96,7 +96,7 @@ githook {
                 STAGED=\$(git diff --cached --name-only --diff-filter=ACMR -- '*.scala' '*.java' | tr '\\n' ',' | sed 's/,\$//')
                 if [ -n "\$STAGED" ]; then
                     ./gradlew spotlessApply -PspotlessStagedFiles="\$STAGED" || exit 1
-                    echo "\$STAGED" | tr ',' '\\n' | xargs git add
+                    echo "\$STAGED" | tr ',' '\\n' | xargs -d '\\n' git add --
                 fi
             """
         }
