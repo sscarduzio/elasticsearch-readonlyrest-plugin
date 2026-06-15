@@ -1,0 +1,16 @@
+# Context-filter for ci/toolchains/JdkToolchains.Dockerfile (BuildKit picks up the
+# `<Dockerfile-name>.dockerignore` sibling file). The build context is the repo root (the image
+# needs settings.gradle + */build.gradle to prime deps); exclude the heavy generated dirs to
+# keep the context small.
+# NOTE: .git is intentionally NOT excluded — the :audit project's configuration installs a git
+# hook and fails ("Can't find hooks directory .git/hooks") if .git is absent from the context.
+**/build
+.gradle
+**/.gradle
+eshome/build
+eshome/data
+**/*.zip
+**/distributions
+**/.idea
+**/*.iml
+.DS_Store
