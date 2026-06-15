@@ -752,16 +752,16 @@ stages:
               mergeTestResults: true
 
   - stage: E2E_TESTS
-    displayName: 'Run e2e tests'
+    displayName: 'Run E2E tests'
     dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
-      in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-      in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-      or(
-      notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
-      and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
-      )
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        or(
+          notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
+          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
+        )
       )
     jobs:
       - job:
@@ -784,7 +784,18 @@ stages:
               docker system prune -af
               docker builder prune -af
               df -h /
-            displayName: 'Free up disk space and clean Docker'
+              # Add swap as a buffer: the e2e docker stack + Cypress/Chrome over-subscribe the
+              # ~7.9 GB agent. Containers can't swap (memswap_limit == mem_limit), but swap lets the
+              # OS/Chrome spill, relieving the global memory pressure that triggers the OOM-killer.
+              SWAPFILE=/mnt/ci-swapfile
+              [ -d /mnt ] || SWAPFILE=/ci-swapfile
+              sudo fallocate -l 8G "$SWAPFILE" || sudo dd if=/dev/zero of="$SWAPFILE" bs=1M count=8192
+              sudo chmod 600 "$SWAPFILE"
+              sudo mkswap "$SWAPFILE"
+              sudo swapon "$SWAPFILE"
+              sudo sysctl vm.swappiness=60
+              free -h
+            displayName: 'Free up disk space, add swap, and clean Docker'
             target: host
           - checkout: self
             fetchDepth: 1
@@ -841,6 +852,7 @@ stages:
     dependsOn:
       - REQUIRED_CHECKS
       - TEST
+      - E2E_TESTS
     condition: |
       and(
         in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
