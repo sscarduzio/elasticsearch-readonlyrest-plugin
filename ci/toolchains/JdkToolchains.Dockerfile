@@ -123,5 +123,12 @@ RUN cd /tmp/ror-src \
 # ---- final image: toolchains + the primed Gradle home, WITHOUT the repo sources ------------
 FROM base
 COPY --from=gradle-prime /opt/gradle-home /opt/gradle-home
+# The prime-stage `chmod -R a+rwX` makes the home's CONTENTS writable, but a cross-stage COPY
+# materializes the freshly-created top-level dir as root:root 0755 — the prime-stage bit on the
+# dir itself does NOT survive it. The Azure container job runs as a non-root user (vsts, UID 1001),
+# and `daemon/` was deleted during priming, so even `gradlew --no-daemon` (which still creates the
+# daemon registry dir $GRADLE_USER_HOME/daemon/<version>) can't write into a root-owned top dir.
+# Make the top dir world-writable so the non-root CI user can create daemon/ + lockfiles here.
+RUN chmod a+rwx /opt/gradle-home
 # At CI time: point GRADLE_USER_HOME at /opt/gradle-home — warm-cache builds make no network
 # calls; cache misses fall back to the network until the next scheduled image rebuild.
