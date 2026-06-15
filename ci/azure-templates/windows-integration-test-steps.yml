@@ -15,7 +15,11 @@ steps:
       $env:ROR_LIBS_STORE_ACCESS_KEY_SECRET = $env:VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
       Write-Host ">>> $env:ES_MODULE"
-      $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE"
+      # GRADLE_USER_HOME / GRADLE_OPTS are cleared at JOB scope (see azure-pipelines.yml) so the Linux
+      # image paths don't leak here. Also override gradle.properties' Linux installations.paths on the
+      # command line and let Windows auto-detect/provision JDKs (JavaToolInstaller above).
+      $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE",
+        "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
       if ($env:ES_VERSION) { $gradleArgs += "-PesVersion=$env:ES_VERSION" }
       .\gradlew @gradleArgs
       if ($LASTEXITCODE -ne 0) {
