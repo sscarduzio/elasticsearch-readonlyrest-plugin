@@ -43,9 +43,14 @@ curl_opts=(-sS --fail-with-body --connect-timeout 10 --max-time 20
 echo ">>> self=build ${SELF_ID} pr_ref=${PR_REF} definition=${DEFINITION_ID}"
 
 # Active runs = notStarted + inProgress, for this definition, on this exact PR ref.
-# branchName filters server-side so we only ever see the same PR's runs.
-list_url="${base}?definitions=${DEFINITION_ID}&branchName=${PR_REF}&statusFilter=inProgress,notStarted&${API}"
-if ! resp="$(curl "${curl_opts[@]}" "${list_url}")"; then
+# branchName filters server-side so we only ever see the same PR's runs. Let curl URL-encode the
+# query params (-G + --data-urlencode) — branchName carries unencoded '/' (refs/pull/N/merge) that
+# a stricter gateway could reject; encoding it is strictly safer than embedding it raw.
+if ! resp="$(curl "${curl_opts[@]}" -G "${base}" \
+      --data-urlencode "definitions=${DEFINITION_ID}" \
+      --data-urlencode "branchName=${PR_REF}" \
+      --data-urlencode "statusFilter=inProgress,notStarted" \
+      --data-urlencode "${API}")"; then
   echo ">>> WARN: list call failed (HTTP error/timeout) — cannot determine supersession; proceeding without gating."
   echo ">>> response body: ${resp}"
   exit 0
