@@ -34,6 +34,7 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.RefinedUtils.*
 import tech.beshu.ror.utils.ScalaOps.*
 
+import java.util.regex.Pattern
 import scala.concurrent.ExecutionContext.global
 import scala.language.postfixOps
 import scala.util.matching.Regex
@@ -94,28 +95,34 @@ object KibanaIndexName {
         .build[KibanaIndexName, Vector[Regex]]()
     }
 
-  private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = Vector(
-    s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
-    s"""^${kibanaIndex.stringify}_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_8.0.0_001
-    s"""^\\.kibana-reporting-${kibanaIndex.stringify}$$""".r, // eg. .kibana_reporting-.kibana
-    s"""^\\.ds-\\.kibana-reporting-${kibanaIndex.stringify}-\\d{4}\\.\\d{2}\\.\\d{2}-\\d+$$""".r, // eg. .ds-.kibana_reporting-.kibana-2025.01.01-000001
-    s"""^${kibanaIndex.stringify}_alerting_cases$$""".r, // eg. .kibana_alerting_cases
-    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_alerting_cases_8.8.0
-    s"""^${kibanaIndex.stringify}_alerting_cases_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_alerting_cases_8.11.3_001
-    s"""^${kibanaIndex.stringify}_analytics$$""".r, // eg. .kibana_analytics
-    s"""^${kibanaIndex.stringify}_analytics_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_analytics_8.0.0
-    s"""^${kibanaIndex.stringify}_ingest$$""".r, // eg. .kibana_ingest
-    s"""^${kibanaIndex.stringify}_ingest_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_ingest_8.0.0
-    s"""^${kibanaIndex.stringify}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
-    s"""^${kibanaIndex.stringify}_security_solution$$""".r, // eg. .kibana_security_solution
-    s"""^${kibanaIndex.stringify}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
-    s"""^${kibanaIndex.stringify}_search_solution$$""".r, // eg. .kibana_search_solution
-    s"""^${kibanaIndex.stringify}_search_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana__search_solution_9.1.0
-    s"""^${kibanaIndex.stringify}_task_manager$$""".r, // eg. .kibana_task_manager
-    s"""^${kibanaIndex.stringify}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
-    s"""^${kibanaIndex.stringify}_usage_counters$$""".r, // eg. .kibana_usage_counters
-    s"""^${kibanaIndex.stringify}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
-  )
+  private def createKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) = {
+    // The index name is admin-configured and may contain regex metacharacters (the default `.kibana`
+    // already has a `.`). Quote it so it matches literally — same fix as `nonStrictAllowedPathsPatternFor`
+    // in `BaseKibanaRule`. The `\d+\.\d+` version suffixes stay real regex.
+    val idx = Pattern.quote(kibanaIndex.stringify)
+    Vector(
+      s"""^${idx}_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_8.0.0
+      s"""^${idx}_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_8.0.0_001
+      s"""^\\.kibana-reporting-${idx}$$""".r, // eg. .kibana_reporting-.kibana
+      s"""^\\.ds-\\.kibana-reporting-${idx}-\\d{4}\\.\\d{2}\\.\\d{2}-\\d+$$""".r, // eg. .ds-.kibana_reporting-.kibana-2025.01.01-000001
+      s"""^${idx}_alerting_cases$$""".r, // eg. .kibana_alerting_cases
+      s"""^${idx}_alerting_cases_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_alerting_cases_8.8.0
+      s"""^${idx}_alerting_cases_\\d+\\.\\d+\\.\\d+_\\d+$$""".r, // eg. .kibana_alerting_cases_8.11.3_001
+      s"""^${idx}_analytics$$""".r, // eg. .kibana_analytics
+      s"""^${idx}_analytics_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_analytics_8.0.0
+      s"""^${idx}_ingest$$""".r, // eg. .kibana_ingest
+      s"""^${idx}_ingest_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_ingest_8.0.0
+      s"""^${idx}-event-log-\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana-event-log-8.8.0
+      s"""^${idx}_security_solution$$""".r, // eg. .kibana_security_solution
+      s"""^${idx}_security_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_security_solution_8.8.0
+      s"""^${idx}_search_solution$$""".r, // eg. .kibana_search_solution
+      s"""^${idx}_search_solution_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana__search_solution_9.1.0
+      s"""^${idx}_task_manager$$""".r, // eg. .kibana_task_manager
+      s"""^${idx}_task_manager_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_task_manager_8.8.0,
+      s"""^${idx}_usage_counters$$""".r, // eg. .kibana_usage_counters
+      s"""^${idx}_usage_counters_\\d+\\.\\d+\\.\\d+$$""".r, // eg. .kibana_usage_counters_8.16.0
+    )
+  }
 
   private def getKibanaRelatedIndicesRegexes(kibanaIndex: KibanaIndexName) =
     // Caffeine's atomic loader compiles the regex vector at most once per Kibana index even under
