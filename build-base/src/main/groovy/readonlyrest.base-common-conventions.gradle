@@ -126,6 +126,13 @@ def stagedFilesFor = { String ext ->
 }
 
 spotless {
+    def scalafmtVersion = rootProject.file('.scalafmt.conf')
+        .readLines()
+        .find { it.startsWith('version') }
+        ?.split('=')[1]?.trim()?.replaceAll('"', '')
+    if (!scalafmtVersion) {
+        throw new GradleException("Could not determine scalafmt version from .scalafmt.conf")
+    }
     java {
         googleJavaFormat().reorderImports(false).formatJavadoc(false)
         removeUnusedImports()
@@ -136,7 +143,7 @@ spotless {
         if (files != null) target(files.isEmpty() ? ['**/__no_staged_files__'] : files)
     }
     scala {
-        scalafmt("3.11.1").configFile("${rootProject.projectDir}/.scalafmt.conf")
+        scalafmt(scalafmtVersion).configFile("${rootProject.projectDir}/.scalafmt.conf")
         def files = stagedFilesFor('.scala')
         // null = property not set, format everything; empty = no staged files in this project,
         // use non-matching glob so Spotless skips this project without falling back to all files
