@@ -103,6 +103,7 @@ stages:
     jobs:
       - job:
         displayName: 'Supersede guard'
+        timeoutInMinutes: 5   # belt-and-suspenders: never let the guard itself stall the pipeline
         steps:
           - checkout: self
             fetchDepth: 1
@@ -209,8 +210,10 @@ stages:
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
+    # SUPERSEDE_GUARD gate: when this PR run is superseded the guard FAILS (exit 1), so the heavy
+    # stages must not run. Succeeded = newest PR run; Skipped = non-PR run (guard didn't apply).
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
         container: ror-toolchains
@@ -260,9 +263,10 @@ stages:
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -299,9 +303,10 @@ stages:
 
   - stage: TEST
     displayName: 'Run all tests'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(

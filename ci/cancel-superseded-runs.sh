@@ -10,8 +10,10 @@
 #   * if a run with a HIGHER build id already exists (a newer push beat us), self-cancel.
 #
 # Non-PR runs (branch/master/develop/schedule/manual) are left untouched — they rely on
-# `trigger.batch` and must not cancel each other. Failures here are non-fatal: a broken guard must
-# never block a legitimate build, so the script always exits 0.
+# `trigger.batch` and must not cancel each other. API errors are non-fatal (logged, then the run
+# proceeds): a broken guard must never block a legitimate build. The ONE deliberate non-zero exit
+# is the self-cancel path (a newer run already exists) — there we exit 1 to stop this superseded
+# run from doing real work while the cancellation lands.
 
 set -uo pipefail
 
@@ -32,14 +34,22 @@ PR_REF="${BUILD_SOURCEBRANCH:?}"             # refs/pull/<n>/merge — uniquely 
 API="api-version=7.1"
 
 base="${ORG_URL%/}/${PROJECT}/_apis/build/builds"
-auth=(-H "Authorization: Bearer ${SYSTEM_ACCESSTOKEN}")
+# --fail-with-body: a 401/403 (under-permissioned token) becomes a non-zero exit + visible body
+#   instead of silently returning an error JSON that jq parses to "no other runs" (silent no-op).
+# --max-time/--connect-timeout: never let a hung Azure API hold the guard (and thus the pipeline).
+curl_opts=(-sS --fail-with-body --connect-timeout 10 --max-time 20
+           -H "Authorization: Bearer ${SYSTEM_ACCESSTOKEN}")
 
 echo ">>> self=build ${SELF_ID} pr_ref=${PR_REF} definition=${DEFINITION_ID}"
 
 # Active runs = notStarted + inProgress, for this definition, on this exact PR ref.
 # branchName filters server-side so we only ever see the same PR's runs.
 list_url="${base}?definitions=${DEFINITION_ID}&branchName=${PR_REF}&statusFilter=inProgress,notStarted&${API}"
-resp="$(curl -sS "${auth[@]}" "${list_url}")" || { echo ">>> WARN: list call failed; not gating."; exit 0; }
+if ! resp="$(curl "${curl_opts[@]}" "${list_url}")"; then
+  echo ">>> WARN: list call failed (HTTP error/timeout) — cannot determine supersession; proceeding without gating."
+  echo ">>> response body: ${resp}"
+  exit 0
+fi
 
 # Build ids of OTHER active runs on the same PR ref.
 mapfile -t other_ids < <(echo "${resp}" | jq -r --argjson self "${SELF_ID}" \
@@ -54,9 +64,9 @@ echo ">>> other active runs on this PR: ${other_ids[*]}"
 cancel_build() { # cancel_build <id> <superseder-id>
   local id="$1" superseder="$2"
   echo ">>> cancelling build ${id} (superseded by ${superseder})"
-  curl -sS -X PATCH "${auth[@]}" -H "Content-Type: application/json" \
+  curl "${curl_opts[@]}" -X PATCH -H "Content-Type: application/json" \
     -d '{"status":"cancelling"}' "${base}/${id}?${API}" >/dev/null \
-    || echo ">>> WARN: cancel of ${id} failed (continuing)"
+    || echo ">>> WARN: cancel of ${id} failed (HTTP error/timeout) — continuing"
 }
 
 newest_other=0
