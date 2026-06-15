@@ -79,12 +79,24 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-    // Real worker JVMs, each with its own TestNetwork.perJvm + singleton ES. Default 1 = develop
-    // parity; IT_MAX_PARALLEL_FORKS opts in on bigger machines; Windows pinned (fixed ES ports).
+    // Real worker JVMs, each with its own TestNetwork.perJvm + singleton ES. The fork count is
+    // resource-aware (tech.beshu.ror.gradle.IntegrationTestForkCount): the tighter of the CPU
+    // and RAM bounds, so it auto-scales on big self-hosted boxes yet stays at 1 on the small
+    // 2-vCPU/7-GB hosted agents (where a 2nd worker would swap and turn ES bootstrap flaky).
+    // IT_MAX_PARALLEL_FORKS overrides verbatim; Windows is pinned to 1 (fixed ES container ports).
     boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
-    maxParallelForks = isWindows ? 1 : (System.getenv('IT_MAX_PARALLEL_FORKS') ?: '1').toInteger()
+    double totalRamGb = 0d
+    try {
+        def osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean()
+        if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+            totalRamGb = ((com.sun.management.OperatingSystemMXBean) osBean).getTotalMemorySize() / (1024d * 1024d * 1024d)
+        }
+    } catch (Throwable ignored) { /* RAM undetectable -> helper stays conservative */ }
+    maxParallelForks = tech.beshu.ror.gradle.IntegrationTestForkCount.resolve(
+        System.getenv('IT_MAX_PARALLEL_FORKS'), isWindows, Runtime.runtime.availableProcessors(), totalRamGb)
+    logger.lifecycle("integration-tests: maxParallelForks=${maxParallelForks} (cpus=${Runtime.runtime.availableProcessors()}, ramGb=${String.format('%.1f', totalRamGb)}, windows=${isWindows}, override=${System.getenv('IT_MAX_PARALLEL_FORKS') ?: 'none'})")
     // Per WORKER JVM (Gradle's 512m default is too small). Multiplies with forks:
-    // keep IT_MAX_PARALLEL_FORKS x (2g + ~1.2g per ES container) under host RAM.
+    // keep maxParallelForks x (2g + ~1.2g per ES container) under host RAM.
     maxHeapSize = '2g'
 }
 
