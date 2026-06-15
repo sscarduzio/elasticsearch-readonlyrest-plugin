@@ -309,7 +309,7 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
-              echo "[ES_TESTS] executing ROR_TASK = $ROR_TASK"
+              echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: core_tests
@@ -840,11 +840,11 @@ stages:
     displayName: 'Build ROR plugins'
     dependsOn:
       - REQUIRED_CHECKS
-      - ES_TESTS
+      - TEST
     condition: |
       and(
         in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
         eq(variables.isPullRequest, true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
@@ -880,12 +880,12 @@ stages:
     displayName: 'Determine if this is release run'
     dependsOn:
       - REQUIRED_CHECKS
-      - ES_TESTS
+      - TEST
       - E2E_TESTS
     condition: |
       and(
         in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
         succeeded('E2E_TESTS'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -906,12 +906,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - ES_TESTS
+      - TEST
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
         in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -980,12 +980,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - ES_TESTS
+      - TEST
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
         in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -1052,12 +1052,12 @@ stages:
     dependsOn:
       - DETERMINE_CI_TYPE
       - REQUIRED_CHECKS
-      - ES_TESTS
+      - TEST
     condition: |
       and(
         succeeded('DETERMINE_CI_TYPE'),
         in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
-        in(dependencies.ES_TESTS.result, 'Succeeded', 'Skipped'),
+        in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
