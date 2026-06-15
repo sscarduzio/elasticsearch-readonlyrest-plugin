@@ -767,6 +767,11 @@ stages:
       - job:
         displayName: 'E2E tests (docker env)'
         timeoutInMinutes: 120
+        variables:
+          # On a PR build Build.SourceBranch is refs/pull/<id>/merge, so Build.SourceBranchName
+          # is the literal "merge". Build.SourceBranchName also drops path segments (e.g. "change/").
+          # Use the PR source branch when present, else the pushed branch, and strip refs/heads/.
+          e2eTargetBranch: $[ replace(coalesce(variables['System.PullRequest.SourceBranch'], variables['Build.SourceBranch']), 'refs/heads/', '') ]
         steps:
           - bash: |
               sudo rm -rf /usr/share/dotnet
@@ -810,15 +815,6 @@ stages:
             displayName: 'Use Node.js 24.11.0'
             inputs:
               versionSpec: '24.11.0'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
@@ -834,7 +830,7 @@ stages:
             env:
               ROR_TASK: run_e2e_tests
               E2E_ES_MODULE: $(E2E_ES_MODULE)
-              E2E_TARGET_BRANCH: $(Build.SourceBranchName)
+              E2E_TARGET_BRANCH: $(e2eTargetBranch)
               E2E_BUILD_ID: $(Build.BuildId)-$(System.JobAttempt)
               ROR_ACTIVATION_KEY: $(ROR_ACTIVATION_KEY)
               KBN_REPO_GH_TOKEN: $(KBN_REPO_GH_TOKEN)
