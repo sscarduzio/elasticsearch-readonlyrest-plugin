@@ -853,6 +853,7 @@ stages:
       and(
         in(dependencies.REQUIRED_CHECKS.result, 'Succeeded', 'Skipped'),
         in(dependencies.TEST.result, 'Succeeded', 'Skipped'),
+        in(dependencies.E2E_TESTS.result, 'Succeeded', 'Skipped'),
         eq(variables.isPullRequest, true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
