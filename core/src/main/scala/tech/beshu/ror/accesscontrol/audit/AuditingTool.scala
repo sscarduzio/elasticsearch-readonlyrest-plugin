@@ -73,9 +73,9 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
               .toList
         }
       case ForbiddenBy(_, blockContext, _) => blockContext.block.auditSinks
-      case Forbidden(_, _) => List.empty
-      case RequestedIndexNotExist(_, _) => List.empty
-      case Errored(_, _) => List.empty
+      case Forbidden(_, _) => sinks
+      case RequestedIndexNotExist(_, _) => sinks
+      case Errored(_, _) => sinks
     }
   }
 

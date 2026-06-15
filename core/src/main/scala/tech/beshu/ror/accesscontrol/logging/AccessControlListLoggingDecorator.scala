@@ -21,7 +21,7 @@ import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult}
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.RorKbnPluginNotSupported
@@ -94,6 +94,9 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
           logger.error(s"Request handling unexpected failure", ex)
       }
   }
+
+  def withBlockTransformation(f: Block => Block): AccessControlList =
+    new AccessControlListLoggingDecorator(underlying.withBlockTransformation(f), auditingTool)
 
   private def log[B <: BlockContext](responseContext: ResponseContext[B]): Unit = {
     given ResponseContext[B] = responseContext

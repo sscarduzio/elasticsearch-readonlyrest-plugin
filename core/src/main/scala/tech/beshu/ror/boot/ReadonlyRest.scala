@@ -157,7 +157,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .map { auditingTool =>
         val decoratedCore = Core(
           accessControl = new AccessControlListLoggingDecorator(
-            underlying = core.accessControl,
+            underlying = core.accessControl.withBlockTransformation(_.withResolvedAuditSinks(auditingTool.sinks)),
             auditingTool = auditingTool
           ),
           dependencies = core.dependencies,

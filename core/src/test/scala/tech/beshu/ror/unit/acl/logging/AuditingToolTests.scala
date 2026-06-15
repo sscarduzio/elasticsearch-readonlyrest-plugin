@@ -76,7 +76,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = mock[IndexBasedAuditSinkService]
               }
             ).runSyncUnsafe().toOption.get
-            auditingTool.audit(createAllowedResponseContext(Policy.Allow, logAllowedEvents = false)).runSyncUnsafe()
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks, logAllowedEvents = false)).runSyncUnsafe()
           }
           "custom serializer throws exception" in {
             val auditingTool = AuditingTool.create(
@@ -89,7 +89,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               }
             ).runSyncUnsafe().toOption.get
             an[IllegalArgumentException] should be thrownBy {
-              auditingTool.audit(createAllowedResponseContext(Policy.Allow)).runSyncUnsafe()
+              auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks)).runSyncUnsafe()
             }
           }
         }
@@ -111,7 +111,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
               }
             ).runSyncUnsafe().toOption.get
-            auditingTool.audit(createAllowedResponseContext(Policy.Allow)).runSyncUnsafe()
+            auditingTool.audit(createAllowedResponseContext(Policy.Allow, auditingTool.sinks)).runSyncUnsafe()
           }
           "request was matched by forbidden rule" in {
             val requestId = RequestId("mock-1")
@@ -141,7 +141,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
                   Block.Audit.Enabled(),
                   List.empty,
-                ),
+                ).withResolvedAuditSinks(auditingTool.sinks),
                 requestContext = requestContext,
                 blockMetadata = BlockMetadata.empty,
                 responseHeaders = Set.empty,
@@ -453,7 +453,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private lazy val someday = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
 
-  private def createAllowedResponseContext(policy: Block.Policy, logAllowedEvents: Boolean = true) = {
+  private def createAllowedResponseContext(policy: Block.Policy, allSinks: List[Block.AuditSink], logAllowedEvents: Boolean = true) = {
     val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id.fromString("mock-1"))
     AllowedBy(
       requestContext = requestContext,
@@ -464,7 +464,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           rules = NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
           audit = Block.Audit.Enabled(logAllowedEvents),
           auditSinks = List.empty,
-        ),
+        ).withResolvedAuditSinks(allSinks),
         requestContext = requestContext,
         blockMetadata = BlockMetadata.empty,
         responseHeaders = Set.empty,
