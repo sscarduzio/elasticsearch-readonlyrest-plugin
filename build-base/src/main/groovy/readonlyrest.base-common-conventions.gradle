@@ -128,8 +128,10 @@ def stagedFilesFor = { String ext ->
 spotless {
     def scalafmtVersion = rootProject.file('.scalafmt.conf')
         .readLines()
-        .find { it.startsWith('version') }
-        ?.split('=')[1]?.trim()?.replaceAll('"', '')
+            .findResult { line ->
+                def m = (line =~ /^\s*version\s*=\s*"([^"]+)"/)
+                m.matches() ? m[0][1] : null
+            }
     if (!scalafmtVersion) {
         throw new GradleException("Could not determine scalafmt version from .scalafmt.conf")
     }
