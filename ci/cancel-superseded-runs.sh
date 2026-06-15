@@ -51,29 +51,30 @@ if [[ "${#other_ids[@]}" -eq 0 ]]; then
 fi
 echo ">>> other active runs on this PR: ${other_ids[*]}"
 
-cancel_build() { # cancel_build <id>
-  local id="$1"
-  echo ">>> cancelling build ${id} (superseded by ${SELF_ID})"
+cancel_build() { # cancel_build <id> <superseder-id>
+  local id="$1" superseder="$2"
+  echo ">>> cancelling build ${id} (superseded by ${superseder})"
   curl -sS -X PATCH "${auth[@]}" -H "Content-Type: application/json" \
     -d '{"status":"cancelling"}' "${base}/${id}?${API}" >/dev/null \
     || echo ">>> WARN: cancel of ${id} failed (continuing)"
 }
 
-newer_exists=0
+newest_other=0
 for id in "${other_ids[@]}"; do
   if [[ "${id}" -lt "${SELF_ID}" ]]; then
-    cancel_build "${id}"            # older run → kill it; this run is newer
-  elif [[ "${id}" -gt "${SELF_ID}" ]]; then
-    newer_exists=1                  # a newer run already exists → we are superseded
+    cancel_build "${id}" "${SELF_ID}"   # older run → kill it; this run is newer
+  elif [[ "${id}" -gt "${SELF_ID}" && "${id}" -gt "${newest_other}" ]]; then
+    newest_other="${id}"                # track the newest run that supersedes us
   fi
 done
 
-if [[ "${newer_exists}" -eq 1 ]]; then
-  echo ">>> a newer run for this PR already exists — self-cancelling build ${SELF_ID}."
-  cancel_build "${SELF_ID}"
+if [[ "${newest_other}" -gt 0 ]]; then
+  echo ">>> a newer run (${newest_other}) for this PR already exists — self-cancelling build ${SELF_ID}."
+  cancel_build "${SELF_ID}" "${newest_other}"
   # Fail this job so the pipeline stops here instead of doing real work while cancellation lands.
   exit 1
 fi
 
 echo ">>> this is the newest run for the PR — proceeding."
 exit 0
+
