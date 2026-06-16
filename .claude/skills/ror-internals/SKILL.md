@@ -59,7 +59,7 @@ Code: `FieldsFiltering.scala` (uses `XContentMapValues.filter`, same method as E
 
 ## Correlation ID contract
 
-ROR ES is session-unaware; `x-ror-correlation-id` request header correlates requests. If absent, ROR generates a UUID. The metadata endpoint (`/_readonlyrest/metadata/current_user`) echoes the effective ID back as `x-ror-logging-id`. The ID goes into the audit log. Don't break this contract — Kibana relies on it for session-scoped log correlation.
+ROR ES is session-unaware; the `x-ror-correlation-id` request header (`http.scala`) correlates requests. If absent, ROR generates one (a composite string, not a bare UUID — see `RequestContext`). The metadata endpoint (`/_readonlyrest/metadata/user`) echoes the effective ID back as the `correlation_id` **JSON body field** (`MetadataResponse.scala`), NOT as a response header — there is no `x-ror-logging-id`. The ID goes into the audit log. Don't break this contract — Kibana relies on it for session-scoped log correlation.
 
 ## ROR API endpoints ↔ ES actions
 
@@ -67,10 +67,10 @@ Every ROR REST endpoint maps to a dedicated ES action name (used in ACL `actions
 
 | Endpoint | Action (canonical; `cluster:ror/*` legacy alias) |
 |---|---|
-| `GET /_readonlyrest/metadata/current_user` | `cluster:internal_ror/user_metadata/get` |
+| `GET /_readonlyrest/metadata/user` | `cluster:internal_ror/user_metadata/get` |
 | `GET/POST /_readonlyrest/admin/config` (+ `/file`, `/refreshconfig`) | `cluster:internal_ror/config/refreshsettings` (legacy refresh), `cluster:internal_ror/config/manage` (cluster summary) |
-| `POST/DELETE /_readonlyrest/admin/config/test` | `cluster:internal_ror/testconfig/manage`; in-memory test config, TTL via `x-ror-test-settings-ttl` (default 30 min) |
-| `POST/DELETE /_readonlyrest/admin/authmock` | `cluster:internal_ror/authmock/manage`; TTL via `x-ror-auth-mock-ttl` (default 30 min) |
+| `POST/DELETE /_readonlyrest/admin/config/test` | `cluster:internal_ror/testconfig/manage`; in-memory test config, TTL via the `ttl` field in the POST request body (`TestSettingsApi`) |
+| `POST/DELETE /_readonlyrest/admin/config/test/authmock` | `cluster:internal_ror/authmock/manage`; mocks persist until DELETE or plugin restart (no TTL in the current `AuthMockApi`) |
 | `POST /_readonlyrest/admin/audit/event` | `cluster:internal_ror/audit_event/put` |
 
 Behavioral invariants:
