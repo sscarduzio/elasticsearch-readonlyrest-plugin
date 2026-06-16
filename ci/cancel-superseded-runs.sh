@@ -25,7 +25,12 @@ if [[ "${BUILD_REASON:-}" != "PullRequest" ]]; then
   exit 0
 fi
 
-: "${SYSTEM_ACCESSTOKEN:?SYSTEM_ACCESSTOKEN not set — map it via env (see azure-pipelines.yml)}"
+# A missing token must NOT block the build (same contract as every other failure path below):
+# warn and proceed ungated rather than `:?`-exiting non-zero and failing the whole pipeline.
+if [[ -z "${SYSTEM_ACCESSTOKEN:-}" ]]; then
+  echo ">>> WARN: SYSTEM_ACCESSTOKEN not set (map it via env — see azure-pipelines.yml) — cannot query runs; proceeding without gating."
+  exit 0
+fi
 ORG_URL="${SYSTEM_COLLECTIONURI:?}"          # e.g. https://dev.azure.com/beshu-tech/
 PROJECT="${SYSTEM_TEAMPROJECTID:?}"          # project GUID (stable, space-safe)
 DEFINITION_ID="${SYSTEM_DEFINITIONID:?}"     # this pipeline's definition id
@@ -56,9 +61,17 @@ if ! resp="$(curl "${curl_opts[@]}" -G "${base}" \
   exit 0
 fi
 
-# Build ids of OTHER active runs on the same PR ref.
-mapfile -t other_ids < <(echo "${resp}" | jq -r --argjson self "${SELF_ID}" \
-  '.value[]? | select(.id != $self) | .id' 2>/dev/null | sort -n)
+# Build ids of OTHER active runs on the same PR ref. Surface (don't swallow) a jq parse failure:
+# if the body isn't the JSON we expect, an empty other_ids would otherwise look like "no other runs"
+# and the guard would silently no-op. On parse failure: warn and proceed ungated.
+jq_err="$(echo "${resp}" | jq -r --argjson self "${SELF_ID}" \
+  '.value[]? | select(.id != $self) | .id' 2>&1 1>/tmp/supersede_ids.txt)"
+if [[ -n "${jq_err}" ]]; then
+  echo ">>> WARN: could not parse Builds API response (${jq_err}) — proceeding without gating."
+  echo ">>> response body: ${resp}"
+  exit 0
+fi
+mapfile -t other_ids < <(sort -n /tmp/supersede_ids.txt)
 
 if [[ "${#other_ids[@]}" -eq 0 ]]; then
   echo ">>> no other active runs for this PR — proceeding."
