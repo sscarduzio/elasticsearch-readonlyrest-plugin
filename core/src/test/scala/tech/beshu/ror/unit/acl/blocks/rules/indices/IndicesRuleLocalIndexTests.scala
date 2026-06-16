@@ -18,7 +18,8 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{KibanaIndexName, User}
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockEsServices
 import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
@@ -367,6 +368,31 @@ trait IndicesRuleLocalIndexTests {
           requestIndices = Set(requestedIndex(".kibana_8.10.4"), requestedIndex("test-index1")),
           modifyBlockContext = bc => bc.copy(
             blockMetadata = bc.blockMetadata.withKibanaIndex(KibanaIndexName(localIndexName(".kibana")))
+          ),
+        )
+      }
+    }
+    "match a runtime variable" when {
+      // guards the IndicesRule dynamic (ToBeResolved) path: a `@{user}`-style config must NOT be
+      // frozen to a static matcher — it has to resolve per request from the logged user.
+      "the configured @{user} variable resolves to the requested index" in {
+        assertMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("@{user}")),
+          requestIndices = Set(requestedIndex("test1")),
+          modifyBlockContext = bc => bc.copy(
+            blockMetadata = bc.blockMetadata.withLoggedUser(DirectlyLoggedUser(User.Id("test1")))
+          ),
+          filteredRequestedIndices = Set(requestedIndex("test1")),
+        )
+      }
+    }
+    "not match a runtime variable" when {
+      "the configured @{user} variable resolves to an index different from the requested one" in {
+        assertNotMatchRuleForIndexRequest(
+          configured = NonEmptySet.of(indexNameVar("@{user}")),
+          requestIndices = Set(requestedIndex("test2")),
+          modifyBlockContext = bc => bc.copy(
+            blockMetadata = bc.blockMetadata.withLoggedUser(DirectlyLoggedUser(User.Id("test1")))
           ),
         )
       }

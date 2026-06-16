@@ -50,8 +50,8 @@ class FieldsRule(val settings: Settings)
   // Optimization: when the fields are pre-resolved, build the restrictions once instead of per request.
   private val staticFieldsRestrictions: Option[FieldsRestrictions] =
     resolveAllIfPreResolved(settings.fields.toNonEmptyList)
-      .flatMap(fields => UniqueNonEmptyList.from(fields.toList))
-      .map(FieldsRestrictions(_, settings.accessMode))
+      // resolved values are a NonEmptyList, so the unique set is never empty — no Option to thread
+      .map(fields => FieldsRestrictions(UniqueNonEmptyList.fromNonEmptyList(fields), settings.accessMode))
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.requestContext match {

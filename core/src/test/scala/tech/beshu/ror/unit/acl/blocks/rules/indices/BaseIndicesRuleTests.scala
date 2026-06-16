@@ -106,6 +106,7 @@ abstract class BaseIndicesRuleTests
       inside(result) {
         case Permitted(blockContext: GeneralIndexRequestBlockContext) =>
           assertBlockContext(blockContext)(
+            loggedUser = blockContext.blockMetadata.loggedUser,
             indices = filteredRequestedIndices,
             kibanaPolicy = blockContext.blockMetadata.kibanaPolicy
           )
