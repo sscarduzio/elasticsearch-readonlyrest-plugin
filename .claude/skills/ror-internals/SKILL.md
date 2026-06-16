@@ -17,7 +17,7 @@ Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (
 
 - Omitting `kibana_access` ≡ `unrestricted`. The explicit `unrestricted` value exists so YAML anchor/template blocks can **override** a templated `rw` default.
 - Design intent of all restricted levels: the kibana index is writable (saved objects must work), all other "data indices" are **read-only** — protect against accidental data loss. Special-case writable indices exist (e.g. reporting).
-- `admin` vs `rw` differs ONLY in access to ROR settings/activation-keys APIs (`cluster:ror/*`).
+- `admin` grants `rw`-level kibana access **plus** the full `adminActionPatternsMatcher` set on no-index requests and the ROR config index / index-management / tags paths (step 9) — that includes `indices:admin/create`, `indices:admin/ilm/*`, `cluster:admin/ingest/pipeline/put`, etc., none of which `rw` can reach. It also gates the ROR settings/activation-keys APIs.
 
 | level | kibana_index | data indices | reporting index | cluster mgmt | ROR settings API |
 |-----------|-----------|-----------|------|-----------|------|
@@ -25,8 +25,11 @@ Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (
 | rw | full | read only | full | read only | none |
 | ro | non-strict only¹ | read only | full | none | none |
 | ro_strict | read only | read only | none | none | none |
+| api_only² | read only | read only | none | none | none |
 
 ¹ `ro` cannot modify the kibana index in general (`kibanaCanBeModified = false`). It only permits a narrow allow-list of saved-object writes via `isRoNonStrictCase` (step 8) — discover UI state, short URLs, index-pattern/url/config doc updates. It is not full kibana-index write access.
+
+² `api_only` (YAML value `api_only`) is read-only on the kibana index like `ro_strict`, but its semantics are distinct: it couples to `allowed_api_paths` (`KibanaUserDataRuleDecoder.scala`) to gate which ROR/ES API paths the user may call. It is its own `KibanaAccess` value, not an alias of `ro`.
 
 Decision tree — `shouldMatch` is a short-circuit OR chain (first match → ALLOW; if none match → REJECT). Order below mirrors `BaseKibanaRule.shouldMatch` exactly:
 
@@ -60,19 +63,19 @@ ROR ES is session-unaware; `x-ror-correlation-id` request header correlates requ
 
 ## ROR API endpoints ↔ ES actions
 
-Every ROR REST endpoint maps to a dedicated ES action name (used in ACL `actions` rule and audit). Keep the mapping stable:
+Every ROR REST endpoint maps to a dedicated ES action name (used in ACL `actions` rule and audit). The **canonical** names below are `cluster:internal_ror/*` — that is what `RorAction` declares (`elasticsearch.scala`) and what audit logs emit. The older `cluster:ror/*` spellings are legacy aliases still accepted in ACL YAML for backward compat (via `rorActionByOutdatedName`) but **never** appear in audit output — don't grep audit logs for them. Keep the mapping stable:
 
-| Endpoint | Action |
+| Endpoint | Action (canonical; `cluster:ror/*` legacy alias) |
 |---|---|
-| `GET /_readonlyrest/metadata/current_user` | `cluster:ror/user_metadata/get` |
-| `GET/POST /_readonlyrest/admin/config` (+ `/file`, `/refreshconfig`) | `cluster:ror/config/refreshsettings` (legacy), `cluster:ror/config/manage` (cluster summary) |
-| `POST/DELETE /_readonlyrest/admin/config/test` | `cluster:ror/testconfig/manage`; in-memory test config, TTL via `x-ror-test-settings-ttl` (default 30 min) |
-| `POST/DELETE /_readonlyrest/admin/authmock` | `cluster:ror/authmock/manage`; TTL via `x-ror-auth-mock-ttl` (default 30 min) |
-| `POST /_readonlyrest/admin/audit/event` | `cluster:ror/audit_event/put` |
+| `GET /_readonlyrest/metadata/current_user` | `cluster:internal_ror/user_metadata/get` |
+| `GET/POST /_readonlyrest/admin/config` (+ `/file`, `/refreshconfig`) | `cluster:internal_ror/config/refreshsettings` (legacy refresh), `cluster:internal_ror/config/manage` (cluster summary) |
+| `POST/DELETE /_readonlyrest/admin/config/test` | `cluster:internal_ror/testconfig/manage`; in-memory test config, TTL via `x-ror-test-settings-ttl` (default 30 min) |
+| `POST/DELETE /_readonlyrest/admin/authmock` | `cluster:internal_ror/authmock/manage`; TTL via `x-ror-auth-mock-ttl` (default 30 min) |
+| `POST /_readonlyrest/admin/audit/event` | `cluster:internal_ror/audit_event/put` |
 
 Behavioral invariants:
 
-- **Audit event API**: body ≤ 5KB (413 otherwise); request is always audited, but custom fields are added only if the request is ALLOWED; custom fields must **never overwrite** default serializer fields.
+- **Audit event API**: body ≤ 5,000 bytes (`MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES = 5 * 1000`, not 5,120 — 413 otherwise); request is always audited, but custom fields are added only if the request is ALLOWED; custom fields must **never overwrite** default serializer fields.
 - **Auth mocks** exist to support impersonation (`IMPERSONATE_AS` header) for rules backed by external services (LDAP, external authn/authz) — ROR can't query the real service with the impersonated user's credentials, so it answers from the mock. Mocks always carry a TTL; manual DELETE is optional.
 - **Cluster config summary** (`cluster:ror/config/manage`): the handling node propagates to all nodes and compares each response against its own config; any difference is a warning (`NODE_RETURNED_CONFIG_ERROR`, `NODE_FORCED_FILE_CONFIG`, ...); an error loading the **current** node's config fails the whole request (nothing to compare against).
 - 403 body shape for all endpoints is the standard ROR forbidden JSON (`"reason":"forbidden"`); don't invent new error shapes.
