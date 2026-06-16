@@ -97,9 +97,10 @@ function publish_ror_prebuild_plugin {
 function checkTagNotExist {
   GIT_TAG="$1"
 
-  # Check if this tag already exists, so we don't overwrite builds
-  if git fetch --tags --quiet >/dev/null && git tag --list | egrep -e "^${GIT_TAG}$" >/dev/null; then
-    echo "Git tag $GIT_TAG already exists, exiting."
+  # Check only the remote to avoid false positives from stale local tags left by a
+  # previous attempt that created the local tag but failed before pushing it.
+  if git ls-remote --tags origin "refs/tags/${GIT_TAG}" 2>/dev/null | grep -q "${GIT_TAG}"; then
+    echo "Git tag $GIT_TAG already exists on remote, exiting."
     return 1
   fi
 }
@@ -113,7 +114,8 @@ function tag {
   git config --global push.default matching
   git config --global user.email "support@readonlyrest.com"
   git config --global user.name "Azure Pipeline"
-  git tag "$GIT_TAG" -a -m "Generated tag from Azure Pipeline build $TRAVIS_BUILD_NUMBER"
+  # -f overwrites any stale local tag from a previous failed push attempt
+  git tag -fa "$GIT_TAG" -m "Generated tag from Azure Pipeline build $TRAVIS_BUILD_NUMBER"
   git push origin "$GIT_TAG"
   return 0
 }

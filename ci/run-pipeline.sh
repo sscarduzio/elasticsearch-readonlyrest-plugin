@@ -29,7 +29,17 @@ log_disk_usage() {
 }
 
 cleanup_docker_and_build() {
-  docker ps -aq | xargs -r docker rm -f || true
+  # Exclude the container this script is running inside (prevents self-removal in DinD setups).
+  # In Azure Pipelines container jobs, `hostname` is the short container ID used by `docker ps -aq`.
+  local SELF_ID
+  SELF_ID=$(hostname 2>/dev/null || true)
+  local containers_to_remove
+  if [ -n "$SELF_ID" ]; then
+    containers_to_remove=$(docker ps -aq | grep -v "^${SELF_ID}" || true)
+  else
+    containers_to_remove=$(docker ps -aq || true)
+  fi
+  [ -n "$containers_to_remove" ] && echo "$containers_to_remove" | xargs docker rm -f || true
   docker builder prune -af || true
   docker system prune -af --volumes || true
   find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
