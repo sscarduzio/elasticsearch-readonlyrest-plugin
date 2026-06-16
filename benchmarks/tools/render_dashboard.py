@@ -7,7 +7,9 @@ self-contained index.html that pulls uPlot from a CDN. `--csv` instead emits one
 (run, KPI) - the "rebuild the series from git alone" escape hatch. Stdlib only.
 """
 import argparse
+import calendar
 import csv
+import datetime as dt
 import glob
 import json
 import os
@@ -136,9 +138,6 @@ def write_csv(records, kpis, output):
 
 
 def build_panels(records, kpis):
-    import calendar
-    import datetime as dt
-
     def epoch_of(ts):
         parsed = dt.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         return calendar.timegm(parsed.timetuple())

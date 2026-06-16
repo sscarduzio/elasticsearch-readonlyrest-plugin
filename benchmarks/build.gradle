@@ -158,6 +158,9 @@ tasks.register('jmhSmoke', JavaExec) {
 tasks.register('jmhCompare', Exec) {
     group = 'benchmark'
     description = 'Extracts the smoke run record and runs the allocation gate (tools/compare.py)'
+    // finalizedBy runs us even if jmhSmoke crashed before writing the JSON; skip cleanly in that
+    // case so the real JMH failure is the only error, not a confusing extract.py FileNotFoundError.
+    onlyIf { smokeRaw.get().asFile.exists() }
     workingDir = projectDir
     commandLine 'bash', '-c',
             "python3 tools/extract.py --input '${smokeRaw.get().asFile}' " +

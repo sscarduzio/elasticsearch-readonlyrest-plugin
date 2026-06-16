@@ -92,6 +92,10 @@ jobs:
           git push origin HEAD:benchmark-history \
             || (git pull --rebase origin benchmark-history && git push origin HEAD:benchmark-history)
         displayName: 'Commit run record to benchmark-history'
+        # A push failure (e.g. double network error) must NOT skip the downstream judge/dashboard
+        # steps (condition: succeeded()) — that would silently drop the regression check. HISTORY_DIR
+        # is already published before the push, so the judge runs against the local worktree record.
+        continueOnError: true
 
       - script: |
           set +e
