@@ -62,7 +62,7 @@ class RuleStaticResolutionBenchmark {
       realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1"))))
     )
     blockContext = RepositoryRequestBlockContext(
-      block = null,
+      block = noBlock,
       requestContext = context,
       blockMetadata = BlockMetadata.from(context),
       responseHeaders = Set.empty,

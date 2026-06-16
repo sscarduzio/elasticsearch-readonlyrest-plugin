@@ -137,16 +137,21 @@ tasks.register('jmhSmoke', JavaExec) {
     finalizedBy 'jmhCompare'
     mainClass = 'org.openjdk.jmh.Main'
     classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
-    doFirst { smokeRaw.get().asFile.parentFile.mkdirs() }
-    def regexes = file('ci-smoke.txt').readLines()
-            .collect { it.trim() }
-            .findAll { it && !it.startsWith('#') }
-    args = regexes + [
-            '-p', 'blocks=100', '-p', 'patterns=100', '-p', 'requestedIndices=50',
-            '-p', 'configuredGroups=100', '-p', 'userGroups=100',
-            '-f', '1', '-wi', '3', '-i', '3', '-prof', 'gc',
-            '-rf', 'json', '-rff', smokeRaw.get().asFile.absolutePath
-    ]
+    // Read ci-smoke.txt and assemble args at EXECUTION time (doFirst), not configuration time —
+    // otherwise a missing ci-smoke.txt would FileNotFoundException every ./gradlew in :benchmarks,
+    // not just an actual jmhSmoke run.
+    doFirst {
+        smokeRaw.get().asFile.parentFile.mkdirs()
+        def regexes = file('ci-smoke.txt').readLines()
+                .collect { it.trim() }
+                .findAll { it && !it.startsWith('#') }
+        args = regexes + [
+                '-p', 'blocks=100', '-p', 'patterns=100', '-p', 'requestedIndices=50',
+                '-p', 'configuredGroups=100', '-p', 'userGroups=100',
+                '-f', '1', '-wi', '3', '-i', '3', '-prof', 'gc',
+                '-rf', 'json', '-rff', smokeRaw.get().asFile.absolutePath
+        ]
+    }
 }
 
 // 5) Reduce the smoke result to a run record and compare B/op against the committed baseline.

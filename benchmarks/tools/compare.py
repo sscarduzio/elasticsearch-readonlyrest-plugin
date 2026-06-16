@@ -78,7 +78,7 @@ def main():
                   "re-seed with compare.py --write-baseline on the CI agent to activate the gate")
             return 0
 
-    rows, regressions, improvements, missing = [], [], [], []
+    rows, regressions, missing = [], [], []
     for key, ref in sorted(baseline.get("benchmarks", {}).items()):
         ref_bop = float(ref["b_op"])
         got = measured.get(key)
@@ -94,8 +94,9 @@ def main():
             status = "REGRESSION"
             regressions.append((key, ref_bop, got_bop, delta_pct))
         elif delta < -allowed:
+            # Surfaced in the markdown table row below; no separate accounting (improvements
+            # never gate the build, so there's nothing else to do with them).
             status = "improved"
-            improvements.append((key, ref_bop, got_bop, delta_pct))
         else:
             status = "ok"
         rows.append((key, ref_bop, got_bop, delta_pct, status))

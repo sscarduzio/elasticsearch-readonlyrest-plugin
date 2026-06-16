@@ -108,7 +108,11 @@ def main():
 
     on_azure = bool(os.environ.get("TF_BUILD"))
     violations, warnings, rows = [], [], []
-    last_good_sha = history[-1]["srcSha"] if history else None
+    # The most recent SHA already in the series. NOT necessarily a "good" run — if last night
+    # also violated, this is itself inside the regression window, so the suspect range below is a
+    # lower bound on the culprit (it can under-shoot when violations span multiple nights). A precise
+    # per-KPI last-passing SHA would need persisted pass/fail history; left as a follow-up.
+    last_run_sha = history[-1]["srcSha"] if history else None
 
     for kpi in kpis:
         benchmark, metric, kpi_id = kpi["benchmark"], kpi["metric"], kpi["id"]
@@ -162,9 +166,10 @@ def main():
                        f"({delta_pct:+.1f}% vs rolling median)")
             print(f"##vso[task.logissue type=error]{message}" if on_azure else f"ERROR: {message}",
                   file=sys.stderr if not on_azure else sys.stdout)
-        if last_good_sha:
+        if last_run_sha:
             # Consumed by the nightly pipeline to build the suspect commit range for the GH issue.
-            print(f"SUSPECT_RANGE={last_good_sha}..{record['srcSha']}")
+            # Lower bound: see the last_run_sha note above — may under-shoot across multi-night regressions.
+            print(f"SUSPECT_RANGE={last_run_sha}..{record['srcSha']}")
         return 1
     print("nightly KPI judgement: PASS")
     return 0

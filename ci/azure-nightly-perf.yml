@@ -110,10 +110,14 @@ jobs:
               echo
               cat benchmarks/build/jmh/nightly-judge.md
             } > /tmp/perf-issue-body.md
+            # --create-label makes the 'performance' label on first use; without it
+            # `--label <nonexistent>` aborts the create and `|| true` would silently drop
+            # the regression notification. Warn loudly if the create still fails for any reason.
             gh issue create \
               --title "Perf nightly: KPI regression ($(date -u +%Y-%m-%d))" \
               --body-file /tmp/perf-issue-body.md \
-              --label performance || true
+              --label performance --create-label \
+              || echo "##vso[task.logissue type=warning]gh issue create failed; KPI regression went UNFILED — see judge output above"
           fi
           exit $JUDGE_EXIT
         displayName: 'Judge KPIs vs rolling median'
