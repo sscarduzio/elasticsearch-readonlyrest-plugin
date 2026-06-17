@@ -282,7 +282,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
           filePathAuditLog.contentAsString should include(requestContextId.value)
         }
-        "write to both default ACL log and custom log file simultaneously" in {
+        "should write to custom log file when defaultAclLog is also enabled" in {
           val customLogFile = File("/tmp/ror/audit_logs/test_both_sinks_audit.log")
           customLogFile.parent.createDirectories()
           customLogFile.overwrite("")

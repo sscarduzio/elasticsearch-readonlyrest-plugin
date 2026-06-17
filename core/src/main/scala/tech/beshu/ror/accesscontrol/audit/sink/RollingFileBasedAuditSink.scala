@@ -62,19 +62,12 @@ object RollingFileBasedAuditSink {
              serializer: AuditLogSerializer,
              loggerName: RorAuditLoggerName,
              config: FileAppenderConfig): Task[Either[CreationError, RollingFileBasedAuditSink]] = {
-    val parent = config.filePath.getParent
-    val preCheckError: Option[CreationError] = parent match {
-      case null                          => None
-      case dir if !dir.toFile.exists()   => Some(CreationError(s"Cannot create audit log file '${config.filePath}': directory '$dir' does not exist"))
-      case dir if !dir.toFile.canWrite   => Some(CreationError(s"Cannot create audit log file '${config.filePath}': no write permission on directory '$dir'"))
-      case _                             => None
-    }
-    preCheckError match {
+    directoryError(config.filePath) match {
       case Some(err) => Task.pure(Left(err))
       case None =>
         buildAndRegisterAppender(loggerName, config)
           .map(appender => Right(new RollingFileBasedAuditSink(sinkName, serializer, loggerName, appender)))
-          .onErrorHandle(_ => Left(CreationError(appenderCreationErrorMessage(config.filePath))))
+          .onErrorHandle(_ => Left(appenderCreationErrorMessage(config.filePath)))
     }
   }
 
@@ -114,15 +107,19 @@ object RollingFileBasedAuditSink {
       appender
     }
 
-  private def appenderCreationErrorMessage(filePath: java.nio.file.Path): String = {
-    val parent = filePath.getParent
-    if (parent != null && !parent.toFile.exists())
-      s"Cannot create audit log file '$filePath': directory '$parent' does not exist"
-    else if (parent != null && !parent.toFile.canWrite)
-      s"Cannot create audit log file '$filePath': no write permission on directory '$parent'"
-    else if (filePath.toFile.exists() && !filePath.toFile.canWrite)
-      s"Cannot create audit log file '$filePath': no write permission on file '$filePath'"
-    else
-      s"Cannot create audit log file '$filePath': ensure the path is valid and the Elasticsearch process has write permission"
-  }
+  private def directoryError(filePath: java.nio.file.Path): Option[CreationError] =
+    filePath.getParent match {
+      case null                          => None
+      case dir if !dir.toFile.exists()   => Some(CreationError(s"Cannot create audit log file '$filePath': directory '$dir' does not exist"))
+      case dir if !dir.toFile.canWrite   => Some(CreationError(s"Cannot create audit log file '$filePath': no write permission on directory '$dir'"))
+      case _                             => None
+    }
+
+  private def appenderCreationErrorMessage(filePath: java.nio.file.Path): CreationError =
+    directoryError(filePath).getOrElse {
+      if (filePath.toFile.exists() && !filePath.toFile.canWrite)
+        CreationError(s"Cannot create audit log file '$filePath': no write permission on file '$filePath'")
+      else
+        CreationError(s"Cannot create audit log file '$filePath': ensure the path is valid and the Elasticsearch process has write permission")
+    }
 }

@@ -311,7 +311,7 @@ object AuditingTool extends RequestIdAwareLogging {
   )
 
   private def defaultIndexStorageSink = AuditSink.Enabled(
-    Block.SinkName.random(),
+    Block.SinkName.defaultIndexStorage,
     AuditSink.Config.EsIndexBasedSink.default
   )
 

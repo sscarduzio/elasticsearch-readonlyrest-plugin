@@ -234,7 +234,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
           sinkNameOpt <- c.downField("name").as[Option[Block.SinkName]]
         } yield {
           val isSinkEnabled = isSinkEnabledOpt.getOrElse(true)
-          val sinkName = sinkNameOpt.getOrElse(Block.SinkName.random())
+          lazy val sinkName = sinkNameOpt.getOrElse(Block.SinkName.random())
           if (isSinkEnabled) AuditSink.Enabled(sinkName, sinkConfig) else AuditSink.Disabled
         }
       }
