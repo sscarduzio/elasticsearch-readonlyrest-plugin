@@ -114,7 +114,8 @@ public final class IntegrationTestForkCount {
     return null;
   }
 
-  /** Spare physical cores after current load; undetectable signals fall back conservatively to 1. */
+  /** Spare physical cores after current load; if cores are undetectable return 1, if only the load
+   *  is undetectable use all cores (assume idle) capped so we never oversubscribe. */
   private static int cpuBound(int physicalCores, double loadAvg1Min) {
     if (physicalCores <= 0) {
       return 1;
