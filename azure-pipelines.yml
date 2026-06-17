@@ -325,6 +325,10 @@ stages:
 ##### Integration tests for ES 9.x on master/develop
 #######################################################
       - job:
+        # Linux IT legs run on the self-hosted pool (ryzen). Windows legs stay on Microsoft-hosted
+        # (fixed ES ports + no self-hosted Windows agents). Fork count is resource-aware per agent.
+        pool:
+          name: 'Default'
         condition:
           and(
             succeeded(),
@@ -355,6 +359,8 @@ stages:
 ##### Integration tests for ES 8.x on master/develop
 #######################################################
       - job:
+        pool:
+          name: 'Default'
         condition:
           and(
             succeeded(),
@@ -411,6 +417,8 @@ stages:
 ##### Integration tests for ES <= 7.x on master/develop
 #######################################################
       - job:
+        pool:
+          name: 'Default'
         condition:
           and(
             succeeded(),
@@ -459,6 +467,8 @@ stages:
 ##### Integration tests for ES 9.x on PRs
 #######################################################
       - job:
+        pool:
+          name: 'Default'
         condition:
           and(
             succeeded(),
@@ -483,6 +493,8 @@ stages:
 ##### Integration tests for ES 8.x on PRs
 #######################################################
       - job:
+        pool:
+          name: 'Default'
         condition:
           and(
             succeeded(),
@@ -511,6 +523,8 @@ stages:
 ##### Integration tests for ES <= 7.x on PRs
 #######################################################
       - job:
+        pool:
+          name: 'Default'
         condition:
           and(
             succeeded(),
