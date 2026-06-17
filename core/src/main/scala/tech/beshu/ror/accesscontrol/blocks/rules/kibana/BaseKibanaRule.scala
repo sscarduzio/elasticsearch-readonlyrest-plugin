@@ -104,8 +104,24 @@ abstract class BaseKibanaRule(val settings: Settings)
     isTargetingKibana &&
       isAccessOtherThanRoStrictConfigured &&
       kibanaCannotBeModified &&
-      isNonStrictAllowedPath &&
+      (isNonStrictAllowedPath || isMetricsVisDataRequest) &&
       isNonStrictAction
+  }
+
+  // TSVB / legacy visualizations issue a `.kibana` write while rendering (resolving or
+  // persisting the data view). That write arrives as a batched POST /_bulk, so it cannot
+  // match the per-document non-strict allowed paths above; recognise the originating Kibana
+  // endpoint via the request-path header instead.
+  private lazy val isMetricsVisDataRequest = ProcessingContext.create { (bc, _) =>
+    val result = bc
+      .requestContext
+      .restRequest
+      .allHeaders
+      .find(_.name === Header.Name.kibanaRequestPath)
+      .exists(_.value.value.contains("/internal/metrics/vis/data"))
+    given BlockContext = bc
+    logger.debug(s"Is Kibana TSVB metrics/vis/data request? ${result.show}")
+    result
   }
 
   private lazy val isAccessOtherThanRoStrictConfigured = ProcessingContext.create { (bc, _) =>

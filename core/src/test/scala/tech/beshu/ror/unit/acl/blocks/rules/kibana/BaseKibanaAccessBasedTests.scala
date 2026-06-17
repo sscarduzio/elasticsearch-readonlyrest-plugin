@@ -217,6 +217,49 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
         uriPath = UriPath.from("/.custom_kibana/_create/url:710d2a92ef849fc282bcb8a216f39046")
       )
     }
+    "allows a .kibana _bulk write for RO when it originates from the TSVB metrics/vis/data Kibana endpoint" in {
+      assertMatchRuleUsingIndicesRequest(
+        settingsOf(RO),
+        Action("indices:data/write/bulk"),
+        requestedIndices = Set(requestedIndex(".kibana")),
+        uriPath = Some(UriPath.from("/_bulk")),
+        headers = Set(headerFrom("x-ror-kibana-request-path" -> "/s/default/internal/metrics/vis/data"))
+      ) {
+        assertBlockContext(_)(
+          kibanaPolicy = Some(KibanaPolicy.default.copy(
+            access = RO,
+            index = Some(kibanaIndexName(".kibana"))
+          )),
+          indices = Set(requestedIndex(".kibana"))
+        )
+      }
+    }
+    "forbids the .kibana _bulk write from the TSVB metrics/vis/data endpoint for ROStrict" in {
+      assertNotMatchRuleUsingIndicesRequest(
+        settingsOf(ROStrict),
+        Action("indices:data/write/bulk"),
+        requestedIndices = Set(requestedIndex(".kibana")),
+        uriPath = Some(UriPath.from("/_bulk")),
+        headers = Set(headerFrom("x-ror-kibana-request-path" -> "/s/default/internal/metrics/vis/data"))
+      )
+    }
+    "forbids a plain .kibana _bulk write for RO when the TSVB metrics/vis/data header is absent" in {
+      assertNotMatchRuleUsingIndicesRequest(
+        settingsOf(RO),
+        Action("indices:data/write/bulk"),
+        requestedIndices = Set(requestedIndex(".kibana")),
+        uriPath = Some(UriPath.from("/_bulk"))
+      )
+    }
+    "forbids a _bulk write for RO from the TSVB metrics/vis/data endpoint when it does not target the Kibana index" in {
+      assertNotMatchRuleUsingIndicesRequest(
+        settingsOf(RO),
+        Action("indices:data/write/bulk"),
+        requestedIndices = Set(requestedIndex("not_kibana")),
+        uriPath = Some(UriPath.from("/_bulk")),
+        headers = Set(headerFrom("x-ror-kibana-request-path" -> "/s/default/internal/metrics/vis/data"))
+      )
+    }
     "RW can change cluster settings" in {
       assertNotMatchRuleUsingIndicesRequest(
         settingsOf(RO),
@@ -432,9 +475,10 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                                  action: Action,
                                                  requestedIndices: Set[RequestedIndex[ClusterIndexName]] = Set.empty,
                                                  customKibanaIndex: Option[KibanaIndexName] = None,
-                                                 uriPath: Option[UriPath] = None)
+                                                 uriPath: Option[UriPath] = None,
+                                                 headers: Set[Header] = Set.empty)
                                                 (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, requestedIndices, Set.empty, customKibanaIndex)) =
-    assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, Some(blockContextAssertion))
+    assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, headers, Some(blockContextAssertion))
 
   private def assertMatchRuleUsingDataStreamsRequest(settings: SETTINGS,
                                                      action: Action,
@@ -447,17 +491,19 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule : RuleName, SETTINGS]
                                                     action: Action,
                                                     customKibanaIndex: Option[KibanaIndexName] = None,
                                                     requestedIndices: Set[RequestedIndex[ClusterIndexName]],
-                                                    uriPath: Option[UriPath] = None) =
-    assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, blockContextAssertion = None)
+                                                    uriPath: Option[UriPath] = None,
+                                                    headers: Set[Header] = Set.empty) =
+    assertRuleUsingIndicesRequest(settings, action, customKibanaIndex, requestedIndices, uriPath, headers, blockContextAssertion = None)
 
   private def assertRuleUsingIndicesRequest(settings: SETTINGS,
                                             action: Action,
                                             customKibanaIndex: Option[KibanaIndexName],
                                             requestedIndices: Set[RequestedIndex[ClusterIndexName]],
                                             uriPath: Option[UriPath],
+                                            headers: Set[Header],
                                             blockContextAssertion: Option[BlockContext => Unit]) = {
     val requestContext = MockRequestContext.indices.copy(
-      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined"))),
+      restRequest = MockRestRequest(path = uriPath.getOrElse(UriPath.from("/undefined")), allHeaders = headers),
       action = action,
       filteredIndices = requestedIndices,
     )
