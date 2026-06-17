@@ -124,9 +124,26 @@ test {
         }
         if (physicalCores <= 0) physicalCores = Runtime.runtime.availableProcessors() // fallback
     } catch (Throwable ignored) { /* signals undetectable -> resolver stays conservative */ }
-    maxParallelForks = tech.beshu.ror.gradle.IntegrationTestForkCount.resolvePerAgent(
-        System.getenv('IT_MAX_PARALLEL_FORKS'), isWindows, physicalCores, totalRamGb, agentsPerHost)
-    logger.lifecycle("integration-tests: maxParallelForks=${maxParallelForks} (physicalCores=${physicalCores}, totalRamGb=${String.format('%.1f', totalRamGb)}, agentsPerHost=${agentsPerHost}, windows=${isWindows}, override=${System.getenv('IT_MAX_PARALLEL_FORKS') ?: 'none'})")
+    // FIXED fork count (no calculation): 2 forks per leg. With 2 self-hosted agents that is at most
+    // 2 legs x 2 forks = 4 concurrent ES instances on the 8-core box — deliberately conservative so we
+    // never overshoot into the load-666 thrash we hit when the auto-resolver computed 4 on a 5-agent
+    // pool. resolvePerAgent() is kept for reference/tests but no longer drives the live value.
+    // IT_MAX_PARALLEL_FORKS still overrides verbatim (operator escape hatch); Windows pinned to 1.
+    def forkOverride = System.getenv('IT_MAX_PARALLEL_FORKS')
+    int fixedForks = 2
+    maxParallelForks = (forkOverride?.trim()) ? Math.max(1, forkOverride.trim().toInteger())
+                     : (isWindows ? 1 : fixedForks)
+    // LOUD banner — first thing in the IT log so the fork count is never a mystery again (this is
+    // exactly the number that decides how many ES containers a leg spins up: forks == ES instances).
+    def forkSource = (forkOverride?.trim()) ? "OVERRIDE IT_MAX_PARALLEL_FORKS=${forkOverride.trim()}" :
+                     (isWindows ? "windows-pinned=1" : "FIXED=${fixedForks}")
+    def banner = """
+###############################################################################
+##  INTEGRATION-TESTS  maxParallelForks = ${maxParallelForks}   (== max concurrent ES instances)
+##  source=${forkSource}
+##  physicalCores=${physicalCores}  totalRamGb=${String.format('%.1f', totalRamGb)}  agentsPerHost=${agentsPerHost}  windows=${isWindows}
+###############################################################################"""
+    logger.quiet(banner)   // quiet() always prints, even at -q; lifecycle() can be suppressed
     // Per WORKER JVM (Gradle's 512m default is too small). Multiplies with forks:
     // keep maxParallelForks x (2g + ~1.2g per ES container) under host RAM.
     maxHeapSize = '2g'
