@@ -53,7 +53,12 @@ class Block(val name: Block.Name,
 
   def withResolvedAuditSinks(allSinks: List[Block.AuditSink]): Block = {
     val resolvedSinks = audit match {
-      case Audit.Disabled => Nil
+      case Audit.Disabled =>
+        noRequestIdLogger.warn(
+          s"Block '${name.value}' has 'audit: disabled', which suppresses ALL audit output including the default ACL log. " +
+          s"To keep ACL log visibility while silencing other sinks, use 'enabled_audit_sinks: [${SinkName.defaultAclLog.value}]' instead."
+        )
+        Nil
       case Audit.Enabled(_, EnabledAuditSinks.All) => allSinks
       case Audit.Enabled(_, EnabledAuditSinks.Selected(on)) => allSinks.filter(s => on.contains(s.name))
       case Audit.Enabled(_, EnabledAuditSinks.AllExcept(off)) => allSinks.filter(s => !off.contains(s.name))

@@ -40,7 +40,10 @@ class AclAuditLogSerializer extends AuditLogSerializer {
         given Show[Header] = if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
         ctx.aclMessageShow(debugEnabled).show(ctx.responseContext)
       case ctx =>
-        throw new IllegalStateException(s"Unsupported AuditRequestContext type: ${ctx.getClass.getName}")
+        // AuditRequestContext is an open trait in the published audit module, so a third-party
+        // implementation could reach here. Throwing would surface as silent "Auditing issue" noise
+        // at the Task boundary; instead emit a minimal but identifiable line from the base-trait fields.
+        s"[unknown-context:${ctx.getClass.getSimpleName}] id=${ctx.id} action=${ctx.action} uri=${ctx.uriPath}"
     }
   }
 }
