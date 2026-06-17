@@ -41,10 +41,11 @@ trigger:
     exclude:
       - '*'
   paths:
-    # Azure DevOps path filters are PREFIX matches, NOT globs — `*.md` / `*/*/*.md` do nothing
-    # (a leading `*` is a literal char here, so a markdown-only change still triggered CI).
-    # Exclude by path prefix instead: the docs tree, the Claude skills/agent files, and the
-    # root-level markdown docs. Code changes anywhere else still trigger normally.
+    # Azure path filters DO support wildcards, but the old patterns were too shallow to cover deep
+    # paths: `*.md` matches a single segment (root-level .md only), `*/*/*.md` matches exactly two
+    # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
+    # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
+    # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
     exclude:
       - docs
       - .claude
@@ -66,10 +67,11 @@ pr:
       - 'epic/*'
       - '*/epic/*'
   paths:
-    # Azure DevOps path filters are PREFIX matches, NOT globs — `*.md` / `*/*/*.md` do nothing
-    # (a leading `*` is a literal char here, so a markdown-only change still triggered CI).
-    # Exclude by path prefix instead: the docs tree, the Claude skills/agent files, and the
-    # root-level markdown docs. Code changes anywhere else still trigger normally.
+    # Azure path filters DO support wildcards, but the old patterns were too shallow to cover deep
+    # paths: `*.md` matches a single segment (root-level .md only), `*/*/*.md` matches exactly two
+    # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
+    # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
+    # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
     exclude:
       - docs
       - .claude
