@@ -35,6 +35,10 @@ steps:
       VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+      # DOCKER_AUTH_CONFIG is set as a SECRET job variable by the docker-hub-auth step; secret
+      # variables are NOT auto-injected into later steps' env, so it must be mapped explicitly
+      # for the testcontainers JVM to see it. (Empty when the auth step was a no-op — harmless.)
+      DOCKER_AUTH_CONFIG: $(DOCKER_AUTH_CONFIG)
 
   - task: PublishTestResults@2
     condition: failed()

@@ -316,6 +316,9 @@ stages:
             env:
               ROR_TASK: core_tests
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              # Secret job variable set by the docker-hub-auth step — must be mapped explicitly
+              # (secrets aren't auto-injected into later steps' env). Empty if auth was a no-op.
+              DOCKER_AUTH_CONFIG: $(DOCKER_AUTH_CONFIG)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
