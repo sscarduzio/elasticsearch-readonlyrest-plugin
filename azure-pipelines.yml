@@ -308,15 +308,16 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          # core_tests starts testcontainers too (LDAP/WireMock) — same Docker Hub rate limit as IT.
-          - template: ci/azure-templates/docker-hub-auth-steps.yml
           - script: |
+              # core_tests starts testcontainers too (LDAP/WireMock) — same Docker Hub rate limit as IT.
+              source ci/docker-hub-auth.sh
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: core_tests
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-              DOCKER_AUTH_CONFIG: $(DOCKER_AUTH_CONFIG)  # set by the docker-hub-auth step (see template)
+              DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+              DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
           - task: PublishTestResults@2
             condition: failed()
             inputs:

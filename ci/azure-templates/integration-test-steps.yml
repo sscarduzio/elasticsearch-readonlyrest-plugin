@@ -21,12 +21,15 @@ steps:
     fetchDepth: 1
     clean: false
     persistCredentials: true
-  # Authenticated Docker Hub pulls (separate, reusable step — shared with the unit-test job).
-  - template: docker-hub-auth-steps.yml
   - script: |
       export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
       export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
       export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+
+      # Sourced in-process so DOCKER_AUTH_CONFIG (when set) reaches the testcontainers JVM, and
+      # stays UNSET otherwise (a cross-step Azure var can't express "absent", only ""/literal — both
+      # of which testcontainers' RegistryAuthLocator would fail to JSON-parse).
+      source ci/docker-hub-auth.sh
 
       echo "[TEST] executing ROR_TASK = $ROR_TASK"
       ci/run-pipeline.sh
@@ -35,7 +38,8 @@ steps:
       VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
-      DOCKER_AUTH_CONFIG: $(DOCKER_AUTH_CONFIG)  # set by the docker-hub-auth step (see template)
+      DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+      DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
 
   - task: PublishTestResults@2
     condition: failed()
