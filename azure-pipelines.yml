@@ -308,6 +308,8 @@ stages:
             fetchDepth: 1
             clean: false
             persistCredentials: true
+          # core_tests starts testcontainers too (LDAP/WireMock) — same Docker Hub rate limit as IT.
+          - template: ci/azure-templates/docker-hub-auth-steps.yml
           - script: |
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
