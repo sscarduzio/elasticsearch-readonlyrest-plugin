@@ -114,7 +114,10 @@ run_e2e_against_dev_images() {
   echo ">>> Running e2e tests: ELK $ELK_VERSION, image tag: $RUN_TAG"
   (
     cd "$E2E_DIR"
-    ./runner.sh \
+    # APPLY_RESOURCE_LIMITS=true: this runs on the small Azure agent (~7.9 GB) with docker on the host,
+    # so the compose stack needs the *.limits.docker-compose.yml overlays to avoid OOM. start.sh leaves
+    # them off by default (safe for the KBN repo's Docker-in-Docker flow); we opt in explicitly here.
+    APPLY_RESOURCE_LIMITS=true ./runner.sh \
       --run e2e \
       --env docker \
       --elk "$ELK_VERSION" \
