@@ -92,25 +92,25 @@ pool:
 
 stages:
 
-  # Deterministic supersede guard: closes Azure's at-queue-time autoCancel race for PR runs by
-  # cancelling older in-progress runs of the same PR (and self-cancelling if a newer run already
-  # exists). Runs FIRST so no agent time / container pull is wasted on a superseded run. Only
-  # affects PullRequest runs; branch runs rely on `trigger.batch` and are skipped by the script.
+  # Cancels stale Azure Pipelines runs for the same PR: closes Azure's at-queue-time autoCancel race
+  # by cancelling older in-progress runs of the same PR (and self-cancelling if a newer run already
+  # exists). Runs FIRST so no agent time / container pull is wasted on a stale run. Only affects
+  # PullRequest runs; branch runs rely on `trigger.batch` and are skipped by the script.
   - stage: SUPERSEDE_GUARD
-    displayName: 'Cancel superseded PR runs'
+    displayName: 'Cancel stale PR runs'
     dependsOn: [ ]
     condition: eq(variables['Build.Reason'], 'PullRequest')
     jobs:
       - job:
-        displayName: 'Supersede guard'
-        timeoutInMinutes: 5   # belt-and-suspenders: never let the guard itself stall the pipeline
+        displayName: 'Cancel stale PR runs'
+        timeoutInMinutes: 5   # belt-and-suspenders: never let this step itself stall the pipeline
         steps:
           - checkout: self
             fetchDepth: 1
-          - script: ci/cancel-superseded-runs.sh
-            displayName: 'Cancel older in-progress runs for this PR'
+          - script: ci/stale-azure-pipeline-runs-canceler.sh
+            displayName: 'Cancel older runs for this PR'
             env:
-              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+              AZURE_BUILDS_API_TOKEN: $(System.AccessToken)
 
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
