@@ -71,6 +71,18 @@ test {
             includeEngines 'scalatest'
             excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
         }
+        // Parallel-safety invariant: suites run SERIALLY within a worker JVM (they share one mutable
+        // singleton ES); parallelism is across worker JVMs only (maxParallelForks). The scalatest
+        // engine is a non-hierarchical single-threaded TestEngine, so junit.jupiter.execution.parallel.*
+        // is a NO-OP here — setting it would give a false belief that in-JVM parallelism is on while the
+        // singleton suites silently corrupt each other. Fail fast if anyone enables it.
+        def parallelProp = System.getProperty('junit.jupiter.execution.parallel.enabled')
+        if (parallelProp != null && parallelProp.toBoolean()) {
+            throw new GradleException(
+                "junit.jupiter.execution.parallel.enabled=true is unsupported for integration-tests: " +
+                "the scalatest engine ignores it and the singleton ES requires serial-within-JVM execution. " +
+                "Use IT_MAX_PARALLEL_FORKS to parallelise across worker JVMs instead.")
+        }
     }
     outputs.upToDateWhen { false }
     // Live console output — native test execution is silent without this (same block as core's).

@@ -43,6 +43,10 @@ trait SingletonPluginTestSupport
   }
 
   override protected def beforeAll(): Unit = {
+    // Claim exclusive ownership of the shared singleton BEFORE mutating it (cleanUp/updateSettings/
+    // init). Fails loudly if another suite still owns it — i.e. if suites ever stop running serially
+    // within this JVM (see SingletonEsContainerWithRorSecurity.acquire).
+    SingletonEsContainerWithRorSecurity.acquire(this.getClass.getName)
     startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
     SingletonEsContainerWithRorSecurity.cleanUpContainer()
     SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString)
@@ -53,6 +57,7 @@ trait SingletonPluginTestSupport
   override protected def afterAll(): Unit = {
     super.afterAll()
     startedDependencies.values.foreach(started => started.container.stop())
+    SingletonEsContainerWithRorSecurity.release(this.getClass.getName)
   }
 
   private def resolveSettings: Either[Throwable, File] = {
