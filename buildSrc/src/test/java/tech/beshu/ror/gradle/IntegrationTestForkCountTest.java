@@ -95,4 +95,52 @@ class IntegrationTestForkCountTest {
     // RAM allows plenty, but availableProcessors() reported nonsense -> floor CPU bound at 1
     assertEquals(1, IntegrationTestForkCount.resolve(null, false, 0, 64.0));
   }
+
+  @Test
+  void staticResolveIsClampedToMaxForks() {
+    // 16 cores, 128g would naively give 16; clamp to MAX_FORKS=8 (image pre-build + ES bootstrap
+    // stop paying off past this; the daemon becomes the bottleneck).
+    assertEquals(8, IntegrationTestForkCount.resolve(null, false, 16, 128.0));
+  }
+
+  // ---- dynamic (live-signal) sizing -------------------------------------------------------------
+
+  @Test
+  void dynamicOverrideAndWindowsStillWin() {
+    assertEquals(4, IntegrationTestForkCount.resolveDynamic("4", false, 8, 0.5, 64.0));
+    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, true, 8, 0.5, 64.0));
+  }
+
+  @Test
+  void dynamicSizesOffSPARECoresAndAVAILABLERam() {
+    // idle 8-core box, 30g free: cpu spare = 8 - 0 = 8; ram = 30/3.2 = 9 -> min=8 (also MAX cap)
+    assertEquals(8, IntegrationTestForkCount.resolveDynamic(null, false, 8, 0.0, 30.0));
+    // same box at load 5: spare = 8 - 5 = 3 -> 3 workers (contention-aware)
+    assertEquals(3, IntegrationTestForkCount.resolveDynamic(null, false, 8, 5.0, 30.0));
+  }
+
+  @Test
+  void dynamicRyzenContendedByCoTenantCi() {
+    // ryzen: 8 physical cores, but 5 ES agents + other IT legs already drive load ~10 and leave
+    // ~12g free. spare cores = 8 - 10 -> floored to 1; ram = 12/3.2 = 3 -> min = 1. A loaded box
+    // correctly throttles itself rather than piling on and failing (the N=5 failure we observed).
+    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, false, 8, 10.0, 12.0));
+    // same box quieter (load 3, 20g free): spare = 5, ram = 6 -> 5 workers.
+    assertEquals(5, IntegrationTestForkCount.resolveDynamic(null, false, 8, 3.0, 20.0));
+  }
+
+  @Test
+  void dynamicAvailableRamIsTheBinding() {
+    // many idle cores but only 8g free right now -> 8/3.2 = 2 workers
+    assertEquals(2, IntegrationTestForkCount.resolveDynamic(null, false, 16, 0.0, 8.0));
+  }
+
+  @Test
+  void dynamicUndetectableSignalsStayConservative() {
+    // cores unknown -> 1; load unknown -> don't subtract but cap at cores; ram unknown -> 1
+    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, false, 0, 1.0, 64.0));
+    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, false, 8, 1.0, 0.0));
+    // load unknown (-1): cpu bound stays at cores(8); ram 30/3.2=9 -> min 8 (cap)
+    assertEquals(8, IntegrationTestForkCount.resolveDynamic(null, false, 8, -1.0, 30.0));
+  }
 }

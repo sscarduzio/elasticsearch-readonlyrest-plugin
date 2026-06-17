@@ -41,20 +41,69 @@ public final class IntegrationTestForkCount {
   /** Held back for the OS, the Docker daemon, Ryuk and build-tool overhead before budgeting workers. */
   static final double RESERVED_RAM_GB = 2.0d;
 
+  /**
+   * Hard ceiling regardless of how big/idle the box looks. Past this, the one-time singleton image
+   * pre-build + per-worker ES bootstrap stop paying off and the Docker daemon becomes the bottleneck.
+   * Empirically (local sweep) the speedup curve already flattens well before this.
+   */
+  static final int MAX_FORKS = 8;
+
   private IntegrationTestForkCount() {
   }
 
   /**
-   * @param explicitOverride value of {@code IT_MAX_PARALLEL_FORKS} ({@code null}/blank if unset)
-   * @param isWindows        Windows hosts are pinned to 1 (fixed ES container ports)
-   * @param availableCpus    {@code Runtime.availableProcessors()} on the build JVM
-   * @param totalRamGb       total physical RAM in GB (0 or negative if undetectable)
-   * @return the number of parallel test worker JVMs to run, always {@code >= 1}
+   * Static sizing (legacy): bound by total CPU and total RAM. Kept for callers/tests that don't
+   * supply live signals; prefer {@link #resolveDynamic} on shared hosts.
    */
   public static int resolve(String explicitOverride,
                             boolean isWindows,
                             int availableCpus,
                             double totalRamGb) {
+    Integer pinned = preResolve(explicitOverride, isWindows);
+    if (pinned != null) {
+      return pinned;
+    }
+    int cpuBound = Math.max(1, availableCpus);
+    int ramBound = forksFitting(totalRamGb - RESERVED_RAM_GB);
+    return clamp(Math.min(cpuBound, ramBound));
+  }
+
+  /**
+   * Dynamic sizing for SHARED/contended hosts (e.g. one box running several builds, each fanning out
+   * 3+ IT legs, plus long-lived ES agents). A static fraction of total resources is wrong there: the
+   * right number depends on what's running RIGHT NOW. We bound by what is actually FREE at task start:
+   * <ul>
+   *   <li><b>CPU:</b> spare compute = physical cores minus the current 1-min load average. ES bootstrap
+   *       is CPU-spiky, so we size off PHYSICAL cores (not SMT threads) and subtract existing load —
+   *       a busy box automatically yields a small N, an idle one a large N.</li>
+   *   <li><b>RAM:</b> currently-AVAILABLE GB / per-worker GB — co-tenant ES agents are subtracted for
+   *       free because they already consumed that RAM.</li>
+   * </ul>
+   * The result is the tighter of the two, clamped to [1, {@value #MAX_FORKS}]. Explicit override and
+   * Windows still win. Pure: the live readings are injected so the truth table stays unit-tested.
+   *
+   * @param explicitOverride {@code IT_MAX_PARALLEL_FORKS} (wins verbatim if set)
+   * @param isWindows        pinned to 1 (fixed ES container ports)
+   * @param physicalCores    physical cores (NOT SMT threads); &lt;=0 if undetectable
+   * @param loadAvg1Min      system 1-min load average; &lt;0 if undetectable
+   * @param availableRamGb   currently-available RAM in GB; &lt;=0 if undetectable
+   */
+  public static int resolveDynamic(String explicitOverride,
+                                   boolean isWindows,
+                                   int physicalCores,
+                                   double loadAvg1Min,
+                                   double availableRamGb) {
+    Integer pinned = preResolve(explicitOverride, isWindows);
+    if (pinned != null) {
+      return pinned;
+    }
+    int cpuBound = cpuBound(physicalCores, loadAvg1Min);
+    int ramBound = forksFitting(availableRamGb);
+    return clamp(Math.min(cpuBound, ramBound));
+  }
+
+  /** Override / Windows short-circuit shared by both resolvers; null = "keep computing". */
+  private static Integer preResolve(String explicitOverride, boolean isWindows) {
     Integer override = parseOverride(explicitOverride);
     if (override != null) {
       return Math.max(1, override);
@@ -62,21 +111,32 @@ public final class IntegrationTestForkCount {
     if (isWindows) {
       return 1;
     }
-    int cpuBound = Math.max(1, availableCpus);
-    int ramBound = ramBound(totalRamGb);
-    return Math.max(1, Math.min(cpuBound, ramBound));
+    return null;
   }
 
-  private static int ramBound(double totalRamGb) {
-    if (totalRamGb <= 0) {
-      // RAM undetectable: stay conservative, let the CPU bound (or 1) decide.
+  /** Spare physical cores after current load; undetectable signals fall back conservatively to 1. */
+  private static int cpuBound(int physicalCores, double loadAvg1Min) {
+    if (physicalCores <= 0) {
       return 1;
     }
-    double usable = totalRamGb - RESERVED_RAM_GB;
-    if (usable < PER_WORKER_RAM_GB) {
+    if (loadAvg1Min < 0) {
+      // Load unknown: don't subtract, but still cap at cores so we never oversubscribe.
+      return physicalCores;
+    }
+    int spare = physicalCores - (int) Math.ceil(loadAvg1Min);
+    return Math.max(1, spare);
+  }
+
+  /** How many per-worker RAM slices fit in {@code freeGb}; <=0 / too-small means just 1. */
+  private static int forksFitting(double freeGb) {
+    if (freeGb < PER_WORKER_RAM_GB) {
       return 1;
     }
-    return (int) Math.floor(usable / PER_WORKER_RAM_GB);
+    return (int) Math.floor(freeGb / PER_WORKER_RAM_GB);
+  }
+
+  private static int clamp(int n) {
+    return Math.max(1, Math.min(MAX_FORKS, n));
   }
 
   private static Integer parseOverride(String raw) {

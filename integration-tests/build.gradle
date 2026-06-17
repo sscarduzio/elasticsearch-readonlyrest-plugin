@@ -98,17 +98,39 @@ test {
     // and RAM bounds, so it auto-scales on big self-hosted boxes yet stays at 1 on the small
     // 2-vCPU/7-GB hosted agents (where a 2nd worker would swap and turn ES bootstrap flaky).
     // IT_MAX_PARALLEL_FORKS overrides verbatim; Windows is pinned to 1 (fixed ES container ports).
+    //
+    // DYNAMIC sizing: on a shared host (several builds, each fanning out 3+ IT legs, plus long-lived
+    // ES agents) a static fraction of TOTAL resources oversubscribes. We size off what's FREE right
+    // now: spare physical cores (cores - current load avg) and currently-available RAM. A busy box
+    // yields few workers, an idle one many. The live readings are gathered here and passed into the
+    // pure resolver (so its truth table stays unit-tested).
     boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
-    double totalRamGb = 0d
+    int physicalCores = 0
+    double loadAvg1Min = -1d
+    double availableRamGb = 0d
     try {
         def osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean()
         if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
-            totalRamGb = ((com.sun.management.OperatingSystemMXBean) osBean).getTotalMemorySize() / (1024d * 1024d * 1024d)
+            def sun = (com.sun.management.OperatingSystemMXBean) osBean
+            availableRamGb = sun.getFreeMemorySize() / (1024d * 1024d * 1024d)
         }
-    } catch (Throwable ignored) { /* RAM undetectable -> helper stays conservative */ }
-    maxParallelForks = tech.beshu.ror.gradle.IntegrationTestForkCount.resolve(
-        System.getenv('IT_MAX_PARALLEL_FORKS'), isWindows, Runtime.runtime.availableProcessors(), totalRamGb)
-    logger.lifecycle("integration-tests: maxParallelForks=${maxParallelForks} (cpus=${Runtime.runtime.availableProcessors()}, ramGb=${String.format('%.1f', totalRamGb)}, windows=${isWindows}, override=${System.getenv('IT_MAX_PARALLEL_FORKS') ?: 'none'})")
+        loadAvg1Min = osBean.getSystemLoadAverage() // -1 if unavailable (e.g. Windows)
+        // Physical cores (not SMT threads): /proc/cpuinfo distinct "core id" per "physical id".
+        def cpuinfo = new File('/proc/cpuinfo')
+        if (cpuinfo.exists()) {
+            def cores = new HashSet<String>()
+            String phys = '0'
+            cpuinfo.eachLine { line ->
+                if (line.startsWith('physical id')) phys = line.split(':')[1].trim()
+                else if (line.startsWith('core id'))  cores.add(phys + ':' + line.split(':')[1].trim())
+            }
+            physicalCores = cores.size()
+        }
+        if (physicalCores <= 0) physicalCores = Runtime.runtime.availableProcessors() // fallback
+    } catch (Throwable ignored) { /* signals undetectable -> resolver stays conservative */ }
+    maxParallelForks = tech.beshu.ror.gradle.IntegrationTestForkCount.resolveDynamic(
+        System.getenv('IT_MAX_PARALLEL_FORKS'), isWindows, physicalCores, loadAvg1Min, availableRamGb)
+    logger.lifecycle("integration-tests: maxParallelForks=${maxParallelForks} (physicalCores=${physicalCores}, load1m=${String.format('%.1f', loadAvg1Min)}, availRamGb=${String.format('%.1f', availableRamGb)}, windows=${isWindows}, override=${System.getenv('IT_MAX_PARALLEL_FORKS') ?: 'none'})")
     // Per WORKER JVM (Gradle's 512m default is too small). Multiplies with forks:
     // keep maxParallelForks x (2g + ~1.2g per ES container) under host RAM.
     maxHeapSize = '2g'
