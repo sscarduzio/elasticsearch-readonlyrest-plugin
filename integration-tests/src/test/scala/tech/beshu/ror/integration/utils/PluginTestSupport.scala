@@ -55,9 +55,17 @@ trait SingletonPluginTestSupport
   }
 
   override protected def afterAll(): Unit = {
-    super.afterAll()
-    startedDependencies.values.foreach(started => started.container.stop())
-    SingletonEsContainerWithRorSecurity.release(this.getClass.getName)
+    // release MUST run even if test teardown or dependency shutdown throws — otherwise the singleton
+    // stays latched and every subsequent suite on this worker fails at acquire(). Keep it outermost.
+    try {
+      try {
+        super.afterAll()
+      } finally {
+        startedDependencies.values.foreach(started => started.container.stop())
+      }
+    } finally {
+      SingletonEsContainerWithRorSecurity.release(this.getClass.getName)
+    }
   }
 
   private def resolveSettings: Either[Throwable, File] = {
