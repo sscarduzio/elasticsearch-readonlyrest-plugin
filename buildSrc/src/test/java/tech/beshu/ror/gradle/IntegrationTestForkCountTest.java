@@ -103,44 +103,46 @@ class IntegrationTestForkCountTest {
     assertEquals(8, IntegrationTestForkCount.resolve(null, false, 16, 128.0));
   }
 
-  // ---- dynamic (live-signal) sizing -------------------------------------------------------------
+  // ---- per-agent sizing (deterministic box partition; no load feedback) ------------------------
 
   @Test
-  void dynamicOverrideAndWindowsStillWin() {
-    assertEquals(4, IntegrationTestForkCount.resolveDynamic("4", false, 8, 0.5, 64.0));
-    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, true, 8, 0.5, 64.0));
+  void perAgentOverrideAndWindowsStillWin() {
+    assertEquals(4, IntegrationTestForkCount.resolvePerAgent("4", false, 8, 64.0, 2));
+    assertEquals(1, IntegrationTestForkCount.resolvePerAgent(null, true, 8, 64.0, 2));
   }
 
   @Test
-  void dynamicSizesOffSPARECoresAndAVAILABLERam() {
-    // idle 8-core box, 30g free: cpu spare = 8 - 0 = 8; ram = 30/3.2 = 9 -> min=8 (also MAX cap)
-    assertEquals(8, IntegrationTestForkCount.resolveDynamic(null, false, 8, 0.0, 30.0));
-    // same box at load 5: spare = 8 - 5 = 3 -> 3 workers (contention-aware)
-    assertEquals(3, IntegrationTestForkCount.resolveDynamic(null, false, 8, 5.0, 30.0));
+  void perAgentRyzenTwoAgentsGetsFourForksEach() {
+    // ryzen: 8 physical cores, 62g, 2 agents on the host. cpu = 8/2 = 4; ram = (62-2)/2/3.2 = 9 ->
+    // min = 4. The fix: deterministic, NOT collapsed to 1 by self-inflicted load (the old bug).
+    assertEquals(4, IntegrationTestForkCount.resolvePerAgent(null, false, 8, 62.0, 2));
   }
 
   @Test
-  void dynamicRyzenContendedByCoTenantCi() {
-    // ryzen: 8 physical cores, but 5 ES agents + other IT legs already drive load ~10 and leave
-    // ~12g free. spare cores = 8 - 10 -> floored to 1; ram = 12/3.2 = 3 -> min = 1. A loaded box
-    // correctly throttles itself rather than piling on and failing (the N=5 failure we observed).
-    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, false, 8, 10.0, 12.0));
-    // same box quieter (load 3, 20g free): spare = 5, ram = 6 -> 5 workers.
-    assertEquals(5, IntegrationTestForkCount.resolveDynamic(null, false, 8, 3.0, 20.0));
+  void perAgentMoreAgentsMeansFewerForksEach() {
+    // same box, 5 agents: cpu = 8/5 = 1; ram = (62-2)/5/3.2 = 3 -> min 1. Shows WHY we cut to 2 agents.
+    assertEquals(1, IntegrationTestForkCount.resolvePerAgent(null, false, 8, 62.0, 5));
+    // 4 agents: cpu = 8/4 = 2 -> 2 forks each
+    assertEquals(2, IntegrationTestForkCount.resolvePerAgent(null, false, 8, 62.0, 4));
   }
 
   @Test
-  void dynamicAvailableRamIsTheBinding() {
-    // many idle cores but only 8g free right now -> 8/3.2 = 2 workers
-    assertEquals(2, IntegrationTestForkCount.resolveDynamic(null, false, 16, 0.0, 8.0));
+  void perAgentRamCanBeTheBinding() {
+    // 8 cores but only 16g total, 2 agents: cpu = 4; ram = (16-2)/2/3.2 = 2 -> min 2 (RAM-bound)
+    assertEquals(2, IntegrationTestForkCount.resolvePerAgent(null, false, 8, 16.0, 2));
   }
 
   @Test
-  void dynamicUndetectableSignalsStayConservative() {
-    // cores unknown -> 1; load unknown -> don't subtract but cap at cores; ram unknown -> 1
-    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, false, 0, 1.0, 64.0));
-    assertEquals(1, IntegrationTestForkCount.resolveDynamic(null, false, 8, 1.0, 0.0));
-    // load unknown (-1): cpu bound stays at cores(8); ram 30/3.2=9 -> min 8 (cap)
-    assertEquals(8, IntegrationTestForkCount.resolveDynamic(null, false, 8, -1.0, 30.0));
+  void perAgentSingleAgentGetsWholeBoxUpToCap() {
+    // 1 agent on 16-core/128g: cpu = 16, ram plenty -> clamp to MAX_FORKS=8
+    assertEquals(8, IntegrationTestForkCount.resolvePerAgent(null, false, 16, 128.0, 1));
+  }
+
+  @Test
+  void perAgentDegenerateInputsHandled() {
+    assertEquals(1, IntegrationTestForkCount.resolvePerAgent(null, false, 0, 64.0, 2));  // cores unknown -> 1
+    assertEquals(1, IntegrationTestForkCount.resolvePerAgent(null, false, 8, 0.0, 2));   // ram unknown -> 1
+    // agents<1 is treated as 1 (whole box): cpu=8, ram=(62-2)/3.2=18 -> min 8 -> clamp 8
+    assertEquals(8, IntegrationTestForkCount.resolvePerAgent(null, false, 8, 62.0, 0));
   }
 }

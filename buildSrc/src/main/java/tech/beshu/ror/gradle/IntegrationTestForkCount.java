@@ -69,36 +69,40 @@ public final class IntegrationTestForkCount {
   }
 
   /**
-   * Dynamic sizing for SHARED/contended hosts (e.g. one box running several builds, each fanning out
-   * 3+ IT legs, plus long-lived ES agents). A static fraction of total resources is wrong there: the
-   * right number depends on what's running RIGHT NOW. We bound by what is actually FREE at task start:
+   * Sizing for a SHARED self-hosted host that runs several IT legs at once (N Azure agents on one
+   * box). The earlier load-average heuristic was self-defeating: every agent reads the load that the
+   * OTHER agents create, so all of them throttle to 1 fork and the box sits half-idle while legs run
+   * serially (observed on ryzen: 5 agents, load ~15, every leg maxParallelForks=1, ~no speedup).
+   * <p>
+   * Instead we partition the box DETERMINISTICALLY by how many legs share it concurrently
+   * ({@code agentsPerHost}, from {@code IT_AGENTS_PER_HOST}). Each leg gets its fair slice:
    * <ul>
-   *   <li><b>CPU:</b> spare compute = physical cores minus the current 1-min load average. ES bootstrap
-   *       is CPU-spiky, so we size off PHYSICAL cores (not SMT threads) and subtract existing load —
-   *       a busy box automatically yields a small N, an idle one a large N.</li>
-   *   <li><b>RAM:</b> currently-AVAILABLE GB / per-worker GB — co-tenant ES agents are subtracted for
-   *       free because they already consumed that RAM.</li>
+   *   <li><b>CPU:</b> {@code physicalCores / agentsPerHost} (SMT threads excluded — ES bootstrap is
+   *       CPU-spiky and hyperthreads don't help it).</li>
+   *   <li><b>RAM:</b> {@code (totalRamGb - reserved) / agentsPerHost / perWorkerRam}.</li>
    * </ul>
-   * The result is the tighter of the two, clamped to [1, {@value #MAX_FORKS}]. Explicit override and
-   * Windows still win. Pure: the live readings are injected so the truth table stays unit-tested.
+   * Tighter of the two, clamped to [1, {@value #MAX_FORKS}]. No load feedback, so it can't collapse
+   * to 1 under self-inflicted contention: with 2 agents on an 8-core/62 GB box each leg gets ~4 forks.
+   * Tune the agent count down (fewer agents, more forks each) for the best total throughput.
    *
    * @param explicitOverride {@code IT_MAX_PARALLEL_FORKS} (wins verbatim if set)
    * @param isWindows        pinned to 1 (fixed ES container ports)
    * @param physicalCores    physical cores (NOT SMT threads); &lt;=0 if undetectable
-   * @param loadAvg1Min      system 1-min load average; &lt;0 if undetectable
-   * @param availableRamGb   currently-available RAM in GB; &lt;=0 if undetectable
+   * @param totalRamGb       total physical RAM in GB; &lt;=0 if undetectable
+   * @param agentsPerHost    concurrent IT legs sharing this host ({@code IT_AGENTS_PER_HOST}); &lt;1 -&gt; 1
    */
-  public static int resolveDynamic(String explicitOverride,
-                                   boolean isWindows,
-                                   int physicalCores,
-                                   double loadAvg1Min,
-                                   double availableRamGb) {
+  public static int resolvePerAgent(String explicitOverride,
+                                    boolean isWindows,
+                                    int physicalCores,
+                                    double totalRamGb,
+                                    int agentsPerHost) {
     Integer pinned = preResolve(explicitOverride, isWindows);
     if (pinned != null) {
       return pinned;
     }
-    int cpuBound = cpuBound(physicalCores, loadAvg1Min);
-    int ramBound = forksFitting(availableRamGb);
+    int agents = Math.max(1, agentsPerHost);
+    int cpuBound = physicalCores <= 0 ? 1 : Math.max(1, physicalCores / agents);
+    int ramBound = forksFitting((totalRamGb - RESERVED_RAM_GB) / agents);
     return clamp(Math.min(cpuBound, ramBound));
   }
 
@@ -112,20 +116,6 @@ public final class IntegrationTestForkCount {
       return 1;
     }
     return null;
-  }
-
-  /** Spare physical cores after current load; if cores are undetectable return 1, if only the load
-   *  is undetectable use all cores (assume idle) capped so we never oversubscribe. */
-  private static int cpuBound(int physicalCores, double loadAvg1Min) {
-    if (physicalCores <= 0) {
-      return 1;
-    }
-    if (loadAvg1Min < 0) {
-      // Load unknown: don't subtract, but still cap at cores so we never oversubscribe.
-      return physicalCores;
-    }
-    int spare = physicalCores - (int) Math.ceil(loadAvg1Min);
-    return Math.max(1, spare);
   }
 
   /** How many per-worker RAM slices fit in {@code freeGb}; <=0 / too-small means just 1. */
