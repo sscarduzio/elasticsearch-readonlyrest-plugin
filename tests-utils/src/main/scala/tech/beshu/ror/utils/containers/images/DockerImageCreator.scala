@@ -23,13 +23,19 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command.{ChangeUser, Run}
 
+import java.security.MessageDigest
 import java.util.UUID
 
 object DockerImageCreator extends StrictLogging {
 
   def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
     val imageDescription = elasticsearch.toDockerImageDescription
-    copyFilesFrom(imageDescription, to = new ImageFromDockerfile())
+    // STABLE, content-derived tag (vs testcontainers' random per-instance tag). Two builds of an
+    // identical image (e.g. the singleton ES image, baked the same way in every worker) resolve to
+    // the SAME tag, so once it's built locally every other worker gets an instant cache hit instead
+    // of redundantly (and concurrently) rebuilding it — which is what fails at IT_MAX_PARALLEL_FORKS>=3.
+    val stableTag = s"ror-it-es:${imageTag(imageDescription)}"
+    copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ false))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
           .from(imageDescription.baseImage)
@@ -41,6 +47,21 @@ object DockerImageCreator extends StrictLogging {
           .build()
         logger.info("Dockerfile\n" + dockerfile)
       })
+  }
+
+  // Short hex digest over everything that defines the image: base image, the dockerfile commands/envs,
+  // and the CONTENT of every copied file (so a changed ROR plugin zip / cert / settings -> new tag).
+  private def imageTag(d: DockerImageDescription): String = {
+    val md = MessageDigest.getInstance("SHA-1")
+    md.update(d.baseImage.getBytes("UTF-8"))
+    d.runCommands.foreach(c => md.update(c.toString.getBytes("UTF-8")))
+    d.envs.foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
+    d.copyFiles.toList.sortBy(_.destination.toString).foreach { cf =>
+      md.update(cf.destination.toString.getBytes("UTF-8"))
+      val f = File(cf.file.pathAsString)
+      if (f.exists) md.update(f.sha256.getBytes("UTF-8"))
+    }
+    md.digest().take(10).map("%02x".format(_)).mkString
   }
 
   private def copyFilesFrom(imageDescription: DockerImageDescription, to: ImageFromDockerfile) = {

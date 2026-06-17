@@ -60,6 +60,8 @@ test {
     systemProperty "project.dir", rootProject.projectDir
     enabled = project.hasProperty('esModule')
     if (enabled) {
+        // Build the singleton ES image once up-front so parallel workers never build concurrently.
+        dependsOn 'prebuildEsImage'
         def module = project.properties['esModule']
         systemProperty "esModule", module
         def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
@@ -127,5 +129,20 @@ dependencies {
 tasks.register('ldapserver', JavaExec) {
     systemProperties = System.properties
     mainClass.set('tech.beshu.ror.integration.LDAPServer')
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+// Builds + stably tags the singleton ES image ONCE (single JVM) before the parallel `test` workers.
+// Without this, workers build the identical image concurrently and the Docker build layers fail
+// intermittently at IT_MAX_PARALLEL_FORKS>=3. Pre-building means every worker gets a cache hit.
+tasks.register('prebuildEsImage', JavaExec) {
+    onlyIf { project.hasProperty('esModule') }
+    systemProperty 'project.dir', rootProject.projectDir
+    if (project.hasProperty('esModule')) {
+        systemProperty 'esModule', project.properties['esModule']
+    }
+    def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
+    if (explicitEsVersion != null) { systemProperty 'esVersion', explicitEsVersion }
+    mainClass.set('tech.beshu.ror.utils.containers.PrebuildSingletonEsImage')
     classpath = sourceSets.test.runtimeClasspath
 }
