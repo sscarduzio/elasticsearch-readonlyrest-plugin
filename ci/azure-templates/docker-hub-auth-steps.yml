@@ -20,6 +20,10 @@ steps:
         echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]$DOCKER_AUTH_CONFIG"
         echo "[TEST] Docker Hub authenticated pulls ENABLED (user '$VAR_DOCKER_HUB_USER')"
       else
+        # Define DOCKER_AUTH_CONFIG as an EMPTY secret even in the no-op case. Otherwise it's never
+        # set at pipeline level and `$(DOCKER_AUTH_CONFIG)` in the consuming env: blocks expands to the
+        # literal string "$(DOCKER_AUTH_CONFIG)" — non-JSON that docker-java chokes on. Empty = "no auth".
+        echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]"
         echo "[TEST] Docker Hub authenticated pulls DISABLED (anonymous, rate-limited) — DOCKER_HUB_USER/DOCKER_HUB_RO_TOKEN not both set"
       fi
     displayName: 'Configure Docker Hub authenticated pulls'
