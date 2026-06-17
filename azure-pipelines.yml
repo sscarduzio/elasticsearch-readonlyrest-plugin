@@ -146,6 +146,8 @@ stages:
   # JDK/Gradle change (then bump the image tag in the `resources.containers` block above).
   - stage: BUILD_TOOLCHAINS_IMAGE
     displayName: 'Build & push CI toolchains image'
+    # Deliberately NOT gated on SUPERSEDE_GUARD: this stage only fires on Schedule/Manual (never a
+    # PR run, per the condition below), so it can never race a PR supersede — by design.
     dependsOn: [ ]
     condition:
       or(

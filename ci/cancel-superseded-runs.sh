@@ -64,14 +64,18 @@ fi
 # Build ids of OTHER active runs on the same PR ref. Surface (don't swallow) a jq parse failure:
 # if the body isn't the JSON we expect, an empty other_ids would otherwise look like "no other runs"
 # and the guard would silently no-op. On parse failure: warn and proceed ungated.
+# Use a private mktemp file (NOT a fixed /tmp path) — two guard jobs can run concurrently on a
+# shared self-hosted agent and would clobber a shared path.
+ids_file="$(mktemp)"
+trap 'rm -f "${ids_file}"' EXIT
 jq_err="$(echo "${resp}" | jq -r --argjson self "${SELF_ID}" \
-  '.value[]? | select(.id != $self) | .id' 2>&1 1>/tmp/supersede_ids.txt)"
+  '.value[]? | select(.id != $self) | .id' 2>&1 1>"${ids_file}")"
 if [[ -n "${jq_err}" ]]; then
   echo ">>> WARN: could not parse Builds API response (${jq_err}) — proceeding without gating."
   echo ">>> response body: ${resp}"
   exit 0
 fi
-mapfile -t other_ids < <(sort -n /tmp/supersede_ids.txt)
+mapfile -t other_ids < <(sort -n "${ids_file}")
 
 if [[ "${#other_ids[@]}" -eq 0 ]]; then
   echo ">>> no other active runs for this PR — proceeding."
@@ -82,6 +86,9 @@ echo ">>> other active runs on this PR: ${other_ids[*]}"
 cancel_build() { # cancel_build <id> <superseder-id>
   local id="$1" superseder="$2"
   echo ">>> cancelling build ${id} (superseded by ${superseder})"
+  # `?${API}` is interpolated raw (unlike the GET, which uses --data-urlencode): API is the static
+  # constant "api-version=7.1" (alphanumerics + '-'/'.' only, no chars needing encoding) and ${id}
+  # is a numeric build id — no injection/encoding surface here.
   curl "${curl_opts[@]}" -X PATCH -H "Content-Type: application/json" \
     -d '{"status":"cancelling"}' "${base}/${id}?${API}" >/dev/null \
     || echo ">>> WARN: cancel of ${id} failed (HTTP error/timeout) — continuing"
