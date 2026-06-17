@@ -68,7 +68,8 @@ Every ROR REST endpoint maps to a dedicated ES action name (used in ACL `actions
 | Endpoint | Action (canonical; `cluster:ror/*` legacy alias) |
 |---|---|
 | `GET /_readonlyrest/metadata/user` | `cluster:internal_ror/user_metadata/get` |
-| `GET/POST /_readonlyrest/admin/config` (+ `/file`, `/refreshconfig`) | `cluster:internal_ror/config/refreshsettings` (legacy refresh), `cluster:internal_ror/config/manage` (cluster summary) |
+| `POST /_readonlyrest/admin/refreshconfig` | `cluster:internal_ror/config/refreshsettings` |
+| `GET/POST /_readonlyrest/admin/config` (+ `/config/file`, `/config/audit`) | `cluster:internal_ror/config/manage` (all served by `MainSettingsApi`) |
 | `POST/DELETE /_readonlyrest/admin/config/test` | `cluster:internal_ror/testconfig/manage`; in-memory test config, TTL via the `ttl` field in the POST request body (`TestSettingsApi`) |
 | `POST/DELETE /_readonlyrest/admin/config/test/authmock` | `cluster:internal_ror/authmock/manage`; mocks persist until DELETE or plugin restart (no TTL in the current `AuthMockApi`) |
 | `POST /_readonlyrest/admin/audit/event` | `cluster:internal_ror/audit_event/put` |
