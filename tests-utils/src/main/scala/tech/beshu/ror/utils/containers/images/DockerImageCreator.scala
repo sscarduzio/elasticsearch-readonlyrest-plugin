@@ -16,11 +16,14 @@
  */
 package tech.beshu.ror.utils.containers.images
 
+import better.files.File
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.Command.{ChangeUser, Run}
+
+import java.util.UUID
 
 object DockerImageCreator extends StrictLogging {
 
@@ -41,11 +44,24 @@ object DockerImageCreator extends StrictLogging {
   }
 
   private def copyFilesFrom(imageDescription: DockerImageDescription, to: ImageFromDockerfile) = {
+    // Each image build gets its OWN private staging dir, and we hand testcontainers a per-build COPY
+    // of every source file rather than the shared on-disk original. testcontainers tar-streams these
+    // into the Docker build context lazily; when N parallel worker JVMs build the same image they all
+    // pointed at the SAME files (e.g. the ROR plugin zip), and concurrent tar-streaming corrupted the
+    // context ("Request to write N bytes exceeds size in header" → plugin install fails). Private
+    // per-build copies make image building parallel-safe (observed at IT_MAX_PARALLEL_FORKS=3).
+    val stagingDir = File.newTemporaryDirectory(prefix = s"ror-img-${UUID.randomUUID()}-")
+    stagingDir.toJava.deleteOnExit()
     imageDescription
       .copyFiles
+      .zipWithIndex
       .foldLeft(to) {
-        case (dockerfile, copyFile) =>
-          dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, copyFile.file.toJava)
+        case (dockerfile, (copyFile, idx)) =>
+          val source = File(copyFile.file.pathAsString)
+          // index-prefix the staged name so two sources sharing a filename can't clobber each other
+          val privateCopy = source.copyTo(stagingDir / s"$idx-${source.name}", overwrite = true)
+          privateCopy.toJava.deleteOnExit()
+          dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, privateCopy.toJava)
       }
   }
 
