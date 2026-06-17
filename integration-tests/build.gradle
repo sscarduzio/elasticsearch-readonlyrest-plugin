@@ -168,3 +168,4 @@ tasks.register('prebuildEsImage', JavaExec) {
     mainClass.set('tech.beshu.ror.utils.containers.PrebuildSingletonEsImage')
     classpath = sourceSets.test.runtimeClasspath
 }
+
