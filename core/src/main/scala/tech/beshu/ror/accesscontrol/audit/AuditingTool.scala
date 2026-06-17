@@ -67,10 +67,8 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
             metadataOrigin.blockContext.block.auditSinks
           case UserMetadata.WithGroups(groupsMetadata) =>
             groupsMetadata.values.toList
-              .map(_.metadataOrigin.blockContext.block)
-              .toSet
-              .flatMap(_.auditSinks)
-              .toList
+              .flatMap(_.metadataOrigin.blockContext.block.auditSinks)
+              .distinct
         }
       case ForbiddenBy(_, blockContext, _) => blockContext.block.auditSinks
       case Forbidden(_, _) => sinks

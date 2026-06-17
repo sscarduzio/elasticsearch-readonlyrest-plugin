@@ -324,10 +324,19 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
   }
 
   private val allowedEventsSerializationModeDecoder: Decoder[AllowedEventMode] =
-    Decoder.decodeString.emap {
-      case "always"                  => Right(AllowedEventMode.IncludeAll)
-      case "based_on_block_settings" => Right(AllowedEventMode.Include(Set(Verbosity.Info)))
-      case other                     => Left(s"Unknown value '$other', allowed values are: [always, based_on_block_settings]")
+    Decoder.instance { c =>
+      if (c.value.isArray)
+        Left(DecodingFailure(
+          "expected a string value (\"always\" or \"based_on_block_settings\"); " +
+          "if migrating from 'verbosity_level_serialization_mode', note that the value format changed from an array like [\"INFO\"] to a plain string",
+          c.history
+        ))
+      else
+        Decoder.decodeString.emap {
+          case "always"                  => Right(AllowedEventMode.IncludeAll)
+          case "based_on_block_settings" => Right(AllowedEventMode.Include(Set(Verbosity.Info)))
+          case other                     => Left(s"Unknown value '$other', allowed values are: [always, based_on_block_settings]")
+        }.apply(c)
     }
 
   private def extendedSyntaxStaticSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>

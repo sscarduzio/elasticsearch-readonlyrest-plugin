@@ -1566,6 +1566,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns("ENABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 
@@ -1579,6 +1583,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns("DISABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 

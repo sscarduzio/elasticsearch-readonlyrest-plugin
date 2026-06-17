@@ -277,6 +277,10 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
       .expects()
       .anyNumberOfTimes()
       .returns("ENABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 
