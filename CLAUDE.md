@@ -43,7 +43,7 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 - **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to a specific ES version's internal APIs. Each module's `gradle.properties` defines `latestSupportedEsVersion`.
 - **`audit/`** — Audit event module, cross-compiled for Scala 2.11/2.12/2.13/3.3. Published to Maven Central separately.
 - **`ror-shadowed-libs/`** — Shaded dependencies (auto-relocated to `tech.beshu.ror` prefix via Shadow plugin to avoid classpath conflicts with ES internals).
-- **`integration-tests/`** — Docker-based integration tests using TestContainers. Runs sequentially (`maxParallelForks=1`).
+- **`integration-tests/`** — Docker-based integration tests using TestContainers. Suites run **serially within a worker JVM** (they share one mutable singleton ES, guarded by an acquire/release latch) and **in parallel across worker JVMs**. `maxParallelForks` is resource-aware (`IntegrationTestForkCount.resolveDynamic`, from live free cores/RAM); `IT_MAX_PARALLEL_FORKS` overrides; Windows is pinned to 1.
 - **`tests-utils/`** — Shared test fixtures and utilities (MockRequestContext, MockEsServices, etc.).
 - **`ror-tools/` / `ror-tools-core/`** — CLI tools and utilities.
 - **`eshome/`** — Local ES runner for IDE debugging. Config in `eshome/config/` (elasticsearch.yml, readonlyrest.yml). Must be cleaned when switching ES versions.
