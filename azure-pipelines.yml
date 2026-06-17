@@ -41,12 +41,19 @@ trigger:
     exclude:
       - '*'
   paths:
-    include:
-      - '*'
+    # Azure DevOps path filters are PREFIX matches, NOT globs — `*.md` / `*/*/*.md` do nothing
+    # (a leading `*` is a literal char here, so a markdown-only change still triggered CI).
+    # Exclude by path prefix instead: the docs tree, the Claude skills/agent files, and the
+    # root-level markdown docs. Code changes anywhere else still trigger normally.
     exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
+      - docs
+      - .claude
+      - README.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - LICENSE.md
+      - CLAUDE.md
+      - development.md
 
 pr:
   # A new commit cancels the prior in-progress PR run instead of stacking another
@@ -59,12 +66,19 @@ pr:
       - 'epic/*'
       - '*/epic/*'
   paths:
-    include:
-      - '*'
+    # Azure DevOps path filters are PREFIX matches, NOT globs — `*.md` / `*/*/*.md` do nothing
+    # (a leading `*` is a literal char here, so a markdown-only change still triggered CI).
+    # Exclude by path prefix instead: the docs tree, the Claude skills/agent files, and the
+    # root-level markdown docs. Code changes anywhere else still trigger normally.
     exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
+      - docs
+      - .claude
+      - README.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - LICENSE.md
+      - CLAUDE.md
+      - development.md
 
 # Scheduled rebuild of the CI toolchains image (BUILD_TOOLCHAINS_IMAGE only; every other stage is
 # gated on Build.Reason != 'Schedule'). Keeps the baked Gradle cache fresh without manual action:
