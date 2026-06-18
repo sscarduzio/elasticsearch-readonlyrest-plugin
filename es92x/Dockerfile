@@ -1,26 +1,12 @@
 ARG ES_VERSION
 ARG ROR_VERSION
 
-FROM alpine:3.21.0 AS builder
-
-ENV GOSU_VERSION=1.17
-RUN set -eux; \
-	apk add --no-cache --virtual .gosu-deps \
-		ca-certificates \
-		dpkg \
-		gnupg \
-	; \
-	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
-	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
-	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
-    # verify the signature
-	export GNUPGHOME="$(mktemp -d)"; \
-	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
-	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
-	gpgconf --kill all;
+# gosu is pulled from the one-time, version-independent base image (see docker-image/gosu/Dockerfile)
+# instead of re-running the alpine + GPG download/verify on every per-version build.
+FROM beshultd/elasticsearch-readonlyrest-dev:gosu-1.17 AS gosu
 
 FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
-COPY --from=builder /usr/local/bin/gosu /usr/local/bin/gosu
+COPY --from=gosu /usr/local/bin/gosu /usr/local/bin/gosu
 
 ARG ES_VERSION
 ARG ROR_VERSION
@@ -36,10 +22,23 @@ RUN chmod +x /usr/local/bin/gosu \
 
 USER 1000
 
-COPY readonlyrest-${ROR_VERSION}_es${ES_VERSION}.zip /tmp/readonlyrest.zip
-COPY init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
-COPY ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
+# ROR is installed by laying the plugin straight onto disk (equivalent to `elasticsearch-plugin install
+# --batch`, which just unzips the flat plugin files into plugins/readonlyrest/ — ES discovers the plugin
+# by scanning that dir at boot). This avoids the QEMU-emulated install RUN and splits ROR into:
+#
+#   * a fat, version-INDEPENDENT layer (all jars + entitlement-policy.yaml);
+#   * a thin, per-version layer — just plugin-descriptor.properties, whose `elasticsearch.version` ES
+#     enforces to equal the node version (~1 KB unique per ES version).
+#
+# `--link` is essential here: it builds each layer independently of the (per-ES-version) base chain, so
+# the fat ROR layer gets the SAME content digest for every version of this module. The registry then
+# stores that ~100 MB blob ONCE and every per-version image just references it (verified: identical layer
+# digest across different ES bases). `--chown` must be numeric (1000:0) because --link can't resolve
+# names against the base image.
+COPY --link --chown=1000:0 payload/ /usr/share/elasticsearch/plugins/readonlyrest/
+COPY --link --chown=1000:0 plugin-descriptor.properties /usr/share/elasticsearch/plugins/readonlyrest/plugin-descriptor.properties
 
-RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch file:///tmp/readonlyrest.zip
+COPY --link init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
+COPY --link ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]

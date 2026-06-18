@@ -50,6 +50,20 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
     dependsOn it.findRorTaskForEsVersion('pushRorPreBuildDockerImage')
 }
 
+// One-time, version-independent gosu base image (see docker-image/gosu/Dockerfile). Build & push once as
+// a single multi-arch image; every per-version ROR image then `COPY --from`s gosu out of it instead of
+// re-running the alpine + GPG download/verify on each of the ~247 builds.
+// Requires an active multi-arch buildx builder (e.g. `docker buildx create --use --platform linux/amd64,linux/arm64`).
+tasks.register("pushGosuBaseImage", Exec) {
+    group 'docker'
+    executable 'docker'
+    args = [
+            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
+            '-t', 'beshultd/elasticsearch-readonlyrest-dev:gosu-1.17',
+            '--push', 'docker-image/gosu'
+    ]
+}
+
 group = 'tech.beshu.ror'
 version = pluginVersion
 
