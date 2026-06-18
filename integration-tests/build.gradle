@@ -94,60 +94,14 @@ test {
         events "standardOut", "started", "passed", "skipped", "failed"
     }
     // Real worker JVMs, each with its own TestNetwork.perJvm + singleton ES.
-    //
-    // FORK SIZING (tech.beshu.ror.gradle.IntegrationTestForkCount.resolvePerAgent): partition the box
-    // deterministically among the IT legs that share it. The earlier load-average heuristic was
-    // self-defeating on the self-hosted pool — N agents on one box each saw the load the OTHERS
-    // created and all throttled to 1 fork, so the box sat half-idle while legs ran serially. Instead
-    // each leg takes a fair 1/agentsPerHost slice of physical cores and RAM. Fewer agents per host =>
-    // more forks each (the lever for total throughput). IT_AGENTS_PER_HOST tells us how many legs
-    // share the host (default 2); IT_MAX_PARALLEL_FORKS still overrides verbatim; Windows pinned to 1.
-    boolean isWindows = System.properties['os.name'].toLowerCase().contains('windows')
-    int physicalCores = 0
-    double totalRamGb = 0d
-    int agentsPerHost = (System.getenv('IT_AGENTS_PER_HOST') ?: '2').toInteger()
-    try {
-        def osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean()
-        if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
-            totalRamGb = ((com.sun.management.OperatingSystemMXBean) osBean).getTotalMemorySize() / (1024d * 1024d * 1024d)
-        }
-        // Physical cores (not SMT threads): /proc/cpuinfo distinct "core id" per "physical id".
-        def cpuinfo = new File('/proc/cpuinfo')
-        if (cpuinfo.exists()) {
-            def cores = new HashSet<String>()
-            String phys = '0'
-            cpuinfo.eachLine { line ->
-                if (line.startsWith('physical id')) phys = line.split(':')[1].trim()
-                else if (line.startsWith('core id'))  cores.add(phys + ':' + line.split(':')[1].trim())
-            }
-            physicalCores = cores.size()
-        }
-        if (physicalCores <= 0) physicalCores = Runtime.runtime.availableProcessors() // fallback
-    } catch (Throwable ignored) { /* signals undetectable -> resolver stays conservative */ }
-    // FIXED fork count (no calculation): 1 fork per leg. EXPERIMENT (2026-06-18): 2 forks did NOT
-    // beat the ~50min single-fork baseline on this shared box (es90x 1h3m, es94x 53m — both >= 1-fork
-    // baseline); the per-leg ES-bootstrap + RAM/IO contention from a 2nd fork cancels the parallelism
-    // gain. Rolling back to 1 to confirm we at least MATCH baseline (and stop paying the 2-fork
-    // overhead). With 2 agents that is at most 2 legs x 1 fork = 2 concurrent ES on the 8-core box.
-    // resolvePerAgent() is kept for reference/tests but no longer drives the live value.
-    // IT_MAX_PARALLEL_FORKS still overrides verbatim (operator escape hatch); Windows pinned to 1.
+    // 1 fork/leg: a 2nd fork's ES-bootstrap + RAM/IO contention cancels the parallelism gain on the
+    // shared self-hosted box (measured 2026-06; es90x 1h3m @2-fork vs ~40min @1). Cross-leg
+    // parallelism is the agent count, not forks. IT_MAX_PARALLEL_FORKS overrides; Windows = 1.
     def forkOverride = System.getenv('IT_MAX_PARALLEL_FORKS')
-    int fixedForks = 1
-    maxParallelForks = (forkOverride?.trim()) ? Math.max(1, forkOverride.trim().toInteger())
-                     : (isWindows ? 1 : fixedForks)
-    // LOUD banner — first thing in the IT log so the fork count is never a mystery again (this is
-    // exactly the number that decides how many ES containers a leg spins up: forks == ES instances).
-    def forkSource = (forkOverride?.trim()) ? "OVERRIDE IT_MAX_PARALLEL_FORKS=${forkOverride.trim()}" :
-                     (isWindows ? "windows-pinned=1" : "FIXED=${fixedForks}")
-    def banner = """
-###############################################################################
-##  INTEGRATION-TESTS  maxParallelForks = ${maxParallelForks}   (== max concurrent ES instances)
-##  source=${forkSource}
-##  physicalCores=${physicalCores}  totalRamGb=${String.format('%.1f', totalRamGb)}  agentsPerHost=${agentsPerHost}  windows=${isWindows}
-###############################################################################"""
-    logger.quiet(banner)   // quiet() always prints, even at -q; lifecycle() can be suppressed
-    // Per WORKER JVM (Gradle's 512m default is too small). Multiplies with forks:
-    // keep maxParallelForks x (2g + ~1.2g per ES container) under host RAM.
+    maxParallelForks = forkOverride?.trim() ? Math.max(1, forkOverride.trim().toInteger()) : 1
+    // forks == max concurrent ES instances; logged loud (quiet() survives -q) so it's never a mystery.
+    logger.quiet(">>> integration-tests maxParallelForks=${maxParallelForks} (== max concurrent ES instances, override=${forkOverride ?: 'none'})")
+    // Per WORKER JVM (Gradle's 512m default is too small): 2g heap + ~1.2g ES container per fork.
     maxHeapSize = '2g'
 }
 
