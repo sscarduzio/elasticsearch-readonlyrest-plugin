@@ -124,13 +124,15 @@ test {
         }
         if (physicalCores <= 0) physicalCores = Runtime.runtime.availableProcessors() // fallback
     } catch (Throwable ignored) { /* signals undetectable -> resolver stays conservative */ }
-    // FIXED fork count (no calculation): 2 forks per leg. With 2 self-hosted agents that is at most
-    // 2 legs x 2 forks = 4 concurrent ES instances on the 8-core box — deliberately conservative so we
-    // never overshoot into the load-666 thrash we hit when the auto-resolver computed 4 on a 5-agent
-    // pool. resolvePerAgent() is kept for reference/tests but no longer drives the live value.
+    // FIXED fork count (no calculation): 1 fork per leg. EXPERIMENT (2026-06-18): 2 forks did NOT
+    // beat the ~50min single-fork baseline on this shared box (es90x 1h3m, es94x 53m — both >= 1-fork
+    // baseline); the per-leg ES-bootstrap + RAM/IO contention from a 2nd fork cancels the parallelism
+    // gain. Rolling back to 1 to confirm we at least MATCH baseline (and stop paying the 2-fork
+    // overhead). With 2 agents that is at most 2 legs x 1 fork = 2 concurrent ES on the 8-core box.
+    // resolvePerAgent() is kept for reference/tests but no longer drives the live value.
     // IT_MAX_PARALLEL_FORKS still overrides verbatim (operator escape hatch); Windows pinned to 1.
     def forkOverride = System.getenv('IT_MAX_PARALLEL_FORKS')
-    int fixedForks = 2
+    int fixedForks = 1
     maxParallelForks = (forkOverride?.trim()) ? Math.max(1, forkOverride.trim().toInteger())
                      : (isWindows ? 1 : fixedForks)
     // LOUD banner — first thing in the IT log so the fork count is never a mystery again (this is
