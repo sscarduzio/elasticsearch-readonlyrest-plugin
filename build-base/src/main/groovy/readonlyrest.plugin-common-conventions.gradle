@@ -140,3 +140,54 @@ tasks.register('prepareMultiplatformBuilder') {
         }
     }
 }
+
+// Stages, for a set of target ES versions, the only dependency jars in the plugin zip whose content is
+// ES-version-specific: the artifacts under the `org.elasticsearch.*` groups that survive the
+// `distJars` `exclude group: 'org.elasticsearch'` (i.e. `elasticsearch-rest-client`, and for es6x/es7x
+// also `transport-netty4-client`). The set is DISCOVERED from the resolved `distJars` rather than
+// hardcoded, so any module bundling a different ES-stamped artifact is handled automatically. Everything
+// else in the zip is fixed-version and reused as-is when repackaging a module's base build for its other
+// patch versions (see ci/repackage-plugin-for-version.sh).
+//
+// Usage: -PstageVersions=9.2.0,9.2.1,…  -PstageDir=<dir>   ->   <dir>/<version>/<artifact>-<version>.jar
+tasks.register('stageEsStampedJars') {
+    outputs.upToDateWhen { false }
+    doLast {
+        def stageVersionsProp = project.findProperty('stageVersions')
+        def stageDirProp = project.findProperty('stageDir')
+        if (stageVersionsProp == null || stageDirProp == null) {
+            throw new GradleException("stageEsStampedJars requires -PstageVersions=<csv> and -PstageDir=<path>")
+        }
+        def versions = stageVersionsProp.toString().split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+
+        // The ES-stamped artifacts are versioned at the ES version itself (e.g. elasticsearch-rest-client
+        // -9.3.5). ROR's own modules also live under group `org.elasticsearch.plugin` (see `group =` in
+        // this convention) but are versioned at pluginVersion, so the version check excludes them.
+        def esStampedArtifacts = configurations.distJars.resolvedConfiguration.resolvedArtifacts
+                .findAll {
+                    it.moduleVersion.id.group.startsWith('org.elasticsearch') &&
+                            it.moduleVersion.id.version == project.ext.esVersion
+                }
+                .collect { [group: it.moduleVersion.id.group, name: it.moduleVersion.id.name] }
+                .unique()
+
+        logger.lifecycle("Staging ES-version-stamped artifacts {} for {} version(s) into {}",
+                esStampedArtifacts.collect { it.name }, versions.size(), stageDirProp)
+
+        versions.each { v ->
+            def destDir = file("${stageDirProp}/${v}")
+            destDir.mkdirs()
+            esStampedArtifacts.each { art ->
+                def detached = configurations.detachedConfiguration(
+                        dependencies.create("${art.group}:${art.name}:${v}"))
+                detached.transitive = false
+                detached.resolve().each { jarFile ->
+                    copy {
+                        from jarFile
+                        into destDir
+                    }
+                }
+            }
+        }
+    }
+}

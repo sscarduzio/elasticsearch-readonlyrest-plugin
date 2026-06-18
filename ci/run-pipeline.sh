@@ -267,34 +267,180 @@ if [[ $ROR_TASK == "build_es6xx" ]]; then
   build_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
+# ----------------------------------------------------------------------------------------------------
+# Module-grouped publishing ("build once per module, repackage the rest").
+#
+# Within an esXXx module the compiled bytecode is identical across the module's patch range, so instead
+# of recompiling for every ES version we compile ONCE (at the module's latestSupportedEsVersion) and
+# derive every other version's zip by swapping only the per-version bits (descriptor, in-jar build-info,
+# and the ES-version-stamped dependency jars). See ci/repackage-plugin-for-version.sh and the Gradle
+# stageEsStampedJars task. A per-module bytecode guard (ci/verify-reusable-bytecode.sh) proves the reuse
+# is safe before any release is published.
+# ----------------------------------------------------------------------------------------------------
+
+# Reads a generation's version file and emits one line per module (in file order):
+#   "<module> <moduleLatest> <target version> [<target version> ...]"
+build_module_groups() {
+  local versions_file=$1
+  local map_file
+  map_file=$(mktemp)
+  ./gradlew --no-daemon printEsModuleMap "-PversionsFile=$versions_file" "-PoutputFile=$map_file" </dev/null >/dev/null
+  awk '
+    { ver=$1; mod=$2; latest=$3
+      if (!(mod in seen)) { order[++n]=mod; seen[mod]=1; modlatest[mod]=latest }
+      vers[mod]=vers[mod] (vers[mod]=="" ? "" : " ") ver }
+    END { for (i=1;i<=n;i++){ m=order[i]; print m" "modlatest[m]" "vers[m] } }
+  ' "$map_file"
+  rm -f "$map_file"
+}
+
+# Builds a module's base once, optionally guards bytecode reuse (release), then repackages + publishes
+# every target version of that module from the base (no recompile).
+#   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 base_version
+#   $5 stage_root  $6 out_dir  $7 stash_dir  $@(8..) target versions (file order: newest..oldest)
+publish_module_group() {
+  local mode=$1 ror_version=$2 module=$3 base_version=$4 stage_root=$5 out_dir=$6 stash_dir=$7
+  shift 7
+  local targets=("$@")
+  local stage_csv
+  stage_csv=$(IFS=,; echo "${targets[*]}")
+
+  echo ""
+  echo ">>> Module $module: base ES $base_version, ${#targets[@]} target version(s): ${targets[*]}"
+
+  # 1) ONE compile for the module + stage the ES-version-stamped jars for all of its target versions.
+  if ! ./gradlew --no-daemon ":${module}:buildRorPluginZip" ":${module}:stageEsStampedJars" \
+        "-PesVersion=${base_version}" "-PstageVersions=${stage_csv}" "-PstageDir=${stage_root}" </dev/null; then
+    echo "ERROR: base build/stage failed for $module @ $base_version"
+    return 1
+  fi
+
+  local base_zip="${module}/build/distributions/readonlyrest-${ror_version}_es${base_version}.zip"
+  local base_fat_jar="${module}/build/libs/readonlyrest-${ror_version}_es${base_version}.jar"
+
+  # Stash the base artifacts: the guard recompiles (clobbering build/), so repackaging must read the
+  # base from a stable location.
+  local stashed_zip="${stash_dir}/$(basename "$base_zip")"
+  cp "$base_zip" "$stashed_zip"
+
+  # 2) (release only) Bytecode reuse guard at the range boundaries that differ from the base compile.
+  if [ "$mode" = "release" ]; then
+    local newest="${targets[0]}" oldest="${targets[$((${#targets[@]} - 1))]}"
+    local guard_versions=()
+    [ "$oldest" != "$base_version" ] && guard_versions+=("$oldest")
+    [ "$newest" != "$base_version" ] && [ "$newest" != "$oldest" ] && guard_versions+=("$newest")
+    if [ "${#guard_versions[@]}" -gt 0 ]; then
+      if ! ci/verify-reusable-bytecode.sh "$module" "$base_fat_jar" "${guard_versions[@]}"; then
+        echo "ERROR: bytecode reuse guard failed for $module"
+        return 1
+      fi
+    fi
+  fi
+
+  # 3) Derive + publish each target version from the (stashed) base. No recompile.
+  local target
+  for target in "${targets[@]}"; do
+    if ! ci/repackage-plugin-for-version.sh "$stashed_zip" "$target" "$ror_version" "$stage_root" "$out_dir"; then
+      echo "ERROR: repackage failed for $module ES $target"
+      return 1
+    fi
+    local zip="${out_dir}/readonlyrest-${ror_version}_es${target}.zip"
+
+    if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${zip}.sha1" "${ror_version}/"; then
+      echo "ERROR: S3 upload failed for $module ES $target"
+      return 1
+    fi
+
+    if [ "$mode" = "release" ]; then
+      if ! release_docker_and_tag "$ror_version" "$target" "$module" "$zip"; then
+        return 1
+      fi
+    fi
+
+    rm -f "$zip" "${zip}.sha1" "${zip}.sha512"
+  done
+
+  # 4) Bound disk at the MODULE boundary (not per version).
+  rm -f "$stashed_zip"
+  rm -rf "${stage_root:?}/"*
+  find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+  return 0
+}
+
+# Release-only: build & push the ES+ROR image for one version from the already-derived zip (so the image
+# build does NOT recompile), then create the git tag. Mirrors the original release_ror_plugin tail.
+release_docker_and_tag() {
+  local ror_version=$1 es_version=$2 module=$3 repackaged_zip=$4
+  local TAG="v${ror_version}_es${es_version}"
+
+  if ! checkTagNotExist "$TAG"; then
+    return 0
+  fi
+
+  if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
+    if ! ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PrepackagedZip=$(cd "$(dirname "$repackaged_zip")" && pwd)/$(basename "$repackaged_zip")" </dev/null; then
+      echo "Failed to publish plugin Docker image for ES $es_version"
+      return 4
+    fi
+  else
+    echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
+  fi
+
+  tag "$TAG"
+}
+
+# Drives a whole generation file through the module-grouped flow, with a per-module retry.
+publish_ror_plugins_grouped() {
+  if [ "$#" -ne 2 ]; then
+    echo "Usage: publish_ror_plugins_grouped <versions file> <upload_pre|release>"
+    return 1
+  fi
+  local versions_file=$1 mode=$2
+  local ror_version
+  ror_version=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+
+  local stage_root out_dir stash_dir
+  stage_root=$(mktemp -d); out_dir=$(mktemp -d); stash_dir=$(mktemp -d)
+
+  local groups
+  groups=$(build_module_groups "$versions_file")
+
+  local line
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    local module base_version
+    module=$(echo "$line" | awk '{print $1}')
+    base_version=$(echo "$line" | awk '{print $2}')
+    local targets
+    read -r -a targets <<< "$(echo "$line" | cut -d' ' -f3-)"
+
+    local attempt
+    for attempt in 1 2 3; do
+      if time publish_module_group "$mode" "$ror_version" "$module" "$base_version" "$stage_root" "$out_dir" "$stash_dir" "${targets[@]}"; then
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        echo "WARN: module $module failed (attempt $attempt/3), retrying after cleanup..."
+        log_disk_usage "before retry cleanup ($module attempt $attempt)"
+        cleanup_docker_and_build
+        log_disk_usage "after retry cleanup ($module attempt $attempt)"
+      else
+        echo "ERROR: module $module failed after 3 attempts"
+        rm -rf "$stage_root" "$out_dir" "$stash_dir"
+        return 1
+      fi
+    done
+  done <<< "$groups"
+
+  rm -rf "$stage_root" "$out_dir" "$stash_dir"
+}
+
 upload_pre_ror_plugins() {
   if [ "$#" -ne 1 ]; then
     echo "What ES versions should I upload pre-plugins for?"
     return 1
   fi
-
-  local ROR_VERSIONS_FILE=$1
-  local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
-
-  while IFS= read -r version; do
-    time upload_pre_ror_plugin "$ROR_VERSION" "$version"
-  done <"$ROR_VERSIONS_FILE"
-}
-
-upload_pre_ror_plugin() {
-  if [ "$#" -ne 2 ]; then
-    echo "What ES and ROR version should I upload pre-plugin for?"
-    return 1
-  fi
-
-  local ROR_VERSION=$1
-  local ES_VERSION=$2
-  local TAG="v${ROR_VERSION}_es${ES_VERSION}"
-
-  echo ""
-  echo "Uploading pre-ROR $ROR_VERSION for ES $ES_VERSION:"
-
-  ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
+  publish_ror_plugins_grouped "$1" "upload_pre"
 }
 
 if [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
@@ -319,74 +465,12 @@ release_ror_plugins() {
     return 1
   fi
 
-  local ROR_VERSIONS_FILE=$1
-  local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
-
-  while IFS= read -r version || [[ -n "$version" ]]; do
-    local attempt
-    for attempt in 1 2 3; do
-      if time release_ror_plugin "$ROR_VERSION" "$version"; then
-        break
-      fi
-      if [ "$attempt" -lt 3 ]; then
-        echo "WARN: release_ror_plugin failed for ES $version (attempt $attempt/3), retrying after cleanup..."
-        log_disk_usage "before retry cleanup (attempt $attempt)"
-        cleanup_docker_and_build
-        log_disk_usage "after retry cleanup (attempt $attempt)"
-      else
-        echo "ERROR: release_ror_plugin failed for ES $version after 3 attempts"
-        return 1
-      fi
-    done
-  done <"$ROR_VERSIONS_FILE"
-}
-
-release_ror_plugin() {
-  if [ "$#" -ne 2 ]; then
-    echo "What ES and ROR version should I release plugin for?"
-    return 1
-  fi
-
-  local ROR_VERSION=$1
-  local ES_VERSION=$2
-
-  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
-    echo "Invalid ES version format. Expected format: X.Y.Z"
-    return 2
-  fi
-
   if ! docker info >/dev/null 2>&1; then
     echo "Docker daemon not running or not logged in"
     return 3
   fi
 
-  local TAG="v${ROR_VERSION}_es${ES_VERSION}"
-
-  echo ""
-  echo "Releasing ROR $ROR_VERSION for ES $ES_VERSION:"
-
-  if checkTagNotExist "$TAG"; then
-
-    if ! ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null; then
-      echo "Failed to publish plugin to S3"
-      return 3
-    fi
-
-    if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}" >/dev/null 2>&1; then
-      if ! ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
-        echo "Failed to publish plugin Docker image"
-        return 4
-      fi
-    else
-      echo "WARN: Skipping building and publishing Elasticsearch image with ROR installed because there was no Elasticsearch image for version: $ES_VERSION found in the docker registry"
-    fi
-
-    tag "$TAG"
-  fi
-
-  # Clean up after every version to prevent disk space exhaustion
-  log_disk_usage "after release of ES $ES_VERSION"
-  cleanup_docker_and_build
+  publish_ror_plugins_grouped "$1" "release"
 }
 
 if [[ $ROR_TASK == "release_es9xx" ]]; then

@@ -30,6 +30,12 @@ def preBuildDockerImageVersion = 'beshultd/elasticsearch-readonlyrest-dev:' + mo
 // Persistent, per-module registry build cache. The fat ROR layer is version-independent, so caching it
 // here lets every patch version of this module reuse it instead of recomputing/re-uploading it.
 def buildCacheRef = 'beshultd/elasticsearch-readonlyrest-dev:buildcache-' + project.name
+// Docker image source zip. Normally the freshly-built module zip; in the module-grouped publishing flow
+// the release docker build is handed a -PrepackagedZip (a per-version zip derived from the module's base
+// build) so the image build reuses that instead of recompiling.
+def dockerImageSourceZip = project.hasProperty('repackagedZip') \
+        ? file(project.property('repackagedZip')) \
+        : layout.buildDirectory.file("distributions/" + pluginFullName + ".zip")
 
 java {
     toolchain {
@@ -132,10 +138,10 @@ tasks.register('uploadRorPluginToS3', Exec) {
 // minus the per-version descriptor. Built once and reused (registry-deduped + buildx-cached) across all
 // of this module's patch versions.
 tasks.register('prepareDockerPayload', Copy) {
-    dependsOn packageRorPlugin
+    if (!project.hasProperty('repackagedZip')) { dependsOn packageRorPlugin }
     outputs.upToDateWhen { false }
 
-    from(zipTree(layout.buildDirectory.file("distributions/" + pluginFullName + ".zip"))) {
+    from(zipTree(dockerImageSourceZip)) {
         exclude 'plugin-descriptor.properties'
     }
     into layout.buildDirectory.dir("docker-image/payload")
@@ -144,10 +150,10 @@ tasks.register('prepareDockerPayload', Copy) {
 // Thin, per-version layer: just plugin-descriptor.properties (ES enforces its elasticsearch.version
 // to equal the node version).
 tasks.register('prepareDockerDescriptor', Copy) {
-    dependsOn packageRorPlugin
+    if (!project.hasProperty('repackagedZip')) { dependsOn packageRorPlugin }
     outputs.upToDateWhen { false }
 
-    from(zipTree(layout.buildDirectory.file("distributions/" + pluginFullName + ".zip"))) {
+    from(zipTree(dockerImageSourceZip)) {
         include 'plugin-descriptor.properties'
     }
     into layout.buildDirectory.dir("docker-image")

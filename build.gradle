@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 import tech.beshu.ror.gradle.RorTaskFinder
+import tech.beshu.ror.gradle.PrintEsModuleMapTask
 
 plugins {
     id 'base'
@@ -49,6 +50,12 @@ tasks.register("publishEsRorDockerImage", RorTaskFinder) {
 tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
     dependsOn it.findRorTaskForEsVersion('pushRorPreBuildDockerImage')
 }
+
+// Emits the ES-version -> module mapping for a generation's version list, so the publishing pipeline
+// can group versions by module (compile each module once, repackage the rest). Reuses the same
+// range-matching logic as the per-version build dispatch above.
+// Usage: ./gradlew printEsModuleMap -PversionsFile=ci/supported-es-versions/es8x.txt -PoutputFile=/tmp/es8x.map
+tasks.register("printEsModuleMap", PrintEsModuleMapTask)
 
 group = 'tech.beshu.ror'
 version = pluginVersion
