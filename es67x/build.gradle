@@ -27,6 +27,9 @@ def moduleEsVersion = project.property('esVersion') != null ? project.property('
 def releaseDockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
 def releaseDockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
 def preBuildDockerImageVersion = 'beshultd/elasticsearch-readonlyrest-dev:' + moduleEsVersion + '-ror-' + pluginVersion
+// Persistent, per-module registry build cache. The fat ROR layer is version-independent, so caching it
+// here lets every patch version of this module reuse it instead of recomputing/re-uploading it.
+def buildCacheRef = 'beshultd/elasticsearch-readonlyrest-dev:buildcache-' + project.name
 
 java {
     toolchain {
@@ -131,38 +134,68 @@ tasks.register('uploadRorPluginToS3', Exec) {
     commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
 }
 
-tasks.register('prepareDockerImageFiles', Copy) {
+// Fat, version-INDEPENDENT layer: the plugin laid out exactly as `elasticsearch-plugin install` would,
+// minus the per-version descriptor. Built once and reused (registry-deduped + buildx-cached) across all
+// of this module's patch versions.
+tasks.register('prepareDockerPayload', Copy) {
     dependsOn packageRorPlugin
     outputs.upToDateWhen { false }
 
+    from(zipTree(layout.buildDirectory.file("distributions/" + pluginFullName + ".zip"))) {
+        exclude 'plugin-descriptor.properties'
+    }
+    into layout.buildDirectory.dir("docker-image/payload")
+}
+
+// Thin, per-version layer: just plugin-descriptor.properties (ES enforces its elasticsearch.version
+// to equal the node version).
+tasks.register('prepareDockerDescriptor', Copy) {
+    dependsOn packageRorPlugin
+    outputs.upToDateWhen { false }
+
+    from(zipTree(layout.buildDirectory.file("distributions/" + pluginFullName + ".zip"))) {
+        include 'plugin-descriptor.properties'
+    }
+    into layout.buildDirectory.dir("docker-image")
+}
+
+tasks.register('prepareDockerImageFiles', Copy) {
+    dependsOn prepareDockerPayload, prepareDockerDescriptor
+    outputs.upToDateWhen { false }
+
     from layout.projectDirectory.file("Dockerfile")
-    from layout.buildDirectory.file("distributions/" + pluginFullName + ".zip")
-    from rootProject.files("docker-image")
+    from(rootProject.files("docker-image")) {
+        exclude 'gosu/**'
+    }
 
     into layout.buildDirectory.dir("docker-image")
 }
 
 tasks.register('pushRorDockerImage', Exec) {
-    dependsOn('packageRorPlugin', 'prepareDockerImageFiles', 'prepareMultiplatformBuilder')
+    dependsOn('prepareDockerImageFiles', 'prepareMultiplatformBuilder')
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
     args = [
-            'buildx', 'build', '--platform', 'linux/amd64',
-            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + moduleEsVersion,
+            '--cache-from', 'type=registry,ref=' + buildCacheRef,
+            '--cache-to', 'type=registry,ref=' + buildCacheRef + ',mode=max',
             '-t', releaseDockerImageLatest, '-t', releaseDockerImageVersion,
             '--push', '.'
     ]
 }
 
 tasks.register('pushRorPreBuildDockerImage', Exec) {
-    dependsOn('packageRorPlugin', 'prepareDockerImageFiles', 'prepareMultiplatformBuilder')
+    dependsOn('prepareDockerImageFiles', 'prepareMultiplatformBuilder')
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
     args = [
-            'buildx', 'build', '--platform', 'linux/amd64',
-            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + moduleEsVersion,
+            '--cache-from', 'type=registry,ref=' + buildCacheRef,
+            '--cache-to', 'type=registry,ref=' + buildCacheRef + ',mode=max',
             '-t', preBuildDockerImageVersion,
             '--push', '.'
     ]
@@ -170,13 +203,13 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
 
 tasks.register('localRorDockerImage', Exec) {
     // we prepare docker image for local architecture - the image is loaded to local registry
-    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
+    dependsOn('prepareDockerImageFiles')
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
     args = [
             'buildx', 'build',
-            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + moduleEsVersion,
             '-t', releaseDockerImageVersion,
             '--load', '.'
     ]

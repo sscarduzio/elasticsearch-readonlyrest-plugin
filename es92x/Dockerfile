@@ -1,9 +1,11 @@
 ARG ES_VERSION
 ARG ROR_VERSION
 
-# gosu is pulled from the one-time, version-independent base image (see docker-image/gosu/Dockerfile)
-# instead of re-running the alpine + GPG download/verify on every per-version build.
-FROM beshultd/elasticsearch-readonlyrest-dev:gosu-1.17 AS gosu
+# gosu is pulled from the upstream, maintainer-authoritative image (tianon == the gosu author; this is a
+# Docker official-images build, multi-arch, binary at /usr/local/bin/gosu). This replaces re-running the
+# alpine + GPG download/verify on every per-version build, with no base image of our own to build/push.
+# Pinned by digest for integrity/reproducibility (1.17 multi-arch index).
+FROM tianon/gosu:1.17@sha256:5591f02c16be4ca3530ac4b517be8fa3bbdb256b13429eea2cc577a47f6da99a AS gosu
 
 FROM docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}
 COPY --from=gosu /usr/local/bin/gosu /usr/local/bin/gosu
