@@ -1,22 +1,19 @@
 steps:
+  # NOTE: IT legs run on the self-hosted 'Default' pool, where the Docker daemon is SHARED across all
+  # agents on the host. An unqualified `docker system prune -af` here would destroy a sibling leg's
+  # in-flight ES containers. So we only ever touch THIS leg's own resources, scoped by the unique
+  # ROR_LEG_ID label (stamped onto every container in EsContainer.scala). Dangling-image/builder prune
+  # is daemon-wide but safe (it can't remove images/layers an in-use container references).
   - bash: |
-      sudo rm -rf /usr/share/dotnet
-      sudo rm -rf /usr/local/lib/android
-      sudo rm -rf /opt/ghc
-      sudo rm -rf /usr/local/.ghcup
-      sudo rm -rf /usr/share/swift
-      sudo rm -rf /usr/local/share/powershell
-      sudo rm -rf /opt/hostedtoolcache
-      sudo rm -rf /usr/share/rust
-      sudo rm -rf /usr/share/miniconda
-      sudo rm -rf /usr/local/share/chromium
-      sudo rm -rf /usr/local/share/chrome_driver
-      sudo rm -rf /opt/pipx
-      docker system prune -af
-      docker builder prune -af
+      echo ">>> reaping any leftover containers for THIS leg id ($ROR_LEG_ID) before start"
+      ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
+      [ -n "$ids" ] && docker rm -f $ids || echo "none"
+      docker image prune -f >/dev/null 2>&1 || true
+      docker builder prune -f >/dev/null 2>&1 || true
       df -h /
-    displayName: 'Free up disk space and clean Docker'
-    target: host
+    displayName: 'Pre-clean this leg''s Docker leftovers (shared-daemon safe)'
+    env:
+      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
   - checkout: self
     fetchDepth: 1
     clean: false
@@ -30,6 +27,7 @@ steps:
       ci/run-pipeline.sh
     env:
       GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
       VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
@@ -40,3 +38,16 @@ steps:
       testRunTitle: "$(ROR_TASK) results"
       testResultsFiles: "**/TEST*xml"
       mergeTestResults: true
+
+  # Reap THIS leg's containers no matter how the job ended (success / failure / cancellation). Azure
+  # runs always() steps within the cancel grace period, so this catches the common supersede-cancel
+  # case. The Abandoned case (agent lost contact, no step runs) is covered by the host timer:
+  # ci/reap-orphan-es-containers.sh on each agent. Scoped by label -> never touches a sibling leg.
+  - bash: |
+      echo ">>> reaping THIS leg's containers ($ROR_LEG_ID) on exit"
+      ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
+      if [ -n "$ids" ]; then docker rm -f $ids; else echo "no leftover containers for $ROR_LEG_ID"; fi
+    displayName: 'Reap this leg''s containers (always)'
+    condition: always()
+    env:
+      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)

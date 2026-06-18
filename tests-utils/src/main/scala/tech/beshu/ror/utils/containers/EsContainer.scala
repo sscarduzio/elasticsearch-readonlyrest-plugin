@@ -94,6 +94,12 @@ abstract class EsContainer(val esVersion: String,
         container.withCreateContainerCmdModifier { cmd =>
           cmd.getHostConfig.withCgroupnsMode("host")
         }
+        // Stamp this leg's id so cleanup can reap ONLY this leg's containers and never a sibling
+        // leg's on the shared self-hosted Docker daemon (see ci/azure-templates/integration-test-
+        // steps.yml + ci/reap-orphan-es-containers.sh). Absent off-CI -> no label, no-op.
+        Option(System.getenv("ROR_LEG_ID")).filter(_.nonEmpty).foreach { legId =>
+          container.withLabel("ror.leg", legId)
+        }
         EsContainerImplementation.Linux(
           esImage = esImage,
           container = container
