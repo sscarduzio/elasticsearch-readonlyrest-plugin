@@ -25,11 +25,11 @@ Action groups are Scala `PatternsMatcher` vals in `KibanaActionMatchers.scala` (
 | rw | full | read only | full | read only | none |
 | ro | non-strict only¹ | read only | full | none | none |
 | ro_strict | read only | read only | none | none | none |
-| api_only² | read only | read only | none | none | none |
+| api_only² | non-strict only² | read only | none | none | none |
 
 ¹ `ro` cannot modify the kibana index in general (`kibanaCanBeModified = false`). It only permits a narrow allow-list of saved-object writes via `isRoNonStrictCase` (step 8) — discover UI state, short URLs, index-pattern/url/config doc updates. It is not full kibana-index write access.
 
-² `api_only` (YAML value `api_only`) is read-only on the kibana index like `ro_strict`, but its semantics are distinct: it couples to `allowed_api_paths` (`KibanaUserDataRuleDecoder.scala`) to gate which ROR/ES API paths the user may call. It is its own `KibanaAccess` value, not an alias of `ro`.
+² `api_only` (YAML value `api_only`) is its own `KibanaAccess` value, not an alias. On the kibana index it behaves like `ro`, **not** `ro_strict`: `kibanaCanBeModified` is false for `RO | ROStrict | ApiOnly`, but step 8 (`isRoNonStrictCase`) is gated by `isAccessOtherThanRoStrictConfigured` (`access =!= ROStrict`) — true for `api_only`, so it CAN reach the narrow non-strict kibana-write allow-branch (discover state / short URLs), which `ro_strict` never can. Its distinct restriction is the `allowed_api_paths` coupling (`KibanaUserDataRuleDecoder.scala`), a separate layer gating which ROR/ES API paths may be called.
 
 Decision tree — `shouldMatch` is a short-circuit OR chain (first match → ALLOW; if none match → REJECT). Order below mirrors `BaseKibanaRule.shouldMatch` exactly:
 
@@ -59,7 +59,7 @@ Code: `FieldsFiltering.scala` (uses `XContentMapValues.filter`, same method as E
 
 ## Correlation ID contract
 
-ROR ES is session-unaware; the `x-ror-correlation-id` request header (`http.scala`) correlates requests. If absent, ROR generates one (a composite string, not a bare UUID — see `RequestContext`). The metadata endpoint (`/_readonlyrest/metadata/user`) echoes the effective ID back as the `correlation_id` **JSON body field** (`MetadataResponse.scala`), NOT as a response header — there is no `x-ror-logging-id`. The ID goes into the audit log. Don't break this contract — Kibana relies on it for session-scoped log correlation.
+ROR ES is session-unaware; the `x-ror-correlation-id` request header (`http.scala`) correlates requests. If absent, ROR generates one as a **bare UUID** (`CorrelationId.random`, `http.scala`). The metadata endpoint (`/_readonlyrest/metadata/user`) echoes that `CorrelationId` back as the `correlation_id` **JSON body field** (`MetadataResponse.scala`), NOT as a response header — there is no `x-ror-logging-id`. Don't confuse it with `RequestContext.Id` (`RequestContext.scala`), the separate internal per-request id of the form `<correlationId>-<hashCode>#<taskId>` used in log output — that composite is NOT what the metadata endpoint returns. The ID goes into the audit log; Kibana relies on this contract for session-scoped log correlation.
 
 ## ROR API endpoints ↔ ES actions
 

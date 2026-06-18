@@ -46,6 +46,8 @@ trigger:
     # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
     # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
     # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
+    # NOTE: the root-level *.md entries are an explicit list (a `*.md` glob would only match root level
+    # anyway in Azure path filters) — keep it in sync if you add a new root-level markdown doc.
     exclude:
       - docs
       - .claude
@@ -72,6 +74,8 @@ pr:
     # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
     # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
     # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
+    # NOTE: the root-level *.md entries are an explicit list (a `*.md` glob would only match root level
+    # anyway in Azure path filters) — keep it in sync if you add a new root-level markdown doc.
     exclude:
       - docs
       - .claude
