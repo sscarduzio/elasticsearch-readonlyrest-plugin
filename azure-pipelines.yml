@@ -341,6 +341,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -373,6 +377,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -431,6 +439,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -479,6 +491,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -505,6 +521,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -535,6 +555,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:

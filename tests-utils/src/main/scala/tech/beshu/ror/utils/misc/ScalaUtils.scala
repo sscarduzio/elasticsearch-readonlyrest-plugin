@@ -103,6 +103,37 @@ object ScalaUtils extends LazyLogging {
     loop(1)
   }
 
+  /**
+   * Run `action` on a daemon thread and abandon it if it does not finish within `timeout`.
+   *
+   * Why this exists: the singleton-ES teardown (cleanUpContainer / container.stop / blocking ES REST
+   * ops) had no time bound, so a WEDGED (not dead) ES could hang the worker JVM forever. On the CI
+   * agent that produced "stopped hearing from agent" leg failures that ran 300+ minutes — 3-4x past
+   * the 120-min job timeout — because nothing ever returned. Bounding each blocking teardown step
+   * here makes a leg self-terminate in minutes instead of hanging for hours.
+   *
+   * On timeout we interrupt the worker thread (best-effort — blocking socket reads may ignore it),
+   * log, and throw so the caller can fail fast / force-kill the container rather than wait forever.
+   */
+  def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
+    val result = new java.util.concurrent.atomic.AtomicReference[Either[Throwable, A]]()
+    val worker = new Thread(() => {
+      result.set(try Right(action) catch { case NonFatal(e) => Left(e) })
+    }, s"timeout-guard-$label")
+    worker.setDaemon(true)
+    worker.start()
+    worker.join(timeout.toMillis)
+    if (worker.isAlive) {
+      worker.interrupt()
+      logger.error(s"'$label' did not complete within $timeout — abandoning it (likely a wedged ES/container call).")
+      throw new java.util.concurrent.TimeoutException(s"'$label' timed out after $timeout")
+    }
+    result.get() match {
+      case Right(a) => a
+      case Left(e) => throw e
+    }
+  }
+
   def retryBackoff[A](source: Task[A],
                       maxRetries: Int,
                       firstDelay: FiniteDuration,

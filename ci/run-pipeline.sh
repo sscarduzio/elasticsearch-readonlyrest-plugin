@@ -2,7 +2,27 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 
-trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
+# On cancel/timeout Azure sends SIGTERM. The old trap just `exit 1`'d, leaving the child gradle
+# process tree + worker JVMs + ES testcontainers RUNNING (detached) — the true cause of the orphan
+# leak and the multi-hour "stopped hearing from agent" hangs. Now we kill the whole child process
+# tree AND force-remove THIS leg's containers (scoped by the ror.leg=$ROR_LEG_ID label so we never
+# touch a sibling leg on the shared self-hosted Docker daemon), then exit.
+GRADLE_PID=""
+terminate() {
+  echo ">>> Termination signal received — killing gradle tree + reaping this leg's containers..."
+  if [ -n "$GRADLE_PID" ]; then
+    # Negative PID = signal the whole process group (gradle + its worker JVMs).
+    kill -TERM -- "-$GRADLE_PID" 2>/dev/null || true
+    sleep 5
+    kill -KILL -- "-$GRADLE_PID" 2>/dev/null || true
+  fi
+  if [ -n "${ROR_LEG_ID:-}" ]; then
+    ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
+    [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
+  fi
+  exit 1
+}
+trap terminate SIGTERM SIGINT
 
 log_disk_usage() {
   local label="${1:-}"
@@ -86,7 +106,18 @@ run_integration_tests() {
   [ -n "$ES_VERSION" ] && gradleArgs+=("-PesVersion=$ES_VERSION")
 
   echo ">>> $ES_MODULE => Running integration tests.."
-  ./gradlew "${gradleArgs[@]}" || (find . | grep hs_err | xargs cat && exit 1)
+  # Run gradle in its OWN process group (setsid) and background it, so the SIGTERM trap above can
+  # signal the entire tree (gradle + worker JVMs) on cancel/timeout instead of leaving it detached.
+  # `wait` lets the trap interrupt the wait and run terminate() promptly.
+  setsid ./gradlew "${gradleArgs[@]}" &
+  GRADLE_PID=$!
+  wait "$GRADLE_PID"
+  local rc=$?
+  GRADLE_PID=""
+  if [ "$rc" -ne 0 ]; then
+    find . | grep hs_err | xargs cat 2>/dev/null || true
+    return "$rc"
+  fi
 }
 
 if [[ $ROR_TASK == "integration_es94x" ]]; then
