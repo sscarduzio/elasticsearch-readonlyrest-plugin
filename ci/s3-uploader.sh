@@ -115,7 +115,9 @@ POLICY
     s=`printf "aws4_request" | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
     s=`printf "$p"           | openssl sha256 -mac HMAC -macopt hexkey:"$s" -hex | awk '{print $NF}'`
 
-    key_and_sig_args="-F X-Amz-Credential=$aws_ak/$today_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date}"
+    # Policy goes here (not the curl line) so it's only sent when we actually signed — an
+    # anonymous upload (empty keys) leaves $p unset and must not send an empty Policy= field.
+    key_and_sig_args="-F X-Amz-Credential=$aws_ak/$today_s/$region/$service/aws4_request -F X-Amz-Algorithm=AWS4-HMAC-SHA256 -F X-Amz-Signature=$s -F X-Amz-Date=${date} -F Policy=$p"
 fi
 
 # Determine upload URL.
@@ -139,9 +141,8 @@ else
 fi
 curl -vvv                       \
     -# -k $CURL_FAIL_FLAGS      \
-    -F key=$targfile            \
+    -F "key=$targfile"          \
     $key_and_sig_args           \
-    -F "Policy=$p"              \
     -F "Content-Type=$mime"     \
     -F "file=@$srcfile"         \
     "$upload_url"
