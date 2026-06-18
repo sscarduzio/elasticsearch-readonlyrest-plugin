@@ -92,10 +92,30 @@ pool:
 
 stages:
 
+  # Cancels stale Azure Pipelines runs for the same PR: closes Azure's at-queue-time autoCancel race
+  # by cancelling older in-progress runs of the same PR (and self-cancelling if a newer run already
+  # exists). Runs FIRST so no agent time / container pull is wasted on a stale run. Only affects
+  # PullRequest runs; branch runs rely on `trigger.batch` and are skipped by the script.
+  - stage: SUPERSEDE_GUARD
+    displayName: 'Cancel stale PR runs'
+    dependsOn: [ ]
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job:
+        displayName: 'Cancel stale PR runs'
+        timeoutInMinutes: 5   # belt-and-suspenders: never let this step itself stall the pipeline
+        steps:
+          - checkout: self
+            fetchDepth: 1
+          - script: ci/stale-azure-pipeline-runs-canceler.sh
+            displayName: 'Cancel older runs for this PR'
+            env:
+              AZURE_BUILDS_API_TOKEN: $(System.AccessToken)
+
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
-    dependsOn: [ ]
-    condition: and(succeeded(), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
+    dependsOn: [ SUPERSEDE_GUARD ]
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
     jobs:
       - job:
         steps:
@@ -126,6 +146,8 @@ stages:
   # JDK/Gradle change (then bump the image tag in the `resources.containers` block above).
   - stage: BUILD_TOOLCHAINS_IMAGE
     displayName: 'Build & push CI toolchains image'
+    # Deliberately NOT gated on SUPERSEDE_GUARD: this stage only fires on Schedule/Manual (never a
+    # PR run, per the condition below), so it can never race a PR supersede — by design.
     dependsOn: [ ]
     condition:
       or(
@@ -159,10 +181,10 @@ stages:
 
   - stage: TOOLCHAINS_VERIFY
     displayName: 'Verify toolchains image'
-    dependsOn: [ ]
+    dependsOn: [ SUPERSEDE_GUARD ]
     condition:
       and(
-        succeeded(),
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         or(
           notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
@@ -190,8 +212,10 @@ stages:
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
+    # SUPERSEDE_GUARD gate: when this PR run is superseded the guard FAILS (exit 1), so the heavy
+    # stages must not run. Succeeded = newest PR run; Skipped = non-PR run (guard didn't apply).
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
         container: ror-toolchains
@@ -241,9 +265,10 @@ stages:
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -280,9 +305,10 @@ stages:
 
   - stage: TEST
     displayName: 'Run all tests'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
