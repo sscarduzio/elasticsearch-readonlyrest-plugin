@@ -120,45 +120,45 @@ function tag {
   return 0
 }
 
-# not used at the moment - it may be needed laterok,
+# Upload a build artifact to the artifact store via plain SigV4 curl (ci/s3-uploader.sh).
+#
+# This is the `upload_using_aws_s3_uploader` we already had — now able to target the DGP proxy too.
+# ROR_ARTIFACTS_STORE_URL_OR_REGION may be EITHER an AWS region (e.g. eu-west-1, virtual-hosted
+# s3.amazonaws.com) OR an http(s) URL — the DGP endpoint, which lets clients speak pure S3 and does
+# delta compression server-side. URL => pass it to s3-uploader.sh as S3_ENDPOINT_URL (path-style);
+# region => use the bucket@region form as before. The only thing that changed vs the old function is
+# dropping the "URL endpoints not supported" guard and wiring S3_ENDPOINT_URL.
+#
+# This replaces the deltaglider-CLI uploader, which bind-mounted the artifact at /tmp/<name> and ran
+# `beshultd/deltaglider:6.1.1 cp` — that image hardcodes /tmp as its working dir, so the mount
+# collided and cp died with "[Errno 21] Is a directory" (build 10482, ROR 1.70.2). No CLI / docker /
+# /tmp now.
 function upload_using_aws_s3_uploader {
-  LOCAL_FILE="$1"
-  S3_PATH="$2"
-
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_aws_s3_uploader does not support URL endpoints; set ROR_ARTIFACTS_STORE_URL_OR_REGION to a region name (e.g. eu-west-1)"
-    exit 1
-  fi
-
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
-  REGION="${STORE_ADDR:-us-east-1}"
-  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
-  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  "$CI_DIR"/s3-uploader.sh "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
-}
-
-function upload_using_deltaglider_uploader {
-  LOCAL_FILE="$1"
+  local LOCAL_FILE="$1"
+  local S3_PATH STORE_ADDR BUCKET PATH_PREFIX
   S3_PATH=$(echo "$2" | sed 's:/*$::')
-  FILE_NAME=$(basename "$LOCAL_FILE")
 
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ ! "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_deltaglider_uploader requires a URL endpoint; set ROR_ARTIFACTS_STORE_URL_OR_REGION to an http(s):// URL"
+  if [[ ! -f "$LOCAL_FILE" ]]; then
+    echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
     exit 1
   fi
 
+  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
   BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
   PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  DELTA_GLIDER_VERSION="6.1.1"
 
-  docker run --rm \
-    -e AWS_ENDPOINT_URL=$STORE_ADDR \
-    -e AWS_ACCESS_KEY_ID=$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET \
-    -v "$LOCAL_FILE":"/tmp/$FILE_NAME":ro \
-    beshultd/deltaglider:$DELTA_GLIDER_VERSION \
-    cp "/tmp/$FILE_NAME" "s3://$BUCKET/${PATH_PREFIX}${S3_PATH}/${FILE_NAME}"
+  if [[ "$STORE_ADDR" =~ ^https?:// ]]; then
+    # DGP (or any S3-compatible) endpoint: path-style addressing via S3_ENDPOINT_URL.
+    S3_ENDPOINT_URL="$STORE_ADDR" \
+      "$CI_DIR"/s3-uploader.sh \
+        "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" \
+        "$BUCKET" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
+  else
+    # AWS region: virtual-hosted bucket@region (s3-uploader.sh defaults to s3.amazonaws.com).
+    local REGION="${STORE_ADDR:-us-east-1}"
+    "$CI_DIR"/s3-uploader.sh \
+      "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" \
+      "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
+  fi
 }
