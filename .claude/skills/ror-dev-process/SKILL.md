@@ -18,7 +18,7 @@ Source of truth: `beshu-tech/readonlyrest-internal/development_guide.md`. This s
   - `🐞**Fix** (KBN) fix crash in error handling`
 - Pipelines must pass. Set the next pre-version before opening the PR.
 - PRs are squash-and-merged into `develop`; `master` carries stable versions only (mechanics: see the `ror-release` skill; internal architecture: `ror-internals`).
-- New ES version support: PR must come from the main repo (not a fork — `ES_S3_UP` needs S3 credentials); add the version to `ci/upload-es-artifacts.sh`.
+- New ES version support: PR must come from the main repo (not a fork — `ES_S3_UP` needs S3 credentials). The step that actually gates CI build/test is `ci/supported-es-versions/es{N}x.txt` (read by `ci/run-pipeline.sh`) — NOT `ci/upload-es-artifacts.sh` (a separate, all-commented manual upload step). Full checklist: `ror-release` skill, "Supporting a new ES version".
 
 ## Review culture (the core rule)
 

@@ -50,7 +50,7 @@ Note: `indices:data/write/*` is **not** blanket-rejected — it's allowed via st
 
 ## FLS (fields rule) engines
 
-Code: `FieldsFiltering.scala` (uses `XContentMapValues.filter`, same method as ES source filtering); strategy resolution in the fields rule.
+Code: `FieldsFiltering.scala` — per ES-version module, e.g. `es94x/src/main/scala/tech/beshu/ror/es/handler/response/FieldsFiltering.scala` (NOT `core/`; uses `XContentMapValues.filter`, same method as ES source filtering). The strategy types (`FlsAtLuceneLevelApproach`, `BasedOnBlockContextOnly`, `RequestFieldsUsage`) live in `core/.../domain/elasticsearch.scala`; strategy resolution is in the fields rule.
 
 - Engines: `es_with_lucene` (default — ES handles, lucene fallback), `es` (no fallback), and a **hidden, undocumented `lucene` engine**: full old-style lucene handling, kept as an emergency escape hatch when the ES-level path has a bug. Never remove it; never document it publicly.
 - Request field usage trifurcation (`RequestFieldsUsage`): `NotUsingFields` (best case), `UsingFields` (extractable → not-allowed fields get obfuscated, e.g. `field1` → `field1_ROR_12Xb593a24`), `CannotExtractFields` (query_string, function_score, wildcards, scripts — no way to enumerate fields → must fall back to lucene).
