@@ -7,15 +7,15 @@ source "$(dirname "$0")/ci-lib.sh"
 # leak and the multi-hour "stopped hearing from agent" hangs. Now we kill the whole child process
 # tree AND force-remove THIS leg's containers (scoped by the ror.leg=$ROR_LEG_ID label so we never
 # touch a sibling leg on the shared self-hosted Docker daemon), then exit.
-GRADLE_PID=""
+GRADLE_PIDS=""   # space-separated PIDs of in-flight gradle process-group leaders (1 per shard)
 terminate() {
-  echo ">>> Termination signal received — killing gradle tree + reaping this leg's containers..."
-  if [ -n "$GRADLE_PID" ]; then
+  echo ">>> Termination signal received — killing gradle tree(s) + reaping this leg's containers..."
+  for pid in $GRADLE_PIDS; do
     # Negative PID = signal the whole process group (gradle + its worker JVMs).
-    kill -TERM -- "-$GRADLE_PID" 2>/dev/null || true
-    sleep 5
-    kill -KILL -- "-$GRADLE_PID" 2>/dev/null || true
-  fi
+    kill -TERM -- "-$pid" 2>/dev/null || true
+  done
+  sleep 5
+  for pid in $GRADLE_PIDS; do kill -KILL -- "-$pid" 2>/dev/null || true; done
   if [ -n "${ROR_LEG_ID:-}" ]; then
     ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
     [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
@@ -102,22 +102,45 @@ run_integration_tests() {
   fi
 
   ES_MODULE=$1
-  local gradleArgs=("--no-daemon" "ror-tools:test" "integration-tests:test" "-PesModule=$ES_MODULE")
-  [ -n "$ES_VERSION" ] && gradleArgs+=("-PesVersion=$ES_VERSION")
+  local shardCount="${IT_SHARD_COUNT:-1}"
+  local esArgs=("-PesModule=$ES_MODULE")
+  [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
-  echo ">>> $ES_MODULE => Running integration tests.."
-  # Run gradle in its OWN process group (setsid) and background it, so the SIGTERM trap above can
-  # signal the entire tree (gradle + worker JVMs) on cancel/timeout instead of leaving it detached.
-  # `wait` lets the trap interrupt the wait and run terminate() promptly.
-  setsid ./gradlew "${gradleArgs[@]}" &
-  GRADLE_PID=$!
-  wait "$GRADLE_PID"
-  local rc=$?
-  GRADLE_PID=""
-  if [ "$rc" -ne 0 ]; then
-    find . | grep hs_err | xargs cat 2>/dev/null || true
-    return "$rc"
-  fi
+  echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests in ${shardCount} shard(s).."
+
+  # Each gradle invocation runs in its OWN process group (setsid) so the SIGTERM trap can reap the
+  # whole tree on cancel/timeout. Sets LAST_PID (not stdout — gradle output owns stdout).
+  LAST_PID=""
+  run_one() {  # args: <project-cache-dir> <gradle args...>
+    local cache="$1"; shift
+    setsid ./gradlew --no-daemon --project-cache-dir="$cache" "$@" &
+    LAST_PID=$!; GRADLE_PIDS="$GRADLE_PIDS $LAST_PID"
+  }
+
+  # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the leg). Separate so it can't be confused
+  #    with integration-tests timing.
+  run_one ".gradle/rt" ror-tools:test; local rt_pid=$LAST_PID
+  wait "$rt_pid"; local rc=$?
+  GRADLE_PIDS="${GRADLE_PIDS/ $rt_pid/}"
+  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
+
+  # 2) Build the singleton ES image ONCE before the parallel shards (avoids concurrent build race).
+  run_one ".gradle/pb" integration-tests:prebuildEsImage "${esArgs[@]}"; local pb_pid=$LAST_PID
+  wait "$pb_pid"; rc=$?
+  GRADLE_PIDS="${GRADLE_PIDS/ $pb_pid/}"
+  if [ "$rc" -ne 0 ]; then return "$rc"; fi
+
+  # 3) integration-tests:test — K shards in PARALLEL on this agent. Each is a separate JVM => its own
+  #    singleton ES container, running a disjoint suite subset (name-hash mod K, see build.gradle).
+  local pids="" idx
+  for idx in $(seq 0 $((shardCount - 1))); do
+    run_one ".gradle/sh$idx" integration-tests:test "${esArgs[@]}" \
+      -PshardCount="$shardCount" -PshardIndex="$idx"
+    pids="$pids $LAST_PID"
+  done
+  rc=0
+  for p in $pids; do wait "$p" || rc=$?; GRADLE_PIDS="${GRADLE_PIDS/ $p/}"; done
+  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 }
 
 if [[ $ROR_TASK == "integration_es94x" ]]; then

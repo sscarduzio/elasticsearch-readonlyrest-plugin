@@ -67,7 +67,38 @@ test {
         def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
         if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
 
-        filter { includeTestsMatching 'tech.beshu.ror.integration.suites.*' }
+        // SHARDING: each `integration-tests:test` invocation is ONE worker JVM with its OWN singleton
+        // ES (separate process => separate AtomicReference latch => separate ES container). Running K
+        // invocations over DISJOINT suite subsets is the only way to get K real fork JVMs on an agent:
+        // Gradle's JUnit-Platform processor collects ALL classes and runs the Launcher ONCE per worker,
+        // so maxParallelForks/forkEvery can't split the scalatest engine's single work unit
+        // (gradle/gradle#8632). We partition the INPUT instead. Deterministic name-hash mod K:
+        // stable, auto-balances, zero maintenance as suites are added. shardCount=1 => run everything.
+        def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
+        def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
+        filter {
+            if (shardCount > 1) {
+                def matched = 0
+                test.testClassesDirs.asFileTree.matching {
+                    include 'tech/beshu/ror/integration/suites/**/*Suite.class'
+                    exclude '**/*$*.class'   // skip nested/companion classes
+                }.visit { fd ->
+                    if (!fd.directory) {
+                        def fqcn = fd.path.replace('/', '.').replaceAll(/\.class$/, '')
+                        if (Math.floorMod(fqcn.hashCode(), shardCount) == shardIndex) {
+                            includeTestsMatching fqcn
+                            matched++
+                        }
+                    }
+                }
+                if (matched == 0) {
+                    throw new GradleException("Shard ${shardIndex}/${shardCount} matched 0 suites — check shardCount/shardIndex.")
+                }
+                logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${matched} suites")
+            } else {
+                includeTestsMatching 'tech.beshu.ror.integration.suites.*'
+            }
+        }
         // Gradle-native test machinery (replaces maiflai's one-JVM runner); ScalaTest tags map to JUnit tags.
         useJUnitPlatform {
             includeEngines 'scalatest'
@@ -83,7 +114,7 @@ test {
             throw new GradleException(
                 "junit.jupiter.execution.parallel.enabled=true is unsupported for integration-tests: " +
                 "the scalatest engine ignores it and the singleton ES requires serial-within-JVM execution. " +
-                "Use IT_MAX_PARALLEL_FORKS to parallelise across worker JVMs instead.")
+                "Use -PshardCount/-PshardIndex to parallelise across separate worker JVMs instead.")
         }
     }
     outputs.upToDateWhen { false }
@@ -93,19 +124,16 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-    // Real worker JVMs, each with its own TestNetwork.perJvm + singleton ES.
-    // 1 fork/leg: a 2nd fork's ES-bootstrap + RAM/IO contention cancels the parallelism gain on the
-    // shared self-hosted box (measured 2026-06; es90x 1h3m @2-fork vs ~40min @1). Cross-leg
-    // parallelism is the agent count, not forks. IT_MAX_PARALLEL_FORKS overrides; Windows = 1.
-    def forkOverride = System.getenv('IT_MAX_PARALLEL_FORKS')
-    // 1 fork/leg. Re-measured 2026-06-19 on a clean box: forks=2 didn't even materialize a 2nd test
-    // executor at runtime (singleton-ES model serializes within the JVM) and throughput cratered
-    // (0 legs done in 24min, scheduler double-dispatched a leg). Intra-agent forking is a dead end
-    // here; cross-leg parallelism is the agent count. IT_MAX_PARALLEL_FORKS overrides; Windows = 1.
-    maxParallelForks = forkOverride?.trim() ? Math.max(1, forkOverride.trim().toInteger()) : 1
-    // forks == max concurrent ES instances; logged loud (quiet() survives -q) so it's never a mystery.
-    logger.quiet(">>> integration-tests maxParallelForks=${maxParallelForks} (== max concurrent ES instances, override=${forkOverride ?: 'none'})")
-    // Per WORKER JVM (Gradle's 512m default is too small): 2g heap + ~1.2g ES container per fork.
+    // ALWAYS 1 worker JVM per invocation. maxParallelForks is intentionally NOT the parallelism lever:
+    // Gradle's JUnit-Platform processor collects all classes into one Launcher run, so a 2nd fork never
+    // gets work (gradle/gradle#8632) — verified 2026-06-19 (forks=2 -> still 1 test executor). Intra-
+    // agent parallelism comes from running multiple SHARDED invocations (see -PshardCount above), each
+    // its own JVM + own ES container. So here, exactly one.
+    maxParallelForks = 1
+    // Logged loud (quiet() survives -q) so the per-JVM fork count is never a mystery. Parallelism is
+    // sharding (multiple invocations), not maxParallelForks — see the SHARDING note above.
+    logger.quiet(">>> integration-tests maxParallelForks=${maxParallelForks} (1 ES/JVM; parallelism via -PshardCount)")
+    // Per WORKER JVM (Gradle's 512m default is too small): 2g heap + ~1.2g ES container.
     maxHeapSize = '2g'
 }
 
