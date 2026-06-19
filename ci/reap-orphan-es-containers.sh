@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 #
-# Reap orphaned testcontainers ES containers on a self-hosted CI agent.
+# Reap orphaned testcontainers ES containers AND orphaned Gradle test JVMs on a self-hosted CI agent.
+# The host MUST be able to self-heal: Azure can zombify legs in ways no in-job hook catches —
+# Abandoned legs, supersede churn, manual UI cancels, and cancel-livelocks where the server marks a
+# build cancelling but the signal never reaches the agent (its JVMs keep running). This timer-driven
+# reaper is the host-side last line of defense so clicking around in Azure can't drift the box to 100%
+# disk / load spiral.
 #
 # WHY: when Azure hard-cancels / Abandons an IT leg (agent loses contact under load), the Gradle
 # worker JVM is SIGKILLed before any in-job cleanup or JVM shutdown hook runs, and Ryuk may die in
@@ -39,6 +44,23 @@ while read -r id created; do
 done < <(docker ps -aq --filter "label=org.testcontainers=true" \
            | xargs -r docker inspect -f '{{.Id}} {{.Created}}' 2>/dev/null)
 
+# Reap orphaned Gradle test JVMs (worker + wrapper) whose leg is surely over. A leg JVM older than
+# the max leg time can only be a leftover from a killed/cancelled/abandoned leg whose process tree
+# outlived the Azure job — these eat CPU/RAM/disk and (the 2026-06-19 incident) survive even an
+# agent-service stop or a manual Azure cancel that never reached the agent. Containers-only reaping
+# missed them. Age-gated by process elapsed seconds so a live leg (always younger) is never killed.
+reap_age_sec=$(( REAP_MIN_AGE_MIN * 60 ))
+jvm_reaped=0
+for pid in $(pgrep -f 'GradleWorkerMain|GradleWrapperMain|GradleDaemon' 2>/dev/null); do
+  ets=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' '); [ -z "$ets" ] && continue
+  if [ "$ets" -ge "$reap_age_sec" ]; then
+    echo ">>> reaping orphan gradle JVM pid $pid (age $((ets/60))m >= ${REAP_MIN_AGE_MIN}m)"
+    # Kill the whole process group (-pid) so worker children die too; SIGKILL — it's already orphaned.
+    kill -KILL -- "-$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+    jvm_reaped=$((jvm_reaped+1))
+  fi
+done
+
 # Reclaim disk from leaked ES images. Each build bakes a content-hashed `ror-it-es:<hash>` image;
 # they're TAGGED (not dangling) so plain `image prune -f` misses them and they pile up until the disk
 # fills (observed: 180-200 images, 766G, agents at 100% -> every leg fails "No space left on
@@ -49,7 +71,7 @@ docker image prune -af --filter "until=${REAP_IMAGE_MAX_AGE:-180m}" >/dev/null 2
 docker image prune -f   >/dev/null 2>&1 || true   # leftover dangling layers
 docker builder prune -f >/dev/null 2>&1 || true
 
-echo ">>> reap complete: ${reaped} orphan container(s) removed (threshold ${REAP_MIN_AGE_MIN}m); images pruned"
+echo ">>> reap complete: ${reaped} orphan container(s) + ${jvm_reaped} orphan gradle JVM(s) removed (threshold ${REAP_MIN_AGE_MIN}m); images pruned"
 
 # ---------------------------------------------------------------------------------------------------
 # systemd install (run inside each az-ror-es-* agent container, or once on the host if daemon shared):
