@@ -8,6 +8,11 @@ steps:
       echo ">>> reaping any leftover containers for THIS leg id ($ROR_LEG_ID) before start"
       ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
       [ -n "$ids" ] && docker rm -f $ids || echo "none"
+      # Reclaim disk: leaked ror-it-es:<hash> images are TAGGED so plain dangling-prune misses them and
+      # they fill /home (agents hit 100% -> "No space left on device" fails every leg). Prune images
+      # UNUSED by a running container + older than 180m (> longest leg, so a sibling's in-flight image
+      # is never removed). Safe on the shared daemon.
+      docker image prune -af --filter "until=180m" >/dev/null 2>&1 || true
       docker image prune -f >/dev/null 2>&1 || true
       docker builder prune -f >/dev/null 2>&1 || true
       df -h /

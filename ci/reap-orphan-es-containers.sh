@@ -19,7 +19,8 @@
 #
 set -euo pipefail
 
-REAP_MIN_AGE_MIN="${REAP_MIN_AGE_MIN:-130}"   # minutes; must be > the 120m IT job timeout
+REAP_MIN_AGE_MIN="${REAP_MIN_AGE_MIN:-130}"        # minutes; must be > the 120m IT job timeout
+REAP_IMAGE_MAX_AGE="${REAP_IMAGE_MAX_AGE:-180m}"   # prune unused ES images older than this (> longest leg)
 now_epoch=$(date +%s)
 reaped=0
 
@@ -38,11 +39,17 @@ while read -r id created; do
 done < <(docker ps -aq --filter "label=org.testcontainers=true" \
            | xargs -r docker inspect -f '{{.Id}} {{.Created}}' 2>/dev/null)
 
-# Dangling images/build cache left by removed ES image builds (safe: never removes in-use layers).
-docker image prune -f   >/dev/null 2>&1 || true
+# Reclaim disk from leaked ES images. Each build bakes a content-hashed `ror-it-es:<hash>` image;
+# they're TAGGED (not dangling) so plain `image prune -f` misses them and they pile up until the disk
+# fills (observed: 180-200 images, 766G, agents at 100% -> every leg fails "No space left on
+# device"). `image prune -af --filter until=` removes any image UNUSED by a running container and
+# older than the window, so a live build's own freshly-built image (younger than the window, or
+# in-use) is never touched. Window > the longest leg so a slow leg can't have its image yanked.
+docker image prune -af --filter "until=${REAP_IMAGE_MAX_AGE:-180m}" >/dev/null 2>&1 || true
+docker image prune -f   >/dev/null 2>&1 || true   # leftover dangling layers
 docker builder prune -f >/dev/null 2>&1 || true
 
-echo ">>> reap complete: ${reaped} orphan container(s) removed (threshold ${REAP_MIN_AGE_MIN}m)"
+echo ">>> reap complete: ${reaped} orphan container(s) removed (threshold ${REAP_MIN_AGE_MIN}m); images pruned"
 
 # ---------------------------------------------------------------------------------------------------
 # systemd install (run inside each az-ror-es-* agent container, or once on the host if daemon shared):
