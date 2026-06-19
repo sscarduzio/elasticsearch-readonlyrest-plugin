@@ -98,7 +98,9 @@ test {
     // shared self-hosted box (measured 2026-06; es90x 1h3m @2-fork vs ~40min @1). Cross-leg
     // parallelism is the agent count, not forks. IT_MAX_PARALLEL_FORKS overrides; Windows = 1.
     def forkOverride = System.getenv('IT_MAX_PARALLEL_FORKS')
-    maxParallelForks = forkOverride?.trim() ? Math.max(1, forkOverride.trim().toInteger()) : 1
+    // ponytail: temporary EXPERIMENT — 2 forks/leg to re-measure intra-agent parallelism on a clean
+    // box (disk-leak now fixed). Revert to 1 if it doesn't beat the ~40min/leg baseline.
+    maxParallelForks = forkOverride?.trim() ? Math.max(1, forkOverride.trim().toInteger()) : 2
     // forks == max concurrent ES instances; logged loud (quiet() survives -q) so it's never a mystery.
     logger.quiet(">>> integration-tests maxParallelForks=${maxParallelForks} (== max concurrent ES instances, override=${forkOverride ?: 'none'})")
     // Per WORKER JVM (Gradle's 512m default is too small): 2g heap + ~1.2g ES container per fork.
