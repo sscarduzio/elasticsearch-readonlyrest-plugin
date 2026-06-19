@@ -110,32 +110,37 @@ run_integration_tests() {
 
   # Each gradle invocation runs in its OWN process group (setsid) so the SIGTERM trap can reap the
   # whole tree on cancel/timeout. Sets LAST_PID (not stdout — gradle output owns stdout).
+  # IMPORTANT: do NOT give shards separate --project-cache-dirs. K invocations each with their own
+  # cache dir all rebuild the shared :build-base / :buildSrc outputs CONCURRENTLY into the same
+  # build/ dir -> race -> ':build-base:generatePluginAdapters FAILED' (root cause of the 10502 leg
+  # failures). Shards share the default project cache so Gradle's own file-locking serializes the
+  # build-base build while still running the tests in parallel across separate worker JVMs.
   LAST_PID=""
-  run_one() {  # args: <project-cache-dir> <gradle args...>
-    local cache="$1"; shift
-    setsid ./gradlew --no-daemon --project-cache-dir="$cache" "$@" &
+  run_one() {  # args: <gradle args...>
+    setsid ./gradlew --no-daemon "$@" &
     LAST_PID=$!; GRADLE_PIDS="$GRADLE_PIDS $LAST_PID"
   }
 
-  # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the leg). Separate so it can't be confused
-  #    with integration-tests timing.
-  run_one ".gradle/rt" ror-tools:test; local rt_pid=$LAST_PID
+  # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the leg). Also warms :build-base/:buildSrc.
+  run_one ror-tools:test; local rt_pid=$LAST_PID
   wait "$rt_pid"; local rc=$?
   GRADLE_PIDS="${GRADLE_PIDS/ $rt_pid/}"
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 
-  # 2) Build the singleton ES image ONCE before the parallel shards (avoids concurrent build race).
-  run_one ".gradle/pb" integration-tests:prebuildEsImage "${esArgs[@]}"; local pb_pid=$LAST_PID
+  # 2) Build the singleton ES image ONCE + compile test classes before the parallel shards, so every
+  #    shared/non-test build output (build-base, buildSrc, test classes, ES image) is up-to-date and
+  #    the K parallel shards do NO shared build work — only run their disjoint test subset.
+  run_one integration-tests:prebuildEsImage integration-tests:testClasses "${esArgs[@]}"; local pb_pid=$LAST_PID
   wait "$pb_pid"; rc=$?
   GRADLE_PIDS="${GRADLE_PIDS/ $pb_pid/}"
   if [ "$rc" -ne 0 ]; then return "$rc"; fi
 
-  # 3) integration-tests:test — K shards in PARALLEL on this agent. Each is a separate JVM => its own
-  #    singleton ES container, running a disjoint suite subset (name-hash mod K, see build.gradle).
+  # 3) integration-tests:test — K shards in PARALLEL on this agent (shared cache; see note above).
+  #    Each is a separate JVM => its own singleton ES container, running a disjoint suite subset
+  #    (name-hash mod K, see build.gradle). With everything pre-built, no shard rebuilds shared output.
   local pids="" idx
   for idx in $(seq 0 $((shardCount - 1))); do
-    run_one ".gradle/sh$idx" integration-tests:test "${esArgs[@]}" \
-      -PshardCount="$shardCount" -PshardIndex="$idx"
+    run_one integration-tests:test "${esArgs[@]}" -PshardCount="$shardCount" -PshardIndex="$idx"
     pids="$pids $LAST_PID"
   done
   rc=0
