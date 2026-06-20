@@ -353,12 +353,7 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es94x:
-              ROR_TASK: integration_es94x
-            IT_es92x:
-              ROR_TASK: integration_es92x
-            IT_es91x:
-              ROR_TASK: integration_es91x
+            # EXPERIMENT: single-leg only (shardCount A/B). Revert this matrix before merge.
             IT_es90x:
               ROR_TASK: integration_es90x
 
@@ -389,38 +384,7 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es818x:
-              ROR_TASK: integration_es818x
-            IT_es816x:
-              ROR_TASK: integration_es816x
-            IT_es815x:
-              ROR_TASK: integration_es815x
-            IT_es814x:
-              ROR_TASK: integration_es814x
-            IT_es813x:
-              ROR_TASK: integration_es813x
-            IT_es812x:
-              ROR_TASK: integration_es812x
-            IT_es811x:
-              ROR_TASK: integration_es811x
-            IT_es810x:
-              ROR_TASK: integration_es810x
-            IT_es89x:
-              ROR_TASK: integration_es89x
-            IT_es88x:
-              ROR_TASK: integration_es88x
-            IT_es87x:
-              ROR_TASK: integration_es87x
-            IT_es85x:
-              ROR_TASK: integration_es85x
-            IT_es84x:
-              ROR_TASK: integration_es84x
-            IT_es83x:
-              ROR_TASK: integration_es83x
-            IT_es82x:
-              ROR_TASK: integration_es82x
-            IT_es81x:
-              ROR_TASK: integration_es81x
+            # EXPERIMENT: single-leg only (shardCount A/B — THIS is the measured leg). Revert before merge.
             IT_es80x:
               ROR_TASK: integration_es80x
 
@@ -451,32 +415,9 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
+            # EXPERIMENT: single-leg only (shardCount A/B). Revert before merge.
             IT_es717x:
               ROR_TASK: integration_es717x
-            IT_es716x:
-              ROR_TASK: integration_es716x
-            IT_es714x:
-              ROR_TASK: integration_es714x
-            IT_es711x:
-              ROR_TASK: integration_es711x
-            IT_es710x:
-              ROR_TASK: integration_es710x
-            IT_es79x:
-              ROR_TASK: integration_es79x
-            IT_es78x:
-              ROR_TASK: integration_es78x
-            IT_es77x:
-              ROR_TASK: integration_es77x
-            IT_es74x:
-              ROR_TASK: integration_es74x
-            IT_es73x:
-              ROR_TASK: integration_es73x
-            IT_es72x:
-              ROR_TASK: integration_es72x
-            IT_es70x:
-              ROR_TASK: integration_es70x
-            IT_es67x:
-              ROR_TASK: integration_es67x
 
 #######################################################
 ##### Integration tests for ES 9.x on PRs
