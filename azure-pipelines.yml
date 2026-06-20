@@ -31,43 +31,11 @@ variables:
   # container jobs and never leak to the bare Windows jobs (which use a workspace-local GRADLE_USER_HOME).
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
 
-trigger:
-  # Coalesce rapid pushes into one run (Azure has no auto-cancel for branch runs).
-  batch: true
-  branches:
-    include:
-      - master
-      - develop
-      - 'epic/*'
-      - '*/epic/*'
-  tags:
-    exclude:
-      - '*'
-  paths:
-    include:
-      - '*'
-    exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
-
-pr:
-  # A new commit cancels the prior in-progress PR run instead of stacking another
-  # full run on the queue (GitHub default; set explicitly so it is version-controlled).
-  autoCancel: true
-  branches:
-    include:
-      - master
-      - develop
-      - 'epic/*'
-      - '*/epic/*'
-  paths:
-    include:
-      - '*'
-    exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
+# EXPERIMENT: no auto-triggers — every push to this branch would otherwise fire a
+# refs/pull/1263/merge PR build that competes for the single pinned agent. We trigger
+# the shard A/B explicitly via API, so one push == zero auto-builds. REVERT before merge.
+trigger: none
+pr: none
 
 # Scheduled rebuild of the CI toolchains image (BUILD_TOOLCHAINS_IMAGE only; every other stage is
 # gated on Build.Reason != 'Schedule'). Keeps the baked Gradle cache fresh without manual action:
@@ -294,68 +262,6 @@ stages:
         )
       )
     jobs:
-####################################
-##### Unit tests
-####################################
-      - job: UNIT
-        condition:
-          and(
-            succeeded(),
-            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
-          )
-        displayName: 'Unit tests'
-        container: ror-toolchains
-        timeoutInMinutes: 30
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              ROR_TASK: core_tests
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
-
-#######################################################
-##### Integration tests for ES 9.x on master/develop
-#######################################################
-      - job:
-        # Linux IT legs run on the self-hosted pool (ryzen). Windows legs stay on Microsoft-hosted
-        # (fixed ES ports + no self-hosted Windows agents). Fork count is resource-aware per agent.
-        pool:
-          name: 'Default'
-        condition:
-          and(
-            succeeded(),
-            or(
-              eq(variables.isEpicBranchOrPr, true),
-              eq(variables.isDevelop, true),
-              eq(variables.isMaster, true),
-              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
-            )
-          )
-        container: ror-toolchains
-        timeoutInMinutes: 120
-        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
-        # kills the gradle process tree + reaps this leg's containers within this window. Without a
-        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
-        cancelTimeoutInMinutes: 5
-        steps:
-          - template: ci/azure-templates/integration-test-steps.yml
-        strategy:
-          maxParallel: 99
-          matrix:
-            # EXPERIMENT: single-leg only (shardCount A/B). Revert this matrix before merge.
-            IT_es90x:
-              ROR_TASK: integration_es90x
 
 #######################################################
 ##### Integration tests for ES 8.x on master/develop
@@ -388,39 +294,6 @@ stages:
             IT_es80x:
               ROR_TASK: integration_es80x
 
-#######################################################
-##### Integration tests for ES <= 7.x on master/develop
-#######################################################
-      - job:
-        pool:
-          name: 'Default'
-        condition:
-          and(
-            succeeded(),
-            or(
-              eq(variables.isEpicBranchOrPr, true),
-              eq(variables.isDevelop, true),
-              eq(variables.isMaster, true),
-              and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
-            )
-          )
-        container: ror-toolchains
-        timeoutInMinutes: 120
-        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
-        # kills the gradle process tree + reaps this leg's containers within this window. Without a
-        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
-        cancelTimeoutInMinutes: 5
-        steps:
-          - template: ci/azure-templates/integration-test-steps.yml
-        strategy:
-          maxParallel: 99
-          matrix:
-            # EXPERIMENT: single-leg only (shardCount A/B). Revert before merge.
-            IT_es717x:
-              ROR_TASK: integration_es717x
-
-#######################################################
-##### Integration tests for ES 9.x on PRs
 #######################################################
       - job:
         pool:
