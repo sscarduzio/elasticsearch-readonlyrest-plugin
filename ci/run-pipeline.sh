@@ -7,19 +7,17 @@ source "$(dirname "$0")/ci-lib.sh"
 # leak and the multi-hour "stopped hearing from agent" hangs. Now we kill the whole child process
 # tree AND force-remove THIS leg's containers (scoped by the ror.leg=$ROR_LEG_ID label so we never
 # touch a sibling leg on the shared self-hosted Docker daemon), then exit.
-GRADLE_PIDS=""   # space-separated PIDs of in-flight gradle process-group leaders (1 per shard)
+# PIDs of in-flight gradle process-group leaders (1 per shard). An ARRAY, not a space-joined string:
+# string find-replace pruning (`${x/ $pid/}`) can corrupt `123` vs `1234`. We never prune — `kill`
+# on an already-dead PID is a harmless no-op, so the trap just signals every PID it ever launched.
+GRADLE_PIDS=()
 terminate() {
   echo ">>> Termination signal received — killing gradle tree(s) + reaping this leg's containers..."
-  for pid in $GRADLE_PIDS; do
-    # Negative PID = signal the whole process group (gradle + its worker JVMs).
-    kill -TERM -- "-$pid" 2>/dev/null || true
-  done
+  # Negative PID = signal the whole process group (gradle + its worker JVMs).
+  for pid in "${GRADLE_PIDS[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
   sleep 5
-  for pid in $GRADLE_PIDS; do kill -KILL -- "-$pid" 2>/dev/null || true; done
-  if [ -n "${ROR_LEG_ID:-}" ]; then
-    ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
-    [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
-  fi
+  for pid in "${GRADLE_PIDS[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
+  reap_leg_containers
   exit 1
 }
 trap terminate SIGTERM SIGINT
@@ -115,24 +113,25 @@ run_integration_tests() {
   # build/ dir -> race -> ':build-base:generatePluginAdapters FAILED' (root cause of the 10502 leg
   # failures). Shards share the default project cache so Gradle's own file-locking serializes the
   # build-base build while still running the tests in parallel across separate worker JVMs.
+  # Each gradle invocation runs in its OWN process group (setsid) so the SIGTERM trap can reap the
+  # whole tree. Appends the leader PID to the GRADLE_PIDS array; never pruned (kill on a dead PID is
+  # a no-op), so the trap signals every invocation it ever launched. Sets LAST_PID for the caller.
   LAST_PID=""
   run_one() {  # args: <gradle args...>
     setsid ./gradlew --no-daemon "$@" &
-    LAST_PID=$!; GRADLE_PIDS="$GRADLE_PIDS $LAST_PID"
+    LAST_PID=$!; GRADLE_PIDS+=("$LAST_PID")
   }
 
   # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the leg). Also warms :build-base/:buildSrc.
-  run_one ror-tools:test; local rt_pid=$LAST_PID
-  wait "$rt_pid"; local rc=$?
-  GRADLE_PIDS="${GRADLE_PIDS/ $rt_pid/}"
+  run_one ror-tools:test
+  wait "$LAST_PID"; local rc=$?
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 
   # 2) Build the singleton ES image ONCE + compile test classes before the parallel shards, so every
   #    shared/non-test build output (build-base, buildSrc, test classes, ES image) is up-to-date and
   #    the K parallel shards do NO shared build work — only run their disjoint test subset.
-  run_one integration-tests:prebuildEsImage integration-tests:testClasses "${esArgs[@]}"; local pb_pid=$LAST_PID
-  wait "$pb_pid"; rc=$?
-  GRADLE_PIDS="${GRADLE_PIDS/ $pb_pid/}"
+  run_one integration-tests:prebuildEsImage integration-tests:testClasses "${esArgs[@]}"
+  wait "$LAST_PID"; rc=$?
   if [ "$rc" -ne 0 ]; then return "$rc"; fi
 
   # 3) integration-tests:test — K shards in PARALLEL on this agent (shared cache; see note above).
@@ -144,7 +143,7 @@ run_integration_tests() {
     pids="$pids $LAST_PID"
   done
   rc=0
-  for p in $pids; do wait "$p" || rc=$?; GRADLE_PIDS="${GRADLE_PIDS/ $p/}"; done
+  for p in $pids; do wait "$p" || rc=$?; done
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 }
 

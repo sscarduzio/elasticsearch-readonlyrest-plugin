@@ -114,6 +114,12 @@ object ScalaUtils extends LazyLogging {
    *
    * On timeout we interrupt the worker thread (best-effort — blocking socket reads may ignore it),
    * log, and throw so the caller can fail fast / force-kill the container rather than wait forever.
+   *
+   * Residual: an un-interruptible worker keeps running (as a daemon) until the JVM exits, still
+   * holding the wedged connection. Acceptable here because the IT worker JVM is short-lived per leg —
+   * it exits at end-of-leg and the leaked thread dies with it; we never accumulate across legs. If
+   * teardown timeouts ever become common, the real reclaim is `docker rm -f` on the container, not a
+   * thread interrupt.
    */
   def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
     val result = new java.util.concurrent.atomic.AtomicReference[Either[Throwable, A]]()

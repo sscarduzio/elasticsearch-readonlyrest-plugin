@@ -6,6 +6,17 @@ function docker_image_exists {
   docker manifest inspect "$1" >/dev/null 2>&1
 }
 
+# Force-remove every container belonging to THIS leg, scoped by the ror.leg=$ROR_LEG_ID label so we
+# never touch a sibling leg sharing the self-hosted Docker daemon. Single source of truth for "kill
+# this leg's containers" — used by run-pipeline.sh's SIGTERM trap, the pipeline's always() cleanup
+# step, and the standalone orphan reaper. No-op if ROR_LEG_ID is unset or nothing matches.
+function reap_leg_containers {
+  [ -n "${ROR_LEG_ID:-}" ] || return 0
+  local ids
+  ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
+  [ -n "$ids" ] && docker rm -f $ids 2>/dev/null || true
+}
+
 # Repo of the ROR ES pre-build dev image. Must match each module's `preBuildDockerImageVersion` repo in
 # es<ver>x/build.gradle (that is where Gradle actually pushes the canonical <esVersion>-ror-<pluginVersion>).
 ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"

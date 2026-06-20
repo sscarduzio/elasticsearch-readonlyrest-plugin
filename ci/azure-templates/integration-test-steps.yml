@@ -6,6 +6,8 @@ steps:
   # is daemon-wide but safe (it can't remove images/layers an in-use container references).
   - bash: |
       echo ">>> reaping any leftover containers for THIS leg id ($ROR_LEG_ID) before start"
+      # Inline (not ci-lib.sh's reap_leg_containers) — this step runs BEFORE `checkout: self`, so the
+      # repo (and ci-lib.sh) isn't on disk yet. Same label-scoped logic; keep it in sync with ci-lib.
       ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
       [ -n "$ids" ] && docker rm -f $ids || echo "none"
       # Reclaim disk: leaked ror-it-es:<hash> images are TAGGED so plain dangling-prune misses them and
@@ -55,8 +57,7 @@ steps:
   # ci/reap-orphan-es-containers.sh on each agent. Scoped by label -> never touches a sibling leg.
   - bash: |
       echo ">>> reaping THIS leg's containers ($ROR_LEG_ID) on exit"
-      ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
-      if [ -n "$ids" ]; then docker rm -f $ids; else echo "no leftover containers for $ROR_LEG_ID"; fi
+      source ci/ci-lib.sh && reap_leg_containers   # single source of truth (ci-lib.sh)
     displayName: 'Reap this leg''s containers (always)'
     condition: always()
     env:
