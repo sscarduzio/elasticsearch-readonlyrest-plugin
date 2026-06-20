@@ -18,7 +18,7 @@ variables:
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
   # Integration-test shards per agent (separate JVM + ES container each, disjoint suite subsets).
   # 1 = no sharding (default). Raise (e.g. 2) ONLY for agents with RAM for K concurrent ES instances.
-  IT_SHARD_COUNT: 1
+  IT_SHARD_COUNT: 2
   # Use the Gradle home baked into the CI image (ci/toolchains/JdkToolchains.Dockerfile): it already contains the
   # Gradle distribution + resolved plugins/dependencies, so in the common (warm-cache) case builds make
   # no network calls to flaky external CDNs. Cache misses (e.g. a dep bumped since the last image
