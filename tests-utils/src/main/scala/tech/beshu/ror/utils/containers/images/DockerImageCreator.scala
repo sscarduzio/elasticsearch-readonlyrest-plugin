@@ -34,8 +34,16 @@ object DockerImageCreator extends StrictLogging {
     // identical image (e.g. the singleton ES image, baked the same way in every worker) resolve to
     // the SAME tag, so once it's built locally every other worker gets an instant cache hit instead
     // of redundantly (and concurrently) rebuilding it — which is what fails at IT_MAX_PARALLEL_FORKS>=3.
+    //
+    // deleteOnExit = TRUE (testcontainers' default, as master used for 5 years): the image is removed
+    // when its container stops, so per-suite custom images (each suite's readonlyrest.yml is baked in,
+    // → a distinct image per config) don't accumulate and fill the disk. A leg builds ~15 such images;
+    // at ~1GB each that overflowed the ~14GB hosted disk mid-leg ("No space left on device") once we
+    // had switched this to false. The stable tag still gives the parallel-build cache hit; auto-clean
+    // still reclaims each image after use. The long-lived singleton container keeps ITS image alive as
+    // long as it's needed (it only stops at JVM end), so cleanup never pulls the singleton out early.
     val stableTag = s"ror-it-es:${imageTag(imageDescription)}"
-    copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ false))
+    copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ true))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
           .from(imageDescription.baseImage)
