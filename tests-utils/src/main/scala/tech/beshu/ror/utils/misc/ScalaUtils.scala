@@ -124,7 +124,10 @@ object ScalaUtils extends LazyLogging {
   def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
     val result = new java.util.concurrent.atomic.AtomicReference[Either[Throwable, A]]()
     val worker = new Thread(() => {
-      result.set(try Right(action) catch { case NonFatal(e) => Left(e) })
+      // Catch Throwable, not just NonFatal: a fatal error (OOM/StackOverflow/Interrupted) inside
+      // `action` must still be RECORDED, else `result` stays null and the match below would throw a
+      // misleading MatchError instead of the real cause. This is a throwaway teardown thread.
+      result.set(try Right(action) catch { case e: Throwable => Left(e) })
     }, s"timeout-guard-$label")
     worker.setDaemon(true)
     worker.start()
@@ -135,6 +138,7 @@ object ScalaUtils extends LazyLogging {
       throw new java.util.concurrent.TimeoutException(s"'$label' timed out after $timeout")
     }
     result.get() match {
+      case null => throw new IllegalStateException(s"'$label' worker exited without setting a result")
       case Right(a) => a
       case Left(e) => throw e
     }

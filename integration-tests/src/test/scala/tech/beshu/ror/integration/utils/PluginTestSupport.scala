@@ -57,14 +57,23 @@ trait SingletonPluginTestSupport
     // init). Fails loudly if another suite still owns it — i.e. if suites ever stop running serially
     // within this JVM (see SingletonEsContainerWithRorSecurity.acquire).
     SingletonEsContainerWithRorSecurity.acquire(this.getClass.getName)
-    startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
-    // Bound the blocking ES cleanup (removeAllIndices/deleteAllTemplates/deleteAllRepositories
-    // .force()) — if ES is wedged, this used to hang the worker JVM at suite start forever. On
-    // timeout we throw, failing THIS suite fast rather than hanging the whole leg for hours.
-    runWithTimeout("cleanUpContainer", 2 minutes)(SingletonEsContainerWithRorSecurity.cleanUpContainer())
-    SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString)
-    nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
-    super.beforeAll()
+    // ScalaTest does NOT call afterAll if beforeAll throws, so any failure AFTER acquire() must
+    // release the latch here — otherwise the singleton stays owned and every later suite on this
+    // worker fails at acquire() with a misleading "non-interference" error. Symmetric with afterAll.
+    try {
+      startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
+      // Bound the blocking ES cleanup (removeAllIndices/deleteAllTemplates/deleteAllRepositories
+      // .force()) — if ES is wedged, this used to hang the worker JVM at suite start forever. On
+      // timeout we throw, failing THIS suite fast rather than hanging the whole leg for hours.
+      runWithTimeout("cleanUpContainer", 2 minutes)(SingletonEsContainerWithRorSecurity.cleanUpContainer())
+      SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString)
+      nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
+      super.beforeAll()
+    } catch {
+      case NonFatal(e) =>
+        SingletonEsContainerWithRorSecurity.release(this.getClass.getName)
+        throw e
+    }
   }
 
   override protected def afterAll(): Unit = {

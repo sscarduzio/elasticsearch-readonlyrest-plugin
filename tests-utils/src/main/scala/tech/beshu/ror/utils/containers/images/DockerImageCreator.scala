@@ -33,7 +33,7 @@ object DockerImageCreator extends StrictLogging {
     // STABLE, content-derived tag (vs testcontainers' random per-instance tag). Two builds of an
     // identical image (e.g. the singleton ES image, baked the same way in every worker) resolve to
     // the SAME tag, so once it's built locally every other worker gets an instant cache hit instead
-    // of redundantly (and concurrently) rebuilding it — which is what fails at IT_MAX_PARALLEL_FORKS>=3.
+    // of redundantly (and concurrently) rebuilding it — which is what fails at shardCount>=3.
     //
     // deleteOnExit = TRUE (testcontainers' default, as master used for 5 years): the image is removed
     // when its container stops, so per-suite custom images (each suite's readonlyrest.yml is baked in,
@@ -64,12 +64,19 @@ object DockerImageCreator extends StrictLogging {
     d.steps.foreach { case c: Command.Run => md.update(c.toString.getBytes("UTF-8"))
                       case u: Command.ChangeUser => md.update(u.toString.getBytes("UTF-8"))
                       case _: Command.Copy => () } // copy CONTENT hashed below (order-independent, sorted)
-    d.envs.foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
+    // envs is a Set — sort so iteration order can't vary the digest. The whole stable-tag scheme
+    // depends on identical inputs -> identical tag -> cache hit across parallel workers; an
+    // order-dependent hash would cause spurious cache misses (redundant concurrent rebuilds).
+    d.envs.toList.sortBy(e => (e.name, e.value)).foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
     d.copyFiles.toList.sortBy(_.destination.toString).foreach { cf =>
       md.update(cf.destination.toString.getBytes("UTF-8"))
       val f = File(cf.file.pathAsString)
       if (f.exists) md.update(f.sha256.getBytes("UTF-8"))
     }
+    // entrypoint/command also define the image — fold them in so two images differing only there
+    // can't collide to the same tag (a false cache hit that would run the wrong launcher).
+    d.entrypoint.foreach(p => md.update(p.toString.getBytes("UTF-8")))
+    d.command.foreach(c => md.update(c.getBytes("UTF-8")))
     md.digest().take(10).map("%02x".format(_)).mkString
   }
 
@@ -130,6 +137,7 @@ object DockerImageCreator extends StrictLogging {
     def addEnvsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
       imageDescription
         .envs
+        .toList.sortBy(_.name) // deterministic ENV order -> stable layer hash, matches imageTag
         .foldLeft(builder) { case (b, env) => b.env(env.name, env.value) }
     }
 

@@ -1,9 +1,10 @@
 steps:
-  # NOTE: IT legs run on the self-hosted 'Default' pool, where the Docker daemon is SHARED across all
-  # agents on the host. An unqualified `docker system prune -af` here would destroy a sibling leg's
-  # in-flight ES containers. So we only ever touch THIS leg's own resources, scoped by the unique
-  # ROR_LEG_ID label (stamped onto every container in EsContainer.scala). Dangling-image/builder prune
-  # is daemon-wide but safe (it can't remove images/layers an in-use container references).
+  # NOTE: Linux IT legs run on the HOSTED ubuntu pool by default (one fresh VM per leg, isolated
+  # daemon). On the self-hosted ryzen pool, though, the Docker daemon is SHARED across agents on the
+  # host, so an unqualified `docker system prune -af` would destroy a sibling leg's in-flight ES
+  # containers. To stay correct on BOTH pools we only ever touch THIS leg's own resources, scoped by
+  # the unique ROR_LEG_ID label (stamped onto every container in EsContainer.scala). Dangling-image/
+  # builder prune is daemon-wide but safe (it can't remove images/layers an in-use container references).
   - bash: |
       echo ">>> reaping any leftover containers for THIS leg id ($ROR_LEG_ID) before start"
       # Inline (not ci-lib.sh's reap_leg_containers) — this step runs BEFORE `checkout: self`, so the

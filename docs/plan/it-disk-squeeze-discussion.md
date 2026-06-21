@@ -73,6 +73,25 @@ from the zip without persisting it in a layer. −91MB/leg. Lower priority than 
 - **shardCount-conditional networking band-aid** — the multi-node failures were a staging-dir race,
   not a network regression. Fixed properly (per-build staging). No conditional networking.
 
+## Review swarm findings (4 parallel reviewers) — addressed
+
+| Sev | Finding | Fix |
+|-----|---------|-----|
+| CRITICAL | Sharding silently dropped `…AllSuites` (glob `*Suite.class` missed plural `Suites`) | glob → `*Suite*.class`, exclude `base/`; verified disjoint cover of all 67 suites for K=1,2,4,6,8 |
+| CRITICAL | CLAUDE.md documented a phantom `IntegrationTestForkCount.resolveDynamic`/`IT_MAX_PARALLEL_FORKS` design | rewrote the bullet to the real shard model |
+| HIGH | `beforeAll` could throw after `acquire()` → ScalaTest skips `afterAll` → latch leaks → leg-wide false errors | wrapped post-acquire body in try/catch-release (symmetric with afterAll) |
+| HIGH | `runWithTimeout` MatchError'd on a fatal throwable (worker leaves `result` null) | catch `Throwable`, handle `null` result explicitly |
+| HIGH | Per-JVM Docker networks leaked (no reaper covered `docker network`) | `docker network prune --filter label=ror-test-jvm` in the host reaper (prune only removes endpoint-less nets → live legs safe) |
+| MED | env `Set` hashed/emitted in unspecified order → undermines the stable-tag cache-hit invariant | sort at both the hash and the ENV-emit sites |
+| MED | `imageTag` ignored entrypoint/command (latent false cache hit) | fold both into the digest |
+| MED | stale `IT_MAX_PARALLEL_FORKS` in 4 live comments | s/→ shardCount/IT_SHARD_COUNT |
+| MED | `prebuildEsImage` boots ES K+1× per leg | accepted (cache-hit, K=1 default = 1 redundant boot); documented the ceiling, idempotency not worth the tag-logic duplication |
+| LOW | integration-test-steps.yml header claimed self-hosted/shared-daemon for IT | reworded (hosted by default; shared only on ryzen) |
+
+Holistic verdict from the reviewers: the four problem-domains (race / disk / hang / cancel) are each
+fixed at root cause, not band-aided; the two CRITICALs were checked-in artifacts of the 40-commit
+thrash, now corrected. Mergeable for the default path; sharding is safe to enable after CRITICAL-1.
+
 ## Verification plan
 
 - [x] #1 layer-sharing measured locally (0B UNIQUE) + suites pass

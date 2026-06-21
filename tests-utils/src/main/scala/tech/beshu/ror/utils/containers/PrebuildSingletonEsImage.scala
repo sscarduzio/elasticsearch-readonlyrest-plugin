@@ -22,7 +22,7 @@ import com.typesafe.scalalogging.StrictLogging
  * Builds (and stably tags) the singleton ES+ROR image ONCE, in a single JVM, before the parallel
  * integration-test workers start. Run by the `prebuildEsImage` Gradle task as a `test.dependsOn`.
  *
- * Why: at IT_MAX_PARALLEL_FORKS>=3 the worker JVMs otherwise build this identical image concurrently,
+ * Why: at shardCount>=3 the worker JVMs otherwise build this identical image concurrently,
  * and the Docker build layers (plugin install + ror-tools patch) fail intermittently. With the image
  * pre-built and stably tagged (see DockerImageCreator.imageTag), every worker gets a cache hit and
  * never builds — so parallelism scales without the concurrent-build failures.

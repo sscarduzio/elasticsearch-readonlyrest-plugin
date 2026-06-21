@@ -71,7 +71,15 @@ docker image prune -af --filter "until=${REAP_IMAGE_MAX_AGE:-180m}" >/dev/null 2
 docker image prune -f   >/dev/null 2>&1 || true   # leftover dangling layers
 docker builder prune -f >/dev/null 2>&1 || true
 
-echo ">>> reap complete: ${reaped} orphan container(s) + ${jvm_reaped} orphan gradle JVM(s) removed (threshold ${REAP_MIN_AGE_MIN}m); images pruned"
+# Reclaim leaked per-JVM test networks. Each IT worker JVM creates one UUID-named bridge labeled
+# `ror-test-jvm` (TestNetwork.perJvm); if Ryuk dies / a leg is Abandoned, these survive forever and
+# eventually exhaust the bridge address pool (~31 nets) -> new network creation fails -> every leg
+# breaks. `network prune` only removes networks with NO connected containers, so a live leg's network
+# (its ES containers are attached) is never touched; the label filter additionally guarantees we only
+# ever consider ROR test networks, never the production coolify bridge.
+docker network prune -f --filter "label=ror-test-jvm" >/dev/null 2>&1 || true
+
+echo ">>> reap complete: ${reaped} orphan container(s) + ${jvm_reaped} orphan gradle JVM(s) removed (threshold ${REAP_MIN_AGE_MIN}m); images + networks pruned"
 
 # ---------------------------------------------------------------------------------------------------
 # systemd install (run inside each az-ror-es-* agent container, or once on the host if daemon shared):

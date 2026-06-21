@@ -61,6 +61,12 @@ test {
     enabled = project.hasProperty('esModule')
     if (enabled) {
         // Build the singleton ES image once up-front so parallel workers never build concurrently.
+        // ponytail: at shardCount=K this fires K times (once per :test invocation) on top of
+        // run-pipeline's own step-2 prebuild — K+1 ES boot/stop cycles. Kept anyway: it's the only
+        // thing guaranteeing the image exists for a bare local `./gradlew :integration-tests:test`
+        // (no run-pipeline). The redundant boots are a cache hit (image already tagged) so they don't
+        // rebuild; the cost is container churn, tolerable at the K=1 merge default (1 redundant boot).
+        // Skip-if-exists idempotency would need to duplicate the content-hash tag logic — not worth it.
         dependsOn 'prebuildEsImage'
         def module = project.properties['esModule']
         systemProperty "esModule", module
@@ -80,8 +86,13 @@ test {
             if (shardCount > 1) {
                 def matched = 0
                 test.testClassesDirs.asFileTree.matching {
-                    include 'tech/beshu/ror/integration/suites/**/*Suite.class'
+                    // `*Suite*` (not `*Suite`) so concrete classes ending in `Suites` (e.g.
+                    // EnabledPromptForBasicAuthSettingAllSuites) are sharded too — matching the K=1
+                    // package glob below. `base/` holds non-runnable support traits, excluded so the
+                    // `matched` guard counts only real suites and can't pass on a trait-only shard.
+                    include 'tech/beshu/ror/integration/suites/**/*Suite*.class'
                     exclude '**/*$*.class'   // skip nested/companion classes
+                    exclude 'tech/beshu/ror/integration/suites/base/**'
                 }.visit { fd ->
                     if (!fd.directory) {
                         def fqcn = fd.path.replace('/', '.').replaceAll(/\.class$/, '')
@@ -157,7 +168,7 @@ tasks.register('ldapserver', JavaExec) {
 
 // Builds + stably tags the singleton ES image ONCE (single JVM) before the parallel `test` workers.
 // Without this, workers build the identical image concurrently and the Docker build layers fail
-// intermittently at IT_MAX_PARALLEL_FORKS>=3. Pre-building means every worker gets a cache hit.
+// intermittently at shardCount>=3. Pre-building means every worker gets a cache hit.
 tasks.register('prebuildEsImage', JavaExec) {
     onlyIf { project.hasProperty('esModule') }
     systemProperty 'project.dir', rootProject.projectDir
