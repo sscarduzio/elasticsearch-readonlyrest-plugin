@@ -135,29 +135,36 @@ tasks.register('uploadRorPluginToS3', Exec) {
     commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
 }
 
-// Fat, version-INDEPENDENT layer: the plugin laid out as `elasticsearch-plugin install` would lay it,
-// minus the per-version bits (the descriptor and the ES-version-stamped dependency jars). Built once and
-// reused (registry-deduped + buildx-cached) across all of this module's patch versions, so its content
-// digest -- and thus the ~100 MB registry blob -- is shared by every version of the module.
-tasks.register('prepareDockerPayload', Copy) {
+// Fat, version-INDEPENDENT layer: the version-independent part of the plugin (all the fixed-version
+// dependency jars + entitlement-policy.yaml), laid out as `elasticsearch-plugin install` would. Built
+// once and reused (registry-deduped + buildx-cached) across all of this module's patch versions: with
+// every per-version byte pulled out into the thin layer below, this layer's content digest -- and thus
+// the ~95 MB registry blob -- is identical for, and shared by, every version of the module.
+tasks.register('prepareDockerPayload', Sync) {
     if (!project.hasProperty('repackagedZip')) { dependsOn packageRorPlugin }
     outputs.upToDateWhen { false }
 
     from(zipTree(dockerImageSourceZip)) {
-        // Exclude the per-version bits -- they go into the thin layer below. The ES-version-stamped jar
-        // set mirrors ci/repackage-plugin-for-version.sh: elasticsearch-rest-client always,
-        // transport-netty4-client for es6x/es7x (the glob simply matches nothing where it isn't bundled).
+        // Pull the per-version bytes into the thin layer below: the descriptor, the ES-version-stamped
+        // dependency jars (elasticsearch-rest-client always, transport-netty4-client for es6x/es7x --
+        // mirrors ci/repackage-plugin-for-version.sh; the globs are no-ops where a jar isn't bundled)
+        // and the ROR module code jar (its file name and embedded ror-build-info both carry the ES
+        // version). Leaving any of them here would change this layer's digest per version and defeat the
+        // dedup. Sync (not Copy) so stale per-version jars from a previous build are removed, not baked in.
         exclude 'plugin-descriptor.properties'
         exclude 'elasticsearch-rest-client-*.jar'
         exclude 'transport-netty4-client-*.jar'
+        exclude 'readonlyrest-*_es*.jar'
     }
     into layout.buildDirectory.dir("docker-image/payload")
 }
 
 // Thin, per-version layer: plugin-descriptor.properties (ES enforces its elasticsearch.version to equal
-// the node version) plus the ES-version-stamped dependency jars (see prepareDockerPayload). Kept out of
-// the fat layer so that layer stays byte-identical -- and registry-deduplicated -- across all versions.
-tasks.register('prepareDockerDescriptor', Copy) {
+// the node version), the ES-version-stamped dependency jars, and the ROR module code jar -- every byte
+// that varies across this module's patch range (see prepareDockerPayload). Kept out of the fat layer so
+// that layer stays byte-identical -- and registry-deduplicated -- across all versions. Sync (not Copy)
+// so a previous build's stale per-version jars in this dir are removed, not accumulated into the image.
+tasks.register('prepareDockerDescriptor', Sync) {
     if (!project.hasProperty('repackagedZip')) { dependsOn packageRorPlugin }
     outputs.upToDateWhen { false }
 
@@ -165,6 +172,7 @@ tasks.register('prepareDockerDescriptor', Copy) {
         include 'plugin-descriptor.properties'
         include 'elasticsearch-rest-client-*.jar'
         include 'transport-netty4-client-*.jar'
+        include 'readonlyrest-*_es*.jar'
     }
     into layout.buildDirectory.dir("docker-image/per-version")
 }
@@ -186,13 +194,19 @@ tasks.register('pushRorDockerImage', Exec) {
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
+    // SOURCE_DATE_EPOCH + rewrite-timestamp normalise every timestamp BuildKit would otherwise stamp at
+    // build time -- file mtimes AND the parent dirs `COPY --link` synthesises (plugins/, readonlyrest/).
+    // Without it the version-independent fat ROR layer gets a fresh content digest on every build and the
+    // cross-version registry dedup never fires. Constant within a release (CI may export the commit time);
+    // the fallback keeps the digest deterministic for local/manual pushes too.
+    environment 'SOURCE_DATE_EPOCH', (System.getenv('SOURCE_DATE_EPOCH') ?: '1704067200')
     args = [
             'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
             '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + moduleEsVersion,
             '--cache-from', 'type=registry,ref=' + buildCacheRef,
             '--cache-to', 'type=registry,ref=' + buildCacheRef + ',mode=max',
             '-t', releaseDockerImageLatest, '-t', releaseDockerImageVersion,
-            '--push', '.'
+            '--output', 'type=image,push=true,rewrite-timestamp=true', '.'
     ]
 }
 
@@ -201,13 +215,19 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
+    // SOURCE_DATE_EPOCH + rewrite-timestamp normalise every timestamp BuildKit would otherwise stamp at
+    // build time -- file mtimes AND the parent dirs `COPY --link` synthesises (plugins/, readonlyrest/).
+    // Without it the version-independent fat ROR layer gets a fresh content digest on every build and the
+    // cross-version registry dedup never fires. Constant within a release (CI may export the commit time);
+    // the fallback keeps the digest deterministic for local/manual pushes too.
+    environment 'SOURCE_DATE_EPOCH', (System.getenv('SOURCE_DATE_EPOCH') ?: '1704067200')
     args = [
             'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
             '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + moduleEsVersion,
             '--cache-from', 'type=registry,ref=' + buildCacheRef,
             '--cache-to', 'type=registry,ref=' + buildCacheRef + ',mode=max',
             '-t', preBuildDockerImageVersion,
-            '--push', '.'
+            '--output', 'type=image,push=true,rewrite-timestamp=true', '.'
     ]
 }
 

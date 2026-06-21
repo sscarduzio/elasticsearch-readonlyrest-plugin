@@ -398,6 +398,15 @@ publish_ror_plugins_grouped() {
   local ror_version
   ror_version=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
+  # Pin SOURCE_DATE_EPOCH for the whole run so BuildKit normalises every build-time timestamp (file
+  # mtimes + the parent dirs `COPY --link` synthesises) to a constant. This is what makes the
+  # version-independent fat ROR docker layer keep ONE content digest across every patch version, so the
+  # registry stores/pushes that ~95 MB blob once per module instead of once per version. The Gradle push
+  # tasks read this env (with a constant fallback); exporting the commit time here just gives the images a
+  # meaningful, reproducible "created" date. Must be set before the first gradlew call so the daemon (if
+  # any) inherits it.
+  export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
+
   local stage_root out_dir stash_dir
   stage_root=$(mktemp -d); out_dir=$(mktemp -d); stash_dir=$(mktemp -d)
 

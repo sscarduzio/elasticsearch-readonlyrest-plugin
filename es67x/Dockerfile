@@ -28,10 +28,11 @@ USER elasticsearch
 # --batch`, which just unzips the flat plugin files into plugins/readonlyrest/ — ES discovers the plugin
 # by scanning that dir at boot). This avoids the QEMU-emulated install RUN and splits ROR into:
 #
-#   * a fat, version-INDEPENDENT layer (the version-independent jars + entitlement-policy.yaml);
+#   * a fat, version-INDEPENDENT layer (the fixed-version dependency jars + entitlement-policy.yaml);
 #   * a thin, per-version layer — plugin-descriptor.properties (whose `elasticsearch.version` ES enforces
-#     to equal the node version) plus the ES-version-stamped dependency jars (elasticsearch-rest-client,
-#     and transport-netty4-client on es6x/es7x). A few KB unique per ES version.
+#     to equal the node version), the ES-version-stamped dependency jars (elasticsearch-rest-client, and
+#     transport-netty4-client on es6x/es7x) and the ROR module code jar (its name + ror-build-info carry
+#     the ES version). A couple MB unique per ES version.
 #
 # `--link` is essential here: it builds each layer independently of the (per-ES-version) base chain, so
 # the fat ROR layer gets the SAME content digest for every version of this module. The registry then

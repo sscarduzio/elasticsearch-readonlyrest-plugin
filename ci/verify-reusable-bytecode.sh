@@ -1,4 +1,3 @@
-#!/bin/bash
 #
 #    This file is part of ReadonlyREST.
 #
@@ -15,6 +14,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
 #
+
+#!/bin/bash
 
 # Boundary-diff guard for the "build once per module, repackage the rest" jar optimization.
 #

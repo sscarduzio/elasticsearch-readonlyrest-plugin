@@ -1,4 +1,3 @@
-#!/bin/bash
 #
 #    This file is part of ReadonlyREST.
 #
@@ -15,6 +14,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
 #
+
+#!/bin/bash
 
 # Derives the ROR plugin zip for a target ES patch version from a module's already-built BASE zip,
 # WITHOUT recompiling. Within an esXXx module the compiled bytecode is identical across the module's
