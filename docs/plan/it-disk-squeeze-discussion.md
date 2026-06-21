@@ -103,9 +103,11 @@ thrash, now corrected. Mergeable for the default path; sharding is safe to enabl
 ## Verification plan
 
 - [x] #1 layer-sharing measured locally (0B UNIQUE) + suites pass
-- [ ] #1 confirmed on CI: ES 8.x legs (es80x/82x/83x/84x) fit on hosted runner (build 10539)
-- [ ] #2 probe chart from a real Azure VM (build 10540) → pick reclaim dirs
+- [x] #1 confirmed on CI: ALL ES 8.x/9.x legs fit + ran on hosted runner (build 10541), ~16% faster
+- [x] #2 probe chart from a real Azure VM (build 10540) → reclaim list aligned (e68e2fb4)
 - [x] #3 no-op — disk threshold already disabled (stronger than watermark=99%)
+- note: build 10541 "failed" only on 3 unrelated flaky single-test failures (es82x/83x/84x, 1 of
+  1282 each, Azure-tagged flaky); re-running on HEAD as build 10542 (also validates heap 2g→512m)
 
 ## Results: ES 8.x/9.x leg times — master (pre-PR) vs PR, shardCount=1
 
