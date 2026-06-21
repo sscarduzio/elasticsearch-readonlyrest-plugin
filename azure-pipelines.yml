@@ -89,21 +89,25 @@ parameters:
       - 'run_all_tests_on_linux'
       - 'run_all_tests_on_windows'
       - 'build_toolchains_image'
+  - name: runDiskProbe
+    type: boolean
+    displayName: '(Manual) run host-disk probe only, then kill build'
+    default: false
 
 pool:
   vmImage: 'ubuntu-24.04'
 
 stages:
 
-  # One-shot HOST-disk recon. INERT unless queued with variable runDiskProbe=true. Runs BARE (no
+  # One-shot HOST-disk recon. INERT unless queued (Manual) with parameter runDiskProbe=true. BARE (no
   # container:) so `du` sees the Azure VM host fs, not the ror-toolchains overlay. Prints a ranked
   # chart of fat dirs that sit on docker's device, then `exit 1` to end the build immediately —
   # this is recon, not a real run. Use it to decide which dirs a `target: host` reclaim step removes.
-  - stage: DISK_PROBE
-    displayName: 'Host disk probe (recon, self-killing)'
-    dependsOn: [ ]
-    condition: eq(variables['runDiskProbe'], 'true')
-    jobs:
+  - ${{ if eq(parameters.runDiskProbe, true) }}:
+    - stage: DISK_PROBE
+      displayName: 'Host disk probe (recon, self-killing)'
+      dependsOn: [ ]
+      jobs:
       - job: PROBE
         timeoutInMinutes: 10
         steps:
