@@ -28,9 +28,10 @@ USER elasticsearch
 # --batch`, which just unzips the flat plugin files into plugins/readonlyrest/ — ES discovers the plugin
 # by scanning that dir at boot). This avoids the QEMU-emulated install RUN and splits ROR into:
 #
-#   * a fat, version-INDEPENDENT layer (all jars + entitlement-policy.yaml);
-#   * a thin, per-version layer — just plugin-descriptor.properties, whose `elasticsearch.version` ES
-#     enforces to equal the node version (~1 KB unique per ES version).
+#   * a fat, version-INDEPENDENT layer (the version-independent jars + entitlement-policy.yaml);
+#   * a thin, per-version layer — plugin-descriptor.properties (whose `elasticsearch.version` ES enforces
+#     to equal the node version) plus the ES-version-stamped dependency jars (elasticsearch-rest-client,
+#     and transport-netty4-client on es6x/es7x). A few KB unique per ES version.
 #
 # `--link` is essential here: it builds each layer independently of the (per-ES-version) base chain, so
 # the fat ROR layer gets the SAME content digest for every version of this module. The registry then
@@ -38,7 +39,7 @@ USER elasticsearch
 # digest across different ES bases). `--chown` must be numeric (1000:0) because --link can't resolve
 # names against the base image.
 COPY --link --chown=1000:0 payload/ /usr/share/elasticsearch/plugins/readonlyrest/
-COPY --link --chown=1000:0 plugin-descriptor.properties /usr/share/elasticsearch/plugins/readonlyrest/plugin-descriptor.properties
+COPY --link --chown=1000:0 per-version/ /usr/share/elasticsearch/plugins/readonlyrest/
 
 COPY --link init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
 COPY --link ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh

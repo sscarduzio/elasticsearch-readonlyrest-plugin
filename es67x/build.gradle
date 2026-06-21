@@ -140,29 +140,38 @@ tasks.register('uploadRorPluginToS3', Exec) {
     commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
 }
 
-// Fat, version-INDEPENDENT layer: the plugin laid out exactly as `elasticsearch-plugin install` would,
-// minus the per-version descriptor. Built once and reused (registry-deduped + buildx-cached) across all
-// of this module's patch versions.
+// Fat, version-INDEPENDENT layer: the plugin laid out as `elasticsearch-plugin install` would lay it,
+// minus the per-version bits (the descriptor and the ES-version-stamped dependency jars). Built once and
+// reused (registry-deduped + buildx-cached) across all of this module's patch versions, so its content
+// digest -- and thus the ~100 MB registry blob -- is shared by every version of the module.
 tasks.register('prepareDockerPayload', Copy) {
     if (!project.hasProperty('repackagedZip')) { dependsOn packageRorPlugin }
     outputs.upToDateWhen { false }
 
     from(zipTree(dockerImageSourceZip)) {
+        // Exclude the per-version bits -- they go into the thin layer below. The ES-version-stamped jar
+        // set mirrors ci/repackage-plugin-for-version.sh: elasticsearch-rest-client always,
+        // transport-netty4-client for es6x/es7x (the glob simply matches nothing where it isn't bundled).
         exclude 'plugin-descriptor.properties'
+        exclude 'elasticsearch-rest-client-*.jar'
+        exclude 'transport-netty4-client-*.jar'
     }
     into layout.buildDirectory.dir("docker-image/payload")
 }
 
-// Thin, per-version layer: just plugin-descriptor.properties (ES enforces its elasticsearch.version
-// to equal the node version).
+// Thin, per-version layer: plugin-descriptor.properties (ES enforces its elasticsearch.version to equal
+// the node version) plus the ES-version-stamped dependency jars (see prepareDockerPayload). Kept out of
+// the fat layer so that layer stays byte-identical -- and registry-deduplicated -- across all versions.
 tasks.register('prepareDockerDescriptor', Copy) {
     if (!project.hasProperty('repackagedZip')) { dependsOn packageRorPlugin }
     outputs.upToDateWhen { false }
 
     from(zipTree(dockerImageSourceZip)) {
         include 'plugin-descriptor.properties'
+        include 'elasticsearch-rest-client-*.jar'
+        include 'transport-netty4-client-*.jar'
     }
-    into layout.buildDirectory.dir("docker-image")
+    into layout.buildDirectory.dir("docker-image/per-version")
 }
 
 tasks.register('prepareDockerImageFiles', Copy) {
