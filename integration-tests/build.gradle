@@ -144,11 +144,13 @@ test {
     // Logged loud (quiet() survives -q) so the per-JVM fork count is never a mystery. Parallelism is
     // sharding (multiple invocations), not maxParallelForks — see the SHARDING note above.
     logger.quiet(">>> integration-tests maxParallelForks=${maxParallelForks} (1 ES/JVM; parallelism via -PshardCount)")
-    // Per WORKER JVM (Gradle's 512m default is too small). The test JVM only orchestrates HTTP calls
-    // to the ES container — it holds no large data — so 1g is ample; 2g was headroom we never used.
-    // Lowering it cuts the single-leg peak (measured ~7.5g/7.9g on the hosted runner) so legs fit
-    // with more margin. Overridable via -PitTestHeap for a fat outlier suite.
-    maxHeapSize = project.findProperty('itTestHeap') ?: '1g'
+    // Per WORKER JVM. The test JVM only ORCHESTRATES — it streams small HTTP requests to the ES
+    // container and holds no bulk data. Measured peak live heap (G1, -Xlog:gc) is ~50MB for both an
+    // API-heavy suite (ClusterApi) and a data-moving one (DocumentApi, bulk inserts) — they're equal
+    // because nothing accumulates. So 512m is ~10x the real peak: ample GC headroom, no thrash, and
+    // it survives the ARM(local)→x86(CI) RSS difference. 1g/2g were unmeasured over-reservations.
+    // Overridable via -PitTestHeap for a surprise outlier suite.
+    maxHeapSize = project.findProperty('itTestHeap') ?: '512m'
 }
 
 dependencies {
