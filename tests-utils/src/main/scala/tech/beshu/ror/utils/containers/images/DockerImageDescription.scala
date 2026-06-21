@@ -20,19 +20,27 @@ import better.files.File
 import os.Path
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.{Command, CopyFile, Env}
 
+// `steps` is an ORDERED sequence of COPY/RUN/USER in DECLARATION order. This matters for Docker layer
+// caching: per-config files (readonlyrest.yml, elasticsearch.yml) must be COPIED *after* the heavy,
+// config-independent RUNs (plugin install, ES patch) so those ~140MB layers are byte-identical across
+// configs and SHARED in the image store. The previous design kept copies in a Set emitted before all
+// runs, which (a) lost order and (b) put per-config copies at the top → cache-miss → ~140MB rebuilt
+// per config → CI disk exhaustion. Keeping copies and runs in ONE ordered Seq fixes both.
 final case class DockerImageDescription(baseImage: String,
-                                        runCommands: Seq[Command],
-                                        copyFiles: Set[CopyFile],
+                                        steps: Seq[Command],
                                         envs: Set[Env],
                                         entrypoint: Option[Path],
                                         command: Option[String]) {
 
+  // Copies in declaration order — used by the image-context streamer and the content-hash tag.
+  def copyFiles: Seq[CopyFile] = steps.collect { case Command.Copy(c) => c }
+
   def run(command: String): DockerImageDescription = {
-    this.copy(runCommands = this.runCommands :+ Command.Run(command))
+    this.copy(steps = this.steps :+ Command.Run(command))
   }
 
   def run(command: String, otherCommands: String*): DockerImageDescription = {
-    this.copy(runCommands = (this.runCommands :+ Command.Run(command)) ++ otherCommands.map(Command.Run.apply))
+    this.copy(steps = (this.steps :+ Command.Run(command)) ++ otherCommands.map(Command.Run.apply))
   }
 
   def runWhen(condition: Boolean, command: => String): DockerImageDescription = {
@@ -51,11 +59,13 @@ final case class DockerImageDescription(baseImage: String,
   }
 
   def user(name: String): DockerImageDescription = {
-    this.copy(runCommands = this.runCommands :+ Command.ChangeUser(name))
+    this.copy(steps = this.steps :+ Command.ChangeUser(name))
   }
 
   def copyFile(destination: Path, file: File): DockerImageDescription = {
-    this.copy(copyFiles = copyFiles + CopyFile(destination, file))
+    // dedup identical destinations (the old Set semantics): a later copy to the same path wins.
+    val deduped = steps.filterNot { case Command.Copy(c) => c.destination == destination; case _ => false }
+    this.copy(steps = deduped :+ Command.Copy(CopyFile(destination, file)))
   }
 
   def addEnv(name: String, value: String): DockerImageDescription = {
@@ -80,14 +90,14 @@ object DockerImageDescription {
   object Command {
     final case class Run(command: String) extends Command
     final case class ChangeUser(user: String) extends Command
+    final case class Copy(file: CopyFile) extends Command
   }
   final case class CopyFile(destination: Path, file: File)
   final case class Env(name: String, value: String)
 
   def create(image: String, customEntrypoint: Option[Path] = None): DockerImageDescription = DockerImageDescription(
     baseImage = image,
-    runCommands = Seq.empty,
-    copyFiles = Set.empty,
+    steps = Seq.empty,
     envs = Set.empty,
     entrypoint = customEntrypoint,
     command = None,

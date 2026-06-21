@@ -47,8 +47,7 @@ object DockerImageCreator extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         val dockerfile = builder
           .from(imageDescription.baseImage)
-          .copyFilesFrom(imageDescription)
-          .runCommandsFrom(imageDescription)
+          .applyStepsFrom(imageDescription) // COPY/RUN/USER in DECLARATION order (config files last)
           .addEnvsFrom(imageDescription)
           .setEntrypointFrom(imageDescription)
           .setCommandFrom(imageDescription)
@@ -62,7 +61,9 @@ object DockerImageCreator extends StrictLogging {
   private def imageTag(d: DockerImageDescription): String = {
     val md = MessageDigest.getInstance("SHA-1")
     md.update(d.baseImage.getBytes("UTF-8"))
-    d.runCommands.foreach(c => md.update(c.toString.getBytes("UTF-8")))
+    d.steps.foreach { case c: Command.Run => md.update(c.toString.getBytes("UTF-8"))
+                      case u: Command.ChangeUser => md.update(u.toString.getBytes("UTF-8"))
+                      case _: Command.Copy => () } // copy CONTENT hashed below (order-independent, sorted)
     d.envs.foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
     d.copyFiles.toList.sortBy(_.destination.toString).foreach { cf =>
       md.update(cf.destination.toString.getBytes("UTF-8"))
@@ -104,29 +105,25 @@ object DockerImageCreator extends StrictLogging {
 
   private implicit class BuilderExt(val builder: DockerfileBuilder) extends AnyVal {
 
-    def runCommandsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .runCommands
+    // Emit COPY / RUN / USER in DECLARATION order so the Dockerfile (and thus the layer chain) matches
+    // the order steps were added — per-config config files end up AFTER the heavy config-independent
+    // RUNs, letting those layers be shared across configs. Adjacent Runs are still merged into one `&&`
+    // RUN (the original optimisation); a COPY or USER between two Runs breaks the merge (correct — a
+    // COPY is its own layer boundary anyway).
+    def applyStepsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
+      imageDescription.steps
         .foldLeft(List.empty[Command]) {
-          case (acc, c@ChangeUser(_)) => acc :+ c
           case (acc, r@Run(command)) =>
             acc.reverse match {
-              case Nil => r :: Nil
-              case ChangeUser(_) :: _ => acc ::: (r :: Nil)
               case Run(lastCommand) :: tail => (Run(s"$lastCommand && $command") :: tail).reverse
+              case _ => acc :+ r
             }
+          case (acc, other) => acc :+ other // ChangeUser / Copy are layer boundaries; never merged
         }
         .foldLeft(builder) {
           case (b, ChangeUser(user)) => b.user(user)
           case (b, Run(command)) => b.run(command)
-        }
-    }
-
-    def copyFilesFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .copyFiles
-        .foldLeft(builder) { case (b, file) =>
-          b.copy(file.destination.toString(), file.destination.toString())
+          case (b, Command.Copy(file)) => b.copy(file.destination.toString(), file.destination.toString())
         }
     }
 
