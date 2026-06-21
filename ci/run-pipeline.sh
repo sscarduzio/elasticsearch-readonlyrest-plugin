@@ -17,6 +17,7 @@ terminate() {
   for pid in "${GRADLE_PIDS[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
   sleep 5
   for pid in "${GRADLE_PIDS[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
+  [ -n "${ROR_IMG_SWEEPER_PID:-}" ] && kill "$ROR_IMG_SWEEPER_PID" 2>/dev/null || true
   reap_leg_containers
   exit 1
 }
@@ -134,6 +135,35 @@ run_integration_tests() {
   wait "$LAST_PID"; rc=$?
   if [ "$rc" -ne 0 ]; then return "$rc"; fi
 
+  # DISK GUARD (low-disk hosted runners): one es leg builds MANY distinct ror-it-es:<hash> images
+  # (multi-node / custom-config suites each get their own ~1GB+ image; saw 15 in a single es80x leg).
+  # They persist in Docker's store for the whole leg and fill a ~14GB hosted disk mid-run ("No space
+  # left on device"). This background sweeper reclaims ror-it-es images NOT currently used by a running
+  # container — Docker refuses to remove an in-use image, so a live suite's image is always safe; only
+  # finished suites' images are dropped. A later suite needing the same config just rebuilds (cache
+  # miss = slower, but correct — no test is skipped). Only runs when disk is actually tight, so the
+  # big-disk self-hosted ryzen agents are unaffected (the check is cheap and self-gating).
+  # Images are tagged by NAME (ror-it-es:<contenthash>), not labeled — so we prune by reference, not
+  # `docker image prune --filter label`. Remove each ror-it-es:* image NOT referenced by a running
+  # container; `docker rmi` refuses an in-use image (|| true), so a live suite's image is always safe.
+  ROR_IMG_SWEEPER_PID=""
+  start_image_sweeper() {
+    ( while true; do
+        avail_kb=$(df --output=avail / 2>/dev/null | tail -1 | tr -d ' ')
+        if [ -n "$avail_kb" ] && [ "$avail_kb" -lt 6291456 ]; then  # only under pressure (<6GB free)
+          in_use=$(docker ps --format '{{.Image}}' 2>/dev/null | sort -u)
+          for img in $(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep '^ror-it-es:'); do
+            echo "$in_use" | grep -qxF "$img" || docker rmi "$img" >/dev/null 2>&1 || true
+          done
+          docker image prune -f >/dev/null 2>&1 || true   # dangling layers from superseded builds
+        fi
+        sleep 45
+      done ) &
+    ROR_IMG_SWEEPER_PID=$!
+  }
+  stop_image_sweeper() { [ -n "$ROR_IMG_SWEEPER_PID" ] && kill "$ROR_IMG_SWEEPER_PID" 2>/dev/null || true; }
+  start_image_sweeper
+
   # 3) integration-tests:test — K shards in PARALLEL on this agent (shared cache; see note above).
   #    Each is a separate JVM => its own singleton ES container, running a disjoint suite subset
   #    (name-hash mod K, see build.gradle). With everything pre-built, no shard rebuilds shared output.
@@ -144,6 +174,7 @@ run_integration_tests() {
   done
   rc=0
   for p in $pids; do wait "$p" || rc=$?; done
+  stop_image_sweeper
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 }
 
