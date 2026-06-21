@@ -170,16 +170,16 @@ class Elasticsearch(val esVersion: String,
   }
 
   private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {
+    // LAYER ORDER FOR CACHE SHARING: the heavy, config-INDEPENDENT work (tar, JDK swap, keystore,
+    // plugin install + ES patch — ~140MB, identical for every suite of this ES version) runs FIRST so
+    // those layers are SHARED across all configs on the CI Docker daemon. The per-suite-varying config
+    // files (elasticsearch.yml, log4j; readonlyrest.yml is deferred inside installPlugins) are COPIED
+    // LAST so they don't poison the hash of the expensive layers. Previously elasticsearch.yml was
+    // copied FIRST → install+patch became a unique ~140MB layer per config → the heavy 8.x legs
+    // exhausted the ~15GB hosted disk. (chown stays BEFORE installPlugins — the keystore step needs the
+    // config dir owned by elasticsearch; a trailing chown covers the late-copied config files.)
     DockerImageDescription
       .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
-      .copyFile(
-        destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFile
-      )
-      .copyFile(
-        destination = config.esConfigDir / "ror" / "log4j2.properties",
-        file = rorLog4jDropInFromResources
-      )
       .user("root")
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
@@ -188,6 +188,17 @@ class Elasticsearch(val esVersion: String,
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
+      // per-suite config files LAST (cheap layers) so install/patch above stay identical & shared
+      .user("root")
+      .copyFile(
+        destination = config.esConfigDir / "elasticsearch.yml",
+        file = esConfigFile
+      )
+      .copyFile(
+        destination = config.esConfigDir / "ror" / "log4j2.properties",
+        file = rorLog4jDropInFromResources
+      )
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .user("elasticsearch")
   }
 

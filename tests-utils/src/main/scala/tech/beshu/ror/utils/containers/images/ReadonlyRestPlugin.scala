@@ -77,9 +77,14 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
       .updateFipsDependencies(esConfig)
-      .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorSettings)
       .installRorPlugin(esConfig)
       .when(performPatching, _.patchES(esConfig))
+      // readonlyrest.yml is the ONLY per-suite-varying file here; COPY it LAST so the big, identical
+      // installRorPlugin + patchES layers (~140MB) come BEFORE it and are SHARED across all configs of
+      // the same ES version. Previously this COPY sat before them, giving every config a unique layer
+      // hash for install+patch -> ~140MB rebuilt per config -> CI disk exhaustion on the heavy 8.x legs.
+      // (readonlyrest.yml is runtime config; install/patch operate on ES binaries, not it — safe to defer.)
+      .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorSettings)
   }
 
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
