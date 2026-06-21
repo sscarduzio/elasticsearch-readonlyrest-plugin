@@ -76,9 +76,6 @@ test {
         // stable, auto-balances, zero maintenance as suites are added. shardCount=1 => run everything.
         def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
         def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
-        // Surface to tests so TestNetwork uses Network.SHARED at shardCount<=1 (proven multi-node
-        // behaviour) and only an isolated per-JVM network when >1 sharded JVM shares the daemon.
-        systemProperty "it.shardCount", shardCount
         filter {
             if (shardCount > 1) {
                 def matched = 0

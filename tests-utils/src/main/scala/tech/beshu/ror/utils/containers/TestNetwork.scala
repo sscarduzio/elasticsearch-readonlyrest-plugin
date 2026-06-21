@@ -19,31 +19,21 @@ package tech.beshu.ror.utils.containers
 import org.testcontainers.containers.Network
 
 /**
- * Docker network for ES test containers.
- *
- * Default (no sharding) = `Network.SHARED`, exactly as master used for 5+ years — multi-node clusters
- * resolve each other by alias (ROR1_1, ROR1_2) on it reliably. A custom per-JVM network is ONLY needed
- * when >1 sharded worker JVM runs on the SAME Docker daemon at once (shardCount>1): then two JVMs could
- * cross-wire clusters that reuse the same aliases, so each gets its own UUID-named network.
- *
- * Using a custom (non-SHARED) network unconditionally REGRESSED every multi-node leg — clusters failed
- * to form (peer `failed to resolve host`, 5-min readiness timeout). So we only diverge from SHARED when
- * sharding actually requires it. -PshardCount is surfaced to tests via the `it.shardCount` system prop.
+ * One uniquely-named (UUID) Docker network per test JVM (vs the old global `Network.SHARED`), so
+ * parallel sharded worker JVMs sharing one Docker daemon can't cross-wire clusters whose suites reuse
+ * the same node aliases (e.g. `ROR1_1`). Generalises to any shard count — multi-node clusters resolve
+ * peers fine on it (the earlier multi-node breakage was a per-build image-staging race in
+ * DockerImageCreator, NOT the network type).
  */
 object TestNetwork {
 
+  // workerId: set by Gradle test workers, "local" outside Gradle. Label aids `docker network ls`;
+  // uniqueness comes from the UUID network name.
   lazy val perJvm: Network = {
-    val shardCount = Option(System.getProperty("it.shardCount")).map(_.toInt).getOrElse(1)
-    if (shardCount <= 1) {
-      Network.SHARED
-    } else {
-      // workerId: set by Gradle test workers, "local" outside Gradle. Label aids `docker network ls`;
-      // uniqueness comes from the UUID network name.
-      val workerId = Option(System.getProperty("org.gradle.test.worker")).getOrElse("local")
-      Network
-        .builder()
-        .createNetworkCmdModifier(cmd => cmd.withLabels(java.util.Map.of("ror-test-jvm", workerId)))
-        .build()
-    }
+    val workerId = Option(System.getProperty("org.gradle.test.worker")).getOrElse("local")
+    Network
+      .builder()
+      .createNetworkCmdModifier(cmd => cmd.withLabels(java.util.Map.of("ror-test-jvm", workerId)))
+      .build()
   }
 }

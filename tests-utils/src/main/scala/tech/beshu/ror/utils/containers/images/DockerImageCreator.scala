@@ -72,28 +72,21 @@ object DockerImageCreator extends StrictLogging {
     md.digest().take(10).map("%02x".format(_)).mkString
   }
 
-  // ONE staging dir PER JVM (not per build). We hand testcontainers a private COPY of every source
-  // file rather than the shared on-disk original — when N parallel worker JVMs build the same image
-  // they otherwise point at the SAME files (e.g. the ROR plugin zip) and concurrent tar-streaming
-  // corrupts the build context ("Request to write N bytes exceeds size in header" → plugin install
-  // fails). A separate dir per JVM (UUID) keeps cross-JVM builds parallel-safe.
-  //
-  // WITHIN a JVM, image builds run serially (the singleton model), so we REUSE this one dir and wipe
-  // it at the start of every build. The old code made a fresh ror-img-<UUID> per build with
-  // deleteOnExit() — so every ES image's staged corretto JDK + ROR zip accumulated until JVM exit and
-  // filled the disk mid-leg (15GB→2.8GB→"No space left on device" on the ~15GB-free hosted runner).
-  // Reusing + wiping caps staging at ONE build's worth instead of N.
-  private lazy val stagingDir: File = {
-    val dir = File.newTemporaryDirectory(prefix = s"ror-img-${UUID.randomUUID()}-")
-    dir.toJava.deleteOnExit() // backstop for the final build's files; per-build wipe handles the rest
-    dir
-  }
-
   private def copyFilesFrom(imageDescription: DockerImageDescription, to: ImageFromDockerfile) = {
-    // Wipe the PREVIOUS build's staged files (its image is already built — serial-within-JVM), so disk
-    // never accumulates across the leg's image builds. Recreate the (now empty) dir.
-    if (stagingDir.exists) stagingDir.clear()
-    imageDescription
+    // A FRESH staging dir PER BUILD (UUID). We hand testcontainers a private COPY of every source file
+    // rather than the shared on-disk original — when builds run concurrently they otherwise point at
+    // the SAME files (e.g. the ROR plugin zip) and concurrent tar-streaming corrupts the build context.
+    //
+    // MUST be per-build, not a reused per-JVM dir: cluster nodes build their images IN PARALLEL
+    // (EsClusterContainer.startContainersAsynchronously → parSequenceUnordered), so a shared dir that's
+    // wiped at the start of each build let one node's build delete a sibling node's staged files
+    // mid-build → the victim booted with default config (cluster.name=elasticsearch) and crashed →
+    // multi-node clusters never formed (peer `failed to resolve host`). Per-build isolation fixes that.
+    //
+    // Disk: staging is small per build (~plugin zip + a few certs); the dominant disk consumer was the
+    // built IMAGES, now handled by deleteOnExit=true in create(). Staging keeps deleteOnExit as a net.
+    val stagingDir = File.newTemporaryDirectory(prefix = s"ror-img-${UUID.randomUUID()}-")
+    val dockerfile = imageDescription
       .copyFiles
       .zipWithIndex
       .foldLeft(to) {
@@ -103,6 +96,10 @@ object DockerImageCreator extends StrictLogging {
           val privateCopy = source.copyTo(stagingDir / s"$idx-${source.name}", overwrite = true)
           dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, privateCopy.toJava)
       }
+    // Best-effort reclaim once the build context has been consumed; deleteOnExit is the safety net in
+    // case the JVM dies before this runs.
+    stagingDir.toJava.deleteOnExit()
+    dockerfile
   }
 
   private implicit class BuilderExt(val builder: DockerfileBuilder) extends AnyVal {
