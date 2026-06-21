@@ -106,3 +106,21 @@ thrash, now corrected. Mergeable for the default path; sharding is safe to enabl
 - [ ] #1 confirmed on CI: ES 8.x legs (es80x/82x/83x/84x) fit on hosted runner (build 10539)
 - [ ] #2 probe chart from a real Azure VM (build 10540) → pick reclaim dirs
 - [x] #3 no-op — disk threshold already disabled (stronger than watermark=99%)
+
+## Results: ES 8.x/9.x leg times — master (pre-PR) vs PR, shardCount=1
+
+Measured: master build 10531 vs PR build 10541, all 8.x/9.x IT legs.
+
+| leg | master | PR | Δ | % |
+|------|-------:|----:|----:|----:|
+| es80x | 90m | 74m | −16m | −18% |
+| es812x | 89m | 69m | −20m | −22% |
+| es84x | 87m | 70m | −16m | −19% |
+| es82x | 88m | 72m | −15m | −18% |
+| … (every leg faster) | | | | |
+| **TOTAL (21 legs)** | **1766m** | **1483m** | **−283m** | **−16%** |
+
+Avg per leg 84m → 71m (−16%), **every leg faster, no exceptions**. This is BEFORE
+sharding — pure image-layer reuse from the ordered-steps generator fix. ~4.7h of
+CI wall-clock saved per run across the 8.x/9.x family, AND the 8.x legs now fit on
+the free hosted runner (no resize, no paid runners, no sharding needed).
