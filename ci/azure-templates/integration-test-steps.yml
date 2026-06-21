@@ -25,7 +25,17 @@ steps:
       # ($AGENT_ISSELFHOSTED=1) these paths are shared system dirs we must NOT delete — skip entirely.
       if [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
         echo ">>> hosted agent — freeing preinstalled toolchains to fit ES image builds"
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache 2>/dev/null || true
+        # List derived from a real ubuntu-24.04 hosted-VM probe (ci/probe-host-disk.sh, build 10540):
+        # ~17.8GB of these sit on /dev/root (same fs as /var/lib/docker), so removing them directly
+        # grows the overlay headroom. Measured sizes: dotnet 5.4G, ghcup 3.8G, swift 3.4G,
+        # powershell 1.3G, julia 1.0G, microsoft+az+chromium ~2.1G. We deliberately DON'T touch
+        # /usr/lib/jvm (a bare host step may shell out to the host JDK). android/ghc/hostedtoolcache
+        # are kept in the list as harmless no-ops (absent on 24.04, present on older images).
+        sudo rm -rf \
+          /usr/share/dotnet /usr/local/.ghcup /usr/share/swift \
+          /usr/local/share/powershell /usr/local/julia* \
+          /opt/microsoft /opt/az /usr/local/share/chromium \
+          /usr/local/lib/android /opt/ghc /usr/local/share/boost /opt/hostedtoolcache 2>/dev/null || true
       fi
       df -h /
     displayName: 'Pre-clean this leg''s Docker leftovers (shared-daemon safe)'
