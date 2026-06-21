@@ -150,14 +150,17 @@ run_integration_tests() {
   start_image_sweeper() {
     ( while true; do
         avail_kb=$(df --output=avail / 2>/dev/null | tail -1 | tr -d ' ')
-        if [ -n "$avail_kb" ] && [ "$avail_kb" -lt 6291456 ]; then  # only under pressure (<6GB free)
+        # Act early (<8GB free) and sweep often (20s) so we can't fall behind several ~1GB image
+        # builds between cycles. Correctness is independent of frequency: docker rmi refuses an in-use
+        # image, so sweeping aggressively can never remove a live suite's image.
+        if [ -n "$avail_kb" ] && [ "$avail_kb" -lt 8388608 ]; then
           in_use=$(docker ps --format '{{.Image}}' 2>/dev/null | sort -u)
           for img in $(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep '^ror-it-es:'); do
             echo "$in_use" | grep -qxF "$img" || docker rmi "$img" >/dev/null 2>&1 || true
           done
           docker image prune -f >/dev/null 2>&1 || true   # dangling layers from superseded builds
         fi
-        sleep 45
+        sleep 20
       done ) &
     ROR_IMG_SWEEPER_PID=$!
   }
