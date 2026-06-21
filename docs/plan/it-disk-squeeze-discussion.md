@@ -46,6 +46,14 @@ the host, on the same device as `/var/lib/docker`.
 `SAME_AS_DOCKER`, sums only same-device reclaim, `exit 1` (recon only). The chart decides exactly
 which dirs a real `target: host` reclaim step removes — we delete only what's fat AND on docker's fs.
 
+**Probe results (build 10540, ubuntu-24.04 hosted VM):** `/var/lib/docker` on `/dev/root` = the 72G
+big disk, **56G used / 16G free (78% full)**. `/mnt` absent (trap avoided). **17.8 GB reclaimable on
+docker's device:** dotnet 5.4G, ghcup 3.8G, swift 3.4G, /usr/lib/jvm 1.5G, powershell 1.3G, julia
+1.0G, microsoft/az/chromium ~2.1G. Note android/hostedtoolcache/ghc are ABSENT on 24.04 (present on
+older images). The pre-existing reclaim step only freed dotnet+ghcup (~9.2G) and listed dirs that
+don't exist; aligned it to the probe (commit e68e2fb4) — now ~16G freed (excl. /usr/lib/jvm, which a
+bare host step may use), ~tripling headroom on the 16G-free disk.
+
 **Why not `/mnt`:** on hosted runners `/mnt` is the SMALL ~14GB resource disk, not the big one.
 Moving Docker's data-root there is *worse*. Confirmed trap.
 
