@@ -131,16 +131,18 @@ fi
 
 # Upload. Supports anonymous upload if bucket is public-writable, and keys are set to ''.
 echo "Uploading: $srcfile ($mime) to $upload_url$targfile"
-# Default: `-f` makes curl exit non-zero on HTTP >=400 (so callers detect
-# failures) but it also SUPPRESSES the response body. Set S3_UPLOADER_DEBUG=1
-# to drop -f and print the server's error XML (for debugging 403s etc).
+# Default: quiet upload that still fails loud. `-f` makes curl exit non-zero on HTTP >=400
+# (so callers detect failures) but it also SUPPRESSES the response body.
+# Set S3_UPLOADER_DEBUG=1 to debug: adds `-v` (verbose, incl. the full TLS handshake trace —
+# very noisy on curl 8.x/OpenSSL) and drops `-f` so curl prints the server's error XML.
+# `-v` is deliberately OFF by default, otherwise every upload floods the CI log with TLS traces.
 if [ -n "${S3_UPLOADER_DEBUG:-}" ]; then
-    CURL_FAIL_FLAGS="-S"
+    CURL_FLAGS="-v -S"
 else
-    CURL_FAIL_FLAGS="-f"
+    CURL_FLAGS="-f"
 fi
-curl -vvv                       \
-    -# -k $CURL_FAIL_FLAGS      \
+curl                            \
+    -# -k $CURL_FLAGS           \
     -F "key=$targfile"          \
     $key_and_sig_args           \
     -F "Content-Type=$mime"     \
