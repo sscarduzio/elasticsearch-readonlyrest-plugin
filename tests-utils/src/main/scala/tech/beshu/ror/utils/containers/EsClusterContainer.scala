@@ -53,6 +53,16 @@ class EsClusterContainer private[containers](val esClusterSettings: EsClusterSet
 
   override def stop(): Unit = {
     clusterNodes.foreach(_.stop())
+    // Reclaim each node's image right after the node stops. A leg builds many distinct
+    // ror-it-es:<contenthash> images (one per node config); deleteOnExit only reaps them at JVM exit,
+    // so on a low-disk CI runner they accumulate mid-leg and exhaust disk ("No space left on device" —
+    // the ES 8.x legs). Removing a STOPPED cluster's own images is safe: each image is uniquely tagged
+    // by content (different node.name -> different tag), so this never touches a sibling suite's live
+    // image, and removeImage swallows the "image in use" case for any shared base layers.
+    clusterNodes.foreach { node =>
+      try node.removeImage()
+      catch { case scala.util.control.NonFatal(_) => () } // best-effort; never fail teardown on cleanup
+    }
     aStartedDependencies.values.foreach(_.container.stop())
   }
 

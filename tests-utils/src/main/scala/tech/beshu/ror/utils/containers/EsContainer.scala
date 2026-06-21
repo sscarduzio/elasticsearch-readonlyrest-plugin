@@ -117,7 +117,10 @@ abstract class EsContainer(val esVersion: String,
       case EsContainerImplementation.Windows(_) =>
         ()
       case EsContainerImplementation.Linux(esImage, _) =>
-        dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+        // Best-effort: an image still referenced by a concurrently-running sibling container can't be
+        // removed (Docker 409) — swallow it; this node's own uniquely-tagged image is what we reclaim.
+        try dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+        catch { case scala.util.control.NonFatal(_) => () }
     }
   }
 
