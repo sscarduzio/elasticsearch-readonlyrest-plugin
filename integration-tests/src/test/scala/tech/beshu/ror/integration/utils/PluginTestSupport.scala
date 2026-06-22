@@ -40,8 +40,8 @@ trait SingletonPluginTestSupport
     with ResolvedRorSettingsFileProvider {
   this: Suite & BaseSingleNodeEsClusterTest =>
 
-  // Own logger (not a LazyLogging mixin) — some concrete suites already mix in LazyLogging, and a
-  // second `logger` from the trait would clash. Distinct name avoids the override conflict.
+  // Own logger (not a LazyLogging mixin): some suites already mix in LazyLogging, so a distinct name
+  // avoids the `logger` override conflict.
   private val teardownLogger = Logger(classOf[SingletonPluginTestSupport])
 
   override lazy val targetEs: EsContainer = SingletonEsContainerWithRorSecurity.singleton.nodes.head
@@ -53,18 +53,15 @@ trait SingletonPluginTestSupport
   }
 
   override protected def beforeAll(): Unit = {
-    // Claim exclusive ownership of the shared singleton BEFORE mutating it (cleanUp/updateSettings/
-    // init). Fails loudly if another suite still owns it — i.e. if suites ever stop running serially
-    // within this JVM (see SingletonEsContainerWithRorSecurity.acquire).
+    // Claim exclusive ownership of the shared singleton BEFORE mutating it; fails loudly if another
+    // suite still owns it (i.e. suites ever stop running serially within this JVM).
     SingletonEsContainerWithRorSecurity.acquire(this.getClass.getName)
-    // ScalaTest does NOT call afterAll if beforeAll throws, so any failure AFTER acquire() must
-    // release the latch here — otherwise the singleton stays owned and every later suite on this
-    // worker fails at acquire() with a misleading "non-interference" error. Symmetric with afterAll.
+    // ScalaTest skips afterAll if beforeAll throws, so any failure after acquire() must release the
+    // latch here too — else the singleton stays owned and every later suite fails at acquire().
     try {
       startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
-      // Bound the blocking ES cleanup (removeAllIndices/deleteAllTemplates/deleteAllRepositories
-      // .force()) — if ES is wedged, this used to hang the worker JVM at suite start forever. On
-      // timeout we throw, failing THIS suite fast rather than hanging the whole leg for hours.
+      // Bound the blocking ES cleanup: if ES is wedged this used to hang the worker JVM at suite
+      // start; on timeout we throw, failing THIS suite fast instead of hanging the leg for hours.
       runWithTimeout("cleanUpContainer", 2 minutes)(SingletonEsContainerWithRorSecurity.cleanUpContainer())
       SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString)
       nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
@@ -77,13 +74,8 @@ trait SingletonPluginTestSupport
   }
 
   override protected def afterAll(): Unit = {
-    // release MUST run even if test teardown or dependency shutdown throws — otherwise the singleton
-    // stays latched and every subsequent suite on this worker fails at acquire(). Keep it outermost.
-    //
-    // Each blocking teardown step is time-bounded: a WEDGED (not dead) ES or dependency container
-    // used to hang the worker JVM forever here, producing 300+ minute "stopped hearing from agent"
-    // legs. With a bound, a stuck step is abandoned and we move on, so the leg self-terminates and
-    // the singleton latch is always released. (See ScalaUtils.runWithTimeout.)
+    // release MUST run even if teardown throws -> try/finally, outermost; else the singleton stays
+    // latched and every later suite fails at acquire(). Steps are time-bounded (ScalaUtils.runWithTimeout).
     try {
       try {
         runWithTimeout("afterAll", 3 minutes)(super.afterAll())

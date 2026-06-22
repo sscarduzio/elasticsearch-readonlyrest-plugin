@@ -20,12 +20,8 @@ import better.files.File
 import os.Path
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.{Command, CopyFile, Env}
 
-// `steps` is an ORDERED sequence of COPY/RUN/USER in DECLARATION order. This matters for Docker layer
-// caching: per-config files (readonlyrest.yml, elasticsearch.yml) must be COPIED *after* the heavy,
-// config-independent RUNs (plugin install, ES patch) so those ~140MB layers are byte-identical across
-// configs and SHARED in the image store. The previous design kept copies in a Set emitted before all
-// runs, which (a) lost order and (b) put per-config copies at the top → cache-miss → ~140MB rebuilt
-// per config → CI disk exhaustion. Keeping copies and runs in ONE ordered Seq fixes both.
+// `steps` is ORDERED (COPY/RUN/USER in declaration order) for Docker layer caching: per-config files
+// COPY *after* the heavy config-independent RUNs so those ~140MB layers stay byte-identical and shared.
 final case class DockerImageDescription(baseImage: String,
                                         steps: Seq[Command],
                                         envs: Set[Env],

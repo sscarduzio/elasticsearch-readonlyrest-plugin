@@ -170,14 +170,8 @@ class Elasticsearch(val esVersion: String,
   }
 
   private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {
-    // LAYER ORDER FOR CACHE SHARING: the heavy, config-INDEPENDENT work (tar, JDK swap, keystore,
-    // plugin install + ES patch — ~140MB, identical for every suite of this ES version) runs FIRST so
-    // those layers are SHARED across all configs on the CI Docker daemon. The per-suite-varying config
-    // files (elasticsearch.yml, log4j; readonlyrest.yml is deferred inside installPlugins) are COPIED
-    // LAST so they don't poison the hash of the expensive layers. Previously elasticsearch.yml was
-    // copied FIRST → install+patch became a unique ~140MB layer per config → the heavy 8.x legs
-    // exhausted the ~15GB hosted disk. (chown stays BEFORE installPlugins — the keystore step needs the
-    // config dir owned by elasticsearch; a trailing chown covers the late-copied config files.)
+    // LAYER ORDER FOR CACHE SHARING: heavy config-independent work (tar, JDK swap, keystore, plugin
+    // install + ES patch, ~140MB) runs FIRST so layers are shared; per-suite config files COPY LAST.
     DockerImageDescription
       .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
       .user("root")
@@ -310,19 +304,14 @@ class Elasticsearch(val esVersion: String,
       )
   }
 
-  // ROR-specific logging only. It is dropped into a `ror` subdirectory of the ES config dir and
-  // merged with the stock ES `log4j2.properties` (ES recursively loads every file named
-  // `log4j2.properties` under the config dir). This keeps the stock logging config intact,
-  // including the per-component entitlement-logger suppression shipped by recent ES versions.
+  // ROR-specific logging dropped into a `ror` subdir; ES recursively loads every `log4j2.properties`
+  // under config, so it merges with the stock config rather than replacing it.
   private def rorLog4jDropInFromResources = {
     fromResourceBy(name = "ror-log4j2.properties")
   }
 
-  // ES 7.15.1–7.17.6 and 8.0.x–8.4.x bundle JDK 17.0.0/17.0.1/17.0.2 or JDK 18, which have cgroup v2
-  // bug JDK-8287073: CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport is checked.
-  // Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+.
-  // NOTE: the same version-range logic is maintained in the e2e-tests repo at
-  //   environments/common/images/es-jdk-patch/patch-es-jdk.sh
+  // ES 7.15.1–7.17.6 / 8.0.x–8.4.x bundle JDK 17.0.0–17.0.2 or 18 with cgroup v2 bug JDK-8287073 (NPE);
+  // fixed in JDK 17.0.5+/19+. Same version-range logic mirrored in e2e-tests es-jdk-patch/patch-es-jdk.sh.
   private def hasBuggyBundledJdk: Boolean =
     (Version.greaterOrEqualThan(esVersion, 7, 15, 1) && Version.lowerThan(esVersion, 7, 17, 7)) ||
     (Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 5, 0))
@@ -334,10 +323,8 @@ class Elasticsearch(val esVersion: String,
 
   // Replace the bundled JDK in-place with the cached custom JDK tarball.
   private def replaceBundledJdk(image: DockerImageDescription): DockerImageDescription = {
-    // JDK 17.0.0–17.0.4 and JDK 18 have cgroup v2 bug JDK-8287073 (NPE in CgroupV2Subsystem).
-    // JDK-17 builds (ES 7.15.1–7.15.2, 7.16.x, 7.17.0–7.17.2, 8.0.x–8.1.x) → Corretto 17.0.5 (backport JDK-8288308).
-    // JDK-18 builds (ES 7.17.3–7.17.6, 8.2.x–8.4.x) → Corretto 19.0.0 (first JDK 19 with the fix).
-    // Downloaded once per JVM process and reused across all container builds.
+    // Swap the buggy bundled JDK (JDK-8287073): JDK-17 builds → Corretto 17.0.5, JDK-18 builds → Corretto
+    // 19.0.0. Tarball downloaded once per JVM process and reused across all container builds.
     val tarball =
       if (needsCorretto19) JDK.AmazonCorretto1900jdk.tarball
       else JDK.AmazonCorretto1705jdk.tarball

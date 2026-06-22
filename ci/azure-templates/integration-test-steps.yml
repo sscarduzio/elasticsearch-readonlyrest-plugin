@@ -1,20 +1,14 @@
 steps:
-  # NOTE: Linux IT legs run on the HOSTED ubuntu pool by default (one fresh VM per leg, isolated
-  # daemon). On the self-hosted ryzen pool, though, the Docker daemon is SHARED across agents on the
-  # host, so an unqualified `docker system prune -af` would destroy a sibling leg's in-flight ES
-  # containers. To stay correct on BOTH pools we only ever touch THIS leg's own resources, scoped by
-  # the unique ROR_LEG_ID label (stamped onto every container in EsContainer.scala). Dangling-image/
-  # builder prune is daemon-wide but safe (it can't remove images/layers an in-use container references).
+  # On the self-hosted ryzen pool the Docker daemon is SHARED, so we only touch THIS leg's resources
+  # (scoped by the ROR_LEG_ID label); dangling-image/builder prune is daemon-wide but safe.
   - bash: |
       echo ">>> reaping any leftover containers for THIS leg id ($ROR_LEG_ID) before start"
-      # Inline (not ci-lib.sh's reap_leg_containers) — this step runs BEFORE `checkout: self`, so the
-      # repo (and ci-lib.sh) isn't on disk yet. Same label-scoped logic; keep it in sync with ci-lib.
+      # Inline (not ci-lib.sh's reap_leg_containers) — runs BEFORE `checkout: self`, so ci-lib.sh
+      # isn't on disk yet. Same label-scoped logic; keep in sync with ci-lib.
       ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
       [ -n "$ids" ] && docker rm -f $ids || echo "none"
-      # Reclaim disk: leaked ror-it-es:<hash> images are TAGGED so plain dangling-prune misses them and
-      # they fill /home (agents hit 100% -> "No space left on device" fails every leg). Prune images
-      # UNUSED by a running container + older than 180m (> longest leg, so a sibling's in-flight image
-      # is never removed). Safe on the shared daemon.
+      # Leaked ror-it-es:<hash> images are TAGGED (dangling-prune misses them) and fill disk. Prune
+      # images unused + older than 180m (> longest leg, so a sibling's in-flight image is never removed).
       docker image prune -af --filter "until=180m" >/dev/null 2>&1 || true
       docker image prune -f >/dev/null 2>&1 || true
       docker builder prune -f >/dev/null 2>&1 || true
@@ -24,14 +18,8 @@ steps:
       ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
       AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
 
-  # MUST run on the HOST (target: host), NOT in the ror-toolchains container. The IT job is a CONTAINER
-  # job; a normal step's `rm` executes in the container's mount namespace where these host paths are
-  # empty/absent → frees NOTHING on the VM disk that /var/lib/docker (the image-build target) lives on.
-  # That was the bug: the reclaim ran in-container and the es80x-84x JDK-swap legs still hit "no space
-  # left writing /tmp/custom-jdk.tar.gz" (~15.8GB free, unchanged). `target: host` runs it on the VM so
-  # the deletes actually grow the overlay's filesystem. HOSTED ONLY — guarded off the self-hosted ryzen
-  # pool where these are shared system dirs. List + sizes from the real probe (build 10540): dotnet 5.4G,
-  # ghcup 3.8G, swift 3.4G, powershell 1.3G, julia 1.0G, microsoft+az+chromium ~2.1G ≈ 16G freed.
+  # MUST run on the host (target: host), not in the container — else the `rm` runs in the container's
+  # mount namespace and frees NOTHING on the VM disk (~16G of preinstalled toolchains). Hosted-only.
   - bash: |
       if [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
         echo ">>> [host] freeing preinstalled toolchains to fit ES image builds"
@@ -58,9 +46,8 @@ steps:
       export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
       export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
-      # Sourced in-process so DOCKER_AUTH_CONFIG (when set) reaches the testcontainers JVM, and
-      # stays UNSET otherwise (a cross-step Azure var can't express "absent", only ""/literal — both
-      # of which testcontainers' RegistryAuthLocator would fail to JSON-parse).
+      # Sourced in-process so DOCKER_AUTH_CONFIG reaches the testcontainers JVM when set, and stays
+      # UNSET otherwise (an empty/literal Azure var would fail RegistryAuthLocator's JSON-parse).
       source ci/docker-hub-auth.sh
 
       echo "[TEST] executing ROR_TASK = $ROR_TASK"
@@ -68,10 +55,8 @@ steps:
     env:
       GRADLE_USER_HOME: $(GRADLE_USER_HOME)
       ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
-      # Intra-agent parallelism: K sharded integration-tests:test JVMs, each its own ES container,
-      # running disjoint suite subsets. Default 1 (no sharding). Override per-run via the IT_SHARD_COUNT
-      # pipeline variable. MUST be declared here — Azure scrubs step env to declared vars (a bare
-      # agent .env is NOT forwarded into steps). Gate >1 only on agents with RAM for K ES instances.
+      # Intra-agent parallelism: K sharded test JVMs (each own ES), default 1. Must be declared here —
+      # Azure scrubs step env to declared vars. Gate >1 only on agents with RAM for K ES instances.
       IT_SHARD_COUNT: $(IT_SHARD_COUNT)
       VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
@@ -86,10 +71,8 @@ steps:
       testResultsFiles: "**/TEST*xml"
       mergeTestResults: true
 
-  # Reap THIS leg's containers no matter how the job ended (success / failure / cancellation). Azure
-  # runs always() steps within the cancel grace period, so this catches the common supersede-cancel
-  # case. The Abandoned case (agent lost contact, no step runs) is covered by the host timer:
-  # ci/reap-orphan-es-containers.sh on each agent. Scoped by label -> never touches a sibling leg.
+  # Reap THIS leg's containers however the job ended (always() runs in the cancel grace period);
+  # the Abandoned case is covered by the host timer. Scoped by label -> never touches a sibling leg.
   - bash: |
       echo ">>> reaping THIS leg's containers ($ROR_LEG_ID) on exit"
       source ci/ci-lib.sh && reap_leg_containers   # single source of truth (ci-lib.sh)

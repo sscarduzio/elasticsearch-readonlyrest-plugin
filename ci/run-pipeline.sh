@@ -2,14 +2,11 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 
-# On cancel/timeout Azure sends SIGTERM. The old trap just `exit 1`'d, leaving the child gradle
-# process tree + worker JVMs + ES testcontainers RUNNING (detached) — the true cause of the orphan
-# leak and the multi-hour "stopped hearing from agent" hangs. Now we kill the whole child process
-# tree AND force-remove THIS leg's containers (scoped by the ror.leg=$ROR_LEG_ID label so we never
-# touch a sibling leg on the shared self-hosted Docker daemon), then exit.
-# PIDs of in-flight gradle process-group leaders (1 per shard). An ARRAY, not a space-joined string:
-# string find-replace pruning (`${x/ $pid/}`) can corrupt `123` vs `1234`. We never prune — `kill`
-# on an already-dead PID is a harmless no-op, so the trap just signals every PID it ever launched.
+# On cancel/timeout (SIGTERM) kill the gradle process group + reap this leg's containers, else they
+# orphan (scoped by ror.leg=$ROR_LEG_ID so a sibling leg on the shared daemon is untouched).
+
+# PIDs of gradle group leaders (1 per shard); an ARRAY not a string (find-replace pruning could
+# corrupt `123` vs `1234`). Never pruned — kill on a dead PID is a no-op.
 GRADLE_PIDS=()
 terminate() {
   echo ">>> Termination signal received — killing gradle tree(s) + reaping this leg's containers..."
@@ -105,16 +102,11 @@ run_integration_tests() {
 
   echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests in ${shardCount} shard(s).."
 
-  # Each gradle invocation runs in its OWN process group (setsid) so the SIGTERM trap can reap the
-  # whole tree on cancel/timeout. Sets LAST_PID (not stdout — gradle output owns stdout).
-  # IMPORTANT: do NOT give shards separate --project-cache-dirs. K invocations each with their own
-  # cache dir all rebuild the shared :build-base / :buildSrc outputs CONCURRENTLY into the same
-  # build/ dir -> race -> ':build-base:generatePluginAdapters FAILED' (root cause of the 10502 leg
-  # failures). Shards share the default project cache so Gradle's own file-locking serializes the
-  # build-base build while still running the tests in parallel across separate worker JVMs.
-  # Each gradle invocation runs in its OWN process group (setsid) so the SIGTERM trap can reap the
-  # whole tree. Appends the leader PID to the GRADLE_PIDS array; never pruned (kill on a dead PID is
-  # a no-op), so the trap signals every invocation it ever launched. Sets LAST_PID for the caller.
+  # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
+  # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
+
+  # Do NOT give shards separate --project-cache-dirs: they'd rebuild shared :build-base concurrently
+  # and race (':build-base:generatePluginAdapters FAILED', 10502). Shared cache lets file-locking serialize it.
   LAST_PID=""
   run_one() {  # args: <gradle args...>
     setsid ./gradlew --no-daemon "$@" &
@@ -126,24 +118,17 @@ run_integration_tests() {
   wait "$LAST_PID"; local rc=$?
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 
-  # 2) Build the singleton ES image ONCE + compile test classes before the parallel shards, so every
-  #    shared/non-test build output (build-base, buildSrc, test classes, ES image) is up-to-date and
-  #    the K parallel shards do NO shared build work — only run their disjoint test subset.
+  # 2) Build the singleton ES image + test classes ONCE before the parallel shards, so the K shards do
+  #    NO shared build work — only run their disjoint test subset.
   run_one integration-tests:prebuildEsImage integration-tests:testClasses "${esArgs[@]}"
   wait "$LAST_PID"; rc=$?
   if [ "$rc" -ne 0 ]; then return "$rc"; fi
 
-  # NOTE on disk: a low-disk hosted runner can fill mid-leg because each distinct ES image config
-  # builds its own ror-it-es:<hash> image (~1GB+; saw 15 in one es80x leg). The fix is the per-JVM
-  # reused image-staging dir (DockerImageCreator) + the hosted toolchains-reclaim pre-step — together
-  # they hold disk healthy (~7GB free observed). We do NOT run a background image pruner during the
-  # run: rmi/`image prune` races the concurrent image builds on the shared daemon and removes layers a
-  # live build still references ("unknown parent image ID" -> 16 spurious failures on build 10532).
-  # If a leg still exhausts disk, the right lever is a bigger runner, not pruning mid-build.
+  # Disk: each distinct ES config builds a ~1GB+ ror-it-es:<hash> image. Do NOT prune mid-run — it races
+  # concurrent builds and removes in-use layers ("unknown parent image ID", 10532); out of disk => bigger runner.
 
-  # 3) integration-tests:test — K shards in PARALLEL on this agent (shared cache; see note above).
-  #    Each is a separate JVM => its own singleton ES container, running a disjoint suite subset
-  #    (name-hash mod K, see build.gradle). With everything pre-built, no shard rebuilds shared output.
+  # 3) integration-tests:test — K shards in PARALLEL (shared cache). Each is a separate JVM => its own
+  #    ES container, running a disjoint suite subset (name-hash mod K, see build.gradle).
   local pids="" idx
   for idx in $(seq 0 $((shardCount - 1))); do
     run_one integration-tests:test "${esArgs[@]}" -PshardCount="$shardCount" -PshardIndex="$idx"

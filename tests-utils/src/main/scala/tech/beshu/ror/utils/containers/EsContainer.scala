@@ -94,9 +94,8 @@ abstract class EsContainer(val esVersion: String,
         container.withCreateContainerCmdModifier { cmd =>
           cmd.getHostConfig.withCgroupnsMode("host")
         }
-        // Stamp this leg's id so cleanup can reap ONLY this leg's containers and never a sibling
-        // leg's on the shared self-hosted Docker daemon (see ci/azure-templates/integration-test-
-        // steps.yml + ci/reap-orphan-es-containers.sh). Absent off-CI -> no label, no-op.
+        // Stamp this leg's id so cleanup reaps ONLY this leg's containers, never a sibling's on the
+        // shared self-hosted Docker daemon. Absent off-CI -> no label, no-op.
         Option(System.getenv("ROR_LEG_ID")).filter(_.nonEmpty).foreach { legId =>
           container.withLabel("ror.leg", legId)
         }
@@ -117,8 +116,8 @@ abstract class EsContainer(val esVersion: String,
       case EsContainerImplementation.Windows(_) =>
         ()
       case EsContainerImplementation.Linux(esImage, _) =>
-        // Best-effort: an image still referenced by a concurrently-running sibling container can't be
-        // removed (Docker 409) — swallow it; this node's own uniquely-tagged image is what we reclaim.
+        // Best-effort: an image still referenced by a sibling container can't be removed (Docker 409)
+        // — swallow it; this node's own uniquely-tagged image is what we reclaim.
         try dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
         catch { case scala.util.control.NonFatal(_) => () }
     }

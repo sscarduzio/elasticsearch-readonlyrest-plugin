@@ -61,35 +61,23 @@ test {
     enabled = project.hasProperty('esModule')
     if (enabled) {
         // Build the singleton ES image once up-front so parallel workers never build concurrently.
-        // ponytail: at shardCount=K this fires K times (once per :test invocation) on top of
-        // run-pipeline's own step-2 prebuild — K+1 ES boot/stop cycles. Kept anyway: it's the only
-        // thing guaranteeing the image exists for a bare local `./gradlew :integration-tests:test`
-        // (no run-pipeline). The redundant boots are a cache hit (image already tagged) so they don't
-        // rebuild; the cost is container churn, tolerable at the K=1 merge default (1 redundant boot).
-        // Skip-if-exists idempotency would need to duplicate the content-hash tag logic — not worth it.
+        // Redundant K+1 boots are cache hits; kept so a bare local `:test` (no run-pipeline) still works.
         dependsOn 'prebuildEsImage'
         def module = project.properties['esModule']
         systemProperty "esModule", module
         def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
         if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
 
-        // SHARDING: each `integration-tests:test` invocation is ONE worker JVM with its OWN singleton
-        // ES (separate process => separate AtomicReference latch => separate ES container). Running K
-        // invocations over DISJOINT suite subsets is the only way to get K real fork JVMs on an agent:
-        // Gradle's JUnit-Platform processor collects ALL classes and runs the Launcher ONCE per worker,
-        // so maxParallelForks/forkEvery can't split the scalatest engine's single work unit
-        // (gradle/gradle#8632). We partition the INPUT instead. Deterministic name-hash mod K:
-        // stable, auto-balances, zero maintenance as suites are added. shardCount=1 => run everything.
+        // SHARDING: shardCount=1 runs everything; K>1 partitions suites by name-hash mod K (disjoint cover).
+        // Forks can't split the scalatest engine (gradle#8632), so parallelism = K sharded invocations.
         def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
         def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
         filter {
             if (shardCount > 1) {
                 def matched = 0
                 test.testClassesDirs.asFileTree.matching {
-                    // `*Suite*` (not `*Suite`) so concrete classes ending in `Suites` (e.g.
-                    // EnabledPromptForBasicAuthSettingAllSuites) are sharded too — matching the K=1
-                    // package glob below. `base/` holds non-runnable support traits, excluded so the
-                    // `matched` guard counts only real suites and can't pass on a trait-only shard.
+                    // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
+                    // excluded so the `matched` guard counts only real suites.
                     include 'tech/beshu/ror/integration/suites/**/*Suite*.class'
                     exclude '**/*$*.class'   // skip nested/companion classes
                     exclude 'tech/beshu/ror/integration/suites/base/**'
@@ -115,11 +103,8 @@ test {
             includeEngines 'scalatest'
             excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
         }
-        // Parallel-safety invariant: suites run SERIALLY within a worker JVM (they share one mutable
-        // singleton ES); parallelism is across worker JVMs only (maxParallelForks). The scalatest
-        // engine is a non-hierarchical single-threaded TestEngine, so junit.jupiter.execution.parallel.*
-        // is a NO-OP here — setting it would give a false belief that in-JVM parallelism is on while the
-        // singleton suites silently corrupt each other. Fail fast if anyone enables it.
+        // Suites run serially within a JVM (shared singleton ES); junit.jupiter parallel is a NO-OP for
+        // the scalatest engine and would mask silent corruption — fail fast if anyone enables it.
         def parallelProp = System.getProperty('junit.jupiter.execution.parallel.enabled')
         if (parallelProp != null && parallelProp.toBoolean()) {
             throw new GradleException(
@@ -135,21 +120,13 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-    // ALWAYS 1 worker JVM per invocation. maxParallelForks is intentionally NOT the parallelism lever:
-    // Gradle's JUnit-Platform processor collects all classes into one Launcher run, so a 2nd fork never
-    // gets work (gradle/gradle#8632) — verified 2026-06-19 (forks=2 -> still 1 test executor). Intra-
-    // agent parallelism comes from running multiple SHARDED invocations (see -PshardCount above), each
-    // its own JVM + own ES container. So here, exactly one.
+    // maxParallelForks=1 always — forks can't split the scalatest engine (gradle#8632), so a 2nd fork
+    // gets no work. Parallelism = sharding (multiple -PshardCount invocations), not forks.
     maxParallelForks = 1
-    // Logged loud (quiet() survives -q) so the per-JVM fork count is never a mystery. Parallelism is
-    // sharding (multiple invocations), not maxParallelForks — see the SHARDING note above.
+    // Logged loud (quiet() survives -q) so the per-JVM fork count is never a mystery.
     logger.quiet(">>> integration-tests maxParallelForks=${maxParallelForks} (1 ES/JVM; parallelism via -PshardCount)")
-    // Per WORKER JVM. The test JVM only ORCHESTRATES — it streams small HTTP requests to the ES
-    // container and holds no bulk data. Measured peak live heap (G1, -Xlog:gc) is ~50MB for both an
-    // API-heavy suite (ClusterApi) and a data-moving one (DocumentApi, bulk inserts) — they're equal
-    // because nothing accumulates. So 512m is ~10x the real peak: ample GC headroom, no thrash, and
-    // it survives the ARM(local)→x86(CI) RSS difference. 1g/2g were unmeasured over-reservations.
-    // Overridable via -PitTestHeap for a surprise outlier suite.
+    // Per worker JVM. The JVM only orchestrates (streams small HTTP to ES, no bulk data); measured peak
+    // live heap is ~50MB, so 512m is ~10x headroom. Overridable via -PitTestHeap for outlier suites.
     maxHeapSize = project.findProperty('itTestHeap') ?: '512m'
 }
 
@@ -171,9 +148,8 @@ tasks.register('ldapserver', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
 }
 
-// Builds + stably tags the singleton ES image ONCE (single JVM) before the parallel `test` workers.
-// Without this, workers build the identical image concurrently and the Docker build layers fail
-// intermittently at shardCount>=3. Pre-building means every worker gets a cache hit.
+// Builds + stably tags the singleton ES image ONCE before parallel workers; without it concurrent
+// identical builds fail intermittently at shardCount>=3. Pre-building gives every worker a cache hit.
 tasks.register('prebuildEsImage', JavaExec) {
     onlyIf { project.hasProperty('esModule') }
     systemProperty 'project.dir', rootProject.projectDir

@@ -30,18 +30,8 @@ object DockerImageCreator extends StrictLogging {
 
   def create(elasticsearch: Elasticsearch): ImageFromDockerfile = {
     val imageDescription = elasticsearch.toDockerImageDescription
-    // STABLE, content-derived tag (vs testcontainers' random per-instance tag). Two builds of an
-    // identical image (e.g. the singleton ES image, baked the same way in every worker) resolve to
-    // the SAME tag, so once it's built locally every other worker gets an instant cache hit instead
-    // of redundantly (and concurrently) rebuilding it — which is what fails at shardCount>=3.
-    //
-    // deleteOnExit = TRUE (testcontainers' default, as master used for 5 years): the image is removed
-    // when its container stops, so per-suite custom images (each suite's readonlyrest.yml is baked in,
-    // → a distinct image per config) don't accumulate and fill the disk. A leg builds ~15 such images;
-    // at ~1GB each that overflowed the ~14GB hosted disk mid-leg ("No space left on device") once we
-    // had switched this to false. The stable tag still gives the parallel-build cache hit; auto-clean
-    // still reclaims each image after use. The long-lived singleton container keeps ITS image alive as
-    // long as it's needed (it only stops at JVM end), so cleanup never pulls the singleton out early.
+    // STABLE content-derived tag: identical images share one tag → cache hit across parallel workers (no
+    // concurrent rebuilds, fails at shardCount>=3). deleteOnExit=true reclaims per-suite images post-use.
     val stableTag = s"ror-it-es:${imageTag(imageDescription)}"
     copyFilesFrom(imageDescription, to = new ImageFromDockerfile(stableTag, /* deleteOnExit = */ true))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
@@ -56,43 +46,32 @@ object DockerImageCreator extends StrictLogging {
       })
   }
 
-  // Short hex digest over everything that defines the image: base image, the dockerfile commands/envs,
-  // and the CONTENT of every copied file (so a changed ROR plugin zip / cert / settings -> new tag).
+  // Short hex digest over everything that defines the image (base, commands, envs, copied-file CONTENT)
+  // so a changed plugin zip / cert / settings yields a new tag.
   private def imageTag(d: DockerImageDescription): String = {
     val md = MessageDigest.getInstance("SHA-1")
     md.update(d.baseImage.getBytes("UTF-8"))
     d.steps.foreach { case c: Command.Run => md.update(c.toString.getBytes("UTF-8"))
                       case u: Command.ChangeUser => md.update(u.toString.getBytes("UTF-8"))
                       case _: Command.Copy => () } // copy CONTENT hashed below (order-independent, sorted)
-    // envs is a Set — sort so iteration order can't vary the digest. The whole stable-tag scheme
-    // depends on identical inputs -> identical tag -> cache hit across parallel workers; an
-    // order-dependent hash would cause spurious cache misses (redundant concurrent rebuilds).
+    // envs is a Set — sort so iteration order can't vary the digest (order-dependent hash would cause
+    // spurious cache misses → redundant concurrent rebuilds).
     d.envs.toList.sortBy(e => (e.name, e.value)).foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
     d.copyFiles.toList.sortBy(_.destination.toString).foreach { cf =>
       md.update(cf.destination.toString.getBytes("UTF-8"))
       val f = File(cf.file.pathAsString)
       if (f.exists) md.update(f.sha256.getBytes("UTF-8"))
     }
-    // entrypoint/command also define the image — fold them in so two images differing only there
-    // can't collide to the same tag (a false cache hit that would run the wrong launcher).
+    // entrypoint/command also define the image — fold them in so images differing only there can't
+    // collide to the same tag (false cache hit running the wrong launcher).
     d.entrypoint.foreach(p => md.update(p.toString.getBytes("UTF-8")))
     d.command.foreach(c => md.update(c.getBytes("UTF-8")))
     md.digest().take(10).map("%02x".format(_)).mkString
   }
 
   private def copyFilesFrom(imageDescription: DockerImageDescription, to: ImageFromDockerfile) = {
-    // A FRESH staging dir PER BUILD (UUID). We hand testcontainers a private COPY of every source file
-    // rather than the shared on-disk original — when builds run concurrently they otherwise point at
-    // the SAME files (e.g. the ROR plugin zip) and concurrent tar-streaming corrupts the build context.
-    //
-    // MUST be per-build, not a reused per-JVM dir: cluster nodes build their images IN PARALLEL
-    // (EsClusterContainer.startContainersAsynchronously → parSequenceUnordered), so a shared dir that's
-    // wiped at the start of each build let one node's build delete a sibling node's staged files
-    // mid-build → the victim booted with default config (cluster.name=elasticsearch) and crashed →
-    // multi-node clusters never formed (peer `failed to resolve host`). Per-build isolation fixes that.
-    //
-    // Disk: staging is small per build (~plugin zip + a few certs); the dominant disk consumer was the
-    // built IMAGES, now handled by deleteOnExit=true in create(). Staging keeps deleteOnExit as a net.
+    // FRESH staging dir PER BUILD (UUID): hand testcontainers a private copy of each source so parallel
+    // cluster-node builds (parSequenceUnordered) can't clobber a shared dir mid-build and corrupt context.
     val stagingDir = File.newTemporaryDirectory(prefix = s"ror-img-${UUID.randomUUID()}-")
     val dockerfile = imageDescription
       .copyFiles
@@ -104,19 +83,15 @@ object DockerImageCreator extends StrictLogging {
           val privateCopy = source.copyTo(stagingDir / s"$idx-${source.name}", overwrite = true)
           dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, privateCopy.toJava)
       }
-    // Best-effort reclaim once the build context has been consumed; deleteOnExit is the safety net in
-    // case the JVM dies before this runs.
+    // Best-effort reclaim once the build context is consumed; deleteOnExit is the safety net.
     stagingDir.toJava.deleteOnExit()
     dockerfile
   }
 
   private implicit class BuilderExt(val builder: DockerfileBuilder) extends AnyVal {
 
-    // Emit COPY / RUN / USER in DECLARATION order so the Dockerfile (and thus the layer chain) matches
-    // the order steps were added — per-config config files end up AFTER the heavy config-independent
-    // RUNs, letting those layers be shared across configs. Adjacent Runs are still merged into one `&&`
-    // RUN (the original optimisation); a COPY or USER between two Runs breaks the merge (correct — a
-    // COPY is its own layer boundary anyway).
+    // Emit COPY/RUN/USER in DECLARATION order so config files land AFTER heavy config-independent RUNs,
+    // keeping those layers shared. Adjacent Runs merge into one `&&` RUN; a COPY/USER breaks the merge.
     def applyStepsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
       imageDescription.steps
         .foldLeft(List.empty[Command]) {

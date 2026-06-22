@@ -104,29 +104,15 @@ object ScalaUtils extends LazyLogging {
   }
 
   /**
-   * Run `action` on a daemon thread and abandon it if it does not finish within `timeout`.
-   *
-   * Why this exists: the singleton-ES teardown (cleanUpContainer / container.stop / blocking ES REST
-   * ops) had no time bound, so a WEDGED (not dead) ES could hang the worker JVM forever. On the CI
-   * agent that produced "stopped hearing from agent" leg failures that ran 300+ minutes — 3-4x past
-   * the 120-min job timeout — because nothing ever returned. Bounding each blocking teardown step
-   * here makes a leg self-terminate in minutes instead of hanging for hours.
-   *
-   * On timeout we interrupt the worker thread (best-effort — blocking socket reads may ignore it),
-   * log, and throw so the caller can fail fast / force-kill the container rather than wait forever.
-   *
-   * Residual: an un-interruptible worker keeps running (as a daemon) until the JVM exits, still
-   * holding the wedged connection. Acceptable here because the IT worker JVM is short-lived per leg —
-   * it exits at end-of-leg and the leaked thread dies with it; we never accumulate across legs. If
-   * teardown timeouts ever become common, the real reclaim is `docker rm -f` on the container, not a
-   * thread interrupt.
+   * Run `action` on a daemon thread; abandon (not kill) it if it doesn't finish within `timeout`.
+   * Bounds blocking ES teardown so a WEDGED ES can't hang the worker JVM for hours; the leaked daemon
+   * thread is OK because the leg JVM is short-lived and dies at end-of-leg.
    */
   def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
     val result = new java.util.concurrent.atomic.AtomicReference[Either[Throwable, A]]()
     val worker = new Thread(() => {
-      // Catch Throwable, not just NonFatal: a fatal error (OOM/StackOverflow/Interrupted) inside
-      // `action` must still be RECORDED, else `result` stays null and the match below would throw a
-      // misleading MatchError instead of the real cause. This is a throwaway teardown thread.
+      // Catch Throwable, not just NonFatal: a fatal error must still be RECORDED, else `result` stays
+      // null and the match below throws a misleading MatchError instead of the real cause.
       result.set(try Right(action) catch { case e: Throwable => Left(e) })
     }, s"timeout-guard-$label")
     worker.setDaemon(true)
