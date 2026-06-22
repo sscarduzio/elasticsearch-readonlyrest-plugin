@@ -49,7 +49,11 @@ RUN apt-get update \
 # from inside this container and talk to the agent host's Docker daemon over the bind-mounted
 # /var/run/docker.sock (the self-hosted az-ror-es agents mount it).
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
-RUN docker --version
+# buildx CLI plugin: RELEASE_ROR's `prepareMultiplatformBuilder` Gradle task and ci-lib.sh's
+# `retag_dev_image` (UPLOAD_PRE_ROR) call `docker buildx`. The plain docker binary above does NOT
+# bundle it, so without this the release fails with "docker: 'buildx' is not a docker command".
+COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-buildx /usr/local/libexec/docker/cli-plugins/docker-buildx
+RUN docker --version && docker buildx version
 
 # the other three JDK toolchains alongside the base image's JDK 17
 COPY --from=jdk8  /opt/java/openjdk /opt/java/jdk8

@@ -38,7 +38,6 @@ log_disk_usage() {
 
   echo "--- Temp dirs ---"
   du -sh /tmp 2>/dev/null || true
-  find /tmp -maxdepth 1 -type d -name 'deltaglider-*' -exec du -sh {} + 2>/dev/null || true
 
   echo "--- Gradle ---"
   du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true

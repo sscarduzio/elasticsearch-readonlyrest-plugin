@@ -131,45 +131,22 @@ function tag {
   return 0
 }
 
-# not used at the moment - it may be needed laterok,
 function upload_using_aws_s3_uploader {
-  LOCAL_FILE="$1"
-  S3_PATH="$2"
-
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_aws_s3_uploader does not support URL endpoints; set ROR_ARTIFACTS_STORE_URL_OR_REGION to a region name (e.g. eu-west-1)"
-    exit 1
-  fi
-
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
-  REGION="${STORE_ADDR:-us-east-1}"
-  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
-  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  "$CI_DIR"/s3-uploader.sh "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
-}
-
-function upload_using_deltaglider_uploader {
-  LOCAL_FILE="$1"
+  local LOCAL_FILE="$1"
+  local S3_PATH BUCKET PATH_PREFIX
   S3_PATH=$(echo "$2" | sed 's:/*$::')
-  FILE_NAME=$(basename "$LOCAL_FILE")
 
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ ! "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_deltaglider_uploader requires a URL endpoint; set ROR_ARTIFACTS_STORE_URL_OR_REGION to an http(s):// URL"
+  if [[ ! -f "$LOCAL_FILE" ]]; then
+    echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
     exit 1
   fi
 
   BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
   PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  DELTA_GLIDER_VERSION="6.1.1"
 
-  docker run --rm \
-    -e AWS_ENDPOINT_URL=$STORE_ADDR \
-    -e AWS_ACCESS_KEY_ID=$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET \
-    -v "$LOCAL_FILE":"/tmp/$FILE_NAME":ro \
-    beshultd/deltaglider:$DELTA_GLIDER_VERSION \
-    cp "/tmp/$FILE_NAME" "s3://$BUCKET/${PATH_PREFIX}${S3_PATH}/${FILE_NAME}"
+  S3_ENDPOINT_URL="${ROR_ARTIFACTS_STORE_ENDPOINT_URL:-}" \
+    "$CI_DIR"/s3-uploader.sh \
+      "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" \
+      "$BUCKET@${ROR_ARTIFACTS_STORE_REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
 }
