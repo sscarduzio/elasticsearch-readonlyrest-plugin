@@ -140,7 +140,7 @@ stages:
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
     dependsOn: [ SUPERSEDE_GUARD ]
-    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
+    condition: and(not(canceled()), in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
     jobs:
       - job:
         steps:
@@ -211,6 +211,7 @@ stages:
     dependsOn: [ SUPERSEDE_GUARD ]
     condition:
       and(
+        not(canceled()),
         in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         or(
           notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
@@ -889,6 +890,7 @@ stages:
     # In both cases EXTRACT_IS_RELEASE computes IsRelease, which the RELEASE_*/PUBLISH_MVN_* stages read.
     condition: |
       and(
+        not(canceled()),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         or(
           and(
