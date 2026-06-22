@@ -305,6 +305,24 @@ class Elasticsearch(val esVersion: String,
       .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
         entry = "xpack.monitoring.enabled: false"
       )
+      // Disable X-Pack features + boot-time machinery NO integration test exercises, to cut ES boot
+      // time + memory. Each is version-gated because an UNKNOWN setting is a FATAL ES boot error.
+      // (ML is disabled in ReadonlyRestPlugin only — the xpack-security plugin needs it on. SQL/ESQL/
+      // rollup/ILM/data-streams/async-search are NOT disabled: BaseXpackApiSuite, the ILM suite and the
+      // data-stream suites exercise them, several under the security-off default plugin.)
+      .addWhen(Version.greaterOrEqualThan(esVersion, 6, 7, 0),
+        entry = "xpack.watcher.enabled: false"            // no _watcher test anywhere
+      )
+      .add("xpack.graph.enabled: false")                  // no _graph/explore test; flag stable 6.x–9.x
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 9, 0),
+        entry = "stack.templates.enabled: false"          // skip auto-install of .monitoring/logs/metrics templates at boot (setting added in 7.9, fatal-unknown below)
+      )
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0),
+        entry = "cluster.deprecation_indexing.enabled: false" // skip the .logs-deprecation data-stream+template+ILM bootstrap
+      )
+      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 10, 0),
+        entry = "xpack.profiling.templates.enabled: false"   // universal-profiling plugin added in 8.10; fatal-unknown on 8.7–8.9
+      )
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }
       )
