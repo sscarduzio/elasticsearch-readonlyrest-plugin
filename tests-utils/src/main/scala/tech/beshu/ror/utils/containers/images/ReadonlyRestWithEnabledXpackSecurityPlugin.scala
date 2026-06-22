@@ -81,12 +81,7 @@ class ReadonlyRestWithEnabledXpackSecurityPlugin(esVersion: String,
       .foldLeft(builder) { case (currentImage, plugin) =>
         plugin.updateEsConfigBuilder(currentImage)
       }
-      // The ROR plugin contributes `xpack.security.enabled: false` and `xpack.ml.enabled: false`;
-      // the xpack-security plugin re-adds both as `true`. Drop the ROR `false`s so the xpack `true`s
-      // win and ES doesn't see a DUPLICATE key (fatal: "Duplicate field" → exit 70). remove() is exact
-      // match, so it's a harmless no-op on ES versions where the ROR plugin didn't add the ml entry.
       .remove("xpack.security.enabled: false")
-      .remove("xpack.ml.enabled: false")
   }
 
   override def updateEsJavaOptsBuilder(builder: EsJavaOptsBuilder): EsJavaOptsBuilder = {

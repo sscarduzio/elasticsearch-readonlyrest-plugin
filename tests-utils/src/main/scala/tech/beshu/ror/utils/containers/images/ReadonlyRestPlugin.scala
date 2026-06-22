@@ -90,10 +90,6 @@ class ReadonlyRestPlugin(esVersion: String,
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
       .add("xpack.security.enabled: false")
-      // ML disabled HERE (default ROR plugin), not in baseEsConfigBuilder: the xpack-security plugin
-      // deliberately keeps ML on. No suite exercises _ml/, and ML spawns native processes + dedicated
-      // thread pools at boot. Gated >=7.0 (flag honoured; coexists with security-off).
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0), "xpack.ml.enabled: false")
       .configureRorSettingsAutoReloading()
       .configureRorCustomIndexSettings()
       .configureRestSsl()
