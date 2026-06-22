@@ -272,9 +272,9 @@ fi
 # Within an esXXx module the compiled bytecode is identical across the module's patch range, so instead
 # of recompiling for every ES version we compile ONCE (at the module's latestSupportedEsVersion) and
 # derive every other version's zip by swapping only the per-version bits (descriptor, in-jar build-info,
-# and the ES-version-stamped dependency jars). See ci/repackage-plugin-for-version.sh and the Gradle
-# stageEsStampedJars task. A per-module bytecode guard (ci/verify-reusable-bytecode.sh) proves the reuse
-# is safe before any release is published.
+# and the ES-version-stamped dependency jars). See the Gradle stageEsStampedJars +
+# repackageRorPluginForVersions tasks. A per-module bytecode guard (the diffBytecode task against a
+# boundary recompile) proves the reuse is safe before any release is published.
 # ----------------------------------------------------------------------------------------------------
 
 # Reads a generation's version file and emits one line per module (in file order):
@@ -293,56 +293,71 @@ build_module_groups() {
   rm -f "$map_file"
 }
 
-# Builds a module's base once, optionally guards bytecode reuse (release), then repackages + publishes
-# every target version of that module from the base (no recompile).
+# Builds a module's base once, derives every target version's zip from it (no recompile, via the Gradle
+# repackageRorPluginForVersions task), optionally guards bytecode reuse (release), then publishes each.
 #   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 base_version
-#   $5 stage_root  $6 out_dir  $7 stash_dir  $@(8..) target versions (file order: newest..oldest)
+#   $5 stage_root  $6 out_dir  $@(7..) target versions (file order: newest..oldest)
 publish_module_group() {
-  local mode=$1 ror_version=$2 module=$3 base_version=$4 stage_root=$5 out_dir=$6 stash_dir=$7
-  shift 7
+  local mode=$1 ror_version=$2 module=$3 base_version=$4 stage_root=$5 out_dir=$6
+  shift 6
   local targets=("$@")
-  local stage_csv
-  stage_csv=$(IFS=,; echo "${targets[*]}")
+  local target_csv
+  target_csv=$(IFS=,; echo "${targets[*]}")
 
   echo ""
   echo ">>> Module $module: base ES $base_version, ${#targets[@]} target version(s): ${targets[*]}"
 
   # 1) ONE compile for the module + stage the ES-version-stamped jars for all of its target versions.
   if ! ./gradlew --no-daemon ":${module}:buildRorPluginZip" ":${module}:stageEsStampedJars" \
-        "-PesVersion=${base_version}" "-PstageVersions=${stage_csv}" "-PstageDir=${stage_root}" </dev/null; then
+        "-PesVersion=${base_version}" "-PstageVersions=${target_csv}" "-PstageDir=${stage_root}" </dev/null; then
     echo "ERROR: base build/stage failed for $module @ $base_version"
     return 1
   fi
 
-  local base_zip="${module}/build/distributions/readonlyrest-${ror_version}_es${base_version}.zip"
   local base_fat_jar="${module}/build/libs/readonlyrest-${ror_version}_es${base_version}.jar"
 
-  # Stash the base artifacts: the guard recompiles (clobbering build/), so repackaging must read the
-  # base from a stable location.
-  local stashed_zip="${stash_dir}/$(basename "$base_zip")"
-  cp "$base_zip" "$stashed_zip"
+  # 2) Derive every target version's zip from the freshly-built base, in one JVM. No recompile.
+  #    Runs BEFORE the guard so it reads a pristine build/ (the guard recompiles boundaries afterwards);
+  #    the guard still gates publishing in step 4. The base fat jar's name carries the base ES version, so
+  #    the boundary recompiles below produce differently-named jars and never clobber it -- no stash needed.
+  if ! ./gradlew --no-daemon ":${module}:repackageRorPluginForVersions" \
+        "-PesVersion=${base_version}" "-PtargetVersions=${target_csv}" \
+        "-PstageDir=${stage_root}" "-PoutputDir=${out_dir}" </dev/null; then
+    echo "ERROR: repackage failed for $module"
+    return 1
+  fi
 
-  # 2) (release only) Bytecode reuse guard at the range boundaries that differ from the base compile.
+  # 3) (release only) Bytecode reuse guard at the range boundaries that differ from the base compile:
+  #    recompile each boundary (separate gradlew invocation) and diff its fat jar against the base.
   if [ "$mode" = "release" ]; then
     local newest="${targets[0]}" oldest="${targets[$((${#targets[@]} - 1))]}"
     local guard_versions=()
     [ "$oldest" != "$base_version" ] && guard_versions+=("$oldest")
     [ "$newest" != "$base_version" ] && [ "$newest" != "$oldest" ] && guard_versions+=("$newest")
-    if [ "${#guard_versions[@]}" -gt 0 ]; then
-      if ! ci/verify-reusable-bytecode.sh "$module" "$base_fat_jar" "${guard_versions[@]}"; then
-        echo "ERROR: bytecode reuse guard failed for $module"
+    local cmp
+    for cmp in "${guard_versions[@]}"; do
+      echo "==> Compiling ${module} at ES ${cmp} for bytecode comparison ..."
+      if ! ./gradlew --no-daemon ":${module}:toJar" "-PesVersion=${cmp}" </dev/null; then
+        echo "ERROR: compile at ES $cmp failed for $module (range not API-monotonic)"
         return 1
       fi
-    fi
+      local cmp_jar
+      cmp_jar=$(ls -1 "${module}"/build/libs/readonlyrest-*_es"${cmp}".jar 2>/dev/null | head -1 || true)
+      if [ -z "$cmp_jar" ] || [ ! -f "$cmp_jar" ]; then
+        echo "ERROR: expected fat jar not produced for $module @ $cmp"
+        return 1
+      fi
+      if ! ./gradlew --no-daemon ":${module}:diffBytecode" \
+            "-PesVersion=${base_version}" "-PbaseFatJar=${base_fat_jar}" "-PcmpFatJar=${cmp_jar}" </dev/null; then
+        echo "ERROR: bytecode reuse guard failed for $module @ $cmp"
+        return 1
+      fi
+    done
   fi
 
-  # 3) Derive + publish each target version from the (stashed) base. No recompile.
+  # 4) Publish each derived version, then free its disk.
   local target
   for target in "${targets[@]}"; do
-    if ! ci/repackage-plugin-for-version.sh "$stashed_zip" "$target" "$ror_version" "$stage_root" "$out_dir"; then
-      echo "ERROR: repackage failed for $module ES $target"
-      return 1
-    fi
     local zip="${out_dir}/readonlyrest-${ror_version}_es${target}.zip"
 
     if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${zip}.sha1" "${ror_version}/"; then
@@ -359,8 +374,7 @@ publish_module_group() {
     rm -f "$zip" "${zip}.sha1" "${zip}.sha512"
   done
 
-  # 4) Bound disk at the MODULE boundary (not per version).
-  rm -f "$stashed_zip"
+  # 5) Bound disk at the MODULE boundary (not per version).
   rm -rf "${stage_root:?}/"*
   find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
   return 0
@@ -407,8 +421,8 @@ publish_ror_plugins_grouped() {
   # any) inherits it.
   export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
 
-  local stage_root out_dir stash_dir
-  stage_root=$(mktemp -d); out_dir=$(mktemp -d); stash_dir=$(mktemp -d)
+  local stage_root out_dir
+  stage_root=$(mktemp -d); out_dir=$(mktemp -d)
 
   local groups
   groups=$(build_module_groups "$versions_file")
@@ -424,7 +438,7 @@ publish_ror_plugins_grouped() {
 
     local attempt
     for attempt in 1 2 3; do
-      if time publish_module_group "$mode" "$ror_version" "$module" "$base_version" "$stage_root" "$out_dir" "$stash_dir" "${targets[@]}"; then
+      if time publish_module_group "$mode" "$ror_version" "$module" "$base_version" "$stage_root" "$out_dir" "${targets[@]}"; then
         break
       fi
       if [ "$attempt" -lt 3 ]; then
@@ -434,13 +448,13 @@ publish_ror_plugins_grouped() {
         log_disk_usage "after retry cleanup ($module attempt $attempt)"
       else
         echo "ERROR: module $module failed after 3 attempts"
-        rm -rf "$stage_root" "$out_dir" "$stash_dir"
+        rm -rf "$stage_root" "$out_dir"
         return 1
       fi
     done
   done <<< "$groups"
 
-  rm -rf "$stage_root" "$out_dir" "$stash_dir"
+  rm -rf "$stage_root" "$out_dir"
 }
 
 upload_pre_ror_plugins() {

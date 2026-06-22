@@ -148,7 +148,7 @@ tasks.register('prepareDockerPayload', Sync) {
     from(zipTree(dockerImageSourceZip)) {
         // Pull the per-version bytes into the thin layer below: the descriptor, the ES-version-stamped
         // dependency jars (elasticsearch-rest-client always, transport-netty4-client for es6x/es7x --
-        // mirrors ci/repackage-plugin-for-version.sh; the globs are no-ops where a jar isn't bundled)
+        // mirrors the repackageRorPluginForVersions task; the globs are no-ops where a jar isn't bundled)
         // and the ROR module code jar (its file name and embedded ror-build-info both carry the ES
         // version). Leaving any of them here would change this layer's digest per version and defeat the
         // dedup. Sync (not Copy) so stale per-version jars from a previous build are removed, not baked in.
