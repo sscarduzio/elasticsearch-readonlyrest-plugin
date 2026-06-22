@@ -149,3 +149,25 @@ the free hosted runner (no resize, no paid runners, no sharding needed).
   not, the cause is among the cluster/network/removeImage changes and bisection continues.
   LESSON: to judge "pre-existing", diff against the BASE branch (master), never an earlier run of the
   same PR branch.
+
+### es82x/83x/84x — CORRECTED root cause (build 10545)
+Reverting the X-Pack disables (build 10545) did NOT fix es82x/83x/84x — so the disables were not the
+cause (reverted anyway; they added only −0.5% noise). The TRUE failure:
+`InternalServerErrorException: Status 500: write /tmp/custom-jdk.tar.gz: no space left on device`
+→ then `initializationError` on `XpackClusterWithRorNodesAndInternodeSslPemSuite`.
+
+These are exactly the legs in the buggy-bundled-JDK range (ES 8.0–8.4, `hasBuggyBundledJdk`) that
+swap the bundled JDK for Corretto 19 — downloading + COPYing `/tmp/custom-jdk.tar.gz` into the image
+and extracting it, PER NODE. On the heaviest topology (3-node xpack-SSL cluster) this exhausts disk
+at IMAGE-BUILD time, INSIDE the ror-toolchains container's overlay — which the host-reclaim step
+(e68e2fb4, frees host `/`) does NOT cover (different fs). The JDK-swap code is IDENTICAL on master
+(diff is whitespace only) and master 10531 PASSED these legs — so the PR shifted the disk profile
+enough that these specific build-time `/tmp` writes now tip over, even though the PR reduced disk
+overall via layer-sharing.
+
+Open question / needs decision: the JDK swap keeps `custom-jdk.tar.gz` as its own COPY layer + the
+extracted JDK (the `rm` is in a later RUN, so the tarball persists in a layer). Candidate fixes:
+(a) COPY+extract+rm the tarball in ONE RUN so it never persists as a layer (saves ~180MB/node layer);
+(b) download Corretto INSIDE the build RUN (no COPY layer at all); (c) the bigger lever — make the
+host-reclaim run BEFORE the container build so the container overlay has more room. NOT YET FIXED —
+do not claim green until es80x-84x pass.
