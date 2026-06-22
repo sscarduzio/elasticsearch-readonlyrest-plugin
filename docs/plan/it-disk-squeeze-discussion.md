@@ -126,3 +126,19 @@ Avg per leg 84m → 71m (−16%), **every leg faster, no exceptions**. This is B
 sharding — pure image-layer reuse from the ordered-steps generator fix. ~4.7h of
 CI wall-clock saved per run across the 8.x/9.x family, AND the 8.x legs now fit on
 the free hosted runner (no resize, no paid runners, no sharding needed).
+
+## Final results: full optimization stack (build 10543, shardCount=1)
+
+3-way, ES 8.x/9.x legs — master(pre-PR) / PR-layer-only / PR-full(+heap512m +boot-disables):
+- avg/leg: 84m → 70.6m → 70.3m  (**−16% vs master**, −290m/run over 21 legs)
+- boot-feature disables add −0.5% on top of layer-sharing = **in the noise**. The win is the
+  Docker layer-sharing fix; ES boot is a rounding error vs image-build + suite runtime. Disables
+  kept for lower memory / no ML native procs, NOT sold as a speed lever.
+
+### Pre-existing failures (NOT caused by this PR)
+- es77x: flaky `RemoteClusterAuditingToolsSuite` round-robin test (Azure-tagged flaky) → re-run.
+- es82x/es83x/es84x: `XpackClusterWithRorNodesAndInternodeSslPemSuite > initializationError` —
+  the ROR 1.70.1 plugin install fails during the xpack-security-CLUSTER image build on ES 8.2–8.4
+  (`elasticsearch-plugin install … returned non-zero code 1`). PROVEN pre-existing: fails identically
+  in build 10541, BEFORE the X-Pack-disable commit existed. Separate ROR/ES-8.2-8.4 compat bug,
+  out of scope for the CI-speed PR.
