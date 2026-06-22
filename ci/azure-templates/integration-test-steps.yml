@@ -18,29 +18,36 @@ steps:
       docker image prune -af --filter "until=180m" >/dev/null 2>&1 || true
       docker image prune -f >/dev/null 2>&1 || true
       docker builder prune -f >/dev/null 2>&1 || true
-      # HOSTED ONLY: the Microsoft-hosted ubuntu image ships ~81% full (~15GB free of ~75GB), so the
-      # heavier ES 8.x+ image builds (zip + corretto JDK extraction into /tmp) hit "No space left on
-      # device" and fail the leg. Free the big preinstalled toolchains we never use (~10GB+), same as
-      # the BUILD_TOOLCHAINS_IMAGE stage does. GUARDED to hosted: on the self-hosted ryzen pool
-      # ($AGENT_ISSELFHOSTED=1) these paths are shared system dirs we must NOT delete — skip entirely.
+      df -h /
+    displayName: 'Pre-clean this leg''s Docker leftovers (shared-daemon safe)'
+    env:
+      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
+      AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
+
+  # MUST run on the HOST (target: host), NOT in the ror-toolchains container. The IT job is a CONTAINER
+  # job; a normal step's `rm` executes in the container's mount namespace where these host paths are
+  # empty/absent → frees NOTHING on the VM disk that /var/lib/docker (the image-build target) lives on.
+  # That was the bug: the reclaim ran in-container and the es80x-84x JDK-swap legs still hit "no space
+  # left writing /tmp/custom-jdk.tar.gz" (~15.8GB free, unchanged). `target: host` runs it on the VM so
+  # the deletes actually grow the overlay's filesystem. HOSTED ONLY — guarded off the self-hosted ryzen
+  # pool where these are shared system dirs. List + sizes from the real probe (build 10540): dotnet 5.4G,
+  # ghcup 3.8G, swift 3.4G, powershell 1.3G, julia 1.0G, microsoft+az+chromium ~2.1G ≈ 16G freed.
+  - bash: |
       if [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
-        echo ">>> hosted agent — freeing preinstalled toolchains to fit ES image builds"
-        # List derived from a real ubuntu-24.04 hosted-VM probe (ci/probe-host-disk.sh, build 10540):
-        # ~17.8GB of these sit on /dev/root (same fs as /var/lib/docker), so removing them directly
-        # grows the overlay headroom. Measured sizes: dotnet 5.4G, ghcup 3.8G, swift 3.4G,
-        # powershell 1.3G, julia 1.0G, microsoft+az+chromium ~2.1G. We deliberately DON'T touch
-        # /usr/lib/jvm (a bare host step may shell out to the host JDK). android/ghc/hostedtoolcache
-        # are kept in the list as harmless no-ops (absent on 24.04, present on older images).
+        echo ">>> [host] freeing preinstalled toolchains to fit ES image builds"
+        df -h /
         sudo rm -rf \
           /usr/share/dotnet /usr/local/.ghcup /usr/share/swift \
           /usr/local/share/powershell /usr/local/julia* \
           /opt/microsoft /opt/az /usr/local/share/chromium \
           /usr/local/lib/android /opt/ghc /usr/local/share/boost /opt/hostedtoolcache 2>/dev/null || true
+        echo ">>> [host] after reclaim:"; df -h /
+      else
+        echo ">>> self-hosted agent — skipping host toolchain reclaim (shared system dirs)"
       fi
-      df -h /
-    displayName: 'Pre-clean this leg''s Docker leftovers (shared-daemon safe)'
+    displayName: 'Free hosted-VM disk for ES image builds (HOST namespace)'
+    target: host
     env:
-      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
       AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
   - checkout: self
     fetchDepth: 1
