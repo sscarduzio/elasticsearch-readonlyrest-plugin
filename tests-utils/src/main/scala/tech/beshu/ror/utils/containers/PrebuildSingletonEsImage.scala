@@ -22,23 +22,26 @@ import com.typesafe.scalalogging.StrictLogging
  * Builds (and stably tags) the singleton ES+ROR image ONCE, in a single JVM, before the parallel
  * integration-test workers start. Run by the `prebuildEsImage` Gradle task as a `test.dependsOn`.
  *
- * Why: at shardCount>=3 the worker JVMs otherwise build this identical image concurrently,
- * and the Docker build layers (plugin install + ror-tools patch) fail intermittently. With the image
- * pre-built and stably tagged (see DockerImageCreator.imageTag), every worker gets a cache hit and
- * never builds — so parallelism scales without the concurrent-build failures.
+ * Why: at shardCount>=3 the worker JVMs otherwise build this identical image concurrently, and the
+ * Docker build layers (plugin install + ror-tools patch) fail intermittently. Pre-building once means
+ * every worker gets a Docker LAYER cache hit and never rebuilds — so parallelism scales without the
+ * concurrent-build failures.
  *
- * It starts the singleton container (the only reliable way to trigger the full image build+tag) and
- * stops it again; the built image stays in the local Docker cache for the workers to reuse.
+ * Starts the singleton container (the only reliable way to trigger the full image build+tag), then
+ * stops it. The named image is reaped by Ryuk on this JVM's exit (testcontainers labels every
+ * ImageFromDockerfile build with DEFAULT_LABELS, which Ryuk reaps regardless of deleteOnExit); the
+ * built LAYERS persist in the Docker graph store, so each worker rebuilds the named image fast.
  */
 object PrebuildSingletonEsImage extends StrictLogging {
 
   def main(args: Array[String]): Unit = {
     logger.info("Pre-building the singleton ES image (once, before parallel test workers)...")
     try {
-      // Touching `singleton` triggers its construction + start() (which builds & caches the image).
+      // Touching `singleton` triggers its construction + start(), which builds the image + its layers.
       val _ = SingletonEsContainerWithRorSecurity.singleton.nodes.head
-      logger.info("Singleton ES image pre-build complete; image is cached for the test workers.")
-      // Stop the container so the pre-build JVM doesn't hold an ES instance; the IMAGE remains cached.
+      logger.info("Singleton ES image pre-build complete; layers cached for the test workers to rebuild from.")
+      // Stop the container so the pre-build JVM doesn't hold an ES instance. Ryuk reaps the named image
+      // on this JVM's exit; the LAYERS persist, so workers rebuild the named image fast (cache hit).
       SingletonEsContainerWithRorSecurity.singleton.stop()
       sys.exit(0)
     } catch {
