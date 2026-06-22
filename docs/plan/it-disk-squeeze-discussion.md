@@ -135,10 +135,17 @@ the free hosted runner (no resize, no paid runners, no sharding needed).
   Docker layer-sharing fix; ES boot is a rounding error vs image-build + suite runtime. Disables
   kept for lower memory / no ML native procs, NOT sold as a speed lever.
 
-### Pre-existing failures (NOT caused by this PR)
+### Failures
 - es77x: flaky `RemoteClusterAuditingToolsSuite` round-robin test (Azure-tagged flaky) → re-run.
-- es82x/es83x/es84x: `XpackClusterWithRorNodesAndInternodeSslPemSuite > initializationError` —
-  the ROR 1.70.1 plugin install fails during the xpack-security-CLUSTER image build on ES 8.2–8.4
-  (`elasticsearch-plugin install … returned non-zero code 1`). PROVEN pre-existing: fails identically
-  in build 10541, BEFORE the X-Pack-disable commit existed. Separate ROR/ES-8.2-8.4 compat bug,
-  out of scope for the CI-speed PR.
+- es82x/es83x/es84x: `XpackClusterWithRorNodesAndInternodeSslPemSuite > initializationError` (the
+  3-node xpack-SSL cluster fails to recover: `.readonlyrest` index "state not recovered / RECOVERING
+  / No shard available"). **CORRECTION — this IS a PR-introduced regression, not pre-existing.** My
+  earlier "pre-existing" claim was a comparison error (I checked PR build 10541, which is already the
+  PR branch, instead of the master baseline). Master build **10531 has es82x/83x/84x GREEN**; the PR
+  branch reds them. The suite PASSES locally on OrbStack (resources available) but fails on the
+  constrained CI runner → a boot/recovery-timing regression. The only PR change to the ES boot path
+  is the X-Pack-feature disables (which added only −0.5% = noise), so they're the prime suspect.
+  **Reverted the disables (commit 38bc134b); build 10545 tests whether es82x/83x/84x recover.** If
+  not, the cause is among the cluster/network/removeImage changes and bisection continues.
+  LESSON: to judge "pre-existing", diff against the BASE branch (master), never an earlier run of the
+  same PR branch.
