@@ -79,11 +79,12 @@ build_module_groups() {
 # repackageRorPluginForVersions task), optionally guards bytecode reuse (release), then publishes each
 # version with an in-place per-version retry (so a transient publish blip never re-triggers a recompile).
 #   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 base_version
-#   $5 es_jars_dir  $6 out_dir  $@(7..) target versions (file order: newest..oldest)
+#   $5 es_jars_dir  $@(6..) target versions (file order: newest..oldest)
 publish_module_group() {
-  local mode=$1 ror_version=$2 module=$3 base_version=$4 es_jars_dir=$5 out_dir=$6
-  shift 6
+  local mode=$1 ror_version=$2 module=$3 base_version=$4 es_jars_dir=$5
+  shift 5
   local targets=("$@")
+  local dist_dir="${module}/build/distributions"
   local target_csv
   target_csv=$(IFS=,; echo "${targets[*]}")
 
@@ -99,13 +100,14 @@ publish_module_group() {
 
   local base_fat_jar="${module}/build/libs/readonlyrest-${ror_version}_es${base_version}.jar"
 
-  # 2) Derive every target version's zip from the freshly-built base, in one JVM. No recompile.
+  # 2) Derive every target version's zip from the freshly-built base, in one JVM. No recompile. The derived
+  #    zips land in the module's build/distributions (the task's default), next to the full-build base zip.
   #    Runs BEFORE the guard so it reads a pristine build/ (the guard recompiles boundaries afterwards);
   #    the guard still gates publishing in step 4. The base fat jar's name carries the base ES version, so
   #    the boundary recompiles below produce differently-named jars and never clobber it -- no stash needed.
   if ! ./gradlew --no-daemon ":${module}:repackageRorPluginForVersions" \
         "-PesVersion=${base_version}" "-PtargetVersions=${target_csv}" \
-        "-PesJarsDir=${es_jars_dir}" "-PoutputDir=${out_dir}" </dev/null; then
+        "-PesJarsDir=${es_jars_dir}" </dev/null; then
     echo "ERROR: repackage failed for $module"
     return 1
   fi
@@ -146,7 +148,7 @@ publish_module_group() {
   #    release_docker_and_tag's remote tag check, so a retry never re-pushes a version that already shipped.
   local target
   for target in "${targets[@]}"; do
-    local zip="${out_dir}/readonlyrest-${ror_version}_es${target}.zip"
+    local zip="${dist_dir}/readonlyrest-${ror_version}_es${target}.zip"
 
     local pattempt published=0
     for pattempt in 1 2 3; do
@@ -174,10 +176,11 @@ publish_module_group() {
   return 0
 }
 
-# Release-only: build & push the ES+ROR image for one version from the already-derived zip (so the image
-# build does NOT recompile), then create the git tag. Mirrors the original release_ror_plugin tail.
+# Release-only: build & push the ES+ROR image for one version, then create the git tag. The version's zip is
+# already in the module's build/distributions (from repackageRorPluginForVersions), so -PreusePackagedZip
+# tells the image build to reuse it instead of recompiling. Mirrors the original release_ror_plugin tail.
 release_docker_and_tag() {
-  local ror_version=$1 es_version=$2 module=$3 repackaged_zip=$4
+  local ror_version=$1 es_version=$2 module=$3
   local TAG="v${ror_version}_es${es_version}"
 
   if ! checkTagNotExist "$TAG"; then
@@ -185,7 +188,7 @@ release_docker_and_tag() {
   fi
 
   if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
-    if ! ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PrepackagedZip=$(cd "$(dirname "$repackaged_zip")" && pwd)/$(basename "$repackaged_zip")" </dev/null; then
+    if ! ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
       echo "Failed to publish plugin Docker image for ES $es_version"
       return 4
     fi
@@ -209,7 +212,7 @@ publish_one_version() {
   fi
 
   if [ "$mode" = "release" ]; then
-    if ! release_docker_and_tag "$ror_version" "$target" "$module" "$zip"; then
+    if ! release_docker_and_tag "$ror_version" "$target" "$module"; then
       echo "ERROR: docker release failed for $module ES $target"
       return 1
     fi
@@ -239,8 +242,8 @@ publish_ror_plugins_grouped() {
   # any) inherits it.
   export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
 
-  local es_jars_dir out_dir
-  es_jars_dir=$(mktemp -d); out_dir=$(mktemp -d)
+  local es_jars_dir
+  es_jars_dir=$(mktemp -d)
 
   local groups
   groups=$(build_module_groups "$versions_file")
@@ -256,7 +259,7 @@ publish_ror_plugins_grouped() {
 
     local attempt
     for attempt in 1 2 3; do
-      if time publish_module_group "$mode" "$ror_version" "$module" "$base_version" "$es_jars_dir" "$out_dir" "${targets[@]}"; then
+      if time publish_module_group "$mode" "$ror_version" "$module" "$base_version" "$es_jars_dir" "${targets[@]}"; then
         break
       fi
       if [ "$attempt" -lt 3 ]; then
@@ -266,11 +269,11 @@ publish_ror_plugins_grouped() {
         log_disk_usage "after retry cleanup ($module attempt $attempt)"
       else
         echo "ERROR: module $module failed after 3 attempts"
-        rm -rf "$es_jars_dir" "$out_dir"
+        rm -rf "$es_jars_dir"
         return 1
       fi
     done
   done <<< "$groups"
 
-  rm -rf "$es_jars_dir" "$out_dir"
+  rm -rf "$es_jars_dir"
 }

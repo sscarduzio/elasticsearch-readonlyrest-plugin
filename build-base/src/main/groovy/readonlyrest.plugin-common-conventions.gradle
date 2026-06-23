@@ -196,16 +196,18 @@ tasks.register('downloadEsVersionedDependencyJars') {
 // We copy the base zip, patch those three, and re-zip. All versions are produced in ONE JVM, no per-version
 // process startup. Companion to downloadEsVersionedDependencyJars: together they keep zip derivation in Gradle.
 //
-// Usage: -PesVersion=<base> -PtargetVersions=9.2.0,9.2.1,…  -PesJarsDir=<dir>  -PoutputDir=<dir>
+// Usage: -PesVersion=<base> -PtargetVersions=9.2.0,9.2.1,…  -PesJarsDir=<dir>  [-PoutputDir=<dir>]
 //   -> <outputDir>/<pluginName>-<pluginVersion>_es<target>.zip (+ .sha1 / .sha512)
+// outputDir defaults to build/distributions, so derived zips land next to the full-build zip and `clean`
+// removes them -- a deliverable is a deliverable regardless of whether it was compiled or repackaged.
 tasks.register('repackageRorPluginForVersions') {
     outputs.upToDateWhen { false }
     doLast {
         def targetVersionsProp = project.findProperty('targetVersions')
         def esJarsDirProp = project.findProperty('esJarsDir')
         def outputDirProp = project.findProperty('outputDir')
-        if (targetVersionsProp == null || esJarsDirProp == null || outputDirProp == null) {
-            throw new GradleException("repackageRorPluginForVersions requires -PtargetVersions=<csv>, -PesJarsDir=<path> and -PoutputDir=<path>")
+        if (targetVersionsProp == null || esJarsDirProp == null) {
+            throw new GradleException("repackageRorPluginForVersions requires -PtargetVersions=<csv> and -PesJarsDir=<path>")
         }
         def targets = targetVersionsProp.toString().split(',').collect { it.trim() }.findAll { !it.isEmpty() }
 
@@ -216,7 +218,7 @@ tasks.register('repackageRorPluginForVersions') {
         }
         def fatJarBaseName = "${pluginName}-${pluginVersion}_es${baseEs}.jar"
 
-        def outputDir = file(outputDirProp)
+        def outputDir = outputDirProp != null ? file(outputDirProp) : layout.buildDirectory.dir("distributions").get().asFile
         outputDir.mkdirs()
 
         // Writes a bare lowercase hex digest to <zip><ext>, same format the normal build emits
@@ -233,7 +235,8 @@ tasks.register('repackageRorPluginForVersions') {
 
             def work = java.nio.file.Files.createTempDirectory("ror-repkg").toFile()
             try {
-                // 1) Extract the base zip (entries at the archive root).
+                // 1) Extract the base zip (entries at the archive root). Done fully into `work` up front, so
+                //    when target == baseEs (output dir == the base zip's dir) step 5 can safely rewrite it.
                 copy { from zipTree(baseZip); into work }
 
                 // 2) plugin-descriptor.properties: only elasticsearch.version changes per version (the
