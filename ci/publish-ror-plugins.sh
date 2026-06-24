@@ -157,8 +157,13 @@ publish_module_group() {
         break
       fi
       if [ "$pattempt" -lt 3 ]; then
-        echo "WARN: publish of $module ES $target failed (attempt $pattempt/3); pruning docker + backing off..."
-        docker system prune -af >/dev/null 2>&1 || true
+        # Publish failures here are virtually always transient registry-side errors (Docker Hub rate
+        # limit / blip), not local disk: the push streams straight to the registry and `--load`s
+        # nothing locally. So just back off and retry -- deliberately WITHOUT pruning, so the retry
+        # reuses the already-built buildx cache instead of cold-rebuilding the image. Real disk
+        # pressure is bounded at the module boundary (buildx --keep-storage) and, as a last resort,
+        # by cleanup_docker_and_build on the module-level retry.
+        echo "WARN: publish of $module ES $target failed (attempt $pattempt/3); backing off..."
         sleep $((pattempt * 15))
       fi
     done
@@ -170,9 +175,16 @@ publish_module_group() {
     rm -f "$zip" "${zip}.sha1" "${zip}.sha512"
   done
 
-  # 5) Bound disk at the MODULE boundary (not per version).
+  # 5) Bound disk at the MODULE boundary (not per version). The multi-platform builds run in the
+  #    docker-container buildx builder (ror_kbn_builder), whose BuildKit cache lives in its own volume
+  #    -- `docker system prune` / `docker builder prune` can't reach it, so without this it grows
+  #    unbounded across the 34 modules (pulled ES base images + layers, ~GBs each). Trim the CURRENT
+  #    builder (which is ror_kbn_builder after the push's `buildx use`) but keep a working set so the
+  #    shared ES base + fat ROR layer stay hot for the next module. Working set defaults to 5GB and is
+  #    overridable via BUILDX_KEEP_STORAGE (e.g. "20GB" on roomier agents, "0" to clear everything).
   rm -rf "${es_jars_dir:?}/"*
   find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+  docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" >/dev/null 2>&1 || true
   return 0
 }
 
