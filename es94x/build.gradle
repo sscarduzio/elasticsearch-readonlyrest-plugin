@@ -27,9 +27,6 @@ def moduleEsVersion = project.property('esVersion') != null ? project.property('
 def releaseDockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
 def releaseDockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
 def preBuildDockerImageVersion = 'beshultd/elasticsearch-readonlyrest-dev:' + moduleEsVersion + '-ror-' + pluginVersion
-// Build cache for this module, kept in the Docker registry so every patch version can reuse
-// the work from the first build instead of starting over.
-def buildCacheRef = 'beshultd/elasticsearch-readonlyrest-dev:buildcache-' + project.name
 def dockerImageSourceZip = layout.buildDirectory.file("distributions/" + pluginFullName + ".zip")
 
 java {
@@ -186,8 +183,6 @@ tasks.register('pushRorDockerImage', Exec) {
     args = [
             'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
             '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + moduleEsVersion,
-            '--cache-from', 'type=registry,ref=' + buildCacheRef,
-            '--cache-to', 'type=registry,ref=' + buildCacheRef + ',mode=max',
             '-t', releaseDockerImageLatest, '-t', releaseDockerImageVersion,
             '--output', 'type=image,push=true,rewrite-timestamp=true', '.'
     ]
@@ -204,8 +199,6 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
     args = [
             'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
             '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + moduleEsVersion,
-            '--cache-from', 'type=registry,ref=' + buildCacheRef,
-            '--cache-to', 'type=registry,ref=' + buildCacheRef + ',mode=max',
             '-t', preBuildDockerImageVersion,
             '--output', 'type=image,push=true,rewrite-timestamp=true', '.'
     ]
