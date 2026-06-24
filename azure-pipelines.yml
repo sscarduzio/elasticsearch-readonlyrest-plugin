@@ -131,10 +131,6 @@ stages:
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
               export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
 
-              # Verbose S3 uploader: drops curl's `-f` so S3's error XML is printed (instead of a
-              # bare non-zero exit) and adds `-v`. Needed to diagnose the artifact upload failure.
-              export S3_UPLOADER_DEBUG=1
-
               ci/upload-es-artifacts.sh
             continueOnError: true
             env:
