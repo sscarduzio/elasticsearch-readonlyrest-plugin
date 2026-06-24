@@ -42,7 +42,7 @@ USER elasticsearch
 COPY --link --chown=1000:0 payload/ /usr/share/elasticsearch/plugins/readonlyrest/
 COPY --link --chown=1000:0 per-version/ /usr/share/elasticsearch/plugins/readonlyrest/
 
-COPY --link init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
-COPY --link ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
+COPY init-readonlyrest.yml /usr/share/elasticsearch/config/readonlyrest.yml
+COPY ror-entrypoint.sh /usr/local/bin/ror-entrypoint.sh
 
 ENTRYPOINT ["/bin/tini", "--", "/usr/local/bin/ror-entrypoint.sh"]
