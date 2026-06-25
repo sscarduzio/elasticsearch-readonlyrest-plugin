@@ -892,11 +892,6 @@ stages:
       )
     jobs:
       - job:
-        # Self-hosted Default pool + toolchains container: agents sit next to the
-        # artifact storage (fast uploads) and the container has all 4 JDKs + baked
-        # cache, removing the bare-agent JDK-discovery / lost-cache risks (review).
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 600
         steps:
@@ -974,9 +969,6 @@ stages:
       )
     jobs:
       - job:
-        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 180
         steps:
@@ -1014,8 +1006,6 @@ stages:
       )
     jobs:
       - job:
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 180
         steps:
@@ -1053,11 +1043,6 @@ stages:
 
     jobs:
       - job:
-        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
-        # Maven publish compiles :audit (JDK 8) / :core (JDK 11); the container
-        # supplies those toolchains + the baked Gradle cache.
-        pool:
-          name: 'Default'
         container: ror-toolchains
         steps:
           - template: ci/azure-templates/publish-mvn-steps.yml
@@ -1078,8 +1063,6 @@ stages:
       )
     jobs:
       - job:
-        pool:
-          name: 'Default'
         container: ror-toolchains
         steps:
           - template: ci/azure-templates/publish-mvn-steps.yml
