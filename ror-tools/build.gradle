@@ -159,37 +159,9 @@ tasks.register('downloadEsBinaries') {
                 project.mkdir(layout.buildDirectory.asFile.get())
             }
             def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
-            def url = new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
-            // Download to a temp file and only rename into place on success, so an interrupted
-            // download never leaves a truncated *.tar.gz that the (!esTar.exists()) guard would later
-            // reuse — that surfaced as "EOFException: Unexpected end of ZLIB input stream" at extraction.
-            // Retry a few times to ride out transient network failures against artifacts.elastic.co.
-            def maxAttempts = 3
-            for (int attempt = 1; ; attempt++) {
-                def tmpTar = new File(esTar.parentFile, esTar.name + ".part")
-                tmpTar.delete()
-                try {
-                    project.logger.info("Downloading " + esLinuxBinaries + " (attempt " + attempt + "/" + maxAttempts + ") ...")
-                    def conn = url.openConnection()
-                    conn.instanceFollowRedirects = true
-                    conn.connectTimeout = 30_000
-                    conn.readTimeout = 120_000
-                    def expectedLength = conn.contentLengthLong
-                    conn.inputStream.withStream { i -> tmpTar.withOutputStream { it << i } }
-                    if (expectedLength >= 0 && tmpTar.length() != expectedLength) {
-                        throw new GradleException("Incomplete download: got " + tmpTar.length() + " bytes, expected " + expectedLength)
-                    }
-                    java.nio.file.Files.move(tmpTar.toPath(), esTar.toPath(),
-                            java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
-                    break
-                } catch (Exception e) {
-                    tmpTar.delete()
-                    if (attempt >= maxAttempts) {
-                        throw new GradleException("Failed to download " + esLinuxBinaries + " after " + maxAttempts + " attempts", e)
-                    }
-                    project.logger.warn("Download of " + esLinuxBinaries + " failed (attempt " + attempt + "/" + maxAttempts + "): " + e.message + " — retrying")
-                }
-            }
+            project.logger.info("Downloading " + esLinuxBinaries + " ...")
+            new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
+                    .withInputStream { i -> esTar.withOutputStream { it << i } }
         }
         def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
         project.logger.info("Extracting " + esTar.path + " to " + esDir.path + "...")
