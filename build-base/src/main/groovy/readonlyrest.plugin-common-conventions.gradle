@@ -25,7 +25,8 @@ project.ext {
     pluginVersion = rootProject.properties['pluginVersion']
     esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : project.property('latestSupportedEsVersion')
     s3BucketName = System.getenv('BUCKET') ?: 'beshu'
-    s3StoreAddress = System.getenv('ROR_LIBS_STORE_URL') ?: 'https://dgp.serve.beshu.tech'
+    s3StoreAddress = System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
+    s3LibsPathPrefix = (System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs').replaceAll('^/+', '').replaceAll('/+$', '')
 }
 
 group = 'org.elasticsearch.plugin'
@@ -33,7 +34,7 @@ version = "${pluginVersion}_es${project.ext.esVersion}"
 
 repositories {
     maven {
-        url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/ror/libs")
+        url = uri("${project.ext.s3StoreAddress.replaceAll('/+$', '')}/${project.ext.s3BucketName}/${project.ext.s3LibsPathPrefix}")
         metadataSources {
             artifact()
         }
