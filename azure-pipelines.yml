@@ -222,7 +222,7 @@ stages:
     condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
-        # TEMPORARILY DISABLED — re-enable when https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/1275 is ready
+        # TEMPORARILY DISABLED — re-enable when https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/1275 is done
         condition: false
         container: ror-toolchains
         steps:

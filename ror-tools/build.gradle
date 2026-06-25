@@ -128,12 +128,18 @@ def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
 def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
 
 tasks.register('uploadArtifactsFromEsBinaries', Exec) {
-    environment 'ROR_ARTIFACTS_STORE_ENDPOINT_URL', System.getenv('ROR_LIBS_STORE_URL') ?: 'https://dgp.serve.beshu.tech'
-    environment 'ROR_ARTIFACTS_STORE_ACCESS_KEY_ID', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
-    environment 'ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
-    environment 'ROR_ARTIFACTS_STORE_BUCKET', System.getenv('BUCKET') ?: 'beshu'
-    environment 'ROR_ARTIFACTS_STORE_PATH_PREFIX', ''
-    commandLine '../ci/upload-files-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, "ror/libs/" + netty4TransportArtifactDestinationPath
+    // This artifact (transport-netty4 jar) goes to the *libs* store, not the artifacts store.
+    // Select the LIBS store and provide its ROR_LIBS_STORE_* vars. The pipeline exposes the
+    // libs endpoint as ROR_LIBS_STORE_URL, so map it onto the uploader's ROR_LIBS_STORE_ENDPOINT_URL.
+    environment 'ROR_S3_TARGET_STORE', 'LIBS'
+    environment 'ROR_LIBS_STORE_ENDPOINT_URL', System.getenv('ROR_LIBS_STORE_URL') ?: 'https://dgp.serve.beshu.tech'
+    environment 'ROR_LIBS_STORE_ACCESS_KEY_ID', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
+    environment 'ROR_LIBS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
+    environment 'ROR_LIBS_STORE_BUCKET', System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
+    environment 'ROR_LIBS_STORE_REGION', System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
+    environment 'ROR_LIBS_STORE_PATH_PREFIX', System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
+
+    commandLine '../ci/upload-files-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, netty4TransportArtifactDestinationPath
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
