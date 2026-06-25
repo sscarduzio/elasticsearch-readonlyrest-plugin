@@ -24,13 +24,13 @@ import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import tech.beshu.ror.utils.misc.ScalaUtils.StringDateTimeOps
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
-import ujson.Value
 
 import java.time.Instant
 import scala.concurrent.duration.*

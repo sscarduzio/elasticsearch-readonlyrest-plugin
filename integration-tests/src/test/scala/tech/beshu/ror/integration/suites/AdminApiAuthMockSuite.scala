@@ -23,6 +23,7 @@ import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
 import tech.beshu.ror.utils.containers.SecurityType.RorWithXpackSecurity
@@ -32,7 +33,6 @@ import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-import ujson.Value.Value
 
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, ZoneOffset}

@@ -22,11 +22,11 @@ import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.{NextRollupJobNa
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
 import tech.beshu.ror.utils.TestUjson.ujson
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, *}
+import tech.beshu.ror.utils.TestUjson.ujson.{Null, Num, Str}
+import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
-import ujson.{Null, Num, Str}
 
 trait BaseXpackApiSuite
     extends AnyWordSpecLike
