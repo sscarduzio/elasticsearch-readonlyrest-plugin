@@ -22,10 +22,8 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Arr, Value}
 
-class CatManager(client: RestClient,
-                 esVersion: String,
-                 override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+class CatManager(client: RestClient, esVersion: String, override val additionalHeaders: Map[String, String] = Map.empty)
+    extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def main(): JsonResponse = call(new HttpGet(client.from("/")), new JsonResponse(_))
 
@@ -50,71 +48,78 @@ class CatManager(client: RestClient,
   def shards(): CatShardsResponse = call(genericCatRequest("shards"), new CatShardsResponse(_))
 
   private def createCatTemplatesRequest(index: Option[String]) = {
-    new HttpGet(client.from(
-      s"/_cat/templates${index.map(i => s"/$i").getOrElse("")}",
-      Map("format" -> "json")
-    ))
+    new HttpGet(
+      client.from(
+        s"/_cat/templates${index.map(i => s"/$i").getOrElse("")}",
+        Map("format" -> "json")
+      )
+    )
   }
 
   private def createCatIndicesRequest(index: Option[String]) = {
-    new HttpGet(client.from(
-      s"/_cat/indices${index.map(i => s"/$i").getOrElse("")}",
-      Map("format" -> "json", "s" -> "index:asc")
-    ))
+    new HttpGet(
+      client.from(
+        s"/_cat/indices${index.map(i => s"/$i").getOrElse("")}",
+        Map("format" -> "json", "s" -> "index:asc")
+      )
+    )
   }
 
   private def genericCatRequest(catType: String) = {
     new HttpGet(client.from(s"/_cat/$catType", Map("format" -> "json")))
   }
 
-  sealed class CatResponse(response: HttpResponse)
-    extends JsonResponse(response) {
+  sealed class CatResponse(response: HttpResponse) extends JsonResponse(response) {
 
     lazy val results: Vector[Value] = responseJson match {
       case Arr(value) => value.toVector
-      case value => throw new AssertionError(s"Expecting JSON list, got: $value")
+      case value      => throw new AssertionError(s"Expecting JSON list, got: $value")
     }
+
   }
 
-  final class CatShardsResponse(response: HttpResponse)
-    extends CatResponse(response) {
+  final class CatShardsResponse(response: HttpResponse) extends CatResponse(response) {
 
     def nodeOfIndex(index: String): Option[String] = {
       ofIndex(index)
         .map(_("node").str)
-        .toList.headOption
+        .toList
+        .headOption
     }
 
     def shardOfIndex(index: String): Option[String] = {
       ofIndex(index)
         .map(_("shard").str)
-        .toList.headOption
+        .toList
+        .headOption
     }
 
     def ofIndex(index: String): Option[JSON] = {
       responseJson.arr.find(i => i("index").str == index)
     }
+
   }
 
-  final class CatNodesResponse(response: HttpResponse)
-    extends CatResponse(response) {
+  final class CatNodesResponse(response: HttpResponse) extends CatResponse(response) {
 
     def names: List[String] = {
       responseJson.arr.map(_("name").str).toList.distinct
     }
+
   }
 
-  final class SingleLineCatResponse(response: HttpResponse)
-    extends JsonResponse(response) {
+  final class SingleLineCatResponse(response: HttpResponse) extends JsonResponse(response) {
 
     lazy val result: Value = responseJson match {
       case Arr(value) =>
         value.toVector.toList match {
-          case Nil => throw new AssertionError(s"Expecting one element JSON list, got: $value")
+          case Nil        => throw new AssertionError(s"Expecting one element JSON list, got: $value")
           case one :: Nil => one
-          case _ => throw new AssertionError(s"Expecting one element JSON list, got: $value")
+          case _          => throw new AssertionError(s"Expecting one element JSON list, got: $value")
         }
       case value => throw new AssertionError(s"Expecting JSON list, got: $value")
     }
+
   }
+
 }

@@ -27,16 +27,18 @@ import tech.beshu.ror.utils.misc.ScalaUtils.retry
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 class FilterRuleSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
-    with SingleClientSupport 
+    with SingleClientSupport
     with CustomScalaTestMatchers {
 
   override implicit val rorSettingsFileName: String = "/filter_rules/readonlyrest.yml"
 
-  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(FilterRuleSuite.nodeDataInitializer())
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(
+    FilterRuleSuite.nodeDataInitializer()
+  )
 
   "A filter rule" should {
     "show only doc according to defined filter" when {
@@ -59,7 +61,7 @@ class FilterRuleSuite
 
             result should have statusCode 200
             result.searchHits.size shouldBe 2
-            result.docIds should contain allOf("1", "2")
+            result.docIds should contain allOf ("1", "2")
 
             result.id("1") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
             result.id("2") shouldBe ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")
@@ -91,9 +93,7 @@ class FilterRuleSuite
       "msearch api is used" in {
         retry(times = 3) {
           val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
-          val matchAllIndicesQuery = Seq(
-            """{"index":"*"}""",
-            """{"query" : {"match_all" : {}}}""")
+          val matchAllIndicesQuery = Seq("""{"index":"*"}""", """{"query" : {"match_all" : {}}}""")
           val result = searchManager.mSearchUnsafe(matchAllIndicesQuery*)
 
           result should have statusCode 200
@@ -297,7 +297,8 @@ class FilterRuleSuite
       }
       "search request has 'profile' option" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"), esVersionUsed)
-        val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}, "profile": true}"""))
+        val result =
+          searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}, "profile": true}"""))
 
         result should have statusCode 403
       }
@@ -334,6 +335,7 @@ class FilterRuleSuite
       }
     }
   }
+
 }
 
 object FilterRuleSuite {
@@ -341,12 +343,25 @@ object FilterRuleSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")).force()
-    documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")).force()
-    documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}""")).force()
-    documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}""")).force()
+    documentManager
+      .createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
+      .force()
+    documentManager
+      .createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
+      .force()
+    documentManager
+      .createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}"""))
+      .force()
+    documentManager
+      .createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}"""))
+      .force()
 
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")).force()
-    documentManager.createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")).force()
+    documentManager
+      .createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
+      .force()
+    documentManager
+      .createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
+      .force()
   }
+
 }

@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.audit.configurable
 
-import cats.parse.{Parser0, Parser as P}
+import cats.parse.{Parser as P, Parser0}
 import cats.syntax.list.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldValueDescriptor
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
 
@@ -47,22 +47,23 @@ object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
         val (missing, ok) = segments.partitionMap(identity)
         missing.toNel match {
           case Some(missing) => Left(s"There are invalid placeholder values: ${missing.toList.distinct.mkString(", ")}")
-          case None => ok match {
-            case Nil => Right(AuditFieldValueDescriptor.StaticText(""))
-            case single :: Nil => Right(single)
-            case many => Right(AuditFieldValueDescriptor.Combined(many))
-          }
+          case None          =>
+            ok match {
+              case Nil           => Right(AuditFieldValueDescriptor.StaticText(""))
+              case single :: Nil => Right(single)
+              case many          => Right(AuditFieldValueDescriptor.Combined(many))
+            }
         }
     }
 
   private def deserializerAuditFieldValueDescriptor(str: String): Option[AuditFieldValueDescriptor] = {
     str.toUpperCase match {
-      case "IS_MATCHED" => Some(AuditFieldValueDescriptor.IsMatched)
+      case "IS_MATCHED"          => Some(AuditFieldValueDescriptor.IsMatched)
       case "MATCHED_BLOCK_NAMES" => Some(AuditFieldValueDescriptor.MatchedBlockNames)
-      case "FINAL_STATE" => Some(AuditFieldValueDescriptor.FinalState)
-      case "ECS_EVENT_OUTCOME" => Some(AuditFieldValueDescriptor.EcsEventOutcome)
-      case "REASON" => Some(AuditFieldValueDescriptor.Reason)
-      case "USER" =>
+      case "FINAL_STATE"         => Some(AuditFieldValueDescriptor.FinalState)
+      case "ECS_EVENT_OUTCOME"   => Some(AuditFieldValueDescriptor.EcsEventOutcome)
+      case "REASON"              => Some(AuditFieldValueDescriptor.Reason)
+      case "USER"                =>
         noRequestIdLogger.warn(
           """The USER audit value placeholder is deprecated and should not be used in the configurable audit log serializer.
             |Please use LOGGED_USER or PRESENTED_IDENTITY instead. Check the list of available placeholders in the documentation:
@@ -70,34 +71,34 @@ object AuditFieldValueDescriptorParser extends RequestIdAwareLogging {
             |""".stripMargin
         )
         Some(AuditFieldValueDescriptor.User)
-      case "LOGGED_USER" => Some(AuditFieldValueDescriptor.LoggedUser)
-      case "PRESENTED_IDENTITY" => Some(AuditFieldValueDescriptor.PresentedIdentity)
-      case "IMPERSONATED_BY_USER" => Some(AuditFieldValueDescriptor.ImpersonatedByUser)
-      case "ACTION" => Some(AuditFieldValueDescriptor.Action)
-      case "INVOLVED_INDICES" => Some(AuditFieldValueDescriptor.InvolvedIndices)
-      case "ACL_HISTORY" => Some(AuditFieldValueDescriptor.AclHistory)
-      case "BLOCKS_HISTORY" => Some(AuditFieldValueDescriptor.BlocksHistory)
-      case "PROCESSING_DURATION_MILLIS" => Some(AuditFieldValueDescriptor.ProcessingDurationMillis)
-      case "PROCESSING_DURATION_NANOS" => Some(AuditFieldValueDescriptor.ProcessingDurationNanos)
-      case "TIMESTAMP" => Some(AuditFieldValueDescriptor.Timestamp)
-      case "ID" => Some(AuditFieldValueDescriptor.Id)
-      case "CORRELATION_ID" => Some(AuditFieldValueDescriptor.CorrelationId)
-      case "TASK_ID" => Some(AuditFieldValueDescriptor.TaskId)
-      case "ERROR_TYPE" => Some(AuditFieldValueDescriptor.ErrorType)
-      case "ERROR_MESSAGE" => Some(AuditFieldValueDescriptor.ErrorMessage)
-      case "TYPE" => Some(AuditFieldValueDescriptor.Type)
-      case "HTTP_METHOD" => Some(AuditFieldValueDescriptor.HttpMethod)
-      case "HTTP_HEADER_NAMES" => Some(AuditFieldValueDescriptor.HttpHeaderNames)
-      case "HTTP_PATH" => Some(AuditFieldValueDescriptor.HttpPath)
+      case "LOGGED_USER"                 => Some(AuditFieldValueDescriptor.LoggedUser)
+      case "PRESENTED_IDENTITY"          => Some(AuditFieldValueDescriptor.PresentedIdentity)
+      case "IMPERSONATED_BY_USER"        => Some(AuditFieldValueDescriptor.ImpersonatedByUser)
+      case "ACTION"                      => Some(AuditFieldValueDescriptor.Action)
+      case "INVOLVED_INDICES"            => Some(AuditFieldValueDescriptor.InvolvedIndices)
+      case "ACL_HISTORY"                 => Some(AuditFieldValueDescriptor.AclHistory)
+      case "BLOCKS_HISTORY"              => Some(AuditFieldValueDescriptor.BlocksHistory)
+      case "PROCESSING_DURATION_MILLIS"  => Some(AuditFieldValueDescriptor.ProcessingDurationMillis)
+      case "PROCESSING_DURATION_NANOS"   => Some(AuditFieldValueDescriptor.ProcessingDurationNanos)
+      case "TIMESTAMP"                   => Some(AuditFieldValueDescriptor.Timestamp)
+      case "ID"                          => Some(AuditFieldValueDescriptor.Id)
+      case "CORRELATION_ID"              => Some(AuditFieldValueDescriptor.CorrelationId)
+      case "TASK_ID"                     => Some(AuditFieldValueDescriptor.TaskId)
+      case "ERROR_TYPE"                  => Some(AuditFieldValueDescriptor.ErrorType)
+      case "ERROR_MESSAGE"               => Some(AuditFieldValueDescriptor.ErrorMessage)
+      case "TYPE"                        => Some(AuditFieldValueDescriptor.Type)
+      case "HTTP_METHOD"                 => Some(AuditFieldValueDescriptor.HttpMethod)
+      case "HTTP_HEADER_NAMES"           => Some(AuditFieldValueDescriptor.HttpHeaderNames)
+      case "HTTP_PATH"                   => Some(AuditFieldValueDescriptor.HttpPath)
       case "X_FORWARDED_FOR_HTTP_HEADER" => Some(AuditFieldValueDescriptor.XForwardedForHttpHeader)
-      case "REMOTE_ADDRESS" => Some(AuditFieldValueDescriptor.RemoteAddress)
-      case "LOCAL_ADDRESS" => Some(AuditFieldValueDescriptor.LocalAddress)
-      case "CONTENT" => Some(AuditFieldValueDescriptor.Content)
-      case "CONTENT_LENGTH_IN_BYTES" => Some(AuditFieldValueDescriptor.ContentLengthInBytes)
-      case "CONTENT_LENGTH_IN_KB" => Some(AuditFieldValueDescriptor.ContentLengthInKb)
-      case "ES_NODE_NAME" => Some(AuditFieldValueDescriptor.EsNodeName)
-      case "ES_CLUSTER_NAME" => Some(AuditFieldValueDescriptor.EsClusterName)
-      case _ => None
+      case "REMOTE_ADDRESS"              => Some(AuditFieldValueDescriptor.RemoteAddress)
+      case "LOCAL_ADDRESS"               => Some(AuditFieldValueDescriptor.LocalAddress)
+      case "CONTENT"                     => Some(AuditFieldValueDescriptor.Content)
+      case "CONTENT_LENGTH_IN_BYTES"     => Some(AuditFieldValueDescriptor.ContentLengthInBytes)
+      case "CONTENT_LENGTH_IN_KB"        => Some(AuditFieldValueDescriptor.ContentLengthInKb)
+      case "ES_NODE_NAME"                => Some(AuditFieldValueDescriptor.EsNodeName)
+      case "ES_CLUSTER_NAME"             => Some(AuditFieldValueDescriptor.EsClusterName)
+      case _                             => None
     }
 
   }

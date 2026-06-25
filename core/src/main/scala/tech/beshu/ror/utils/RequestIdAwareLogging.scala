@@ -18,13 +18,13 @@ package tech.beshu.ror.utils
 
 import cats.implicits.toShow
 import monix.eval.Task
-import tech.beshu.ror.utils.slf4j.Logger
 import org.apache.logging.log4j.spi.ExtendedLogger
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.RequestIdAwareLogging.RorLogger
+import tech.beshu.ror.utils.slf4j.Logger
 
 trait RequestIdAwareLogging {
 
@@ -34,16 +34,24 @@ trait RequestIdAwareLogging {
 
   val noRequestIdLogger: Logger = underlyingLogger
 
-  given [B <: BlockContext](using value: ResponseContext[B]): RequestId =
+  given [B <: BlockContext](
+      using value: ResponseContext[B]
+  ): RequestId =
     value.requestContext.id.toRequestId
 
-  given [B <: BlockContext](using value: B): RequestId =
+  given [B <: BlockContext](
+      using value: B
+  ): RequestId =
     value.requestContext.id.toRequestId
 
-  given (using value: RequestContext.Id): RequestId =
+  given (
+      using value: RequestContext.Id
+  ): RequestId =
     value.toRequestId
 
-  given (using value: RequestContext): RequestId =
+  given (
+      using value: RequestContext
+  ): RequestId =
     value.id.toRequestId
 
 }
@@ -54,71 +62,103 @@ object RequestIdAwareLogging {
 
     lazy val delegate: ExtendedLogger = log.delegate
 
-    def trace(msg: => String)(implicit rid: RequestId): Unit =
+    def trace(msg: => String)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isTraceEnabled)
         log.trace(buildMsg(msg, rid))
 
-    def trace(msg: => String, t: Throwable)(implicit rid: RequestId): Unit =
+    def trace(msg: => String, t: Throwable)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isTraceEnabled)
         log.trace(buildMsg(msg, rid), t)
 
-    def debug(msg: => String)(implicit rid: RequestId): Unit =
+    def debug(msg: => String)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isDebugEnabled)
         log.debug(buildMsg(msg, rid))
 
-    def debug(msg: => String, t: Throwable)(implicit rid: RequestId): Unit =
+    def debug(msg: => String, t: Throwable)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isDebugEnabled)
         log.debug(buildMsg(msg, rid), t)
 
-    def info(msg: => String)(implicit rid: RequestId): Unit =
+    def info(msg: => String)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isInfoEnabled)
         log.info(buildMsg(msg, rid))
 
-    def info(msg: => String, t: Throwable)(implicit rid: RequestId): Unit =
+    def info(msg: => String, t: Throwable)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isInfoEnabled)
         log.info(buildMsg(msg, rid), t)
 
-    def warn(msg: => String)(implicit rid: RequestId): Unit =
+    def warn(msg: => String)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isWarnEnabled)
         log.warn(buildMsg(msg, rid))
 
-    def warn(msg: => String, t: Throwable)(implicit rid: RequestId): Unit =
+    def warn(msg: => String, t: Throwable)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isWarnEnabled)
         log.warn(buildMsg(msg, rid), t)
 
-    def error(msg: => String)(implicit rid: RequestId): Unit =
+    def error(msg: => String)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isErrorEnabled)
         log.error(buildMsg(msg, rid))
 
-    def error(msg: => String, t: Throwable)(implicit rid: RequestId): Unit =
+    def error(msg: => String, t: Throwable)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isErrorEnabled)
         log.error(buildMsg(msg, rid), t)
 
-    def errorEx(msg: => String, t: Throwable)(implicit rid: RequestId): Unit =
+    def errorEx(msg: => String, t: Throwable)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isDebugEnabled)
         log.error(buildMsg(msg, rid), t)
       else
         log.error(buildMsg(s"$msg; ${t.getMessage}", rid))
 
-    def warnEx(msg: => String, t: Throwable)(implicit rid: RequestId): Unit =
+    def warnEx(msg: => String, t: Throwable)(
+        implicit rid: RequestId
+    ): Unit =
       if (log.delegate.isDebugEnabled)
         log.warn(buildMsg(msg, rid), t)
       else
         log.warn(buildMsg(s"$msg; ${t.getMessage}", rid))
 
-    def dInfo(msg: String)(implicit rid: RequestId): Task[Unit] = {
+    def dInfo(msg: String)(
+        implicit rid: RequestId
+    ): Task[Unit] = {
       Task.delay(info(msg))
     }
 
-    def dWarn(msg: String)(implicit rid: RequestId): Task[Unit] = {
+    def dWarn(msg: String)(
+        implicit rid: RequestId
+    ): Task[Unit] = {
       Task.delay(warn(msg))
     }
 
-    def dDebug(msg: String)(implicit rid: RequestId): Task[Unit] = {
+    def dDebug(msg: String)(
+        implicit rid: RequestId
+    ): Task[Unit] = {
       Task.delay(debug(msg))
     }
 
-    def dError(msg: String)(implicit rid: RequestId): Task[Unit] = {
+    def dError(msg: String)(
+        implicit rid: RequestId
+    ): Task[Unit] = {
       Task.delay(error(msg))
     }
 
@@ -129,5 +169,7 @@ object RequestIdAwareLogging {
       sb.append('[').append(ridStr).append("] ").append(msg)
       sb.toString
     }
+
   }
+
 }

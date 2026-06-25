@@ -23,12 +23,14 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-final case class BlockMetadata private(loggedUser: Option[LoggedUser],
-                                       currentGroupId: Option[GroupId],
-                                       availableGroups: UniqueList[Group],
-                                       kibanaPolicy: Option[KibanaPolicy],
-                                       userOrigin: Option[UserOrigin],
-                                       jwtToken: Option[Jwt.Payload]) {
+final case class BlockMetadata private (
+    loggedUser: Option[LoggedUser],
+    currentGroupId: Option[GroupId],
+    availableGroups: UniqueList[Group],
+    kibanaPolicy: Option[KibanaPolicy],
+    userOrigin: Option[UserOrigin],
+    jwtToken: Option[Jwt.Payload]
+) {
 
   def withLoggedUser(user: LoggedUser): BlockMetadata = this.copy(loggedUser = Some(user))
 
@@ -66,12 +68,16 @@ final case class BlockMetadata private(loggedUser: Option[LoggedUser],
 
   def withHiddenKibanaApps(apps: UniqueNonEmptyList[KibanaApp]): BlockMetadata = {
     val currentKibanaPolicy = currentKibanaPolicyOrDefault
-    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(hiddenApps = currentKibanaPolicy.hiddenApps ++ apps)))
+    this.copy(kibanaPolicy =
+      Some(currentKibanaPolicyOrDefault.copy(hiddenApps = currentKibanaPolicy.hiddenApps ++ apps))
+    )
   }
 
   def withAllowedKibanaApiPaths(paths: UniqueNonEmptyList[KibanaAllowedApiPath]): BlockMetadata = {
     val currentKibanaPolicy = currentKibanaPolicyOrDefault
-    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(allowedApiPaths = currentKibanaPolicy.allowedApiPaths ++ paths)))
+    this.copy(kibanaPolicy =
+      Some(currentKibanaPolicyOrDefault.copy(allowedApiPaths = currentKibanaPolicy.allowedApiPaths ++ paths))
+    )
   }
 
   def withKibanaAccess(access: KibanaAccess): BlockMetadata = {
@@ -95,7 +101,7 @@ object BlockMetadata {
 
   def from(request: RequestContext): BlockMetadata = {
     request.currentGroupId match {
-      case None => BlockMetadata.empty
+      case None          => BlockMetadata.empty
       case Some(groupId) => BlockMetadata.empty.withCurrentGroupId(groupId)
     }
   }

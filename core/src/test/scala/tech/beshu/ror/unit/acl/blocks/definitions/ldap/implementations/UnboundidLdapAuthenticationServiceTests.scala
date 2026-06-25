@@ -59,7 +59,7 @@ class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsCnTests extends Unb
 }
 
 abstract class UnboundidLdapAuthenticationServiceTests
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
@@ -108,19 +108,23 @@ abstract class UnboundidLdapAuthenticationServiceTests
     val ldapId = Name("ldap")
     val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
-      ))
-      authenticationService <- EitherT(UnboundidLdapAuthenticationService
-        .create(
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
           id = ldapId,
-          ldapUsersService = usersService,
           poolProvider = ldapConnectionPoolProvider,
-          connectionConfig = ldapConnectionConfig
-        ))
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
+        )
+      )
+      authenticationService <- EitherT(
+        UnboundidLdapAuthenticationService
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig
+          )
+      )
     } yield authenticationService
     result.valueOrThrowIllegalState()
   }

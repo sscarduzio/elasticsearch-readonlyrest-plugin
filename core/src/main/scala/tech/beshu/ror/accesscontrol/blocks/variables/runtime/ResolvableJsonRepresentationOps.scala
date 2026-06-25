@@ -31,18 +31,20 @@ object ResolvableJsonRepresentationOps {
 
   implicit class CreateTree(val jsonRepresentation: JsonRepresentation) extends AnyVal {
 
-    def toResolvable(implicit variableCreator: RuntimeResolvableVariableCreator): Either[CreationError, ResolvableJsonRepresentation] = {
+    def toResolvable(
+        implicit variableCreator: RuntimeResolvableVariableCreator
+    ): Either[CreationError, ResolvableJsonRepresentation] = {
       mapTree(jsonRepresentation)
     }
 
     // not stack safe ATM (but it should not a big deal - can be improved in the future)
-    private def mapTree(tree: JsonRepresentation)
-                       (implicit variableCreator: RuntimeResolvableVariableCreator): Either[CreationError, ResolvableJsonRepresentation] = {
+    private def mapTree(tree: JsonRepresentation)(
+        implicit variableCreator: RuntimeResolvableVariableCreator
+    ): Either[CreationError, ResolvableJsonRepresentation] = {
       tree match {
         case JsonTree.Object(fields) =>
           val (keys, mappedValuesResults) = fields.view.mapValues(mapTree).toList.unzip
-          mappedValuesResults
-            .sequence
+          mappedValuesResults.sequence
             .map { mappedValues => keys.zip(mappedValues).toMap }
             .map(JsonTree.Object(_))
         case JsonTree.Array(elements) =>
@@ -55,9 +57,7 @@ object ResolvableJsonRepresentationOps {
             case Some(nonEmptyString) =>
               variableCreator
                 .createSingleResolvableVariableFrom(nonEmptyString)
-                .map(resolvableString =>
-                  JsonTree.Value(resolvableString.map(StringValue.apply))
-                )
+                .map(resolvableString => JsonTree.Value(resolvableString.map(StringValue.apply)))
             case None =>
               Right(JsonTree.Value(AlreadyResolved.create(StringValue(value))))
           }
@@ -69,22 +69,23 @@ object ResolvableJsonRepresentationOps {
           Right(JsonTree.Value(AlreadyResolved.create(NullValue)))
       }
     }
+
   }
 
-  implicit class ResolveTree(val resolvableJson: ResolvableJsonRepresentation)
-    extends AnyVal {
+  implicit class ResolveTree(val resolvableJson: ResolvableJsonRepresentation) extends AnyVal {
 
     def resolve(blockContext: BlockContext): Either[Unresolvable, JsonRepresentation] = {
       resolveTree(resolvableJson)(blockContext)
     }
 
     // not stack safe ATM (but it should not a big deal - can be improved in the future)
-    private def resolveTree(tree: ResolvableJsonRepresentation): BlockContext => Either[Unresolvable, JsonRepresentation] = { blockContext =>
+    private def resolveTree(
+        tree: ResolvableJsonRepresentation
+    ): BlockContext => Either[Unresolvable, JsonRepresentation] = { blockContext =>
       tree match {
         case JsonTree.Object(fields) =>
           val (keys, mappedValuesResults) = fields.view.mapValues(resolveTree(_)(blockContext)).toList.unzip
-          mappedValuesResults
-            .sequence
+          mappedValuesResults.sequence
             .map { mappedValues => keys.zip(mappedValues).toMap }
             .map(JsonTree.Object(_))
         case JsonTree.Array(elements) =>
@@ -98,6 +99,7 @@ object ResolvableJsonRepresentationOps {
             .map(JsonTree.Value(_))
       }
     }
+
   }
 
   implicit class FromCirceJson(val json: io.circe.Json) extends AnyVal {
@@ -128,4 +130,5 @@ object ResolvableJsonRepresentationOps {
   private implicit val stringConvertible: Convertible[String] = new Convertible[String] {
     override def convert: String => Either[Convertible.ConvertError, String] = Right.apply
   }
+
 }

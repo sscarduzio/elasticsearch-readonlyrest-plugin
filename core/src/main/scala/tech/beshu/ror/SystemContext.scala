@@ -25,14 +25,17 @@ import tech.beshu.ror.utils.js.{JsCompiler, MozillaJsCompiler}
 
 import java.time.Clock
 
-final class SystemContext(val clock: Clock = Clock.systemUTC(),
-                          val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
-                          val propertiesProvider: PropertiesProvider = JvmPropertiesProvider,
-                          implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
-                          val uuidProvider: UuidProvider = JavaUuidProvider,
-                          val jsCompiler: JsCompiler = MozillaJsCompiler,
-                          val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default,
-                          implicit val scheduler: Scheduler = RorSchedulers.Implicits.mainScheduler)
+final class SystemContext(
+    val clock: Clock = Clock.systemUTC(),
+    val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
+    val propertiesProvider: PropertiesProvider = JvmPropertiesProvider,
+    implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator,
+    val uuidProvider: UuidProvider = JavaUuidProvider,
+    val jsCompiler: JsCompiler = MozillaJsCompiler,
+    val variablesFunctions: SupportedVariablesFunctions = SupportedVariablesFunctions.default,
+    implicit val scheduler: Scheduler = RorSchedulers.Implicits.mainScheduler
+)
+
 object SystemContext {
 
   val default: SystemContext = new SystemContext()

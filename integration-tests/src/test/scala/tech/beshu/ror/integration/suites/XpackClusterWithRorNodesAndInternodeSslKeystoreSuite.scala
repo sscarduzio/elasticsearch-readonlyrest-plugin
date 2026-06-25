@@ -20,8 +20,9 @@ import tech.beshu.ror.integration.suites.base.XpackClusterWithRorNodesAndInterno
 import tech.beshu.ror.integration.utils.PluginTestSupport
 
 class XpackClusterWithRorNodesAndInternodeSslKeystoreSuite
-  extends XpackClusterWithRorNodesAndInternodeSslSuite
+    extends XpackClusterWithRorNodesAndInternodeSslSuite
     with PluginTestSupport {
 
-  override implicit val rorSettingsFileName: String = "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_keystore.yml"
+  override implicit val rorSettingsFileName: String =
+    "/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_keystore.yml"
 }

@@ -28,14 +28,17 @@ import tech.beshu.ror.utils.misc.Version
 
 import scala.util.{Failure, Success, Try}
 
-class IndexManager(client: RestClient,
-                   esVersion: String,
-                   override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+class IndexManager(
+    client: RestClient,
+    esVersion: String,
+    override val additionalHeaders: Map[String, String] = Map.empty
+) extends BaseManager(client, esVersion, esNativeApi = true) {
 
-  def createIndex(index: String,
-                  settings: Option[JSON] = None,
-                  params: Map[String, String] = Map.empty): JsonResponse = {
+  def createIndex(
+      index: String,
+      settings: Option[JSON] = None,
+      params: Map[String, String] = Map.empty
+  ): JsonResponse = {
     call(createIndexRequest(index, settings, params), new JsonResponse(_))
   }
 
@@ -53,7 +56,7 @@ class IndexManager(client: RestClient,
 
   def getAlias(indices: String*): AliasesResponse = {
     val indexOpt = indices.mkString(",") match {
-      case "" => None
+      case ""  => None
       case str => Some(str)
     }
     call(getAliasRequest(indexOpt), new AliasesResponse(_))
@@ -103,22 +106,20 @@ class IndexManager(client: RestClient,
   def putSettings(indexName: String, allocationNodeNames: String*): SimpleResponse = {
     putSettings(
       indexName = indexName,
-      settings = ujson.read(
-        s"""{
-           |  "index.routing.allocation.include._name":"${allocationNodeNames.mkString(",")}"
-           |}""".stripMargin)
+      settings = ujson.read(s"""{
+                               |  "index.routing.allocation.include._name":"${allocationNodeNames.mkString(",")}"
+                               |}""".stripMargin)
     )
   }
 
   def putSettingsIndexBlocksWrite(indexName: String, indexBlockWrite: Boolean): SimpleResponse = {
     putSettings(
       indexName = indexName,
-      settings = ujson.read(
-        s"""{
-           |  "settings":{
-           |    "index.blocks.write": $indexBlockWrite
-           |  }
-           |}""".stripMargin)
+      settings = ujson.read(s"""{
+                               |  "settings":{
+                               |    "index.blocks.write": $indexBlockWrite
+                               |  }
+                               |}""".stripMargin)
     )
   }
 
@@ -189,18 +190,17 @@ class IndexManager(client: RestClient,
     call(createRefreshIndexRequest(indexName), new JsonResponse(_))
   }
 
-  private def getAliasRequest(indexOpt: Option[String] = None,
-                              aliasOpt: Option[String] = None) = {
+  private def getAliasRequest(indexOpt: Option[String] = None, aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
       case Some(index) =>
         aliasOpt match {
           case Some(alias) => s"$index/_alias/$alias"
-          case None => s"$index/_alias"
+          case None        => s"$index/_alias"
         }
       case None =>
         aliasOpt match {
           case Some(alias) => s"_alias/$alias"
-          case None => "_alias"
+          case None        => "_alias"
         }
     }
     new HttpGet(client.from(path))
@@ -259,14 +259,15 @@ class IndexManager(client: RestClient,
   }
 
   private def createPutMappingRequest(indexName: String, propertiesJson: JSON) = {
-    val request = new HttpPut(client.from(
-      if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) s"/$indexName/_mapping" else s"/$indexName/_mapping/doc"
-    ))
+    val request = new HttpPut(
+      client.from(
+        if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) s"/$indexName/_mapping" else s"/$indexName/_mapping/doc"
+      )
+    )
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{
-         |  "properties": ${ujson.write(propertiesJson)}
-         |}""".stripMargin))
+    request.setEntity(new StringEntity(s"""{
+                                          |  "properties": ${ujson.write(propertiesJson)}
+                                          |}""".stripMargin))
     request
   }
 
@@ -279,19 +280,19 @@ class IndexManager(client: RestClient,
 
   private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
     def actionStrings = actions.map {
-      case AliasAction.Add(index, alias, None) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
-      case AliasAction.Add(index, alias, Some(filter)) => s"""{ "add": { "index": "$index", "alias": "$alias", "filter": ${ujson.write(filter)} } }"""
+      case AliasAction.Add(index, alias, None)         => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
+      case AliasAction.Add(index, alias, Some(filter)) =>
+        s"""{ "add": { "index": "$index", "alias": "$alias", "filter": ${ujson.write(filter)} } }"""
       case AliasAction.Delete(index, alias) => s"""{ "remove": { "index": "$index", "alias": "$alias" } }"""
     }
 
     val request = new HttpPost(client.from("/_aliases"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{
-         |  "actions": [
-         |     ${actionStrings.toList.mkString(",\n")}
-         |  ]
-         |}""".stripMargin))
+    request.setEntity(new StringEntity(s"""{
+                                          |  "actions": [
+                                          |     ${actionStrings.toList.mkString(",\n")}
+                                          |  ]
+                                          |}""".stripMargin))
     request
   }
 
@@ -300,38 +301,38 @@ class IndexManager(client: RestClient,
   }
 
   private def createResolveClusterRequest(indicesPatterns: List[String]) = {
-    new HttpGet(client.from(
-      indicesPatterns match {
-        case Nil => s"/_resolve/cluster"
-        case patterns => s"/_resolve/cluster/${indicesPatterns.mkString(",")}"
-      }
-    ))
+    new HttpGet(
+      client.from(
+        indicesPatterns match {
+          case Nil      => s"/_resolve/cluster"
+          case patterns => s"/_resolve/cluster/${indicesPatterns.mkString(",")}"
+        }
+      )
+    )
   }
 
   private def createShrinkRequest(sourceIndex: String, targetIndex: String, aliases: List[String]): HttpPost = {
     val parsedAliases = aliases.map(alias => s""""$alias": {}""").mkString(",")
     val request = new HttpPost(client.from(s"/$sourceIndex/_shrink/$targetIndex"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |	"aliases": {
-         |		$parsedAliases
-         |	}
-         |}""".stripMargin))
+    request.setEntity(new StringEntity(s"""
+                                          |{
+                                          |	"aliases": {
+                                          |		$parsedAliases
+                                          |	}
+                                          |}""".stripMargin))
     request
   }
 
   private def createSplitRequest(sourceIndex: String, targetIndex: String, numOfShards: Int) = {
     val request = new HttpPost(client.from(s"/$sourceIndex/_split/$targetIndex"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  "settings": {
-         |    "index.number_of_shards": $numOfShards
-         |  }
-         |}""".stripMargin))
+    request.setEntity(new StringEntity(s"""
+                                          |{
+                                          |  "settings": {
+                                          |    "index.number_of_shards": $numOfShards
+                                          |  }
+                                          |}""".stripMargin))
     request
   }
 
@@ -347,7 +348,8 @@ class IndexManager(client: RestClient,
              |"index": "$index",
              |"type": "$indexType"
              |""".stripMargin
-        case ReindexSource.Remote(index, address, username, password, _) if Version.greaterOrEqualThan(esVersion, 8, 0, 0) =>
+        case ReindexSource.Remote(index, address, username, password, _)
+            if Version.greaterOrEqualThan(esVersion, 8, 0, 0) =>
           s"""
              |"index": "$index",
              |"remote": {
@@ -371,16 +373,15 @@ class IndexManager(client: RestClient,
 
     val request = new HttpPost(client.from("/_reindex"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |	"source": {
-         |		${sourceSection(source)}
-         |	},
-         |	"dest": {
-         |		"index": "$destIndexName"
-         |	}
-         |}""".stripMargin))
+    request.setEntity(new StringEntity(s"""
+                                          |{
+                                          |	"source": {
+                                          |		${sourceSection(source)}
+                                          |	},
+                                          |	"dest": {
+                                          |		"index": "$destIndexName"
+                                          |	}
+                                          |}""".stripMargin))
     request
   }
 
@@ -390,7 +391,7 @@ class IndexManager(client: RestClient,
 
   private def createStatsRequest(indexNames: Iterable[String]) = {
     indexNames.toList match {
-      case Nil => new HttpGet(client.from(s"/_stats"))
+      case Nil   => new HttpGet(client.from(s"/_stats"))
       case names => new HttpGet(client.from(s"/${names.mkString(",")}/_stats"))
     }
   }
@@ -400,26 +401,32 @@ class IndexManager(client: RestClient,
   }
 
   class GetIndexResponse(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val indicesAndAliases: Map[String, Set[String]] =
       responseJson.obj.toMap.map { case (indexName, json) =>
         val aliases = json("aliases").obj.keys.toSet
         (indexName, aliases)
       }
+
   }
 
   class AliasesResponse(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val aliasesOfIndices: Map[String, Set[String]] =
       responseJson.obj.toMap.map { case (indexName, json) =>
         val aliases = json("aliases").obj.keys.toSet
         (indexName, aliases)
       }
+
   }
 
   class ResolveIndexResponse(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val indices: List[IndexDescription] =
-      responseJson
-        .obj.toMap.get("indices")
-        .map(_.arr.toList).getOrElse(List.empty)
+      responseJson.obj.toMap
+        .get("indices")
+        .map(_.arr.toList)
+        .getOrElse(List.empty)
         .map { vJson =>
           IndexDescription(
             vJson("name").str,
@@ -429,9 +436,10 @@ class IndexManager(client: RestClient,
         }
 
     lazy val aliases: List[AliasDescription] =
-      responseJson
-        .obj.toMap.get("aliases")
-        .map(_.arr.toList).getOrElse(List.empty)
+      responseJson.obj.toMap
+        .get("aliases")
+        .map(_.arr.toList)
+        .getOrElse(List.empty)
         .map { vJson =>
           AliasDescription(
             vJson("name").str,
@@ -440,9 +448,10 @@ class IndexManager(client: RestClient,
         }
 
     lazy val dataStreams: List[DataStreamDescription] =
-      responseJson
-        .obj.toMap.get("data_streams")
-        .map(_.arr.toList).getOrElse(List.empty)
+      responseJson.obj.toMap
+        .get("data_streams")
+        .map(_.arr.toList)
+        .getOrElse(List.empty)
         .map { vJson =>
           DataStreamDescription(
             vJson("name").str,
@@ -456,39 +465,41 @@ class IndexManager(client: RestClient,
   }
 
   class ResolveClusterResponse(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val clusterToMatchingIndices: Map[String, MatchingIndices] = {
       val result = Try {
-        responseJson
-          .obj.toMap.view
-          .mapValues { value =>
-            value.obj.get("matching_indices") match {
-              case Some(value) =>
-                if (value.bool) MatchingIndices.True
-                else MatchingIndices.False
-              case None =>
-                value.obj.get("error") match {
-                  case Some(value) =>
-                    if (value.str.startsWith("no such index [")) MatchingIndices.NoSuchIndex
-                    else throw new IllegalStateException("Not supported error case")
-                  case None =>
-                    MatchingIndices.NotApplicable
-                }
-            }
+        responseJson.obj.toMap.view.mapValues { value =>
+          value.obj.get("matching_indices") match {
+            case Some(value) =>
+              if (value.bool) MatchingIndices.True
+              else MatchingIndices.False
+            case None =>
+              value.obj.get("error") match {
+                case Some(value) =>
+                  if (value.str.startsWith("no such index [")) MatchingIndices.NoSuchIndex
+                  else throw new IllegalStateException("Not supported error case")
+                case None =>
+                  MatchingIndices.NotApplicable
+              }
           }
-          .toMap
+        }.toMap
       }
       result match {
         case Success(map) => map
-        case Failure(ex) => throw Exception(s"Cannot extract matching cluster indices from response:\n${responseJson.render()}", ex)
+        case Failure(ex)  =>
+          throw Exception(s"Cannot extract matching cluster indices from response:\n${responseJson.render()}", ex)
       }
     }
+
   }
 
   class StatsResponse(response: HttpResponse) extends JsonResponse(response) {
 
     lazy val indexNames: Set[String] = responseJson.obj("indices").obj.keys.toSet
   }
+
 }
+
 object IndexManager {
 
   sealed trait ReindexSource {
@@ -496,22 +507,34 @@ object IndexManager {
 
     def `type`: Option[String]
   }
+
   object ReindexSource {
     final case class Local(indexName: String, `type`: Option[String] = None) extends ReindexSource
-    final case class Remote(indexName: String, address: String, username: String, password: String, `type`: Option[String] = None) extends ReindexSource
+
+    final case class Remote(
+        indexName: String,
+        address: String,
+        username: String,
+        password: String,
+        `type`: Option[String] = None
+    ) extends ReindexSource
+
   }
 
   sealed trait AliasAction
+
   object AliasAction {
     final case class Add(index: String, alias: String, filter: Option[JSON] = None) extends AliasAction
     final case class Delete(index: String, alias: String) extends AliasAction
   }
 
   sealed trait MatchingIndices
+
   object MatchingIndices {
     case object True extends MatchingIndices
     case object False extends MatchingIndices
     case object NotApplicable extends MatchingIndices
     case object NoSuchIndex extends MatchingIndices
   }
+
 }

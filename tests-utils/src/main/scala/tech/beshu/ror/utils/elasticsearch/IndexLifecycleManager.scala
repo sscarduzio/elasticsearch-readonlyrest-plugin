@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 class IndexLifecycleManager(client: RestClient, esVersion: String)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+    extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def getPolicy(id: String): PoliciesResponse = {
     call(createGetPolicyRequest(id), new PoliciesResponse(_))
@@ -108,11 +108,10 @@ class IndexLifecycleManager(client: RestClient, esVersion: String)
   private def createMoveToLifecycleStepRequest(index: String, currentStep: JSON, nextStep: JSON) = {
     val request = new HttpPost(client.from(s"_ilm/move/$index"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{
-         |  "current_step": ${ujson.write(currentStep)},
-         |  "next_step": ${ujson.write(nextStep)}
-         |}""".stripMargin))
+    request.setEntity(new StringEntity(s"""{
+                                          |  "current_step": ${ujson.write(currentStep)},
+                                          |  "next_step": ${ujson.write(nextStep)}
+                                          |}""".stripMargin))
     request
   }
 
@@ -125,11 +124,13 @@ class IndexLifecycleManager(client: RestClient, esVersion: String)
   }
 
   class PoliciesResponse(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val policies: Map[String, JSON] =
       responseJson.obj.toMap.map { case (policyName, json) =>
         val policy = ujson.Obj.from(json.obj.view.filterKeys(_ == "policy").toList)
         (policyName, policy)
       }
+
   }
 
   class IlmStatusResponse(response: HttpResponse) extends JsonResponse(response) {
@@ -139,4 +140,5 @@ class IndexLifecycleManager(client: RestClient, esVersion: String)
   class IlmExplainResponse(response: HttpResponse) extends JsonResponse(response) {
     lazy val indices: Map[String, JSON] = responseJson.obj("indices").obj.toMap
   }
+
 }

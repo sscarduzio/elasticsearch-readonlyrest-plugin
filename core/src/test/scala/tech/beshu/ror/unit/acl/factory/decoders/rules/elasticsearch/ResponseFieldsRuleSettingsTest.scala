@@ -18,9 +18,15 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.elasticsearch
 
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.*
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
@@ -32,15 +38,14 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
       "ror is run in plugin mode and" when {
         "only one field is defined" in {
           assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    response_fields: "field1"
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    response_fields: "field1"
+                     |
+                     |""".stripMargin,
             assertion = rule => {
               rule.settings.responseFields.head should be(AlreadyResolved(ResponseField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
@@ -49,15 +54,14 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
         }
         "two fields are defined" in {
           assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    response_fields: [field1, field2]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    response_fields: [field1, field2]
+                     |
+                     |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.responseFields
               decodedFields.head should be(AlreadyResolved(ResponseField("field1").nel))
@@ -68,15 +72,14 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
         }
         "only one blacklisted field is defined" in {
           assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    response_fields: "~field1"
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    response_fields: "~field1"
+                     |
+                     |""".stripMargin,
             assertion = rule => {
               rule.settings.responseFields.head should be(AlreadyResolved(ResponseField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Blacklist)
@@ -85,15 +88,14 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
         }
         "two blacklisted fields are defined" in {
           assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    response_fields: [~field1, ~field2]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    response_fields: [~field1, ~field2]
+                     |
+                     |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.responseFields
               decodedFields.head should be(AlreadyResolved(ResponseField("field1").nel))
@@ -104,16 +106,15 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
         }
         "field is defined with variable" in {
           assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    auth_key: dev1:test
-                |    response_fields: ["@{user}", "field2"]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    auth_key: dev1:test
+                     |    response_fields: ["@{user}", "field2"]
+                     |
+                     |""".stripMargin,
             assertion = rule => {
               rule.settings.responseFields.head shouldBe a[ToBeResolved[_]]
               rule.settings.responseFields.last should be(AlreadyResolved(ResponseField("field2").nel))
@@ -123,15 +124,14 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
         }
         "fields disallowed by FLS are defined" in {
           assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    response_fields: [field1, _type, _uid]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    response_fields: [field1, _type, _uid]
+                     |
+                     |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.responseFields
               decodedFields.head should be(AlreadyResolved(ResponseField("field1").nel))
@@ -145,86 +145,99 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
     "not be able to be loaded from settings" when {
       "no field is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    response_fields:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    response_fields:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """response_fields: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """response_fields: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
       "blacklisted fields are mixed with whitelisted ones" when {
         "no variable is used" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    response_fields: [field1, ~field2]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    response_fields: [field1, ~field2]
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: 'field1', '~field2'"
-              )))
+              errors.head should be(
+                RulesLevelCreationError(
+                  Message(
+                    "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: 'field1', '~field2'"
+                  )
+                )
+              )
             }
           )
         }
         "variable and already resolved value are used" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    auth_key: dev1:test
-                |    response_fields: ["@{user}", "~field2"]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    auth_key: dev1:test
+                     |    response_fields: ["@{user}", "~field2"]
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~field2'"
-              )))
+              errors.head should be(
+                RulesLevelCreationError(
+                  Message(
+                    "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~field2'"
+                  )
+                )
+              )
             }
           )
         }
         "only variables are used" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    auth_key: dev1:test
-                |    response_fields: ["@{user}", "~@{user}.name"]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block1
+                     |    auth_key: dev1:test
+                     |    response_fields: ["@{user}", "~@{user}.name"]
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(RulesLevelCreationError(Message(
-                "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~@{user}.name'"
-              )))
+              errors.head should be(
+                RulesLevelCreationError(
+                  Message(
+                    "fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: '@{user}', '~@{user}.name'"
+                  )
+                )
+              )
             }
           )
         }
       }
     }
   }
+
 }

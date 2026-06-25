@@ -17,14 +17,18 @@
 package tech.beshu.ror.tools.core.patches.base
 
 import just.semver.SemVer
-import tech.beshu.ror.tools.core.patches.internal.filePatchers.{CopyTransportNetty4JarToPluginPatchCreator, FilePatchCreator}
+import tech.beshu.ror.tools.core.patches.internal.filePatchers.{
+  CopyTransportNetty4JarToPluginPatchCreator,
+  FilePatchCreator
+}
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
 
-private[patches] abstract class TransportNetty4AwareEsPatch(rorPluginDirectory: RorPluginDirectory,
-                                                            esVersion: SemVer,
-                                                            filePatchCreators: FilePatchCreator[_ <: FilePatch]*)
-  extends SimpleEsPatch(
-    rorPluginDirectory = rorPluginDirectory,
-    esVersion = esVersion,
-    filePatchCreators = filePatchCreators.toList ::: CopyTransportNetty4JarToPluginPatchCreator :: Nil: _*
-  )
+private[patches] abstract class TransportNetty4AwareEsPatch(
+    rorPluginDirectory: RorPluginDirectory,
+    esVersion: SemVer,
+    filePatchCreators: FilePatchCreator[_ <: FilePatch]*
+) extends SimpleEsPatch(
+      rorPluginDirectory = rorPluginDirectory,
+      esVersion = esVersion,
+      filePatchCreators = filePatchCreators.toList ::: CopyTransportNetty4JarToPluginPatchCreator :: Nil: _*
+    )

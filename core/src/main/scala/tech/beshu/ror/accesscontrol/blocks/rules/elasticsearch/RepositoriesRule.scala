@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule.Settings
@@ -35,15 +35,15 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
 
-class RepositoriesRule(val settings: Settings)
-  extends RegularRule
-    with RequestIdAwareLogging {
+class RepositoriesRule(val settings: Settings) extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = RepositoriesRule.Name.name
 
-  private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+  private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(
+    new ZeroKnowledgeIndexFilter(true)
+  )
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.RepositoryRequestBlockContextUpdater =>
         checkRepositories(blockContext)
@@ -54,33 +54,37 @@ class RepositoriesRule(val settings: Settings)
     }
   }
 
-  private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)
-                                                  (implicit ev: RepositoryRequestBlockContext <:< B): Decision[B] = {
+  private def checkRepositories[B <: BlockContext](blockContext: RepositoryRequestBlockContext)(
+      implicit ev: RepositoryRequestBlockContext <:< B
+  ): Decision[B] = {
     checkAllowedRepositories(
       resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {
       case Right(filteredRepositories) => Permitted(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Denied(Cause.NotAuthorized)
+      case Left(_)                     => Denied(Cause.NotAuthorized)
     }
   }
 
-  private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)
-                                                          (implicit ev: SnapshotRequestBlockContext <:< B): Decision[B] = {
+  private def checkSnapshotRepositories[B <: BlockContext](blockContext: SnapshotRequestBlockContext)(
+      implicit ev: SnapshotRequestBlockContext <:< B
+  ): Decision[B] = {
     checkAllowedRepositories(
       resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.repositories,
       blockContext.requestContext
     ) match {
       case Right(filteredRepositories) => Permitted(blockContext.withRepositories(filteredRepositories))
-      case Left(_) => Denied(Cause.NotAuthorized)
+      case Left(_)                     => Denied(Cause.NotAuthorized)
     }
   }
 
-  private def checkAllowedRepositories(allowedRepositories: Set[RepositoryName],
-                                       repositoriesToCheck: Set[RepositoryName],
-                                       requestContext: RequestContext) = {
+  private def checkAllowedRepositories(
+      allowedRepositories: Set[RepositoryName],
+      repositoriesToCheck: Set[RepositoryName],
+      requestContext: RequestContext
+  ) = {
     implicit val requestContextImpl: RequestContext = requestContext
     if (allowedRepositories.contains(RepositoryName.all) || allowedRepositories.contains(RepositoryName.wildcard)) {
       Right(repositoriesToCheck)
@@ -101,11 +105,14 @@ class RepositoriesRule(val settings: Settings)
           )
           Left(())
         case CheckResult.Failed =>
-          logger.debug(s"The processed repositories do not match the allowed repositories. The request will be rejected..")
+          logger.debug(
+            s"The processed repositories do not match the allowed repositories. The request will be rejected.."
+          )
           Left(())
       }
     }
   }
+
 }
 
 object RepositoriesRule {

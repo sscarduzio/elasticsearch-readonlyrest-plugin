@@ -22,16 +22,15 @@ import io.circe.{Codec, Decoder, HCursor, Json}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.{RawRorSettings, RawRorSettingsYamlParser}
 
-private [source] class RawRorSettingsCodec(yamlParser: RawRorSettingsYamlParser)
-  extends Codec[RawRorSettings] {
+private[source] class RawRorSettingsCodec(yamlParser: RawRorSettingsYamlParser) extends Codec[RawRorSettings] {
 
   override def apply(c: HCursor): Result[RawRorSettings] =
-    Decoder
-      .decodeString
+    Decoder.decodeString
       .emap { str =>
         yamlParser
           .fromString(str)
-          .left.map(_.show)
+          .left
+          .map(_.show)
       }
       .apply(c)
 

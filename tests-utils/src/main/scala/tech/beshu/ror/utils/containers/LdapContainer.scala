@@ -80,16 +80,21 @@ object LdapContainer {
       val organisation = "example"
       val adminName = "admin"
       val adminPassword = "password"
+
       val bindDn: Option[String] = {
         Option(
           defaults.ldap.domain
-            .split("\\.").toList
+            .split("\\.")
+            .toList
             .map(part => s"dc=$part")
-            .mkString(","))
+            .mkString(",")
+        )
           .filter(_.trim.nonEmpty)
           .map(dc => s"cn=${defaults.ldap.adminName},$dc")
       }
+
     }
+
   }
 
   def initLdap(connection: LDAPConnection, ldapInitScript: InitScriptSource): Unit = {
@@ -131,11 +136,11 @@ object LdapContainer {
     result.get()
   }
 
-
   private implicit val ldifReaderDisposable: Disposable[LDIFReader] = Disposable(_.close())
 }
 
 object NonStoppableLdapSingleContainer {
+
   def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer =
     OsUtils.currentOs match {
       case CurrentOs.Windows =>
@@ -143,4 +148,5 @@ object NonStoppableLdapSingleContainer {
       case CurrentOs.OtherThanWindows =>
         NonStoppableOpenLdapContainer.createAndStart(name, ldapInitScript)
     }
+
 }

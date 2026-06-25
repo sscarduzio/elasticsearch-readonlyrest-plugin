@@ -27,10 +27,8 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.syntax.*
 
-class RorApiEsRequestContext(actionRequest: RorActionRequest,
-                             esContext: EsContext,
-                             override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[RorApiRequestBlockContext](esContext)
+class RorApiEsRequestContext(actionRequest: RorActionRequest, esContext: EsContext, override val threadPool: ThreadPool)
+    extends BaseEsRequestContext[RorApiRequestBlockContext](esContext)
     with EsRequest[RorApiRequestBlockContext] {
 
   override def initialBlockContext(block: Block): RorApiRequestBlockContext = RorApiRequestBlockContext(
@@ -46,8 +44,9 @@ class RorApiEsRequestContext(actionRequest: RorActionRequest,
   override protected def modifyRequest(blockContext: RorApiRequestBlockContext): ModificationResult = {
     blockContext.blockMetadata.loggedUser match {
       case Some(value) => actionRequest.setLoggedUser(value)
-      case None =>
+      case None        =>
     }
     Modified
   }
+
 }

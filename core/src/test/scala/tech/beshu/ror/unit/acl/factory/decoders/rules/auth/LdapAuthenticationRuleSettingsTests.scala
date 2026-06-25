@@ -23,30 +23,28 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.SingletonLdapContainers
 
-class LdapAuthenticationRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[LdapAuthenticationRule] {
+class LdapAuthenticationRuleSettingsTests extends BaseRuleSettingsDecoderTest[LdapAuthenticationRule] {
 
   "An LdapAuthenticationRule" should {
     "be able to be loaded from settings" when {
       "simple version of LDAP authentication rule is used" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ldap_authentication: "ldap1"
-              |
-              |  ldaps:
-              |
-              |  - name: ldap1
-              |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-              |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-              |    ssl_enabled: false
-              |    search_user_base_DN: "ou=People,dc=example,dc=com"
-              |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_authentication: "ldap1"
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.settings.ldap)
           }
@@ -54,25 +52,24 @@ class LdapAuthenticationRuleSettingsTests
       }
       "authentication LDAP rule can have caching declared at rule level" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_authentication:
-               |      name: ldap1
-               |      cache_ttl: 10 sec
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_authentication:
+                    |      name: ldap1
+                    |      cache_ttl: 10 sec
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.settings.ldap, withRuleLevelCaching = true)
           }
@@ -80,24 +77,23 @@ class LdapAuthenticationRuleSettingsTests
       }
       "extended version of rule definition doesn't declare cache TTL" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_authentication:
-               |      name: "ldap1"
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_authentication:
+                    |      name: "ldap1"
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = rule => {
             assertLdapAuthNServiceLayerTypes(rule.settings.ldap)
           }
@@ -107,23 +103,22 @@ class LdapAuthenticationRuleSettingsTests
     "not be able to be loaded from settings" when {
       "no LDAP service with given name is defined" in {
         assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_authentication: "ldap2"
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${SingletonLdapContainers.ldap1.ldapHost}
-               |    port: ${SingletonLdapContainers.ldap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ldap_authentication: "ldap2"
+                    |
+                    |  ldaps:
+                    |
+                    |  - name: ldap1
+                    |    host: ${SingletonLdapContainers.ldap1.ldapHost}
+                    |    port: ${SingletonLdapContainers.ldap1.ldapPort}
+                    |    ssl_enabled: false
+                    |    search_user_base_DN: "ou=People,dc=example,dc=com"
+                    |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find LDAP service with name: ldap2")))
@@ -132,4 +127,5 @@ class LdapAuthenticationRuleSettingsTests
       }
     }
   }
+
 }

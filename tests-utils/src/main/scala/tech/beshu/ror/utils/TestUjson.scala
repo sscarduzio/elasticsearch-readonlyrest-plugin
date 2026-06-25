@@ -28,10 +28,8 @@ object TestUjson {
 
     def read(s: String, trace: Boolean = false): Value = originalUjson.read(s.replaceAll("\r\n", "\n"), trace)
 
-    def write(t: Value,
-              indent: Int = -1,
-              escapeUnicode: Boolean = false,
-              sortKeys: Boolean = false): String = originalUjson.write(t, indent, escapeUnicode, sortKeys)
+    def write(t: Value, indent: Int = -1, escapeUnicode: Boolean = false, sortKeys: Boolean = false): String =
+      originalUjson.write(t, indent, escapeUnicode, sortKeys)
   }
 
 }

@@ -29,16 +29,20 @@ private[rules] trait SimpleAuthorizationImpersonationSupport extends Authorizati
 
   protected def impersonation: Impersonation
 
-  protected def mockedGroupsOf(user: User.Id,
-                               mocksProvider: MocksProvider)
-                              (implicit requestId: RequestId): Groups
+  protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Groups
+
 }
+
 object SimpleAuthorizationImpersonationSupport {
   sealed trait Groups
+
   object Groups {
     final case class Present(groups: UniqueList[Group]) extends Groups
     case object CannotCheck extends Groups
   }
+
 }
 
 trait AuthorizationImpersonationCustomSupport extends AuthorizationImpersonationSupport

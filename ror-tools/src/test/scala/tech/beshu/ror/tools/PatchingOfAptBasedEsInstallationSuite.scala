@@ -63,7 +63,11 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
           // In ES versions 7.x, 8.0.x - 8.17.x the ROR security policy grants permission:
           // `permission java.io.FilePermission "/usr/share/elasticsearch", "read";`
           // It is not a valid Windows path, so ror-tools patcher cannot read the ES directory and prints warning.
-          "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs9x, allEs818x) in {
+          "ES {7.x, 8.0.x - 8.17.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES (
+            allEs6x,
+            allEs9x,
+            allEs818x
+          ) in {
             val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
               testRorStartup(usingManager = esContainer)
             }
@@ -78,7 +82,11 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
           //  - files:
           //      - relative_path: ../
           // It is valid on Windows, so ror-tools patcher can read the ES directory and does not print the warning.
-          "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES(allEs6x, allEs7x, allEs8xBelowEs818x) in {
+          "ES {8.18.x, 9.x} successfully load ROR plugin and start (with warning about not being able to verify patch)" excludeES (
+            allEs6x,
+            allEs7x,
+            allEs8xBelowEs818x
+          ) in {
             val dockerLogs = withTestEsContainerManager(EsInstallationType.NativeWindowsProcess) { esContainer =>
               testRorStartup(usingManager = esContainer)
             }
@@ -107,8 +115,9 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
         "installed on Ubuntu using apt" should {
           // ES 6.x is not available as apt package, so we do not test it
           "ES successfully load ROR plugin and start (without warning about not being able to verify patch)" excludeES allEs6x in {
-            val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) { esContainer =>
-              testRorStartup(usingManager = esContainer)
+            val dockerLogs = withTestEsContainerManager(EsInstallationType.UbuntuDockerImageWithEsFromApt) {
+              esContainer =>
+                testRorStartup(usingManager = esContainer)
             }
             dockerLogs should include("ReadonlyREST is waiting for full Elasticsearch init")
             dockerLogs should include("Elasticsearch fully initiated. ReadonlyREST can continue ...")
@@ -120,8 +129,9 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
       }
   }
 
-  private def withTestEsContainerManager(esInstallationType: EsInstallationType)
-                                        (testCode: TestEsContainerManager => Task[Unit]): String = {
+  private def withTestEsContainerManager(
+      esInstallationType: EsInstallationType
+  )(testCode: TestEsContainerManager => Task[Unit]): String = {
     val esContainer = new TestEsContainerManager(validRorConfigFile, esInstallationType)
     try {
       (for {
@@ -156,6 +166,7 @@ class PatchingOfAptBasedEsInstallationSuite extends AnyWordSpec with ESVersionSu
       Task.raiseError(new IllegalStateException(s"Test failed. Expected success response but was: [$result]"))
     }
   }
+
 }
 
 private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
@@ -163,7 +174,8 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 
-  final class TestEsContainerManager(rorConfigFile: String, esInstallationType: EsInstallationType) extends EsContainerCreator {
+  final class TestEsContainerManager(rorConfigFile: String, esInstallationType: EsInstallationType)
+      extends EsContainerCreator {
 
     private lazy val dockerClient: DockerClient = DockerClientFactory.instance().client()
 
@@ -187,9 +199,7 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
     }
 
     private def createAdminClient = {
-      Try(esContainer.adminClient)
-        .toEither
-        .left.map(_ => ())
+      Try(esContainer.adminClient).toEither.left.map(_ => ())
     }
 
     private def createEsContainer: EsContainer = {
@@ -214,5 +224,7 @@ private object PatchingOfAptBasedEsInstallationSuite extends EsModulePatterns {
         additionalLogConsumer = Some(dockerLogsCollector)
       )
     }
+
   }
+
 }

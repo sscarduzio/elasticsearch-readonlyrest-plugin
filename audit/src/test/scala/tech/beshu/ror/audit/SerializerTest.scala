@@ -296,8 +296,10 @@ class SerializerTest extends AnyWordSpec {
     }
   }
 
-  private def testSerializerFieldsWithTypes(serializer: AuditLogSerializer,
-                                            expectedFieldsWithTypes: Map[String, String]): Unit = {
+  private def testSerializerFieldsWithTypes(
+      serializer: AuditLogSerializer,
+      expectedFieldsWithTypes: Map[String, String]
+  ): Unit = {
     val serialized = serializer.onResponse(AuditResponseContext.Forbidden(DummyAuditRequestContext)).get
     val entryFields = serialized.keySet.asScala.toSet
 
@@ -312,13 +314,13 @@ class SerializerTest extends AnyWordSpec {
     } else {
       expectedFieldsWithTypes.foreach { case (fieldName, expectedType) =>
         expectedType match {
-          case "string" => noException should be thrownBy serialized.getString(fieldName)
+          case "string"  => noException should be thrownBy serialized.getString(fieldName)
           case "boolean" => noException should be thrownBy serialized.getBoolean(fieldName)
-          case "number" => noException should be thrownBy serialized.getDouble(fieldName)
-          case "array" =>
+          case "number"  => noException should be thrownBy serialized.getDouble(fieldName)
+          case "array"   =>
             val value = serialized.get(fieldName)
             value match {
-              case _: org.json.JSONArray => succeed
+              case _: org.json.JSONArray      => succeed
               case s: java.util.Collection[_] => noException should be thrownBy new org.json.JSONArray(s)
               case other => fail(s"Expected '$fieldName' to be JSONArray, but got ${other.getClass.getName}: $other")
             }

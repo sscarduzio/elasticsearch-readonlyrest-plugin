@@ -26,7 +26,7 @@ class RequestedIndicesOps(val indices: Iterable[RequestedIndex[ClusterIndexName]
     val foundIndex = indices.find(_.name.hasWildcard) orElse indices.headOption
     foundIndex match {
       case Some(indexName) => indexName.randomNonexistentLocalIndex()
-      case None => RequestedIndex(ClusterIndexName.Local.randomNonexistentIndex(), excluded = false)
+      case None            => RequestedIndex(ClusterIndexName.Local.randomNonexistentIndex(), excluded = false)
     }
   }
 

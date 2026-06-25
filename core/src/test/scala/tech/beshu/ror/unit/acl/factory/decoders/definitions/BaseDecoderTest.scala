@@ -29,35 +29,28 @@ import tech.beshu.ror.utils.TestsUtils
 
 import scala.util.{Failure, Try}
 
-abstract class BaseDecoderTest[F[_] : Comonad, A, B](decoder: ADecoder[F, A])
-  extends AnyWordSpec with Inside {
+abstract class BaseDecoderTest[F[_]: Comonad, A, B](decoder: ADecoder[F, A]) extends AnyWordSpec with Inside {
 
-  def assertDecodingSuccess(yamls: NonEmptyList[String],
-                            assertion: A => Unit): Unit = {
-    yamls
-      .toList
+  def assertDecodingSuccess(yamls: NonEmptyList[String], assertion: A => Unit): Unit = {
+    yamls.toList
       .foreach { yaml =>
-        Try(assertDecodingSuccess(yaml, assertion))
-          .recoverWith {
-            ex => Failure(IllegalStateException(s"Assertion failed for yaml: $yaml", ex))
-          }
-          .get
+        Try(assertDecodingSuccess(yaml, assertion)).recoverWith { ex =>
+          Failure(IllegalStateException(s"Assertion failed for yaml: $yaml", ex))
+        }.get
       }
   }
 
-  def assertDecodingSuccess(yaml: String,
-                            assertion: A => Unit): Unit = {
+  def assertDecodingSuccess(yaml: String, assertion: A => Unit): Unit = {
     assertion {
       Comonad[F].extract(forceDecode(yaml))
     }
   }
 
-  def assertDecodingFailure(yaml: String,
-                            assertion: CoreCreationError => Unit): Unit = {
+  def assertDecodingFailure(yaml: String, assertion: CoreCreationError => Unit): Unit = {
     inside(Comonad[F].extract(decode(yaml))) { case Left(decodingFailure) =>
       decodingFailure.aclCreationError match {
         case Some(error) => assertion(error)
-        case None => throw new IllegalStateException("Cannot find AclCreationError in decoding failure")
+        case None        => throw new IllegalStateException("Cannot find AclCreationError in decoding failure")
       }
     }
   }

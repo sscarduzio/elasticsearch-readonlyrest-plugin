@@ -21,15 +21,15 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import tech.beshu.ror.integration.suites.base.BaseXpackApiSuite.{NextRollupJobName, nodeDataInitializer}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, *}
-import ujson.{Null, Num, Str}
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, *}
 import tech.beshu.ror.utils.elasticsearch.*
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
+import ujson.{Null, Num, Str}
 
 trait BaseXpackApiSuite
-  extends AnyWordSpecLike
+    extends AnyWordSpecLike
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with SingleClientSupport
@@ -44,13 +44,15 @@ trait BaseXpackApiSuite
     EsClusterSettings.create(
       clusterName = "ROR1",
       nodeDataInitializer = new ComposedElasticsearchNodeDataInitializer(
-        nodeDataInitializer(), implementationSpecificInitializer()
+        nodeDataInitializer(),
+        implementationSpecificInitializer()
       ),
       securityType = rorClusterSecurityType
     )
   )
 
-  protected def implementationSpecificInitializer(): ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer
+  protected def implementationSpecificInitializer(): ElasticsearchNodeDataInitializer =
+    NoOpElasticsearchNodeDataInitializer
 
   protected lazy val adminXpackApiManager = new XpackApiManager(adminClient, esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"), esVersionUsed)
@@ -74,7 +76,7 @@ trait BaseXpackApiSuite
   private lazy val dev3EsqlManager = new EsqlApiManager(basicAuthClient("dev3sql", "test"), esVersionUsed)
 
   "Async search" should {
-    "be allowed for dev1 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "be allowed for dev1 and test1_index_a" excludeES (allEs6x, allEs7xBelowEs77x) in {
       val result = dev1SearchManager.asyncSearch("test1_index_a")
 
       result should have statusCode 200
@@ -82,12 +84,12 @@ trait BaseXpackApiSuite
         Set("test1_index_a")
       )
     }
-    "not be allowed for dev2 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "not be allowed for dev2 and test1_index_a" excludeES (allEs6x, allEs7xBelowEs77x) in {
       val result = dev2SearchManager.asyncSearch("test1_index_a")
 
       result should have statusCode 404
     }
-    "support filter and fields rule" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "support filter and fields rule" excludeES (allEs6x, allEs7xBelowEs77x) in {
       val result = dev2SearchManager.asyncSearch("test2_index")
 
       result should have statusCode 200
@@ -98,7 +100,7 @@ trait BaseXpackApiSuite
         Set(ujson.read("""{"name":"john"}"""))
       )
     }
-    "not be called for closed indices" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "not be called for closed indices" excludeES (allEs6x, allEs7xBelowEs77x) in {
       val result = dev3SearchManager.asyncSearch("test3*")
 
       result should have statusCode 200
@@ -106,7 +108,7 @@ trait BaseXpackApiSuite
         Set("test3_index_a", "test3_index_b")
       )
     }
-    "status is properly handled" excludeES(allEs6x, allEs7xBelowEs77x) in {
+    "status is properly handled" excludeES (allEs6x, allEs7xBelowEs77x) in {
       val notExistingSearchId = "FmRldE8zREVEUzA2ZVpUeGs2ejJFUFEaMkZ5QTVrSTZSaVN3WlNFVmtlWHJsdzoxMDc="
       val result = dev1SearchManager.asyncSearchStatus(notExistingSearchId)
 
@@ -264,7 +266,9 @@ trait BaseXpackApiSuite
         result.responseJson("responses").arr.size should be(1)
         val firstQueryResponse = result.responseJson("responses")(0)
         firstQueryResponse("hits")("hits").arr.map(_("_index").str).distinct should be(List("test7_index"))
-        firstQueryResponse("hits")("hits").arr.map(_("_source")) should be(List(ujson.read("""{"content":{ "app": "a1" }}""")))
+        firstQueryResponse("hits")("hits").arr.map(_("_source")) should be(
+          List(ujson.read("""{"content":{ "app": "a1" }}"""))
+        )
       }
     }
     "render template is used" should {
@@ -291,7 +295,7 @@ trait BaseXpackApiSuite
   "Rollup API" when {
     "create rollup job method is used" should {
       "be allowed to be used" when {
-        "there is no indices rule defined" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "there is no indices rule defined" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           val result = adminXpackApiManager.rollup(jobName, "test3*", "admin_t3")
 
@@ -300,7 +304,7 @@ trait BaseXpackApiSuite
           rollupJobsResult should have statusCode 200
           rollupJobsResult.jobs.size should be(1)
         }
-        "user has access to both: index pattern and rollup_index" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to both: index pattern and rollup_index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           val result = dev3XpackApiManager.rollup(jobName, "test3*", s"rollup_test3_$jobName")
 
@@ -311,17 +315,17 @@ trait BaseXpackApiSuite
         }
       }
       "not be allowed to be used" when {
-        "user has no access to rollup_index" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has no access to rollup_index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test3*", "rollup_index")
 
           result should have statusCode 403
         }
-        "user has no access to passed index" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has no access to passed index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test1_index", "rollup_index")
 
           result should have statusCode 403
         }
-        "user has no access to given index pattern" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has no access to given index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test*", "rollup_index")
 
           result should have statusCode 403
@@ -330,7 +334,7 @@ trait BaseXpackApiSuite
     }
     "get rollup job capabilities method is used" should {
       "return non-empty list" when {
-        "there is not indices rule defined" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "there is not indices rule defined" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test4*", "admin_t4").force()
 
@@ -340,7 +344,7 @@ trait BaseXpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName)
         }
-        "user has access to requested indices" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to requested indices" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
@@ -356,7 +360,7 @@ trait BaseXpackApiSuite
             job("index_pattern").str should startWith("test4")
           }
         }
-        "user has access to requested index pattern" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val jobName3 = NextRollupJobName.get
@@ -368,14 +372,14 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain oneOf(jobName1, jobName2)
+          jobs.map(_("job_id").str) should contain oneOf (jobName1, jobName2)
           jobs.map(_("job_id").str) should not contain jobName3
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test4")
             job("index_pattern").str should startWith("test4")
           }
         }
-        "user has access to one index of requested index pattern" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to one index of requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val jobName3 = NextRollupJobName.get
@@ -387,7 +391,7 @@ trait BaseXpackApiSuite
 
           result should have statusCode 200
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain oneOf(jobName1, jobName2)
+          jobs.map(_("job_id").str) should contain oneOf (jobName1, jobName2)
           jobs.map(_("job_id").str) should not contain jobName3
           jobs.foreach { job =>
             job("rollup_index").str should startWith("rollup_test4")
@@ -396,7 +400,7 @@ trait BaseXpackApiSuite
         }
       }
       "return empty list" when {
-        "user has no access to requested index" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has no access to requested index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
 
@@ -406,7 +410,7 @@ trait BaseXpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.size should be(0)
         }
-        "user had no access to requested index pattern" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user had no access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test4*", s"rollup_test4_$jobName").force()
 
@@ -420,7 +424,7 @@ trait BaseXpackApiSuite
     }
     "get rollup index capabilities method is used" should {
       "return non-empty list" when {
-        "there is not indices rule defined" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "there is not indices rule defined" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test5*", "admin_t5").force()
 
@@ -430,7 +434,7 @@ trait BaseXpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs.map(_("job_id").str) should contain(jobName)
         }
-        "user has access to requested indices" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to requested indices" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -446,7 +450,7 @@ trait BaseXpackApiSuite
             job("index_pattern").str should startWith("test5")
           }
         }
-        "user has access to requested index pattern" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -462,7 +466,7 @@ trait BaseXpackApiSuite
             job("index_pattern").str should startWith("test5")
           }
         }
-        "user has access to one index of requested index patten" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to one index of requested index patten" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
@@ -480,7 +484,7 @@ trait BaseXpackApiSuite
         }
       }
       "return empty list" when {
-        "user had no access to requested index pattern" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user had no access to requested index pattern" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test5*", s"rollup_test5_$jobName").force()
 
@@ -492,7 +496,7 @@ trait BaseXpackApiSuite
         }
       }
       "return 404" when {
-        "user has no access to requested index" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has no access to requested index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
 
@@ -504,7 +508,7 @@ trait BaseXpackApiSuite
     }
     "rollup search method is used" should {
       "be allowed to be used" when {
-        "user has access to called rollup index" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has access to called rollup index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
           val rollupIndex6a = s"rollup_test6_$jobName1"
@@ -517,7 +521,7 @@ trait BaseXpackApiSuite
         }
       }
       "return 404" when {
-        "user has no access to called rollup index" excludeES(allES8xAboveEs815x, allEs9x) in {
+        "user has no access to called rollup index" excludeES (allES8xAboveEs815x, allEs9x) in {
           val jobName = NextRollupJobName.get
           val rollupIndex = s"rollup_test4_$jobName"
           adminXpackApiManager.rollup(jobName, "test4*", rollupIndex).force()
@@ -538,37 +542,45 @@ trait BaseXpackApiSuite
             val result = adminSqlManager.execute("""SELECT * FROM library""")
             result should have statusCode 200
             result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "internal_id", "name", "release_date")
+            result.columnNames should contain only ("author", "internal_id", "name", "release_date")
             result.rows.size should be(2)
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"))
-            result.column("internal_id").toList should contain only(Num(1), Num(2))
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"))
+            result.column("internal_id").toList should contain only (Num(1), Num(2))
           }
           "full indices names are used" in {
             val result = adminSqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
             result should have statusCode 200
             result.queryResult.size should be(5)
-            result.column("author").toList should contain only(
-              Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert")
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
             )
-            result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
+            result.column("internal_id").toList should contain only (Num(1), Num(2), Null)
           }
           "wildcard is used" in {
             val result = adminSqlManager.execute("""SELECT * FROM \"*\"""")
             result should have statusCode 200
             result.queryResult.size should be(5)
-            result.column("author").toList should contain only(
-              Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert")
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
             )
-            result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
+            result.column("internal_id").toList should contain only (Num(1), Num(2), Null)
           }
           "alias is used" in {
             val result = adminSqlManager.execute("""SELECT * FROM bookshop""")
             result should have statusCode 200
             result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.columnNames should contain only ("author", "name", "price", "release_date")
             result.rows.size should be(3)
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only(Num(100), Num(200), Num(50))
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
+            result.column("price").toList should contain only (Num(100), Num(200), Num(50))
           }
         }
         "user has access to given index" when {
@@ -576,39 +588,55 @@ trait BaseXpackApiSuite
             val result = dev1SqlManager.execute("""SELECT * FROM bookstore""")
             result should have statusCode 200
             result.queryResult.size should be(3)
-            result.columnNames should contain only("author", "name", "release_date")
+            result.columnNames should contain only ("author", "name", "release_date")
             result.rows.size should be(3)
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
           }
           "full indices names are used and one of them is not allowed" in {
             val result = dev1SqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
             result should have statusCode 200
             result.queryResult.size should be(3)
-            result.columnNames should contain only("author", "name", "release_date")
+            result.columnNames should contain only ("author", "name", "release_date")
             result.rows.size should be(3)
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
           }
           "wildcard is used" in {
             val result = dev1SqlManager.execute("""SELECT * FROM \"book*\"""")
             result should have statusCode 200
             result.queryResult.size should be(3)
-            result.columnNames should contain only("author", "name", "release_date")
+            result.columnNames should contain only ("author", "name", "release_date")
             result.rows.size should be(3)
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
           }
           "alias is used" in {
             val result = dev1SqlManager.execute("""SELECT * FROM \"bookshop\"""")
             result should have statusCode 200
             result.queryResult.size should be(3)
-            result.columnNames should contain only("author", "name", "release_date")
+            result.columnNames should contain only ("author", "name", "release_date")
             result.rows.size should be(3)
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
           }
           "filter in block is used" in {
             val result = dev3SqlManager.execute("""SELECT * FROM bookstore""")
             result should have statusCode 200
             result.queryResult.size should be(4)
-            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.columnNames should contain only ("author", "name", "price", "release_date")
             result.rows.size should be(1)
             result.column("author").toList should contain only Str("Frank Herbert")
           }
@@ -617,9 +645,13 @@ trait BaseXpackApiSuite
           val result = dev1SqlManager.execute("""SeLeCt * fRoM \"book*\"""")
           result should have statusCode 200
           result.queryResult.size should be(3)
-          result.columnNames should contain only("author", "name", "release_date")
+          result.columnNames should contain only ("author", "name", "release_date")
           result.rows.size should be(3)
-          result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+          result.column("author").toList should contain only (
+            Str("James S.A. Corey"),
+            Str("Dan Simmons"),
+            Str("Frank Herbert")
+          )
         }
       }
       "be bad request" when {
@@ -665,33 +697,55 @@ trait BaseXpackApiSuite
           "full index name is used" in {
             val result = adminSqlManager.execute("""DESCRIBE library""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "release_date"
             )
           }
           "full indices names are used" in {
             val result = adminSqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "wildcard is used" in {
             val result = adminSqlManager.execute("""DESCRIBE \"*\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "alias is used" in {
             val result = adminSqlManager.execute("""DESCRIBE bookshop""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "not-existent index name is used" in {
@@ -704,33 +758,53 @@ trait BaseXpackApiSuite
           "full index name is used" in {
             val result = dev1SqlManager.execute("""DESCRIBE bookstore""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "full indices names are used and one of them is not allowed" in {
             val result = dev1SqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "wildcard is used" in {
             val result = dev1SqlManager.execute("""DESCRIBE \"*\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "alias is used" in {
             val result = dev1SqlManager.execute("""DESCRIBE \"bookshop\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
         }
@@ -766,33 +840,55 @@ trait BaseXpackApiSuite
           "full index name is used" in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN library""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "release_date"
             )
           }
           "full indices names are used" in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"bookstore,library\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "wildcard is used" in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"*\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "alias is used" in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN bookshop""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "not-existent index name is used" in {
@@ -805,33 +901,53 @@ trait BaseXpackApiSuite
           "full index name is used" in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS IN bookstore""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "full indices names are used and one of them is not allowed" in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS from \"bookstore,library\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "wildcard is used" in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"*\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
           "alias is used" in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"bookshop\"""")
             result should have statusCode 200
-            result.queryResult.keys should contain allOf("column", "type")
-            result.column("column").map(_.str) should contain only(
-              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            result.queryResult.keys should contain allOf ("column", "type")
+            result.column("column").map(_.str) should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
             )
           }
         }
@@ -872,17 +988,17 @@ trait BaseXpackApiSuite
           "full indices names are used" in {
             val result = adminSqlManager.execute("""SHOW TABLES \"bookstore,library\"""")
             result should have statusCode 200
-            result.column("name").map(_.str) should contain only("bookstore", "library")
+            result.column("name").map(_.str) should contain only ("bookstore", "library")
           }
           "wildcard is used" in {
             val result = adminSqlManager.execute("""SHOW TABLES \"*\"""")
             result should have statusCode 200
-            result.column("name").map(_.str) should contain only("bookshop", "bookstore", "library")
+            result.column("name").map(_.str) should contain only ("bookshop", "bookstore", "library")
           }
           "all tables are requested" in {
             val result = adminSqlManager.execute("""SHOW TABLES""")
             result should have statusCode 200
-            result.column("name").map(_.str) should contain only("bookshop", "bookstore", "library")
+            result.column("name").map(_.str) should contain only ("bookshop", "bookstore", "library")
           }
           "alias is used" in {
             val result = adminSqlManager.execute("""SHOW TABLES bookshop""")
@@ -966,128 +1082,197 @@ trait BaseXpackApiSuite
     "SELECT query is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "full index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM library | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "internal_id", "name", "name.keyword", "release_date")
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"))
-            result.column("internal_id").toList should contain only(Num(1), Num(2))
+            result.columnNames should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "release_date"
+            )
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"))
+            result.column("internal_id").toList should contain only (Num(1), Num(2))
             result.rows.size should be(2)
           }
-          "full indices names are used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "full indices names are used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM bookstore,library | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "internal_id", "name", "name.keyword", "release_date", "price")
-            result.column("author").toList should contain only(
-              Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert")
+            result.columnNames should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "release_date",
+              "price"
             )
-            result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
+            result.column("internal_id").toList should contain only (Num(1), Num(2), Null)
             result.rows.size should be(5)
           }
-          "wildcard is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "wildcard is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM * | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "internal_id", "name", "name.keyword", "release_date", "price")
-            result.column("author").toList should contain only(
-              Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert")
+            result.columnNames should contain only (
+              "author",
+              "author.keyword",
+              "internal_id",
+              "name",
+              "name.keyword",
+              "release_date",
+              "price"
             )
-            result.column("internal_id").toList should contain only(Num(1), Num(2), Null)
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
+            result.column("internal_id").toList should contain only (Num(1), Num(2), Null)
             result.rows.size should be(5)
           }
-          "alias is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "alias is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM bookshop | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "price", "release_date")
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
-            result.column("price").toList should contain only(Num(100), Num(200), Num(50))
+            result.columnNames should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
+            )
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
+            result.column("price").toList should contain only (Num(100), Num(200), Num(50))
             result.rows.size should be(3)
           }
         }
         "user has access to given index" when {
-          "full index name is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "full index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM bookstore | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.columnNames should contain only ("author", "author.keyword", "name", "name.keyword", "release_date")
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
             result.rows.size should be(3)
           }
-          "full indices names are used and one of them is not allowed" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "full indices names are used and one of them is not allowed" excludeES (
+            allEs6x,
+            allEs7x,
+            allEs8xBelowEs811x
+          ) in {
             val result = dev1EsqlManager.execute("""FROM bookstore,library | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.columnNames should contain only ("author", "author.keyword", "name", "name.keyword", "release_date")
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
             result.rows.size should be(3)
           }
-          "wildcard is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "wildcard is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM book* | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.columnNames should contain only ("author", "author.keyword", "name", "name.keyword", "release_date")
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
             result.rows.size should be(3)
           }
-          "alias is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "alias is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev1EsqlManager.execute("""FROM bookshop | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
-            result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.columnNames should contain only ("author", "author.keyword", "name", "name.keyword", "release_date")
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"),
+              Str("Dan Simmons"),
+              Str("Frank Herbert")
+            )
             result.rows.size should be(3)
           }
-          "filter in block is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "filter in block is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev3EsqlManager.execute("""FROM bookstore | LIMIT 100""")
             result should have statusCode 200
-            result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "price", "release_date")
+            result.columnNames should contain only (
+              "author",
+              "author.keyword",
+              "name",
+              "name.keyword",
+              "price",
+              "release_date"
+            )
             result.column("author").toList should contain only Str("Frank Herbert")
             result.rows.size should be(1)
           }
         }
-        "ESQL keywords are not uppercased" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+        "ESQL keywords are not uppercased" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
           val result = dev1EsqlManager.execute("""fRoM book* | lImIt 100""")
           result should have statusCode 200
-          result.columnNames should contain only("author", "author.keyword", "name", "name.keyword", "release_date")
-          result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+          result.columnNames should contain only ("author", "author.keyword", "name", "name.keyword", "release_date")
+          result.column("author").toList should contain only (
+            Str("James S.A. Corey"),
+            Str("Dan Simmons"),
+            Str("Frank Herbert")
+          )
           result.rows.size should be(3)
         }
       }
       "be bad request (implicitly forbidden)" when {
         "user doesn't have access to given index" when {
-          "full index name is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "full index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev2EsqlManager.execute("""FROM bookstore | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "wildcard is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x, allEs9xAboveEs93x) in {
+          "wildcard is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x, allEs9xAboveEs93x) in {
             val result = dev2EsqlManager.execute("""FROM book* | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "alias is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "alias is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev2EsqlManager.execute("""FROM bookshop | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
-          "not-existent index name is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "not-existent index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = dev2EsqlManager.execute("""FROM flea_market | LIMIT 100""")
             result should have statusCode 400
             result.responseJson("error").obj("reason").str should include("Unknown index")
           }
         }
         "user rule is not used" when {
-          "not-existent index name is used" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+          "not-existent index name is used" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
             val result = adminEsqlManager.execute("""FROM unknown | LIMIT 100""")
             result should have statusCode 400
           }
         }
-        "esql query is malformed" excludeES(allEs6x, allEs7x, allEs8xBelowEs811x) in {
+        "esql query is malformed" excludeES (allEs6x, allEs7x, allEs8xBelowEs811x) in {
           val result = adminEsqlManager.execute("""FROM unescaped-index.name | LIMIT 100""")
           result should have statusCode 400
         }
       }
       "return empty result (implicitly forbidden)" when {
         "user doesn't have access to given index" when {
-          "wildcard is used" excludeES(allEs6x, allEs7x, allEs8x, allEs9xBelowEs94x) in {
+          "wildcard is used" excludeES (allEs6x, allEs7x, allEs8x, allEs9xBelowEs94x) in {
             val result = dev2EsqlManager.execute("""FROM book* | LIMIT 100""")
             result should have statusCode 200
-            result.rows should be (empty)
+            result.rows should be(empty)
           }
         }
       }
@@ -1095,25 +1280,26 @@ trait BaseXpackApiSuite
   }
 
   "Get terms request" should {
-    "be allowed for dev1 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs714x) in {
+    "be allowed for dev1 and test1_index_a" excludeES (allEs6x, allEs7xBelowEs714x) in {
       val result = dev1XpackApiManager.getTerms("test1_index_a", "hello.keyword")
 
       result should have statusCode 200
       result.terms should be(Set("world"))
     }
-    "not be allowed for dev2 and test1_index_a" excludeES(allEs6x, allEs7xBelowEs714x) in {
+    "not be allowed for dev2 and test1_index_a" excludeES (allEs6x, allEs7xBelowEs714x) in {
       val result = dev2XpackApiManager.getTerms("test1_index_a", "hello.keyword")
 
       result should have statusCode 404
     }
     // todo: uncomment when RORDEV-1636 is done
-    "support filter and fields rule" excludeES(allEs6x, allEs7xBelowEs714x) ignore {
+    "support filter and fields rule" excludeES (allEs6x, allEs7xBelowEs714x) ignore {
       val result = dev2XpackApiManager.getTerms("test2_index", "age.keyword")
 
       result should have statusCode 200
       result.terms should be(Set.empty)
     }
   }
+
 }
 
 object BaseXpackApiSuite {
@@ -1130,26 +1316,24 @@ object BaseXpackApiSuite {
     indexManager.closeIndex("test3_index_c").force()
   }
 
-  private def createDocs(indexManager: IndexManager,
-                         documentManager: DocumentManager): Unit = {
+  private def createDocs(indexManager: IndexManager, documentManager: DocumentManager): Unit = {
     def createIndexWithMappingAndExampleDocument(indexName: String) = {
       indexManager
         .createIndexWithMapping(
           indexName = indexName,
-          propertiesJson = ujson.read(
-            """
-              |{
-              |  "hello": {
-              |    "type": "text",
-              |    "fields": {
-              |      "keyword": {
-              |        "type": "keyword",
-              |        "ignore_above": 256
-              |      }
-              |    }
-              |  }
-              |}
-              |""".stripMargin)
+          propertiesJson = ujson.read("""
+                                        |{
+                                        |  "hello": {
+                                        |    "type": "text",
+                                        |    "fields": {
+                                        |      "keyword": {
+                                        |        "type": "keyword",
+                                        |        "ignore_above": 256
+                                        |      }
+                                        |    }
+                                        |  }
+                                        |}
+                                        |""".stripMargin)
         )
         .force()
       documentManager.createDoc(indexName, 1, ujson.read("""{"hello":"world"}""")).force()
@@ -1161,19 +1345,18 @@ object BaseXpackApiSuite {
     indexManager
       .createIndexWithMapping(
         indexName = "test2_index",
-        propertiesJson = ujson.read(
-          """
-            |{
-            |  "age": {
-            |    "type": "integer",
-            |    "fields": {
-            |      "keyword": {
-            |        "type": "keyword"
-            |      }
-            |    }
-            |  }
-            |}
-            |""".stripMargin)
+        propertiesJson = ujson.read("""
+                                      |{
+                                      |  "age": {
+                                      |    "type": "integer",
+                                      |    "fields": {
+                                      |      "keyword": {
+                                      |        "type": "keyword"
+                                      |      }
+                                      |    }
+                                      |  }
+                                      |}
+                                      |""".stripMargin)
       )
     documentManager.createDoc("test2_index", 1, ujson.read("""{"name":"john", "age":33}""")).force()
     documentManager.createDoc("test2_index", 2, ujson.read("""{"name":"bill", "age":50}""")).force()
@@ -1216,25 +1399,50 @@ object BaseXpackApiSuite {
   }
 
   private def configureBookstore(documentManager: DocumentManager, indexManager: IndexManager): Unit = {
-    documentManager.createDocAndAssert("bookstore", "stock", 1, ujson.read(
-      s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "price": 100}"""
-    ))
-    documentManager.createDocAndAssert("bookstore", "stock", 2, ujson.read(
-      s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "price": 200}"""
-    ))
-    documentManager.createDocAndAssert("bookstore", "stock", 3, ujson.read(
-      s"""{"name": "Dune", "author": "Frank Herbert", "release_date": "1965-06-01", "price": 50}"""
-    ))
+    documentManager.createDocAndAssert(
+      "bookstore",
+      "stock",
+      1,
+      ujson.read(
+        s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "price": 100}"""
+      )
+    )
+    documentManager.createDocAndAssert(
+      "bookstore",
+      "stock",
+      2,
+      ujson.read(
+        s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "price": 200}"""
+      )
+    )
+    documentManager.createDocAndAssert(
+      "bookstore",
+      "stock",
+      3,
+      ujson.read(
+        s"""{"name": "Dune", "author": "Frank Herbert", "release_date": "1965-06-01", "price": 50}"""
+      )
+    )
     indexManager.createAliasOf("bookstore", "bookshop").force()
   }
 
   private def configureLibrary(documentManager: DocumentManager): Unit = {
-    documentManager.createDocAndAssert("library", "book", 1, ujson.read(
-      s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "internal_id": 1}"""
-    ))
-    documentManager.createDocAndAssert("library", "book", 2, ujson.read(
-      s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "internal_id": 2}"""
-    ))
+    documentManager.createDocAndAssert(
+      "library",
+      "book",
+      1,
+      ujson.read(
+        s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "internal_id": 1}"""
+      )
+    )
+    documentManager.createDocAndAssert(
+      "library",
+      "book",
+      2,
+      ujson.read(
+        s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "internal_id": 2}"""
+      )
+    )
   }
 
   private object NextRollupJobName {
@@ -1242,4 +1450,5 @@ object BaseXpackApiSuite {
 
     def get: String = s"job${currentId.incrementAndGet()}"
   }
+
 }

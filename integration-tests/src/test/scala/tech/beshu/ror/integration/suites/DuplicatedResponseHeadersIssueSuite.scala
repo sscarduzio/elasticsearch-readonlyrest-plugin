@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class DuplicatedResponseHeadersIssueSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -39,10 +39,13 @@ class DuplicatedResponseHeadersIssueSuite
   override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(ElasticsearchTweetsInitializer)
 
   override def clusterDependencies: List[DependencyDef] = List(
-    wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings =
-      "/duplicated_response_headers_issue/auth.json",
+    wiremock(
+      name = "EXT1",
+      portWhenRunningOnWindows = 8080,
+      mappings = "/duplicated_response_headers_issue/auth.json",
       "/duplicated_response_headers_issue/brian_groups.json",
-      "/duplicated_response_headers_issue/freddie_groups.json")
+      "/duplicated_response_headers_issue/freddie_groups.json"
+    )
   )
 
   "everySearchCallForEachUserShouldReturnTheSameResult" in {
@@ -81,6 +84,7 @@ class DuplicatedResponseHeadersIssueSuite
       headers = result.headers.filter(h => h.name.toLowerCase != "content-length")
     )
   }
+
 }
 
 object DuplicatedResponseHeadersIssueSuite {

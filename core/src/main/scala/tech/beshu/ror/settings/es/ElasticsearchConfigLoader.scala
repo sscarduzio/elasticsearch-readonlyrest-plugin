@@ -29,8 +29,9 @@ import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
 import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
 import tech.beshu.ror.utils.yaml.YamlParser
 
-final class ElasticsearchConfigLoader(file: File)
-                                     (implicit systemContext: SystemContext) {
+final class ElasticsearchConfigLoader(file: File)(
+    implicit systemContext: SystemContext
+) {
 
   private val yamlParser: YamlParser = new YamlParser()
 
@@ -39,14 +40,21 @@ final class ElasticsearchConfigLoader(file: File)
     TransformationCompiler.withoutAliases(systemContext.variablesFunctions)
   )
 
-  def loadSettings[SETTINGS: YamlLeafOrPropertyOrEnvDecoder](settingsName: String): Task[Either[LoadingError, SETTINGS]] = Task.delay {
+  def loadSettings[SETTINGS: YamlLeafOrPropertyOrEnvDecoder](
+      settingsName: String
+  ): Task[Either[LoadingError, SETTINGS]] = Task.delay {
     for {
       _ <- Either.cond(file.exists, (), LoadingError.FileNotFound(file): LoadingError)
       settings <- loadedSettingsJson
         .flatMap { json =>
           implicitly[YamlLeafOrPropertyOrEnvDecoder[SETTINGS]]
             .decode(json)
-            .left.map(e => createError(s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"))
+            .left
+            .map(e =>
+              createError(
+                s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"
+              )
+            )
         }
     } yield settings
   }
@@ -56,11 +64,13 @@ final class ElasticsearchConfigLoader(file: File)
       yamlParser
         .parse(reader)
         .map(jsonWithOneLinerKeysToRegularJson)
-        .left.map(e => createError(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
+        .left
+        .map(e => createError(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
         .flatMap { json =>
           jsonStaticVariableResolver
             .resolve(json)
-            .left.map(e => createError(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
+            .left
+            .map(e => createError(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
         }
     }
   }
@@ -68,7 +78,7 @@ final class ElasticsearchConfigLoader(file: File)
   private def prettyCause(error: String) = {
     error match {
       case message if message.startsWith("DecodingFailure at") => "yaml is malformed"
-      case other => other
+      case other                                               => other
     }
   }
 
@@ -77,21 +87,25 @@ final class ElasticsearchConfigLoader(file: File)
 
 object ElasticsearchConfigLoader {
   sealed trait LoadingError
+
   object LoadingError {
     final case class FileNotFound(file: File) extends LoadingError
     final case class MalformedSettings(file: File, message: String) extends LoadingError
   }
+
 }
 
 private[es] trait ElasticsearchConfigLoaderSupport {
 
-  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](esEnv: EsEnv, settingsName: String)
-                                                              (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
+  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](esEnv: EsEnv, settingsName: String)(
+      implicit systemContext: SystemContext
+  ): Task[Either[LoadingError, T]] = {
     loadSetting(esEnv.elasticsearchConfig.file, settingsName)
   }
 
-  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](file: File, settingsName: String)
-                                                              (implicit systemContext: SystemContext): Task[Either[LoadingError, T]] = {
+  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](file: File, settingsName: String)(
+      implicit systemContext: SystemContext
+  ): Task[Either[LoadingError, T]] = {
     val loader = new ElasticsearchConfigLoader(file)
     loader.loadSettings[T](settingsName)
   }

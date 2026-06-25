@@ -18,7 +18,11 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
-import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, ImpersonatorDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{
+  CacheableExternalAuthenticationServiceDecorator,
+  ExternalAuthenticationService,
+  ImpersonatorDef
+}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ExternalAuthenticationRule.Settings
@@ -36,11 +40,12 @@ import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
-class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
-                                        impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                                        mocksProvider: MocksProvider,
-                                        globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
+class ExternalAuthenticationRuleDecoder(
+    authenticationServices: Definitions[ExternalAuthenticationService],
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
 
   override protected def decoder: Decoder[RuleDefinition[ExternalAuthenticationRule]] = {
     simpleExternalAuthenticationServiceNameAndLocalConfig
@@ -53,22 +58,25 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
-      .map(service => RuleDefinition.create(new
-          ExternalAuthenticationRule(
+      .map(service =>
+        RuleDefinition.create(
+          new ExternalAuthenticationRule(
             Settings(service),
             globalSettings.userIdCaseSensitivity,
             impersonatorsDef.toImpersonation(mocksProvider),
           )
-      ))
+        )
+      )
       .decoder
   }
 
-  private def simpleExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[PositiveFiniteDuration])] =
-    ExternalAuthenticationServicesDecoder
-      .serviceNameDecoder
+  private def simpleExternalAuthenticationServiceNameAndLocalConfig
+      : Decoder[(ExternalAuthenticationService.Name, Option[PositiveFiniteDuration])] =
+    ExternalAuthenticationServicesDecoder.serviceNameDecoder
       .map((_, None))
 
-  private def complexExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[PositiveFiniteDuration])] = {
+  private def complexExternalAuthenticationServiceNameAndLocalConfig
+      : Decoder[(ExternalAuthenticationService.Name, Option[PositiveFiniteDuration])] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -80,11 +88,19 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
       .decoder
   }
 
-  private def findAuthenticationService(authenticationServices: List[ExternalAuthenticationService],
-                                        searchedServiceName: ExternalAuthenticationService.Name): Either[CoreCreationError, ExternalAuthenticationService] = {
+  private def findAuthenticationService(
+      authenticationServices: List[ExternalAuthenticationService],
+      searchedServiceName: ExternalAuthenticationService.Name
+  ): Either[CoreCreationError, ExternalAuthenticationService] = {
     authenticationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)
-      case None => Left(RulesLevelCreationError(Message(s"Cannot find external authentication service with name: ${searchedServiceName.show}")))
+      case None          =>
+        Left(
+          RulesLevelCreationError(
+            Message(s"Cannot find external authentication service with name: ${searchedServiceName.show}")
+          )
+        )
     }
   }
+
 }

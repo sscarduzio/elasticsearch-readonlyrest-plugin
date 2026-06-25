@@ -54,6 +54,11 @@ if [[ $ROR_TASK == "license_check" ]]; then
   ./gradlew --no-daemon license
 fi
 
+if [[ $ROR_TASK == "format_code_check" ]]; then
+  echo ">>> Running format check..."
+  ./gradlew --no-daemon formatCodeCheck
+fi
+
 if [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
   ./gradlew --no-daemon dependencyCheckAnalyze

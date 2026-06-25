@@ -30,33 +30,36 @@ sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariabl
 
 object RuntimeSingleResolvableVariable {
 
-  final case class AlreadyResolved[T](value: T)
-    extends RuntimeSingleResolvableVariable[T] {
+  final case class AlreadyResolved[T](value: T) extends RuntimeSingleResolvableVariable[T] {
 
     override def resolve(blockContext: BlockContext): Either[Unresolvable, T] =
       Right(value)
 
     override def map[S](f: T => S): RuntimeSingleResolvableVariable[S] = AlreadyResolved(f(value))
   }
+
   object AlreadyResolved {
     def create[T](value: T): RuntimeSingleResolvableVariable[T] = new AlreadyResolved[T](value)
   }
 
   final case class ToBeResolved[T: Convertible](values: NonEmptyList[SingleExtractable])
-    extends RuntimeSingleResolvableVariable[T] {
+      extends RuntimeSingleResolvableVariable[T] {
 
     override def resolve(blockContext: BlockContext): Either[Unresolvable, T] = {
       values
         .map { extractable =>
           extractable
             .extractUsing(blockContext)
-            .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotExtractValue(error.msg))
+            .left
+            .map(error => RuntimeResolvableVariable.Unresolvable.CannotExtractValue(error.msg))
         }
         .sequence
         .map(_.toList.mkString)
         .flatMap { result =>
-          implicitly[Convertible[T]].convert(result)
-            .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotInstantiateResolvedValue(error.msg))
+          implicitly[Convertible[T]]
+            .convert(result)
+            .left
+            .map(error => RuntimeResolvableVariable.Unresolvable.CannotInstantiateResolvedValue(error.msg))
         }
     }
 
@@ -66,14 +69,15 @@ object RuntimeSingleResolvableVariable {
       override def convert: String => Either[Convertible.ConvertError, B] = str =>
         implicitly[Convertible[A]].convert(str).map(f)
     }
+
   }
 
   implicit def runtimeResolvableOrder[T: Order]: Order[RuntimeSingleResolvableVariable[T]] =
     Order.from {
       case (AlreadyResolved(c1), AlreadyResolved(c2)) => c1 compare c2
-      case (AlreadyResolved(_), _) => -1
-      case (_, AlreadyResolved(_)) => 1
-      case (v1, v2) => v1.hashCode() compareTo v2.hashCode()
+      case (AlreadyResolved(_), _)                    => -1
+      case (_, AlreadyResolved(_))                    => 1
+      case (v1, v2)                                   => v1.hashCode() compareTo v2.hashCode()
     }
 
 }

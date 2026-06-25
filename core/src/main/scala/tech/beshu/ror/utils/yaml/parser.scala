@@ -25,15 +25,15 @@ import tech.beshu.ror.org.yaml.snakeyaml.{LoaderOptions, Yaml}
 import java.io.{Reader, StringReader}
 import scala.jdk.CollectionConverters.*
 
-private [yaml] object parser {
+private[yaml] object parser {
+
   /**
     * Parse YAML from the given [[Reader]], returning either [[ParsingFailure]] or [[Json]]
     *
     * @param yaml
     * @return
     */
-  def parse(yaml: Reader,
-            options: LoaderOptions): Either[ParsingFailure, Json] = for {
+  def parse(yaml: Reader, options: LoaderOptions): Either[ParsingFailure, Json] = for {
     parsed <- parseSingle(yaml, options)
     json <- yamlToJson(parsed)
   } yield json
@@ -44,22 +44,27 @@ private [yaml] object parser {
 
   def parseDocuments(yaml: String): LazyList[Either[ParsingFailure, Json]] = parseDocuments(new StringReader(yaml))
 
-  private[this] def parseSingle(reader: Reader, options: LoaderOptions) = Either.catchNonFatal(
-    new Yaml(new SafeConstructor(options))
-      .compose(reader)).leftMap(err => ParsingFailure(err.getMessage, err)
-  )
+  private[this] def parseSingle(reader: Reader, options: LoaderOptions) = Either
+    .catchNonFatal(
+      new Yaml(new SafeConstructor(options))
+        .compose(reader)
+    )
+    .leftMap(err => ParsingFailure(err.getMessage, err))
 
   private[this] def parseStream(reader: Reader) =
     new Yaml(new SafeConstructor(new LoaderOptions())).composeAll(reader).asScala.to(LazyList)
 
   private[this] object CustomTag {
+
     def unapply(tag: Tag): Option[String] = if (!tag.startsWith(Tag.PREFIX))
       Some(tag.getValue)
     else
       None
+
   }
 
   private[this] class FlatteningConstructor extends SafeConstructor(new LoaderOptions()) {
+
     def flatten(node: MappingNode): MappingNode = {
       flattenMapping(node)
       node
@@ -68,28 +73,32 @@ private [yaml] object parser {
     def construct(node: ScalarNode): Object = {
       getConstructor(node).construct(node)
     }
+
   }
 
   private[this] def yamlToJson(node: Node): Either[ParsingFailure, Json] = {
     // Isn't thread-safe internally, may hence not be shared
     val flattener: FlatteningConstructor = new FlatteningConstructor
 
-    def convertScalarNode(node: ScalarNode) = Either.catchNonFatal(node.getTag match {
-      case Tag.INT | Tag.FLOAT => JsonNumber.fromString(node.getValue).map(Json.fromJsonNumber).getOrElse {
-        throw new NumberFormatException(s"Invalid numeric string ${node.getValue.show}")
-      }
-      case Tag.BOOL => Json.fromBoolean(flattener.construct(node) match {
-        case b: java.lang.Boolean => b
-        case _ => throw new IllegalArgumentException(s"Invalid boolean string ${node.getValue.show}")
+    def convertScalarNode(node: ScalarNode) = Either
+      .catchNonFatal(node.getTag match {
+        case Tag.INT | Tag.FLOAT =>
+          JsonNumber.fromString(node.getValue).map(Json.fromJsonNumber).getOrElse {
+            throw new NumberFormatException(s"Invalid numeric string ${node.getValue.show}")
+          }
+        case Tag.BOOL =>
+          Json.fromBoolean(flattener.construct(node) match {
+            case b: java.lang.Boolean => b
+            case _ => throw new IllegalArgumentException(s"Invalid boolean string ${node.getValue.show}")
+          })
+        case Tag.NULL         => Json.Null
+        case CustomTag(other) =>
+          Json.fromJsonObject(JsonObject.singleton(other.stripPrefix("!"), Json.fromString(node.getValue)))
+        case _ => Json.fromString(node.getValue)
       })
-      case Tag.NULL => Json.Null
-      case CustomTag(other) =>
-        Json.fromJsonObject(JsonObject.singleton(other.stripPrefix("!"), Json.fromString(node.getValue)))
-      case _ => Json.fromString(node.getValue)
-    }).leftMap {
-      err =>
+      .leftMap { err =>
         ParsingFailure(err.getMessage, err)
-    }
+      }
 
     if (node == null) {
       Right(Json.False)
@@ -99,30 +108,36 @@ private [yaml] object parser {
           val duplicatedKeyOrEmptyJson = mapping.getValue.asScala
             .foldLeft(Set[String]().asRight[ParsingFailure])(findDuplicatedKey)
             .map(_ => JsonObject.empty)
-          flattener.flatten(mapping).getValue.asScala
-            .foldLeft(duplicatedKeyOrEmptyJson) {
-              (objEither, tup) =>
-                for {
-                  obj <- objEither
-                  key <- convertKeyNode(tup.getKeyNode)
-                  value <- yamlToJson(tup.getValueNode)
-                } yield obj.add(key, value)
-            }.map(Json.fromJsonObject)
+          flattener
+            .flatten(mapping)
+            .getValue
+            .asScala
+            .foldLeft(duplicatedKeyOrEmptyJson) { (objEither, tup) =>
+              for {
+                obj <- objEither
+                key <- convertKeyNode(tup.getKeyNode)
+                value <- yamlToJson(tup.getValueNode)
+              } yield obj.add(key, value)
+            }
+            .map(Json.fromJsonObject)
         case sequence: SequenceNode =>
-          sequence.getValue.asScala.foldLeft(Either.right[ParsingFailure, List[Json]](List.empty[Json])) {
-            (arrEither, node) =>
+          sequence.getValue.asScala
+            .foldLeft(Either.right[ParsingFailure, List[Json]](List.empty[Json])) { (arrEither, node) =>
               for {
                 arr <- arrEither
                 value <- yamlToJson(node)
               } yield value :: arr
-          }.map(arr => Json.fromValues(arr.reverse))
+            }
+            .map(arr => Json.fromValues(arr.reverse))
         case scalar: ScalarNode => convertScalarNode(scalar)
       }
     }
   }
 
-  private def findDuplicatedKey(acc: Either[ParsingFailure, Set[String]],
-                                tuple: NodeTuple): Either[ParsingFailure, Set[String]] = {
+  private def findDuplicatedKey(
+      acc: Either[ParsingFailure, Set[String]],
+      tuple: NodeTuple
+  ): Either[ParsingFailure, Set[String]] = {
     acc.flatMap { keys =>
       convertKeyNode(tuple.getKeyNode)
         .flatMap { key =>
@@ -137,7 +152,7 @@ private [yaml] object parser {
 
   private def convertKeyNode(node: Node): Either[ParsingFailure, String] = node match {
     case scalar: ScalarNode => Right(scalar.getValue)
-    case _ =>
+    case _                  =>
       val message = "Only string keys can be represented in JSON"
       Left(ParsingFailure(message, YamlParserException(message)))
   }

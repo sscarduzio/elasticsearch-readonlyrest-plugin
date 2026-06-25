@@ -18,15 +18,14 @@ package tech.beshu.ror.es.actions.rradmin.rest
 
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
-import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.*
+import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 import tech.beshu.ror.es.utils.RestToXContentWithStatusListener
 
 @Inject
-class RestRRAdminAction(controller: RestController)
-  extends BaseRestHandler with RestHandler {
+class RestRRAdminAction(controller: RestController) extends BaseRestHandler with RestHandler {
 
   register("POST", constants.FORCE_RELOAD_SETTINGS_PATH)
   register("GET", constants.PROVIDE_FILE_SETTINGS_PATH)
@@ -40,11 +39,16 @@ class RestRRAdminAction(controller: RestController)
     private val rorAdminRequest = RRAdminRequest.createFrom(request)
 
     override def accept(channel: RestChannel): Unit = {
-      client.execute(new RRAdminActionType, rorAdminRequest, new RestToXContentWithStatusListener[RRAdminResponse](channel))
+      client.execute(
+        new RRAdminActionType,
+        rorAdminRequest,
+        new RestToXContentWithStatusListener[RRAdminResponse](channel)
+      )
     }
   }
 
   private def register(method: String, path: String): Unit = {
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
   }
+
 }

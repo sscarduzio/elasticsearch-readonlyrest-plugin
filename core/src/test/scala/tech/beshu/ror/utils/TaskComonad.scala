@@ -23,9 +23,9 @@ import monix.execution.Scheduler
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class TaskComonad(timeout: FiniteDuration)
-                 (implicit scheduler: Scheduler)
-  extends Comonad[Task] {
+class TaskComonad(timeout: FiniteDuration)(
+    implicit scheduler: Scheduler
+) extends Comonad[Task] {
 
   override def extract[A](x: Task[A]): A = x.runSyncUnsafe(timeout)
 

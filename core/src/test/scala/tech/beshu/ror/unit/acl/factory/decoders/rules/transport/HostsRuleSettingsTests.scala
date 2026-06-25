@@ -20,7 +20,10 @@ import cats.data.NonEmptySet
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -34,16 +37,15 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
     "be able to be loaded from settings" when {
       "only one host is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    hosts: 192.168.0.1
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    hosts: 192.168.0.1
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
               NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get.nel))
@@ -54,17 +56,16 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
       }
       "only one host is defined with overwritten X-Forwarded-For header" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    hosts: "192.168.0.1"
-              |    accept_x-forwarded-for_header: true
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    hosts: "192.168.0.1"
+                   |    accept_x-forwarded-for_header: true
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
               NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get.nel))
@@ -75,38 +76,39 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
       }
       "only one host is defined with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    hosts: "@{user}.com"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    hosts: "@{user}.com"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            rule.settings.allowedHosts.head shouldBe a [ToBeResolved[_]]
+            rule.settings.allowedHosts.head shouldBe a[ToBeResolved[_]]
             rule.settings.acceptXForwardedForHeader should be(false)
           }
         )
       }
       "several hosts are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    hosts: ["192.168.0.1", "192.168.0.2"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    hosts: ["192.168.0.1", "192.168.0.2"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
-              NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get.nel), AlreadyResolved(Address.from("192.168.0.2").get.nel))
+              NonEmptySet.of(
+                AlreadyResolved(Address.from("192.168.0.1").get.nel),
+                AlreadyResolved(Address.from("192.168.0.2").get.nel)
+              )
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(false)
           }
@@ -116,25 +118,29 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
     "not be able to be loaded from settings" when {
       "no host is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    hosts:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    hosts:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """hosts: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """hosts: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
     }
   }
+
 }

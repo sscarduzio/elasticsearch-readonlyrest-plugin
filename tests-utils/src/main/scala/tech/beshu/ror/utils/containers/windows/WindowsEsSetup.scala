@@ -32,8 +32,10 @@ import scala.language.postfixOps
 
 object WindowsEsSetup extends LazyLogging {
 
-  def prepareAndStartEs(elasticsearch: Elasticsearch,
-                        additionalLogConsumer: Option[Consumer[OutputFrame]]): WindowsEsProcess = {
+  def prepareAndStartEs(
+      elasticsearch: Elasticsearch,
+      additionalLogConsumer: Option[Consumer[OutputFrame]]
+  ): WindowsEsProcess = {
     prepareEs(elasticsearch)
     startEs(elasticsearch.config, additionalLogConsumer)
   }
@@ -54,16 +56,17 @@ object WindowsEsSetup extends LazyLogging {
     plugins.zipWithIndex.foreach(installPlugin(elasticsearch, numberOfPlugins))
   }
 
-  private def installPlugin(elasticsearch: Elasticsearch, numberOfPlugins: Int)
-                           (plugin: Plugin, index: Int): Unit = {
+  private def installPlugin(elasticsearch: Elasticsearch, numberOfPlugins: Int)(plugin: Plugin, index: Int): Unit = {
     logger.info(s"Installing plugin ${index + 1}/$numberOfPlugins")
     val steps = plugin.installationSteps(elasticsearch.config).steps
     val numberOfSteps = steps.size
     steps.zipWithIndex.foreach(runInstallationStep(elasticsearch, numberOfSteps))
   }
 
-  private def runInstallationStep(elasticsearch: Elasticsearch, numberOfSteps: Int)
-                                 (step: PluginInstallationStep, index: Int): Unit = step match {
+  private def runInstallationStep(
+      elasticsearch: Elasticsearch,
+      numberOfSteps: Int
+  )(step: PluginInstallationStep, index: Int): Unit = step match {
     case PluginInstallationStep.CopyFile(destination, file) =>
       logger.info(s"Step ${index + 1}/$numberOfSteps: copy file $destination $file")
       os.makeDir.all(destination / os.up)
@@ -72,11 +75,12 @@ object WindowsEsSetup extends LazyLogging {
     case PluginInstallationStep.RunCommand(_, windowsCommand) =>
       val commandWithSanitizedPaths = windowsCommand.replace("\\", "/")
       logger.info(s"Step ${index + 1}/$numberOfSteps: run command $commandWithSanitizedPaths")
-      os.proc("cmd", "/c", commandWithSanitizedPaths).call(
-        cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
-        stdout = os.ProcessOutput.Readlines(line => logger.info(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
-        stderr = os.ProcessOutput.Readlines(line => logger.error(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
-      )
+      os.proc("cmd", "/c", commandWithSanitizedPaths)
+        .call(
+          cwd = esPath(elasticsearch.config.clusterName, elasticsearch.config.nodeName),
+          stdout = os.ProcessOutput.Readlines(line => logger.info(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
+          stderr = os.ProcessOutput.Readlines(line => logger.error(s"[Step ${index + 1}/$numberOfSteps cmd] $line")),
+        )
     case PluginInstallationStep.ChangeUser(_) =>
       logger.info(s"Step ${index + 1}/$numberOfSteps: change user is ignored on Windows")
   }
@@ -85,8 +89,7 @@ object WindowsEsSetup extends LazyLogging {
     // Add port configuration at the top of the config file
     val esPorts = WindowsEsPortProvider.get(elasticsearch.config.nodeName)
     val file =
-      elasticsearch
-        .esConfigFile
+      elasticsearch.esConfigFile
         .appendLine(s"http.port: ${esPorts.esPort}")
         .appendLine(s"transport.port: ${esPorts.transportPort}")
         .replaceLineWithPrefix("network.host:", "network.host: 127.0.0.1")
@@ -99,7 +102,8 @@ object WindowsEsSetup extends LazyLogging {
           content.replace(oldValue, s"127.0.0.1:$transportPort")
       }
 
-    file.overwrite(updatedContent)
+    file
+      .overwrite(updatedContent)
       .copyTo(
         File(configFilePath(elasticsearch.config.clusterName, elasticsearch.config.nodeName).toString),
         overwrite = true
@@ -107,6 +111,7 @@ object WindowsEsSetup extends LazyLogging {
   }
 
   extension (file: File)
+
     private def replaceLineWithPrefix(prefix: String, newLine: String): File =
       val updated = file.lines.map(line => if (line.startsWith(prefix)) newLine else line)
       file.overwrite(updated.mkString("\n"))

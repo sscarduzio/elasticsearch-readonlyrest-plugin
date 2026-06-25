@@ -22,7 +22,7 @@ import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{RestChannel, RestStatus}
 
 class RestToXContentWithStatusListener[RESPONSE <: ActionResponse with StatusToXContentObject](channel: RestChannel)
-  extends RestToXContentListener[RESPONSE](channel) {
+    extends RestToXContentListener[RESPONSE](channel) {
 
   override def getStatus(response: RESPONSE): RestStatus = response.status()
 }

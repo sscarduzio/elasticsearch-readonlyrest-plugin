@@ -22,7 +22,6 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.BaseManyEsClustersIntegrationTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, PluginTestSupport, SingletonLdapContainers}
-import ujson.Value.Value
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.EsClusterSettings.positiveInt
@@ -33,6 +32,7 @@ import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
+import ujson.Value.Value
 
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, ZoneOffset}
@@ -40,7 +40,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class AdminApiAuthMockSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -70,11 +70,13 @@ class AdminApiAuthMockSuite
 
     createLocalClusterContainer(
       esClusterSettingsCreator(
-        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsReloading = Enabled.Yes(settingsReloadInterval),
-          rorCustomSettingsIndex = Some(readonlyrestIndexName),
-          rorSettingsFileName = rorSettingsFileName
-        ))
+        RorWithXpackSecurity(
+          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorSettingsReloading = Enabled.Yes(settingsReloadInterval),
+            rorCustomSettingsIndex = Some(readonlyrestIndexName),
+            rorSettingsFileName = rorSettingsFileName
+          )
+        )
       ),
     )
   }
@@ -82,8 +84,18 @@ class AdminApiAuthMockSuite
   private def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
     ldap(name = "LDAP2", SingletonLdapContainers.ldap2),
-    wiremock(name = "EXT1", portWhenRunningOnWindows = 8080, mappings = "/impersonation/wiremock_service1_ext_user_1.json", "/impersonation/wiremock_group_provider1_gpa_user_1.json"),
-    wiremock(name = "EXT1", portWhenRunningOnWindows = 8081, mappings = "/impersonation/wiremock_service2_ext_user_2.json", "/impersonation/wiremock_group_provider2_gpa_user_2.json"),
+    wiremock(
+      name = "EXT1",
+      portWhenRunningOnWindows = 8080,
+      mappings = "/impersonation/wiremock_service1_ext_user_1.json",
+      "/impersonation/wiremock_group_provider1_gpa_user_1.json"
+    ),
+    wiremock(
+      name = "EXT1",
+      portWhenRunningOnWindows = 8081,
+      mappings = "/impersonation/wiremock_service2_ext_user_2.json",
+      "/impersonation/wiremock_group_provider2_gpa_user_2.json"
+    ),
   )
 
   "An admin Auth Mock REST API" should {
@@ -92,7 +104,7 @@ class AdminApiAuthMockSuite
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.currentMockedServices()
           response should have statusCode 200
-          response.responseJson should be (testSettingsNotConfiguredJson)
+          response.responseJson should be(testSettingsNotConfiguredJson)
         }
       }
       "update mocks" in {
@@ -111,7 +123,7 @@ class AdminApiAuthMockSuite
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
           response should have statusCode 200
-          response.responseJson should be (testSettingsNotConfiguredJson)
+          response.responseJson should be(testSettingsNotConfiguredJson)
         }
       }
     }
@@ -126,7 +138,9 @@ class AdminApiAuthMockSuite
             val response = rorApiManager.currentMockedServices()
             response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
-            response.responseJson("message").str should be("ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active.")
+            response.responseJson("message").str should be(
+              "ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active."
+            )
           }
         }
       }
@@ -142,53 +156,54 @@ class AdminApiAuthMockSuite
             val response = rorApiManager.currentMockedServices()
             response should have statusCode 200
             response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-            response.responseJson("services") should be(ujson.read(
-              s"""
-                 |[
-                 |  {
-                 |    "type": "LDAP",
-                 |    "name": "ldap1",
-                 |    "mock": "NOT_CONFIGURED"
-                 |  },
-                 |  {
-                 |    "type": "LDAP",
-                 |    "name": "ldap2",
-                 |    "mock": "NOT_CONFIGURED"
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHN",
-                 |    "name": "ext1",
-                 |    "mock": "NOT_CONFIGURED"
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHN",
-                 |    "name": "ext2",
-                 |    "mock": "NOT_CONFIGURED"
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHZ",
-                 |    "name": "grp1",
-                 |    "mock": "NOT_CONFIGURED"
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHZ",
-                 |    "name": "grp2",
-                 |    "mock": "NOT_CONFIGURED"
-                 |  }
-                 |]
-                 |""".stripMargin))
+            response.responseJson("services") should be(ujson.read(s"""
+                                                                      |[
+                                                                      |  {
+                                                                      |    "type": "LDAP",
+                                                                      |    "name": "ldap1",
+                                                                      |    "mock": "NOT_CONFIGURED"
+                                                                      |  },
+                                                                      |  {
+                                                                      |    "type": "LDAP",
+                                                                      |    "name": "ldap2",
+                                                                      |    "mock": "NOT_CONFIGURED"
+                                                                      |  },
+                                                                      |  {
+                                                                      |    "type": "EXT_AUTHN",
+                                                                      |    "name": "ext1",
+                                                                      |    "mock": "NOT_CONFIGURED"
+                                                                      |  },
+                                                                      |  {
+                                                                      |    "type": "EXT_AUTHN",
+                                                                      |    "name": "ext2",
+                                                                      |    "mock": "NOT_CONFIGURED"
+                                                                      |  },
+                                                                      |  {
+                                                                      |    "type": "EXT_AUTHZ",
+                                                                      |    "name": "grp1",
+                                                                      |    "mock": "NOT_CONFIGURED"
+                                                                      |  },
+                                                                      |  {
+                                                                      |    "type": "EXT_AUTHZ",
+                                                                      |    "name": "grp2",
+                                                                      |    "mock": "NOT_CONFIGURED"
+                                                                      |  }
+                                                                      |]
+                                                                      |""".stripMargin))
           }
         }
 
-        assertAuthMocksInIndex(ujson.read(
-          s"""
-             |{
-             |  "ldapMocks": {},
-             |  "externalAuthenticationMocks": {},
-             |  "externalAuthorizationMocks": {}
-             |}
-             |""".stripMargin
-        ))
+        assertAuthMocksInIndex(
+          ujson.read(
+            s"""
+               |{
+               |  "ldapMocks": {},
+               |  "externalAuthenticationMocks": {},
+               |  "externalAuthorizationMocks": {}
+               |}
+               |""".stripMargin
+          )
+        )
 
         rorClients.foreach { rorApiManager =>
           val testSettingsResponse = rorApiManager.currentRorTestSettings
@@ -230,163 +245,164 @@ class AdminApiAuthMockSuite
       "return info that some of mocks are configured" in {
         setupTestSettingsOnAllNodes()
 
-        val payloadServices = ujson.read(
-          s"""
-             |[
-             |  {
-             |    "type": "LDAP",
-             |    "name": "ldap1",
-             |    "mock": {
-             |      "users": [
-             |        {
-             |          "name": "JohnDoe",
-             |          "groups": [
-             |            {
-             |              "id": "DeveloperGroup",
-             |              "name": "Developer"
-             |            },
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
-             |          ]
-             |        },
-             |        {
-             |          "name": "RobertSmith",
-             |          "groups": [
-             |            {
-             |              "id": "ManagerGroup",
-             |              "name": "Manager"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    }
-             |  },
-             |  {
-             |    "type": "LDAP",
-             |    "name": "ldap2",
-             |    "mock": {
-             |      "users": [
-             |        {
-             |          "name": "JohnDoe",
-             |          "groups": [
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
-             |          ]
-             |        },
-             |        {
-             |          "name": "JudyBrown",
-             |          "groups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "Customer"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    }
-             |  },
-             |  {
-             |    "type": "EXT_AUTHN",
-             |    "name": "ext1",
-             |    "mock": "NOT_CONFIGURED"
-             |  },
-             |  {
-             |    "type": "EXT_AUTHN",
-             |    "name": "ext2",
-             |    "mock": "NOT_CONFIGURED"
-             |  },
-             |  {
-             |    "type": "EXT_AUTHZ",
-             |    "name": "grp1",
-             |    "mock": "NOT_CONFIGURED"
-             |  },
-             |  {
-             |    "type": "EXT_AUTHZ",
-             |    "name": "grp2",
-             |    "mock": "NOT_CONFIGURED"
-             |  }
-             |]
-             |""".stripMargin)
+        val payloadServices = ujson.read(s"""
+                                            |[
+                                            |  {
+                                            |    "type": "LDAP",
+                                            |    "name": "ldap1",
+                                            |    "mock": {
+                                            |      "users": [
+                                            |        {
+                                            |          "name": "JohnDoe",
+                                            |          "groups": [
+                                            |            {
+                                            |              "id": "DeveloperGroup",
+                                            |              "name": "Developer"
+                                            |            },
+                                            |            {
+                                            |              "id": "DevOpsGroup",
+                                            |              "name": "DevOps"
+                                            |            }
+                                            |          ]
+                                            |        },
+                                            |        {
+                                            |          "name": "RobertSmith",
+                                            |          "groups": [
+                                            |            {
+                                            |              "id": "ManagerGroup",
+                                            |              "name": "Manager"
+                                            |            }
+                                            |          ]
+                                            |        }
+                                            |      ]
+                                            |    }
+                                            |  },
+                                            |  {
+                                            |    "type": "LDAP",
+                                            |    "name": "ldap2",
+                                            |    "mock": {
+                                            |      "users": [
+                                            |        {
+                                            |          "name": "JohnDoe",
+                                            |          "groups": [
+                                            |            {
+                                            |              "id": "DevOpsGroup",
+                                            |              "name": "DevOps"
+                                            |            }
+                                            |          ]
+                                            |        },
+                                            |        {
+                                            |          "name": "JudyBrown",
+                                            |          "groups": [
+                                            |            {
+                                            |              "id": "CustomerGroup",
+                                            |              "name": "Customer"
+                                            |            }
+                                            |          ]
+                                            |        }
+                                            |      ]
+                                            |    }
+                                            |  },
+                                            |  {
+                                            |    "type": "EXT_AUTHN",
+                                            |    "name": "ext1",
+                                            |    "mock": "NOT_CONFIGURED"
+                                            |  },
+                                            |  {
+                                            |    "type": "EXT_AUTHN",
+                                            |    "name": "ext2",
+                                            |    "mock": "NOT_CONFIGURED"
+                                            |  },
+                                            |  {
+                                            |    "type": "EXT_AUTHZ",
+                                            |    "name": "grp1",
+                                            |    "mock": "NOT_CONFIGURED"
+                                            |  },
+                                            |  {
+                                            |    "type": "EXT_AUTHZ",
+                                            |    "name": "grp2",
+                                            |    "mock": "NOT_CONFIGURED"
+                                            |  }
+                                            |]
+                                            |""".stripMargin)
 
         rorClients.head
           .configureImpersonationMocks(updateMocksPayload(payloadServices))
           .forceOkStatus()
 
-        assertAuthMocksInIndex(ujson.read(
-          s"""
-             |{
-             |  "ldapMocks": {
-             |    "ldap1": {
-             |      "users": [
-             |        {
-             |          "id": "JohnDoe",
-             |          "groups": [
-             |            "DeveloperGroup",
-             |            "DevOpsGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "DeveloperGroup",
-             |              "name": "Developer"
-             |            },
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
-             |          ]
-             |        },
-             |        {
-             |          "id": "RobertSmith",
-             |          "groups": [
-             |            "ManagerGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "ManagerGroup",
-             |              "name": "Manager"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    },
-             |    "ldap2": {
-             |      "users": [
-             |        {
-             |          "id": "JohnDoe",
-             |          "groups": [
-             |            "DevOpsGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
-             |          ]
-             |        },
-             |        {
-             |          "id": "JudyBrown",
-             |          "groups": [
-             |            "CustomerGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "Customer"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    }
-             |  },
-             |  "externalAuthenticationMocks": {},
-             |  "externalAuthorizationMocks": {}
-             |}
-             |""".stripMargin
-        ))
+        assertAuthMocksInIndex(
+          ujson.read(
+            s"""
+               |{
+               |  "ldapMocks": {
+               |    "ldap1": {
+               |      "users": [
+               |        {
+               |          "id": "JohnDoe",
+               |          "groups": [
+               |            "DeveloperGroup",
+               |            "DevOpsGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "DeveloperGroup",
+               |              "name": "Developer"
+               |            },
+               |            {
+               |              "id": "DevOpsGroup",
+               |              "name": "DevOps"
+               |            }
+               |          ]
+               |        },
+               |        {
+               |          "id": "RobertSmith",
+               |          "groups": [
+               |            "ManagerGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "ManagerGroup",
+               |              "name": "Manager"
+               |            }
+               |          ]
+               |        }
+               |      ]
+               |    },
+               |    "ldap2": {
+               |      "users": [
+               |        {
+               |          "id": "JohnDoe",
+               |          "groups": [
+               |            "DevOpsGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "DevOpsGroup",
+               |              "name": "DevOps"
+               |            }
+               |          ]
+               |        },
+               |        {
+               |          "id": "JudyBrown",
+               |          "groups": [
+               |            "CustomerGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "CustomerGroup",
+               |              "name": "Customer"
+               |            }
+               |          ]
+               |        }
+               |      ]
+               |    }
+               |  },
+               |  "externalAuthenticationMocks": {},
+               |  "externalAuthorizationMocks": {}
+               |}
+               |""".stripMargin
+          )
+        )
 
         eventually {
           rorClients.foreach { rorApiManager =>
@@ -526,128 +542,130 @@ class AdminApiAuthMockSuite
           .configureImpersonationMocks(updateMocksPayload(payloadServices))
           .forceOkStatus()
 
-        assertAuthMocksInIndex(ujson.read(
-          s"""
-             |{
-             |  "ldapMocks": {
-             |    "ldap1": {
-             |      "users": [
-             |        {
-             |          "id": "JohnDoe",
-             |          "groups": [
-             |            "DeveloperGroup",
-             |            "DevOpsGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "DeveloperGroup",
-             |              "name": "Developer"
-             |            },
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
-             |          ]
-             |        },
-             |        {
-             |          "id": "RobertSmith",
-             |          "groups": [
-             |            "ManagerGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "ManagerGroup",
-             |              "name": "Manager"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    },
-             |    "ldap2": {
-             |      "users": [
-             |        {
-             |          "id": "JohnDoe",
-             |          "groups": [
-             |            "DevOpsGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "DevOpsGroup",
-             |              "name": "DevOps"
-             |            }
-             |          ]
-             |        },
-             |        {
-             |          "id": "JudyBrown",
-             |          "groups": [
-             |            "CustomerGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "Customer"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    }
-             |  },
-             |  "externalAuthenticationMocks": {
-             |    "ext1": {
-             |      "users": [
-             |        {
-             |          "id": "JaimeRhynes"
-             |        }
-             |      ]
-             |    },
-             |    "ext2": {
-             |      "users": [
-             |        {
-             |          "id": "MichaelDavis"
-             |        },
-             |        {
-             |          "id": "Johny"
-             |        }
-             |      ]
-             |    }
-             |  },
-             |  "externalAuthorizationMocks": {
-             |    "grp1": {
-             |      "users": [
-             |        {
-             |          "id": "JaimeRhynes",
-             |          "groups": [
-             |            "CustomerGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "CustomerGroup",
-             |              "name": "Customer"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    },
-             |    "grp2": {
-             |      "users": [
-             |        {
-             |          "id": "Martian",
-             |          "groups": [
-             |            "VisitorGroup"
-             |          ],
-             |          "userGroups": [
-             |            {
-             |              "id": "VisitorGroup",
-             |              "name": "Visitor"
-             |            }
-             |          ]
-             |        }
-             |      ]
-             |    }
-             |  }
-             |}
-             |""".stripMargin
-        ))
+        assertAuthMocksInIndex(
+          ujson.read(
+            s"""
+               |{
+               |  "ldapMocks": {
+               |    "ldap1": {
+               |      "users": [
+               |        {
+               |          "id": "JohnDoe",
+               |          "groups": [
+               |            "DeveloperGroup",
+               |            "DevOpsGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "DeveloperGroup",
+               |              "name": "Developer"
+               |            },
+               |            {
+               |              "id": "DevOpsGroup",
+               |              "name": "DevOps"
+               |            }
+               |          ]
+               |        },
+               |        {
+               |          "id": "RobertSmith",
+               |          "groups": [
+               |            "ManagerGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "ManagerGroup",
+               |              "name": "Manager"
+               |            }
+               |          ]
+               |        }
+               |      ]
+               |    },
+               |    "ldap2": {
+               |      "users": [
+               |        {
+               |          "id": "JohnDoe",
+               |          "groups": [
+               |            "DevOpsGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "DevOpsGroup",
+               |              "name": "DevOps"
+               |            }
+               |          ]
+               |        },
+               |        {
+               |          "id": "JudyBrown",
+               |          "groups": [
+               |            "CustomerGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "CustomerGroup",
+               |              "name": "Customer"
+               |            }
+               |          ]
+               |        }
+               |      ]
+               |    }
+               |  },
+               |  "externalAuthenticationMocks": {
+               |    "ext1": {
+               |      "users": [
+               |        {
+               |          "id": "JaimeRhynes"
+               |        }
+               |      ]
+               |    },
+               |    "ext2": {
+               |      "users": [
+               |        {
+               |          "id": "MichaelDavis"
+               |        },
+               |        {
+               |          "id": "Johny"
+               |        }
+               |      ]
+               |    }
+               |  },
+               |  "externalAuthorizationMocks": {
+               |    "grp1": {
+               |      "users": [
+               |        {
+               |          "id": "JaimeRhynes",
+               |          "groups": [
+               |            "CustomerGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "CustomerGroup",
+               |              "name": "Customer"
+               |            }
+               |          ]
+               |        }
+               |      ]
+               |    },
+               |    "grp2": {
+               |      "users": [
+               |        {
+               |          "id": "Martian",
+               |          "groups": [
+               |            "VisitorGroup"
+               |          ],
+               |          "userGroups": [
+               |            {
+               |              "id": "VisitorGroup",
+               |              "name": "Visitor"
+               |            }
+               |          ]
+               |        }
+               |      ]
+               |    }
+               |  }
+               |}
+               |""".stripMargin
+          )
+        )
 
         eventually { // await until all nodes load settings
           rorClients.foreach { rorApiManager =>
@@ -662,106 +680,110 @@ class AdminApiAuthMockSuite
           val response = rorApiManager.currentRorTestSettings
           response should have statusCode 200
           response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
-          response.responseJson("warnings") should be(ujson.read(
-            s"""
-               |[
-               |  {
-               |    "block_name": "test2 (1)",
-               |    "rule_name": "auth_key_sha1",
-               |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
-               |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
-               |  }
-               |]
-               |""".stripMargin
-          ))
+          response.responseJson("warnings") should be(
+            ujson.read(
+              s"""
+                 |[
+                 |  {
+                 |    "block_name": "test2 (1)",
+                 |    "rule_name": "auth_key_sha1",
+                 |    "message": "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
+                 |    "hint": "You can use second version of the rule and use not hashed username. Like that: `auth_key_sha1: USER_NAME:hash(PASSWORD)"
+                 |  }
+                 |]
+                 |""".stripMargin
+            )
+          )
         }
       }
       "return info that all mocks are configured when old settings version stored in index" in {
         setupTestSettingsOnAllNodes()
         invalidateTestSettingsOnAllNodes()
 
-        setupTestSettingsInIndex(ujson.read(
-          s"""
-             |{
-             |  "ldapMocks": {
-             |    "ldap1": {
-             |      "users": [
-             |        {
-             |          "id": "JohnDoe",
-             |          "groups": [
-             |            "DeveloperGroup",
-             |            "DevOpsGroup"
-             |          ]
-             |        },
-             |        {
-             |          "id": "RobertSmith",
-             |          "groups": [
-             |            "ManagerGroup"
-             |          ]
-             |        }
-             |      ]
-             |    },
-             |    "ldap2": {
-             |      "users": [
-             |        {
-             |          "id": "JohnDoe",
-             |          "groups": [
-             |            "DevOpsGroup"
-             |          ]
-             |        },
-             |        {
-             |          "id": "JudyBrown",
-             |          "groups": [
-             |            "CustomerGroup"
-             |          ]
-             |        }
-             |      ]
-             |    }
-             |  },
-             |  "externalAuthenticationMocks": {
-             |    "ext1": {
-             |      "users": [
-             |        {
-             |          "id": "JaimeRhynes"
-             |        }
-             |      ]
-             |    },
-             |    "ext2": {
-             |      "users": [
-             |        {
-             |          "id": "MichaelDavis"
-             |        },
-             |        {
-             |          "id": "Johny"
-             |        }
-             |      ]
-             |    }
-             |  },
-             |  "externalAuthorizationMocks": {
-             |    "grp1": {
-             |      "users": [
-             |        {
-             |          "id": "JaimeRhynes",
-             |          "groups": [
-             |            "CustomerGroup"
-             |          ]
-             |        }
-             |      ]
-             |    },
-             |    "grp2": {
-             |      "users": [
-             |        {
-             |          "id": "Martian",
-             |          "groups": [
-             |            "VisitorGroup"
-             |          ]
-             |        }
-             |      ]
-             |    }
-             |  }
-             |}
-             |""".stripMargin
-        ))
+        setupTestSettingsInIndex(
+          ujson.read(
+            s"""
+               |{
+               |  "ldapMocks": {
+               |    "ldap1": {
+               |      "users": [
+               |        {
+               |          "id": "JohnDoe",
+               |          "groups": [
+               |            "DeveloperGroup",
+               |            "DevOpsGroup"
+               |          ]
+               |        },
+               |        {
+               |          "id": "RobertSmith",
+               |          "groups": [
+               |            "ManagerGroup"
+               |          ]
+               |        }
+               |      ]
+               |    },
+               |    "ldap2": {
+               |      "users": [
+               |        {
+               |          "id": "JohnDoe",
+               |          "groups": [
+               |            "DevOpsGroup"
+               |          ]
+               |        },
+               |        {
+               |          "id": "JudyBrown",
+               |          "groups": [
+               |            "CustomerGroup"
+               |          ]
+               |        }
+               |      ]
+               |    }
+               |  },
+               |  "externalAuthenticationMocks": {
+               |    "ext1": {
+               |      "users": [
+               |        {
+               |          "id": "JaimeRhynes"
+               |        }
+               |      ]
+               |    },
+               |    "ext2": {
+               |      "users": [
+               |        {
+               |          "id": "MichaelDavis"
+               |        },
+               |        {
+               |          "id": "Johny"
+               |        }
+               |      ]
+               |    }
+               |  },
+               |  "externalAuthorizationMocks": {
+               |    "grp1": {
+               |      "users": [
+               |        {
+               |          "id": "JaimeRhynes",
+               |          "groups": [
+               |            "CustomerGroup"
+               |          ]
+               |        }
+               |      ]
+               |    },
+               |    "grp2": {
+               |      "users": [
+               |        {
+               |          "id": "Martian",
+               |          "groups": [
+               |            "VisitorGroup"
+               |          ]
+               |        }
+               |      ]
+               |    }
+               |  }
+               |}
+               |""".stripMargin
+          )
+        )
 
         val payloadServices = ujson.read(
           s"""
@@ -901,125 +923,124 @@ class AdminApiAuthMockSuite
           "all services are passed" in {
             setupTestSettingsOnAllNodes()
 
-            val payloadServices = ujson.read(
-              s"""
-                 |[
-                 |  {
-                 |    "type": "LDAP",
-                 |    "name": "ldap1",
-                 |    "mock": {
-                 |      "users": [
-                 |        {
-                 |          "name": "JohnDoe",
-                 |          "groups": [
-                 |            {
-                 |              "id": "DeveloperGroup",
-                 |              "name": "Developer"
-                 |            },
-                 |            {
-                 |              "id": "DevOpsGroup",
-                 |              "name": "DevOps"
-                 |            }
-                 |          ]
-                 |        },
-                 |        {
-                 |          "name": "RobertSmith",
-                 |          "groups": [
-                 |            {
-                 |              "id": "ManagerGroup",
-                 |              "name": "Manager"
-                 |            }
-                 |          ]
-                 |        }
-                 |      ]
-                 |    }
-                 |  },
-                 |  {
-                 |    "type": "LDAP",
-                 |    "name": "ldap2",
-                 |    "mock": {
-                 |      "users": [
-                 |        {
-                 |          "name": "JohnDoe",
-                 |          "groups": [
-                 |            {
-                 |              "id": "DevOpsGroup",
-                 |              "name": "DevOps"
-                 |            }
-                 |          ]
-                 |        },
-                 |        {
-                 |          "name": "JudyBrown",
-                 |          "groups": [
-                 |            {
-                 |              "id": "CustomerGroup"
-                 |            }
-                 |          ]
-                 |        }
-                 |      ]
-                 |    }
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHN",
-                 |    "name": "ext1",
-                 |    "mock": {
-                 |      "users": [
-                 |        {
-                 |          "name": "JaimeRhynes"
-                 |        }
-                 |      ]
-                 |    }
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHN",
-                 |    "name": "ext2",
-                 |    "mock": {
-                 |      "users": [
-                 |        {
-                 |          "name": "MichaelDavis"
-                 |        },
-                 |        {
-                 |          "name": "Johny"
-                 |        }
-                 |      ]
-                 |    }
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHZ",
-                 |    "name": "grp1",
-                 |    "mock": {
-                 |      "users": [
-                 |        {
-                 |          "name": "JaimeRhynes",
-                 |          "groups": [
-                 |            {
-                 |              "id": "CustomerGroup",
-                 |              "name": "Customer"
-                 |            }
-                 |          ]
-                 |        }
-                 |      ]
-                 |    }
-                 |  },
-                 |  {
-                 |    "type": "EXT_AUTHZ",
-                 |    "name": "grp2",
-                 |    "mock": {
-                 |      "users": [
-                 |        {
-                 |          "name": "Martian",
-                 |          "groups": [
-                 |            {
-                 |              "id": "VisitorGroup",
-                 |              "name": "Visitor"
-                 |            }
-                 |          ]
-                 |        }
-                 |      ]
-                 |    }
-                 |  }
-                 |]
-                 |""".stripMargin)
+            val payloadServices = ujson.read(s"""
+                                                |[
+                                                |  {
+                                                |    "type": "LDAP",
+                                                |    "name": "ldap1",
+                                                |    "mock": {
+                                                |      "users": [
+                                                |        {
+                                                |          "name": "JohnDoe",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "DeveloperGroup",
+                                                |              "name": "Developer"
+                                                |            },
+                                                |            {
+                                                |              "id": "DevOpsGroup",
+                                                |              "name": "DevOps"
+                                                |            }
+                                                |          ]
+                                                |        },
+                                                |        {
+                                                |          "name": "RobertSmith",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "ManagerGroup",
+                                                |              "name": "Manager"
+                                                |            }
+                                                |          ]
+                                                |        }
+                                                |      ]
+                                                |    }
+                                                |  },
+                                                |  {
+                                                |    "type": "LDAP",
+                                                |    "name": "ldap2",
+                                                |    "mock": {
+                                                |      "users": [
+                                                |        {
+                                                |          "name": "JohnDoe",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "DevOpsGroup",
+                                                |              "name": "DevOps"
+                                                |            }
+                                                |          ]
+                                                |        },
+                                                |        {
+                                                |          "name": "JudyBrown",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "CustomerGroup"
+                                                |            }
+                                                |          ]
+                                                |        }
+                                                |      ]
+                                                |    }
+                                                |  },
+                                                |  {
+                                                |    "type": "EXT_AUTHN",
+                                                |    "name": "ext1",
+                                                |    "mock": {
+                                                |      "users": [
+                                                |        {
+                                                |          "name": "JaimeRhynes"
+                                                |        }
+                                                |      ]
+                                                |    }
+                                                |  },
+                                                |  {
+                                                |    "type": "EXT_AUTHN",
+                                                |    "name": "ext2",
+                                                |    "mock": {
+                                                |      "users": [
+                                                |        {
+                                                |          "name": "MichaelDavis"
+                                                |        },
+                                                |        {
+                                                |          "name": "Johny"
+                                                |        }
+                                                |      ]
+                                                |    }
+                                                |  },
+                                                |  {
+                                                |    "type": "EXT_AUTHZ",
+                                                |    "name": "grp1",
+                                                |    "mock": {
+                                                |      "users": [
+                                                |        {
+                                                |          "name": "JaimeRhynes",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "CustomerGroup",
+                                                |              "name": "Customer"
+                                                |            }
+                                                |          ]
+                                                |        }
+                                                |      ]
+                                                |    }
+                                                |  },
+                                                |  {
+                                                |    "type": "EXT_AUTHZ",
+                                                |    "name": "grp2",
+                                                |    "mock": {
+                                                |      "users": [
+                                                |        {
+                                                |          "name": "Martian",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "VisitorGroup",
+                                                |              "name": "Visitor"
+                                                |            }
+                                                |          ]
+                                                |        }
+                                                |      ]
+                                                |    }
+                                                |  }
+                                                |]
+                                                |""".stripMargin)
 
             rorClients.foreach { rorApiManager =>
               val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
@@ -1030,41 +1051,40 @@ class AdminApiAuthMockSuite
           "only some services are passed" in {
             setupTestSettingsOnAllNodes()
 
-            val payloadServices = ujson.read(
-              s"""
-                 |[
-                 |  {
-                 |    "type": "EXT_AUTHZ",
-                 |    "name": "grp2",
-                 |    "mock": {
-                 |      "users": [
-                 |        {
-                 |          "name": "JohnDoe",
-                 |          "groups": [
-                 |            {
-                 |              "id": "DeveloperGroup",
-                 |              "name": "Developer"
-                 |            },
-                 |            {
-                 |              "id": "DevOpsGroup",
-                 |              "name": "DevOps"
-                 |            }
-                 |          ]
-                 |        },
-                 |        {
-                 |          "name": "RobertSmith",
-                 |          "groups": [
-                 |            {
-                 |              "id": "ManagerGroup",
-                 |              "name": "Manager"
-                 |            }
-                 |          ]
-                 |        }
-                 |      ]
-                 |    }
-                 |  }
-                 |]
-                 |""".stripMargin)
+            val payloadServices = ujson.read(s"""
+                                                |[
+                                                |  {
+                                                |    "type": "EXT_AUTHZ",
+                                                |    "name": "grp2",
+                                                |    "mock": {
+                                                |      "users": [
+                                                |        {
+                                                |          "name": "JohnDoe",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "DeveloperGroup",
+                                                |              "name": "Developer"
+                                                |            },
+                                                |            {
+                                                |              "id": "DevOpsGroup",
+                                                |              "name": "DevOps"
+                                                |            }
+                                                |          ]
+                                                |        },
+                                                |        {
+                                                |          "name": "RobertSmith",
+                                                |          "groups": [
+                                                |            {
+                                                |              "id": "ManagerGroup",
+                                                |              "name": "Manager"
+                                                |            }
+                                                |          ]
+                                                |        }
+                                                |      ]
+                                                |    }
+                                                |  }
+                                                |]
+                                                |""".stripMargin)
 
             rorClients.foreach { rorApiManager =>
               val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
@@ -1088,61 +1108,63 @@ class AdminApiAuthMockSuite
 
         invalidateTestSettingsOnAllNodes()
 
-        val payloadServices = ujson.read(
-          s"""
-             |[
-             |  {
-             |    "type": "LDAP",
-             |    "name": "ldap1",
-             |    "mock": "NOT_CONFIGURED"
-             |  }
-             |]
-             |""".stripMargin)
+        val payloadServices = ujson.read(s"""
+                                            |[
+                                            |  {
+                                            |    "type": "LDAP",
+                                            |    "name": "ldap1",
+                                            |    "mock": "NOT_CONFIGURED"
+                                            |  }
+                                            |]
+                                            |""".stripMargin)
 
         rorClients.foreach { rorApiManager =>
           val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
           response should have statusCode 200
-          response.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "status": "TEST_SETTINGS_INVALIDATED",
-               |  "message": "ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active."
-               |}
-               |""".stripMargin
-          ))
+          response.responseJson should be(
+            ujson.read(
+              s"""
+                 |{
+                 |  "status": "TEST_SETTINGS_INVALIDATED",
+                 |  "message": "ROR Test settings are invalidated. To use Auth Services Mock ROR has to have Test settings active."
+                 |}
+                 |""".stripMargin
+            )
+          )
         }
       }
       "return info that unknown services detected" when {
         "unknown service passed" in {
           setupTestSettingsOnAllNodes()
 
-          val payloadServices = ujson.read(
-            s"""
-               |[
-               |  {
-               |    "type": "LDAP",
-               |    "name": "ldap3",
-               |    "mock": "NOT_CONFIGURED"
-               |  },
-               |  {
-               |    "type": "LDAP",
-               |    "name": "ldap4",
-               |    "mock": "NOT_CONFIGURED"
-               |  }
-               |]
-               |""".stripMargin)
+          val payloadServices = ujson.read(s"""
+                                              |[
+                                              |  {
+                                              |    "type": "LDAP",
+                                              |    "name": "ldap3",
+                                              |    "mock": "NOT_CONFIGURED"
+                                              |  },
+                                              |  {
+                                              |    "type": "LDAP",
+                                              |    "name": "ldap4",
+                                              |    "mock": "NOT_CONFIGURED"
+                                              |  }
+                                              |]
+                                              |""".stripMargin)
 
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(payloadServices))
             response should have statusCode 200
-            response.responseJson should be(ujson.read(
-              s"""
-                 |{
-                 |  "status": "UNKNOWN_AUTH_SERVICES_DETECTED",
-                 |  "message": "ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured. Unknown services: [ldap3,ldap4]"
-                 |}
-                 |""".stripMargin
-            ))
+            response.responseJson should be(
+              ujson.read(
+                s"""
+                   |{
+                   |  "status": "UNKNOWN_AUTH_SERVICES_DETECTED",
+                   |  "message": "ROR doesn't allow to configure unknown Auth Services. Only the ones used in ROR's Test settings can be configured. Unknown services: [ldap3,ldap4]"
+                   |}
+                   |""".stripMargin
+              )
+            )
           }
         }
       }
@@ -1150,28 +1172,29 @@ class AdminApiAuthMockSuite
         "unknown service type" in {
           setupTestSettingsOnAllNodes()
 
-          val malformedPayload = ujson.read(
-            s"""
-               |[
-               |  {
-               |    "type": "EXT_AUTHORIZATION",
-               |    "name": "ext1",
-               |    "mock": "NOT_CONFIGURED"
-               |  }
-               |]
-               |""".stripMargin)
+          val malformedPayload = ujson.read(s"""
+                                               |[
+                                               |  {
+                                               |    "type": "EXT_AUTHORIZATION",
+                                               |    "name": "ext1",
+                                               |    "mock": "NOT_CONFIGURED"
+                                               |  }
+                                               |]
+                                               |""".stripMargin)
 
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks(updateMocksPayload(malformedPayload))
             response should have statusCode 400
-            response.responseJson should be(ujson.read(
-              s"""
-                 |{
-                 |  "status": "FAILED",
-                 |  "message": "JSON body malformed: [Could not parse at : [DecodingFailure at : Unknown auth mock service type: EXT_AUTHORIZATION]]"
-                 |}
-                 |""".stripMargin
-            ))
+            response.responseJson should be(
+              ujson.read(
+                s"""
+                   |{
+                   |  "status": "FAILED",
+                   |  "message": "JSON body malformed: [Could not parse at : [DecodingFailure at : Unknown auth mock service type: EXT_AUTHORIZATION]]"
+                   |}
+                   |""".stripMargin
+              )
+            )
           }
         }
         "empty JSON is passed" in {
@@ -1180,14 +1203,16 @@ class AdminApiAuthMockSuite
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.configureImpersonationMocks("{}")
             response should have statusCode 400
-            response.responseJson should be(ujson.read(
-              s"""
-                 |{
-                 |  "status": "FAILED",
-                 |  "message": "JSON body malformed: [Could not parse at .services: [DecodingFailure at .services: Missing required field]]"
-                 |}
-                 |""".stripMargin
-            ))
+            response.responseJson should be(
+              ujson.read(
+                s"""
+                   |{
+                   |  "status": "FAILED",
+                   |  "message": "JSON body malformed: [Could not parse at .services: [DecodingFailure at .services: Missing required field]]"
+                   |}
+                   |""".stripMargin
+              )
+            )
           }
         }
         "JSON with malformed ldap user objects" in {
@@ -1265,8 +1290,7 @@ class AdminApiAuthMockSuite
          |{
          |  "services": $payloadServices
          |}
-         |"""
-        .stripMargin
+         |""".stripMargin
     )
   }
 
@@ -1304,7 +1328,12 @@ class AdminApiAuthMockSuite
     )
     val documentType = "settings"
     val documentManager = new DocumentManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
-    val createDocResponse = documentManager.createDoc(readonlyrestIndexName, documentType, testSettingsEsDocumentId, testSettingsRelatedDocument)
+    val createDocResponse = documentManager.createDoc(
+      readonlyrestIndexName,
+      documentType,
+      testSettingsEsDocumentId,
+      testSettingsRelatedDocument
+    )
 
     createDocResponse should have statusCode 200
   }
@@ -1315,11 +1344,9 @@ class AdminApiAuthMockSuite
     indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
     indexSearchHits.size should be >= 1 // at least main document or test document should be present
-    val testSettingsDocumentHit = indexSearchHits
-      .find { searchResult =>
-        (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
-      }
-      .value
+    val testSettingsDocumentHit = indexSearchHits.find { searchResult =>
+      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
+    }.value
 
     val mocksContent = testSettingsDocumentHit("_source")("auth_services_mocks")
     mocksContent should be(expectedMocks)
@@ -1338,8 +1365,7 @@ class AdminApiAuthMockSuite
   }
 
   private lazy val rorClients: List[RorApiManager] = {
-    clients
-      .toList
+    clients.toList
       .map(_.adminClient)
       .map(new RorApiManager(_, esVersionUsed))
   }
@@ -1365,4 +1391,5 @@ class AdminApiAuthMockSuite
          |""".stripMargin
     )
   }
+
 }

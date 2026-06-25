@@ -31,73 +31,83 @@ import tech.beshu.ror.implicits.*
 import java.time.Instant
 import scala.collection.immutable.Set as ScalaSet
 
-private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                                            loggedUser: Option[LoggedUser],
-                                                                            matchedBlocks: Option[NonEmptyList[Block]],
-                                                                            aclProcessingHistory: History[B],
-                                                                            loggingContext: LoggingContext,
-                                                                            override val auditEnvironmentContext: AuditEnvironmentContext,
-                                                                            override val generalAuditEvents: JSONObject,
-                                                                            override val involvesIndices: Boolean)
-  extends AuditRequestContext {
+private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
+    requestContext: RequestContext.Aux[B],
+    loggedUser: Option[LoggedUser],
+    matchedBlocks: Option[NonEmptyList[Block]],
+    aclProcessingHistory: History[B],
+    loggingContext: LoggingContext,
+    override val auditEnvironmentContext: AuditEnvironmentContext,
+    override val generalAuditEvents: JSONObject,
+    override val involvesIndices: Boolean
+) extends AuditRequestContext {
 
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
 
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
   override val correlationId: String = requestContext.rorKibanaSessionId.value.value
+
   override lazy val indices: ScalaSet[String] = requestContext.requestedIndices match {
     case Some(indices) => indices.map(_.stringify).toSet
-    case None => ScalaSet.empty
+    case None          => ScalaSet.empty
   }
+
   override val action: String = requestContext.action.value
+
   override lazy val headers: Map[String, String] =
     requestContext.restRequest.allHeaders
       .map(h => (h.name.value.value, h.value.value))
       .toMap
+
   override lazy val requestHeaders: Headers = new Headers(
     requestContext.restRequest.allHeaders
-      .foldLeft(Map.empty[String, ScalaSet[String]]) {
-        case (acc, header) =>
-          val key = header.name.value.value
-          acc.updated(key, acc.getOrElse(key, ScalaSet.empty) + header.value.value)
+      .foldLeft(Map.empty[String, ScalaSet[String]]) { case (acc, header) =>
+        val key = header.name.value.value
+        acc.updated(key, acc.getOrElse(key, ScalaSet.empty) + header.value.value)
       }
   )
+
   override val uriPath: String = requestContext.restRequest.path.value.value
   override val matchedBlockNames: Option[List[String]] = matchedBlocks.map(_.map(_.name.value).toList)
   override lazy val history: String = iterableLikeShow(blockHistoryShow(showHeader)).show(aclProcessingHistory.blocks)
+
   override lazy val blocksHistory: Map[String, (Boolean, Option[String])] =
-    aclProcessingHistory.blocks
-      .map { h =>
-        val blockName = h.block.name.value
-        val matchedAndCause = h match {
-          case BlockHistory.Permitted(_, _, _) => true -> None
-          case BlockHistory.Denied(_, denied, _) => false -> Some(denied.cause.show)
-        }
-        blockName -> matchedAndCause
+    aclProcessingHistory.blocks.map { h =>
+      val blockName = h.block.name.value
+      val matchedAndCause = h match {
+        case BlockHistory.Permitted(_, _, _)   => true -> None
+        case BlockHistory.Denied(_, denied, _) => false -> Some(denied.cause.show)
       }
-      .toMap
+      blockName -> matchedAndCause
+    }.toMap
+
   override lazy val content: String = requestContext.restRequest.content
   override lazy val contentLength: Integer = requestContext.restRequest.contentLength.toBytes.toInt
+
   override val remoteAddress: String = requestContext.restRequest.remoteAddress match {
-    case Some(Address.Ip(value)) => value.toString
+    case Some(Address.Ip(value))   => value.toString
     case Some(Address.Name(value)) => value.toString
-    case None => "N/A"
+    case None                      => "N/A"
   }
+
   override val localAddress: String = requestContext.restRequest.localAddress match {
-    case Address.Ip(value) => value.toString
+    case Address.Ip(value)   => value.toString
     case Address.Name(value) => value.toString
   }
+
   override val `type`: String = requestContext.`type`.value
   override val taskId: Long = requestContext.taskId
   override val httpMethod: String = requestContext.restRequest.method.value
   override val loggedInUserName: Option[String] = loggedUser.map(_.id.value.value)
+
   override val impersonatedByUserName: Option[String] =
     loggedUser
       .flatMap {
-        case DirectlyLoggedUser(_) => None
+        case DirectlyLoggedUser(_)               => None
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
       }
+
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
 }

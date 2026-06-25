@@ -23,18 +23,24 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Sig
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.{JwtAuthRule, JwtAuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenPrefix, *}
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{Exact, bearer}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenPrefix, *}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  DefinitionsLevelCreationError,
+  RulesLevelCreationError
+}
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -42,9 +48,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import java.security.KeyPairGenerator
 import java.util.Base64
 
-class JwtAuthRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[JwtAuthRule]
-    with MockFactory {
+class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] with MockFactory {
 
   "A JwtAuthRule" should {
     "be able to be loaded from settings" when {
@@ -70,9 +74,11 @@ class JwtAuthRuleSettingsTests
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(ClaimName(JsonPath("groups").get), None)
+            )
           }
         )
       }
@@ -99,9 +105,11 @@ class JwtAuthRuleSettingsTests
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(ClaimName(JsonPath("groups").get), None)
+            )
           }
         )
       }
@@ -111,31 +119,37 @@ class JwtAuthRuleSettingsTests
           assertDecodingSuccess(
             yaml =
               s"""
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    jwt_auth:
-                |      name: "jwt1"
-                |      $ruleKey: ["group1*","group2"]
-                |
-                |  jwt:
-                |
-                |  - name: jwt1
-                |    user_claim: "user"
-                |    group_ids_claim: groups
-                |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                |
-                |""".stripMargin,
+                 |readonlyrest:
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    jwt_auth:
+                 |      name: "jwt1"
+                 |      $ruleKey: ["group1*","group2"]
+                 |
+                 |  jwt:
+                 |
+                 |  - name: jwt1
+                 |    user_claim: "user"
+                 |    group_ids_claim: groups
+                 |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                 |
+                 |""".stripMargin,
             assertion = rule => {
               rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
               rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-              rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+              rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-              rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
-              rule.authorization.asInstanceOf[JwtAuthorizationRule].settings.groupsLogic should be(GroupsLogic.AnyOf(GroupIds(
-                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-              )))
+              rule.authorization.settings.jwt.groupsConfig should be(
+                GroupsConfig(ClaimName(JsonPath("groups").get), None)
+              )
+              rule.authorization.asInstanceOf[JwtAuthorizationRule].settings.groupsLogic should be(
+                GroupsLogic.AnyOf(
+                  GroupIds(
+                    UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+                  )
+                )
+              )
             }
           )
         }
@@ -146,31 +160,37 @@ class JwtAuthRuleSettingsTests
           assertDecodingSuccess(
             yaml =
               s"""
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    jwt_auth:
-                |      name: "jwt1"
-                |      $ruleKey: ["group1*","group2"]
-                |
-                |  jwt:
-                |
-                |  - name: jwt1
-                |    user_claim: "user"
-                |    group_ids_claim: groups
-                |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                |
-                |""".stripMargin,
+                 |readonlyrest:
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    jwt_auth:
+                 |      name: "jwt1"
+                 |      $ruleKey: ["group1*","group2"]
+                 |
+                 |  jwt:
+                 |
+                 |  - name: jwt1
+                 |    user_claim: "user"
+                 |    group_ids_claim: groups
+                 |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                 |
+                 |""".stripMargin,
             assertion = rule => {
               rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
               rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-              rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+              rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-              rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
-              rule.authorization.asInstanceOf[JwtAuthorizationRule].settings.groupsLogic should be(GroupsLogic.AllOf(GroupIds(
-                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-              )))
+              rule.authorization.settings.jwt.groupsConfig should be(
+                GroupsConfig(ClaimName(JsonPath("groups").get), None)
+              )
+              rule.authorization.asInstanceOf[JwtAuthorizationRule].settings.groupsLogic should be(
+                GroupsLogic.AllOf(
+                  GroupIds(
+                    UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+                  )
+                )
+              )
             }
           )
         }
@@ -198,10 +218,14 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(bearer)))
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.authorizationTokenDef should be(
+              AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(bearer))
+            )
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(ClaimName(JsonPath("groups").get), None)
+            )
           }
         )
       }
@@ -228,10 +252,14 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(Exact(nes("MyPrefix")))))
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.authorizationTokenDef should be(
+              AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(Exact(nes("MyPrefix"))))
+            )
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(ClaimName(JsonPath("groups").get), None)
+            )
           }
         )
       }
@@ -257,10 +285,14 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(Exact(nes("MyPrefix")))))
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.authorizationTokenDef should be(
+              AuthorizationTokenDef(Header.Name.authorization, StrictlyDefined(Exact(nes("MyPrefix"))))
+            )
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(ClaimName(JsonPath("groups").get), None)
+            )
           }
         )
       }
@@ -287,10 +319,17 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
-            rule.authentication.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(headerNameFrom("X-JWT-Custom-Header"), StrictlyDefined(AuthorizationTokenPrefix.NoPrefix)))
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.authorizationTokenDef should be(
+              AuthorizationTokenDef(
+                headerNameFrom("X-JWT-Custom-Header"),
+                StrictlyDefined(AuthorizationTokenPrefix.NoPrefix)
+              )
+            )
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(ClaimName(JsonPath("groups").get), None)
+            )
           }
         )
       }
@@ -316,9 +355,11 @@ class JwtAuthRuleSettingsTests
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(ClaimName(JsonPath("groups").get), None)
+            )
           }
         )
       }
@@ -328,27 +369,29 @@ class JwtAuthRuleSettingsTests
           assertDecodingSuccess(
             yaml =
               s"""
-                |readonlyrest:
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    jwt_auth: jwt1
-                |
-                |  jwt:
-                |
-                |  - name: jwt1
-                |    user_claim: "user"
-                |    $claimKey: groups
-                |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                |
-                |""".stripMargin,
+                 |readonlyrest:
+                 |
+                 |  access_control_rules:
+                 |
+                 |  - name: test_block1
+                 |    jwt_auth: jwt1
+                 |
+                 |  jwt:
+                 |
+                 |  - name: jwt1
+                 |    user_claim: "user"
+                 |    $claimKey: groups
+                 |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                 |
+                 |""".stripMargin,
             assertion = rule => {
               rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
               rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
               rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-              rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+              rule.authorization.settings.jwt.groupsConfig should be(
+                GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+              )
             }
           )
         }
@@ -378,10 +421,12 @@ class JwtAuthRuleSettingsTests
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
             rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(
-              idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups")),
-              namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("group_names")))
-            ))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(
+                idsClaim = domain.Jwt.ClaimName(jsonPathFrom("groups")),
+                namesClaim = Some(domain.Jwt.ClaimName(jsonPathFrom("group_names")))
+              )
+            )
           }
         )
       }
@@ -407,68 +452,72 @@ class JwtAuthRuleSettingsTests
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("https://{domain}/claims/roles")), None)
+            )
           }
         )
       }
       "RSA family algorithm can be used in JWT signature" in {
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
         assertDecodingSuccess(
-          yaml =
-            s"""
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    user_claim: "user"
-              |    group_ids_claim: groups
-              |    signature_algo: "RSA"
-              |    signature_key: "${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
-              |
-              |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    jwt_auth: jwt1
+                    |
+                    |  jwt:
+                    |
+                    |  - name: jwt1
+                    |    user_claim: "user"
+                    |    group_ids_claim: groups
+                    |    signature_algo: "RSA"
+                    |    signature_key: "${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+            )
           }
         )
       }
       "RSA family algorithm can be used in JWT signature and key is being read from system env in old format" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    jwt_auth: jwt1
-               |
-               |  jwt:
-               |
-               |  - name: jwt1
-               |    user_claim: "user"
-               |    group_ids_claim: groups
-               |    signature_algo: "RSA"
-               |    signature_key: "env:SECRET_RSA"
-               |
-              |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    jwt_auth: jwt1
+                    |
+                    |  jwt:
+                    |
+                    |  - name: jwt1
+                    |    user_claim: "user"
+                    |    group_ids_claim: groups
+                    |    signature_algo: "RSA"
+                    |    signature_key: "env:SECRET_RSA"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+            )
           }
         )
       }
@@ -476,133 +525,141 @@ class JwtAuthRuleSettingsTests
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
         System.setProperty("SECRET_KEY", Base64.getEncoder.encodeToString(pkey.getEncoded))
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    jwt_auth: jwt1
-               |
-               |  jwt:
-               |
-               |  - name: jwt1
-               |    user_claim: "user"
-               |    group_ids_claim: groups
-               |    signature_algo: "RSA"
-               |    signature_key: "@{env:SECRET_RSA}"
-               |
-              |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    jwt_auth: jwt1
+                    |
+                    |  jwt:
+                    |
+                    |  - name: jwt1
+                    |    user_claim: "user"
+                    |    group_ids_claim: groups
+                    |    signature_algo: "RSA"
+                    |    signature_key: "@{env:SECRET_RSA}"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Rsa]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+            )
           }
         )
       }
       "EC family algorithm can be used in JWT signature" in {
         val pkey = KeyPairGenerator.getInstance("EC").generateKeyPair().getPublic
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    jwt_auth: jwt1
-               |
-               |  jwt:
-               |
-               |  - name: jwt1
-               |    user_claim: "user"
-               |    group_ids_claim: groups
-               |    signature_algo: "EC"
-               |    signature_key: "text: ${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
-               |
-              |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    jwt_auth: jwt1
+                    |
+                    |  jwt:
+                    |
+                    |  - name: jwt1
+                    |    user_claim: "user"
+                    |    group_ids_claim: groups
+                    |    signature_algo: "EC"
+                    |    signature_key: "text: ${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.Ec]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Ec]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+            )
           }
         )
       }
       "None signature check can be used in JWT definition" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    jwt_auth: jwt1
-               |
-               |  jwt:
-               |
-               |  - name: jwt1
-               |    user_claim: "user"
-               |    group_ids_claim: groups
-               |    signature_algo: "NONE"
-               |    external_validator:
-               |      url: "http://192.168.0.1:8080/jwt"
-               |      success_status_code: 204
-               |      cache_ttl_in_sec: 60
-               |      validate: false
-               |
-              |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    jwt_auth: jwt1
+                    |
+                    |  jwt:
+                    |
+                    |  - name: jwt1
+                    |    user_claim: "user"
+                    |    group_ids_claim: groups
+                    |    signature_algo: "NONE"
+                    |    external_validator:
+                    |      url: "http://192.168.0.1:8080/jwt"
+                    |      success_status_code: 204
+                    |      cache_ttl_in_sec: 60
+                    |      validate: false
+                    |
+                    |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
-            rule.authentication.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.NoCheck]
+            rule.authentication.settings.jwt.checkMethod
+              .asInstanceOf[SignatureCheckMethod.NoCheck]
+              .service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+            )
           }
         )
       }
       "None signature check can be used in JWT definition with custom http client settings for external validator" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    jwt_auth: jwt1
-               |
-               |  jwt:
-               |
-               |  - name: jwt1
-               |    user_claim: "user"
-               |    group_ids_claim: groups
-               |    signature_algo: "NONE"
-               |    external_validator:
-               |      url: "http://192.168.0.1:8080/jwt"
-               |      success_status_code: 204
-               |      cache_ttl_in_sec: 60
-               |      http_connection_settings:
-               |        connection_timeout_in_sec: 1
-               |        connection_request_timeout_in_sec: 10
-               |        connection_pool_size: 30
-               |        validate: true
-              |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    jwt_auth: jwt1
+                    |
+                    |  jwt:
+                    |
+                    |  - name: jwt1
+                    |    user_claim: "user"
+                    |    group_ids_claim: groups
+                    |    signature_algo: "NONE"
+                    |    external_validator:
+                    |      url: "http://192.168.0.1:8080/jwt"
+                    |      success_status_code: 204
+                    |      cache_ttl_in_sec: 60
+                    |      http_connection_settings:
+                    |        connection_timeout_in_sec: 1
+                    |        connection_request_timeout_in_sec: 10
+                    |        connection_pool_size: 30
+                    |        validate: true
+                    |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             rule.authentication.settings.jwt.id should be(JwtDef.Name("jwt1"))
             rule.authentication.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
-            rule.authentication.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
-            rule.authentication.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+            rule.authentication.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.NoCheck]
+            rule.authentication.settings.jwt.checkMethod
+              .asInstanceOf[SignatureCheckMethod.NoCheck]
+              .service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.authentication.settings.jwt.userClaim should be(domain.Jwt.ClaimName(jsonPathFrom("user")))
-            rule.authorization.settings.jwt.groupsConfig should be(GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None))
+            rule.authorization.settings.jwt.groupsConfig should be(
+              GroupsConfig(domain.Jwt.ClaimName(jsonPathFrom("groups")), None)
+            )
           }
         )
       }
@@ -629,10 +686,14 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """jwt_auth: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """jwt_auth: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -681,7 +742,13 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("The jwt definition with name jwt1 exists, but cannot be used for jwt_auth rule. Please check in the documentation (https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth) how to adjust the jwt definition to use it for both authentication and authorization")))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "The jwt definition with name jwt1 exists, but cannot be used for jwt_auth rule. Please check in the documentation (https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth) how to adjust the jwt definition to use it for both authentication and authorization"
+                )
+              )
+            )
           }
         )
       }
@@ -705,21 +772,26 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("The jwt definition with name jwt1 exists, but cannot be used for jwt_auth rule. Please check in the documentation (https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth) how to adjust the jwt definition to use it for both authentication and authorization")))
+            errors.head should be(
+              RulesLevelCreationError(
+                Message(
+                  "The jwt definition with name jwt1 exists, but cannot be used for jwt_auth rule. Please check in the documentation (https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth) how to adjust the jwt definition to use it for both authentication and authorization"
+                )
+              )
+            )
           }
         )
       }
       "no JWT definition is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_auth: jwt1
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt1")))
@@ -748,13 +820,17 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """jwt_auth:
-                |  roles:
-                |  - "group1"
-                |  - "group2"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """jwt_auth:
+                    |  roles:
+                    |  - "group1"
+                    |  - "group2"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -787,9 +863,13 @@ class JwtAuthRuleSettingsTests
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
-                errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_auth` rule 'jwt1'"
-                )))
+                errors.head should be(
+                  RulesLevelCreationError(
+                    Message(
+                      s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_auth` rule 'jwt1'"
+                    )
+                  )
+                )
               }
             )
           }
@@ -812,10 +892,14 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                MalformedValue.fromString(
+                  """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -845,7 +929,9 @@ class JwtAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("jwt definitions must have unique identifiers. Duplicates: jwt1")))
+            errors.head should be(
+              DefinitionsLevelCreationError(Message("jwt definitions must have unique identifiers. Duplicates: jwt1"))
+            )
           }
         )
       }
@@ -875,158 +961,168 @@ class JwtAuthRuleSettingsTests
       }
       "no signature check is used but required external validation service is not defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "NONE"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_auth: jwt1
+                   |
+                   |  jwt:
+                   |
+                   |  - name: jwt1
+                   |    signature_algo: "NONE"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("External validator has to be defined when signature algorithm is None")))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message("External validator has to be defined when signature algorithm is None")
+              )
+            )
           }
         )
       }
       "no signature check is used and required external validation service settings are malformed" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "NONE"
-              |    external_validator:
-              |      url_of_validator: "unknown_addr"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_auth: jwt1
+                   |
+                   |  jwt:
+                   |
+                   |  - name: jwt1
+                   |    signature_algo: "NONE"
+                   |    external_validator:
+                   |      url_of_validator: "unknown_addr"
+                   |
+                   |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("External validator has to be defined when signature algorithm is None")))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message("External validator has to be defined when signature algorithm is None")
+              )
+            )
           }
         )
       }
       "external validator custom http client settings is defined together with validate at rule level" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "NONE"
-              |    external_validator:
-              |      url: "http://192.168.0.1:8080/jwt"
-              |      validate: false
-              |      http_connection_settings:
-              |        connection_timeout_in_sec: 1
-              |        connection_request_timeout_in_sec: 10
-              |        connection_pool_size: 30
-              |        validate: true
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_auth: jwt1
+                   |
+                   |  jwt:
+                   |
+                   |  - name: jwt1
+                   |    signature_algo: "NONE"
+                   |    external_validator:
+                   |      url: "http://192.168.0.1:8080/jwt"
+                   |      validate: false
+                   |      http_connection_settings:
+                   |        connection_timeout_in_sec: 1
+                   |        connection_request_timeout_in_sec: 10
+                   |        connection_pool_size: 30
+                   |        validate: true
+                   |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")
+              )
+            )
           }
         )
       }
       "external validator custom http client connection timeout is negative" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "NONE"
-              |    external_validator:
-              |      url: "http://192.168.0.1:8080/jwt"
-              |      http_connection_settings:
-              |        connection_timeout_in_sec: -10
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_auth: jwt1
+                   |
+                   |  jwt:
+                   |
+                   |  - name: jwt1
+                   |    signature_algo: "NONE"
+                   |    external_validator:
+                   |      url: "http://192.168.0.1:8080/jwt"
+                   |      http_connection_settings:
+                   |        connection_timeout_in_sec: -10
+                   |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            errors.head should be(
+              DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds"))
+            )
           }
         )
       }
       "external validator custom http client request timeout is negative" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "NONE"
-              |    external_validator:
-              |      url: "http://192.168.0.1:8080/jwt"
-              |      http_connection_settings:
-              |        connection_request_timeout_in_sec: -10
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_auth: jwt1
+                   |
+                   |  jwt:
+                   |
+                   |  - name: jwt1
+                   |    signature_algo: "NONE"
+                   |    external_validator:
+                   |      url: "http://192.168.0.1:8080/jwt"
+                   |      http_connection_settings:
+                   |        connection_request_timeout_in_sec: -10
+                   |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+            errors.head should be(
+              DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds"))
+            )
           }
         )
       }
       "external validator custom http client connection pool size is negative" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_auth: jwt1
-              |
-              |  jwt:
-              |
-              |  - name: jwt1
-              |    signature_algo: "NONE"
-              |    external_validator:
-              |      url: "http://192.168.0.1:8080/jwt"
-              |      http_connection_settings:
-              |        connection_pool_size: -10
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_auth: jwt1
+                   |
+                   |  jwt:
+                   |
+                   |  - name: jwt1
+                   |    signature_algo: "NONE"
+                   |    external_validator:
+                   |      url: "http://192.168.0.1:8080/jwt"
+                   |      http_connection_settings:
+                   |        connection_pool_size: -10
+                   |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
@@ -1054,9 +1150,13 @@ class JwtAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message(
-              """Cannot compile '$..groups[?.id)].id_malformed' to JSON path""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message(
+                  """Cannot compile '$..groups[?.id)].id_malformed' to JSON path""".stripMargin
+                )
+              )
+            )
           }
         )
 
@@ -1082,22 +1182,31 @@ class JwtAuthRuleSettingsTests
                |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message(
-              """Cannot compile '$..groups[?.id)].name_malformed' to JSON path""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message(
+                  """Cannot compile '$..groups[?.id)].name_malformed' to JSON path""".stripMargin
+                )
+              )
+            )
           }
         )
       }
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider =
-    TestsEnvVarsProvider.usingMap(Map(
-      nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
-    ))
+  override protected implicit def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(
+      Map(
+        nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(
+          KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded
+        )
+      )
+    )
 
   private val mockedHttpClientsFactory: HttpClientsFactory = {
     val httpClientMock = mock[SimpleHttpClient[Task]]
     new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)
   }
+
 }

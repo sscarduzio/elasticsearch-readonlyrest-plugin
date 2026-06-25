@@ -42,14 +42,20 @@ object RorSchedulers {
     getInt("scala.concurrent.context.maxThreads", "x1")
   )
 
-  val blockingScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler(Scheduler.io("blocking-index-content-provider")))
+  val blockingScheduler: Scheduler = new ContextRestoringScheduler(
+    TracingScheduler(Scheduler.io("blocking-index-content-provider"))
+  )
 
-  val restApiScheduler: Scheduler = new ContextRestoringScheduler(TracingScheduler(Scheduler.fixedPool("ror-rest-api-executor", 10)))
+  val restApiScheduler: Scheduler = new ContextRestoringScheduler(
+    TracingScheduler(Scheduler.fixedPool("ror-rest-api-executor", 10))
+  )
 
-  private def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
+  private def getInt(name: String, default: String) = (try System.getProperty(name, default)
+  catch {
     case _: SecurityException => default
   }) match {
     case s if s.charAt(0) == 'x' => (Runtime.getRuntime.availableProcessors * s.substring(1).toDouble).ceil.toInt
-    case other => other.toInt
+    case other                   => other.toInt
   }
+
 }

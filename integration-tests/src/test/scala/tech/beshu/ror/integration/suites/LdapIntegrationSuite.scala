@@ -18,7 +18,11 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonLdapContainers, SingletonPluginTestSupport}
+import tech.beshu.ror.integration.utils.{
+  ESVersionSupportForAnyWordSpecLike,
+  SingletonLdapContainers,
+  SingletonPluginTestSupport
+}
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.dependencies.ldap
 import tech.beshu.ror.utils.containers.{DependencyDef, ElasticsearchNodeDataInitializer}
@@ -27,7 +31,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class LdapIntegrationSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -35,7 +39,9 @@ class LdapIntegrationSuite
 
   override implicit val rorSettingsFileName: String = "/ldap_integration/readonlyrest.yml"
 
-  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(LdapIntegrationSuite.nodeDataInitializer())
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(
+    LdapIntegrationSuite.nodeDataInitializer()
+  )
 
   override def clusterDependencies: List[DependencyDef] = List(
     ldap(name = "LDAP1", SingletonLdapContainers.ldap1),
@@ -207,9 +213,11 @@ class LdapIntegrationSuite
       }
     }
   }
+
 }
 
 object LdapIntegrationSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createDoc("test1", 1, ujson.read("""{"hello":"world"}""")).force()
@@ -219,4 +227,5 @@ object LdapIntegrationSuite {
     documentManager.createDoc("test5", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("test6", 1, ujson.read("""{"hello":"world"}""")).force()
   }
+
 }

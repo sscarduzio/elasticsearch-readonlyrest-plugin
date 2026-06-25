@@ -17,18 +17,21 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
-import io.lemonlabs.uri.Url
 import io.circe.Decoder
-import tech.beshu.ror.implicits.*
-import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalGroupsProviderService.Config.*
+import io.lemonlabs.uri.Url
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
+import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalGroupsProviderService.Config.*
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, Reason}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  DefinitionsLevelCreationError,
+  Reason
+}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
+import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.json.JsonPath
 
@@ -43,7 +46,9 @@ object ExternalGroupsProviderServicesDecoder {
   implicit val serviceNameDecoder: Decoder[ExternalGroupsProviderService.Name] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(ExternalGroupsProviderService.Name.apply)
 
-  private implicit def externalGroupsProviderServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalGroupsProviderService] = {
+  private implicit def externalGroupsProviderServiceDecoder(
+      implicit httpClientFactory: HttpClientsFactory
+  ): Decoder[ExternalGroupsProviderService] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -74,9 +79,8 @@ object ExternalGroupsProviderServicesDecoder {
               ),
               httpClient = httpClient
             )
-          cacheTtl.foldLeft(externalGroupsProviderService) {
-            case (cacheableAuthService, ttl) =>
-              new CacheableExternalGroupsProviderServiceDecorator(cacheableAuthService, ttl)
+          cacheTtl.foldLeft(externalGroupsProviderService) { case (cacheableAuthService, ttl) =>
+            new CacheableExternalGroupsProviderServiceDecorator(cacheableAuthService, ttl)
           }
         }
       }
@@ -88,20 +92,39 @@ object ExternalGroupsProviderServicesDecoder {
     SyncDecoderCreator
       .instance { c =>
         for {
-          groupIdsConfig <- c.downField("response_group_ids_json_path").as[Option[JsonPath]]
+          groupIdsConfig <- c
+            .downField("response_group_ids_json_path")
+            .as[Option[JsonPath]]
             .map(_.map(GroupsConfig.GroupIdsConfig.apply))
-          groupIdsDeprecatedConfig <- c.downField("response_groups_json_path").as[Option[JsonPath]]
+          groupIdsDeprecatedConfig <- c
+            .downField("response_groups_json_path")
+            .as[Option[JsonPath]]
             .map(_.map(GroupsConfig.GroupIdsConfig.apply))
           groupNamesConfig <-
-            c.downField("response_group_names_json_path").as[Option[JsonPath]]
+            c.downField("response_group_names_json_path")
+              .as[Option[JsonPath]]
               .map(_.map(GroupsConfig.GroupNamesConfig.apply))
         } yield (groupIdsConfig, groupIdsDeprecatedConfig, groupNamesConfig)
       }
       .emapE {
         case (Some(groupIdsConfig), None, groupNamesConfig) => Right(GroupsConfig(groupIdsConfig, groupNamesConfig))
-        case (None, Some(groupIdsDeprecatedConfig), _) => Right(GroupsConfig(groupIdsDeprecatedConfig, None))
-        case (None, None, _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External groups provider service '${name.show}' configuration is missing the 'response_group_ids_json_path' attribute")))
-        case (Some(_), Some(_), _) => Left(DefinitionsLevelCreationError(Reason.Message(s"External groups provider service '${name.show}' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time")))
+        case (None, Some(groupIdsDeprecatedConfig), _)      => Right(GroupsConfig(groupIdsDeprecatedConfig, None))
+        case (None, None, _)                                =>
+          Left(
+            DefinitionsLevelCreationError(
+              Reason.Message(
+                s"External groups provider service '${name.show}' configuration is missing the 'response_group_ids_json_path' attribute"
+              )
+            )
+          )
+        case (Some(_), Some(_), _) =>
+          Left(
+            DefinitionsLevelCreationError(
+              Reason.Message(
+                s"External groups provider service '${name.show}' configuration cannot have the 'response_groups_json_path' and 'response_group_ids_json_path' attributes defined at the same time"
+              )
+            )
+          )
       }
       .mapError(DefinitionsLevelCreationError.apply)
       .decoder
@@ -114,9 +137,16 @@ object ExternalGroupsProviderServicesDecoder {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE[AuthTokenSendMethod] {
-        case "HEADER" => Right(AuthTokenSendMethod.UsingHeader)
+        case "HEADER"      => Right(AuthTokenSendMethod.UsingHeader)
         case "QUERY_PARAM" => Right(AuthTokenSendMethod.UsingQueryParam)
-        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '${unknown.show}' of 'auth_token_passed_as' attribute. Supported: 'HEADER', 'QUERY_PARAM'")))
+        case unknown       =>
+          Left(
+            DefinitionsLevelCreationError(
+              Message(
+                s"Unknown value '${unknown.show}' of 'auth_token_passed_as' attribute. Supported: 'HEADER', 'QUERY_PARAM'"
+              )
+            )
+          )
       }
       .decoder
 
@@ -125,8 +155,13 @@ object ExternalGroupsProviderServicesDecoder {
       .from(Decoder.decodeString)
       .emapE[SupportedHttpMethod] {
         case "POST" | "post" => Right(SupportedHttpMethod.Post)
-        case "GET" | "get" => Right(SupportedHttpMethod.Get)
-        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '${unknown.show}' of 'http_method' attribute. Supported: 'GET', 'POST'")))
+        case "GET" | "get"   => Right(SupportedHttpMethod.Get)
+        case unknown         =>
+          Left(
+            DefinitionsLevelCreationError(
+              Message(s"Unknown value '${unknown.show}' of 'http_method' attribute. Supported: 'GET', 'POST'")
+            )
+          )
       }
       .decoder
 
@@ -146,7 +181,11 @@ object ExternalGroupsProviderServicesDecoder {
       }
       .emapE {
         case (Some(_), Some(_)) =>
-          Left(DefinitionsLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+          Left(
+            DefinitionsLevelCreationError(
+              Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")
+            )
+          )
         case (Some(validate), None) =>
           Right(SimpleHttpClient.Config.default.copy(validate = validate))
         case (None, Some(config)) =>

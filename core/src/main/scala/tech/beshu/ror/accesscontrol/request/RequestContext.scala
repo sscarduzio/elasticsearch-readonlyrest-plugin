@@ -27,8 +27,11 @@ import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.S
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.bearer
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
+import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{
+  InvalidValue,
+  MissingHeader
+}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
-import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRetrievingError.{InvalidValue, MissingHeader}
 import tech.beshu.ror.es.{EsNodeSettings, EsServices}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -80,29 +83,32 @@ trait RequestContext {
   def generalAuditEvents: JSONObject = new JSONObject()
 
   def currentGroupId: Option[GroupId] = {
-    restRequest
-      .allHeaders
+    restRequest.allHeaders
       .find(_.name === Header.Name.currentGroup)
       .map(h => GroupId(h.value))
   }
+
 }
 
 object RequestContext extends RequestIdAwareLogging {
 
-  type Aux[B <: BlockContext] = RequestContext {type BLOCK_CONTEXT = B}
+  type Aux[B <: BlockContext] = RequestContext { type BLOCK_CONTEXT = B }
 
-  final case class Id private(value: String) {
+  final case class Id private (value: String) {
     def toRequestId: RequestId = RequestId(value)
   }
+
   object Id {
     def fromString(value: String): Id = Id(value)
 
     def from(esContext: BaseEsContext): Id = {
       new Id(s"${esContext.correlationId.value.value.value}-${esContext.restRequest.hashCode()}#${esContext.esTaskId}")
     }
+
   }
 
-  final case class Method private(value: String) extends AnyVal
+  final case class Method private (value: String) extends AnyVal
+
   object Method {
     val GET: Method = Method.fromStringUnsafe("GET")
     val POST: Method = Method.fromStringUnsafe("POST")
@@ -115,16 +121,20 @@ object RequestContext extends RequestIdAwareLogging {
   }
 
   sealed trait RequestGroup
+
   object RequestGroup {
     final case class AGroup(userGroup: GroupId) extends RequestGroup
     case object `N/A` extends RequestGroup
 
     implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
+
       def toOption: Option[GroupId] = requestGroup match {
         case AGroup(userGroup) => Some(userGroup)
-        case `N/A` => None
+        case `N/A`             => None
       }
+
     }
+
   }
 
   private val readActionPatternsMatcher: PatternsMatcher[Action] = PatternsMatcher.create {
@@ -202,9 +212,7 @@ object RequestContext extends RequestIdAwareLogging {
 
     def basicAuth: Option[BasicAuth] = {
       implicit val requestId: RequestId = requestContext.id.toRequestId
-      requestContext
-        .restRequest
-        .allHeaders
+      requestContext.restRequest.allHeaders
         .to(LazyList)
         .map(BasicAuth.fromHeader)
         .find(_.isDefined)
@@ -217,14 +225,16 @@ object RequestContext extends RequestIdAwareLogging {
       AuthorizationTokenDef(headerName = Header.Name.authorization, allowedPrefix = StrictlyDefined(bearer))
     )
 
-    def authorizationTokenBy(config: AuthorizationTokenDef): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
+    def authorizationTokenBy(
+        config: AuthorizationTokenDef
+    ): Either[AuthorizationTokenRetrievingError, AuthorizationToken] = {
       for {
         tokenHeader <- findHeader(config.headerName).toRight(MissingHeader)
         authorizationToken <- AuthorizationToken.from(tokenHeader.value).toRight(InvalidValue)
         _ <- config.allowedPrefix match {
-          case AllowedPrefix.Any => Right(())
+          case AllowedPrefix.Any                                                             => Right(())
           case AllowedPrefix.StrictlyDefined(prefix) if prefix === authorizationToken.prefix => Right(())
-          case AllowedPrefix.StrictlyDefined(_) => Left(InvalidValue)
+          case AllowedPrefix.StrictlyDefined(_)                                              => Left(InvalidValue)
         }
       } yield authorizationToken
 
@@ -235,8 +245,10 @@ object RequestContext extends RequestIdAwareLogging {
   }
 
   sealed trait AuthorizationTokenRetrievingError
+
   object AuthorizationTokenRetrievingError {
     case object MissingHeader extends AuthorizationTokenRetrievingError
     case object InvalidValue extends AuthorizationTokenRetrievingError
   }
+
 }

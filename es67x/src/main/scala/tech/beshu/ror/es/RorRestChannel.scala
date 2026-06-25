@@ -16,7 +16,12 @@
  */
 package tech.beshu.ror.es
 
-import org.elasticsearch.rest.{AbstractRestChannel, RestChannel as EsRestChannel, RestRequest as EsRestRequest, RestResponse as EsRestResponse}
+import org.elasticsearch.rest.{
+  AbstractRestChannel,
+  RestChannel as EsRestChannel,
+  RestRequest as EsRestRequest,
+  RestResponse as EsRestResponse
+}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
@@ -30,14 +35,17 @@ import java.net.{InetSocketAddress, SocketAddress}
 import scala.jdk.CollectionConverters.*
 
 object RorRestChannel {
+
   def from(esRestChannel: EsRestChannel): Either[Header.AuthorizationValueError, RorRestChannel] = {
     RorRestRequest
       .from(esRestChannel.request())
       .map(new RorRestChannel(esRestChannel, _))
   }
+
 }
-final class RorRestChannel private(underlying: EsRestChannel, val restRequest: RorRestRequest)
-  extends AbstractRestChannel(underlying.request(), true)
+
+final class RorRestChannel private (underlying: EsRestChannel, val restRequest: RorRestRequest)
+    extends AbstractRestChannel(underlying.request(), true)
     with ResponseFieldsFiltering
     with RequestIdAwareLogging {
 
@@ -45,6 +53,7 @@ final class RorRestChannel private(underlying: EsRestChannel, val restRequest: R
     ThreadRepo.removeRestChannel(this)
     underlying.sendResponse(filterRestResponse(response))
   }
+
 }
 
 object RorRestRequest {
@@ -54,9 +63,10 @@ object RorRestRequest {
       .fromRawHeaders(esRestRequest.getHeaders)
       .map(new RorRestRequest(esRestRequest, _))
   }
+
 }
-final class RorRestRequest private(underlying: EsRestRequest,
-                                   headers: Set[Header]) extends RestRequest {
+
+final class RorRestRequest private (underlying: EsRestRequest, headers: Set[Header]) extends RestRequest {
 
   override lazy val method: Method = Method.fromStringUnsafe(underlying.method().name())
 
@@ -81,9 +91,10 @@ final class RorRestRequest private(underlying: EsRestRequest,
       socketAddress <- Option(extractInetSocketAddress(underlying))
       inetSocketAddress <- socketAddress match {
         case i: InetSocketAddress => Some(i)
-        case _ => None
+        case _                    => None
       }
       address <- Address.from(inetSocketAddress)
     } yield address
   }
+
 }

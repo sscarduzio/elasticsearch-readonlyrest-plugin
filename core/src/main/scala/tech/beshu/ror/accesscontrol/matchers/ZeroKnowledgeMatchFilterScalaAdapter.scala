@@ -18,60 +18,81 @@ package tech.beshu.ror.accesscontrol.matchers
 
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
-import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeMatchFilter}
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.{StringPatternsMatcherJava, ZeroKnowledgeMatchFilter}
 
 import scala.jdk.CollectionConverters.*
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 
-  def alterIndicesIfNecessary(indices: Set[ClusterIndexName], matcher: PatternsMatcher[ClusterIndexName]): AlterResult[ClusterIndexName] = {
-    Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      indices.asScala.map(_.stringify).asJava,
-      new StringPatternsMatcherJava(matcher)
-    )) match {
-      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toCovariantSet)
+  def alterIndicesIfNecessary(
+      indices: Set[ClusterIndexName],
+      matcher: PatternsMatcher[ClusterIndexName]
+  ): AlterResult[ClusterIndexName] = {
+    Option(
+      ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
+        indices.asScala.map(_.stringify).asJava,
+        new StringPatternsMatcherJava(matcher)
+      )
+    ) match {
+      case Some(alteredIndices) =>
+        AlterResult.Altered(alteredIndices.asScala.flatMap(ClusterIndexName.fromString).toCovariantSet)
       case None => AlterResult.NotAltered()
     }
   }
 
-  def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: PatternsMatcher[RepositoryName]): AlterResult[RepositoryName] = {
-    Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      repositories
-        .collect {
-          case RepositoryName.Pattern(v) => v.value
-          case RepositoryName.Full(v) => v.value
-        }
-        .asScala
-        .asJava,
-      new StringPatternsMatcherJava(matcher)
-    )) match {
-      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toCovariantSet)
+  def alterRepositoriesIfNecessary(
+      repositories: Set[RepositoryName],
+      matcher: PatternsMatcher[RepositoryName]
+  ): AlterResult[RepositoryName] = {
+    Option(
+      ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
+        repositories
+          .collect {
+            case RepositoryName.Pattern(v) => v.value
+            case RepositoryName.Full(v)    => v.value
+          }
+          .asScala
+          .asJava,
+        new StringPatternsMatcherJava(matcher)
+      )
+    ) match {
+      case Some(alteredRepositories) =>
+        AlterResult.Altered(alteredRepositories.asScala.flatMap(RepositoryName.from).toCovariantSet)
       case None => AlterResult.NotAltered()
     }
   }
 
-  def alterSnapshotsIfNecessary(snapshots: Set[SnapshotName], matcher: PatternsMatcher[SnapshotName]): AlterResult[SnapshotName] = {
-    Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      snapshots
-        .collect {
-          case SnapshotName.Pattern(v) => v.value
-          case SnapshotName.Full(v) => v.value
-        }
-        .asScala
-        .asJava,
-      new StringPatternsMatcherJava(matcher)
-    )) match {
-      case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.flatMap(SnapshotName.from).toCovariantSet)
+  def alterSnapshotsIfNecessary(
+      snapshots: Set[SnapshotName],
+      matcher: PatternsMatcher[SnapshotName]
+  ): AlterResult[SnapshotName] = {
+    Option(
+      ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
+        snapshots
+          .collect {
+            case SnapshotName.Pattern(v) => v.value
+            case SnapshotName.Full(v)    => v.value
+          }
+          .asScala
+          .asJava,
+        new StringPatternsMatcherJava(matcher)
+      )
+    ) match {
+      case Some(alteredSnapshots) =>
+        AlterResult.Altered(alteredSnapshots.asScala.flatMap(SnapshotName.from).toCovariantSet)
       case None => AlterResult.NotAltered()
     }
   }
+
 }
 
 object ZeroKnowledgeMatchFilterScalaAdapter {
   sealed trait AlterResult[T]
+
   object AlterResult {
     final case class NotAltered[T]() extends AlterResult[T]
     final case class Altered[T](values: Set[T]) extends AlterResult[T]
   }
+
 }

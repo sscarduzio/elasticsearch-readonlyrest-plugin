@@ -28,9 +28,11 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 
 sealed trait StartupSingleResolvableVariable extends StartupResolvableVariable[String]
+
 object StartupSingleResolvableVariable {
 
   final class Env(name: EnvVarName, transformation: Option[Function]) extends StartupSingleResolvableVariable {
+
     override def resolve(provider: EnvVarsProvider): Either[ResolvingError, String] = {
       withTransformation(
         Either.fromOption(provider.getEnv(name), ResolvingError(s"Cannot resolve ENV variable '${name.show}'"))
@@ -40,9 +42,10 @@ object StartupSingleResolvableVariable {
     private def withTransformation(resolvable: => Either[ResolvingError, String]) = {
       transformation match {
         case Some(function) => resolvable.map(function.apply)
-        case None => resolvable
+        case None           => resolvable
       }
     }
+
   }
 
   final case class Text(value: String) extends StartupSingleResolvableVariable {
@@ -50,9 +53,13 @@ object StartupSingleResolvableVariable {
       Right(value)
   }
 
-  final case class Composed(vars: NonEmptyList[StartupResolvableVariable[String]]) extends StartupSingleResolvableVariable {
+  final case class Composed(vars: NonEmptyList[StartupResolvableVariable[String]])
+      extends StartupSingleResolvableVariable {
+
     override def resolve(provider: EnvVarsProvider): Either[ResolvingError, String] = {
       vars.map(_.resolve(provider)).sequence.map(_.toList.mkString)
     }
+
   }
+
 }
