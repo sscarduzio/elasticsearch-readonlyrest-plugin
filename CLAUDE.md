@@ -31,6 +31,12 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 ./gradlew licenseFormatMain
 ./gradlew licenseFormatTest
 
+# Format all sources (scalafmt for Scala, Google Java Format for Java)
+./gradlew formatCode
+
+# Check formatting without modifying files (used in CI)
+./gradlew formatCodeCheck
+
 # Clean eshome (needed when switching ES versions)
 ./gradlew :eshome:clean
 ```
@@ -69,6 +75,7 @@ ES module entry point pattern: `es{version}x/src/main/scala/tech/beshu/ror/es/Re
 - **Shadow/Shading**: all dependencies auto-relocated under `tech.beshu.ror` prefix
 - **Strict compilation**: `-Xfatal-warnings` with unused imports/params/locals/privates checks — no warnings are acceptable
 - **License headers**: GNU GPL v3 headers required on all source files. Pre-commit hook runs `./gradlew license --rerun-tasks` automatically
+- **Code formatting**: scalafmt (Scala) + Google Java Format (Java) via Spotless. Pre-commit hook formats staged files automatically. Run `./gradlew formatCode` manually or `./gradlew formatCodeCheck` to verify.
 - **Internal Scala APIs**: avoid `scala.runtime.ScalaRunTime._*` and other `_`-prefixed runtime methods — they are implementation details
 - **Plugin ZIP output**: `es{version}x/build/distributions/readonlyrest-{pluginVersion}_es{esVersion}.zip`
 
