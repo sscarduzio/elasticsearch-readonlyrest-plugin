@@ -85,8 +85,8 @@ dependencyCheck {
     }
     nvd {
         apiKey = System.getenv('NVD_API_KEY')
-        resultsPerPage = 500 // default - 2000
-        validForHours = 12 // default - 4
+        // NVD API unavailable since June 2026 schema migration (503/524); CI sets NVD_AUTO_UPDATE=false when DB is cached to avoid hitting the API on every run
+        autoUpdate = System.getenv('NVD_AUTO_UPDATE') != 'false'
     }
 }
 

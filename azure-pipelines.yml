@@ -235,6 +235,7 @@ stages:
               # prefix fallback to any prior cache entry
               restoreKeys: dependency-check-v1-
               path: $(dependencyCheckDataDir)
+              cacheHitVar: DEPENDENCY_CHECK_CACHE_HIT
           - script: |
               echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
 
@@ -247,6 +248,12 @@ stages:
                 export NVD_API_KEY=$var_nvd_api_key
                 export OSS_INDEX_USERNAME=$var_oss_index_username
                 export OSS_INDEX_PASSWORD=$var_oss_index_password
+              fi
+
+              # Skip NVD update when DB is already cached to avoid hitting the NVD API on every run.
+              # On cache miss (e.g. new month), autoUpdate stays enabled so the DB can be populated.
+              if [ "$DEPENDENCY_CHECK_CACHE_HIT" = "true" ] || [ "$DEPENDENCY_CHECK_CACHE_HIT" = "inexact" ]; then
+                export NVD_AUTO_UPDATE=false
               fi
 
               ci/run-pipeline.sh
