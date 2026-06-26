@@ -18,9 +18,7 @@ package tech.beshu.ror.integration.suites.fields.querydsl
 
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class FieldRuleMSearchQueryDSLSuite
-  extends FieldRuleQueryDSLSuite
-    with SingletonPluginTestSupport {
+class FieldRuleMSearchQueryDSLSuite extends FieldRuleQueryDSLSuite with SingletonPluginTestSupport {
 
   override protected def assertNoSearchHitsReturnedFor(index: String, query: String) = {
     val result = searchManager.mSearch(s"""{"index":"$index"}""", query.replaceAll("\\n", ""))
@@ -29,4 +27,5 @@ class FieldRuleMSearchQueryDSLSuite
     result.responses.size shouldBe 1
     result.searchHitsForResponse(0).isEmpty shouldBe true
   }
+
 }

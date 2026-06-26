@@ -26,22 +26,31 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRAuthMockAction(settings: Settings,
-                                threadPool: ThreadPool,
-                                transportService: TransportService,
-                                actionFilters: ActionFilters,
-                                indexNameExpressionResolver: IndexNameExpressionResolver,
-                                @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
-    settings, RRAuthMockActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAuthMockRequest()
-  ) {
+class TransportRRAuthMockAction(
+    settings: Settings,
+    threadPool: ThreadPool,
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    indexNameExpressionResolver: IndexNameExpressionResolver,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
+      settings,
+      RRAuthMockActionType.name,
+      threadPool,
+      transportService,
+      actionFilters,
+      indexNameExpressionResolver,
+      () => new RRAuthMockRequest()
+    ) {
 
   @Inject
-  def this(settings: Settings,
-           threadPool: ThreadPool,
-           transportService: TransportService,
-           actionFilters: ActionFilters,
-           indexNameExpressionResolver: IndexNameExpressionResolver) =
+  def this(
+      settings: Settings,
+      threadPool: ThreadPool,
+      transportService: TransportService,
+      actionFilters: ActionFilters,
+      indexNameExpressionResolver: IndexNameExpressionResolver
+  ) =
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
 
   private val handler = new RRAuthMockActionHandler()
@@ -49,4 +58,5 @@ class TransportRRAuthMockAction(settings: Settings,
   override def doExecute(request: RRAuthMockRequest, listener: ActionListener[RRAuthMockResponse]): Unit = {
     handler.handle(request, listener)
   }
+
 }

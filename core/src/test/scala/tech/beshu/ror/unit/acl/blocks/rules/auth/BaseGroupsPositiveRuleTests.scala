@@ -41,17 +41,21 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
     "not match because of not eligible preferred group present" when {
       "groups mapping is not configured" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupId("g1").nel),
-            AlreadyResolved(GroupId("g2").nel),
-          )),
-          usersDefinitions = NonEmptyList.of(UserDef(
-            usernames = userIdPatterns("user1"),
-            mode = WithoutGroupsMapping(
-              authenticationRule.permitting(User.Id("user1")),
-              groups("g1")
+          permittedGroupsLogic = resolvableGroupsLogic(
+            UniqueNonEmptyList.of(
+              AlreadyResolved(GroupId("g1").nel),
+              AlreadyResolved(GroupId("g2").nel),
             )
-          ))
+          ),
+          usersDefinitions = NonEmptyList.of(
+            UserDef(
+              usernames = userIdPatterns("user1"),
+              mode = WithoutGroupsMapping(
+                authenticationRule.permitting(User.Id("user1")),
+                groups("g1")
+              )
+            )
+          )
         )
         val usr = Some(User.Id("user1"))
         assertNotMatchRule(
@@ -64,17 +68,21 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
       }
       "groups mapping is configured" in {
         val ruleSettings = GroupsRulesSettings(
-          permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-            AlreadyResolved(GroupId("g1").nel),
-            AlreadyResolved(GroupId("g2").nel),
-          )),
-          usersDefinitions = NonEmptyList.of(UserDef(
-            usernames = userIdPatterns("user1"),
-            mode = WithGroupsMapping(
-              SingleRule(authRule.permitting(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
-              groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group"))))
+          permittedGroupsLogic = resolvableGroupsLogic(
+            UniqueNonEmptyList.of(
+              AlreadyResolved(GroupId("g1").nel),
+              AlreadyResolved(GroupId("g2").nel),
             )
-          ))
+          ),
+          usersDefinitions = NonEmptyList.of(
+            UserDef(
+              usernames = userIdPatterns("user1"),
+              mode = WithGroupsMapping(
+                SingleRule(authRule.permitting(User.Id("user1"), NonEmptyList.of(group("remote_group")))),
+                groupMapping(Mapping(group("g1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group"))))
+              )
+            )
+          )
         )
         val usr = Some(User.Id("user1"))
         assertNotMatchRule(
@@ -91,13 +99,17 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
         "no group can be resolved" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
-              )),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.denying, groups("group_user1"))
-              ))
+              permittedGroupsLogic = resolvableGroupsLogic(
+                UniqueNonEmptyList.of(
+                  createVariable("group_@{user}")(AlwaysRightConvertible.from(GroupIdLike.from)).toOption.get
+                )
+              ),
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithoutGroupsMapping(authenticationRule.denying, groups("group_user1"))
+                )
+              )
             ),
             loggedUser = None,
             preferredGroupId = None,
@@ -107,11 +119,14 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
         "resolved groups don't contain preferred group" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupIdLike.from("g1").nel))),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
-              ))
+              permittedGroupsLogic =
+                resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupIdLike.from("g1").nel))),
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
+                )
+              )
             ),
             loggedUser = None,
             preferredGroupId = Some(GroupId("g2")),
@@ -122,10 +137,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
-              ))
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
+                )
+              )
             ),
             loggedUser = Some(User.Id("user2")),
             preferredGroupId = None,
@@ -136,10 +153,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
-              ))
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithoutGroupsMapping(authenticationRule.denying, groups("g1"))
+                )
+              )
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
@@ -150,10 +169,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("u*"),
-                mode = WithoutGroupsMapping(authenticationRule.permitting(User.Id("User1")), groups("g1"))
-              ))
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("u*"),
+                  mode = WithoutGroupsMapping(authenticationRule.permitting(User.Id("User1")), groups("g1"))
+                )
+              )
             ),
             loggedUser = None,
             preferredGroupId = None,
@@ -164,10 +185,12 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
           assertNotMatchRule(
             settings = GroupsRulesSettings(
               permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
-              ))
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithoutGroupsMapping(authenticationRule.throwing, groups("g1"))
+                )
+              )
             ),
             loggedUser = Some(User.Id("user1")),
             preferredGroupId = None,
@@ -179,13 +202,17 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
         "user cannot be authenticated by authentication with authorization rule" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group_user1").nel)
-              )),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithGroupsMapping(SingleRule(authRule.denying), noGroupMappingFrom("group_user1"))
-              ))
+              permittedGroupsLogic = resolvableGroupsLogic(
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group_user1").nel)
+                )
+              ),
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithGroupsMapping(SingleRule(authRule.denying), noGroupMappingFrom("group_user1"))
+                )
+              )
             ),
             loggedUser = None,
             preferredGroupId = None,
@@ -195,19 +222,23 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
         "user cannot be authorized by authentication with authorization rule" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group_user1").nel)
-              )),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithGroupsMapping(
-                  SeparateRules(
-                    authenticationRule.permitting(User.Id("user1")),
-                    authorizationRule.denying
-                  ),
-                  noGroupMappingFrom("group_user1")
+              permittedGroupsLogic = resolvableGroupsLogic(
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group_user1").nel)
                 )
-              ))
+              ),
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithGroupsMapping(
+                    SeparateRules(
+                      authenticationRule.permitting(User.Id("user1")),
+                      authorizationRule.denying
+                    ),
+                    noGroupMappingFrom("group_user1")
+                  )
+                )
+              )
             ),
             loggedUser = None,
             preferredGroupId = None,
@@ -217,19 +248,23 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
         "user cannot be authorized by authentication with authorization rule (simple groups mapping matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group_user1").nel)
-              )),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithGroupsMapping(
-                  SeparateRules(
-                    authenticationRule.permitting(User.Id("user1")),
-                    authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
-                  ),
-                  noGroupMappingFrom("group_user2")
+              permittedGroupsLogic = resolvableGroupsLogic(
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group_user1").nel)
                 )
-              ))
+              ),
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithGroupsMapping(
+                    SeparateRules(
+                      authenticationRule.permitting(User.Id("user1")),
+                      authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
+                    ),
+                    noGroupMappingFrom("group_user2")
+                  )
+                )
+              )
             ),
             loggedUser = None,
             preferredGroupId = None,
@@ -239,51 +274,62 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group_user1").nel)
-              )),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithGroupsMapping(
-                  SeparateRules(
-                    authenticationRule.permitting(User.Id("user1")),
-                    authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
-                  ),
-                  groupMapping(
-                    Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_1"))),
-                    Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_2")))
+              permittedGroupsLogic = resolvableGroupsLogic(
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group_user1").nel)
+                )
+              ),
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithGroupsMapping(
+                    SeparateRules(
+                      authenticationRule.permitting(User.Id("user1")),
+                      authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
+                    ),
+                    groupMapping(
+                      Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_1"))),
+                      Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("remote_group_2")))
+                    )
                   )
                 )
-              ))
+              )
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No external groups matched any mapping pattern)")
+            denialCause =
+              GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (No external groups matched any mapping pattern)")
           )
         }
         "user cannot be authorized by authentication with authorization rule (advanced groups mapping with wildcard matching fails)" in {
           assertNotMatchRule(
             settings = GroupsRulesSettings(
-              permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(
-                AlreadyResolved(GroupId("group_user1").nel)
-              )),
-              usersDefinitions = NonEmptyList.of(UserDef(
-                usernames = userIdPatterns("user1"),
-                mode = WithGroupsMapping(
-                  SeparateRules(
-                    authenticationRule.permitting(User.Id("user1")),
-                    authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
-                  ),
-                  groupMapping(
-                    Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))),
-                    Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("*2")))
+              permittedGroupsLogic = resolvableGroupsLogic(
+                UniqueNonEmptyList.of(
+                  AlreadyResolved(GroupId("group_user1").nel)
+                )
+              ),
+              usersDefinitions = NonEmptyList.of(
+                UserDef(
+                  usernames = userIdPatterns("user1"),
+                  mode = WithGroupsMapping(
+                    SeparateRules(
+                      authenticationRule.permitting(User.Id("user1")),
+                      authorizationRule.permitting(NonEmptyList.of(group("remote_group2")))
+                    ),
+                    groupMapping(
+                      Mapping(group("group_user1"), UniqueNonEmptyList.of(GroupIdLike.from("*1"))),
+                      Mapping(group("group_user2"), UniqueNonEmptyList.of(GroupIdLike.from("*2")))
+                    )
                   )
                 )
-              ))
+              )
             ),
             loggedUser = None,
             preferredGroupId = None,
-            denialCause = GroupsAuthorizationFailed("user1:GROUPS_AUTH_FAIL (None of the user's external groups could be mapped to any of the locally permitted groups)")
+            denialCause = GroupsAuthorizationFailed(
+              "user1:GROUPS_AUTH_FAIL (None of the user's external groups could be mapped to any of the locally permitted groups)"
+            )
           )
         }
       }
@@ -295,14 +341,17 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             "authentication rule also matches and case sensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-                  usersDefinitions = NonEmptyList.of(UserDef(
-                    usernames = userIdPatterns("user1"),
-                    mode = WithoutGroupsMapping(
-                      authenticationRule.permitting(User.Id("user1")),
-                      groups("g1")
+                  permittedGroupsLogic =
+                    resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                  usersDefinitions = NonEmptyList.of(
+                    UserDef(
+                      usernames = userIdPatterns("user1"),
+                      mode = WithoutGroupsMapping(
+                        authenticationRule.permitting(User.Id("user1")),
+                        groups("g1")
+                      )
                     )
-                  ))
+                  )
                 ),
                 loggedUser = None,
                 preferredGroupId = None
@@ -317,14 +366,17 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             "authentication rule also matches and case insensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-                  usersDefinitions = NonEmptyList.of(UserDef(
-                    usernames = userIdPatterns("user1"),
-                    mode = WithoutGroupsMapping(
-                      authenticationRule.permitting(User.Id("User1")),
-                      groups("g1")
+                  permittedGroupsLogic =
+                    resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                  usersDefinitions = NonEmptyList.of(
+                    UserDef(
+                      usernames = userIdPatterns("user1"),
+                      mode = WithoutGroupsMapping(
+                        authenticationRule.permitting(User.Id("User1")),
+                        groups("g1")
+                      )
                     )
-                  ))
+                  )
                 ),
                 loggedUser = None,
                 preferredGroupId = None,
@@ -342,14 +394,17 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             "authentication rule also matches and and case sensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-                  usersDefinitions = NonEmptyList.of(UserDef(
-                    usernames = userIdPatterns("u*"),
-                    mode = WithoutGroupsMapping(
-                      authenticationRule.permitting(User.Id("user1")),
-                      groups("g1")
+                  permittedGroupsLogic =
+                    resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                  usersDefinitions = NonEmptyList.of(
+                    UserDef(
+                      usernames = userIdPatterns("u*"),
+                      mode = WithoutGroupsMapping(
+                        authenticationRule.permitting(User.Id("user1")),
+                        groups("g1")
+                      )
                     )
-                  ))
+                  )
                 ),
                 loggedUser = None,
                 preferredGroupId = None
@@ -364,14 +419,17 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             "authentication rule also matches and and case insensitivity is configured" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
-                  usersDefinitions = NonEmptyList.of(UserDef(
-                    usernames = userIdPatterns("u*"),
-                    mode = WithoutGroupsMapping(
-                      authenticationRule.permitting(User.Id("User1")),
-                      groups("g1")
+                  permittedGroupsLogic =
+                    resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                  usersDefinitions = NonEmptyList.of(
+                    UserDef(
+                      usernames = userIdPatterns("u*"),
+                      mode = WithoutGroupsMapping(
+                        authenticationRule.permitting(User.Id("User1")),
+                        groups("g1")
+                      )
                     )
-                  ))
+                  )
                 ),
                 loggedUser = None,
                 preferredGroupId = None,
@@ -391,7 +449,8 @@ trait BaseGroupsPositiveRuleTests[GL <: PositiveGroupsLogic] extends GroupsRuleT
             "authentication rule also matches and preferred group is used" in {
               assertMatchRule(
                 settings = GroupsRulesSettings(
-                  permittedGroupsLogic = resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
+                  permittedGroupsLogic =
+                    resolvableGroupsLogic(UniqueNonEmptyList.of(AlreadyResolved(GroupId("g1").nel))),
                   usersDefinitions = NonEmptyList.of(
                     UserDef(
                       usernames = userIdPatterns("user2"),

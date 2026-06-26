@@ -77,23 +77,20 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import java.time.Instant
 import scala.reflect.ClassTag
 
-class AclAwareRequestFilter(settings: Settings,
-                            threadPool: ThreadPool)
-                           (implicit systemContext: SystemContext)
-  extends RequestIdAwareLogging {
+class AclAwareRequestFilter(settings: Settings, threadPool: ThreadPool)(
+    implicit systemContext: SystemContext
+) extends RequestIdAwareLogging {
 
   import systemContext.{scheduler, uniqueIdentifierGenerator}
 
-  def handle(engines: Engines,
-             esContext: EsContext): Task[Either[Error, Unit]] = {
+  def handle(engines: Engines, esContext: EsContext): Task[Either[Error, Unit]] = {
     esContext
       .pickEngineToHandle(engines)
       .map(handleRequestWithEngine(_, esContext))
       .sequence
   }
 
-  private def handleRequestWithEngine(engine: Engine,
-                                      esContext: EsContext) = {
+  private def handleRequestWithEngine(engine: Engine, esContext: EsContext) = {
     esContext.actionRequest match {
       case request: RRUserMetadataRequest =>
         val handler = new UserMetadataRequestHandler(engine, esContext)
@@ -104,9 +101,11 @@ class AclAwareRequestFilter(settings: Settings,
     }
   }
 
-  private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler,
-                                     esContext: EsContext,
-                                     aclContext: AccessControlStaticContext) = {
+  private def handleEsRestApiRequest(
+      regularRequestHandler: RegularRequestHandler,
+      esContext: EsContext,
+      aclContext: AccessControlStaticContext
+  ) = {
     implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
     esContext.actionRequest match {
       case request: RRAuditEventRequest =>
@@ -188,7 +187,9 @@ class AclAwareRequestFilter(settings: Settings,
             regularRequestHandler.handle(new ClusterStateEsRequestContext(request, esContext, aclContext, threadPool))
         }
       case request: ClusterAllocationExplainRequest =>
-        regularRequestHandler.handle(new ClusterAllocationExplainEsRequestContext(request, esContext, aclContext, threadPool))
+        regularRequestHandler.handle(
+          new ClusterAllocationExplainEsRequestContext(request, esContext, aclContext, threadPool)
+        )
       case request: RolloverRequest =>
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, threadPool))
       case request: IndicesRequest.Replaceable =>
@@ -201,19 +202,23 @@ class AclAwareRequestFilter(settings: Settings,
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, threadPool))
       case request: CompositeIndicesRequest =>
         ReflectionBasedActionRequest(esContext, aclContext, threadPool) match {
-          case SqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
-          case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
+          case SqlIndicesEsRequestContext(r)          => regularRequestHandler.handle(r)
+          case SearchTemplateEsRequestContext(r)      => regularRequestHandler.handle(r)
           case MultiSearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
-          case _ =>
-            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getName.show}")
-            regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, threadPool))
+          case _                                      =>
+            logger.error(
+              s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getName.show}"
+            )
+            regularRequestHandler.handle(
+              new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, threadPool)
+            )
         }
       // rest
       case _ =>
         ReflectionBasedActionRequest(esContext, aclContext, threadPool) match {
           case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
           // rollup
-          case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
+          case PutRollupJobEsRequestContext(request)  => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
@@ -230,15 +235,17 @@ class AclAwareRequestFilter(settings: Settings,
 
 object AclAwareRequestFilter {
 
-  final class EsContext(val channel: RorRestChannel,
-                        val correlationId: Eval[CorrelationId],
-                        val esNodeSettings: EsNodeSettings,
-                        val task: EsTask,
-                        val action: Action,
-                        val actionRequest: ActionRequest,
-                        val listener: RorActionListener[ActionResponse],
-                        val chain: EsChain,
-                        val esServices: EsServices) extends BaseEsContext {
+  final class EsContext(
+      val channel: RorRestChannel,
+      val correlationId: Eval[CorrelationId],
+      val esNodeSettings: EsNodeSettings,
+      val task: EsTask,
+      val action: Action,
+      val actionRequest: ActionRequest,
+      val listener: RorActionListener[ActionResponse],
+      val chain: EsChain,
+      val esServices: EsServices
+  ) extends BaseEsContext {
 
     override val esTaskId: Long = task.getId
 
@@ -247,58 +254,67 @@ object AclAwareRequestFilter {
     val timestamp: Instant = Instant.now()
 
     private lazy val isImpersonationHeader =
-      channel.restRequest
-        .allHeaders
+      channel.restRequest.allHeaders
         .exists { case Header(name, _) => name === Header.Name.impersonateAs }
 
     def pickEngineToHandle(engines: Engines): Either[Error, Engine] = {
       val impersonationHeaderPresent = isImpersonationHeader
       engines.impersonatorsEngine match {
         case Some(impersonatorsEngine) if impersonationHeaderPresent => Right(impersonatorsEngine)
-        case None if impersonationHeaderPresent => Left(Error.ImpersonatorsEngineNotConfigured)
-        case Some(_) | None => Right(engines.mainEngine)
+        case None if impersonationHeaderPresent                      => Left(Error.ImpersonatorsEngineNotConfigured)
+        case Some(_) | None                                          => Right(engines.mainEngine)
       }
     }
+
   }
+
   object EsContext {
 
     implicit class CorrelationIdFrom(val channel: RorRestChannel) extends AnyVal {
+
       def correlationId: Eval[CorrelationId] = Eval.later {
-        channel.restRequest
-          .allHeaders
+        channel.restRequest.allHeaders
           .find(_.name === Header.Name.correlationId)
           .map(_.value)
           .map(CorrelationId.apply)
           .getOrElse(CorrelationId.random)
       }
+
     }
 
   }
 
   final class EsChain(chain: ActionFilterChain[ActionRequest, ActionResponse]) {
 
-    def continue(esContext: EsContext,
-                 listener: RorActionListener[ActionResponse]): Unit = {
+    def continue(esContext: EsContext, listener: RorActionListener[ActionResponse]): Unit = {
       val esListener = listener match {
         case listener: HidingInternalErrorDetailsRorActionListener[_] => listener.underlying
-        case listener: AtEsLevelUpdateActionResponseListener => listener
+        case listener: AtEsLevelUpdateActionResponseListener          => listener
       }
       continue(esContext.task, esContext.action, esContext.actionRequest, esListener)
     }
 
-    def continue(task: EsTask,
-                 action: Action,
-                 request: ActionRequest,
-                 listener: ActionListener[ActionResponse]): Unit = {
+    def continue(
+        task: EsTask,
+        action: Action,
+        request: ActionRequest,
+        listener: ActionListener[ActionResponse]
+    ): Unit = {
       chain.proceed(task, action.value, request, listener)
     }
+
   }
 
   sealed trait Error
+
   object Error {
     case object ImpersonatorsEngineNotConfigured extends Error
   }
+
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String, cause: Throwable = null)
-  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.getName.show}' cannot be handled; [msg: ${message.show}]", cause)
+    extends IllegalStateException(
+      s"Request '${implicitly[ClassTag[T]].runtimeClass.getName.show}' cannot be handled; [msg: ${message.show}]",
+      cause
+    )

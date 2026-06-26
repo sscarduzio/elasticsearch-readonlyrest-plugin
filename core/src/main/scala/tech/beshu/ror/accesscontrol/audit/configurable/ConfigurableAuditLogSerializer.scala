@@ -21,8 +21,10 @@ import tech.beshu.ror.audit.utils.AuditSerializationHelper
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-class ConfigurableAuditLogSerializer(val allowedEventMode: AllowedEventMode,
-                                     val fields: Map[AuditFieldPath, AuditFieldValueDescriptor]) extends AuditLogSerializer {
+class ConfigurableAuditLogSerializer(
+    val allowedEventMode: AllowedEventMode,
+    val fields: Map[AuditFieldPath, AuditFieldValueDescriptor]
+) extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
     AuditSerializationHelper.serialize(responseContext, fields, allowedEventMode)

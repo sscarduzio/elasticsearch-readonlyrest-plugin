@@ -26,10 +26,11 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
 import tech.beshu.ror.syntax.*
 
-class PromoteDataStreamEsRequestContext(actionRequest: PromoteDataStreamAction.Request,
-                                        esContext: EsContext,
-                                        override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+class PromoteDataStreamEsRequestContext(
+    actionRequest: PromoteDataStreamAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originDataStreams =
     Option(actionRequest.getName)
@@ -39,7 +40,8 @@ class PromoteDataStreamEsRequestContext(actionRequest: PromoteDataStreamAction.R
   override protected def dataStreamsFrom(request: PromoteDataStreamAction.Request): Set[DataStreamName] =
     originDataStreams
 
-  override def backingIndicesFrom(request: PromoteDataStreamAction.Request): BackingIndices = BackingIndices.IndicesNotInvolved
+  override def backingIndicesFrom(request: PromoteDataStreamAction.Request): BackingIndices =
+    BackingIndices.IndicesNotInvolved
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult =
     ModificationResult.Modified // data stream already processed by ACL

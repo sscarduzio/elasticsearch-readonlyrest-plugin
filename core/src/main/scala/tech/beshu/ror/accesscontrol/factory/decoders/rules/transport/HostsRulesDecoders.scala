@@ -19,10 +19,16 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.transport
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.{HostsRule, LocalHostsRule}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{
+  RuleBaseDecoderWithAssociatedFields,
+  RuleBaseDecoderWithoutAssociatedFields
+}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.transport.HostRulesDecodersHelper.defaultAcceptForwardedForHeader
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
@@ -30,7 +36,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
 class HostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
+    extends RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
@@ -38,29 +44,36 @@ class HostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
     acceptXForwardedFor =>
       DecoderHelpers
         .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-        .map(nes => RuleDefinition.create(
-          new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor), new Ip4sBasedHostnameResolver)
-        ))
+        .map(nes =>
+          RuleDefinition.create(
+            new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor), new Ip4sBasedHostnameResolver)
+          )
+        )
 
   override val associatedFields: Set[String] = Set("accept_x-forwarded-for_header")
 
   override val associatedFieldsDecoder: Decoder[Boolean] =
-    Decoder.instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
+    Decoder
+      .instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
       .or(Decoder.const(defaultAcceptForwardedForHeader))
+
 }
 
 class LocalHostsRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
+    extends RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[LocalHostsRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-      .map(addresses => RuleDefinition.create(
-        new LocalHostsRule(LocalHostsRule.Settings(addresses), new Ip4sBasedHostnameResolver)
-      ))
+      .map(addresses =>
+        RuleDefinition.create(
+          new LocalHostsRule(LocalHostsRule.Settings(addresses), new Ip4sBasedHostnameResolver)
+        )
+      )
   }
+
 }
 
 private object HostRulesDecodersHelper {

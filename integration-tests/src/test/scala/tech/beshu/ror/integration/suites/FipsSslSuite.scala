@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 
 class FipsSslSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -48,11 +48,13 @@ class FipsSslSuite
     EsClusterSettings.create(
       clusterName = "fips_cluster",
       numberOfInstances = positiveInt(2),
-      securityType = RorSecurity(Attributes.default.copy(
-        rorSettingsFileName = rorSettingsFileName,
-        restSsl = Enabled.Yes(RestSsl.RorFips(SourceFile.RorFile)),
-        internodeSsl = Enabled.Yes(InternodeSsl.RorFips(SourceFile.RorFile))
-      ))
+      securityType = RorSecurity(
+        Attributes.default.copy(
+          rorSettingsFileName = rorSettingsFileName,
+          restSsl = Enabled.Yes(RestSsl.RorFips(SourceFile.RorFile)),
+          internodeSsl = Enabled.Yes(InternodeSsl.RorFips(SourceFile.RorFile))
+        )
+      )
     )
   )
 
@@ -71,4 +73,5 @@ class FipsSslSuite
       }
     }
   }
+
 }

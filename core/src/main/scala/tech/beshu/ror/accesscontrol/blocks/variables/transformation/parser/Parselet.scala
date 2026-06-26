@@ -21,12 +21,15 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parse
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Token.Punctuator
 
 private[parser] object Parselet {
+
   sealed trait PrefixParselet {
     def parse(parser: Parser, tokenType: Token): Either[ParsingError, Expression]
   }
 
   object PrefixParselet {
+
     object NameParselet extends PrefixParselet {
+
       override def parse(parser: Parser, tokenType: Token): Either[ParsingError, Expression] = {
         tokenType match {
           case Token.Text(value) =>
@@ -35,7 +38,9 @@ private[parser] object Parselet {
             Left(ParsingError(s"Expected name or quoted value but was '${other.show}'"))
         }
       }
+
     }
+
   }
 
   sealed trait InfixParselet {
@@ -44,7 +49,9 @@ private[parser] object Parselet {
   }
 
   object InfixParselet {
+
     object ChainParselet extends InfixParselet {
+
       override def parse(parser: Parser, left: Expression): Either[ParsingError, Expression] = {
         parser
           .parseExpression(expressionPrecedence)
@@ -55,11 +62,11 @@ private[parser] object Parselet {
     }
 
     object CallParselet extends InfixParselet {
+
       def parse(parser: Parser, left: Expression): Either[ParsingError, Expression] = {
         if (parser.consumeIf(Punctuator.RightParenthesis)) {
           Right(Expression.Call(left, List.empty))
-        }
-        else {
+        } else {
           parseArgs(parser)
             .map { args =>
               Expression.Call(left, args)
@@ -81,9 +88,13 @@ private[parser] object Parselet {
               case Some(Punctuator.RightParenthesis) =>
                 Right(expressions :+ expression)
               case Some(other) =>
-                ParsingError(s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParenthesis.value}' but was '${other.show}'").asLeft
+                ParsingError(
+                  s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParenthesis.value}' but was '${other.show}'"
+                ).asLeft
               case None =>
-                ParsingError(s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParenthesis.value}' but was ''").asLeft
+                ParsingError(
+                  s"Expected '${Punctuator.Comma.value}' or '${Punctuator.RightParenthesis.value}' but was ''"
+                ).asLeft
             }
           }
       }
@@ -91,6 +102,9 @@ private[parser] object Parselet {
       private def parseArg(parser: Parser): Either[ParsingError, Expression] = {
         parser.parseExpression()
       }
+
     }
+
   }
+
 }

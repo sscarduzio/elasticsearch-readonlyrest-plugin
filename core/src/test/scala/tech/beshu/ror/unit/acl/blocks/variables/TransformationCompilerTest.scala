@@ -15,12 +15,19 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.variables
+
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError.{UnableToCompileTransformation, UnableToParseTransformation}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler.CompilationError.{
+  UnableToCompileTransformation,
+  UnableToParseTransformation
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionAlias, FunctionName}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
@@ -29,6 +36,7 @@ class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
     FunctionName("strip_group_prefix"),
     new Function.ReplaceFirst("^group".r, "")
   )
+
   private val compiler = TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq(alias))
 
   "Variable transformation compiler" should {
@@ -36,135 +44,127 @@ class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
       "single function used" when {
         "to_uppercase" in {
           val result = compiler.compile("to_uppercase")
-          inside(result) {
-            case Right(_: Function.ToUpperCase) =>
+          inside(result) { case Right(_: Function.ToUpperCase) =>
           }
         }
         "to_lowercase" in {
           val result = compiler.compile("to_lowercase")
-          inside(result) {
-            case Right(_: Function.ToLowerCase) =>
+          inside(result) { case Right(_: Function.ToLowerCase) =>
           }
         }
         "replace_first" in {
           val result = compiler.compile("""replace_first("group","class")""")
-          inside(result) {
-            case Right(f: Function.ReplaceFirst) =>
-              val inputsAndOutputs = List(
-                ("group1", "class1"),
-                ("group1_group2", "class1_group2")
-              )
-              functionTest(f, inputsAndOutputs)
+          inside(result) { case Right(f: Function.ReplaceFirst) =>
+            val inputsAndOutputs = List(
+              ("group1", "class1"),
+              ("group1_group2", "class1_group2")
+            )
+            functionTest(f, inputsAndOutputs)
           }
         }
         "replace_all" in {
           val result = compiler.compile("""replace_all("group","class")""")
-          inside(result) {
-            case Right(f: Function.ReplaceAll) =>
-              val inputsAndOutputs = List(
-                ("group1", "class1"),
-                ("group1_group2", "class1_class2")
-              )
-              functionTest(f, inputsAndOutputs)
+          inside(result) { case Right(f: Function.ReplaceAll) =>
+            val inputsAndOutputs = List(
+              ("group1", "class1"),
+              ("group1_group2", "class1_class2")
+            )
+            functionTest(f, inputsAndOutputs)
           }
         }
         "function alias used" in {
           val result = compiler.compile("func(strip_group_prefix)")
-          inside(result) {
-            case Right(f) =>
-              f should be(alias.value)
-              val inputsAndOutputs = List(
-                ("group1", "1"),
-                ("group1_group2", "1_group2"),
-                ("_group1", "_group1")
-              )
-              functionTest(f, inputsAndOutputs)
+          inside(result) { case Right(f) =>
+            f should be(alias.value)
+            val inputsAndOutputs = List(
+              ("group1", "1"),
+              ("group1_group2", "1_group2"),
+              ("_group1", "_group1")
+            )
+            functionTest(f, inputsAndOutputs)
           }
         }
       }
       "function chain used" in {
-        val result = compiler.compile("""to_uppercase.replace_first("^CLASS", "GROUP").to_lowercase.replace_all("group", "SET")""")
-        inside(result) {
-          case Right(f: Function.FunctionChain) =>
-            val inputsAndOutputs = List(
-              ("class_x", "SET_x"),
-              ("class_x_class_y", "SET_x_class_y"),
-              ("aclass_x_class_y", "aclass_x_class_y")
-            )
-            functionTest(f, inputsAndOutputs)
+        val result =
+          compiler.compile("""to_uppercase.replace_first("^CLASS", "GROUP").to_lowercase.replace_all("group", "SET")""")
+        inside(result) { case Right(f: Function.FunctionChain) =>
+          val inputsAndOutputs = List(
+            ("class_x", "SET_x"),
+            ("class_x_class_y", "SET_x_class_y"),
+            ("aclass_x_class_y", "aclass_x_class_y")
+          )
+          functionTest(f, inputsAndOutputs)
         }
       }
       "function without args called with parentheses" in {
         val result = compiler.compile("""to_uppercase()""")
-        inside(result) {
-          case Right(_: Function.ToUpperCase) =>
+        inside(result) { case Right(_: Function.ToUpperCase) =>
         }
       }
     }
     "return compilation error" when {
       "less args passed than needed" in {
         val result = compiler.compile("replace_first(\"group\")")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToCompileTransformation(
+        inside(result) { case Left(message) =>
+          message should be(
+            UnableToCompileTransformation(
               "Error for function 'replace_first': Incorrect function arguments count. Expected: 2, actual: 1."
-            ))
+            )
+          )
         }
       }
       "more args passed than needed" in {
         val result = compiler.compile("""replace_first(a,b,c)""")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToCompileTransformation(
+        inside(result) { case Left(message) =>
+          message should be(
+            UnableToCompileTransformation(
               "Error for function 'replace_first': Incorrect function arguments count. Expected: 2, actual: 3."
-            ))
+            )
+          )
         }
       }
       "no such function" in {
         val result = compiler.compile("replace_last(a,b)")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToCompileTransformation(
+        inside(result) { case Left(message) =>
+          message should be(
+            UnableToCompileTransformation(
               "No function with name 'replace_last'. Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"
-            ))
+            )
+          )
         }
       }
       "no such alias" in {
         val result = compiler.compile("func(some_alias)")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToCompileTransformation("Alias with name 'some_alias' does not exits."))
+        inside(result) { case Left(message) =>
+          message should be(UnableToCompileTransformation("Alias with name 'some_alias' does not exits."))
         }
       }
       "alias used when no alias allowed" in {
         val compiler = TransformationCompiler.withoutAliases(SupportedVariablesFunctions.default)
         val result = compiler.compile("func(some_alias)")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToCompileTransformation("Function aliases cannot be applied in this context"))
+        inside(result) { case Left(message) =>
+          message should be(UnableToCompileTransformation("Function aliases cannot be applied in this context"))
         }
       }
     }
     "return parsing error" when {
       "unclosed function brace" in {
         val result = compiler.compile("function(")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToParseTransformation("Could not parse expression"))
+        inside(result) { case Left(message) =>
+          message should be(UnableToParseTransformation("Could not parse expression"))
         }
       }
       "function missing comma" in {
         val result = compiler.compile("function(\"a\" \"b\")")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToParseTransformation("Expected ',' or ')' but was 'b'"))
+        inside(result) { case Left(message) =>
+          message should be(UnableToParseTransformation("Expected ',' or ')' but was 'b'"))
         }
       }
       "function missing arg after comma" in {
         val result = compiler.compile("function(\"a\",)")
-        inside(result) {
-          case Left(message) =>
-            message should be(UnableToParseTransformation("Could not parse expression ')'"))
+        inside(result) { case Left(message) =>
+          message should be(UnableToParseTransformation("Could not parse expression ')'"))
         }
       }
     }
@@ -374,4 +374,5 @@ class TransformationCompilerTest extends AnyWordSpec with Matchers with Inside {
     val (inputs, outputs) = inputsAndOutputs.unzip
     inputs.map(function.apply) should be(outputs)
   }
+
 }

@@ -21,9 +21,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseComposedAuthenticationAndAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LocalUsers}
 
-final class LdapAuthRule(val authentication: LdapAuthenticationRule,
-                         val authorization: LdapAuthorizationRule)
-  extends BaseComposedAuthenticationAndAuthorizationRule(authentication, authorization) {
+final class LdapAuthRule(val authentication: LdapAuthenticationRule, val authorization: LdapAuthorizationRule)
+    extends BaseComposedAuthenticationAndAuthorizationRule(authentication, authorization) {
 
   override val name: Rule.Name = LdapAuthRule.Name.name
 
@@ -32,7 +31,9 @@ final class LdapAuthRule(val authentication: LdapAuthenticationRule,
 }
 
 object LdapAuthRule {
+
   implicit case object Name extends RuleName[LdapAuthRule] {
     override val name = Rule.Name("ldap_auth")
   }
+
 }

@@ -19,8 +19,7 @@ package tech.beshu.ror.tools.core.patches.internal.filePatchers
 import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, RorPluginDirectory}
 
-private [patches] trait FilePatchCreator[FP <: FilePatch] {
+private[patches] trait FilePatchCreator[FP <: FilePatch] {
 
-  def create(rorPluginDirectory: RorPluginDirectory,
-             esVersion: SemVer): FP
+  def create(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer): FP
 }

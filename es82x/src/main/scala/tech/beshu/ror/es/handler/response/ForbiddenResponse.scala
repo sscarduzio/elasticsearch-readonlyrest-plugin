@@ -23,8 +23,8 @@ import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.ResponseCr
 
 import scala.jdk.CollectionConverters.*
 
-final class ForbiddenResponse private(context: ForbiddenResponseContext)
-  extends ElasticsearchException(context.responseMessage) {
+final class ForbiddenResponse private (context: ForbiddenResponseContext)
+    extends ElasticsearchException(context.responseMessage) {
 
   addMetadata("es.due_to", context.causes.toList.asJava)
 
@@ -38,6 +38,7 @@ final class ForbiddenResponse private(context: ForbiddenResponseContext)
     } else {
       RestStatus.FORBIDDEN
     }
+
 }
 
 object ForbiddenResponse extends ResponseCreator[ForbiddenResponse] {

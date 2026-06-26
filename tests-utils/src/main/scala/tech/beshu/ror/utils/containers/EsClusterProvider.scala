@@ -28,12 +28,11 @@ trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
   def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {
     val nodesSettings = NonEmptyList.fromListUnsafe {
       esClusterSettings.nodeTypes
-        .foldLeft(List.empty[(String, NodeType)]) {
-          case (acc, nodeType) =>
-            acc ++ List
-              .iterate(acc.length + 1, nodeType.numberOfInstances.value)(_ + 1)
-              .map(idx => s"${esClusterSettings.clusterName}_$idx")
-              .map((_, nodeType))
+        .foldLeft(List.empty[(String, NodeType)]) { case (acc, nodeType) =>
+          acc ++ List
+            .iterate(acc.length + 1, nodeType.numberOfInstances.value)(_ + 1)
+            .map(idx => s"${esClusterSettings.clusterName}_$idx")
+            .map((_, nodeType))
         }
         .map { case (nodeName, nodeType) =>
           EsNodeSettings(
@@ -53,9 +52,11 @@ trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
     )
   }
 
-  def createRemoteClustersContainer(esClusterSettings: EsClusterSettings,
-                                    remoteClustersSettings: NonEmptyList[EsClusterSettings],
-                                    remoteClusterSetup: SetupRemoteCluster): EsRemoteClustersContainer = {
+  def createRemoteClustersContainer(
+      esClusterSettings: EsClusterSettings,
+      remoteClustersSettings: NonEmptyList[EsClusterSettings],
+      remoteClusterSetup: SetupRemoteCluster
+  ): EsRemoteClustersContainer = {
     new EsRemoteClustersContainer(
       createLocalClusterContainer(esClusterSettings),
       NonEmptyList.fromListUnsafe(remoteClustersSettings.toList.par.map(createLocalClusterContainer).toList),
@@ -63,9 +64,11 @@ trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
     )
   }
 
-  private def nodeCreator(nodeSettings: EsNodeSettings,
-                          allNodeNames: NonEmptyList[String],
-                          nodeDataInitializer: ElasticsearchNodeDataInitializer): StartedClusterDependencies => EsContainer = { deps =>
+  private def nodeCreator(
+      nodeSettings: EsNodeSettings,
+      allNodeNames: NonEmptyList[String],
+      nodeDataInitializer: ElasticsearchNodeDataInitializer
+  ): StartedClusterDependencies => EsContainer = { deps =>
     this.create(
       nodeSettings = nodeSettings,
       allNodeNames = allNodeNames,
@@ -74,4 +77,5 @@ trait EsClusterProvider extends EsContainerCreator with EsModulePatterns {
       additionalLogConsumer = None,
     )
   }
+
 }

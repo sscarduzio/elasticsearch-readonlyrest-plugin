@@ -36,22 +36,26 @@ import tech.beshu.ror.accesscontrol.request.RequestContext.AuthorizationTokenRet
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-final class TokenAuthenticationRule(val settings: Settings,
-                                    override implicit val userIdCaseSensitivity: CaseSensitivity,
-                                    override val impersonation: Impersonation)
-  extends BaseAuthenticationRule {
+final class TokenAuthenticationRule(
+    val settings: Settings,
+    override implicit val userIdCaseSensitivity: CaseSensitivity,
+    override val impersonation: Impersonation
+) extends BaseAuthenticationRule {
 
   override val name: Rule.Name = TokenAuthenticationRule.Name.name
 
   override val localUsers: LocalUsers = LocalUsers.Available(Known(settings.user))
 
-  override def exists(user: User.Id, mocksProvider: MocksProvider)
-                     (implicit requestId: RequestId): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Task[UserExistence] = Task.now {
     if (user === settings.user) UserExistence.Exists
     else UserExistence.NotExist
   }
 
-  override protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override protected def tryToAuthenticateUser[B <: BlockContext: BlockContextUpdater](
+      blockContext: B
+  ): Task[Decision[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val tokenHeaderName = settings.tokenType match {
       case TokenType.StaticToken(tokenDef, _) => tokenDef.headerName
@@ -77,17 +81,17 @@ final class TokenAuthenticationRule(val settings: Settings,
     Task.delay {
       blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
         case Right(token) if token == tokenType.token => TokenVerificationResult.Valid
-        case Right(token) => TokenVerificationResult.Invalid
-        case Left(error) => TokenVerificationResult.from(error)
+        case Right(token)                             => TokenVerificationResult.Invalid
+        case Left(error)                              => TokenVerificationResult.from(error)
       }
     }
 
-  private def authenticateWithServiceToken(blockContext: BlockContext, tokenType: TokenType.ServiceToken)
-                                          (implicit requestId: RequestId) = {
+  private def authenticateWithServiceToken(blockContext: BlockContext, tokenType: TokenType.ServiceToken)(
+      implicit requestId: RequestId
+  ) = {
     blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
       case Right(token) =>
-        blockContext.requestContext.esServices
-          .serviceAccountTokenService
+        blockContext.requestContext.esServices.serviceAccountTokenService
           .validateToken(token)
           .map(TokenVerificationResult.from)
       case Left(error) =>
@@ -95,12 +99,12 @@ final class TokenAuthenticationRule(val settings: Settings,
     }
   }
 
-  private def authenticateWithApiKey(blockContext: BlockContext, tokenType: TokenType.ApiKey)
-                                    (implicit requestId: RequestId) = {
+  private def authenticateWithApiKey(blockContext: BlockContext, tokenType: TokenType.ApiKey)(
+      implicit requestId: RequestId
+  ) = {
     blockContext.requestContext.authorizationTokenBy(tokenType.tokenDef) match {
       case Right(token) =>
-        blockContext.requestContext.esServices
-          .apiKeyService
+        blockContext.requestContext.esServices.apiKeyService
           .validateToken(token)
           .map(TokenVerificationResult.from)
       case Left(error) =>
@@ -109,15 +113,16 @@ final class TokenAuthenticationRule(val settings: Settings,
   }
 
   private sealed trait TokenVerificationResult
+
   private object TokenVerificationResult {
-    case object Valid   extends TokenVerificationResult
+    case object Valid extends TokenVerificationResult
     case object Missing extends TokenVerificationResult
     case object Invalid extends TokenVerificationResult
 
     def from(error: AuthorizationTokenRetrievingError): TokenVerificationResult = {
       error match {
         case AuthorizationTokenRetrievingError.MissingHeader => TokenVerificationResult.Missing
-        case AuthorizationTokenRetrievingError.InvalidValue => TokenVerificationResult.Invalid
+        case AuthorizationTokenRetrievingError.InvalidValue  => TokenVerificationResult.Invalid
       }
     }
 
@@ -128,21 +133,28 @@ final class TokenAuthenticationRule(val settings: Settings,
         TokenVerificationResult.Invalid
       }
     }
+
   }
+
 }
 
 object TokenAuthenticationRule {
+
   implicit case object Name extends RuleName[TokenAuthenticationRule] {
     override val name: Rule.Name = Rule.Name("token_authentication")
   }
 
   final case class Settings(user: User.Id, tokenType: TokenType)
+
   object Settings {
     sealed trait TokenType
+
     object TokenType {
       final case class ServiceToken(tokenDef: AuthorizationTokenDef) extends TokenType
       final case class ApiKey(tokenDef: AuthorizationTokenDef) extends TokenType
       final case class StaticToken(tokenDef: AuthorizationTokenDef, token: AuthorizationToken) extends TokenType
     }
+
   }
+
 }

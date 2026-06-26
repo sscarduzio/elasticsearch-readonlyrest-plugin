@@ -16,19 +16,20 @@
  */
 package tech.beshu.ror.es
 
-import java.util.concurrent.atomic.AtomicReference
-import java.util.function.Supplier
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.snapshots.SnapshotsService
 
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Supplier
 import scala.annotation.unused
 
-class SnapshotsServiceInterceptor(settings: Settings,
-                                  snapshotsService: SnapshotsService,
-                                  @unused constructorDiscriminator: Unit)
-  extends AbstractLifecycleComponent() {
+class SnapshotsServiceInterceptor(
+    settings: Settings,
+    snapshotsService: SnapshotsService,
+    @unused constructorDiscriminator: Unit
+) extends AbstractLifecycleComponent() {
 
   @Inject
   def this(settings: Settings, snapshotsService: SnapshotsService) = {
@@ -41,15 +42,18 @@ class SnapshotsServiceInterceptor(settings: Settings,
   override def doStop(): Unit = {}
   override def doClose(): Unit = {}
 }
+
 object SnapshotsServiceInterceptor {
   val snapshotsServiceSupplier: SnapshotsServiceSupplier = new SnapshotsServiceSupplier
 }
 
 class SnapshotsServiceSupplier extends Supplier[Option[SnapshotsService]] {
   private val snapshotsServiceAtomicReference = new AtomicReference(Option.empty[SnapshotsService])
+
   override def get(): Option[SnapshotsService] = snapshotsServiceAtomicReference.get() match {
     case Some(value) => Option(value)
-    case None => Option.empty
+    case None        => Option.empty
   }
+
   def update(service: SnapshotsService): Unit = snapshotsServiceAtomicReference.set(Some(service))
 }

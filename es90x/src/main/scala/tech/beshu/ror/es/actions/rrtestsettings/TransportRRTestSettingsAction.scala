@@ -26,23 +26,31 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRRTestSettingsAction(transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    executor: Executor,
-                                    @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
-    RRTestSettingsActionType.name, transportService, actionFilters, RRTestSettingsActionType.exceptionReader[RRTestSettingsRequest], executor
-  ) {
+class TransportRRTestSettingsAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    executor: Executor,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
+      RRTestSettingsActionType.name,
+      transportService,
+      actionFilters,
+      RRTestSettingsActionType.exceptionReader[RRTestSettingsRequest],
+      executor
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           threadPool: ThreadPool) =
+  def this(transportService: TransportService, actionFilters: ActionFilters, threadPool: ThreadPool) =
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
   private val handler = new RRTestSettingsActionHandler()
 
-  override def doExecute(task: Task, request: RRTestSettingsRequest, listener: ActionListener[RRTestSettingsResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RRTestSettingsRequest,
+      listener: ActionListener[RRTestSettingsResponse]
+  ): Unit = {
     handler.handle(request, listener)
   }
+
 }

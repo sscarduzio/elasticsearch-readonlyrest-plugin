@@ -24,6 +24,7 @@ import eu.timepit.refined.api.{Result as _, *}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.Uri
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.blocks.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -57,29 +58,52 @@ import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{B
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
-import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith}
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{
+  KibanaRuleTogetherWith,
+  KibanaUserDataRuleTogetherWith
+}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
-import tech.beshu.ror.accesscontrol.logging.ResponseContext.{Allowed, AllowedBy, Errored, Forbidden, ForbiddenBy, RequestedIndexNotExist}
+import tech.beshu.ror.accesscontrol.logging.ResponseContext.{
+  Allowed,
+  AllowedBy,
+  Errored,
+  Forbidden,
+  ForbiddenBy,
+  RequestedIndexNotExist
+}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings
-import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{LoadingAttemptsCount, LoadingAttemptsInterval, LoadingDelay}
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader
-import tech.beshu.ror.settings.es.{EsConfigBasedRorSettings, RorBootSettings, RorCoreSettingsLoadingStrategy, RorSettingsSourcesConfig, RorSslSettings}
 import tech.beshu.ror.settings.es.RorBootSettings.{RorFailedToStartResponse, RorNotStartedResponse}
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.CoreRefreshSettings
+import tech.beshu.ror.settings.es.RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings.{
+  LoadingAttemptsCount,
+  LoadingAttemptsInterval,
+  LoadingDelay
+}
 import tech.beshu.ror.settings.es.SslSettings
+import tech.beshu.ror.settings.es.{
+  EsConfigBasedRorSettings,
+  RorBootSettings,
+  RorCoreSettingsLoadingStrategy,
+  RorSettingsSourcesConfig,
+  RorSslSettings
+}
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
-import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{
+  InvalidContent,
+  MoreThanOneRorSection,
+  NoRorSection
+}
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.ScalaOps.*
-import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.set.CovariantSet
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -91,14 +115,13 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 
-object implicits
-  extends LogsShowInstances
-    with cats.syntax.AllSyntax
+object implicits extends LogsShowInstances with cats.syntax.AllSyntax
 
-trait LogsShowInstances
-  extends cats.instances.AllInstances {
+trait LogsShowInstances extends cats.instances.AllInstances {
 
-  override implicit def catsStdShowForSet[A](implicit evidence$3: Show[A]): Show[Set[A]] = Show.show(iterableLikeShow.show)
+  override implicit def catsStdShowForSet[A](
+      implicit evidence$3: Show[A]
+  ): Show[Set[A]] = Show.show(iterableLikeShow.show)
 
   override implicit def catsStdShowForList[A: Show]: Show[List[A]] = Show.show(iterableLikeShow.show)
 
@@ -134,16 +157,20 @@ trait LogsShowInstances
   implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
   implicit val userIdPatternShow: Show[UserIdPattern] = Show.show(_.value.show)
   implicit val userIdPatternsShow: Show[UserIdPatterns] = Show.show(_.patterns.show)
+
   implicit val loggedUserShow: Show[LoggedUser] = Show.show {
-    case DirectlyLoggedUser(user) => s"${user.show}"
+    case DirectlyLoggedUser(user)               => s"${user.show}"
     case ImpersonatedUser(user, impersonatedBy) => s"${impersonatedBy.show} (as ${user.show})"
   }
+
   implicit val typeShow: Show[Type] = Show.show(_.value)
   implicit val actionShow: Show[Action] = Show.show(_.value)
+
   implicit val addressShow: Show[Address] = Show.show {
-    case Address.Ip(value) => value.toString
+    case Address.Ip(value)   => value.toString
     case Address.Name(value) => value.toString
   }
+
   implicit val informationShow: Show[Information] = Show.show { i => i.toString }
   implicit val requestContextIdShow: Show[RequestContext.Id] = Show.show(_.value)
   implicit val methodShow: Show[RequestContext.Method] = Show.show(_.value)
@@ -153,38 +180,44 @@ trait LogsShowInstances
   implicit val jsonPathShow: Show[JsonPath] = Show.show(_.rawPath)
   implicit val uriShow: Show[Uri] = Show.show(_.toJavaURI.toString())
   implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
+
   implicit val kibanaAppShow: Show[KibanaApp] = Show.show {
     case KibanaApp.FullNameKibanaApp(name) => name.value
-    case KibanaApp.KibanaAppRegex(regex) => regex.value.value
+    case KibanaApp.KibanaAppRegex(regex)   => regex.value.value
   }
+
   implicit val kibanaAllowedApiPathShow: Show[KibanaAllowedApiPath] = Show.show { p =>
     val httpMethodStr = p.httpMethod match {
-      case AllowedHttpMethod.Any => "*"
-      case AllowedHttpMethod.Specific(HttpMethod.Get) => "GET"
-      case AllowedHttpMethod.Specific(HttpMethod.Put) => "PUT"
-      case AllowedHttpMethod.Specific(HttpMethod.Post) => "POST"
+      case AllowedHttpMethod.Any                         => "*"
+      case AllowedHttpMethod.Specific(HttpMethod.Get)    => "GET"
+      case AllowedHttpMethod.Specific(HttpMethod.Put)    => "PUT"
+      case AllowedHttpMethod.Specific(HttpMethod.Post)   => "POST"
       case AllowedHttpMethod.Specific(HttpMethod.Delete) => "DELETE"
     }
     s"$httpMethodStr:${p.pathRegex.pattern.pattern()}"
   }
+
   implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
 
-  implicit def requestedIndexShow[T <: ClusterIndexName : Show]: Show[RequestedIndex[T]] = Show(_.name.show)
+  implicit def requestedIndexShow[T <: ClusterIndexName: Show]: Show[RequestedIndex[T]] = Show(_.name.show)
 
   implicit val clusterIndexNameShow: Show[ClusterIndexName] = Show.show(_.stringify)
   implicit val localClusterIndexNameShow: Show[ClusterIndexName.Local] = Show.show(_.stringify)
   implicit val remoteClusterIndexNameShow: Show[ClusterIndexName.Remote] = Show.show(_.stringify)
   implicit val clusterNameFullShow: Show[ClusterName.Full] = Show.show(_.value.value)
+
   implicit val indexNameShow: Show[IndexName] = Show.show {
-    case f@IndexName.Full(_) => f.show
+    case f @ IndexName.Full(_)          => f.show
     case IndexName.Pattern(namePattern) => namePattern.value
   }
+
   implicit val kibanaIndexNameShow: Show[KibanaIndexName] = Show.show(_.underlying.show)
   implicit val fullIndexNameShow: Show[IndexName.Full] = Show.show(_.name.value)
   implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.show)
   implicit val fullDataStreamShow: Show[DataStreamName.Full] = Show.show(_.value.value)
   implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
-  implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value.value)
+  implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] =
+    Show.show(_.value.value)
   implicit val groupIdShow: Show[GroupId] = Show.show(_.value.value)
   implicit val groupShow: Show[Group] = Show.show(group => s"(id=${group.id.show},name=${group.name.value.value})")
   implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
@@ -199,11 +232,16 @@ trait LogsShowInstances
   implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
   implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
   implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
+
   implicit val templateShow: Show[Template] = Show.show {
-    case Template.IndexTemplate(name, patterns, aliases) => s"IndexTemplate[name=[${name.show}],patterns=[${patterns.show}],aliases=[${aliases.show}]]"
-    case Template.LegacyTemplate(name, patterns, aliases) => s"LegacyTemplate[name=[${name.show}],patterns=[${patterns.show}],aliases=[${aliases.show}]]"
-    case Template.ComponentTemplate(name, aliases) => s"ComponentTemplate[name=[${name.show}],aliases=[${aliases.show}]]"
+    case Template.IndexTemplate(name, patterns, aliases) =>
+      s"IndexTemplate[name=[${name.show}],patterns=[${patterns.show}],aliases=[${aliases.show}]]"
+    case Template.LegacyTemplate(name, patterns, aliases) =>
+      s"LegacyTemplate[name=[${name.show}],patterns=[${patterns.show}],aliases=[${aliases.show}]]"
+    case Template.ComponentTemplate(name, aliases) =>
+      s"ComponentTemplate[name=[${name.show}],aliases=[${aliases.show}]]"
   }
+
   implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
   implicit val ldapHostShow: Show[LdapHost] = Show.show(_.url.toString())
   implicit val ldapServiceNameShow: Show[LdapService.Name] = Show.show(_.value.value)
@@ -214,19 +252,23 @@ trait LogsShowInstances
   implicit val httpResponseShow: Show[HttpClient.Response] = Show.show(_.toString)
   implicit val functionNameShow: Show[FunctionName] = Show.show(_.name.value)
   implicit val functionDefinitionShow: Show[FunctionDefinition] = Show.show(_.functionName.show)
+
   implicit val requestGroupShow: Show[RequestGroup] = Show.show {
     case RequestGroup.AGroup(groupId) => groupId.show
-    case RequestGroup.`N/A` => "N/A"
+    case RequestGroup.`N/A`           => "N/A"
   }
 
   implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
 
-  def responseContextShow[B <: BlockContext](debugEnabled: Boolean)
-                                            (implicit headerShow: Show[Header]): Show[ResponseContext[B]] = {
+  def responseContextShow[B <: BlockContext](debugEnabled: Boolean)(
+      implicit headerShow: Show[Header]
+  ): Show[ResponseContext[B]] = {
     Show.show[ResponseContext[B]] {
       case allowedBy: AllowedBy[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(
-          allowedBy.blockContext.blockMetadata.loggedUser.toList, allowedBy.history, debugEnabled
+          allowedBy.blockContext.blockMetadata.loggedUser.toList,
+          allowedBy.history,
+          debugEnabled
         )
         s"""${constants.ANSI_CYAN}ALLOWED by ${allowedBy.blockContext.block.show} req=${allowedBy.requestContext.show}${constants.ANSI_RESET}"""
       case allow: Allowed[B] =>
@@ -239,27 +281,37 @@ trait LogsShowInstances
         implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(users, allow.history, debugEnabled)
         s"""${constants.ANSI_CYAN}ALLOWED by ${blocks.show} req=${allow.requestContext.show}${constants.ANSI_RESET}"""
       case forbiddenBy: ForbiddenBy[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, forbiddenBy.history, debugEnabled)
+        implicit val requestShow: Show[RequestContext.Aux[B]] =
+          requestContextShow(List.empty, forbiddenBy.history, debugEnabled)
         s"""${constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.blockContext.block.show} req=${forbiddenBy.requestContext.show}${constants.ANSI_RESET}"""
       case forbidden: Forbidden[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, forbidden.history, debugEnabled)
+        implicit val requestShow: Show[RequestContext.Aux[B]] =
+          requestContextShow(List.empty, forbidden.history, debugEnabled)
         s"""${constants.ANSI_PURPLE}FORBIDDEN by default req=${forbidden.requestContext.show}${constants.ANSI_RESET}"""
       case requestedIndexNotExist: RequestedIndexNotExist[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, requestedIndexNotExist.history, debugEnabled)
+        implicit val requestShow: Show[RequestContext.Aux[B]] =
+          requestContextShow(List.empty, requestedIndexNotExist.history, debugEnabled)
         s"""${constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestedIndexNotExist.requestContext.show}${constants.ANSI_RESET}"""
       case errored: Errored[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = requestContextShow(List.empty, History.empty, debugEnabled)
+        implicit val requestShow: Show[RequestContext.Aux[B]] =
+          requestContextShow(List.empty, History.empty, debugEnabled)
         s"""${constants.ANSI_YELLOW}ERRORED by error req=${errored.requestContext.show}${constants.ANSI_RESET}"""
     }
   }
 
-  def requestContextShow[B <: BlockContext](loggedUsers: Iterable[LoggedUser],
-                                            history: History[B],
-                                            debugEnabled: Boolean)
-                                           (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] = Show.show { r =>
+  def requestContextShow[B <: BlockContext](
+      loggedUsers: Iterable[LoggedUser],
+      history: History[B],
+      debugEnabled: Boolean
+  )(
+      implicit headerShow: Show[Header]
+  ): Show[RequestContext.Aux[B]] = Show.show { r =>
     def stringifyUsers = {
       if (loggedUsers.isEmpty) {
-        r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
+        r.basicAuth
+          .map(_.credentials.user.value)
+          .map(name => s"${name.value} (attempted)")
+          .getOrElse("[no info about user]")
       } else {
         loggedUsers.show
       }
@@ -280,7 +332,7 @@ trait LogsShowInstances
     def stringifyUserGroup = {
       r.currentGroupId match {
         case Some(groupId) => groupId.show
-        case None => "<N/A>"
+        case None          => "<N/A>"
       }
     }
     s"""{
@@ -291,7 +343,11 @@ trait LogsShowInstances
        | BRS:${r.restRequest.allHeaders.exists(_.name === Header.Name.userAgent).show},
        | ACT:${r.action.show},
        | OA:${r.restRequest.remoteAddress.map(_.show).getOrElse("null")},
-       | XFF:${r.restRequest.allHeaders.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null").show},
+       | XFF:${r.restRequest.allHeaders
+        .find(_.name === Header.Name.xForwardedFor)
+        .map(_.value.show)
+        .getOrElse("null")
+        .show},
        | DA:${r.restRequest.localAddress.show},
        | IDX:${stringifyIndices.show},
        | MET:${r.restRequest.method.show},
@@ -302,7 +358,9 @@ trait LogsShowInstances
        | }""".oneLiner
   }
 
-  implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
+  implicit def blockContextShow[B <: BlockContext](
+      implicit showHeader: Show[Header]
+  ): Show[B] =
     Show.show { bc =>
       (showOption("user", bc.blockMetadata.loggedUser.map(_.id)) ::
         showOption("group", bc.blockMetadata.currentGroupId) ::
@@ -330,9 +388,10 @@ trait LogsShowInstances
 
   implicit val flsStrategyShow: Show[FieldLevelSecurity] = Show.show[FieldLevelSecurity] { fls =>
     fls.strategy match {
-      case Strategy.FlsAtLuceneLevelApproach => "[strategy: fls_at_lucene_level]"
-      case Strategy.BasedOnBlockContextOnly.EverythingAllowed => "[strategy: fls_at_es_level]"
-      case Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(fields) => s"[strategy: fls_at_es_level, ${showNamedNonEmptyList("not_allowed_fields_used", fields)}]"
+      case Strategy.FlsAtLuceneLevelApproach                             => "[strategy: fls_at_lucene_level]"
+      case Strategy.BasedOnBlockContextOnly.EverythingAllowed            => "[strategy: fls_at_es_level]"
+      case Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(fields) =>
+        s"[strategy: fls_at_es_level, ${showNamedNonEmptyList("not_allowed_fields_used", fields)}]"
     }
   }
 
@@ -361,58 +420,62 @@ trait LogsShowInstances
       s"DEL(${namePatterns.show})"
   }
 
-  implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
+  implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] =
+    Show.show(_.value)
   implicit val blockNameShow: Show[Name] = Show.show(_.value)
 
   implicit def ruleHistoryShow[B <: BlockContext]: Show[RuleHistory[B]] = Show.show { h =>
-    s"${h.rule.show}->${
-      h.decision match {
+    s"${h.rule.show}->${h.decision match {
         case Decision.Permitted(_) => "true"
-        case Decision.Denied(_) => "false"
-      }
-    }"
+        case Decision.Denied(_)    => "false"
+      }}"
   }
 
-  implicit def blockHistoryShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[BlockHistory[B]] =
+  implicit def blockHistoryShow[B <: BlockContext](
+      implicit headerShow: Show[Header]
+  ): Show[BlockHistory[B]] =
     Show.show[BlockHistory[B]] { h =>
       val result = h match {
-        case BlockHistory.Permitted(_, _, _) => "MATCHED"
+        case BlockHistory.Permitted(_, _, _)   => "MATCHED"
         case BlockHistory.Denied(_, denied, _) => s"NOT_MATCHED (${denied.cause.show})"
       }
       val rulesHistoryItemsStr =
         if (h.history.isEmpty) ""
         else s" RULES:[${h.history.show}]"
       val resolvedPart = h match {
-        case BlockHistory.Permitted(_, decision, _) => decision.context.show match {
-          case "" => ""
-          case nonEmpty => s" RESOLVED:[$nonEmpty]"
-        }
+        case BlockHistory.Permitted(_, decision, _) =>
+          decision.context.show match {
+            case ""       => ""
+            case nonEmpty => s" RESOLVED:[$nonEmpty]"
+          }
         case BlockHistory.Denied(_, _, _) => ""
       }
       s"""[${h.block.name.show}: $result ->${rulesHistoryItemsStr.show}${resolvedPart.show}]"""
     }
 
   implicit val policyShow: Show[Policy] = Show.show {
-    case Allow => "ALLOW"
+    case Allow     => "ALLOW"
     case Forbid(_) => "FORBID"
   }
+
   implicit val blockShow: Show[Block] = Show.show { b =>
     s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.toList.map(_.name).show}] }"
   }
+
   implicit val deniedCauseShow: Show[Denied.Cause] = Show.show {
-    case Cause.AuthenticationFailed(details) => s"AUTH_FAIL ($details)"
+    case Cause.AuthenticationFailed(details)      => s"AUTH_FAIL ($details)"
     case Cause.GroupsAuthorizationFailed(details) => s"GROUPS_AUTH_FAIL ($details)"
-    case Cause.NotAuthorized => "AUTHZ_FAIL"
-    case Cause.ImpersonationNotSupported => "IMPERSONATION_NOT_SUPPORTED"
-    case Cause.ImpersonationNotAllowed => "IMPERSONATION_NOT_ALLOWED"
-    case Cause.IndexNotFound(_) => "IDX_NOT_FOUND"
-    case Cause.AliasNotFound => "ALIAS_NOT_FOUND"
-    case Cause.TemplateNotFound => "TPL_NOT_FOUND"
+    case Cause.NotAuthorized                      => "AUTHZ_FAIL"
+    case Cause.ImpersonationNotSupported          => "IMPERSONATION_NOT_SUPPORTED"
+    case Cause.ImpersonationNotAllowed            => "IMPERSONATION_NOT_ALLOWED"
+    case Cause.IndexNotFound(_)                   => "IDX_NOT_FOUND"
+    case Cause.AliasNotFound                      => "ALIAS_NOT_FOUND"
+    case Cause.TemplateNotFound                   => "TPL_NOT_FOUND"
   }
 
   object CauseFormatting {
 
-    def formatGroupedCauses[T : Show](causes: Iterable[(T, Cause)]): String = {
+    def formatGroupedCauses[T: Show](causes: Iterable[(T, Cause)]): String = {
       val grouped = causes
         .groupByOrdered { case (_, cause) => cause.show }
         .map { case (causeStr, entries) =>
@@ -422,31 +485,37 @@ trait LogsShowInstances
         }
       grouped.mkString("; ")
     }
+
   }
-  implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
-    case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
-      "Cannot use multi value variable in non-array context"
-    case RuntimeResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
-      "Cannot use more than one multi-value variable"
-    case RuntimeResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
-      s"Variable malformed, cause: ${cause.show}"
-    case RuntimeResolvableVariableCreator.CreationError.VariableConversionError(cause) =>
-      cause
-  }
-  implicit val startupResolvableVariableCreationErrorShow: Show[StartupResolvableVariableCreator.CreationError] = Show.show {
-    case StartupResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
-      "Cannot use multi value variable in non-array context"
-    case StartupResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
-      "Cannot use more than one multi-value variable"
-    case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
-      s"Variable malformed, cause: ${cause.show}"
-  }
+
+  implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] =
+    Show.show {
+      case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
+        "Cannot use multi value variable in non-array context"
+      case RuntimeResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
+        "Cannot use more than one multi-value variable"
+      case RuntimeResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
+        s"Variable malformed, cause: ${cause.show}"
+      case RuntimeResolvableVariableCreator.CreationError.VariableConversionError(cause) =>
+        cause
+    }
+
+  implicit val startupResolvableVariableCreationErrorShow: Show[StartupResolvableVariableCreator.CreationError] =
+    Show.show {
+      case StartupResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
+        "Cannot use multi value variable in non-array context"
+      case StartupResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
+        "Cannot use more than one multi-value variable"
+      case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
+        s"Variable malformed, cause: ${cause.show}"
+    }
+
   implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
-    case _: VariableType.User => "user"
-    case _: VariableType.CurrentGroup => "current group"
+    case _: VariableType.User            => "user"
+    case _: VariableType.CurrentGroup    => "current group"
     case _: VariableType.AvailableGroups => "available groups"
-    case _: VariableType.Header => "header"
-    case _: VariableType.Jwt => "JWT"
+    case _: VariableType.Header          => "header"
+    case _: VariableType.Jwt             => "JWT"
   }
 
   implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
@@ -459,7 +528,7 @@ trait LogsShowInstances
   def obfuscatedHeaderShow(obfuscatedHeaders: Iterable[Header.Name]): Show[Header] = {
     Show.show[Header] {
       case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
-      case header => headerShow.show(header)
+      case header                                                  => headerShow.show(header)
     }
   }
 
@@ -474,18 +543,18 @@ trait LogsShowInstances
       s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     case error: BlockValidationError.KibanaRuleTogetherWith =>
       val conflictingRule = error match {
-        case KibanaRuleTogetherWith.ActionsRule => ActionsRule.Name.name
-        case KibanaRuleTogetherWith.FilterRule => FilterRule.Name.name
-        case KibanaRuleTogetherWith.FieldsRule => FieldsRule.Name.name
+        case KibanaRuleTogetherWith.ActionsRule        => ActionsRule.Name.name
+        case KibanaRuleTogetherWith.FilterRule         => FilterRule.Name.name
+        case KibanaRuleTogetherWith.FieldsRule         => FieldsRule.Name.name
         case KibanaRuleTogetherWith.ResponseFieldsRule => ResponseFieldsRule.Name.name
       }
       s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule (or any deprecated kibana-related rule) and '${conflictingRule.show}' rule. These two cannot be used together in one block."
     case error: BlockValidationError.KibanaUserDataRuleTogetherWith =>
       val conflictingRule = error match {
-        case KibanaUserDataRuleTogetherWith.KibanaAccessRule => KibanaAccessRule.Name.name
-        case KibanaUserDataRuleTogetherWith.KibanaIndexRule => KibanaIndexRule.Name.name
+        case KibanaUserDataRuleTogetherWith.KibanaAccessRule        => KibanaAccessRule.Name.name
+        case KibanaUserDataRuleTogetherWith.KibanaIndexRule         => KibanaIndexRule.Name.name
         case KibanaUserDataRuleTogetherWith.KibanaTemplateIndexRule => KibanaTemplateIndexRule.Name.name
-        case KibanaUserDataRuleTogetherWith.KibanaHideAppsRule => KibanaHideAppsRule.Name.name
+        case KibanaUserDataRuleTogetherWith.KibanaHideAppsRule      => KibanaHideAppsRule.Name.name
       }
       s"The '${block.show}' block contains '${KibanaUserDataRule.Name.name.show}' rule and '${conflictingRule.show}' rule. The second one is deprecated. The first one offers all the second one is able to provide."
   }
@@ -504,29 +573,32 @@ trait LogsShowInstances
   }
 
   val authorizationValueErrorWithDetailsShow: Show[AuthorizationValueError] = Show.show {
-    case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
-    case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [${value.show}]"
-    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [${value.show}], reason: [${message.show}]"
+    case AuthorizationValueError.EmptyAuthorizationValue    => "Empty authorization value"
+    case AuthorizationValueError.InvalidHeaderFormat(value) =>
+      s"Unexpected header format in ror_metadata: [${value.show}]"
+    case AuthorizationValueError.RorMetadataInvalidFormat(value, message) =>
+      s"Invalid format of ror_metadata: [${value.show}], reason: [${message.show}]"
   }
 
   val authorizationValueErrorSanitizedShow: Show[AuthorizationValueError] = Show.show {
-    case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
-    case AuthorizationValueError.InvalidHeaderFormat(_) => s"Unexpected header format in ror_metadata"
-    case AuthorizationValueError.RorMetadataInvalidFormat(_, message) => s"Invalid format of ror_metadata. Reason: [${message.show}]"
+    case AuthorizationValueError.EmptyAuthorizationValue              => "Empty authorization value"
+    case AuthorizationValueError.InvalidHeaderFormat(_)               => s"Unexpected header format in ror_metadata"
+    case AuthorizationValueError.RorMetadataInvalidFormat(_, message) =>
+      s"Invalid format of ror_metadata. Reason: [${message.show}]"
   }
 
   implicit val unresolvableErrorShow: Show[Unresolvable] = Show.show {
-    case Unresolvable.CannotExtractValue(msg) => s"Cannot extract variable value. ${msg.show}"
+    case Unresolvable.CannotExtractValue(msg)             => s"Cannot extract variable value. ${msg.show}"
     case Unresolvable.CannotInstantiateResolvedValue(msg) => s"Extracted value type doesn't fit. ${msg.show}"
   }
 
   implicit def accessShow[T: Show]: Show[AccessRequirement[T]] = Show.show {
     case MustBePresent(value) => value.show
-    case MustBeAbsent(value) => s"~${value.show}"
+    case MustBeAbsent(value)  => s"~${value.show}"
   }
 
   implicit val coreRefreshSettingsShow: Show[CoreRefreshSettings] = Show.show {
-    case CoreRefreshSettings.Disabled => "0 sec"
+    case CoreRefreshSettings.Disabled          => "0 sec"
     case CoreRefreshSettings.Enabled(interval) => interval.value.toString()
   }
 
@@ -536,14 +608,16 @@ trait LogsShowInstances
 
   implicit val loadingAttemptsCountShow: Show[LoadingAttemptsCount] = Show[Int].contramap(_.value.value)
 
-  implicit val loadingAttemptsIntervalShow: Show[LoadingAttemptsInterval] = Show[FiniteDuration].contramap(_.value.value)
+  implicit val loadingAttemptsIntervalShow: Show[LoadingAttemptsInterval] =
+    Show[FiniteDuration].contramap(_.value.value)
 
-  implicit val loadingRetryStrategySettingsShow: Show[RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings] = Show.show { s =>
-    s"attemptsInterval=${s.attemptsInterval.show}, attemptsCount=${s.attemptsCount.show}, delay=${s.delay.show}"
-  }
+  implicit val loadingRetryStrategySettingsShow: Show[RorCoreSettingsLoadingStrategy.LoadingRetryStrategySettings] =
+    Show.show { s =>
+      s"attemptsInterval=${s.attemptsInterval.show}, attemptsCount=${s.attemptsCount.show}, delay=${s.delay.show}"
+    }
 
   implicit val rorCoreSettingsLoadingStrategyShow: Show[RorCoreSettingsLoadingStrategy] = Show.show {
-    case RorCoreSettingsLoadingStrategy.ForceLoadingFromFileSettings => "force-load-from-file"
+    case RorCoreSettingsLoadingStrategy.ForceLoadingFromFileSettings                  => "force-load-from-file"
     case RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(retry, refresh) =>
       s"load-from-index(retry=[${retry.show}], coreRefresh=${refresh.show})"
   }
@@ -623,13 +697,13 @@ trait LogsShowInstances
   }
 
   implicit val parsingRorSettingsErrorShow: Show[ParsingRorSettingsError] = Show.show {
-    case NoRorSection => "Cannot find any 'readonlyrest' section in settings"
+    case NoRorSection          => "Cannot find any 'readonlyrest' section in settings"
     case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
-    case InvalidContent(ex) => s"Settings content is malformed. Details: ${ex.getMessage.show}"
+    case InvalidContent(ex)    => s"Settings content is malformed. Details: ${ex.getMessage.show}"
   }
 
   implicit val indexSettingsSourceLoadingErrorShow: Show[IndexSettingsSource.LoadingError] = Show.show {
-    case IndexSettingsSource.LoadingError.IndexNotFound => "Cannot find ReadonlyREST settings index"
+    case IndexSettingsSource.LoadingError.IndexNotFound    => "Cannot find ReadonlyREST settings index"
     case IndexSettingsSource.LoadingError.DocumentNotFound => "Cannot found document with ReadonlyREST settings"
   }
 
@@ -644,11 +718,12 @@ trait LogsShowInstances
   implicit val startingFailureShow: Show[StartingFailure] = Show.show(_.message)
 
   implicit def settingsLoadingErrorShow[ERROR: Show]: Show[SettingsLoadingError[ERROR]] = Show.show {
-    case SettingsLoadingError.SettingsMalformed(cause) => s"ROR settings are malformed: $cause"
+    case SettingsLoadingError.SettingsMalformed(cause)   => s"ROR settings are malformed: $cause"
     case SettingsLoadingError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
 
   implicit def settingsSavingErrorShow[ERROR: Show]: Show[SettingsSavingError[ERROR]] = Show.show {
     case SettingsSavingError.SourceSpecificError(error) => implicitly[Show[ERROR]].show(error)
   }
+
 }

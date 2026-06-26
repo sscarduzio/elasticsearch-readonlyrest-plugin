@@ -40,7 +40,9 @@ object OsUtils extends LazyLogging {
   // The same method is present in ror-tools-core module.
   // It is copied instead of reused, because there is no common module between integration tests and the ror-tools production code.
   private def isWindows: Boolean = {
-    System.getProperties.stringPropertyNames().asScala
+    System.getProperties
+      .stringPropertyNames()
+      .asScala
       .find { name =>
         // I have no idea why name == "os.name" doesn't work!
         name.length == 7 && name.indexOf("o") == 0 && name.endsWith("s.name")
@@ -49,7 +51,7 @@ object OsUtils extends LazyLogging {
         Option(System.getProperty(osNamePropName))
       } match
       case Some(osName) => osName.toLowerCase.contains("win")
-      case None => false
+      case None         => false
   }
 
   sealed trait CurrentOs

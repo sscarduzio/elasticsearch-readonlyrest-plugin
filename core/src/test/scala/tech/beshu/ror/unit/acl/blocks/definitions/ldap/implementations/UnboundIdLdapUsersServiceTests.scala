@@ -39,7 +39,7 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class UnboundIdLdapUsersServiceTests
-  extends AnyFreeSpec
+    extends AnyFreeSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
@@ -63,9 +63,15 @@ class UnboundIdLdapUsersServiceTests
           .ldapUserBy(User.Id("even-non-existing-user"))
           .runSyncUnsafe()
 
-        ldapUser should be (Some(LdapUser(
-          User.Id("even-non-existing-user"), Dn("cn=even-non-existing-user,ou=People,dc=example,dc=com"), confirmed = false
-        )))
+        ldapUser should be(
+          Some(
+            LdapUser(
+              User.Id("even-non-existing-user"),
+              Dn("cn=even-non-existing-user,ou=People,dc=example,dc=com"),
+              confirmed = false
+            )
+          )
+        )
       }
       "searches for the user in LDAP and" - {
         "return the user if exists" in {
@@ -73,9 +79,15 @@ class UnboundIdLdapUsersServiceTests
             .ldapUserBy(User.Id("morgan"))
             .runSyncUnsafe()
 
-          ldapUser should be(Some(LdapUser(
-            User.Id("morgan"), Dn("cn=Morgan Freeman,ou=People,dc=example,dc=com"), confirmed = true
-          )))
+          ldapUser should be(
+            Some(
+              LdapUser(
+                User.Id("morgan"),
+                Dn("cn=Morgan Freeman,ou=People,dc=example,dc=com"),
+                confirmed = true
+              )
+            )
+          )
         }
         "return None if the user doesn't exist" in {
           val ldapUser = createSimpleLdapUsersService(UserIdAttribute.CustomAttribute("uid"))
@@ -92,12 +104,14 @@ class UnboundIdLdapUsersServiceTests
     val ldapId = Name("ldap")
     val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
-      ))
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
+          id = ldapId,
+          poolProvider = ldapConnectionPoolProvider,
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
+        )
+      )
     } yield usersService
     result.valueOrThrowIllegalState()
   }

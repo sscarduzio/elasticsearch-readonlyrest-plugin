@@ -24,12 +24,12 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
-object ActionsRuleDecoder
-  extends RuleBaseDecoderWithoutAssociatedFields[ActionsRule] {
+object ActionsRuleDecoder extends RuleBaseDecoderWithoutAssociatedFields[ActionsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[ActionsRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet(Action.apply)
       .map(actions => RuleDefinition.create(new ActionsRule(ActionsRule.Settings(actions))))
   }
+
 }

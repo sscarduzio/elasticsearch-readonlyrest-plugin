@@ -101,7 +101,9 @@ object WindowsEsDirectoryManager extends LazyLogging {
     val previousPercent = (100.0 * previousBytesRead / fileSize).toInt
     val percent = (100.0 * bytesRead / fileSize).toInt
     if (previousPercent != percent && percent % 4 == 0) {
-      logger.info(s"Download progress: [ ${List.fill(percent / 2)("#").mkString}${List.fill((100 - percent) / 2)(" ").mkString} ] $percent%")
+      logger.info(
+        s"Download progress: [ ${List.fill(percent / 2)("#").mkString}${List.fill((100 - percent) / 2)(" ").mkString} ] $percent%"
+      )
     }
   }
 

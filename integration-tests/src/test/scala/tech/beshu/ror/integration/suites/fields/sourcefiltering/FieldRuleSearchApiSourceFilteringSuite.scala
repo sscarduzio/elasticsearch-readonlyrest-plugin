@@ -17,7 +17,11 @@
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
-import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{
+  DoNotFetchSource,
+  Exclude,
+  Include
+}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.{ComposedElasticsearchNodeDataInitializer, ElasticsearchNodeDataInitializer}
@@ -27,7 +31,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class FieldRuleSearchApiSourceFilteringSuite
-  extends FieldRuleSourceFilteringSuite
+    extends FieldRuleSourceFilteringSuite
     with SingletonPluginTestSupport
     with CustomScalaTestMatchers {
 
@@ -35,24 +39,28 @@ class FieldRuleSearchApiSourceFilteringSuite
 
   override def nodeDataInitializer: Some[ElasticsearchNodeDataInitializer] = Some {
     super.nodeDataInitializer match {
-      case Some(initializer) => new ComposedElasticsearchNodeDataInitializer(
-        initializer, FieldRuleSearchApiSourceFilteringSuite.nodeDataInitializer()
-      )
+      case Some(initializer) =>
+        new ComposedElasticsearchNodeDataInitializer(
+          initializer,
+          FieldRuleSearchApiSourceFilteringSuite.nodeDataInitializer()
+        )
       case None =>
         FieldRuleSearchApiSourceFilteringSuite.nodeDataInitializer()
     }
   }
 
-  override protected def fetchDocument(client: RestClient,
-                                       index: String,
-                                       clientSourceParams: Option[ClientSourceOptions]): SearchManager#SearchResult = {
+  override protected def fetchDocument(
+      client: RestClient,
+      index: String,
+      clientSourceParams: Option[ClientSourceOptions]
+  ): SearchManager#SearchResult = {
     val searchManager = new SearchManager(client, esVersionUsed)
 
     val query = clientSourceParams match {
       case Some(DoNotFetchSource) => """{ "_source": false }"""
-      case Some(Include(field)) => s"""{ "_source": { "includes": [ "$field" ] }}"""
-      case Some(Exclude(field)) => s"""{ "_source": { "excludes": [ "$field" ] }}"""
-      case None => """{}"""
+      case Some(Include(field))   => s"""{ "_source": { "includes": [ "$field" ] }}"""
+      case Some(Exclude(field))   => s"""{ "_source": { "excludes": [ "$field" ] }}"""
+      case None                   => """{}"""
     }
 
     searchManager.search(index, ujson.read(query))
@@ -77,11 +85,13 @@ class FieldRuleSearchApiSourceFilteringSuite
 
     result should have statusCode 200
 
-    sourceOfFirstDoc(result) shouldBe Some(ujson.read(
-      """|{
-         | "user1": "user1Value"
-         |}""".stripMargin
-    ))
+    sourceOfFirstDoc(result) shouldBe Some(
+      ujson.read(
+        """|{
+           | "user1": "user1Value"
+           |}""".stripMargin
+      )
+    )
 
     result.searchHits(0).obj.get("fields") shouldBe None
   }
@@ -106,7 +116,9 @@ class FieldRuleSearchApiSourceFilteringSuite
       distinctDocs should be(Set(ujson.read("""{"user1":"a"}""")))
     }
   }
+
 }
+
 object FieldRuleSearchApiSourceFilteringSuite {
 
   def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
@@ -117,15 +129,15 @@ object FieldRuleSearchApiSourceFilteringSuite {
         .createDoc(
           index = "manydocs",
           id = idx,
-          content = ujson.read(
-            s"""
-               |{
-               |  "user1": "a",
-               |  "user2": "b"
-               |}
-               |""".stripMargin)
+          content = ujson.read(s"""
+                                  |{
+                                  |  "user1": "a",
+                                  |  "user2": "b"
+                                  |}
+                                  |""".stripMargin)
         )
         .force()
     }
   }
+
 }

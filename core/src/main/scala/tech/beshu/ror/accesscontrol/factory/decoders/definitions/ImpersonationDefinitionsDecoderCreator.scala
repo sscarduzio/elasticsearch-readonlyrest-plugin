@@ -37,12 +37,14 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
-                                             authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                             authProxyDefinitions: Definitions[ProxyAuth],
-                                             ldapDefinitions: Definitions[LdapService],
-                                             mocksProvider: MocksProvider,
-                                             esEnv: EsEnv) {
+class ImpersonationDefinitionsDecoderCreator(
+    globalSettings: GlobalSettings,
+    authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+    authProxyDefinitions: Definitions[ProxyAuth],
+    ldapDefinitions: Definitions[LdapService],
+    mocksProvider: MocksProvider,
+    esEnv: EsEnv
+) {
 
   def create: ADecoder[Id, Definitions[ImpersonatorDef]] = {
     implicit val decoder: SyncDecoder[ImpersonatorDef] = SyncDecoderCreator.from(impersonationDefDecoder)
@@ -57,8 +59,15 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
         val impersonatorKey = "impersonator"
         val usersKey = "users"
         for {
-          impersonatorPatterns <- c.downField(impersonatorKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
-          impersonatedUsers <- c.downField(usersKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply).map(ImpersonatorDef.ImpersonatedUsers.apply)
+          impersonatorPatterns <- c
+            .downField(impersonatorKey)
+            .as[UniqueNonEmptyList[UserIdPattern]]
+            .map(UserIdPatterns.apply)
+          impersonatedUsers <- c
+            .downField(usersKey)
+            .as[UniqueNonEmptyList[UserIdPattern]]
+            .map(UserIdPatterns.apply)
+            .map(ImpersonatorDef.ImpersonatedUsers.apply)
           _ <- verifyIntersection(impersonatorPatterns, impersonatedUsers)
           authRuleDecoder = authenticationRulesDecoder(impersonatorPatterns)
           authRule <- authRuleDecoder.tryDecode(c.withoutKeys(Set(impersonatorKey, usersKey)))
@@ -68,23 +77,28 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
       .decoder
   }
 
-  private def verifyIntersection(impersonatorUsernames: UserIdPatterns,
-                                 impersonatedUsers: ImpersonatorDef.ImpersonatedUsers): Either[DecodingFailure, Unit] = {
+  private def verifyIntersection(
+      impersonatorUsernames: UserIdPatterns,
+      impersonatedUsers: ImpersonatorDef.ImpersonatedUsers
+  ): Either[DecodingFailure, Unit] = {
     val exactImpersonators = impersonatorUsernames.patterns.filterNot(_.containsWildcard)
     val exactImpersonatedUsers = impersonatedUsers.usernames.patterns.filterNot(_.containsWildcard)
 
     UniqueNonEmptyList.from(exactImpersonators.toCovariantSet.intersect(exactImpersonatedUsers.toCovariantSet)) match {
       case Some(duplicatedUsers) =>
-        Left(decodingFailure(
-          Message(s"Each of the given users [${duplicatedUsers.show}] should be either impersonator or a user to be impersonated")
-        ))
+        Left(
+          decodingFailure(
+            Message(
+              s"Each of the given users [${duplicatedUsers.show}] should be either impersonator or a user to be impersonated"
+            )
+          )
+        )
       case None => Right(())
     }
   }
 
   private def authenticationRulesDecoder(userIdPatterns: UserIdPatterns) = Decoder.instance { cursor =>
-    cursor
-      .keys.toList.flatten
+    cursor.keys.toList.flatten
       .map { key =>
         ruleDecoders
           .authenticationRuleDecoderBy(
@@ -103,7 +117,11 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
               .map(_.rule.rule)
               .apply(cursor)
           case None =>
-            Left(decodingFailure(Message("Only an authentication rule can be used in context of 'impersonator' definition")))
+            Left(
+              decodingFailure(
+                Message("Only an authentication rule can be used in context of 'impersonator' definition")
+              )
+            )
         }
       }
       .sequence
@@ -113,13 +131,18 @@ class ImpersonationDefinitionsDecoderCreator(globalSettings: GlobalSettings,
         case one :: Nil =>
           Right(one)
         case many =>
-          Left(decodingFailure(Message(
-            s"Only one authentication should be defined for [${userIdPatterns.show}]. Found ${many.map(_.name.show).mkString(", ")}"
-          )))
+          Left(
+            decodingFailure(
+              Message(
+                s"Only one authentication should be defined for [${userIdPatterns.show}]. Found ${many.map(_.name.show).mkString(", ")}"
+              )
+            )
+          )
       }
   }
 
   private def decodingFailure(message: Message) = {
     DecodingFailureUtils.decodingFailureFrom(DefinitionsLevelCreationError(message))
   }
+
 }

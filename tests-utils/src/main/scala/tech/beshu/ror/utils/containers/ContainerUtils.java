@@ -27,16 +27,14 @@ import java.time.Duration;
 import java.time.Instant;
 
 public class ContainerUtils {
-  private ContainerUtils() {
-  }
+  private ContainerUtils() {}
 
   public static File getResourceFile(String path) {
     try {
       URL resource = ContainerUtils.class.getResource(path);
-      if(resource == null)
+      if (resource == null)
         throw new ContainerCreationException("Cannot find resource file '" + path + "'");
-      else
-        return Paths.get(resource.toURI()).toFile();
+      else return Paths.get(resource.toURI()).toFile();
     } catch (URISyntaxException e) {
       throw new ContainerCreationException("Cannot find resource file '" + path + "'", e);
     }
@@ -44,7 +42,8 @@ public class ContainerUtils {
 
   public static boolean checkTimeout(Instant startTime, Duration startupTimeout) {
     if (startupTimeout.minus(Duration.between(startTime, Instant.now())).isNegative()) {
-      throw new ContainerStartupTimeoutException("Container was not started within " + startupTimeout.toString());
+      throw new ContainerStartupTimeoutException(
+          "Container was not started within " + startupTimeout.toString());
     }
     return false;
   }

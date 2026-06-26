@@ -28,23 +28,24 @@ import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestC
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class ModifyDataStreamsEsRequestContext(actionRequest: ModifyDataStreamsAction.Request,
-                                        esContext: EsContext,
-                                        override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+class ModifyDataStreamsEsRequestContext(
+    actionRequest: ModifyDataStreamsAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originIndices: Set[RequestedIndex[ClusterIndexName]] =
-    actionRequest
-      .getActions.asSafeSet
+    actionRequest.getActions.asSafeSet
       .map(_.getIndex)
       .flatMap(RequestedIndex.fromString)
 
-  override protected def backingIndicesFrom(request: ModifyDataStreamsAction.Request): DataStreamRequestBlockContext.BackingIndices =
+  override protected def backingIndicesFrom(
+      request: ModifyDataStreamsAction.Request
+  ): DataStreamRequestBlockContext.BackingIndices =
     BackingIndices.IndicesInvolved(originIndices, Set(ClusterIndexName.Local.wildcard))
 
   override def dataStreamsFrom(request: ModifyDataStreamsAction.Request): Set[DataStreamName] =
-    request
-      .getActions.asSafeSet
+    request.getActions.asSafeSet
       .map(_.getDataStream)
       .flatMap(DataStreamName.fromString)
 

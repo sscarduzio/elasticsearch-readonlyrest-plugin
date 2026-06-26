@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks
 
 import cats.Order
 import cats.implicits.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.*
@@ -28,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.*
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic.*
 import tech.beshu.ror.accesscontrol.orders.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 class RuleOrdering extends Ordering[Rule] with RequestIdAwareLogging {
 
@@ -48,9 +48,11 @@ class RuleOrdering extends Ordering[Rule] with RequestIdAwareLogging {
         i1 compareTo i2
     }
   }
+
 }
 
 object RuleOrdering {
+
   private val orderedListOrRuleType: Seq[Class[_ <: Rule]] = Seq(
     // Authentication rules must come first because they set the user information which further rules might rely on.
     classOf[AuthKeyRule],
@@ -105,4 +107,5 @@ object RuleOrdering {
     classOf[FilterRule],
     classOf[ResponseFieldsRule]
   )
+
 }

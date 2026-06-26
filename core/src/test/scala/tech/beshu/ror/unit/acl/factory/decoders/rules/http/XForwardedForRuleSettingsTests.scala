@@ -20,7 +20,10 @@ import cats.data.NonEmptySet
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -35,73 +38,73 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
     "be able to be loaded from settings" when {
       "only one address is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    x_forwarded_for: "proxy1"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    x_forwarded_for: "proxy1"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("proxy1").get.nel))
+            val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
+              NonEmptySet.one(AlreadyResolved(Address.from("proxy1").get.nel))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
       }
       "two addresses are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    x_forwarded_for: [proxy1, proxy2]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    x_forwarded_for: [proxy1, proxy2]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
-              NonEmptySet.of(AlreadyResolved(Address.from("proxy1").get.nel), AlreadyResolved(Address.from("proxy2").get.nel))
+              NonEmptySet.of(
+                AlreadyResolved(Address.from("proxy1").get.nel),
+                AlreadyResolved(Address.from("proxy2").get.nel)
+              )
             rule.settings.allowedAddresses should be(addresses)
           }
         )
       }
       "two addresses are defined but one with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    x_forwarded_for: ["proxy1", "@{user}_proxy"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    x_forwarded_for: ["proxy1", "@{user}_proxy"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.allowedAddresses.length shouldBe 2
             rule.settings.allowedAddresses.head should be(AlreadyResolved(Address.from("proxy1").get.nel))
-            rule.settings.allowedAddresses.tail.head shouldBe a [ToBeResolved[_]]
+            rule.settings.allowedAddresses.tail.head shouldBe a[ToBeResolved[_]]
           }
         )
       }
       "only one IP is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    x_forwarded_for: "192.168.0.1"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    x_forwarded_for: "192.168.0.1"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val ips: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
               NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get.nel))
@@ -111,38 +114,42 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
       }
       "two IPs are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    x_forwarded_for: [192.168.0.1, 192.168.0.2]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    x_forwarded_for: [192.168.0.1, 192.168.0.2]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val ips: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
-              NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get.nel), AlreadyResolved(Address.from("192.168.0.2").get.nel))
+              NonEmptySet.of(
+                AlreadyResolved(Address.from("192.168.0.1").get.nel),
+                AlreadyResolved(Address.from("192.168.0.2").get.nel)
+              )
             rule.settings.allowedAddresses should be(ips)
           }
         )
       }
       "one address and one IP are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    x_forwarded_for: [192.168.0.1, proxy1]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    x_forwarded_for: [192.168.0.1, proxy1]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
-              NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get.nel), AlreadyResolved(Address.from("proxy1").get.nel))
+              NonEmptySet.of(
+                AlreadyResolved(Address.from("192.168.0.1").get.nel),
+                AlreadyResolved(Address.from("proxy1").get.nel)
+              )
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -151,21 +158,19 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
     "not be able to be loaded from settings" when {
       "no address or ip is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    x_forwarded_for:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    x_forwarded_for:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """x_forwarded_for: null
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""x_forwarded_for: null
+                                                                                      |""".stripMargin)))
           }
         )
       }

@@ -26,21 +26,29 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRRUserMetadataAction(transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    executor: Executor,
-                                    @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
-    RRUserMetadataActionType.name, transportService, actionFilters, RRUserMetadataActionType.exceptionReader[RRUserMetadataRequest], executor
-  ) {
+class TransportRRUserMetadataAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    executor: Executor,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
+      RRUserMetadataActionType.name,
+      transportService,
+      actionFilters,
+      RRUserMetadataActionType.exceptionReader[RRUserMetadataRequest],
+      executor
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           threadPool: ThreadPool) =
+  def this(transportService: TransportService, actionFilters: ActionFilters, threadPool: ThreadPool) =
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
-  override def doExecute(task: Task, request: RRUserMetadataRequest, listener: ActionListener[RRUserMetadataResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RRUserMetadataRequest,
+      listener: ActionListener[RRUserMetadataResponse]
+  ): Unit = {
     // nothing to do here
   }
+
 }
