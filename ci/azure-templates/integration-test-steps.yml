@@ -13,7 +13,7 @@ steps:
       docker image prune -f >/dev/null 2>&1 || true
       docker builder prune -f >/dev/null 2>&1 || true
       df -h /
-    displayName: 'Pre-clean this leg''s Docker leftovers (shared-daemon safe)'
+    displayName: 'Pre-clean this CI job''s Docker leftovers (shared-daemon safe)'
     env:
       ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)
       AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
@@ -78,11 +78,11 @@ steps:
       mergeTestResults: true
 
   # Reap THIS CI job's containers however the job ended (always() runs in the cancel grace period);
-  # the Abandoned case is covered by the host timer. Scoped by label -> never touches a sibling job CI job.
+  # the Abandoned case is covered by the host timer. Scoped by label -> never touches a sibling CI job.
   - bash: |
       echo ">>> reaping THIS CI job's containers ($ROR_CI_JOB_ID) on exit"
       source ci/ci-lib.sh && reap_ci_job_containers   # single source of truth (ci-lib.sh)
-    displayName: 'Reap this leg''s containers (always)'
+    displayName: 'Reap this CI job''s containers (always)'
     condition: always()
     env:
       ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)

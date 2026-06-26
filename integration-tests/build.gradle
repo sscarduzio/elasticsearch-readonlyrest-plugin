@@ -59,8 +59,11 @@ sourceSets {
 test {
     systemProperty "project.dir", rootProject.projectDir
     def hasModule = project.hasProperty('esModule')
-    // esModule is REQUIRED to run the IT suite. Fail loudly when the task is actually executed without
-    // it, rather than silently skipping (a green-looking no-op that hides "I forgot -PesModule").
+    // esModule is REQUIRED to run the IT suite. If this task was EXPLICITLY requested (`:integration-tests:test`)
+    // without it, fail loudly rather than silently no-op. But when it's only pulled in by an aggregate
+    // (`build`/`check`/`test` from the root), skip it — so a bare aggregate build doesn't break for devs.
+    def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith('integration-tests:test') || it == 'integration-tests:test' }
+    onlyIf { hasModule || explicitlyRequested }
     doFirst {
         if (!hasModule) {
             throw new GradleException(

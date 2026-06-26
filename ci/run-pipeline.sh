@@ -118,7 +118,7 @@ run_integration_tests() {
     LAST_PID=$!; GRADLE_PIDS+=("$LAST_PID")
   }
 
-  # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the leg). Also warms :build-base/:buildSrc.
+  # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the CI job). Also warms :build-base/:buildSrc.
   run_one ror-tools:test
   wait "$LAST_PID"; local rc=$?
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
