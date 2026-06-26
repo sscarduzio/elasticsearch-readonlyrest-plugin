@@ -101,11 +101,12 @@ run_integration_tests() {
   fi
 
   ES_MODULE=$1
-  local shardCount="${IT_PARALLELISM:-1}"
+  # IT_PARALLELISM (the user-facing knob) = the gradle -PshardCount it feeds: K parallel shards.
+  local parallelism="${IT_PARALLELISM:-1}"
   local esArgs=("-PesModule=$ES_MODULE")
   [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
-  echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests in ${shardCount} shard(s).."
+  echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests in ${parallelism} shard(s).."
 
   # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
@@ -135,8 +136,8 @@ run_integration_tests() {
   # 3) integration-tests:test — K shards in PARALLEL (shared cache). Each is a separate JVM => its own
   #    ES container, running a disjoint suite subset (name-hash mod K, see build.gradle).
   local pids="" idx
-  for idx in $(seq 0 $((shardCount - 1))); do
-    run_one integration-tests:test "${esArgs[@]}" -PshardCount="$shardCount" -PshardIndex="$idx"
+  for idx in $(seq 0 $((parallelism - 1))); do
+    run_one integration-tests:test "${esArgs[@]}" -PshardCount="$parallelism" -PshardIndex="$idx"
     pids="$pids $LAST_PID"
   done
   rc=0
