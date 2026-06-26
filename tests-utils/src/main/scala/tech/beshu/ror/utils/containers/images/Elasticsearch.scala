@@ -26,17 +26,19 @@ import tech.beshu.ror.utils.containers.images.Elasticsearch.Plugin.{PluginInstal
 import tech.beshu.ror.utils.containers.windows.WindowsEsDirectoryManager
 import tech.beshu.ror.utils.misc.{JDK, Version}
 
-
 object Elasticsearch {
 
-  final case class Config(clusterName: String,
-                          nodeName: String,
-                          masterNodes: NonEmptyList[String],
-                          additionalElasticsearchYamlEntries: Map[String, String],
-                          envs: Map[String, String],
-                          esInstallationType: EsInstallationType)
+  final case class Config(
+      clusterName: String,
+      nodeName: String,
+      masterNodes: NonEmptyList[String],
+      additionalElasticsearchYamlEntries: Map[String, String],
+      envs: Map[String, String],
+      esInstallationType: EsInstallationType
+  )
 
   extension (config: Config)
+
     def esConfigDir: Path = config.esInstallationType match {
       case EsInstallationType.EsDockerImage =>
         os.root / "usr" / "share" / "elasticsearch" / "config"
@@ -83,6 +85,7 @@ object Elasticsearch {
   }
 
   object Plugin {
+
     final case class PluginInstallationSteps(steps: List[PluginInstallationStep]) {
 
       def copyFile(destination: Path, file: File): PluginInstallationSteps = {
@@ -122,10 +125,12 @@ object Elasticsearch {
 
       final case class ChangeUser(user: String) extends PluginInstallationStep
     }
+
   }
 
   private[images] def fromResourceBy(name: String): File = {
-    scala.util.Try(ContainerUtils.getResourceFile(s"/$name"))
+    scala.util
+      .Try(ContainerUtils.getResourceFile(s"/$name"))
       .map(_.toScala)
       .get
   }
@@ -133,13 +138,11 @@ object Elasticsearch {
   def create(esVersion: String, config: Config): Elasticsearch = {
     new Elasticsearch(esVersion, config)
   }
+
 }
 
-class Elasticsearch(val esVersion: String,
-                    val config: Config,
-                    val plugins: Seq[Plugin],
-                    customEntrypoint: Option[Path])
-  extends LazyLogging {
+class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[Plugin], customEntrypoint: Option[Path])
+    extends LazyLogging {
 
   def this(esVersion: String, config: Config) = {
     this(esVersion, config, Seq.empty, None)
@@ -148,7 +151,7 @@ class Elasticsearch(val esVersion: String,
   def when[T](opt: Option[T], f: (Elasticsearch, T) => Elasticsearch): Elasticsearch = {
     opt match {
       case Some(t) => f(this, t)
-      case None => this
+      case None    => this
     }
   }
 
@@ -166,7 +169,9 @@ class Elasticsearch(val esVersion: String,
     case EsInstallationType.UbuntuDockerImageWithEsFromApt =>
       toUbuntuWithAptEsDockerImageDescription
     case EsInstallationType.NativeWindowsProcess =>
-      throw new IllegalStateException("The ES installation type is native Windows process. It is not possible to create docker image description")
+      throw new IllegalStateException(
+        "The ES installation type is native Windows process. It is not possible to create docker image description"
+      )
   }
 
   private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {
@@ -204,8 +209,12 @@ class Elasticsearch(val esVersion: String,
       .run("apt update")
       .run("apt install -y ca-certificates gnupg2 curl apt-transport-https")
       .run("curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -")
-      .run(s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list""")
-      .run(s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion""")
+      .run(
+        s"""echo "deb https://artifacts.elastic.co/packages/$esMajorVersion/apt stable main" > /etc/apt/sources.list.d/elastic-$esMajorVersion.list"""
+      )
+      .run(
+        s"""apt update && apt install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" elasticsearch=$esVersion"""
+      )
       .run("apt clean && rm -rf /var/lib/apt/lists/*")
       .when(hasBuggyBundledJdk, replaceBundledJdk)
       .user("elasticsearch")
@@ -230,22 +239,22 @@ class Elasticsearch(val esVersion: String,
   }
 
   private implicit class InstallPlugins(val image: DockerImageDescription) {
+
     def installPlugins(): DockerImageDescription = {
-      plugins.foldLeft(image) {
-        case (currentImage, plugin) =>
-          plugin.installationSteps(config).steps.foldLeft(currentImage) {
-            case (img, step) =>
-              step match {
-                case PluginInstallationStep.CopyFile(destination, file) =>
-                  img.copyFile(destination, file)
-                case PluginInstallationStep.RunCommand(linuxCommand, _) =>
-                  img.run(linuxCommand)
-                case PluginInstallationStep.ChangeUser(user) =>
-                  img.user(user)
-              }
+      plugins.foldLeft(image) { case (currentImage, plugin) =>
+        plugin.installationSteps(config).steps.foldLeft(currentImage) { case (img, step) =>
+          step match {
+            case PluginInstallationStep.CopyFile(destination, file) =>
+              img.copyFile(destination, file)
+            case PluginInstallationStep.RunCommand(linuxCommand, _) =>
+              img.run(linuxCommand)
+            case PluginInstallationStep.ChangeUser(user) =>
+              img.user(user)
           }
+        }
       }
     }
+
   }
 
   private def updateEsConfigBuilderFromPlugins(builder: EsConfigBuilder) = {
@@ -269,36 +278,30 @@ class Elasticsearch(val esVersion: String,
   }
 
   private def baseEsConfigBuilder = {
-    EsConfigBuilder
-      .empty
+    EsConfigBuilder.empty
       .add(s"node.name: ${config.nodeName}")
       .add(s"cluster.name: ${config.clusterName}")
       .add("network.host: 0.0.0.0")
       .add("path.repo: /tmp")
-      .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
+      .addWhen(
+        Version.lowerThan(esVersion, 8, 0, 0),
         entry = "bootstrap.system_call_filter: false" // because of issues with Rosetta 2 on Mac OS
       )
       .add("cluster.routing.allocation.disk.threshold_enabled: false")
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 6, 0),
-        entry = "indices.lifecycle.history_index_enabled: false"
-      )
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 6, 0), entry = "indices.lifecycle.history_index_enabled: false")
+      .addWhen(
+        Version.greaterOrEqualThan(esVersion, 7, 0, 0),
         entry = s"discovery.seed_hosts: ${config.masterNodes.toList.mkString(",")}",
         orElseEntry = s"discovery.zen.ping.unicast.hosts: ${config.masterNodes.toList.mkString(",")}"
       )
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
+      .addWhen(
+        Version.greaterOrEqualThan(esVersion, 7, 0, 0),
         entry = s"cluster.initial_master_nodes: ${config.masterNodes.toList.mkString(",")}",
         orElseEntry = "node.master: true"
       )
-      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0),
-        entry = "ingest.geoip.downloader.enabled: false"
-      )
-      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0),
-        entry = "action.destructive_requires_name: false"
-      )
-      .addWhen(Version.lowerThan(esVersion, 8, 0, 0),
-        entry = "xpack.monitoring.enabled: false"
-      )
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
+      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "action.destructive_requires_name: false")
+      .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }
       )
@@ -314,7 +317,7 @@ class Elasticsearch(val esVersion: String,
   // fixed in JDK 17.0.5+/19+. Same version-range logic mirrored in e2e-tests es-jdk-patch/patch-es-jdk.sh.
   private def hasBuggyBundledJdk: Boolean =
     (Version.greaterOrEqualThan(esVersion, 7, 15, 1) && Version.lowerThan(esVersion, 7, 17, 7)) ||
-    (Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 5, 0))
+      (Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 5, 0))
 
   // ES versions that bundle JDK 18, which we replace with Corretto 19 to fix JDK-8287073.
   private def needsCorretto19: Boolean =
@@ -339,24 +342,26 @@ class Elasticsearch(val esVersion: String,
   }
 
   private def javaOptsBasedOn(withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {
-    withEsJavaOptsBuilder(baseJavaOptsBuilder)
-      .options
+    withEsJavaOptsBuilder(baseJavaOptsBuilder).options
       .mkString(" ")
   }
 
   private def baseJavaOptsBuilder = {
-    EsJavaOptsBuilder
-      .empty
+    EsJavaOptsBuilder.empty
       .add("-Xms512m")
       .add("-Xmx512m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
-      .add("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}")
+      .add(
+        "-Xdebug",
+        s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${xDebugAddressBasedOn(esVersion)}"
+      )
       .addWhen(needsCorretto19, "--add-modules=jdk.net")
   }
 
   private def xDebugAddressBasedOn(esVersion: String) = {
     if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "*:8000" else "8000"
   }
+
 }
 
 final case class EsConfigBuilder(entries: Seq[String]) {
@@ -376,12 +381,11 @@ final case class EsConfigBuilder(entries: Seq[String]) {
     else this
   }
 
-  def addWhen(condition: Boolean,
-              entry: => String,
-              orElseEntry: => String): EsConfigBuilder = {
+  def addWhen(condition: Boolean, entry: => String, orElseEntry: => String): EsConfigBuilder = {
     if (condition) add(entry)
     else add(orElseEntry)
   }
+
 }
 
 object EsConfigBuilder {
@@ -397,6 +401,7 @@ final case class EsJavaOptsBuilder(options: Seq[String]) {
   def addWhen(condition: Boolean, option: => String): EsJavaOptsBuilder = {
     if (condition) add(option) else this
   }
+
 }
 
 object EsJavaOptsBuilder {

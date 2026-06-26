@@ -31,11 +31,12 @@ import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerServicePort: Int)
-  extends GenericContainer(
-    dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
-    exposedPorts = Seq(httpApiPort, proxiedPort),
-    waitStrategy = Some(new ToxiproxyApiWaitStrategy())
-  ) with LazyLogging {
+    extends GenericContainer(
+      dockerImage = "ghcr.io/shopify/toxiproxy:2.12.0",
+      exposedPorts = Seq(httpApiPort, proxiedPort),
+      waitStrategy = Some(new ToxiproxyApiWaitStrategy())
+    )
+    with LazyLogging {
 
   container.setNetwork(TestNetwork.perJvm)
   container.withStartupTimeout(Duration.ofSeconds(120))
@@ -111,6 +112,7 @@ class ToxiproxyContainer[T <: SingleContainer[_]](val innerContainer: T, innerSe
 
     proxy
   }
+
 }
 
 private class ToxiproxyApiWaitStrategy extends WaitStrategy with LazyLogging {
@@ -148,6 +150,7 @@ private class ToxiproxyApiWaitStrategy extends WaitStrategy with LazyLogging {
     this.startupTimeout = startupTimeout
     this
   }
+
 }
 
 object ToxiproxyContainer {

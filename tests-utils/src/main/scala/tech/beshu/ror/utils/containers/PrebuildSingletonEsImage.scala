@@ -50,4 +50,5 @@ object PrebuildSingletonEsImage extends StrictLogging {
         sys.exit(1)
     }
   }
+
 }

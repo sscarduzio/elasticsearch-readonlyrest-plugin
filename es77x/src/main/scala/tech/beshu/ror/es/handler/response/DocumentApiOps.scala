@@ -30,7 +30,7 @@ object DocumentApiOps {
 
   object GetApi {
 
-    //it's ugly but I don't know better way to do it
+    // it's ugly but I don't know better way to do it
     def doesNotExistResponse(original: GetResponse): GetResponse = {
       val exists = false
       val source = null
@@ -44,7 +44,8 @@ object DocumentApiOps {
         exists,
         source,
         java.util.Collections.emptyMap(),
-        java.util.Collections.emptyMap())
+        java.util.Collections.emptyMap()
+      )
       new GetResponse(result)
     }
 
@@ -76,15 +77,13 @@ object DocumentApiOps {
           .filter(_.nonEmpty)
           .map(source => FieldsFiltering.filterSource(source, fieldsRestrictions)) match {
           case Some(value) => value.bytes
-          case None => response.getSourceAsBytesRef
+          case None        => response.getSourceAsBytesRef
         }
       }
 
       private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
         val (originalMetadataFields, originalNonMetadataFields) =
-          response
-            .getFields.asScala
-            .toMap
+          response.getFields.asScala.toMap
             .partition(_._2.isMetadataField)
 
         val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(
@@ -94,13 +93,17 @@ object DocumentApiOps {
 
         NewFilteredDocumentFields(filteredNonMetadataFields, MetadataDocumentFields(originalMetadataFields))
       }
+
     }
+
   }
 
   object MultiGetApi {
+
     implicit class MultiGetItemResponseOps(val item: MultiGetItemResponse) extends AnyVal {
       def asDocumentWithIndex: DocumentWithIndex = createDocumentWithIndex(item.getIndex, item.getId)
     }
+
   }
 
   private def createDocumentWithIndex(indexStr: String, docId: String) = {
@@ -116,4 +119,5 @@ object DocumentApiOps {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
       }
   }
+
 }

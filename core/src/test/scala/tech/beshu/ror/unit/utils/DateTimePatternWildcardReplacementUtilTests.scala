@@ -37,7 +37,8 @@ class DateTimePatternWildcardReplacementUtilTests extends AnyWordSpec {
         patternAfterReplacement.show should be("custom-prefix-*")
       }
       "pattern in the middle" in {
-        val patternAfterReplacement = nes("'custom-prefix'-yyyy-MM'some-suffix").replaceDateTimePatternWithWildcard.toOption.get
+        val patternAfterReplacement =
+          nes("'custom-prefix'-yyyy-MM'some-suffix").replaceDateTimePatternWithWildcard.toOption.get
         patternAfterReplacement.show should be("custom-prefix-*some-suffix")
       }
     }
@@ -64,4 +65,5 @@ class DateTimePatternWildcardReplacementUtilTests extends AnyWordSpec {
       }
     }
   }
+
 }

@@ -46,18 +46,17 @@ object ScalaOps {
     ScalaOps.retryBackoff(task, 5, 500 millis, 1)
   }
 
-  def retryBackoff[A](source: Task[A],
-                      maxRetries: Int,
-                      firstDelay: FiniteDuration,
-                      backOffScaler: Int): Task[A] = {
+  def retryBackoff[A](source: Task[A], maxRetries: Int, firstDelay: FiniteDuration, backOffScaler: Int): Task[A] = {
     retryBackoffEither[Nothing, A](source.map(Right(_)), maxRetries, firstDelay, backOffScaler)
       .map(_.getOrElse(throw new IllegalStateException("Impossible")))
   }
 
-  def retryBackoffEither[E, A](source: Task[Either[E, A]],
-                               maxRetries: Int,
-                               firstDelay: FiniteDuration,
-                               backOffScaler: Int): Task[Either[E, A]] = {
+  def retryBackoffEither[E, A](
+      source: Task[Either[E, A]],
+      maxRetries: Int,
+      firstDelay: FiniteDuration,
+      backOffScaler: Int
+  ): Task[Either[E, A]] = {
     def doRetry() = {
       retryBackoffEither(source, maxRetries - 1, firstDelay * backOffScaler, backOffScaler)
         .delayExecution(firstDelay)
@@ -65,13 +64,13 @@ object ScalaOps {
 
     source
       .flatMap {
-        case right@Right(_) => Task.now(right)
+        case right @ Right(_)          => Task.now(right)
         case Left(_) if maxRetries > 0 => doRetry()
-        case Left(error) => Task.now(Left(error))
+        case Left(error)               => Task.now(Left(error))
       }
       .onErrorHandleWith {
         case _: Exception if maxRetries > 0 => doRetry()
-        case ex => Task.raiseError(ex)
+        case ex                             => Task.raiseError(ex)
       }
   }
 
@@ -84,41 +83,40 @@ object ScalaOps {
       }
   }
 
-  implicit def taskToIo[T](t: Task[T])
-                          (implicit scheduler: Scheduler,
-                           contextShift: ContextShift[IO]): IO[T] = {
+  implicit def taskToIo[T](t: Task[T])(
+      implicit scheduler: Scheduler,
+      contextShift: ContextShift[IO]
+  ): IO[T] = {
     IO.fromFuture(IO(t.runToFuture))
   }
 
   extension [T](iterable: IterableOnce[T])
+
     def mkStringOrEmptyString(start: String, sep: String, end: String): String = {
       if (iterable.iterator.isEmpty) ""
       else iterable.iterator.mkString(start, sep, end)
     }
+
     def groupByOrdered[K](key: T => K): VectorMap[K, Vector[T]] = {
-      iterable.iterator.foldLeft(VectorMap.empty[K, Vector[T]]) {
-        case (acc, elem) =>
-          val k = key(elem)
-          acc.updatedWith(k) {
-            case Some(v) => Some(v :+ elem)
-            case None => Some(Vector(elem))
-          }
+      iterable.iterator.foldLeft(VectorMap.empty[K, Vector[T]]) { case (acc, elem) =>
+        val k = key(elem)
+        acc.updatedWith(k) {
+          case Some(v) => Some(v :+ elem)
+          case None    => Some(Vector(elem))
+        }
       }
     }
 
-  extension [T](`try`: Try[T])
-    def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
+  extension [T](`try`: Try[T]) def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
 
   extension [K, V](map: java.util.Map[K, V])
     def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
     def asSafeKeys: Set[K] = asSafeMap.keys.toCovariantSet
     def asSafeValues: Set[V] = asSafeMap.values.toCovariantSet
 
-  extension (mapObject: Map.type)
-    def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
+  extension (mapObject: Map.type) def asEmptyJavaMap[K, V]: java.util.Map[K, V] = Map.empty[K, V].asJava
 
-  extension [T](list: java.util.List[T])
-    def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
+  extension [T](list: java.util.List[T]) def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
 
   extension [T](set: java.lang.Iterable[T])
     def asSafeSet: Set[T] = Option(set).map(_.asScala.toCovariantSet).getOrElse(Set.empty)
@@ -138,33 +136,37 @@ object ScalaOps {
         .toList
 
   extension [K, V](map: Map[K, V])
+
     def asStringMap: Map[String, String] =
-      map.collect {
-        case (key: String, value: String) => (key, value)
+      map.collect { case (key: String, value: String) =>
+        (key, value)
       }
 
   extension [T](lists: List[List[T]])
+
     def cartesian: List[List[T]] = {
-      lists.foldRight(List(List.empty[T])) {
-        case (xs, yss) =>
-          for {
-            x <- xs
-            ys <- yss
-          } yield x :: ys
+      lists.foldRight(List(List.empty[T])) { case (xs, yss) =>
+        for {
+          x <- xs
+          ys <- yss
+        } yield x :: ys
       }
     }
 
   extension [T](lists: NonEmptyList[NonEmptyList[T]])
+
     def cartesian: NonEmptyList[NonEmptyList[T]] = {
       NonEmptyList.fromListUnsafe(lists.map(_.toList).toList.cartesian.map(NonEmptyList.fromListUnsafe))
     }
 
   extension [A, B](either: List[Either[A, B]])
+
     def partitionEither: (List[A], List[B]) = {
       either.partitionMap(identity)
     }
 
   extension [A <: AutoCloseable](value: A)
+
     def bracket[B](convert: A => B): B = {
       try {
         convert(value)
@@ -173,18 +175,21 @@ object ScalaOps {
       }
     }
 
-  extension [A <: AutoCloseable, M[_] : Functor](value: M[A])
+  extension [A <: AutoCloseable, M[_]: Functor](value: M[A])
+
     def bracket[B](convert: A => B): M[B] = {
       value.map(v => v.bracket(convert))
     }
 
   extension [T](value: NonEmptySet[T])
-    def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
+    def widen[S >: T: Ordering]: NonEmptySet[S] =
+      NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
 
   extension (value: String)
+
     def splitByFirst(char: Char): Option[(String, String)] = {
       value.split(char).toList match {
-        case Nil => None
+        case Nil      => None
         case _ :: Nil => None
         case one :: _ => Some((one, value.substring(one.length + 1)))
       }
@@ -218,6 +223,7 @@ object ScalaOps {
     }
 
   extension (duration: PositiveFiniteDuration)
+
     def +(other: PositiveFiniteDuration): PositiveFiniteDuration = {
       Refined.unsafeApply(duration.value + other.value)
     }
@@ -225,12 +231,15 @@ object ScalaOps {
   extension (t: EitherT.type)
     def liftTask[A](value: => A): EitherT[Task, Nothing, A] = EitherT(Task.delay(Right(value)))
 
-  extension[K, V, C] (m: mutable.HashMap[K, mutable.Builder[V, C]]) {
+  extension [K, V, C](m: mutable.HashMap[K, mutable.Builder[V, C]]) {
+
     def drainToMap: Map[K, C] = {
       val b = Map.newBuilder[K, C]
       b.sizeHint(m.size)
       m.foreach { case (k, v) => b += (k -> v.result()) }
       b.result()
     }
+
   }
+
 }

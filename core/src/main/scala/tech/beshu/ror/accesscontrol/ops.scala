@@ -45,6 +45,7 @@ object header {
   class ToTuple(val header: Header) extends AnyVal {
     def toTuple: (String, String) = (header.name.value.value, header.value.value)
   }
+
   object ToTuple {
     implicit def toTuple(header: Header): ToTuple = new ToTuple(header)
   }
@@ -52,6 +53,7 @@ object header {
   trait ToHeaderValue[T] {
     def toRawValue(t: T): NonEmptyString
   }
+
   object ToHeaderValue {
     def apply[T](func: T => NonEmptyString): ToHeaderValue[T] = (t: T) => func(t)
   }
@@ -59,9 +61,11 @@ object header {
   trait FromHeaderValue[T] {
     def fromRawValue(value: NonEmptyString): Try[T]
   }
+
 }
 
 object headerValues {
+
   implicit def nonEmptyListHeaderValue[T: ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
     implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
     val tToHeaderValue = implicitly[ToHeaderValue[T]]
@@ -106,9 +110,11 @@ object headerValues {
 
     implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
 
-    Try(upickle.default.read[FieldsRestrictions](
-      new String(Base64.getDecoder.decode(value.value), "UTF-8")
-    ))
+    Try(
+      upickle.default.read[FieldsRestrictions](
+        new String(Base64.getDecoder.decode(value.value), "UTF-8")
+      )
+    )
   }
 
   implicit val groupHeaderValue: ToHeaderValue[GroupId] = ToHeaderValue(_.value)
@@ -118,16 +124,20 @@ object orders {
   implicit val nonEmptyStringOrder: Order[NonEmptyString] = Order.by(_.value)
   implicit val headerNameOrder: Order[Header.Name] = Order.by(_.value.value)
   implicit val headerOrder: Order[Header] = Order.by(h => (h.name, h.value.value))
+
   implicit val addressOrder: Order[Address] = Order.by {
-    case Address.Ip(value) => value.toString()
+    case Address.Ip(value)   => value.toString()
     case Address.Name(value) => value.toString
   }
+
   implicit val methodOrder: Order[RequestContext.Method] = Order.by(_.value)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
+
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by {
     case KibanaApp.FullNameKibanaApp(name) => name.value
-    case KibanaApp.KibanaAppRegex(regex) => regex.value.value
+    case KibanaApp.KibanaAppRegex(regex)   => regex.value.value
   }
+
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
@@ -137,47 +147,54 @@ object orders {
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
   implicit val groupIdOrder: Order[GroupId] = Order.by(_.value)
+
   implicit val groupIdLikeOrder: Order[GroupIdLike] = Order.by {
-    case GroupId(value) => value
+    case GroupId(value)                    => value
     case GroupIdLike.GroupIdPattern(value) => value
   }
+
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[RegexPattern] = Order.by(_.pattern)
+
   implicit val forbiddenCauseOrder: Order[ForbiddenCause] = Order.by {
-    case ForbiddenCause.OperationNotAllowed => 1
-    case ForbiddenCause.ImpersonationNotAllowed => 2
+    case ForbiddenCause.OperationNotAllowed       => 1
+    case ForbiddenCause.ImpersonationNotAllowed   => 2
     case ForbiddenCause.ImpersonationNotSupported => 3
   }
+
   implicit val repositoryOrder: Order[RepositoryName] = Order.by {
-    case RepositoryName.Full(value) => value.value
+    case RepositoryName.Full(value)    => value.value
     case RepositoryName.Pattern(value) => value.value
-    case RepositoryName.All => "_all"
-    case RepositoryName.Wildcard => "*"
+    case RepositoryName.All            => "_all"
+    case RepositoryName.Wildcard       => "*"
   }
+
   implicit val snapshotOrder: Order[SnapshotName] = Order.by {
-    case SnapshotName.Full(value) => value.value
+    case SnapshotName.Full(value)    => value.value
     case SnapshotName.Pattern(value) => value.value
-    case SnapshotName.All => "_all"
-    case SnapshotName.Wildcard => "*"
+    case SnapshotName.All            => "_all"
+    case SnapshotName.Wildcard       => "*"
   }
+
   implicit val dataStreamOrder: Order[DataStreamName] = Order.by {
-    case DataStreamName.Full(value) => value.value
+    case DataStreamName.Full(value)    => value.value
     case DataStreamName.Pattern(value) => value.value
-    case DataStreamName.All => "_all"
-    case DataStreamName.Wildcard => "*"
+    case DataStreamName.All            => "_all"
+    case DataStreamName.Wildcard       => "*"
   }
 
   implicit def accessOrder[T: Order]: Order[AccessRequirement[T]] = Order.from {
-    case (MustBeAbsent(v1), MustBeAbsent(v2)) => v1.compare(v2)
+    case (MustBeAbsent(v1), MustBeAbsent(v2))   => v1.compare(v2)
     case (MustBePresent(v1), MustBePresent(v2)) => v1.compare(v2)
-    case (MustBePresent(_), _) => -1
-    case (_, MustBePresent(_)) => 1
+    case (MustBePresent(_), _)                  => -1
+    case (_, MustBePresent(_))                  => 1
   }
 
   def userIdOrder(globalSettings: GlobalSettings): Order[User.Id] = Order.by { userId =>
     globalSettings.userIdCaseSensitivity match {
-      case CaseSensitivity.Enabled => userId.value.value
+      case CaseSensitivity.Enabled  => userId.value.value
       case CaseSensitivity.Disabled => userId.value.value.toLowerCase
     }
   }
+
 }

@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.utils.misc
 
-import java.time.Duration
 import cats.Functor
 import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
+import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import scala.annotation.tailrec
@@ -33,12 +33,15 @@ import scala.util.control.NonFatal
 object ScalaUtils extends LazyLogging {
 
   implicit class StringOps(val value: String) extends AnyVal {
+
     def stripMarginAndReplaceWindowsLineBreak: String = {
       value.stripMargin.replace("\r\n", "\n")
     }
+
   }
-  
+
   implicit class StringDateTimeOps(val value: String) extends AnyVal {
+
     def isInIsoDateTimeFormat: Boolean = {
       isInDateTimeFormat(DateTimeFormatter.ISO_DATE_TIME)
     }
@@ -46,20 +49,24 @@ object ScalaUtils extends LazyLogging {
     def isInDateTimeFormat(format: DateTimeFormatter): Boolean = {
       Try(format.parse(value)).toOption.isDefined
     }
+
   }
-  
+
   implicit class StringListOps(val list: List[String]) extends AnyVal {
     def mkJsonStringArray: String =
       list.map(e => s""""$e"""").mkString("[", ",", "]")
   }
 
   implicit class ListOps[T](val list: List[T]) extends AnyVal {
+
     def partitionByIndexMod2: (List[T], List[T]) = {
       list.zipWithIndex.partition(_._2 % 2 == 0).bimap(_.map(_._1), _.map(_._1))
     }
+
   }
 
   implicit class AutoCloseableOps[A <: AutoCloseable](val value: A) {
+
     def bracket[B](convert: A => B): B = {
       try {
         convert(value)
@@ -67,17 +74,21 @@ object ScalaUtils extends LazyLogging {
         value.close()
       }
     }
+
   }
 
   implicit class AutoClosableMOps[A <: AutoCloseable, M[_]: Functor](val value: M[A]) {
+
     def bracket[B](convert: A => B): M[B] = {
       value.map(v => AutoCloseableOps(v).bracket(convert))
     }
+
   }
 
   implicit def finiteDurationToJavaDuration(interval: FiniteDuration): Duration = Duration.ofMillis(interval.toMillis)
 
-  implicit def javaDurationToFiniteDuration(interval: Duration): FiniteDuration = FiniteDuration(interval.toMillis, TimeUnit.MILLISECONDS)
+  implicit def javaDurationToFiniteDuration(interval: Duration): FiniteDuration =
+    FiniteDuration(interval.toMillis, TimeUnit.MILLISECONDS)
 
   def retry(times: Int, cleanBeforeRetrying: => Unit = ())(action: => Unit): Unit = {
     @tailrec
@@ -110,11 +121,15 @@ object ScalaUtils extends LazyLogging {
    */
   def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
     val result = new java.util.concurrent.atomic.AtomicReference[Either[Throwable, A]]()
-    val worker = new Thread(() => {
-      // Catch Throwable, not just NonFatal: a fatal error must still be RECORDED, else `result` stays
-      // null and the match below throws a misleading MatchError instead of the real cause.
-      result.set(try Right(action) catch { case e: Throwable => Left(e) })
-    }, s"timeout-guard-$label")
+    val worker = new Thread(
+      () => {
+        // Catch Throwable, not just NonFatal: a fatal error must still be RECORDED, else `result` stays
+        // null and the match below throws a misleading MatchError instead of the real cause.
+        result.set(try Right(action)
+        catch { case e: Throwable => Left(e) })
+      },
+      s"timeout-guard-$label"
+    )
     worker.setDaemon(true)
     worker.start()
     worker.join(timeout.toMillis)
@@ -124,35 +139,32 @@ object ScalaUtils extends LazyLogging {
       throw new java.util.concurrent.TimeoutException(s"'$label' timed out after $timeout")
     }
     result.get() match {
-      case null => throw new IllegalStateException(s"'$label' worker exited without setting a result")
+      case null     => throw new IllegalStateException(s"'$label' worker exited without setting a result")
       case Right(a) => a
-      case Left(e) => throw e
+      case Left(e)  => throw e
     }
   }
 
-  def retryBackoff[A](source: Task[A],
-                      maxRetries: Int,
-                      firstDelay: FiniteDuration,
-                      backOffScaler: Int): Task[A] = {
-    source.onErrorHandleWith {
-      case ex: Exception =>
-        if (maxRetries > 0)
-          retryBackoff(source, maxRetries - 1, firstDelay * backOffScaler, backOffScaler)
-            .delayExecution(firstDelay)
-        else
-          Task.raiseError(ex)
+  def retryBackoff[A](source: Task[A], maxRetries: Int, firstDelay: FiniteDuration, backOffScaler: Int): Task[A] = {
+    source.onErrorHandleWith { case ex: Exception =>
+      if (maxRetries > 0)
+        retryBackoff(source, maxRetries - 1, firstDelay * backOffScaler, backOffScaler)
+          .delayExecution(firstDelay)
+      else
+        Task.raiseError(ex)
     }
   }
 
-  def waitForCondition(conditionDescription: String)
-                      (condition: => Boolean)
-                      (implicit timeout: FiniteDuration = 20 seconds): Unit = {
+  def waitForCondition(conditionDescription: String)(condition: => Boolean)(
+      implicit timeout: FiniteDuration = 20 seconds
+  ): Unit = {
     import monix.execution.Scheduler.Implicits.global
     val retriesCount = timeout.toSeconds.toInt + 1
     retryBackoff(
       Task.delay(
-        if(condition) ()
-        else throw new Exception(s"Condition '$conditionDescription' is not fulfilled. Cannot wait longer than $timeout")
+        if (condition) ()
+        else
+          throw new Exception(s"Condition '$conditionDescription' is not fulfilled. Cannot wait longer than $timeout")
       ),
       maxRetries = retriesCount,
       firstDelay = 1 seconds,

@@ -22,7 +22,10 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.Decision
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{
+  AddingIndexTemplateAndGetAllowedOnes,
+  GettingIndexTemplates
+}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
@@ -30,13 +33,13 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-private[indices] trait IndexTemplateIndices
-  extends RequestIdAwareLogging {
+private[indices] trait IndexTemplateIndices extends RequestIdAwareLogging {
   this: AllTemplateIndices =>
 
-  protected def gettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                     (implicit blockContext: TemplateRequestBlockContext,
-                                      allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def gettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     processGettingIndexTemplates(templateNamePatterns) match {
       case Right((operation, transformation)) =>
         Decision.permit(
@@ -49,9 +52,10 @@ private[indices] trait IndexTemplateIndices
     }
   }
 
-  protected def processGettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                            (implicit blockContext: TemplateRequestBlockContext,
-                                             allowedIndices: AllowedIndices): Either[Cause, (TemplateOperation.GettingIndexTemplates, TemplatesTransformation)] = {
+  protected def processGettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Either[Cause, (TemplateOperation.GettingIndexTemplates, TemplatesTransformation)] = {
     val (names, transformation) = getAllowedExistingIndexTemplates(templateNamePatterns)
     NonEmptyList
       .fromList(names)
@@ -59,9 +63,10 @@ private[indices] trait IndexTemplateIndices
       .toRight(Cause.TemplateNotFound: Cause)
   }
 
-  private def getAllowedExistingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                              (implicit blockContext: TemplateRequestBlockContext,
-                                               allowedIndices: AllowedIndices): (List[TemplateNamePattern], TemplatesTransformation) = {
+  private def getAllowedExistingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): (List[TemplateNamePattern], TemplatesTransformation) = {
     logger.debug(
       s"""* getting Index Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
@@ -83,32 +88,43 @@ private[indices] trait IndexTemplateIndices
     }
   }
 
-  protected def addingIndexTemplate(newTemplateName: TemplateName,
-                                    newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                    aliases: Set[RequestedIndex[ClusterIndexName]])
-                                   (implicit blockContext: TemplateRequestBlockContext,
-                                    allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def addingIndexTemplate(
+      newTemplateName: TemplateName,
+      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[RequestedIndex[ClusterIndexName]]
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     Decision.permit(`with` = blockContext)(
       when = processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
     )
   }
 
-  protected def addingIndexTemplateAndGetAllowedOnes(newTemplateName: TemplateName,
-                                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                                     aliases: Set[RequestedIndex[ClusterIndexName]],
-                                                     requestedTemplateNames: List[TemplateNamePattern])
-                                                    (implicit blockContext: TemplateRequestBlockContext,
-                                                     allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def addingIndexTemplateAndGetAllowedOnes(
+      newTemplateName: TemplateName,
+      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[RequestedIndex[ClusterIndexName]],
+      requestedTemplateNames: List[TemplateNamePattern]
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases) match {
       case true =>
         val (filteredAllowedTemplates, transformation) = NonEmptyList.fromList(requestedTemplateNames) match {
           case Some(nonEmptyAllowedTemplateNames) => getAllowedExistingIndexTemplates(nonEmptyAllowedTemplateNames)
-          case None => (List.empty, ignoreAnyTemplate)
+          case None                               => (List.empty, ignoreAnyTemplate)
         }
         Decision.permit {
           blockContext
             .withTemplateOperation(
-              AddingIndexTemplateAndGetAllowedOnes(newTemplateName, newTemplateIndicesPatterns, aliases, filteredAllowedTemplates)
+              AddingIndexTemplateAndGetAllowedOnes(
+                newTemplateName,
+                newTemplateIndicesPatterns,
+                aliases,
+                filteredAllowedTemplates
+              )
             )
             .withResponseTemplateTransformation(transformation)
         }
@@ -117,11 +133,14 @@ private[indices] trait IndexTemplateIndices
     }
   }
 
-  private def processAddingIndexTemplate(newTemplateName: TemplateName,
-                                         newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                         aliases: Set[RequestedIndex[ClusterIndexName]])
-                                        (implicit blockContext: TemplateRequestBlockContext,
-                                         allowedIndices: AllowedIndices): Boolean = {
+  private def processAddingIndexTemplate(
+      newTemplateName: TemplateName,
+      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[RequestedIndex[ClusterIndexName]]
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Boolean = {
     logger.debug(
       s"""* adding Index Template [${newTemplateName.show}] with index
          | patterns [${newTemplateIndicesPatterns.show}] and aliases [${aliases.show}] ...""".oneLiner
@@ -133,15 +152,16 @@ private[indices] trait IndexTemplateIndices
              | (indices patterns [${existingTemplate.patterns.show}]) exits ...""".oneLiner
         )
         canModifyExistingIndexTemplate(existingTemplate) &&
-          canAddNewIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
+        canAddNewIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
       case None =>
         canAddNewIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
     }
   }
 
-  protected def deletingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                      (implicit blockContext: TemplateRequestBlockContext,
-                                       allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def deletingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* deleting Index Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
@@ -157,20 +177,22 @@ private[indices] trait IndexTemplateIndices
           case PartialResult.Forbidden(_) =>
             Left(())
         }
-      case (rejected@Left(_), _) => rejected
+      case (rejected @ Left(_), _) => rejected
     }
     result match {
       case Left(_) | Right(Nil) =>
         Decision.deny(Cause.NotAuthorized)
       case Right(nonEmptyPatternsList) =>
-        val modifiedOperation = TemplateOperation.DeletingIndexTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
+        val modifiedOperation =
+          TemplateOperation.DeletingIndexTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
         Decision.permit(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
 
-  private def deletingIndexTemplate(templateNamePattern: TemplateNamePattern)
-                                   (implicit blockContext: TemplateRequestBlockContext,
-                                    allowedIndices: AllowedIndices): PartialResult[TemplateNamePattern] = {
+  private def deletingIndexTemplate(templateNamePattern: TemplateNamePattern)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): PartialResult[TemplateNamePattern] = {
     val foundTemplates = findTemplatesBy(namePattern = templateNamePattern, in = blockContext)
     if (foundTemplates.isEmpty) {
       logger.debug(
@@ -186,11 +208,14 @@ private[indices] trait IndexTemplateIndices
     }
   }
 
-  private def canAddNewIndexTemplate(newTemplateName: TemplateName,
-                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                     newTemplateAliases: Set[RequestedIndex[ClusterIndexName]])
-                                    (implicit blockContext: TemplateRequestBlockContext,
-                                     allowedIndices: AllowedIndices) = {
+  private def canAddNewIndexTemplate(
+      newTemplateName: TemplateName,
+      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+      newTemplateAliases: Set[RequestedIndex[ClusterIndexName]]
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     logger.debug(
       s"""* checking if Index Template [${newTemplateName.show}] with indices
          | patterns [${newTemplateIndicesPatterns.show}] and aliases [${newTemplateAliases.show}] can be added ...""".oneLiner
@@ -199,10 +224,11 @@ private[indices] trait IndexTemplateIndices
       newTemplateIndicesPatterns.toList
         .forall { pattern =>
           val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
-          if (!isPatternAllowed) logger.debug(
-            s"""STOP: one of Template's [${newTemplateName.show}]
+          if (!isPatternAllowed)
+            logger.debug(
+              s"""STOP: one of Template's [${newTemplateName.show}]
                | index pattern [${pattern.show}] is forbidden.""".oneLiner
-          )
+            )
           isPatternAllowed
         }
 
@@ -211,31 +237,35 @@ private[indices] trait IndexTemplateIndices
       else {
         newTemplateAliases.forall { alias =>
           val allowed = isAliasAllowed(alias.name)
-          if (!allowed) logger.debug(
-            s"""STOP: one of Template's [${newTemplateName.show}]
+          if (!allowed)
+            logger.debug(
+              s"""STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner
-          )
+            )
           allowed
         }
       }
     allPatternAllowed && allAliasesAllowed
   }
 
-  private def canViewExistingTemplate(existingTemplate: Template.IndexTemplate)
-                                     (implicit blockContext: TemplateRequestBlockContext,
-                                      allowedIndices: AllowedIndices) = {
+  private def canViewExistingTemplate(existingTemplate: Template.IndexTemplate)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     val isTemplateAllowed = existingTemplate.patterns.toList
       .exists { pattern => pattern.isAllowedByAny(allowedIndices.resolved) }
-    if (!isTemplateAllowed) logger.debug(
-      s"""WARN: Index Template [${existingTemplate.name.show}] is forbidden
+    if (!isTemplateAllowed)
+      logger.debug(
+        s"""WARN: Index Template [${existingTemplate.name.show}] is forbidden
          | because none of its index patterns [${existingTemplate.patterns.show}] is allowed by the rule""".oneLiner
-    )
+      )
     isTemplateAllowed
   }
 
-  private def canModifyExistingIndexTemplate(existingTemplate: Template.IndexTemplate)
-                                            (implicit blockContext: TemplateRequestBlockContext,
-                                             allowedIndices: AllowedIndices) = {
+  private def canModifyExistingIndexTemplate(existingTemplate: Template.IndexTemplate)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     logger.debug(
       s"* checking if Index Template [${existingTemplate.name.show}] can be modified by the user ..."
     )
@@ -243,11 +273,12 @@ private[indices] trait IndexTemplateIndices
       existingTemplate.patterns.toList
         .forall { pattern =>
           val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
-          if (!isPatternAllowed) logger.debug(
-            s"""STOP: cannot allow to modify existing Index Template
+          if (!isPatternAllowed)
+            logger.debug(
+              s"""STOP: cannot allow to modify existing Index Template
                | [${existingTemplate.name.show}], because its index pattern [${pattern.show}] is not allowed by rule
                | (it means that user has no access to it)""".oneLiner
-          )
+            )
           isPatternAllowed
         }
     lazy val allAliasesAllowed =
@@ -255,11 +286,12 @@ private[indices] trait IndexTemplateIndices
       else {
         existingTemplate.aliases.forall { alias =>
           val allowed = isAliasAllowed(alias)
-          if (!allowed) logger.debug(
-            s"""STOP: cannot allow to modify existing Index Template
+          if (!allowed)
+            logger.debug(
+              s"""STOP: cannot allow to modify existing Index Template
                | [${existingTemplate.name.show}], because its alias [${alias.show}] is not allowed by rule
                | (it means that user has no access to it)""".oneLiner
-          )
+            )
           allowed
         }
       }
@@ -271,17 +303,24 @@ private[indices] trait IndexTemplateIndices
     in.requestContext.esServices.clusterService.indexTemplates.find(_.name == name)
   }
 
-  private def findTemplatesBy(namePattern: TemplateNamePattern, in: TemplateRequestBlockContext): Set[Template.IndexTemplate] = {
+  private def findTemplatesBy(
+      namePattern: TemplateNamePattern,
+      in: TemplateRequestBlockContext
+  ): Set[Template.IndexTemplate] = {
     findTemplatesBy(Set(namePattern), in)
   }
 
-  private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.IndexTemplate] = {
+  private def findTemplatesBy(
+      namePatterns: Iterable[TemplateNamePattern],
+      in: TemplateRequestBlockContext
+  ): Set[Template.IndexTemplate] = {
     given RequestId = in.requestContext.id.toRequestId
     filterTemplates(namePatterns, in.requestContext.esServices.clusterService.indexTemplates)
   }
 
-  private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])
-                                                         (implicit allowedIndices: AllowedIndices): Set[Template] = {
+  private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])(
+      implicit allowedIndices: AllowedIndices
+  ): Set[Template] = {
     templates.flatMap {
       case Template.IndexTemplate(name, patterns, aliases) =>
         val onlyAllowedPatterns = patterns.filter(p => p.isAllowedByAny(allowedIndices.resolved))

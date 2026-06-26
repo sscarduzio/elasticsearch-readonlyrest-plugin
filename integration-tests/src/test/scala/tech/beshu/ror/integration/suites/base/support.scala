@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClu
 object support {
 
   trait BaseEsClusterIntegrationTest
-    extends RorSettingsFileNameProvider
+      extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
@@ -38,7 +38,7 @@ object support {
   }
 
   trait BaseEsRemoteClusterIntegrationTest
-    extends RorSettingsFileNameProvider
+      extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
@@ -50,7 +50,7 @@ object support {
   }
 
   trait BaseManyEsClustersIntegrationTest
-    extends RorSettingsFileNameProvider
+      extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
       with ForAllTestContainer {
@@ -73,7 +73,7 @@ object support {
   // Do not add ScalaTest ParallelTestExecution or junit parallel config (the latter is guarded in
   // integration-tests/build.gradle).
   trait BaseSingleNodeEsClusterTest
-    extends RorSettingsFileNameProvider
+      extends RorSettingsFileNameProvider
       with SingleClientSupport
       with TestSuiteWithClosedTaskAssertion
       with NodeInitializerProvider {

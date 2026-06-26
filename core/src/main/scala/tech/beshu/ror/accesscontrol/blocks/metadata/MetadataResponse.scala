@@ -30,9 +30,11 @@ object MetadataResponse {
 
   type JavaJsonObject = java.util.Map[String, Object]
 
-  def fromAsJavaJsonObject(licenseType: RorKbnLicenseType,
-                           userMetadata: UserMetadata,
-                           correlationId: CorrelationId): JavaJsonObject = {
+  def fromAsJavaJsonObject(
+      licenseType: RorKbnLicenseType,
+      userMetadata: UserMetadata,
+      correlationId: CorrelationId
+  ): JavaJsonObject = {
     val json = fromAsCirceJson(licenseType, userMetadata, correlationId)
     if (json.isObject) {
       json.toJava.asInstanceOf[JavaJsonObject]
@@ -41,18 +43,19 @@ object MetadataResponse {
     }
   }
 
-  def fromAsCirceJson(licenseType: RorKbnLicenseType,
-                      userMetadata: UserMetadata,
-                      correlationId: CorrelationId): Json = {
+  def fromAsCirceJson(
+      licenseType: RorKbnLicenseType,
+      userMetadata: UserMetadata,
+      correlationId: CorrelationId
+  ): Json = {
     UserMetadataValue.from(userMetadata, correlationId, licenseType)
   }
+
 }
 
 private object UserMetadataValue {
 
-  def from(userMetadata: UserMetadata,
-           correlationId: CorrelationId,
-           licenseType: RorKbnLicenseType): Json = {
+  def from(userMetadata: UserMetadata, correlationId: CorrelationId, licenseType: RorKbnLicenseType): Json = {
     implicit val licenseTypeImplicit: RorKbnLicenseType = licenseType
     userMetadata match {
       case withoutGroups: UserMetadata.WithoutGroups =>
@@ -64,8 +67,9 @@ private object UserMetadataValue {
     }
   }
 
-  private def withoutGroupsEncoder(correlationId: CorrelationId)
-                                  (implicit licenseType: RorKbnLicenseType): Encoder[UserMetadata.WithoutGroups] =
+  private def withoutGroupsEncoder(correlationId: CorrelationId)(
+      implicit licenseType: RorKbnLicenseType
+  ): Encoder[UserMetadata.WithoutGroups] =
     Encoder.forProduct5("type", "correlation_id", "username", "ror_origin", "kibana") { userMetadata =>
       (
         "USER_WITHOUT_GROUPS",
@@ -76,8 +80,9 @@ private object UserMetadataValue {
       )
     }
 
-  private def withGroupsEncoder(correlationId: CorrelationId)
-                               (implicit licenseType: RorKbnLicenseType): Encoder[UserMetadata.WithGroups] =
+  private def withGroupsEncoder(correlationId: CorrelationId)(
+      implicit licenseType: RorKbnLicenseType
+  ): Encoder[UserMetadata.WithGroups] =
     Encoder.forProduct3("type", "correlation_id", "groups") { userMetadata =>
       (
         "USER_WITH_GROUPS",
@@ -86,7 +91,9 @@ private object UserMetadataValue {
       )
     }
 
-  private implicit def groupMetadataEncoder(implicit licenseType: RorKbnLicenseType): Encoder[GroupMetadata] = {
+  private implicit def groupMetadataEncoder(
+      implicit licenseType: RorKbnLicenseType
+  ): Encoder[GroupMetadata] = {
     Encoder
       .forProduct4("group", "username", "ror_origin", "kibana") { groupMetadata =>
         (
@@ -98,7 +105,9 @@ private object UserMetadataValue {
       }
   }
 
-  private implicit def kibanaPolicyEncoder(implicit licenseType: RorKbnLicenseType): Encoder[KibanaPolicy] =
+  private implicit def kibanaPolicyEncoder(
+      implicit licenseType: RorKbnLicenseType
+  ): Encoder[KibanaPolicy] =
     Encoder
       .forProduct6("access", "index", "template_index", "hidden_apps", "allowed_api_paths", "metadata") { policy =>
         (
@@ -117,25 +126,26 @@ private object UserMetadataValue {
 
   private implicit lazy val userOriginEncoder: Encoder[UserOrigin] = Encoder.encodeString.contramap(_.value.value)
 
-  private implicit lazy val kibanaIndexNameEncoder: Encoder[KibanaIndexName] = Encoder.encodeString.contramap(_.stringify)
+  private implicit lazy val kibanaIndexNameEncoder: Encoder[KibanaIndexName] =
+    Encoder.encodeString.contramap(_.stringify)
 
   private implicit lazy val kibanaAppEncoder: Encoder[KibanaApp] = Encoder.encodeString.contramap {
     case KibanaApp.FullNameKibanaApp(name) => name.value
-    case KibanaApp.KibanaAppRegex(regex) => regex.value.value
+    case KibanaApp.KibanaAppRegex(regex)   => regex.value.value
   }
 
   private implicit lazy val jsonRepresentationEncoder: Encoder[JsonRepresentation] = Encoder.instance { json =>
     def convert(j: JsonRepresentation): Json = j match {
       case JsonTree.Object(fields) =>
-        Json.obj(fields.view.mapValues(convert).toSeq *)
+        Json.obj(fields.view.mapValues(convert).toSeq*)
       case JsonTree.Array(elements) =>
-        Json.arr(elements.map(convert) *)
+        Json.arr(elements.map(convert)*)
       case JsonTree.Value(value) =>
         value match {
-          case JsonValue.StringValue(v) => Json.fromString(v)
-          case JsonValue.NumValue(v) => Json.fromBigDecimal(v)
+          case JsonValue.StringValue(v)  => Json.fromString(v)
+          case JsonValue.NumValue(v)     => Json.fromBigDecimal(v)
           case JsonValue.BooleanValue(v) => Json.fromBoolean(v)
-          case JsonValue.NullValue => Json.Null
+          case JsonValue.NullValue       => Json.Null
         }
     }
 
@@ -146,21 +156,21 @@ private object UserMetadataValue {
     Encoder.forProduct2("id", "name")(g => (g.id.value.value, g.name.value.value))
 
   private implicit lazy val kibanaAccessEncoder: Encoder[KibanaAccess] = Encoder.encodeString.contramap {
-    case KibanaAccess.RO => "ro"
-    case KibanaAccess.ROStrict => "ro_strict"
-    case KibanaAccess.RW => "rw"
-    case KibanaAccess.Admin => "admin"
-    case KibanaAccess.ApiOnly => "api_only"
+    case KibanaAccess.RO           => "ro"
+    case KibanaAccess.ROStrict     => "ro_strict"
+    case KibanaAccess.RW           => "rw"
+    case KibanaAccess.Admin        => "admin"
+    case KibanaAccess.ApiOnly      => "api_only"
     case KibanaAccess.Unrestricted => "unrestricted"
   }
 
   private implicit lazy val allowedHttpMethodEncoder: Encoder[AllowedHttpMethod] = Encoder.encodeString.contramap {
-    case AllowedHttpMethod.Any => "ANY"
+    case AllowedHttpMethod.Any                  => "ANY"
     case AllowedHttpMethod.Specific(httpMethod) =>
       httpMethod match {
-        case HttpMethod.Get => "GET"
-        case HttpMethod.Post => "POST"
-        case HttpMethod.Put => "PUT"
+        case HttpMethod.Get    => "GET"
+        case HttpMethod.Post   => "POST"
+        case HttpMethod.Put    => "PUT"
         case HttpMethod.Delete => "DELETE"
       }
   }
@@ -168,4 +178,3 @@ private object UserMetadataValue {
   private implicit lazy val kibanaAllowedApiPathEncoder: Encoder[KibanaAllowedApiPath] =
     Encoder.forProduct2("http_method", "path_regex")(k => (k.httpMethod, k.pathRegex.pattern.pattern()))
 }
-

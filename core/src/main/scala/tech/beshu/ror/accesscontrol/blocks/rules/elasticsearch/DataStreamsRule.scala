@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule.Settings
@@ -35,9 +35,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.{RequestIdAwareLogging, ZeroKnowledgeIndexFilter}
 
-class DataStreamsRule(val settings: Settings)
-  extends RegularRule
-    with RequestIdAwareLogging {
+class DataStreamsRule(val settings: Settings) extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = DataStreamsRule.Name.name
 
@@ -45,7 +43,7 @@ class DataStreamsRule(val settings: Settings)
     new ZeroKnowledgeIndexFilter(true)
   )
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.DataStreamRequestBlockContextUpdater =>
         checkDataStreams(blockContext)
@@ -54,21 +52,24 @@ class DataStreamsRule(val settings: Settings)
     }
   }
 
-  private def checkDataStreams[B <: BlockContext](blockContext: DataStreamRequestBlockContext)
-                                                 (implicit ev: DataStreamRequestBlockContext <:< B): Decision[B] = {
+  private def checkDataStreams[B <: BlockContext](blockContext: DataStreamRequestBlockContext)(
+      implicit ev: DataStreamRequestBlockContext <:< B
+  ): Decision[B] = {
     checkAllowedDataStreams(
       resolveAll(settings.allowedDataStreams.toNonEmptyList, blockContext).toCovariantSet,
       blockContext.dataStreams,
       blockContext.requestContext
     ) match {
       case Right(filteredDataStreams) => Permitted(blockContext.withDataStreams(filteredDataStreams))
-      case Left(()) => Denied(Cause.NotAuthorized)
+      case Left(())                   => Denied(Cause.NotAuthorized)
     }
   }
 
-  private def checkAllowedDataStreams(allowedDataStreams: Set[DataStreamName],
-                                      dataStreamsToCheck: Set[DataStreamName],
-                                      requestContext: RequestContext) = {
+  private def checkAllowedDataStreams(
+      allowedDataStreams: Set[DataStreamName],
+      dataStreamsToCheck: Set[DataStreamName],
+      requestContext: RequestContext
+  ) = {
     implicit val requestContextImpl: RequestContext = requestContext
     if (allowedDataStreams.contains(DataStreamName.All) || allowedDataStreams.contains(DataStreamName.Wildcard)) {
       Right(dataStreamsToCheck)
@@ -89,14 +90,18 @@ class DataStreamsRule(val settings: Settings)
           )
           Left(())
         case CheckResult.Failed =>
-          logger.debug(s"The processed data streams do not match the allowed data streams. The request will be rejected..")
+          logger.debug(
+            s"The processed data streams do not match the allowed data streams. The request will be rejected.."
+          )
           Left(())
       }
     }
   }
+
 }
 
 object DataStreamsRule {
+
   implicit case object Name extends RuleName[DataStreamsRule] {
     override val name: Rule.Name = Rule.Name("data_streams")
   }

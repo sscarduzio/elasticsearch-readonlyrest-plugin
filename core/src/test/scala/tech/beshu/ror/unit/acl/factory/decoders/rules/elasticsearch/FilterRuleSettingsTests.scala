@@ -18,7 +18,10 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.elasticsearch
 
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 import tech.beshu.ror.accesscontrol.domain.Filter
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
@@ -31,36 +34,36 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
     "be able to be loaded from settings" when {
       "filter is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    filter: "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    filter: "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            rule.settings.filter should be(AlreadyResolved(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
+            rule.settings.filter should be(
+              AlreadyResolved(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"))
+            )
           }
         )
       }
       "filter is defined with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    filter: "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    filter: "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            rule.settings.filter shouldBe a [ToBeResolved[_]]
+            rule.settings.filter shouldBe a[ToBeResolved[_]]
           }
         )
       }
@@ -68,24 +71,23 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
     "not be able to be loaded from settings" when {
       "no filter is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    filter:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    filter:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """filter: null
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""filter: null
+                                                                                      |""".stripMargin)))
           }
         )
       }
     }
   }
+
 }

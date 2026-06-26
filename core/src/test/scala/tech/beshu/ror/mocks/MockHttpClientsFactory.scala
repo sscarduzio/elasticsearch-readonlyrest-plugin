@@ -22,17 +22,21 @@ import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.{HttpClientsFactory, SimpleHttpClient, SimpleHttpClientCreator}
 
 object MockHttpClientsFactory extends HttpClientsFactory(NoOpSimpleHttpClientCreator) {
+
   override def create(config: SimpleHttpClient.Config): HttpClient = new SimpleHttpClient[Task] {
-    override def send(request: HttpClient.Request)
-                     (implicit requestId: RequestId): Task[HttpClient.Response] =
+    override def send(request: HttpClient.Request)(
+        implicit requestId: RequestId
+    ): Task[HttpClient.Response] =
       throw new IllegalStateException("Cannot use it. It's just a mock")
 
     override def close(): Task[Unit] = Task.unit
   }
+
   override def shutdown(): Task[Unit] = Task.unit
 }
 
-class MockHttpClientsFactoryWithFixedHttpClient(httpClient: HttpClient) extends HttpClientsFactory(NoOpSimpleHttpClientCreator) {
+class MockHttpClientsFactoryWithFixedHttpClient(httpClient: HttpClient)
+    extends HttpClientsFactory(NoOpSimpleHttpClientCreator) {
   override def create(config: SimpleHttpClient.Config): HttpClient = httpClient
   override def shutdown(): Task[Unit] = Task.unit
 }

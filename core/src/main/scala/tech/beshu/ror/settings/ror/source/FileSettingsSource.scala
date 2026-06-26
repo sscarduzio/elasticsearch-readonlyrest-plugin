@@ -27,10 +27,11 @@ import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoading
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
 
 class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
-  extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
+    extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
 
-  override def load()
-                   (implicit requestId: RequestId): Task[Either[FileSettingsLoadingError, SETTINGS]] = {
+  override def load()(
+      implicit requestId: RequestId
+  ): Task[Either[FileSettingsLoadingError, SETTINGS]] = {
     (for {
       _ <- checkIfFileExist(settingsFile)
       settings <- loadSettingsFromFile(settingsFile)
@@ -45,17 +46,23 @@ class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
       .pure[Task, FileSettingsLoadingError](file.contentAsString)
       .subflatMap { raw =>
         Json
-          .fromString(raw).as[SETTINGS]
-          .left.map { failure => SettingsLoadingError.SettingsMalformed(failure.message) }
+          .fromString(raw)
+          .as[SETTINGS]
+          .left
+          .map { failure => SettingsLoadingError.SettingsMalformed(failure.message) }
       }
   }
+
 }
+
 object FileSettingsSource {
 
   type FileSettingsLoadingError = SettingsLoadingError[LoadingError]
 
   sealed trait LoadingError
+
   object LoadingError {
     final case class FileNotExist(file: File) extends LoadingError
   }
+
 }

@@ -47,7 +47,7 @@ trait CustomScalaTestMatchers extends Matchers {
         case Obj(map) =>
           map.keys.find(_ == expectedKeyOrValue) match {
             case Some(_) => true
-            case None => map.values.exists(checkIfContainsExpectedKeyOrValue(_, expectedKeyOrValue))
+            case None    => map.values.exists(checkIfContainsExpectedKeyOrValue(_, expectedKeyOrValue))
           }
         case Arr(jsons) =>
           jsons.exists(checkIfContainsExpectedKeyOrValue(_, expectedKeyOrValue))
@@ -55,6 +55,7 @@ trait CustomScalaTestMatchers extends Matchers {
           false
       }
     }
+
   }
 
   implicit class UuidRegex(val context: ResultOfFullyMatchWordForString) {
@@ -62,6 +63,7 @@ trait CustomScalaTestMatchers extends Matchers {
     def uuidRegex: Assertion = {
       context regex """^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"""
     }
+
   }
 
   class SetMayNotContainsElementsMatcher(elements: Set[Regex]) extends Matcher[Set[String]] {
@@ -74,7 +76,8 @@ trait CustomScalaTestMatchers extends Matchers {
       )
     }
 
-    private def doesAllValuesFromSetDontMatchAnyOfPatterns(setToCheck: Set[String]): Boolean = setToCheck.forall(value => !matchesAnyOfPatterns(value))
+    private def doesAllValuesFromSetDontMatchAnyOfPatterns(setToCheck: Set[String]): Boolean =
+      setToCheck.forall(value => !matchesAnyOfPatterns(value))
 
     private def matchesAnyOfPatterns(value: String) = elements.exists(r => r.findFirstMatchIn(value).isDefined)
   }
@@ -90,12 +93,13 @@ trait CustomScalaTestMatchers extends Matchers {
         s"Expected status code was [$statusCode] equals the response status code: [${response.responseCode}]; Moreover, body of the response was:\n${response.body}"
       )
     }
+
   }
 
   def haveStatusCode(statusCode: Int) = new StatusCodeEquals(statusCode)
 
   class HaveStatusCode[T <: BaseManager#SimpleResponse](val haveWord: ResultOfHaveWordForExtent[T])
-    extends CustomScalaTestMatchers {
+      extends CustomScalaTestMatchers {
     import org.joor.Reflect.*
 
     def statusCode(statusCode: Int): Assertion = {
@@ -103,9 +107,12 @@ trait CustomScalaTestMatchers extends Matchers {
 
       response should haveStatusCode(statusCode)
     }
+
   }
 
-  implicit def toHaveWordStatusCode[T <: BaseManager#SimpleResponse](haveWord: ResultOfHaveWordForExtent[T]): HaveStatusCode[T] = {
+  implicit def toHaveWordStatusCode[T <: BaseManager#SimpleResponse](
+      haveWord: ResultOfHaveWordForExtent[T]
+  ): HaveStatusCode[T] = {
     new HaveStatusCode(haveWord)
   }
 
@@ -152,9 +159,13 @@ trait CustomScalaTestMatchers extends Matchers {
           if (actualArray.size != expectedArray.size) {
             List(s"At '$path': array size mismatch (actual: ${actualArray.size}, expected: ${expectedArray.size})")
           } else {
-            actualArray.zip(expectedArray).zipWithIndex.flatMap { case ((actualElem, expectedElem), idx) =>
-              findDifferences(actualElem, expectedElem, s"$path[$idx]")
-            }.toList
+            actualArray
+              .zip(expectedArray)
+              .zipWithIndex
+              .flatMap { case ((actualElem, expectedElem), idx) =>
+                findDifferences(actualElem, expectedElem, s"$path[$idx]")
+              }
+              .toList
           }
 
         case (Str(actualStr), Str(expectedStr)) if actualStr == expectedStr =>
@@ -173,6 +184,7 @@ trait CustomScalaTestMatchers extends Matchers {
           List(s"At '$path': value mismatch (actual: ${ujson.write(actual)}, expected: ${ujson.write(expected)})")
       }
     }
+
   }
 
   def containJsonMatching(ignoredFields: String*)(expected: Value): Matcher[Iterable[Value]] = {
@@ -205,22 +217,23 @@ trait CustomScalaTestMatchers extends Matchers {
     }
 
     private def formatEntriesWithDifferences(entriesWithDifferences: Iterable[(Value, MatchResult)]): String = {
-      entriesWithDifferences.zipWithIndex.map { case ((entry, matchResult), index) =>
-        if (matchResult.matches) {
-          s"Entry ${index + 1}: ✓ MATCHES"
-        } else {
-          s"""Entry ${index + 1}: ✗ DOES NOT MATCH
-             |${matchResult.failureMessage}
-             |
-             |Actual JSON:
-             |${ujson.write(entry, indent = 2)}""".stripMargin
+      entriesWithDifferences.zipWithIndex
+        .map { case ((entry, matchResult), index) =>
+          if (matchResult.matches) {
+            s"Entry ${index + 1}: ✓ MATCHES"
+          } else {
+            s"""Entry ${index + 1}: ✗ DOES NOT MATCH
+               |${matchResult.failureMessage}
+               |
+               |Actual JSON:
+               |${ujson.write(entry, indent = 2)}""".stripMargin
+          }
         }
-      }.mkString("\n\n---\n\n")
+        .mkString("\n\n---\n\n")
     }
+
   }
 
 }
 
 object CustomScalaTestMatchers extends CustomScalaTestMatchers
-
-

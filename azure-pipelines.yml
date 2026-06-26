@@ -151,9 +151,12 @@ stages:
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
               export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
               export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
-              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
               export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               ci/upload-es-artifacts.sh
             continueOnError: true
@@ -164,9 +167,12 @@ stages:
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
               VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
-              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
 
   # Builds & pushes the CI toolchains image (ci/toolchains/JdkToolchains.Dockerfile). Runs on the
   # weekly schedule (cache refresh) or manually with actionToPerform=build_toolchains_image after a
@@ -249,6 +255,8 @@ stages:
     condition: and(not(canceled()), in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
+        # TEMPORARILY DISABLED — re-enable when https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/1275 is done
+        condition: false
         container: ror-toolchains
         steps:
           - checkout: self
@@ -314,17 +322,23 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
-              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
               export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
         strategy:
           maxParallel: 99
           matrix:
@@ -334,6 +348,8 @@ stages:
               ROR_TASK: compile_codebase_check
             AUDIT_BUILD_CHECK:
               ROR_TASK: audit_build_check
+            FORMAT_CODE_CHECK:
+              ROR_TASK: format_code_check
 
   - stage: TEST
     displayName: 'Run all tests'
@@ -932,11 +948,6 @@ stages:
       )
     jobs:
       - job:
-        # Self-hosted Default pool + toolchains container: agents sit next to the
-        # artifact storage (fast uploads) and the container has all 4 JDKs + baked
-        # cache, removing the bare-agent JDK-discovery / lost-cache risks (review).
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 600
         steps:
@@ -953,9 +964,12 @@ stages:
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
               export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
               export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
-              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
               export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
@@ -972,9 +986,12 @@ stages:
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
               VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
-              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
@@ -1008,9 +1025,6 @@ stages:
       )
     jobs:
       - job:
-        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 180
         steps:
@@ -1048,8 +1062,6 @@ stages:
       )
     jobs:
       - job:
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 180
         steps:
@@ -1087,11 +1099,6 @@ stages:
 
     jobs:
       - job:
-        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
-        # Maven publish compiles :audit (JDK 8) / :core (JDK 11); the container
-        # supplies those toolchains + the baked Gradle cache.
-        pool:
-          name: 'Default'
         container: ror-toolchains
         steps:
           - template: ci/azure-templates/publish-mvn-steps.yml
@@ -1112,8 +1119,6 @@ stages:
       )
     jobs:
       - job:
-        pool:
-          name: 'Default'
         container: ror-toolchains
         steps:
           - template: ci/azure-templates/publish-mvn-steps.yml

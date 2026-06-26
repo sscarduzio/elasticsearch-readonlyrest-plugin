@@ -37,22 +37,23 @@ object EsPatch {
   def create(esDirectory: EsDirectory): EsPatch = {
     val rorPluginDirectory = new RorPluginDirectory(esDirectory)
     esDirectory.readEsVersion() match {
-      case esVersion if esVersion >= es900 => new Es90xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es8180 => new Es818xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es8150 => new Es815xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es8140 => new Es814xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es8130 => new Es813xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es890 => new Es89xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es830 => new Es83xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es810 => new Es81xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es800 => new Es80xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es900   => new Es90xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es8180  => new Es818xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es8150  => new Es815xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es8140  => new Es814xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es8130  => new Es813xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es890   => new Es89xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es830   => new Es83xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es810   => new Es81xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es800   => new Es80xPatch(rorPluginDirectory, esVersion)
       case esVersion if esVersion >= es71713 => new Es717xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es7160 => new Es716xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es7140 => new Es714xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es7110 => new Es711xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es700 => new Es70xPatch(rorPluginDirectory, esVersion)
-      case esVersion if esVersion >= es670 => new Es67xPatch(rorPluginDirectory, esVersion)
-      case esVersion => new EsNotRequirePatch(esVersion)
+      case esVersion if esVersion >= es7160  => new Es716xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es7140  => new Es714xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es7110  => new Es711xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es700   => new Es70xPatch(rorPluginDirectory, esVersion)
+      case esVersion if esVersion >= es670   => new Es67xPatch(rorPluginDirectory, esVersion)
+      case esVersion                         => new EsNotRequirePatch(esVersion)
     }
   }
+
 }

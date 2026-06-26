@@ -17,7 +17,11 @@
 package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
-import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{
+  DoNotFetchSource,
+  Exclude,
+  Include
+}
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
@@ -26,22 +30,24 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class FieldRuleMSearchApiSourceFilteringSuite
-  extends FieldRuleSourceFilteringSuite
+    extends FieldRuleSourceFilteringSuite
     with SingletonPluginTestSupport
     with CustomScalaTestMatchers {
 
   override protected type CALL_RESULT = SearchManager#MSearchResult
 
-  override protected def fetchDocument(client: RestClient,
-                                       index: String,
-                                       clientSourceParams: Option[ClientSourceOptions]): SearchManager#MSearchResult = {
+  override protected def fetchDocument(
+      client: RestClient,
+      index: String,
+      clientSourceParams: Option[ClientSourceOptions]
+  ): SearchManager#MSearchResult = {
     val searchManager = new SearchManager(client, esVersionUsed)
 
     val query = clientSourceParams match {
       case Some(DoNotFetchSource) => """{ "_source": false }"""
-      case Some(Include(field)) => s"""{ "_source": { "includes": [ "$field" ] }}"""
-      case Some(Exclude(field)) => s"""{ "_source": { "excludes": [ "$field" ] }}"""
-      case None => """{}"""
+      case Some(Include(field))   => s"""{ "_source": { "includes": [ "$field" ] }}"""
+      case Some(Exclude(field))   => s"""{ "_source": { "excludes": [ "$field" ] }}"""
+      case None                   => """{}"""
     }
 
     searchManager.mSearch(s"""{"index":"$index"}""", query)
@@ -61,12 +67,12 @@ class FieldRuleMSearchApiSourceFilteringSuite
 
     result should have statusCode 200
     result.responses.size shouldBe 1
-    sourceOfFirstDoc(result) shouldBe Some(ujson.read(
-      """|{
-         | "user1": "user1Value"
-         |}""".stripMargin))
+    sourceOfFirstDoc(result) shouldBe Some(ujson.read("""|{
+                                                         | "user1": "user1Value"
+                                                         |}""".stripMargin))
 
     val hits = result.searchHitsForResponse(0)
     hits(0).obj.get("fields") should be(None)
   }
+
 }

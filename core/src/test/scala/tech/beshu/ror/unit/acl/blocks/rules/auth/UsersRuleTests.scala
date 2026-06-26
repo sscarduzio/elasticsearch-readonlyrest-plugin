@@ -30,8 +30,14 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
@@ -80,13 +86,23 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser]) =
+  private def assertMatchRule(
+      configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]],
+      loggedUser: Option[DirectlyLoggedUser]
+  ) =
     assertRule(configuredIds, loggedUser, isMatched = true)
 
-  private def assertNotMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser]) =
+  private def assertNotMatchRule(
+      configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]],
+      loggedUser: Option[DirectlyLoggedUser]
+  ) =
     assertRule(configuredIds, loggedUser, isMatched = false)
 
-  private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
+  private def assertRule(
+      configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]],
+      loggedUser: Option[DirectlyLoggedUser],
+      isMatched: Boolean
+  ) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.metadata
     val blockContext = UserMetadataRequestBlockContext(
@@ -94,7 +110,7 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
       requestContext = requestContext,
       blockMetadata = loggedUser match {
         case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(user)
-        case None => BlockMetadata.from(requestContext)
+        case None       => BlockMetadata.from(requestContext)
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty
@@ -112,5 +128,8 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
+
 }

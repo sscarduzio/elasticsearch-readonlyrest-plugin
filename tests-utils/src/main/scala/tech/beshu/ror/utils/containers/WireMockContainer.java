@@ -45,26 +45,32 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
 
   public static WireMockContainer create(String... mappings) {
     ImageFromDockerfile dockerfile = new ImageFromDockerfile();
-    List<File> mappingFiles = Lists.newArrayList(mappings).stream()
-        .map(ContainerUtils::getResourceFile)
-        .collect(Collectors.toList());
-    mappingFiles.forEach(mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
+    List<File> mappingFiles =
+        Lists.newArrayList(mappings).stream()
+            .map(ContainerUtils::getResourceFile)
+            .collect(Collectors.toList());
+    mappingFiles.forEach(
+        mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
-    WireMockContainer container = new WireMockContainer(
-        dockerfile.withDockerfileFromBuilder(builder -> {
-          DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
-          mappingFiles.forEach(mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
-          b.build();
-        }));
-    WireMockContainer cont = container
-        .withExposedPorts(WIRE_MOCK_PORT)
-        .waitingFor(
-            container.waitStrategy()
-                .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
-        );
+    WireMockContainer container =
+        new WireMockContainer(
+            dockerfile.withDockerfileFromBuilder(
+                builder -> {
+                  DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
+                  mappingFiles.forEach(
+                      mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
+                  b.build();
+                }));
+    WireMockContainer cont =
+        container
+            .withExposedPorts(WIRE_MOCK_PORT)
+            .waitingFor(container.waitStrategy().withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 
     cont.setNetwork(TestNetwork$.MODULE$.perJvm());
-    return cont.withLogConsumer(s -> System.out.print("[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
+    return cont.withLogConsumer(
+        s ->
+            System.out.print(
+                "[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
   }
 
   public String getWireMockHost() {
@@ -87,9 +93,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         try {
           RestClient client = getClient();
           return client.handle(
-              new HttpGet(client.from("/__admin/")),
-              r -> r.getStatusLine().getStatusCode() == 200
-          );
+              new HttpGet(client.from("/__admin/")), r -> r.getStatusLine().getStatusCode() == 200);
         } catch (Exception e) {
           return false;
         }

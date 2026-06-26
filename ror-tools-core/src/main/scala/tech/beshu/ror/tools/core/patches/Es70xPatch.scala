@@ -22,30 +22,43 @@ import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyApplicationPermissionClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityContextGetAuthenticationClass, ModifySecurityServerTransportInterceptorClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{
+  CreateRorAuthorizationInfoProviderClass,
+  ModifyAuthorizationServiceClass,
+  ModifyRBACEngineClass
+}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{
+  ModifySecurityClass,
+  ModifySecurityContextGetAuthenticationClass,
+  ModifySecurityServerTransportInterceptorClass
+}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{
+  ModifyRepositoriesServiceClass,
+  ModifySnapshotsServiceClass
+}
 
 import scala.language.postfixOps
 
 private[patches] class Es70xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
-  extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    ElasticsearchJarPatchCreator(
-      ModifyRepositoriesServiceClass(esVersion),
-      ModifySnapshotsServiceClass(esVersion)
-    ),
-    OptionalXPackCoreJarPatchCreator(
-      ModifyApplicationPermissionClass,
-      ModifySecurityContextGetAuthenticationClass,
-    ),
-    OptionalXPackSecurityJarPatchCreator(
-      CreateRorAuthorizationInfoProviderClass(esVersion),
-      ModifyAuthenticationServiceAuthenticatorClass(esVersion),
-      ModifyAuthorizationServiceClass(esVersion),
-      ModifyRBACEngineClass,
-      ModifyRestHasPrivilegesActionClass,
-      ModifySecurityClass,
-      ModifySecurityServerTransportInterceptorClass,
+    extends SimpleEsPatch(
+      rorPluginDirectory,
+      esVersion,
+      ElasticsearchJarPatchCreator(
+        ModifyRepositoriesServiceClass(esVersion),
+        ModifySnapshotsServiceClass(esVersion)
+      ),
+      OptionalXPackCoreJarPatchCreator(
+        ModifyApplicationPermissionClass,
+        ModifySecurityContextGetAuthenticationClass,
+      ),
+      OptionalXPackSecurityJarPatchCreator(
+        CreateRorAuthorizationInfoProviderClass(esVersion),
+        ModifyAuthenticationServiceAuthenticatorClass(esVersion),
+        ModifyAuthorizationServiceClass(esVersion),
+        ModifyRBACEngineClass,
+        ModifyRestHasPrivilegesActionClass,
+        ModifySecurityClass,
+        ModifySecurityServerTransportInterceptorClass,
+      )
     )
-  )

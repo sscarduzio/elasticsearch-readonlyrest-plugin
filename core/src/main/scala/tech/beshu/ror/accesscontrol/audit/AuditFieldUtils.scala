@@ -20,7 +20,8 @@ import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AuditFieldPath, Audi
 
 object AuditFieldUtils {
 
-  private type AUDIT_VALUE = (AuditFieldPath, AuditFieldValueDescriptor) | Map[AuditFieldPath, AuditFieldValueDescriptor]
+  private type AUDIT_VALUE = (AuditFieldPath, AuditFieldValueDescriptor) |
+    Map[AuditFieldPath, AuditFieldValueDescriptor]
 
   def optional(cond: Boolean)(value: AUDIT_VALUE): AUDIT_VALUE =
     Option.when(cond)(value).getOrElse(Map.empty)
@@ -29,12 +30,14 @@ object AuditFieldUtils {
     values.flatMap(toMap).toMap
 
   def withPrefix(prefix: String)(
-    values: AUDIT_VALUE*
+      values: AUDIT_VALUE*
   ): Map[AuditFieldPath, AuditFieldValueDescriptor] =
     withPrefix(prefix, values.flatMap(toMap).toMap)
 
-  private def withPrefix(prefix: String,
-                         values: Map[AuditFieldPath, AuditFieldValueDescriptor]): Map[AuditFieldPath, AuditFieldValueDescriptor] = {
+  private def withPrefix(
+      prefix: String,
+      values: Map[AuditFieldPath, AuditFieldValueDescriptor]
+  ): Map[AuditFieldPath, AuditFieldValueDescriptor] = {
     values.map { case (path, desc) =>
       val newPath = AuditFieldPath(prefix, path.path)
       newPath -> desc
@@ -49,4 +52,5 @@ object AuditFieldUtils {
         values
     }
   }
+
 }

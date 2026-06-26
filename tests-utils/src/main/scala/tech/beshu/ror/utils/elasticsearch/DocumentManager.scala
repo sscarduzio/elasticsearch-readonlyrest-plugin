@@ -21,14 +21,14 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.*
 import org.apache.http.entity.{FileEntity, StringEntity}
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.BulkAction
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
-import tech.beshu.ror.utils.TestUjson.ujson.Value
 
 class DocumentManager(restClient: RestClient, esVersion: String)
-  extends BaseManager(restClient, esVersion, esNativeApi = true) {
+    extends BaseManager(restClient, esVersion, esNativeApi = true) {
 
   def mGet(query: JSON): MGetResult = {
     call(createMGetRequest(query), new MGetResult(_))
@@ -48,23 +48,38 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   def createFirstDoc(index: String, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(createDocPathWithDefaultType(index, "1"), content, waitForRefresh = true), new JsonResponse(_))
+    call(
+      createInsertDocRequest(createDocPathWithDefaultType(index, "1"), content, waitForRefresh = true),
+      new JsonResponse(_)
+    )
   }
 
   def createDoc(index: String, id: Int, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id"), content, waitForRefresh = true), new JsonResponse(_))
+    call(
+      createInsertDocRequest(createDocPathWithDefaultType(index, s"$id"), content, waitForRefresh = true),
+      new JsonResponse(_)
+    )
   }
 
   def createDoc(index: String, id: String, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true), new JsonResponse(_))
+    call(
+      createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true),
+      new JsonResponse(_)
+    )
   }
 
   def createDoc(index: String, `type`: String, id: Int, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
+    call(
+      createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true),
+      new JsonResponse(_)
+    )
   }
 
   def createDoc(index: String, `type`: String, id: String, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
+    call(
+      createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true),
+      new JsonResponse(_)
+    )
   }
 
   def createDocWithGeneratedId(index: String, content: JSON): JsonResponse = {
@@ -72,7 +87,10 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   def deleteDoc(index: String, id: Int): JsonResponse = {
-    call(createDeleteDocRequest(createDocPathWithDefaultType(index, s"$id"), waitForRefresh = true), new JsonResponse(_))
+    call(
+      createDeleteDocRequest(createDocPathWithDefaultType(index, s"$id"), waitForRefresh = true),
+      new JsonResponse(_)
+    )
   }
 
   def deleteByQuery(index: String, query: JSON): JsonResponse = {
@@ -92,7 +110,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   private def createDocPathWithDefaultType(index: String, id: String, fallbackType: Option[String] = None) = {
-    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) createDocPath(index, "_doc", id)
+    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) createDocPath(index, "_doc", id)
     else createDocPath(index, fallbackType.getOrElse("doc"), id)
   }
 
@@ -102,7 +120,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
       createInsertDocRequest(docPath, content, waitForRefresh = true),
       new JsonResponse(_)
     )
-    if(!createDocResult.isSuccess || createDocResult.responseJson("result").str != "created") {
+    if (!createDocResult.isSuccess || createDocResult.responseJson("result").str != "created") {
       throw new IllegalStateException(s"Cannot create document '$docPath'; returned: ${createDocResult.body}")
     }
   }
@@ -115,7 +133,11 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     request
   }
 
-  private def createInsertDocWithGeneratedIdRequest(docPath: String, content: JSON, waitForRefresh: Boolean): HttpPost = {
+  private def createInsertDocWithGeneratedIdRequest(
+      docPath: String,
+      content: JSON,
+      waitForRefresh: Boolean
+  ): HttpPost = {
     val request = new HttpPost(restClient.from(docPath, waitForRefreshParam(waitForRefresh)))
     request.setHeader("timeout", "50s")
     request.addHeader("Content-Type", "application/json")
@@ -150,10 +172,9 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     val request = new HttpPost(restClient.from("_bulk"))
     request.addHeader("Content-Type", "application/json")
 
-    val lines = actions
-      .toList
-      .flatMap {
-        case BulkAction.Insert(index, id, document) => bulkCreateIndexDocEntry(index, id, document)
+    val lines = actions.toList
+      .flatMap { case BulkAction.Insert(index, id, document) =>
+        bulkCreateIndexDocEntry(index, id, document)
       } :+ "\n"
 
     val payload = (lines :+ "\n").foldLeft("") { case (acc, elem) => s"$acc\n$elem" }
@@ -185,11 +206,15 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   class MGetResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val docs: List[Value] = responseJson("docs").arr.toList
   }
+
 }
+
 object DocumentManager {
 
   sealed trait BulkAction
+
   object BulkAction {
     final case class Insert(index: String, id: Int, document: JSON) extends BulkAction
   }
+
 }

@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.util.{Failure, Success, Try}
 
 object SingletonEsContainerWithRorSecurity
-  extends EsClusterProvider
+    extends EsClusterProvider
     with EsContainerCreator
     with StrictLogging
     with EsModulePatterns {
@@ -74,8 +74,10 @@ object SingletonEsContainerWithRorSecurity
   def release(owner: String): Unit = {
     // Only the owner clears it; mismatches are logged (afterAll must not mask the real test failure).
     if (!currentOwner.compareAndSet(owner, null)) {
-      logger.warn(s"Singleton ES release by '$owner' but current owner is '${currentOwner.get()}' — " +
-        s"ignoring (possible missed acquire/double release).")
+      logger.warn(
+        s"Singleton ES release by '$owner' but current owner is '${currentOwner.get()}' — " +
+          s"ignoring (possible missed acquire/double release)."
+      )
     }
   }
 
@@ -97,9 +99,10 @@ object SingletonEsContainerWithRorSecurity
 
   private def logOnFailure[A](action: => A): Unit = {
     Try(action) match {
-      case Success(_) => ()
+      case Success(_)  => ()
       case Failure(ex) =>
         logger.error(s"Error occurred while cleanup of singleton ES container: $ex")
     }
   }
+
 }

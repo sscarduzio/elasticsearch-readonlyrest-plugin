@@ -26,26 +26,36 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRorWrappedCatAction(settings: Settings,
-                                   threadPool: ThreadPool,
-                                   transportService: TransportService,
-                                   actionFilters: ActionFilters,
-                                   indexNameExpressionResolver: IndexNameExpressionResolver,
-                                   @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
-    settings, RorWrappedCatActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RorWrappedCatRequest(() => ())
-  ) {
+class TransportRorWrappedCatAction(
+    settings: Settings,
+    threadPool: ThreadPool,
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    indexNameExpressionResolver: IndexNameExpressionResolver,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RorWrappedCatRequest, RorWrappedCatResponse](
+      settings,
+      RorWrappedCatActionType.name,
+      threadPool,
+      transportService,
+      actionFilters,
+      indexNameExpressionResolver,
+      () => new RorWrappedCatRequest(() => ())
+    ) {
 
   @Inject
-  def this(settings: Settings,
-           threadPool: ThreadPool,
-           transportService: TransportService,
-           indexNameExpressionResolver: IndexNameExpressionResolver,
-           actionFilters: ActionFilters) = {
+  def this(
+      settings: Settings,
+      threadPool: ThreadPool,
+      transportService: TransportService,
+      indexNameExpressionResolver: IndexNameExpressionResolver,
+      actionFilters: ActionFilters
+  ) = {
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
   }
 
   override def doExecute(request: RorWrappedCatRequest, listener: ActionListener[RorWrappedCatResponse]): Unit = {
     listener.onResponse(new RorWrappedCatResponse)
   }
+
 }

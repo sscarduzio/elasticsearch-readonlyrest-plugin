@@ -22,33 +22,35 @@ import io.netty.buffer.ByteBufAllocator
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.ssl.{ClientAuth, SslContext, SslContextBuilder}
+import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
-import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
+import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings
 import tech.beshu.ror.settings.es.SslSettings.*
 import tech.beshu.ror.settings.es.SslSettings.ClientCertificateSettings.TruststoreBasedSettings
 import tech.beshu.ror.settings.es.SslSettings.ServerCertificateSettings.KeystoreBasedSettings
-import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 
 import java.io.{FileInputStream, FileReader, IOException}
 import java.security.cert.{CertificateFactory, X509Certificate}
 import java.security.{KeyStore, PrivateKey}
-import javax.net.ssl.{KeyManagerFactory, SNIServerName, SSLEngine, TrustManagerFactory}
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.util.Try
 
 object SSLCertHelper extends RequestIdAwareLogging {
 
-  def prepareSSLEngine(sslContext: SslContext,
-                       hostAndPort: HostAndPort,
-                       channelHandlerContext: ChannelHandlerContext,
-                       serverName: Option[SNIServerName],
-                       enableHostnameVerification: Boolean,
-                       fipsCompliant: Boolean): SSLEngine = {
+  def prepareSSLEngine(
+      sslContext: SslContext,
+      hostAndPort: HostAndPort,
+      channelHandlerContext: ChannelHandlerContext,
+      serverName: Option[SNIServerName],
+      enableHostnameVerification: Boolean,
+      fipsCompliant: Boolean
+  ): SSLEngine = {
     val sslEngine = if (fipsCompliant || !enableHostnameVerification) {
       sslContext
         .newEngine(channelHandlerContext.alloc(), hostAndPort.host, hostAndPort.port)
@@ -70,11 +72,15 @@ object SSLCertHelper extends RequestIdAwareLogging {
       if (sslSettings.certificateVerificationEnabled) {
         sslSettings.clientCertificateSettings match {
           case Some(truststoreBasedSettings: TruststoreBasedSettings) =>
-            SslContextBuilder.forClient.trustManager(getTrustManagerFactory(truststoreBasedSettings, sslSettings.fipsMode.isSslFipsCompliant))
+            SslContextBuilder.forClient.trustManager(
+              getTrustManagerFactory(truststoreBasedSettings, sslSettings.fipsMode.isSslFipsCompliant)
+            )
           case Some(fileBasedSettings: ClientCertificateSettings.FileBasedSettings) =>
             SslContextBuilder.forClient.trustManager(getTrustedCertificatesFromPemFile(fileBasedSettings).toList.asJava)
           case None =>
-            throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
+            throw new Exception(
+              "Client Authentication could not be enabled because trust certificates has not been configured"
+            )
         }
       } else {
         SslContextBuilder.forClient.trustManager(InsecureTrustManagerFactory.INSTANCE)
@@ -86,7 +92,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
       }
       getFipsCompliantKeyManagerFactory(keystoreBasedSettings)
         .map { keyManagerFactory =>
-          noRequestIdLogger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
+          noRequestIdLogger.info(
+            s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}"
+          )
           builder.keyManager(keyManagerFactory)
         }
     } else {
@@ -96,7 +104,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
         case keystoreBasedSettings: KeystoreBasedSettings =>
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedSettings)
       }).map { case (privateKey, certificateChain) =>
-        noRequestIdLogger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
+        noRequestIdLogger.info(
+          s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}"
+        )
         builder.keyManager(privateKey, certificateChain.toList.asJava)
       }
     }
@@ -104,8 +114,7 @@ object SSLCertHelper extends RequestIdAwareLogging {
   }
 
   def prepareServerSSLContext(sslSettings: SslSettings, clientAuthenticationEnabled: Boolean): SslContext = {
-    prepareSslContextBuilder(sslSettings)
-      .attempt
+    prepareSslContextBuilder(sslSettings).attempt
       .map {
         case Right(sslCtxBuilder) =>
           areProtocolAndCiphersValid(sslCtxBuilder, sslSettings)
@@ -116,11 +125,15 @@ object SSLCertHelper extends RequestIdAwareLogging {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
             sslSettings.clientCertificateSettings match {
               case Some(truststoreBasedSettings: TruststoreBasedSettings) =>
-                sslCtxBuilder.trustManager(getTrustManagerFactory(truststoreBasedSettings, sslSettings.fipsMode.isSslFipsCompliant))
+                sslCtxBuilder.trustManager(
+                  getTrustManagerFactory(truststoreBasedSettings, sslSettings.fipsMode.isSslFipsCompliant)
+                )
               case Some(fileBasedSettings: ClientCertificateSettings.FileBasedSettings) =>
                 sslCtxBuilder.trustManager(getTrustedCertificatesFromPemFile(fileBasedSettings).toList.asJava)
               case None =>
-                throw new Exception("Client Authentication could not be enabled because trust certificates has not been configured")
+                throw new Exception(
+                  "Client Authentication could not be enabled because trust certificates has not been configured"
+                )
             }
           }
           if (sslSettings.allowedProtocols.nonEmpty) {
@@ -138,22 +151,25 @@ object SSLCertHelper extends RequestIdAwareLogging {
   def isPEMHandlingAvailable: Boolean = {
     Try {
       Class.forName("org.bouncycastle.openssl.PEMParser")
-    }
-      .isSuccess
+    }.isSuccess
   }
 
-  private def getTrustedCertificatesFromPemFile(fileBasedSettings: ClientCertificateSettings.FileBasedSettings): Array[X509Certificate] = {
-    loadCertificateChain(fileBasedSettings.clientTrustedCertificateFile.value)
-      .attempt
+  private def getTrustedCertificatesFromPemFile(
+      fileBasedSettings: ClientCertificateSettings.FileBasedSettings
+  ): Array[X509Certificate] = {
+    loadCertificateChain(fileBasedSettings.clientTrustedCertificateFile.value).attempt
       .map {
         case Right(certificateChain) => certificateChain
-        case Left(exception) =>
+        case Left(exception)         =>
           throw UnableToLoadDataFromProvidedFilesException(exception)
       }
       .unsafeRunSync()
   }
 
-  private def getTrustManagerFactory(truststoreBasedSettings: TruststoreBasedSettings, fipsCompliant: Boolean): TrustManagerFactory = {
+  private def getTrustManagerFactory(
+      truststoreBasedSettings: TruststoreBasedSettings,
+      fipsCompliant: Boolean
+  ): TrustManagerFactory = {
     loadTruststore(truststoreBasedSettings, fipsCompliant)
       .map { truststore =>
         val tmf = getTrustManagerFactoryInstance(fipsCompliant)
@@ -162,19 +178,21 @@ object SSLCertHelper extends RequestIdAwareLogging {
       }
       .attempt
       .map {
-        case Right(tmf) => tmf
+        case Right(tmf)      => tmf
         case Left(exception) =>
           throw UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(exception)
       }
       .unsafeRunSync()
   }
 
-  private def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder,
-                                         sslSettings: SslSettings): Boolean =
+  private def areProtocolAndCiphersValid(sslContextBuilder: SslContextBuilder, sslSettings: SslSettings): Boolean =
     trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, sslSettings)
       .fold(
         ex => {
-          noRequestIdLogger.error(s"ROR SSL: cannot validate SSL protocols and ciphers! ${ex.getClass.getSimpleName.show} : ${ex.getMessage.show}", ex)
+          noRequestIdLogger.error(
+            s"ROR SSL: cannot validate SSL protocols and ciphers! ${ex.getClass.getSimpleName.show} : ${ex.getMessage.show}",
+            ex
+          )
           false
         },
         _ => true
@@ -217,14 +235,22 @@ object SSLCertHelper extends RequestIdAwareLogging {
   private def loadKeystore(keystoreBasedSettings: KeystoreBasedSettings, fipsCompliant: Boolean): IO[KeyStore] = {
     for {
       _ <- IO(noRequestIdLogger.info("Preparing keystore..."))
-      keystore <- loadKeystoreFromFile(keystoreBasedSettings.keystoreFile.value, keystoreBasedSettings.keystorePassword, fipsCompliant)
+      keystore <- loadKeystoreFromFile(
+        keystoreBasedSettings.keystoreFile.value,
+        keystoreBasedSettings.keystorePassword,
+        fipsCompliant
+      )
     } yield keystore
   }
 
   private def loadTruststore(truststoreBasedSettings: TruststoreBasedSettings, fipsCompliant: Boolean): IO[KeyStore] = {
     for {
       _ <- IO(noRequestIdLogger.info("Preparing truststore..."))
-      truststore <- loadKeystoreFromFile(truststoreBasedSettings.truststoreFile.value, truststoreBasedSettings.truststorePassword, fipsCompliant)
+      truststore <- loadKeystoreFromFile(
+        truststoreBasedSettings.truststoreFile.value,
+        truststoreBasedSettings.truststorePassword,
+        fipsCompliant
+      )
     } yield truststore
   }
 
@@ -232,7 +258,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
     settings.keyAlias match {
       case None if keystore.aliases().hasMoreElements =>
         val firstAlias = keystore.aliases().nextElement()
-        noRequestIdLogger.info(s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: ${firstAlias.show}")
+        noRequestIdLogger.info(
+          s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: ${firstAlias.show}"
+        )
         firstAlias
       case None =>
         throw MalformedSslSettings("Key not found in provided keystore!")
@@ -249,7 +277,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
     loadKeystore(keystoreBasedSettings, fipsCompliant = true)
       .map { keystore =>
         if (keystoreBasedSettings.keyPass.isDefined) {
-          noRequestIdLogger.warn("ROR settings parameter key_pass is declared however it won't be used in this mode. In this case password for specific key MUST be the same as keystore password")
+          noRequestIdLogger.warn(
+            "ROR settings parameter key_pass is declared however it won't be used in this mode. In this case password for specific key MUST be the same as keystore password"
+          )
         }
         removeAllAliasesFromKeystoreBesidesOne(keystore, prepareAlias(keystore, keystoreBasedSettings))
         val kmf = getKeyManagerFactoryInstance(fipsCompliant = true)
@@ -258,7 +288,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
       }
   }
 
-  private def getPrivateKeyAndCertificateChainFromPemFiles(fileBasedSettings: ServerCertificateSettings.FileBasedSettings): IO[(PrivateKey, Array[X509Certificate])] = {
+  private def getPrivateKeyAndCertificateChainFromPemFiles(
+      fileBasedSettings: ServerCertificateSettings.FileBasedSettings
+  ): IO[(PrivateKey, Array[X509Certificate])] = {
     for {
       privateKey <- loadPrivateKey(fileBasedSettings.serverCertificateKeyFile.value)
       certificateChain <- loadCertificateChain(fileBasedSettings.serverCertificateFile.value)
@@ -293,15 +325,22 @@ object SSLCertHelper extends RequestIdAwareLogging {
       .use { certificateChainFile =>
         IO {
           val certFactory = CertificateFactory.getInstance("X.509")
-          certFactory.generateCertificates(certificateChainFile).asScala.map {
-            case cc: X509Certificate => cc
-            case _ => throw MalformedSslSettings(s"Certificate chain in ${file.show} contains invalid X509 certificate")
-          }.toArray[X509Certificate]
+          certFactory
+            .generateCertificates(certificateChainFile)
+            .asScala
+            .map {
+              case cc: X509Certificate => cc
+              case _                   =>
+                throw MalformedSslSettings(s"Certificate chain in ${file.show} contains invalid X509 certificate")
+            }
+            .toArray[X509Certificate]
         }
       }
   }
 
-  private def getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedSettings: KeystoreBasedSettings): IO[(PrivateKey, Array[X509Certificate])] = {
+  private def getPrivateKeyAndCertificateChainFromKeystore(
+      keystoreBasedSettings: KeystoreBasedSettings
+  ): IO[(PrivateKey, Array[X509Certificate])] = {
     loadKeystore(keystoreBasedSettings, fipsCompliant = false)
       .map { keystore =>
         val alias = prepareAlias(keystore, keystoreBasedSettings)
@@ -317,20 +356,20 @@ object SSLCertHelper extends RequestIdAwareLogging {
       }
   }
 
-  private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder,
-                                                       sslSettings: SslSettings) = Try {
-    val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
-    noRequestIdLogger.info(s"ROR SSL: Available ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
-    if (sslSettings.allowedCiphers.nonEmpty) {
-      sslEngine.setEnabledCipherSuites(sslSettings.allowedCiphers.map(_.value).toArray)
-      noRequestIdLogger.info(s"ROR SSL: Restricting to ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
+  private def trySetProtocolsAndCiphersInsideNewEngine(sslContextBuilder: SslContextBuilder, sslSettings: SslSettings) =
+    Try {
+      val sslEngine = sslContextBuilder.build().newEngine(ByteBufAllocator.DEFAULT)
+      noRequestIdLogger.info(s"ROR SSL: Available ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
+      if (sslSettings.allowedCiphers.nonEmpty) {
+        sslEngine.setEnabledCipherSuites(sslSettings.allowedCiphers.map(_.value).toArray)
+        noRequestIdLogger.info(s"ROR SSL: Restricting to ciphers: ${sslEngine.getEnabledCipherSuites.toList.show}")
+      }
+      noRequestIdLogger.info(s"ROR SSL: Available SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
+      if (sslSettings.allowedProtocols.nonEmpty) {
+        sslEngine.setEnabledProtocols(sslSettings.allowedProtocols.map(_.value).toArray)
+        noRequestIdLogger.info(s"ROR SSL: Restricting to SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
+      }
     }
-    noRequestIdLogger.info(s"ROR SSL: Available SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
-    if (sslSettings.allowedProtocols.nonEmpty) {
-      sslEngine.setEnabledProtocols(sslSettings.allowedProtocols.map(_.value).toArray)
-      noRequestIdLogger.info(s"ROR SSL: Restricting to SSL protocols: ${sslEngine.getEnabledProtocols.toList.show}")
-    }
-  }
 
   private def prepareSslContextBuilder(sslSettings: SslSettings): IO[SslContextBuilder] = {
     if (sslSettings.fipsMode.isSslFipsCompliant) {
@@ -340,7 +379,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
       }
       getFipsCompliantKeyManagerFactory(keystoreBasedSettings)
         .map { keyManagerFactory =>
-          noRequestIdLogger.info(s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}")
+          noRequestIdLogger.info(
+            s"Initializing ROR SSL using SSL provider: ${keyManagerFactory.getProvider.getName.show}"
+          )
           SslContextBuilder.forServer(keyManagerFactory)
         }
     } else {
@@ -350,7 +391,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
         case keystoreBasedSettings: KeystoreBasedSettings =>
           getPrivateKeyAndCertificateChainFromKeystore(keystoreBasedSettings)
       }).map { case (privateKey, certificateChain) =>
-        noRequestIdLogger.info(s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}")
+        noRequestIdLogger.info(
+          s"Initializing ROR SSL using default SSL provider ${SslContext.defaultServerProvider().name().show}"
+        )
         SslContextBuilder.forServer(privateKey, certificateChain.toList.asJava)
       }
     }
@@ -366,14 +409,15 @@ object SSLCertHelper extends RequestIdAwareLogging {
       sslEngine.setSSLParameters(sslParameters)
       sslEngine
     }
+
   }
 
   final case class UnableToLoadDataFromProvidedFilesException(cause: Throwable)
-    extends Exception(s"Unable to load data from provided files", cause)
+      extends Exception(s"Unable to load data from provided files", cause)
   final case class UnableToInitializeSslContextBuilderUsingProvidedFiles(cause: Throwable)
-    extends Exception(s"Unable to initialize Key Manager Factory using provided keystore.", cause)
+      extends Exception(s"Unable to initialize Key Manager Factory using provided keystore.", cause)
   final case class UnableToInitializeTrustManagerFactoryUsingProvidedTruststore(cause: Throwable)
-    extends Exception(s"Unable to initialize Trust Manager Factory using provided truststore.", cause)
+      extends Exception(s"Unable to initialize Trust Manager Factory using provided truststore.", cause)
   final case class MalformedSslSettings(str: String) extends Exception(str)
   case object TrustManagerNotConfiguredException extends Exception("Trust manager has not been configured!")
 
@@ -381,7 +425,9 @@ object SSLCertHelper extends RequestIdAwareLogging {
     keystorePassword.map(_.value.toCharArray).orNull
   }
 
-  private implicit def optionalTruststorePasswordToCharArray(truststorePassword: Option[TruststorePassword]): Array[Char] = {
+  private implicit def optionalTruststorePasswordToCharArray(
+      truststorePassword: Option[TruststorePassword]
+  ): Array[Char] = {
     truststorePassword.map(_.value.toCharArray).orNull
   }
 

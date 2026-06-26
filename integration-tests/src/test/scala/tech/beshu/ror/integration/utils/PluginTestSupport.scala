@@ -34,7 +34,7 @@ trait PluginTestSupport extends EsClusterProvider with CallingEsDirectly {
 }
 
 trait SingletonPluginTestSupport
-  extends PluginTestSupport
+    extends PluginTestSupport
     with EsClusterProvider
     with BeforeAndAfterAll
     with ResolvedRorSettingsFileProvider {
@@ -84,7 +84,10 @@ trait SingletonPluginTestSupport
       } finally {
         startedDependencies.values.foreach { started =>
           try runWithTimeout(s"stop-dependency-${started.name}", 1 minute)(started.container.stop())
-          catch { case NonFatal(e) => teardownLogger.error(s"Dependency '${started.name}' stop failed/timed out — continuing", e) }
+          catch {
+            case NonFatal(e) =>
+              teardownLogger.error(s"Dependency '${started.name}' stop failed/timed out — continuing", e)
+          }
         }
       }
     } finally {
@@ -104,4 +107,5 @@ trait SingletonPluginTestSupport
     val settingsFile = File.apply(getResourcePath(rorSettingsFileName))
     RorSettingsAdjuster.adjustUsingDependencies(settingsFile, startedDependencies)
   }
+
 }

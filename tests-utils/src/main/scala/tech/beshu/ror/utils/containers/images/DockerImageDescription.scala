@@ -22,11 +22,13 @@ import tech.beshu.ror.utils.containers.images.DockerImageDescription.{Command, C
 
 // `steps` is ORDERED (COPY/RUN/USER in declaration order) for Docker layer caching: per-config files
 // COPY *after* the heavy config-independent RUNs so those ~140MB layers stay byte-identical and shared.
-final case class DockerImageDescription(baseImage: String,
-                                        steps: Seq[Command],
-                                        envs: Set[Env],
-                                        entrypoint: Option[Path],
-                                        command: Option[String]) {
+final case class DockerImageDescription(
+    baseImage: String,
+    steps: Seq[Command],
+    envs: Set[Env],
+    entrypoint: Option[Path],
+    command: Option[String]
+) {
 
   // Copies in declaration order — used by the image-context streamer and the content-hash tag.
   def copyFiles: Seq[CopyFile] = steps.collect { case Command.Copy(c) => c }
@@ -79,15 +81,18 @@ final case class DockerImageDescription(baseImage: String,
   def setCommand(cmd: String): DockerImageDescription = {
     this.copy(command = Some(cmd))
   }
+
 }
 
 object DockerImageDescription {
   sealed trait Command
+
   object Command {
     final case class Run(command: String) extends Command
     final case class ChangeUser(user: String) extends Command
     final case class Copy(file: CopyFile) extends Command
   }
+
   final case class CopyFile(destination: Path, file: File)
   final case class Env(name: String, value: String)
 
@@ -98,4 +103,5 @@ object DockerImageDescription {
     entrypoint = customEntrypoint,
     command = None,
   )
+
 }

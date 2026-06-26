@@ -34,6 +34,7 @@ object FileUtils {
   }
 
   extension (file: File) {
+
     def setFilePermissionsAndOwner(filePermissionsAndOwner: FilePermissionsAndOwner): File = {
       filePermissionsAndOwner match {
         case metadata: OriginalFilePermissionsAndOwner =>
@@ -53,6 +54,7 @@ object FileUtils {
         Files.getOwner(file.path),
       )
     }
+
   }
 
   given osPathToFile: Conversion[os.Path, File] with
@@ -64,8 +66,8 @@ object FileUtils {
   sealed trait FilePermissionsAndOwner
 
   // The implementation details of FilePermissionsAndOwner should not leak outside of this file
-  private final case class OriginalFilePermissionsAndOwner(filePermissions: Any,
-                                                           owner: UserPrincipal) extends FilePermissionsAndOwner
+  private final case class OriginalFilePermissionsAndOwner(filePermissions: Any, owner: UserPrincipal)
+      extends FilePermissionsAndOwner
 
   private def getOriginalPermissions(jarPath: Path): Any = {
     if (isWindows) {
@@ -88,7 +90,9 @@ object FileUtils {
   }
 
   private def isWindows = {
-    System.getProperties.stringPropertyNames().asScala
+    System.getProperties
+      .stringPropertyNames()
+      .asScala
       .find { name =>
         // I have no idea why name == "os.name" doesn't work!
         name.length == 7 && name.indexOf("o") == 0 && name.endsWith("s.name")
@@ -97,6 +101,7 @@ object FileUtils {
         Option(System.getProperty(osNamePropName))
       } match
       case Some(osName) => osName.toLowerCase.contains("win")
-      case None => false
+      case None         => false
   }
+
 }

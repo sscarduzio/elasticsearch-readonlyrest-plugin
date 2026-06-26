@@ -21,7 +21,6 @@ import cats.kernel.Monoid
 import io.circe.*
 import monix.eval.Task
 import tech.beshu.ror.SystemContext
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
@@ -36,7 +35,10 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
 import tech.beshu.ror.accesscontrol.factory.RorDependencies.ImpersonationWarningsReader
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.*
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
@@ -50,76 +52,97 @@ import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.yaml.YamlOps
 
-final case class Core(accessControl: AccessControlList,
-                      dependencies: RorDependencies,
-                      auditingSettings: Option[AuditingTool.AuditSettings])
+final case class Core(
+    accessControl: AccessControlList,
+    dependencies: RorDependencies,
+    auditingSettings: Option[AuditingTool.AuditSettings]
+)
 
 trait CoreFactory {
-  def createCoreFrom(rorSettings: RawRorSettings,
-                     rorSettingsIndex: RorSettingsIndex,
-                     httpClientFactory: HttpClientsFactory,
-                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]]
+
+  def createCoreFrom(
+      rorSettings: RawRorSettings,
+      rorSettingsIndex: RorSettingsIndex,
+      httpClientFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      mocksProvider: MocksProvider
+  ): Task[Either[NonEmptyList[CoreCreationError], Core]]
+
 }
 
-class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
-                                    (implicit systemContext: SystemContext)
-  extends CoreFactory with RequestIdAwareLogging {
+class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
+    implicit systemContext: SystemContext
+) extends CoreFactory
+    with RequestIdAwareLogging {
 
-  override def createCoreFrom(rorSettings: RawRorSettings,
-                              rorSettingsIndex: RorSettingsIndex,
-                              httpClientFactory: HttpClientsFactory,
-                              ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                              mocksProvider: MocksProvider): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
+  override def createCoreFrom(
+      rorSettings: RawRorSettings,
+      rorSettingsIndex: RorSettingsIndex,
+      httpClientFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      mocksProvider: MocksProvider
+  ): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
     rorSettings.settingsJson \\ Attributes.rorSectionName match {
-      case Nil => createCoreFromRorSection(
-        rorSettings.settingsJson,
-        rorSettingsIndex,
-        httpClientFactory,
-        ldapConnectionPoolProvider,
-        mocksProvider
-      )
-      case rorSection :: Nil => createCoreFromRorSection(
-        rorSection,
-        rorSettingsIndex,
-        httpClientFactory,
-        ldapConnectionPoolProvider,
-        mocksProvider
-      )
+      case Nil =>
+        createCoreFromRorSection(
+          rorSettings.settingsJson,
+          rorSettingsIndex,
+          httpClientFactory,
+          ldapConnectionPoolProvider,
+          mocksProvider
+        )
+      case rorSection :: Nil =>
+        createCoreFromRorSection(
+          rorSection,
+          rorSettingsIndex,
+          httpClientFactory,
+          ldapConnectionPoolProvider,
+          mocksProvider
+        )
       case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
     }
   }
 
-  private def createCoreFromRorSection(rorSection: Json,
-                                       rorSettingsIndex: RorSettingsIndex,
-                                       httpClientFactory: HttpClientsFactory,
-                                       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                                       mocksProvider: MocksProvider) = {
+  private def createCoreFromRorSection(
+      rorSection: Json,
+      rorSettingsIndex: RorSettingsIndex,
+      httpClientFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      mocksProvider: MocksProvider
+  ) = {
     val resolver = new JsonStaticVariablesResolver(
       systemContext.envVarsProvider,
       TransformationCompiler.withoutAliases(systemContext.variablesFunctions),
     )
     resolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
-        createFrom(resolvedRorSection, rorSettingsIndex, httpClientFactory, ldapConnectionPoolProvider, mocksProvider).map {
-          case Right(settings) =>
-            Right(settings)
-          case Left(failure) =>
-            Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
-        }
+        createFrom(resolvedRorSection, rorSettingsIndex, httpClientFactory, ldapConnectionPoolProvider, mocksProvider)
+          .map {
+            case Right(settings) =>
+              Right(settings)
+            case Left(failure) =>
+              Left(
+                NonEmptyList.one(
+                  failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))
+                )
+              )
+          }
       case Left(errors) =>
         Task.now(Left(errors.map(e => GeneralReadonlyrestSettingsError(Message(e.msg)))))
     }
   }
 
-  private def createFrom(settingsJson: Json,
-                         settingsIndex: RorSettingsIndex,
-                         httpClientFactory: HttpClientsFactory,
-                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                         mocksProvider: MocksProvider) = {
+  private def createFrom(
+      settingsJson: Json,
+      settingsIndex: RorSettingsIndex,
+      httpClientFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      mocksProvider: MocksProvider
+  ) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
@@ -146,11 +169,15 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   import RawRorSettingsBasedCoreFactory.*
 
-  private def rulesNelDecoder(definitions: DefinitionsPack,
-                              globalSettings: GlobalSettings,
-                              mocksProvider: MocksProvider,
-                              esEnv: EsEnv): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
-    val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
+  private def rulesNelDecoder(
+      definitions: DefinitionsPack,
+      globalSettings: GlobalSettings,
+      mocksProvider: MocksProvider,
+      esEnv: EsEnv
+  ): Decoder[NonEmptyList[RuleDefinition[Rule]]] = Decoder.instance { c =>
+    val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleDefinition[Rule]]]]](
+      Validated.Valid(Right(List.empty))
+    )
 
     val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
@@ -158,8 +185,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           last <- collectedRuleResults
           current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings, mocksProvider, esEnv).map {
             case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
-            case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
-            case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
+            case RuleDecodingResult.UnknownRule   => Validated.Invalid(currentRuleName :: Nil)
+            case RuleDecodingResult.Skipped       => Validated.Valid(Right(List.empty))
           }
         } yield Monoid.combine(last, current)
       }
@@ -181,11 +208,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
     }
   }
 
-  private def decodeRuleInCursorContext(name: String,
-                                        definitions: DefinitionsPack,
-                                        globalSettings: GlobalSettings,
-                                        mocksProvider: MocksProvider,
-                                        esEnv: EsEnv): State[ACursor, RuleDecodingResult] = {
+  private def decodeRuleInCursorContext(
+      name: String,
+      definitions: DefinitionsPack,
+      globalSettings: GlobalSettings,
+      mocksProvider: MocksProvider,
+      esEnv: EsEnv
+  ): State[ACursor, RuleDecodingResult] = {
     State(cursor => {
       if (!cursor.keys.toList.flatten.contains(name)) {
         (cursor, RuleDecodingResult.Skipped)
@@ -205,21 +234,27 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
     })
   }
 
-  private def blockDecoder(definitions: DefinitionsPack,
-                           globalSettings: GlobalSettings,
-                           mocksProvider: MocksProvider,
-                           esEnv: EsEnv)
-                          (implicit loggingContext: LoggingContext): Decoder[BlockDecodingResult] = {
+  private def blockDecoder(
+      definitions: DefinitionsPack,
+      globalSettings: GlobalSettings,
+      mocksProvider: MocksProvider,
+      esEnv: EsEnv
+  )(
+      implicit loggingContext: LoggingContext
+  ): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
     implicit val verbosityDecoder: Decoder[Verbosity] =
-      Decoder
-        .decodeString
-        .toSyncDecoder
+      Decoder.decodeString.toSyncDecoder
         .emapE[Verbosity] {
-          case "info" => Right(Verbosity.Info)
+          case "info"  => Right(Verbosity.Info)
           case "error" => Right(Verbosity.Error)
-          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")))
+          case unknown =>
+            Left(
+              BlocksLevelCreationError(
+                Message(s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'.")
+              )
+            )
         }
         .decoder
     implicit val blockAuditDecoder: Decoder[Block.Audit] =
@@ -237,17 +272,17 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
           audit <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
-          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, esEnv)
-            .toSyncDecoder
-            .decoder
-            .tryDecode(c.withFocus(
-              _.mapObject(_
-                .remove(Attributes.Block.name)
-                .remove(Attributes.Block.policy)
-                .remove(Attributes.Block.verbosity)
-                .remove(Attributes.Block.audit)
+          rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, esEnv).toSyncDecoder.decoder
+            .tryDecode(
+              c.withFocus(
+                _.mapObject(
+                  _.remove(Attributes.Block.name)
+                    .remove(Attributes.Block.policy)
+                    .remove(Attributes.Block.verbosity)
+                    .remove(Attributes.Block.audit)
+                )
               )
-            ))
+            )
           block <- Block.createFrom(name, policy, verbosity, audit, rules).left.map(decodingFailureFrom(_))
         } yield BlockDecodingResult(
           block = block,
@@ -260,24 +295,25 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
 
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
-    Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
+    Decoder
+      .instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
       .map(_.getOrElse(Set(Header.Name.authorization)))
   }
 
   private val policyDecoder: Decoder[Block.Policy] = {
     def unknownTypeError(unknownType: String) =
-      BlocksLevelCreationError(Message(
-        s"Unknown block policy type: ${unknownType.show}. Supported types: 'allow'(default), 'forbid'."
-      ))
+      BlocksLevelCreationError(
+        Message(
+          s"Unknown block policy type: ${unknownType.show}. Supported types: 'allow'(default), 'forbid'."
+        )
+      )
 
     val simplePolicyDecoder = {
-      Decoder
-        .decodeString
-        .toSyncDecoder
+      Decoder.decodeString.toSyncDecoder
         .emapE[Block.Policy] {
-          case "allow" => Right(Block.Policy.Allow)
+          case "allow"  => Right(Block.Policy.Allow)
           case "forbid" => Right(Block.Policy.Forbid())
-          case unknown => Left(unknownTypeError(unknown))
+          case unknown  => Left(unknownTypeError(unknown))
         }
         .decoder
     }
@@ -288,9 +324,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
           for {
             policyType <- c.downFieldAs[String]("policy")
             policy <- policyType match {
-              case "allow" => Right(Block.Policy.Allow)
+              case "allow"  => Right(Block.Policy.Allow)
               case "forbid" => c.downFieldAs[Option[String]]("response_message").map(Block.Policy.Forbid.apply)
-              case unknown => Left(decodingFailureFrom(unknownTypeError(unknown)))
+              case unknown  => Left(decodingFailureFrom(unknownTypeError(unknown)))
             }
           } yield policy
         }
@@ -302,19 +338,23 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
       c.focus match {
         case Some(f) if f.isString => simplePolicyDecoder(c)
         case Some(f) if f.isObject => extendedPolicyDecoder(c)
-        case Some(_) | None => Left(DecodingFailure("Malformed block policy type", c.history))
+        case Some(_) | None        => Left(DecodingFailure("Malformed block policy type", c.history))
       }
     }
   }
 
-  private def coreDecoder(httpClientFactory: HttpClientsFactory,
-                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                          globalSettings: GlobalSettings,
-                          mocksProvider: MocksProvider): AsyncDecoder[Core] = {
+  private def coreDecoder(
+      httpClientFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      globalSettings: GlobalSettings,
+      mocksProvider: MocksProvider
+  ): AsyncDecoder[Core] = {
     AsyncDecoderCreator.instance[Core] { c =>
       val decoder = for {
         dynamicVariableTransformationAliases <-
-          AsyncDecoderCreator.from(VariableTransformationAliasesDefinitionsDecoder.create(systemContext.variablesFunctions))
+          AsyncDecoderCreator.from(
+            VariableTransformationAliasesDefinitionsDecoder.create(systemContext.variablesFunctions)
+          )
         variableCreator = new RuntimeResolvableVariableCreator(
           TransformationCompiler.withAliases(
             systemContext.variablesFunctions,
@@ -323,27 +363,41 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
         )
         auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
-        authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
-        externalGroupsProviderServices <- AsyncDecoderCreator.from(ExternalGroupsProviderServicesDecoder.instance(httpClientFactory))
+        authenticationServices <- AsyncDecoderCreator.from(
+          ExternalAuthenticationServicesDecoder.instance(httpClientFactory)
+        )
+        externalGroupsProviderServices <- AsyncDecoderCreator.from(
+          ExternalGroupsProviderServicesDecoder.instance(httpClientFactory)
+        )
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, variableCreator))
-        ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(using ldapConnectionPoolProvider, systemContext.clock)
+        ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(
+          using ldapConnectionPoolProvider,
+          systemContext.clock
+        )
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(variableCreator))
         impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
-          globalSettings, authenticationServices, authProxies, ldapServices, mocksProvider, esEnv
+          globalSettings,
+          authenticationServices,
+          authProxies,
+          ldapServices,
+          mocksProvider,
+          esEnv
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
-        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(
-          authenticationServices,
-          externalGroupsProviderServices,
-          authProxies,
-          jwtDefs,
-          rorKbnDefs,
-          ldapServices,
-          Some(impersonationDefs),
-          mocksProvider,
-          globalSettings,
-          esEnv
-        ))
+        userDefs <- AsyncDecoderCreator.from(
+          UsersDefinitionsDecoder.instance(
+            authenticationServices,
+            externalGroupsProviderServices,
+            authProxies,
+            jwtDefs,
+            rorKbnDefs,
+            ldapServices,
+            Some(impersonationDefs),
+            mocksProvider,
+            globalSettings,
+            esEnv
+          )
+        )
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocksNel <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
@@ -386,7 +440,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)
             ldaps = ldapServices.items.map(_.id)
           ),
           localUsers = localUsers,
-          impersonationWarningsReader = new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
+          impersonationWarningsReader =
+            new ImpersonationWarningsCombinedReader(blocksNel.map(_.impersonationWarnings).toList: _*),
         )
         import systemContext.scheduler
         val accessControl = new EnabledAccessControlList(
@@ -421,11 +476,14 @@ object RawRorSettingsBasedCoreFactory {
     final case class AuditingSettingsCreationError(reason: Reason) extends CoreCreationError
 
     sealed trait Reason
+
     object Reason {
 
       final case class Message(value: String) extends Reason
-      final case class MalformedValue private(value: String) extends Reason
+      final case class MalformedValue private (value: String) extends Reason
+
       object MalformedValue {
+
         def fromString(raw: String): MalformedValue = {
           val normalized = raw.replaceAll("\r\n?", "\n")
           MalformedValue(normalized)
@@ -436,6 +494,7 @@ object RawRorSettingsBasedCoreFactory {
         def from(json: Json): MalformedValue = MalformedValue {
           YamlOps.jsonToYamlString(json)
         }
+
       }
 
     }
@@ -443,25 +502,29 @@ object RawRorSettingsBasedCoreFactory {
   }
 
   private class ImpersonationWarningsCombinedReader(readers: ImpersonationWarningsReader*)
-    extends ImpersonationWarningsReader {
+      extends ImpersonationWarningsReader {
 
-    override def read()
-                     (implicit requestId: RequestId): List[ImpersonationWarning] = readers.flatMap(_.read()).toList
+    override def read()(
+        implicit requestId: RequestId
+    ): List[ImpersonationWarning] = readers.flatMap(_.read()).toList
+
   }
 
-  private class BlockImpersonationWarningsReader[R <: Rule](blockName: Block.Name,
-                                                            blockRules: NonEmptyList[RuleDefinition[R]])
-    extends ImpersonationWarningsReader {
+  private class BlockImpersonationWarningsReader[R <: Rule](
+      blockName: Block.Name,
+      blockRules: NonEmptyList[RuleDefinition[R]]
+  ) extends ImpersonationWarningsReader {
 
-    override def read()
-                     (implicit request: RequestId): List[ImpersonationWarning] = {
-      blockRules
-        .toList
+    override def read()(
+        implicit request: RequestId
+    ): List[ImpersonationWarning] = {
+      blockRules.toList
         .flatMap(impersonationWarningForRule(_))
     }
 
-    private def impersonationWarningForRule(rule: RuleDefinition[R])
-                                           (implicit requestId: RequestId): List[ImpersonationWarning] = {
+    private def impersonationWarningForRule(rule: RuleDefinition[R])(
+        implicit requestId: RequestId
+    ): List[ImpersonationWarning] = {
       rule.impersonationWarnings match {
         case extractor: ImpersonationWarningSupport.ImpersonationWarningExtractor[_] =>
           extractor.warningFor(rule.rule, blockName).toList
@@ -469,13 +532,17 @@ object RawRorSettingsBasedCoreFactory {
           List.empty
       }
     }
+
   }
 
-  private[factory] case class BlockDecodingResult(block: Block,
-                                                  localUsers: LocalUsers,
-                                                  impersonationWarnings: ImpersonationWarningsReader)
+  private[factory] case class BlockDecodingResult(
+      block: Block,
+      localUsers: LocalUsers,
+      impersonationWarnings: ImpersonationWarningsReader
+  )
 
   private sealed trait RuleDecodingResult
+
   private object RuleDecodingResult {
     final case class Result(value: Decoder.Result[RuleDefinition[Rule]]) extends RuleDecodingResult
     case object UnknownRule extends RuleDecodingResult

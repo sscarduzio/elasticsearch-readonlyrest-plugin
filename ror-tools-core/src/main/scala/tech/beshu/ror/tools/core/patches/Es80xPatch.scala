@@ -25,39 +25,55 @@ import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyCreateComponentsInSecurityClass, ModifySecurityClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, ModifyRepositoriesServiceClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{
+  ModifyCreateComponentsInSecurityClass,
+  ModifySecurityClass
+}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{
+  CreateApiKeyServiceBridgeClass,
+  CreateServiceAccountServiceBridgeClass,
+  ModifyRepositoriesServiceClass
+}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.*
 
 import scala.language.postfixOps
 
 private[patches] class Es80xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
-  extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
-    ElasticsearchJarPatchCreator(
-      ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
-        createClassLoaderRuntimePermission, getPropertySecurityPermission
-      )),
-      CreateApiKeyServiceBridgeClass,
-      CreateServiceAccountServiceBridgeClass,
-      ModifyRepositoriesServiceClass(esVersion)
-    ),
-    RorSecurityPolicyPatchCreator(
-      AddAdditionalPermissions(NonEmptyList.of(
-        createClassLoaderRuntimePermission, getPropertySecurityPermission
-      )),
-    ),
-    XPackCoreJarPatchCreator(
-      ModifyRoleClass,
-      ModifyApplicationPermissionClass,
-    ),
-    XPackSecurityJarPatchCreator(
-      ModifyCreateComponentsInSecurityClass,
-      CreateRorAuthorizationInfoProviderClass(esVersion),
-      ModifyAuthenticationChainClass(esVersion),
-      ModifyAuthorizationServiceClass(esVersion),
-      ModifyRBACEngineClass,
-      ModifyRestHasPrivilegesActionClass,
-      ModifySecurityClass,
-    ),
-  )
+    extends TransportNetty4AwareEsPatch(
+      rorPluginDirectory,
+      esVersion,
+      ElasticsearchJarPatchCreator(
+        ModifyPolicyUtilClass(
+          esVersion,
+          NonEmptyList.of(
+            createClassLoaderRuntimePermission,
+            getPropertySecurityPermission
+          )
+        ),
+        CreateApiKeyServiceBridgeClass,
+        CreateServiceAccountServiceBridgeClass,
+        ModifyRepositoriesServiceClass(esVersion)
+      ),
+      RorSecurityPolicyPatchCreator(
+        AddAdditionalPermissions(
+          NonEmptyList.of(
+            createClassLoaderRuntimePermission,
+            getPropertySecurityPermission
+          )
+        ),
+      ),
+      XPackCoreJarPatchCreator(
+        ModifyRoleClass,
+        ModifyApplicationPermissionClass,
+      ),
+      XPackSecurityJarPatchCreator(
+        ModifyCreateComponentsInSecurityClass,
+        CreateRorAuthorizationInfoProviderClass(esVersion),
+        ModifyAuthenticationChainClass(esVersion),
+        ModifyAuthorizationServiceClass(esVersion),
+        ModifyRBACEngineClass,
+        ModifyRestHasPrivilegesActionClass,
+        ModifySecurityClass,
+      ),
+    )

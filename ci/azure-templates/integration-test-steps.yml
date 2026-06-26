@@ -42,9 +42,12 @@ steps:
     clean: false
     persistCredentials: true
   - script: |
-      export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+      export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+      export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
       export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
       export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+      export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+      export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
       # Sourced in-process so DOCKER_AUTH_CONFIG reaches the testcontainers JVM when set, and stays
       # UNSET otherwise (an empty/literal Azure var would fail RegistryAuthLocator's JSON-parse).
@@ -58,9 +61,12 @@ steps:
       # Intra-agent parallelism: K sharded test JVMs (each own ES), default 1. Must be declared here —
       # Azure scrubs step env to declared vars. Gate >1 only on agents with RAM for K ES instances.
       IT_SHARD_COUNT: $(IT_SHARD_COUNT)
-      VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+      VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+      VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+      VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+      VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
       DOCKER_HUB_USER: $(DOCKER_HUB_USER)
       DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
 

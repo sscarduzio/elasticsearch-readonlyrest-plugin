@@ -47,7 +47,7 @@ USAGE
 guessmime()
 {
     mime=`file -b --mime-type $1`
-    if [ "$mime" = "text/plain" ]; then
+    if [ "$mime" = "text/plain" ] || [ "$mime" = "application/octet-stream" ]; then
         case $1 in
             *.zip)           mime=application/zip;;
             *.sh)            mime=text/plain;;

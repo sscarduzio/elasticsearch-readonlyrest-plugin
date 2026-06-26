@@ -51,9 +51,11 @@ object DockerImageCreator extends StrictLogging {
   private def imageTag(d: DockerImageDescription): String = {
     val md = MessageDigest.getInstance("SHA-1")
     md.update(d.baseImage.getBytes("UTF-8"))
-    d.steps.foreach { case c: Command.Run => md.update(c.toString.getBytes("UTF-8"))
-                      case u: Command.ChangeUser => md.update(u.toString.getBytes("UTF-8"))
-                      case _: Command.Copy => () } // copy CONTENT hashed below (order-independent, sorted)
+    d.steps.foreach {
+      case c: Command.Run        => md.update(c.toString.getBytes("UTF-8"))
+      case u: Command.ChangeUser => md.update(u.toString.getBytes("UTF-8"))
+      case _: Command.Copy       => ()
+    } // copy CONTENT hashed below (order-independent, sorted)
     // envs is a Set — sort so iteration order can't vary the digest (order-dependent hash would cause
     // spurious cache misses → redundant concurrent rebuilds).
     d.envs.toList.sortBy(e => (e.name, e.value)).foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
@@ -73,15 +75,12 @@ object DockerImageCreator extends StrictLogging {
     // FRESH staging dir PER BUILD (UUID): hand testcontainers a private copy of each source so parallel
     // cluster-node builds (parSequenceUnordered) can't clobber a shared dir mid-build and corrupt context.
     val stagingDir = File.newTemporaryDirectory(prefix = s"ror-img-${UUID.randomUUID()}-")
-    val dockerfile = imageDescription
-      .copyFiles
-      .zipWithIndex
-      .foldLeft(to) {
-        case (dockerfile, (copyFile, idx)) =>
-          val source = File(copyFile.file.pathAsString)
-          // index-prefix the staged name so two sources sharing a filename can't clobber each other
-          val privateCopy = source.copyTo(stagingDir / s"$idx-${source.name}", overwrite = true)
-          dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, privateCopy.toJava)
+    val dockerfile = imageDescription.copyFiles.zipWithIndex
+      .foldLeft(to) { case (dockerfile, (copyFile, idx)) =>
+        val source = File(copyFile.file.pathAsString)
+        // index-prefix the staged name so two sources sharing a filename can't clobber each other
+        val privateCopy = source.copyTo(stagingDir / s"$idx-${source.name}", overwrite = true)
+        dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, privateCopy.toJava)
       }
     // Best-effort reclaim once the build context is consumed; deleteOnExit is the safety net.
     stagingDir.toJava.deleteOnExit()
@@ -95,38 +94,36 @@ object DockerImageCreator extends StrictLogging {
     def applyStepsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
       imageDescription.steps
         .foldLeft(List.empty[Command]) {
-          case (acc, r@Run(command)) =>
+          case (acc, r @ Run(command)) =>
             acc.reverse match {
               case Run(lastCommand) :: tail => (Run(s"$lastCommand && $command") :: tail).reverse
-              case _ => acc :+ r
+              case _                        => acc :+ r
             }
           case (acc, other) => acc :+ other // ChangeUser / Copy are layer boundaries; never merged
         }
         .foldLeft(builder) {
-          case (b, ChangeUser(user)) => b.user(user)
-          case (b, Run(command)) => b.run(command)
+          case (b, ChangeUser(user))   => b.user(user)
+          case (b, Run(command))       => b.run(command)
           case (b, Command.Copy(file)) => b.copy(file.destination.toString(), file.destination.toString())
         }
     }
 
     def addEnvsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .envs
-        .toList.sortBy(_.name) // deterministic ENV order -> stable layer hash, matches imageTag
+      imageDescription.envs.toList
+        .sortBy(_.name) // deterministic ENV order -> stable layer hash, matches imageTag
         .foldLeft(builder) { case (b, env) => b.env(env.name, env.value) }
     }
 
     def setEntrypointFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .entrypoint
+      imageDescription.entrypoint
         .foldLeft(builder) { case (b, entrypoint) => b.entryPoint(entrypoint.toIO.getAbsolutePath) }
     }
 
     def setCommandFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .command
+      imageDescription.command
         .foldLeft(builder) { case (b, command) => b.cmd(command) }
     }
 
   }
+
 }

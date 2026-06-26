@@ -28,11 +28,11 @@ class YamlParser(maxSize: Option[Information] = None) {
   def parse(yaml: Reader): Either[ParsingFailure, Json] = {
     tech.beshu.ror.utils.yaml.parser.parse(yaml, loaderOptions)
   }
-  
+
   def parse(file: File): Either[ParsingFailure, Json] = {
     file.fileReader { reader => parse(reader) }
   }
-  
+
   def parse(yamlContent: String): Either[ParsingFailure, Json] = {
     parse(new StringReader(yamlContent))
   }
@@ -42,4 +42,5 @@ class YamlParser(maxSize: Option[Information] = None) {
     maxSize.foreach { m => options.setCodePointLimit(m.toBytes.toInt) }
     options
   }
+
 }

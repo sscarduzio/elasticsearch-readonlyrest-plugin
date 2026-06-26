@@ -27,11 +27,12 @@ import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBas
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.syntax.*
 
-private[datastreams] class CreateDataStreamEsRequestContext private(actionRequest: ActionRequest,
-                                                                    dataStreams: Set[DataStreamName],
-                                                                    esContext: EsContext,
-                                                                    override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+private[datastreams] class CreateDataStreamEsRequestContext private (
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -54,10 +55,12 @@ private[datastreams] object CreateDataStreamEsRequestContext extends ReflectionB
       getDataStreamsMethodName = "indices"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new CreateDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
+        Some(
+          new CreateDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool)
+        )
       case MatchResult.NotMatched() =>
         None
     }
   }
-}
 
+}

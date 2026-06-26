@@ -51,10 +51,14 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
-  with WithReadonlyrestBootSupport
-  with Inside with OptionValues with EitherValues
-  with MockFactory with Eventually {
+class IndexSettingsRelatedRorCoreTest
+    extends AnyWordSpec
+    with WithReadonlyrestBootSupport
+    with Inside
+    with OptionValues
+    with EitherValues
+    with MockFactory
+    with Eventually {
 
   private val defaultRorIndexName: NonEmptyString = ".readonlyrest"
   private val customRorIndexName: NonEmptyString = "custom_ror_index"
@@ -125,7 +129,9 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestSettingsEngine(updatedRorSettings, positiveFiniteDuration(5, TimeUnit.MINUTES))(newRequestId())
+              .forceReloadTestSettingsEngine(updatedRorSettings, positiveFiniteDuration(5, TimeUnit.MINUTES))(
+                newRequestId()
+              )
               .runSyncUnsafe()
 
           forceReloadingResult.value shouldBe a[TestSettings.Present]
@@ -192,7 +198,9 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
 
           val forceReloadingResult =
             rorInstance
-              .forceReloadTestSettingsEngine(updatedRorSettings, positiveFiniteDuration(5, TimeUnit.MINUTES))(newRequestId())
+              .forceReloadTestSettingsEngine(updatedRorSettings, positiveFiniteDuration(5, TimeUnit.MINUTES))(
+                newRequestId()
+              )
               .runSyncUnsafe()
 
           forceReloadingResult.value shouldBe a[TestSettings.Present]
@@ -201,65 +209,77 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
     }
   }
 
-  private def createReadonlyRestBoot(factory: CoreFactory,
-                                     indexDocumentManager: IndexDocumentManager) = {
+  private def createReadonlyRestBoot(factory: CoreFactory, indexDocumentManager: IndexDocumentManager) = {
     implicit val systemContext: SystemContext = SystemContext.default
     ReadonlyRest.create(factory, indexDocumentManager, mock[AuditSinkServiceCreator])
   }
 
-  private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                              rawRorSettings: RawRorSettings): CoreFactory = {
+  private def mockCoreFactory(mockedCoreFactory: CoreFactory, rawRorSettings: RawRorSettings): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
-      .expects(where {
-        (settings: RawRorSettings, _, _, _, _) => settings == rawRorSettings
+      .expects(where { (settings: RawRorSettings, _, _, _, _) =>
+        settings == rawRorSettings
       })
       .once()
       .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, None))))
     mockedCoreFactory
   }
 
-  private def mockInIndexMainSettingsLoading(indexDocumentManager: IndexDocumentManager,
-                                             indexName: NonEmptyString) = {
-    ((index: IndexName.Full, id: String, requestId: RequestId) =>
-      indexDocumentManager.documentAsJson(index, id)(requestId))
+  private def mockInIndexMainSettingsLoading(indexDocumentManager: IndexDocumentManager, indexName: NonEmptyString) = {
+    (
+        (index: IndexName.Full, id: String, requestId: RequestId) =>
+          indexDocumentManager.documentAsJson(index, id)(requestId)
+    )
       .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, *)
       .once()
       .returns(Task.now(Right(circeJsonFrom(s"""{ "settings": "${escapeJava(indexRorSettings.rawYaml)}" }"""))))
   }
 
-  private def mockInIndexTestSettingsLoading(indexDocumentManager: IndexDocumentManager,
-                                             indexName: NonEmptyString) = {
-    ((index: IndexName.Full, id: String, requestId: RequestId) =>
-      indexDocumentManager.documentAsJson(index, id)(requestId))
+  private def mockInIndexTestSettingsLoading(indexDocumentManager: IndexDocumentManager, indexName: NonEmptyString) = {
+    (
+        (index: IndexName.Full, id: String, requestId: RequestId) =>
+          indexDocumentManager.documentAsJson(index, id)(requestId)
+    )
       .expects(fullIndexName(indexName), testInIndexRorSettingsDocumentId, *)
       .once()
       .returns(Task.now(Left(IndexDocumentManager.DocumentNotFound)))
   }
 
-  private def mockInIndexMainSettingsSaving(indexDocumentManager: IndexDocumentManager,
-                                            indexName: NonEmptyString,
-                                            rawRorSettings: RawRorSettings) = {
-    ((index: IndexName.Full, id: String, document: Json, requestId: RequestId) =>
-      indexDocumentManager.saveDocumentJson(index, id, document)(requestId))
-      .expects(fullIndexName(indexName), mainInIndexRorSettingsDocumentId, circeJsonFrom(s"""{ "settings": "${escapeJava(rawRorSettings.rawYaml)}"}"""), *)
+  private def mockInIndexMainSettingsSaving(
+      indexDocumentManager: IndexDocumentManager,
+      indexName: NonEmptyString,
+      rawRorSettings: RawRorSettings
+  ) = {
+    (
+        (index: IndexName.Full, id: String, document: Json, requestId: RequestId) =>
+          indexDocumentManager.saveDocumentJson(index, id, document)(requestId)
+    )
+      .expects(
+        fullIndexName(indexName),
+        mainInIndexRorSettingsDocumentId,
+        circeJsonFrom(s"""{ "settings": "${escapeJava(rawRorSettings.rawYaml)}"}"""),
+        *
+      )
       .once()
       .returns(Task.now(Right(())))
   }
 
-  private def mockInIndexTestSettingsSaving(indexDocumentManager: IndexDocumentManager,
-                                            indexName: NonEmptyString,
-                                            rawRorSettings: RawRorSettings) = {
-    ((index: IndexName.Full, id: String, document: Json, requestId: RequestId) =>
-      indexDocumentManager.saveDocumentJson(index, id, document)(requestId))
+  private def mockInIndexTestSettingsSaving(
+      indexDocumentManager: IndexDocumentManager,
+      indexName: NonEmptyString,
+      rawRorSettings: RawRorSettings
+  ) = {
+    (
+        (index: IndexName.Full, id: String, document: Json, requestId: RequestId) =>
+          indexDocumentManager.saveDocumentJson(index, id, document)(requestId)
+    )
       .expects(
-        where {
-          (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
-            index == fullIndexName(indexName) &&
-              id == testInIndexRorSettingsDocumentId &&
-              document.hcursor.get[String]("settings").toOption.contains(rawRorSettings.rawYaml) &&
-              document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("300000") &&
-              document.hcursor.downField("expiration_timestamp").succeeded &&
-              document.hcursor.downField("auth_services_mocks").succeeded
+        where { (index: IndexName.Full, id: String, document: Json, _: RequestId) =>
+          index == fullIndexName(indexName) &&
+          id == testInIndexRorSettingsDocumentId &&
+          document.hcursor.get[String]("settings").toOption.contains(rawRorSettings.rawYaml) &&
+          document.hcursor.get[String]("expiration_ttl_millis").toOption.contains("300000") &&
+          document.hcursor.downField("expiration_timestamp").succeeded &&
+          document.hcursor.downField("auth_services_mocks").succeeded
         }
       )
       .once()
@@ -301,7 +321,8 @@ class IndexSettingsRelatedRorCoreTest extends AnyWordSpec
     val esEnv = EsEnv(esConfig, esConfig, defaultEsVersionForTests, defaultTestEsNodeSettings)
     EsConfigBasedRorSettings.from(esEnv).runSyncUnsafe() match {
       case Right(settings) =>
-        val rorSettingsSourcesConfig = settings.settingsSource.copy(settingsFile = RorSettingsFile(esConfig / "readonlyrest.yml"))
+        val rorSettingsSourcesConfig =
+          settings.settingsSource.copy(settingsFile = RorSettingsFile(esConfig / "readonlyrest.yml"))
         settings.copy(settingsSource = rorSettingsSourcesConfig)
       case Left(error) =>
         throw new IllegalStateException(s"Cannot create EsConfigBasedRorSettings: ${error.show}")

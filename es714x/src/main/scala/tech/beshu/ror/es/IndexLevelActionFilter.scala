@@ -49,17 +49,20 @@ import java.util.function.Supplier
 import scala.util.Try
 import scala.util.control.NonFatal
 
-class IndexLevelActionFilter(clusterService: ClusterService,
-                             client: NodeClient,
-                             threadPool: ThreadPool,
-                             xContentRegistry: NamedXContentRegistry,
-                             env: Environment,
-                             remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
-                             repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
-                             esInitListener: EsInitListener,
-                             esConfigBasedRorSettings: EsConfigBasedRorSettings)
-                            (implicit systemContext: SystemContext)
-  extends ActionFilter with RequestIdAwareLogging {
+class IndexLevelActionFilter(
+    clusterService: ClusterService,
+    client: NodeClient,
+    threadPool: ThreadPool,
+    xContentRegistry: NamedXContentRegistry,
+    env: Environment,
+    remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+    repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
+    esInitListener: EsInitListener,
+    esConfigBasedRorSettings: EsConfigBasedRorSettings
+)(
+    implicit systemContext: SystemContext
+) extends ActionFilter
+    with RequestIdAwareLogging {
 
   import systemContext.scheduler
 
@@ -89,6 +92,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     serviceAccountTokenService = new ReflectionBasedServiceAccountTokenService(),
     apiKeyService = new ReflectionBasedApiKeyService(threadPool)
   )
+
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     clusterService.getSettings,
     threadPool
@@ -106,7 +110,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     private def createService(cluster: AuditCluster): IndexBasedAuditSinkService & DataStreamBasedAuditSinkService = {
       cluster match {
         case AuditCluster.LocalAuditCluster =>
-          new NodeClientBasedAuditSinkService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))(using systemContext.clock)
+          new NodeClientBasedAuditSinkService(client, threadPool, new XContentJsonParserFactory(xContentRegistry))(
+            using systemContext.clock
+          )
         case remote: AuditCluster.RemoteAuditCluster =>
           RestClientAuditSinkService.create(remote)
       }
@@ -118,17 +124,19 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   def stop(): Unit = {
     startingTaskCancellable.cancel()
     rorInstanceState.get() match {
-      case RorInstanceStartingState.Starting =>
+      case RorInstanceStartingState.Starting          =>
       case RorInstanceStartingState.Started(instance) => instance.stop().runSyncUnsafe()
-      case RorInstanceStartingState.NotStarted(_) =>
+      case RorInstanceStartingState.NotStarted(_)     =>
     }
   }
 
-  override def apply[Request <: ActionRequest, Response <: ActionResponse](task: Task,
-                                                                           action: String,
-                                                                           request: Request,
-                                                                           listener: ActionListener[Response],
-                                                                           chain: ActionFilterChain[Request, Response]): Unit = {
+  override def apply[Request <: ActionRequest, Response <: ActionResponse](
+      task: Task,
+      action: String,
+      request: Request,
+      listener: ActionListener[Response],
+      chain: ActionFilterChain[Request, Response]
+  ): Unit = {
     doPrivileged {
       proceed(
         task,
@@ -140,11 +148,13 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     }
   }
 
-  private def proceed(task: Task,
-                      action: Action,
-                      request: ActionRequest,
-                      listener: ActionListener[ActionResponse],
-                      chain: EsChain): Unit = {
+  private def proceed(
+      task: Task,
+      action: Action,
+      request: ActionRequest,
+      listener: ActionListener[ActionResponse],
+      chain: EsChain
+  ): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
         threadPool.getThreadContext.addXpackUserAuthenticationHeader(esEnv.esNodeSettings.nodeName)
@@ -171,7 +181,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
           )
         } recover {
           case e: Exception if NonFatal(e) => rorActionListener.onFailure(e)
-          case NonFatal(t) => rorActionListener.onFailure(new Exception(t))
+          case NonFatal(t)                 => rorActionListener.onFailure(new Exception(t))
         }
     }
   }
@@ -197,7 +207,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
-        case Right(Right(())) =>
+        case Right(Right(()))                                                          =>
         case Right(Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured)) =>
           handleImpersonatorsEngineNotConfigured(esContext)
         case Left(ex) =>
@@ -206,17 +216,23 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleImpersonatorsEngineNotConfigured(esContext: EsContext): Unit = {
-    noRequestIdLogger.info(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path().show} (impersonated) request because no Test Settings are configured")
+    noRequestIdLogger.info(
+      s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path().show} (impersonated) request because no Test Settings are configured"
+    )
     esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    noRequestIdLogger.warn(s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
+    noRequestIdLogger.warn(
+      s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet"
+    )
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
   private def handleRorFailedToStart(esContext: EsContext): Unit = {
-    noRequestIdLogger.error(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
+    noRequestIdLogger.error(
+      s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start"
+    )
     rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 
@@ -241,9 +257,11 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     noRequestIdLogger.error(s"ROR starting failure: ${failure.message}", failure.throwable.orNull)
     rorInstanceState.set(RorInstanceStartingState.NotStarted(failure))
   }
+
 }
 
 private sealed trait RorInstanceStartingState
+
 private object RorInstanceStartingState {
   case object Starting extends RorInstanceStartingState
   final case class Started(instance: RorInstance) extends RorInstanceStartingState

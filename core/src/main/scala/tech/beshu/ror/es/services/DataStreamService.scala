@@ -64,7 +64,9 @@ trait DataStreamService {
     createIfAbsent(
       checkIfResourceExists = checkIndexLifecyclePolicyExists(settings.lifecyclePolicy.id),
       createResource = createIndexLifecyclePolicy(settings.lifecyclePolicy),
-      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if the index lifecycle policy with ID '${settings.lifecyclePolicy.id.show}' has been created")
+      onNotAcknowledged = DataStreamSetupResult.Failure(
+        s"Unable to determine if the index lifecycle policy with ID '${settings.lifecyclePolicy.id.show}' has been created"
+      )
     )
   }
 
@@ -72,7 +74,9 @@ trait DataStreamService {
     createIfAbsent(
       checkIfResourceExists = checkComponentTemplateExists(settings.mappings.templateName),
       createResource = createComponentTemplateForMappings(settings.mappings),
-      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.mappings.templateName.show}' has been created")
+      onNotAcknowledged = DataStreamSetupResult.Failure(
+        s"Unable to determine if component template with ID '${settings.mappings.templateName.show}' has been created"
+      )
     )
   }
 
@@ -80,7 +84,9 @@ trait DataStreamService {
     createIfAbsent(
       checkIfResourceExists = checkComponentTemplateExists(settings.componentSettings.templateName),
       createResource = createComponentTemplateForIndex(settings.componentSettings),
-      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if component template with ID '${settings.componentSettings.templateName.show}' has been created")
+      onNotAcknowledged = DataStreamSetupResult.Failure(
+        s"Unable to determine if component template with ID '${settings.componentSettings.templateName.show}' has been created"
+      )
     )
   }
 
@@ -88,7 +94,9 @@ trait DataStreamService {
     createIfAbsent(
       checkIfResourceExists = checkIndexTemplateExists(settings.templateSettings.templateName),
       createResource = createIndexTemplate(settings.templateSettings),
-      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if index template with ID '${settings.templateSettings.templateName.show}' has been created")
+      onNotAcknowledged = DataStreamSetupResult.Failure(
+        s"Unable to determine if index template with ID '${settings.templateSettings.templateName.show}' has been created"
+      )
     )
   }
 
@@ -96,13 +104,17 @@ trait DataStreamService {
     createIfAbsent(
       checkIfResourceExists = checkDataStreamExists(settings.dataStreamName),
       createResource = createDataStream(settings.dataStreamName),
-      onNotAcknowledged = DataStreamSetupResult.Failure(s"Unable to determine if data stream with ID '${settings.dataStreamName.show}' has been created")
+      onNotAcknowledged = DataStreamSetupResult.Failure(
+        s"Unable to determine if data stream with ID '${settings.dataStreamName.show}' has been created"
+      )
     )
   }
 
-  private def createIfAbsent(checkIfResourceExists: Task[Boolean],
-                             createResource: Task[CreationResult],
-                             onNotAcknowledged: => DataStreamSetupResult.Failure): EitherT[Task, DataStreamSetupResult.Failure, Unit] = EitherT {
+  private def createIfAbsent(
+      checkIfResourceExists: Task[Boolean],
+      createResource: Task[CreationResult],
+      onNotAcknowledged: => DataStreamSetupResult.Failure
+  ): EitherT[Task, DataStreamSetupResult.Failure, Unit] = EitherT {
     checkIfResourceExists
       .flatMap {
         case true =>
@@ -111,13 +123,15 @@ trait DataStreamService {
           createResourceWithConfirmation(checkIfResourceExists, createResource)
       }
       .map {
-        case CreationResult.Acknowledged => Right(())
+        case CreationResult.Acknowledged    => Right(())
         case CreationResult.NotAcknowledged => Left(onNotAcknowledged)
       }
   }
 
-  private def createResourceWithConfirmation(checkIfResourceExists: Task[Boolean],
-                                             createResource: Task[CreationResult]): Task[CreationResult] = {
+  private def createResourceWithConfirmation(
+      checkIfResourceExists: Task[Boolean],
+      createResource: Task[CreationResult]
+  ): Task[CreationResult] = {
     createResource
       .flatMap {
         case Acknowledged =>
@@ -137,7 +151,8 @@ trait DataStreamService {
       backOffScaler = retryConfig.backoffScaler
     )
 
-  protected val retryConfig: RetryConfig = RetryConfig(initialDelay = 500.milliseconds, backoffScaler = 2, maxRetries = 5)
+  protected val retryConfig: RetryConfig =
+    RetryConfig(initialDelay = 500.milliseconds, backoffScaler = 2, maxRetries = 5)
 
   protected case class RetryConfig(initialDelay: FiniteDuration, backoffScaler: Int, maxRetries: Int)
 }
@@ -152,17 +167,22 @@ object DataStreamService {
     final case class Failure(reason: String) extends DataStreamSetupResult
   }
 
-  final case class DataStreamSettings(dataStreamName: DataStreamName.Full,
-                                      lifecyclePolicy: LifecyclePolicy,
-                                      mappings: ComponentTemplateMappings,
-                                      componentSettings: ComponentTemplateSettings,
-                                      templateSettings: IndexTemplateSettings)
+  final case class DataStreamSettings(
+      dataStreamName: DataStreamName.Full,
+      lifecyclePolicy: LifecyclePolicy,
+      mappings: ComponentTemplateMappings,
+      componentSettings: ComponentTemplateSettings,
+      templateSettings: IndexTemplateSettings
+  )
 
   object DataStreamSettings {
-    final case class LifecyclePolicy(id: NonEmptyString,
-                                     hotPhase: LifecyclePolicy.HotPhase,
-                                     warmPhase: Option[LifecyclePolicy.WarmPhase],
-                                     coldPhase: Option[LifecyclePolicy.ColdPhase])
+
+    final case class LifecyclePolicy(
+        id: NonEmptyString,
+        hotPhase: LifecyclePolicy.HotPhase,
+        warmPhase: Option[LifecyclePolicy.WarmPhase],
+        coldPhase: Option[LifecyclePolicy.ColdPhase]
+    )
 
     object LifecyclePolicy {
       final case class Rollover(maxAge: PositiveFiniteDuration, maxPrimaryShardSizeInGb: Option[PosInt] = None)
@@ -178,18 +198,24 @@ object DataStreamService {
       final case class ColdPhase(minAge: PositiveFiniteDuration, freeze: Boolean)
     }
 
-    final case class ComponentTemplateMappings(templateName: TemplateName,
-                                               timestampField: String,
-                                               metadata: Map[String, String])
+    final case class ComponentTemplateMappings(
+        templateName: TemplateName,
+        timestampField: String,
+        metadata: Map[String, String]
+    )
 
-    final case class ComponentTemplateSettings(templateName: TemplateName,
-                                               lifecyclePolicyId: NonEmptyString,
-                                               metadata: Map[String, String])
+    final case class ComponentTemplateSettings(
+        templateName: TemplateName,
+        lifecyclePolicyId: NonEmptyString,
+        metadata: Map[String, String]
+    )
 
-    final case class IndexTemplateSettings(templateName: TemplateName,
-                                           dataStreamName: DataStreamName.Full,
-                                           componentTemplates: NonEmptyList[TemplateName],
-                                           metadata: Map[String, String])
+    final case class IndexTemplateSettings(
+        templateName: TemplateName,
+        dataStreamName: DataStreamName.Full,
+        componentTemplates: NonEmptyList[TemplateName],
+        metadata: Map[String, String]
+    )
 
   }
 
@@ -205,5 +231,7 @@ object DataStreamService {
     } else {
       NotAcknowledged
     }
+
   }
+
 }

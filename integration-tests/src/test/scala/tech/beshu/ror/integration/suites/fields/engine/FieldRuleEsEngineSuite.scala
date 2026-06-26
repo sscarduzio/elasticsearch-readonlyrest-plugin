@@ -19,9 +19,7 @@ package tech.beshu.ror.integration.suites.fields.engine
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 
-class FieldRuleEsEngineSuite
-  extends FieldRuleEngineSuite
-    with SingletonPluginTestSupport {
+class FieldRuleEsEngineSuite extends FieldRuleEngineSuite with SingletonPluginTestSupport {
 
   override implicit val rorSettingsFileName: String = "/field_level_security_engine/readonlyrest_fls_engine_es.yml"
 
@@ -36,4 +34,5 @@ class FieldRuleEsEngineSuite
   override protected def scrollSearchShouldProperlyHandleForbiddenFields(result: SearchManager#SearchResult): Unit = {
     result should have statusCode 403
   }
+
 }

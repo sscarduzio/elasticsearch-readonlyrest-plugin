@@ -21,6 +21,7 @@ import org.elasticsearch.action.Action
 class RorWrappedCatActionType extends Action[RorWrappedCatResponse](RorWrappedCatActionType.name) {
   override def newResponse(): RorWrappedCatResponse = new RorWrappedCatResponse
 }
+
 object RorWrappedCatActionType {
   val name = "cat_action"
   val instance = new RorWrappedCatActionType()

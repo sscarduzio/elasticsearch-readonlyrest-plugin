@@ -30,18 +30,19 @@ import tech.beshu.ror.utils.misc.ScalaUtils.*
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
-class OpenLdapContainer private[containers](name: String, ldapInitScript: InitScriptSource)
-  extends GenericContainer(
-    dockerImage = "osixia/openldap:1.5.0",
-    env = Map(
-      "LDAP_ORGANISATION" -> defaults.ldap.organisation,
-      "LDAP_DOMAIN" -> defaults.ldap.domain,
-      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
-      "LDAP_TLS_VERIFY_CLIENT" -> "try"
-    ),
-    exposedPorts = Seq(OpenLdapContainer.port, OpenLdapContainer.sslPort),
-    waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
-  ) with LdapContainer {
+class OpenLdapContainer private[containers] (name: String, ldapInitScript: InitScriptSource)
+    extends GenericContainer(
+      dockerImage = "osixia/openldap:1.5.0",
+      env = Map(
+        "LDAP_ORGANISATION" -> defaults.ldap.organisation,
+        "LDAP_DOMAIN" -> defaults.ldap.domain,
+        "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
+        "LDAP_TLS_VERIFY_CLIENT" -> "try"
+      ),
+      exposedPorts = Seq(OpenLdapContainer.port, OpenLdapContainer.sslPort),
+      waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
+    )
+    with LdapContainer {
 
   def originalPort: Int = OpenLdapContainer.port
 
@@ -54,6 +55,7 @@ class OpenLdapContainer private[containers](name: String, ldapInitScript: InitSc
   override def stop(): Unit = {
     this.container.stop()
   }
+
 }
 
 object OpenLdapContainer {
@@ -74,7 +76,7 @@ object OpenLdapContainer {
 }
 
 class NonStoppableOpenLdapContainer(name: String, ldapInitScript: InitScriptSource)
-  extends OpenLdapContainer(name, ldapInitScript) {
+    extends OpenLdapContainer(name, ldapInitScript) {
 
   override def start(): Unit = ()
 
@@ -84,17 +86,18 @@ class NonStoppableOpenLdapContainer(name: String, ldapInitScript: InitScriptSour
 }
 
 object NonStoppableOpenLdapContainer {
+
   def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldap = new NonStoppableOpenLdapContainer(name, ldapInitScript)
     ldap.container.setNetwork(TestNetwork.perJvm)
     ldap.privateStart()
     ldap
   }
+
 }
 
-private class LdapWaitStrategy(name: String,
-                               ldapInitScript: InitScriptSource)
-  extends AbstractWaitStrategy
+private class LdapWaitStrategy(name: String, ldapInitScript: InitScriptSource)
+    extends AbstractWaitStrategy
     with LazyLogging
     with Implicits {
 
@@ -130,15 +133,17 @@ private class LdapWaitStrategy(name: String,
             Task(connection.bind(bindDn, defaults.ldap.adminPassword))
               .flatMap {
                 case result if result.getResultCode == ResultCode.SUCCESS => Task.delay(action(connection))
-                case result => Task.raiseError(new IllegalStateException(s"LDAP '$name' bind problem - error ${result.getResultCode.intValue()}"))
+                case result                                               =>
+                  Task.raiseError(
+                    new IllegalStateException(s"LDAP '$name' bind problem - error ${result.getResultCode.intValue()}")
+                  )
               }
-          )(connection =>
-            Task(connection.close())
-          )
+          )(connection => Task(connection.close()))
       case None =>
         Task.raiseError(new IllegalStateException(s"Cannot create bind DN from LDAP config data"))
     }
   }
+
 }
 
 object LdapWaitStrategy {

@@ -30,13 +30,13 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-private[indices] trait LegacyTemplatesIndices
-  extends RequestIdAwareLogging {
+private[indices] trait LegacyTemplatesIndices extends RequestIdAwareLogging {
   this: AllTemplateIndices =>
 
-  protected def gettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                      (implicit blockContext: TemplateRequestBlockContext,
-                                       allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def gettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     processGettingLegacyTemplates(templateNamePatterns) match {
       case Right((operation, transformation)) =>
         Decision.permit(
@@ -49,9 +49,10 @@ private[indices] trait LegacyTemplatesIndices
     }
   }
 
-  protected def processGettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                             (implicit blockContext: TemplateRequestBlockContext,
-                                              allowedIndices: AllowedIndices): Either[Cause, (GettingLegacyTemplates, TemplatesTransformation)] = {
+  protected def processGettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Either[Cause, (GettingLegacyTemplates, TemplatesTransformation)] = {
     logger.debug(
       s"""* getting Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
@@ -74,11 +75,14 @@ private[indices] trait LegacyTemplatesIndices
     }
   }
 
-  protected def addingLegacyTemplate(newTemplateName: TemplateName,
-                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                     aliases: Set[RequestedIndex[ClusterIndexName]])
-                                    (implicit blockContext: TemplateRequestBlockContext,
-                                     allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def addingLegacyTemplate(
+      newTemplateName: TemplateName,
+      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[RequestedIndex[ClusterIndexName]]
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* adding Template [${newTemplateName.show}] with index
          | patterns [${newTemplateIndicesPatterns.show}] and aliases [${aliases.show}] ...""".oneLiner
@@ -91,7 +95,7 @@ private[indices] trait LegacyTemplatesIndices
         )
         Decision.permit(`with` = blockContext)(
           when = canModifyExistingTemplate(existingTemplate) &&
-              canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
+            canAddNewLegacyTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
         )
       case None =>
         Decision.permit(`with` = blockContext)(
@@ -100,9 +104,10 @@ private[indices] trait LegacyTemplatesIndices
     }
   }
 
-  protected def deletingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                       (implicit blockContext: TemplateRequestBlockContext,
-                                        allowedIndices: AllowedIndices): Decision[TemplateRequestBlockContext] = {
+  protected def deletingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): Decision[TemplateRequestBlockContext] = {
     logger.debug(
       s"""* deleting Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
@@ -118,20 +123,22 @@ private[indices] trait LegacyTemplatesIndices
           case PartialResult.Forbidden(_) =>
             Left(())
         }
-      case (rejected@Left(_), _) => rejected
+      case (rejected @ Left(_), _) => rejected
     }
     result match {
       case Left(_) | Right(Nil) =>
         Decision.deny(Cause.NotAuthorized)
       case Right(nonEmptyPatternsList) =>
-        val modifiedOperation = TemplateOperation.DeletingLegacyTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
+        val modifiedOperation =
+          TemplateOperation.DeletingLegacyTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
         Decision.permit(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
 
-  private def deletingLegacyTemplate(templateNamePattern: TemplateNamePattern)
-                                    (implicit blockContext: TemplateRequestBlockContext,
-                                     allowedIndices: AllowedIndices): PartialResult[TemplateNamePattern] = {
+  private def deletingLegacyTemplate(templateNamePattern: TemplateNamePattern)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ): PartialResult[TemplateNamePattern] = {
     val foundTemplates = findTemplatesBy(namePattern = templateNamePattern, in = blockContext)
     if (foundTemplates.isEmpty) {
       logger.debug(
@@ -147,11 +154,14 @@ private[indices] trait LegacyTemplatesIndices
     }
   }
 
-  private def canAddNewLegacyTemplate(newTemplateName: TemplateName,
-                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
-                                      newTemplateAliases: Set[RequestedIndex[ClusterIndexName]])
-                                     (implicit blockContext: TemplateRequestBlockContext,
-                                      allowedIndices: AllowedIndices) = {
+  private def canAddNewLegacyTemplate(
+      newTemplateName: TemplateName,
+      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+      newTemplateAliases: Set[RequestedIndex[ClusterIndexName]]
+  )(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     logger.debug(
       s"""* checking if Template [${newTemplateName.show}] with indices
          | patterns [${newTemplateIndicesPatterns.show}] and aliases [${newTemplateAliases.show}] can be added ...""".oneLiner
@@ -160,10 +170,11 @@ private[indices] trait LegacyTemplatesIndices
       newTemplateIndicesPatterns.toList
         .forall { pattern =>
           val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
-          if (!isPatternAllowed) logger.debug(
-            s"""STOP: one of Template's [${newTemplateName.show}]
+          if (!isPatternAllowed)
+            logger.debug(
+              s"""STOP: one of Template's [${newTemplateName.show}]
                | index pattern [${pattern.show}] is forbidden.""".oneLiner
-          )
+            )
           isPatternAllowed
         }
 
@@ -172,31 +183,35 @@ private[indices] trait LegacyTemplatesIndices
       else {
         newTemplateAliases.forall { alias =>
           val allowed = isAliasAllowed(alias.name)
-          if (!allowed) logger.debug(
-            s"""STOP: one of Template's [${newTemplateName.show}]
+          if (!allowed)
+            logger.debug(
+              s"""STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner
-          )
+            )
           allowed
         }
       }
     allPatternAllowed && allAliasesAllowed
   }
 
-  private def canViewExistingTemplate(existingTemplate: Template.LegacyTemplate)
-                                     (implicit blockContext: TemplateRequestBlockContext,
-                                      allowedIndices: AllowedIndices) = {
+  private def canViewExistingTemplate(existingTemplate: Template.LegacyTemplate)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     val isTemplateAllowed = existingTemplate.patterns.toList
       .exists { pattern => pattern.isAllowedByAny(allowedIndices.resolved) }
-    if (!isTemplateAllowed) logger.debug(
-      s"""WARN: Template [${existingTemplate.name.show}] is forbidden
+    if (!isTemplateAllowed)
+      logger.debug(
+        s"""WARN: Template [${existingTemplate.name.show}] is forbidden
          | because none of its index patterns [${existingTemplate.patterns.show}] is allowed by the rule""".oneLiner
-    )
+      )
     isTemplateAllowed
   }
 
-  private def canModifyExistingTemplate(existingTemplate: Template.LegacyTemplate)
-                                       (implicit blockContext: TemplateRequestBlockContext,
-                                        allowedIndices: AllowedIndices) = {
+  private def canModifyExistingTemplate(existingTemplate: Template.LegacyTemplate)(
+      implicit blockContext: TemplateRequestBlockContext,
+      allowedIndices: AllowedIndices
+  ) = {
     logger.debug(
       s"* checking if Template [${existingTemplate.name.show}] with indices patterns" +
         s" [${existingTemplate.patterns.show}] can be modified by the user ..."
@@ -205,11 +220,12 @@ private[indices] trait LegacyTemplatesIndices
       existingTemplate.patterns.toList
         .forall { pattern =>
           val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
-          if (!isPatternAllowed) logger.debug(
-            s"""STOP: cannot allow to modify existing Template
+          if (!isPatternAllowed)
+            logger.debug(
+              s"""STOP: cannot allow to modify existing Template
                | [${existingTemplate.name.show}], because its index pattern [${pattern.show}] is not allowed by rule
                | (it means that user has no access to it)""".oneLiner
-          )
+            )
           isPatternAllowed
         }
 
@@ -218,11 +234,12 @@ private[indices] trait LegacyTemplatesIndices
       else {
         existingTemplate.aliases.forall { alias =>
           val allowed = isAliasAllowed(alias)
-          if (!allowed) logger.debug(
-            s"""STOP: cannot allow to modify existing Template
+          if (!allowed)
+            logger.debug(
+              s"""STOP: cannot allow to modify existing Template
                | [${existingTemplate.name.show}], because its alias [${alias.show}] is not allowed by rule
                | (it means that user has no access to it)""".oneLiner
-          )
+            )
           allowed
         }
       }
@@ -234,17 +251,24 @@ private[indices] trait LegacyTemplatesIndices
     in.requestContext.esServices.clusterService.legacyTemplates.find(_.name == name)
   }
 
-  private def findTemplatesBy(namePattern: TemplateNamePattern, in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
+  private def findTemplatesBy(
+      namePattern: TemplateNamePattern,
+      in: TemplateRequestBlockContext
+  ): Set[Template.LegacyTemplate] = {
     findTemplatesBy(Set(namePattern), in)
   }
 
-  private def findTemplatesBy(namePatterns: Iterable[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
+  private def findTemplatesBy(
+      namePatterns: Iterable[TemplateNamePattern],
+      in: TemplateRequestBlockContext
+  ): Set[Template.LegacyTemplate] = {
     given RequestId = in.requestContext.id.toRequestId
     filterTemplates(namePatterns, in.requestContext.esServices.clusterService.legacyTemplates)
   }
 
-  private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])
-                                                         (implicit allowedIndices: AllowedIndices): Set[Template] = {
+  private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])(
+      implicit allowedIndices: AllowedIndices
+  ): Set[Template] = {
     templates.flatMap {
       case Template.LegacyTemplate(name, patterns, aliases) =>
         val onlyAllowedPatterns = patterns.filter(p => p.isAllowedByAny(allowedIndices.resolved))
@@ -259,4 +283,5 @@ private[indices] trait LegacyTemplatesIndices
         Set[Template](other)
     }
   }
+
 }

@@ -24,8 +24,14 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition
-import tech.beshu.ror.accesscontrol.blocks.variables.startup.{StartupResolvableVariableCreator, StartupSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.{
+  StartupResolvableVariableCreator,
+  StartupSingleResolvableVariable
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
@@ -33,7 +39,9 @@ import tech.beshu.ror.utils.TestsUtils.unsafeNes
 class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
 
   private val variableCreator: StartupResolvableVariableCreator =
-    new StartupResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new StartupResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
 
   "An env variable" should {
     "have been resolved" when {
@@ -64,16 +72,24 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
       }
       "multivariable is used with some text prefix" in {
         val variable = createMultiVariable("test_@explode{env:test-multi}")
-          .resolve(mockEnvVarProvider(Map(
-            "test-multi" -> Some("x,y")
-          )))
+          .resolve(
+            mockEnvVarProvider(
+              Map(
+                "test-multi" -> Some("x,y")
+              )
+            )
+          )
         variable shouldBe Right(NonEmptyList.of("test_x", "test_y"))
       }
       "multivariable with transformation is used with some text prefix" in {
         val variable = createMultiVariable("test_@explode{env:test-multi}#{to_uppercase}")
-          .resolve(mockEnvVarProvider(Map(
-            "test-multi" -> Some("x,y")
-          )))
+          .resolve(
+            mockEnvVarProvider(
+              Map(
+                "test-multi" -> Some("x,y")
+              )
+            )
+          )
         variable shouldBe Right(NonEmptyList.of("test_X", "test_Y"))
       }
     }
@@ -100,21 +116,35 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "transformation is not valid" when {
         "empty transformation string" in {
           val result = variableCreator.createSingleVariableFrom(s"@{env:test}#{}")
-          result shouldBe Left(InvalidVariableDefinition("Unable to parse transformation string: []. Cause: Expression cannot be empty"))
+          result shouldBe Left(
+            InvalidVariableDefinition("Unable to parse transformation string: []. Cause: Expression cannot be empty")
+          )
         }
         "incorrect syntax" in {
           val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
             (
               "@{env:test}#{function(}",
-              Left(InvalidVariableDefinition("Unable to parse transformation string: [function(]. Cause: Could not parse expression"))
+              Left(
+                InvalidVariableDefinition(
+                  "Unable to parse transformation string: [function(]. Cause: Could not parse expression"
+                )
+              )
             ),
             (
               """@{env:test}#{function("a" "b")}""",
-              Left(InvalidVariableDefinition("Unable to parse transformation string: [function(\"a\" \"b\")]. Cause: Expected ',' or ')' but was 'b'"))
+              Left(
+                InvalidVariableDefinition(
+                  "Unable to parse transformation string: [function(\"a\" \"b\")]. Cause: Expected ',' or ')' but was 'b'"
+                )
+              )
             ),
             (
               """@{env:test}#{function("a",)}""",
-              Left(InvalidVariableDefinition("Unable to parse transformation string: [function(\"a\",)]. Cause: Could not parse expression ')'"))
+              Left(
+                InvalidVariableDefinition(
+                  "Unable to parse transformation string: [function(\"a\",)]. Cause: Could not parse expression ')'"
+                )
+              )
             ),
           ).unzip
 
@@ -125,13 +155,21 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
           val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
             (
               "@{env:test}#{bilbo}",
-              Left(InvalidVariableDefinition("Unable to compile transformation string: [bilbo]. Cause: No function with name 'bilbo'. " +
-                "Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"))
+              Left(
+                InvalidVariableDefinition(
+                  "Unable to compile transformation string: [bilbo]. Cause: No function with name 'bilbo'. " +
+                    "Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"
+                )
+              )
             ),
             (
               s"@{env:test}#{to_uppercase.bilbo}",
-              Left(InvalidVariableDefinition("Unable to compile transformation string: [to_uppercase.bilbo]. Cause: No function with name 'bilbo'. " +
-                "Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"))
+              Left(
+                InvalidVariableDefinition(
+                  "Unable to compile transformation string: [to_uppercase.bilbo]. Cause: No function with name 'bilbo'. " +
+                    "Supported functions are: [replace_all, replace_first, to_lowercase, to_uppercase]"
+                )
+              )
             )
           ).unzip
 
@@ -143,15 +181,21 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
             val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
               (
                 """@{env:test}#{to_uppercase("arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [to_uppercase(\"arg\")]. " +
-                  "Cause: Error for function 'to_uppercase': Incorrect function arguments count. Expected: 0, actual: 1."
-                ))
+                Left(
+                  InvalidVariableDefinition(
+                    "Unable to compile transformation string: [to_uppercase(\"arg\")]. " +
+                      "Cause: Error for function 'to_uppercase': Incorrect function arguments count. Expected: 0, actual: 1."
+                  )
+                )
               ),
               (
                 """@{env:test}#{replace_all("arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_all(\"arg\")]. " +
-                  "Cause: Error for function 'replace_all': Incorrect function arguments count. Expected: 2, actual: 1."
-                ))
+                Left(
+                  InvalidVariableDefinition(
+                    "Unable to compile transformation string: [replace_all(\"arg\")]. " +
+                      "Cause: Error for function 'replace_all': Incorrect function arguments count. Expected: 2, actual: 1."
+                  )
+                )
               )
             ).unzip
 
@@ -162,14 +206,21 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
             val (inputs, outputs) = List[(NonEmptyString, Either[CreationError, StartupSingleResolvableVariable])](
               (
                 """@{env:test}#{replace_all("[a-z","arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_all(\"[a-z\",\"arg\")]. " +
-                  "Cause: Error for function 'replace_all': Incorrect first arg '[a-z'. Cause: Unclosed character class near index 3"))
+                Left(
+                  InvalidVariableDefinition(
+                    "Unable to compile transformation string: [replace_all(\"[a-z\",\"arg\")]. " +
+                      "Cause: Error for function 'replace_all': Incorrect first arg '[a-z'. Cause: Unclosed character class near index 3"
+                  )
+                )
               ),
               (
                 s"""@{env:test}#{replace_first("[a-z","arg")}""",
-                Left(InvalidVariableDefinition("Unable to compile transformation string: [replace_first(\"[a-z\",\"arg\")]. " +
-                  "Cause: Error for function 'replace_first': Incorrect first arg '[a-z'. Cause: Unclosed character class near index 3"
-                ))
+                Left(
+                  InvalidVariableDefinition(
+                    "Unable to compile transformation string: [replace_first(\"[a-z\",\"arg\")]. " +
+                      "Cause: Error for function 'replace_first': Incorrect first arg '[a-z'. Cause: Unclosed character class near index 3"
+                  )
+                )
               )
             ).unzip
 
@@ -223,4 +274,5 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
     provider
   }
+
 }

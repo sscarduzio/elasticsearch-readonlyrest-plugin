@@ -28,26 +28,27 @@ import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
-object MethodsRuleDecoder
-  extends RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
+object MethodsRuleDecoder extends RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
 
   override protected def decoder: Decoder[RuleDefinition[MethodsRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[Method]
       .map(methods => RuleDefinition.create(new MethodsRule(Settings(methods))))
   }
+
 }
 
 private object MethodsRuleDecoderHelper {
+
   implicit val methodDecoder: Decoder[Method] =
-    Decoder
-      .decodeString
+    Decoder.decodeString
       .map(_.toUpperCase)
       .map(Method.fromStringUnsafe)
       .toSyncDecoder
       .emapE {
-        case m@(Method.GET | Method.POST | Method.PUT | Method.DELETE | Method.OPTIONS | Method.HEAD) => Right(m)
+        case m @ (Method.GET | Method.POST | Method.PUT | Method.DELETE | Method.OPTIONS | Method.HEAD) => Right(m)
         case other => Left(RulesLevelCreationError(Message(s"Unknown/unsupported http method: ${other.value}")))
       }
       .decoder
+
 }

@@ -47,7 +47,7 @@ import scala.reflect.{ClassTag, classTag}
 import scala.util.{Failure, Success, Try}
 
 class UnboundidLdapUsersServiceNetworkRelatedTests
-  extends AnyFreeSpec
+    extends AnyFreeSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
@@ -58,6 +58,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     SingletonLdapContainers.ldap1,
     OpenLdapContainer.port
   )
+
   private lazy val ldapContainerToStop = LdapContainer.create("LDAP3", "test_example.ldif")
   private lazy val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
@@ -126,6 +127,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
   }
 
   implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
+
     def assertSuccessfulAuthentication: Assertion = {
       val userId = User.Id("morgan")
       authenticationService
@@ -145,6 +147,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
           fail(s"Expected either ${classTag[T].runtimeClass} or ${classTag[S].runtimeClass} to be thrown")
       }
     }
+
   }
 
   private def createSimpleAuthenticationService() = {
@@ -153,23 +156,31 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     val ldapConnectionConfig = createLdapConnectionConfig(
       poolName = ldapId,
       connectionMethod = ConnectionMethod.SingleServer(
-        LdapHost.from(s"ldap://${ldap1ContainerWithToxiproxy.containerHost}:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get
+        LdapHost
+          .from(
+            s"ldap://${ldap1ContainerWithToxiproxy.containerHost}:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}"
+          )
+          .get
       )
     )
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
-      ))
-      authenticationService <- EitherT(UnboundidLdapAuthenticationService
-        .create(
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
           id = ldapId,
-          ldapUsersService = usersService,
           poolProvider = ldapConnectionPoolProvider,
-          connectionConfig = ldapConnectionConfig
-        ))
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+        )
+      )
+      authenticationService <- EitherT(
+        UnboundidLdapAuthenticationService
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig
+          )
+      )
     } yield authenticationService
     result.valueOrThrowIllegalState()
   }
@@ -181,32 +192,37 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
       poolName = ldapId,
       connectionMethod = ConnectionMethod.SeveralServers(
         NonEmptyList.of(
-          LdapHost.from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}").get,
+          LdapHost
+            .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
+            .get,
           LdapHost.from(s"ldap://${ldapContainerToStop.ldapHost}:${ldapContainerToStop.ldapPort}").get,
         ),
         HaMethod.RoundRobin
       )
     )
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
-      ))
-      authenticationService <- EitherT(UnboundidLdapAuthenticationService
-        .create(
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
           id = ldapId,
-          ldapUsersService = usersService,
           poolProvider = ldapConnectionPoolProvider,
-          connectionConfig = ldapConnectionConfig
-        ))
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+        )
+      )
+      authenticationService <- EitherT(
+        UnboundidLdapAuthenticationService
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig
+          )
+      )
     } yield authenticationService
     result.valueOrThrowIllegalState()
   }
 
-  private def createLdapConnectionConfig(poolName: LdapService.Name,
-                                         connectionMethod: ConnectionMethod) = {
+  private def createLdapConnectionConfig(poolName: LdapService.Name, connectionMethod: ConnectionMethod) = {
     LdapConnectionConfig(
       poolName = poolName,
       connectionMethod = connectionMethod,

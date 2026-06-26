@@ -20,8 +20,7 @@ import tech.beshu.ror.integration.suites.base.{BaseIndexApiSuite, EnabledPromptF
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.EsClusterProvider
 
-trait IndexApiWithFreeKibanaSupportSuite
-  extends BaseIndexApiSuite {
+trait IndexApiWithFreeKibanaSupportSuite extends BaseIndexApiSuite {
   this: EsClusterProvider with EnabledPromptForBasicAuthSettingSuite =>
 
   override val notFoundIndexStatusReturned: Int = 401

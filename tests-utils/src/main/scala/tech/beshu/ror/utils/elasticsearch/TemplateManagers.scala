@@ -28,10 +28,8 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
-abstract class BaseTemplateManager(client: RestClient,
-                                   esVersion: String,
-                                   parseTemplates: JSON => List[Template])
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+abstract class BaseTemplateManager(client: RestClient, esVersion: String, parseTemplates: JSON => List[Template])
+    extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def getTemplate(name: String): TemplateResponse =
     call(createGetTemplateRequest(name), new TemplateResponse(_, parseTemplates))
@@ -42,24 +40,27 @@ abstract class BaseTemplateManager(client: RestClient,
   def putTemplate(templateName: String, template: JSON): SimpleResponse =
     call(createIndexTemplateRequest(templateName, template), new SimpleResponse(_))
 
-  def putTemplate(templateName: String,
-                  indexPatterns: NonEmptyList[String],
-                  aliases: Set[String] = Set.empty,
-                  priority: Int = 0): SimpleResponse =
+  def putTemplate(
+      templateName: String,
+      indexPatterns: NonEmptyList[String],
+      aliases: Set[String] = Set.empty,
+      priority: Int = 0
+  ): SimpleResponse =
     putTemplate(templateName, putTemplateBodyJson(indexPatterns, aliases, priority))
 
-  def putTemplateAndWaitForIndexing(templateName: String,
-                                    template: JSON): Unit = {
+  def putTemplateAndWaitForIndexing(templateName: String, template: JSON): Unit = {
     putTemplate(templateName, template).force()
     waitForCondition(s"Putting index template $templateName") {
       getTemplate(templateName).responseCode == 200
     }
   }
 
-  def putTemplateAndWaitForIndexing(templateName: String,
-                                    indexPatterns: NonEmptyList[String],
-                                    aliases: Set[String] = Set.empty,
-                                    priority: Int = 0): Unit =
+  def putTemplateAndWaitForIndexing(
+      templateName: String,
+      indexPatterns: NonEmptyList[String],
+      aliases: Set[String] = Set.empty,
+      priority: Int = 0
+  ): Unit =
     putTemplateAndWaitForIndexing(templateName, putTemplateBodyJson(indexPatterns, aliases, priority))
 
   def deleteTemplate(name: String): SimpleResponse =
@@ -76,26 +77,22 @@ abstract class BaseTemplateManager(client: RestClient,
 
   protected def createDeleteAllTemplatesRequest(): HttpDelete
 
-  protected def createIndexTemplateRequest(templateName: String,
-                                           body: JSON): HttpPut
+  protected def createIndexTemplateRequest(templateName: String, body: JSON): HttpPut
 
-  protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
-                                    aliases: Set[String],
-                                    priority: Int): JSON
+  protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String], aliases: Set[String], priority: Int): JSON
 
-  class TemplateResponse(response: HttpResponse,
-                         parseTemplates: JSON => List[Template])
-    extends TemplatesResponse(response, parseTemplates) {
+  class TemplateResponse(response: HttpResponse, parseTemplates: JSON => List[Template])
+      extends TemplatesResponse(response, parseTemplates) {
 
     lazy val template: Template = templates.head
   }
 
-  class TemplatesResponse(response: HttpResponse,
-                          parseTemplates: JSON => List[Template])
-    extends JsonResponse(response) {
+  class TemplatesResponse(response: HttpResponse, parseTemplates: JSON => List[Template])
+      extends JsonResponse(response) {
 
     lazy val templates: List[Template] = parseTemplates(responseJson)
   }
+
 }
 
 object BaseTemplateManager {
@@ -104,13 +101,13 @@ object BaseTemplateManager {
 }
 
 class LegacyTemplateManager(client: RestClient, esVersion: String)
-  extends BaseTemplateManager(
-    client = client,
-    esVersion = esVersion,
-    parseTemplates =
-      if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) LegacyTemplateManager.parseTemplates
-      else LegacyTemplateManager.parseTemplatesEs5x
-  ) {
+    extends BaseTemplateManager(
+      client = client,
+      esVersion = esVersion,
+      parseTemplates =
+        if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) LegacyTemplateManager.parseTemplates
+        else LegacyTemplateManager.parseTemplatesEs5x
+    ) {
 
   override protected def createGetTemplateRequest(name: String): HttpGet = {
     val request = new HttpGet(client.from("/_template/" + name))
@@ -136,17 +133,18 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  override protected def createIndexTemplateRequest(templateName: String,
-                                                    body: JSON): HttpPut = {
+  override protected def createIndexTemplateRequest(templateName: String, body: JSON): HttpPut = {
     val request = new HttpPut(client.from(s"/_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(body)))
     request
   }
 
-  override protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
-                                             aliases: Set[String],
-                                             priority: Int): JSON = {
+  override protected def putTemplateBodyJson(
+      indexPatterns: NonEmptyList[String],
+      aliases: Set[String],
+      priority: Int
+  ): JSON = {
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
@@ -187,42 +185,41 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
              |}""".stripMargin
         }
       } else {
-        throw new IllegalArgumentException("Cannot create template with more than one index pattern for the ES version < 6.0.0")
+        throw new IllegalArgumentException(
+          "Cannot create template with more than one index pattern for the ES version < 6.0.0"
+        )
       }
     }
   }
+
 }
 
 object LegacyTemplateManager {
+
   private def parseTemplates(content: JSON) = {
-    content
-      .obj
-      .map { case (name, templateContent) =>
-        Template(
-          name,
-          templateContent.obj("index_patterns").arr.map(_.str).toSet,
-          templateContent.obj("aliases").obj.keys.toSet
-        )
-      }
-      .toList
+    content.obj.map { case (name, templateContent) =>
+      Template(
+        name,
+        templateContent.obj("index_patterns").arr.map(_.str).toSet,
+        templateContent.obj("aliases").obj.keys.toSet
+      )
+    }.toList
   }
 
   private def parseTemplatesEs5x(content: JSON) = {
-    content
-      .obj
-      .map { case (name, templateContent) =>
-        Template(
-          name,
-          Set(templateContent.obj("template").str),
-          templateContent.obj("aliases").obj.keys.toSet
-        )
-      }
-      .toList
+    content.obj.map { case (name, templateContent) =>
+      Template(
+        name,
+        Set(templateContent.obj("template").str),
+        templateContent.obj("aliases").obj.keys.toSet
+      )
+    }.toList
   }
+
 }
 
 class IndexTemplateManager(client: RestClient, esVersion: String)
-  extends BaseTemplateManager(client, esVersion, IndexTemplateManager.parseTemplates) {
+    extends BaseTemplateManager(client, esVersion, IndexTemplateManager.parseTemplates) {
 
   require(
     Version.greaterOrEqualThan(esVersion, 7, 8, 0),
@@ -241,8 +238,7 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     call(createSimulateTemplateRequest(indexPatterns, aliases), new SimulateResponse(_))
   }
 
-  def createTemplate(templateName: String,
-                     body: JSON): JsonResponse = {
+  def createTemplate(templateName: String, body: JSON): JsonResponse = {
     call(createIndexTemplateRequest(templateName, body), new JsonResponse(_))
   }
 
@@ -258,8 +254,7 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  override protected def createIndexTemplateRequest(templateName: String,
-                                                    body: JSON): HttpPut = {
+  override protected def createIndexTemplateRequest(templateName: String, body: JSON): HttpPut = {
     val request = new HttpPut(client.from(s"/_index_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(body)))
@@ -278,9 +273,11 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  override protected def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
-                                             aliases: Set[String],
-                                             priority: Int): JSON = {
+  override protected def putTemplateBodyJson(
+      indexPatterns: NonEmptyList[String],
+      aliases: Set[String],
+      priority: Int
+  ): JSON = {
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     ujson.read {
@@ -319,8 +316,7 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  class SimulateResponse(response: HttpResponse)
-    extends JsonResponse(response) {
+  class SimulateResponse(response: HttpResponse) extends JsonResponse(response) {
 
     lazy val templateAliases: Set[String] = (for {
       template <- responseJson.obj.get("template")
@@ -329,32 +325,35 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     } yield aliases).getOrElse(Set.empty)
 
     lazy val overlappingTemplates: List[Template] =
-      responseJson
-        .obj.get("overlapping").map(_.arr.toList).getOrElse(List.empty)
+      responseJson.obj
+        .get("overlapping")
+        .map(_.arr.toList)
+        .getOrElse(List.empty)
         .map(t => Template(t("name").str, t("index_patterns").arr.map(_.str).toSet, Set.empty))
+
   }
+
 }
 
 object IndexTemplateManager {
+
   private def parseTemplates(content: JSON) = {
-    content("index_templates")
-      .arr
-      .map { templateJson =>
-        Template(
-          templateJson("name").str,
-          templateJson.obj("index_template")("index_patterns").arr.map(_.str).toSet,
-          (for {
-            template <- templateJson.obj("index_template").obj.get("template")
-            aliases <- template.obj.get("aliases")
-          } yield aliases.obj.keys.toSet).getOrElse(Set.empty)
-        )
-      }
-      .toList
+    content("index_templates").arr.map { templateJson =>
+      Template(
+        templateJson("name").str,
+        templateJson.obj("index_template")("index_patterns").arr.map(_.str).toSet,
+        (for {
+          template <- templateJson.obj("index_template").obj.get("template")
+          aliases <- template.obj.get("aliases")
+        } yield aliases.obj.keys.toSet).getOrElse(Set.empty)
+      )
+    }.toList
   }
+
 }
 
 class ComponentTemplateManager(client: RestClient, esVersion: String)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+    extends BaseManager(client, esVersion, esNativeApi = true) {
 
   require(
     Version.greaterOrEqualThan(esVersion, 7, 8, 0),
@@ -377,16 +376,14 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
     call(createPutComponentTemplateRequest(templateName, putComponentTemplateBodyJson(aliases)), new SimpleResponse(_))
   }
 
-  def putTemplateAndWaitForIndexing(templateName: String,
-                                    body: JSON): Unit = {
+  def putTemplateAndWaitForIndexing(templateName: String, body: JSON): Unit = {
     putTemplate(templateName, body).force()
     waitForCondition(s"Putting index template $templateName") {
       getTemplate(templateName).responseCode == 200
     }
   }
 
-  def putTemplateAndWaitForIndexing(templateName: String,
-                                    aliases: Set[String] = Set.empty): Unit = {
+  def putTemplateAndWaitForIndexing(templateName: String, aliases: Set[String] = Set.empty): Unit = {
     putTemplateAndWaitForIndexing(templateName, putComponentTemplateBodyJson(aliases))
   }
 
@@ -427,24 +424,22 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
        |}""".stripMargin
   }
 
-  class ComponentTemplatesResponse(response: HttpResponse)
-    extends JsonResponse(response) {
+  class ComponentTemplatesResponse(response: HttpResponse) extends JsonResponse(response) {
 
     lazy val templates: List[ComponentTemplate] = {
-      responseJson("component_templates")
-        .arr
-        .map { templateJson =>
-          ComponentTemplate(
-            templateJson("name").str,
-            (for {
-              template <- templateJson.obj("component_template").obj.get("template")
-              aliases <- template.obj.get("aliases")
-            } yield aliases.obj.keys.toSet).getOrElse(Set.empty)
-          )
-        }
-        .toList
+      responseJson("component_templates").arr.map { templateJson =>
+        ComponentTemplate(
+          templateJson("name").str,
+          (for {
+            template <- templateJson.obj("component_template").obj.get("template")
+            aliases <- template.obj.get("aliases")
+          } yield aliases.obj.keys.toSet).getOrElse(Set.empty)
+        )
+      }.toList
     }
+
   }
+
 }
 
 object ComponentTemplateManager {
