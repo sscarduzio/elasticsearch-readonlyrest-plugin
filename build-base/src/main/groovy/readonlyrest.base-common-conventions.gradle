@@ -85,7 +85,7 @@ dependencyCheck {
     }
     nvd {
         apiKey = System.getenv('NVD_API_KEY')
-        autoUpdate = true // set to false if NVD API is unavailable
+        autoUpdate = false // disabled due to NVD API instability (503/524 since June 2026 schema migration); re-enable once NVD stabilizes
         resultsPerPage = 500 // default = 2000
         validForHours = 12 // default = 4
     }
