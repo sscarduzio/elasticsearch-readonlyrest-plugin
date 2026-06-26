@@ -41,59 +41,53 @@ object DockerImageCreator extends StrictLogging {
   }
 
   private def copyFilesFrom(imageDescription: DockerImageDescription, to: ImageFromDockerfile) = {
-    imageDescription
-      .copyFiles
-      .foldLeft(to) {
-        case (dockerfile, copyFile) =>
-          dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, copyFile.file.toJava)
+    imageDescription.copyFiles
+      .foldLeft(to) { case (dockerfile, copyFile) =>
+        dockerfile.withFileFromFile(copyFile.destination.toIO.getAbsolutePath, copyFile.file.toJava)
       }
   }
 
   private implicit class BuilderExt(val builder: DockerfileBuilder) extends AnyVal {
 
     def runCommandsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .runCommands
+      imageDescription.runCommands
         .foldLeft(List.empty[Command]) {
-          case (acc, c@ChangeUser(_)) => acc :+ c
-          case (acc, r@Run(command)) =>
+          case (acc, c @ ChangeUser(_)) => acc :+ c
+          case (acc, r @ Run(command))  =>
             acc.reverse match {
-              case Nil => r :: Nil
-              case ChangeUser(_) :: _ => acc ::: (r :: Nil)
+              case Nil                      => r :: Nil
+              case ChangeUser(_) :: _       => acc ::: (r :: Nil)
               case Run(lastCommand) :: tail => (Run(s"$lastCommand && $command") :: tail).reverse
             }
         }
         .foldLeft(builder) {
           case (b, ChangeUser(user)) => b.user(user)
-          case (b, Run(command)) => b.run(command)
+          case (b, Run(command))     => b.run(command)
         }
     }
 
     def copyFilesFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .copyFiles
+      imageDescription.copyFiles
         .foldLeft(builder) { case (b, file) =>
           b.copy(file.destination.toString(), file.destination.toString())
         }
     }
 
     def addEnvsFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .envs
+      imageDescription.envs
         .foldLeft(builder) { case (b, env) => b.env(env.name, env.value) }
     }
 
     def setEntrypointFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .entrypoint
+      imageDescription.entrypoint
         .foldLeft(builder) { case (b, entrypoint) => b.entryPoint(entrypoint.toIO.getAbsolutePath) }
     }
 
     def setCommandFrom(imageDescription: DockerImageDescription): DockerfileBuilder = {
-      imageDescription
-        .command
+      imageDescription.command
         .foldLeft(builder) { case (b, command) => b.cmd(command) }
     }
 
   }
+
 }

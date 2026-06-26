@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.admin.indices.rollover.RolloverConfiguration
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.cluster.metadata
@@ -36,18 +35,23 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.jdk.CollectionConverters.*
 
-class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
-                                                 esContext: EsContext,
-                                                 override val threadPool: ThreadPool)
-                                                (implicit generator: UniqueIdentifierGenerator)
-  extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingIndexTemplates](
-    actionRequest, esContext, threadPool
-  ) {
+class GetComposableIndexTemplateEsRequestContext(
+    actionRequest: GetComposableIndexTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+)(
+    implicit generator: UniqueIdentifierGenerator
+) extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingIndexTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList
     .fromList {
@@ -58,12 +62,15 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
       NonEmptyList.one(TemplateNamePattern(nes("*")))
     }
 
-  override protected def templateOperationFrom(request: GetComposableIndexTemplateAction.Request): GettingIndexTemplates = {
+  override protected def templateOperationFrom(
+      request: GetComposableIndexTemplateAction.Request
+  ): GettingIndexTemplates = {
     GettingIndexTemplates(requestTemplateNamePatterns)
   }
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
-    val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
+    val nonExistentTemplateNamePattern =
+      TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
     updateRequest(nonExistentTemplateNamePattern)
     ModificationResult.Modified
   }
@@ -79,7 +86,8 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -111,9 +119,9 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
 
 private[templates] object GetComposableIndexTemplateEsRequestContext extends RequestIdAwareLogging {
 
-  def filter(templates: Map[String, ComposableIndexTemplate],
-             usingTemplate: Set[Template] => Set[Template])
-            (implicit requestContextId: RequestContext.Id): Map[String, ComposableIndexTemplate] = {
+  def filter(templates: Map[String, ComposableIndexTemplate], usingTemplate: Set[Template] => Set[Template])(
+      implicit requestContextId: RequestContext.Id
+  ): Map[String, ComposableIndexTemplate] = {
     val templatesMap = templates
       .flatMap { case (name, composableIndexTemplate) =>
         toIndexTemplate(name, composableIndexTemplate) match {
@@ -122,7 +130,8 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Req
           case Left(msg) =>
             logger.error(
               s"""[${requestContextId.show}] Template response filtering issue: ${msg.show}. For security reasons template
-                 | [${name.show}] will be skipped.""".oneLiner)
+                 | [${name.show}] will be skipped.""".oneLiner
+            )
             None
         }
       }
@@ -147,11 +156,13 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Req
     ComposableIndexTemplate
       .builder()
       .indexPatterns(basedOn.patterns.map(_.value).stringify.asJava)
-      .template(new metadata.Template(
-        composableIndexTemplate.template().settings(),
-        composableIndexTemplate.template().mappings(),
-        filterAliases(composableIndexTemplate.template(), basedOn)
-      ))
+      .template(
+        new metadata.Template(
+          composableIndexTemplate.template().settings(),
+          composableIndexTemplate.template().mappings(),
+          filterAliases(composableIndexTemplate.template(), basedOn)
+        )
+      )
       .componentTemplates(composableIndexTemplate.composedOf())
       .priority(composableIndexTemplate.priority())
       .version(composableIndexTemplate.version())
@@ -166,7 +177,8 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Req
   private def filterAliases(template: metadata.Template, basedOn: IndexTemplate) = {
     val aliasesStrings = basedOn.aliases.stringify
     template
-      .aliases().asSafeMap
+      .aliases()
+      .asSafeMap
       .filter { case (name, _) => aliasesStrings.contains(name) }
       .asJava
   }
@@ -184,4 +196,5 @@ private[templates] object GetComposableIndexTemplateEsRequestContext extends Req
         .getOrElse(Set.empty)
     } yield IndexTemplate(name, patterns, aliases)
   }
+
 }

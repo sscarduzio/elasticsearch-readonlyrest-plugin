@@ -21,10 +21,11 @@ import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.FilePatchCreator
 import tech.beshu.ror.tools.core.patches.internal.{FilePatch, MultiFilePatch, RorPluginDirectory}
 
-private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirectory,
-                                              esVersion: SemVer,
-                                              filePatchCreators: FilePatchCreator[_ <: FilePatch]*)
-  extends EsPatch {
+private[patches] abstract class SimpleEsPatch(
+    rorPluginDirectory: RorPluginDirectory,
+    esVersion: SemVer,
+    filePatchCreators: FilePatchCreator[_ <: FilePatch]*
+) extends EsPatch {
 
   private val filePatches: MultiFilePatch = new MultiFilePatch(
     filePatchCreators.map(_.create(rorPluginDirectory, esVersion)): _*
@@ -47,4 +48,5 @@ private[patches] abstract class SimpleEsPatch(rorPluginDirectory: RorPluginDirec
     rorPluginDirectory.createBackupFolder()
     filePatches.backup()
   }
+
 }

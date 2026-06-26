@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.misc.EsModulePatterns
 import scala.util.{Failure, Success, Try}
 
 object SingletonEsContainerWithRorSecurity
-  extends EsClusterProvider
+    extends EsClusterProvider
     with EsContainerCreator
     with StrictLogging
     with EsModulePatterns {
@@ -65,9 +65,10 @@ object SingletonEsContainerWithRorSecurity
 
   private def logOnFailure[A](action: => A): Unit = {
     Try(action) match {
-      case Success(_) => ()
+      case Success(_)  => ()
       case Failure(ex) =>
         logger.error(s"Error occurred while cleanup of singleton ES container: $ex")
     }
   }
+
 }

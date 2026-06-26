@@ -48,16 +48,15 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
     "be able to be loaded from settings" when {
       "only one user is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    users: "user1"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    users: "user1"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] =
               NonEmptySet.one(AlreadyResolved(User.Id("user1").nel): RuntimeMultiResolvableVariable[User.Id])
@@ -67,35 +66,33 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
       }
       "only one user is defined with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    users: "@{user}"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    users: "@{user}"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.userIds.length shouldBe 1
-            rule.settings.userIds.head shouldBe a [ToBeResolved[_]]
+            rule.settings.userIds.head shouldBe a[ToBeResolved[_]]
           }
         )
       }
       "several users are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    users: ["user1", "user2"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    users: ["user1", "user2"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] =
               NonEmptySet.of(AlreadyResolved(User.Id("user1").nel), AlreadyResolved(User.Id("user2").nel))
@@ -107,24 +104,23 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
     "not be able to be loaded from settings" when {
       "no user is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    users:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    users:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """users: null
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""users: null
+                                                                                      |""".stripMargin)))
           }
         )
       }
     }
   }
+
 }

@@ -22,7 +22,9 @@ import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 import tech.beshu.ror.accesscontrol.domain.UriPath
 
 class RRUserMetadataActionType
-  extends Action[RRUserMetadataRequest, RRUserMetadataResponse, RRUserMetadataActionType.RequestBuilder](RRUserMetadataActionType.name) {
+    extends Action[RRUserMetadataRequest, RRUserMetadataResponse, RRUserMetadataActionType.RequestBuilder](
+      RRUserMetadataActionType.name
+    ) {
 
   override def newResponse(): RRUserMetadataResponse = new RRUserMetadataResponse()
 
@@ -31,8 +33,16 @@ class RRUserMetadataActionType
 }
 
 object RRUserMetadataActionType {
-  class RequestBuilder(client: ElasticsearchClient, actionType: RRUserMetadataActionType, request: RRUserMetadataRequest)
-    extends ActionRequestBuilder[RRUserMetadataRequest, RRUserMetadataResponse, RequestBuilder](client, actionType, request)
+
+  class RequestBuilder(
+      client: ElasticsearchClient,
+      actionType: RRUserMetadataActionType,
+      request: RRUserMetadataRequest
+  ) extends ActionRequestBuilder[RRUserMetadataRequest, RRUserMetadataResponse, RequestBuilder](
+        client,
+        actionType,
+        request
+      )
 
   val name: String = RorAction.RorUserMetadataAction.value
   val instance = new RRUserMetadataActionType()

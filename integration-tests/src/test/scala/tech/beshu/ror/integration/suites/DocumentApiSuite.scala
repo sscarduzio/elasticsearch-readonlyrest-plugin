@@ -28,15 +28,17 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, EsModule}
 
 class DocumentApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike 
+    with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
   override implicit val rorSettingsFileName: String = "/document_api/readonlyrest.yml"
 
-  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(DocumentApiSuite.nodeDataInitializer())
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(
+    DocumentApiSuite.nodeDataInitializer()
+  )
 
   private lazy val dev1documentManager = new DocumentManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
@@ -136,7 +138,7 @@ class DocumentApiSuite
           val result = dev1documentManager.bulk(
             ContainerUtils
               .getResourceFile(
-                if(EsModule.doesCurrentModuleMatch(allEs6x)) s"/document_api/bulk_inserts_es6x.ndjson"
+                if (EsModule.doesCurrentModuleMatch(allEs6x)) s"/document_api/bulk_inserts_es6x.ndjson"
                 else s"/document_api/bulk_inserts.ndjson"
               )
               .toScala
@@ -162,6 +164,7 @@ class DocumentApiSuite
       }
     }
   }
+
 }
 
 object DocumentApiSuite {
@@ -174,4 +177,5 @@ object DocumentApiSuite {
     documentManager.createFirstDoc("index2_fst", ujson.read("""{"hello":"world"}"""))
     documentManager.createFirstDoc("index2_snd", ujson.read("""{"hello":"world"}"""))
   }
+
 }

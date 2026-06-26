@@ -29,14 +29,15 @@ import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 
-class SSLNetty4HttpServerTransport(settings: Settings,
-                                   networkService: NetworkService,
-                                   bigArrays: BigArrays,
-                                   threadPool: ThreadPool,
-                                   xContentRegistry: NamedXContentRegistry,
-                                   dispatcher: HttpServerTransport.Dispatcher,
-                                   ssl: ExternalSslSettings)
-  extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher)
+class SSLNetty4HttpServerTransport(
+    settings: Settings,
+    networkService: NetworkService,
+    bigArrays: BigArrays,
+    threadPool: ThreadPool,
+    xContentRegistry: NamedXContentRegistry,
+    dispatcher: HttpServerTransport.Dispatcher,
+    ssl: ExternalSslSettings
+) extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher)
     with RequestIdAwareLogging {
 
   private val serverSslContext = doPrivileged {
@@ -47,17 +48,20 @@ class SSLNetty4HttpServerTransport(settings: Settings,
 
   override def onException(channel: HttpChannel, cause: Exception): Unit = {
     if (!this.lifecycle.started) return
-    else if (cause.getCause.isInstanceOf[NotSslRecordException]) noRequestIdLogger.warn(cause.getMessage + " connecting from: " + channel.getRemoteAddress)
+    else if (cause.getCause.isInstanceOf[NotSslRecordException])
+      noRequestIdLogger.warn(cause.getMessage + " connecting from: " + channel.getRemoteAddress)
     else super.onException(channel, cause)
     channel.close()
   }
 
   final class SSLHandler(transport: Netty4HttpServerTransport)
-    extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
+      extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
 
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       ch.pipeline().addFirst("ssl_netty4_handler", serverSslContext.newHandler(ch.alloc()))
     }
+
   }
+
 }

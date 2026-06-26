@@ -31,7 +31,8 @@ import java.util.TimeZone;
  */
 @Deprecated
 public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String, ?>> {
-  private final static SimpleDateFormat zuluFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+  private static final SimpleDateFormat zuluFormat =
+      new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
   static {
     zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -62,11 +63,12 @@ public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String,
     map.put("origin", req.getRemoteAddress());
     map.put("destination", req.getLocalAddress());
 
-    Optional<String> xff = req.getHeaders().entrySet().stream()
-        .filter(entry -> entry.getKey().toLowerCase().equals("x-forwarded-for"))
-        .findFirst()
-        .map(Map.Entry::getValue);
-    if(xff.isPresent() && !xff.get().equals("")){
+    Optional<String> xff =
+        req.getHeaders().entrySet().stream()
+            .filter(entry -> entry.getKey().toLowerCase().equals("x-forwarded-for"))
+            .findFirst()
+            .map(Map.Entry::getValue);
+    if (xff.isPresent() && !xff.get().equals("")) {
       map.put("xff", xff.get());
     }
 

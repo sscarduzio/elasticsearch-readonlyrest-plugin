@@ -23,7 +23,8 @@ import java.util.Optional;
  */
 @Deprecated
 public enum Verbosity {
-  INFO, ERROR;
+  INFO,
+  ERROR;
 
   public static Optional<Verbosity> fromString(String value) {
     switch (value.toLowerCase()) {

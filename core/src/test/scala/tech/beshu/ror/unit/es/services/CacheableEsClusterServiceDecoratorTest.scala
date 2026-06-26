@@ -28,10 +28,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
-class CacheableEsClusterServiceDecoratorTest
-  extends AnyWordSpec
-    with MockFactory
-    with WithDummyRequestIdSupport {
+class CacheableEsClusterServiceDecoratorTest extends AnyWordSpec with MockFactory with WithDummyRequestIdSupport {
 
   "CacheableEsClusterServiceDecorator" when {
 
@@ -60,7 +57,11 @@ class CacheableEsClusterServiceDecoratorTest
     "localDataStreamsSnapshot is called" should {
       "call underlying only once for repeated calls" in {
         val decorator = decoratorWith { svc =>
-          (svc.localDataStreamsSnapshot(_: RequestId)).expects(*).returning(new LocalDataStreamsSnapshot(Set.empty)).once()
+          (svc
+            .localDataStreamsSnapshot(_: RequestId))
+            .expects(*)
+            .returning(new LocalDataStreamsSnapshot(Set.empty))
+            .once()
         }
         decorator.localDataStreamsSnapshot
         decorator.localDataStreamsSnapshot
@@ -172,8 +173,11 @@ class CacheableEsClusterServiceDecoratorTest
 
       "call underlying only once for the same repo/snapshot pair" in {
         val decorator = decoratorWith { svc =>
-          (svc.snapshotIndices(_: RepositoryName.Full, _: SnapshotName.Full)(_: RequestId))
-            .expects(repo, snap, *).returning(Task.now(Set.empty)).once()
+          (svc
+            .snapshotIndices(_: RepositoryName.Full, _: SnapshotName.Full)(_: RequestId))
+            .expects(repo, snap, *)
+            .returning(Task.now(Set.empty))
+            .once()
         }
         val result = for {
           _ <- decorator.snapshotIndices(repo, snap)
@@ -184,10 +188,16 @@ class CacheableEsClusterServiceDecoratorTest
       }
       "call underlying separately for each distinct repo/snapshot pair" in {
         val decorator = decoratorWith { svc =>
-          (svc.snapshotIndices(_: RepositoryName.Full, _: SnapshotName.Full)(_: RequestId))
-            .expects(repo, snap, *).returning(Task.now(Set.empty)).once()
-          (svc.snapshotIndices(_: RepositoryName.Full, _: SnapshotName.Full)(_: RequestId))
-            .expects(repo2, snap2, *).returning(Task.now(Set.empty)).once()
+          (svc
+            .snapshotIndices(_: RepositoryName.Full, _: SnapshotName.Full)(_: RequestId))
+            .expects(repo, snap, *)
+            .returning(Task.now(Set.empty))
+            .once()
+          (svc
+            .snapshotIndices(_: RepositoryName.Full, _: SnapshotName.Full)(_: RequestId))
+            .expects(repo2, snap2, *)
+            .returning(Task.now(Set.empty))
+            .once()
         }
         val result = for {
           _ <- decorator.snapshotIndices(repo, snap)
@@ -207,8 +217,11 @@ class CacheableEsClusterServiceDecoratorTest
 
       "call underlying only once for the same document and filter" in {
         val decorator = decoratorWith { svc =>
-          (svc.verifyDocumentAccessibility(_: Document, _: Filter)(_: RequestId))
-            .expects(doc1, filter, *).returning(Task.now(DocumentAccessibility.Accessible)).once()
+          (svc
+            .verifyDocumentAccessibility(_: Document, _: Filter)(_: RequestId))
+            .expects(doc1, filter, *)
+            .returning(Task.now(DocumentAccessibility.Accessible))
+            .once()
         }
         val result = for {
           _ <- decorator.verifyDocumentAccessibility(doc1, filter)
@@ -219,10 +232,16 @@ class CacheableEsClusterServiceDecoratorTest
       }
       "call underlying separately for each distinct document" in {
         val decorator = decoratorWith { svc =>
-          (svc.verifyDocumentAccessibility(_: Document, _: Filter)(_: RequestId))
-            .expects(doc1, filter, *).returning(Task.now(DocumentAccessibility.Accessible)).once()
-          (svc.verifyDocumentAccessibility(_: Document, _: Filter)(_: RequestId))
-            .expects(doc2, filter, *).returning(Task.now(DocumentAccessibility.Accessible)).once()
+          (svc
+            .verifyDocumentAccessibility(_: Document, _: Filter)(_: RequestId))
+            .expects(doc1, filter, *)
+            .returning(Task.now(DocumentAccessibility.Accessible))
+            .once()
+          (svc
+            .verifyDocumentAccessibility(_: Document, _: Filter)(_: RequestId))
+            .expects(doc2, filter, *)
+            .returning(Task.now(DocumentAccessibility.Accessible))
+            .once()
         }
         val result = for {
           _ <- decorator.verifyDocumentAccessibility(doc1, filter)
@@ -242,8 +261,11 @@ class CacheableEsClusterServiceDecoratorTest
 
       "call underlying only once for the same documents and filter" in {
         val decorator = decoratorWith { svc =>
-          (svc.verifyDocumentsAccessibility(_: NonEmptyList[Document], _: Filter)(_: RequestId))
-            .expects(docs1, filter, *).returning(Task.now(Map.empty)).once()
+          (svc
+            .verifyDocumentsAccessibility(_: NonEmptyList[Document], _: Filter)(_: RequestId))
+            .expects(docs1, filter, *)
+            .returning(Task.now(Map.empty))
+            .once()
         }
         val result = for {
           _ <- decorator.verifyDocumentsAccessibility(docs1, filter)
@@ -254,10 +276,16 @@ class CacheableEsClusterServiceDecoratorTest
       }
       "call underlying separately for each distinct document list" in {
         val decorator = decoratorWith { svc =>
-          (svc.verifyDocumentsAccessibility(_: NonEmptyList[Document], _: Filter)(_: RequestId))
-            .expects(docs1, filter, *).returning(Task.now(Map.empty)).once()
-          (svc.verifyDocumentsAccessibility(_: NonEmptyList[Document], _: Filter)(_: RequestId))
-            .expects(docs2, filter, *).returning(Task.now(Map.empty)).once()
+          (svc
+            .verifyDocumentsAccessibility(_: NonEmptyList[Document], _: Filter)(_: RequestId))
+            .expects(docs1, filter, *)
+            .returning(Task.now(Map.empty))
+            .once()
+          (svc
+            .verifyDocumentsAccessibility(_: NonEmptyList[Document], _: Filter)(_: RequestId))
+            .expects(docs2, filter, *)
+            .returning(Task.now(Map.empty))
+            .once()
         }
         val result = for {
           _ <- decorator.verifyDocumentsAccessibility(docs1, filter)
@@ -275,4 +303,5 @@ class CacheableEsClusterServiceDecoratorTest
     setup(underlying)
     new CacheableEsClusterServiceDecorator(underlying)
   }
+
 }

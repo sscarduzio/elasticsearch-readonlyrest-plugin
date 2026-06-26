@@ -56,5 +56,4 @@ public class StoredFieldsReaderForScalaHelper extends StoredFieldsReader {
   public StoredFieldsReader cloneUnderlying() {
     return underlying.clone();
   }
-
 }

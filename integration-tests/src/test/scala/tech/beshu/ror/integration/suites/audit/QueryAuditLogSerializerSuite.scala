@@ -20,16 +20,21 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, SingletonPluginTestSupport}
-import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
-import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
+import tech.beshu.ror.utils.elasticsearch.{
+  AuditIndexManager,
+  ElasticsearchTweetsInitializer,
+  IndexManager,
+  RorApiManager
+}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 import java.util.UUID
 import scala.language.postfixOps
 
 class QueryAuditLogSerializerSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -57,7 +62,7 @@ class QueryAuditLogSerializerSuite
         result should have statusCode 403
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size should be (1)
+        auditEntries.size should be(1)
         val firstEntry = auditEntries(0)
         firstEntry("final_state").str shouldBe "FORBIDDEN"
         firstEntry("user").str should be("user2")
@@ -72,27 +77,26 @@ class QueryAuditLogSerializerSuite
 
         result should have statusCode 200
 
-        result.responseJson should be(ujson.read(
-          s"""{
-             |  "type": "USER_WITH_GROUPS",
-             |  "correlation_id": "$correlationId",
-             |  "groups": [
-             |    {
-             |      "username": "user1-proxy-id",
-             |      "group": {
-             |        "id": "group1",
-             |        "name": "group1"
-             |      },
-             |      "kibana": {
-             |        "access":"unrestricted",
-             |        "index":".kibana"
-             |      }
-             |    }
-             |  ]
-             |}""".stripMargin))
+        result.responseJson should be(ujson.read(s"""{
+                                                    |  "type": "USER_WITH_GROUPS",
+                                                    |  "correlation_id": "$correlationId",
+                                                    |  "groups": [
+                                                    |    {
+                                                    |      "username": "user1-proxy-id",
+                                                    |      "group": {
+                                                    |        "id": "group1",
+                                                    |        "name": "group1"
+                                                    |      },
+                                                    |      "kibana": {
+                                                    |        "access":"unrestricted",
+                                                    |        "index":".kibana"
+                                                    |      }
+                                                    |    }
+                                                    |  ]
+                                                    |}""".stripMargin))
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size should be (1)
+        auditEntries.size should be(1)
 
         val firstEntry = auditIndexManager.getEntries.jsons(0)
         firstEntry("final_state").str shouldBe "ALLOWED"
@@ -106,7 +110,7 @@ class QueryAuditLogSerializerSuite
         response should have statusCode 200
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size should be (1)
+        auditEntries.size should be(1)
 
         val firstEntry = auditEntries(0)
         firstEntry("final_state").str shouldBe "ALLOWED"
@@ -120,7 +124,7 @@ class QueryAuditLogSerializerSuite
         response should have statusCode 403
 
         val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size should be (1)
+        auditEntries.size should be(1)
 
         val firstEntry = auditEntries(0)
         firstEntry("final_state").str shouldBe "FORBIDDEN"
@@ -137,4 +141,5 @@ class QueryAuditLogSerializerSuite
       }
     }
   }
+
 }

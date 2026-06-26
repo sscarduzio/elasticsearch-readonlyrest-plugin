@@ -80,14 +80,19 @@ object FromString {
   }
 
   val information: FromString[Information] = instance { str =>
-    Information.parseString(str).toEither
-      .left.map(_ => s"Cannot parse '$str' as a data size. Expected format like '1 MB', '512 KB'")
+    Information
+      .parseString(str)
+      .toEither
+      .left
+      .map(_ => s"Cannot parse '$str' as a data size. Expected format like '1 MB', '512 KB'")
   }
 
   private def parseFiniteDuration(str: String): Try[FiniteDuration] =
-    Try(str.toLong).map(FiniteDuration(_, java.util.concurrent.TimeUnit.SECONDS))
+    Try(str.toLong)
+      .map(FiniteDuration(_, java.util.concurrent.TimeUnit.SECONDS))
       .orElse(Try(Duration(str)).flatMap {
         case d: FiniteDuration => Success(d)
         case _                 => Failure(new IllegalArgumentException(s"Expected a finite duration"))
       })
+
 }

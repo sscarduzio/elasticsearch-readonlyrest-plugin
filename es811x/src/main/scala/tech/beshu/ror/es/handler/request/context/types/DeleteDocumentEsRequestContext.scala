@@ -26,11 +26,12 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.syntax.*
 
-class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
-                                     esContext: EsContext,
-                                     aclContext: AccessControlStaticContext,
-                                     override val threadPool: ThreadPool)
-  extends BaseSingleIndexEsRequestContext[DeleteRequest](actionRequest, esContext, aclContext, threadPool) {
+class DeleteDocumentEsRequestContext(
+    actionRequest: DeleteRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseSingleIndexEsRequestContext[DeleteRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndexFrom(request: DeleteRequest): RequestedIndex[ClusterIndexName] = {
     RequestedIndex
@@ -40,8 +41,12 @@ class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
       }
   }
 
-  override protected def update(actionRequest: DeleteRequest, index: RequestedIndex[ClusterIndexName]): ModificationResult = {
+  override protected def update(
+      actionRequest: DeleteRequest,
+      index: RequestedIndex[ClusterIndexName]
+  ): ModificationResult = {
     actionRequest.index(index.stringify)
     Modified
   }
+
 }

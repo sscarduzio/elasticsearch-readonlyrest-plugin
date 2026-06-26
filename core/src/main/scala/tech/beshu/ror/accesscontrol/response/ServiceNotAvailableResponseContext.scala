@@ -27,13 +27,14 @@ class ServiceNotAvailableResponseContext(cause: ServiceNotAvailableResponseConte
 
 object ServiceNotAvailableResponseContext {
   sealed trait Cause
+
   object Cause {
     case object RorNotReadyYet extends Cause
     case object RorFailedToStart extends Cause
   }
 
   private implicit val causeShow: Show[Cause] = Show.show {
-    case Cause.RorNotReadyYet => "READONLYREST_NOT_READY_YET"
+    case Cause.RorNotReadyYet   => "READONLYREST_NOT_READY_YET"
     case Cause.RorFailedToStart => "READONLYREST_FAILED_TO_START"
   }
 
@@ -48,4 +49,5 @@ object ServiceNotAvailableResponseContext {
       create(new ServiceNotAvailableResponseContext(Cause.RorNotReadyYet))
 
   }
+
 }

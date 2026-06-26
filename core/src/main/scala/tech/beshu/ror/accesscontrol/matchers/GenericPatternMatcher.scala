@@ -19,11 +19,12 @@ package tech.beshu.ror.accesscontrol.matchers
 import tech.beshu.ror.accesscontrol.domain.Pattern
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 
-class GenericPatternMatcher[T : Matchable](patterns: Iterable[Pattern[T]]) {
+class GenericPatternMatcher[T: Matchable](patterns: Iterable[Pattern[T]]) {
 
   private val underlyingMatcher: PatternsMatcher[T] = PatternsMatcher.create[T](patterns.map(_.value))
 
   def `match`(value: T): Boolean = {
     underlyingMatcher.`match`(value)
   }
+
 }

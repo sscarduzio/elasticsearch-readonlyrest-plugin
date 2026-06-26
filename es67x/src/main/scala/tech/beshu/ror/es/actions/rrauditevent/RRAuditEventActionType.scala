@@ -21,7 +21,9 @@ import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRAuditEventActionType
-  extends Action[RRAuditEventRequest, RRAuditEventResponse, RRAuditEventActionType.RequestBuilder](RRAuditEventActionType.name) {
+    extends Action[RRAuditEventRequest, RRAuditEventResponse, RRAuditEventActionType.RequestBuilder](
+      RRAuditEventActionType.name
+    ) {
 
   override def newResponse(): RRAuditEventResponse = new RRAuditEventResponse()
 
@@ -30,8 +32,13 @@ class RRAuditEventActionType
 }
 
 object RRAuditEventActionType {
+
   class RequestBuilder(client: ElasticsearchClient, actionType: RRAuditEventActionType, request: RRAuditEventRequest)
-    extends ActionRequestBuilder[RRAuditEventRequest, RRAuditEventResponse, RequestBuilder](client, actionType, request)
+      extends ActionRequestBuilder[RRAuditEventRequest, RRAuditEventResponse, RequestBuilder](
+        client,
+        actionType,
+        request
+      )
 
   val name: String = RorAction.RorAuditEventAction.value
   val instance = new RRAuditEventActionType()

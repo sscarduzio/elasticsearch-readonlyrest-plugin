@@ -23,15 +23,14 @@ import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 import ujson.Arr
 
-class SqlApiManager(restClient: RestClient, esVersion: String)
-  extends BaseManager(restClient, esVersion, true) {
+class SqlApiManager(restClient: RestClient, esVersion: String) extends BaseManager(restClient, esVersion, true) {
 
   def execute(selectQuery: String): SqlResult = {
     call(createSqlQueryRequest(selectQuery), new SqlResult(_))
   }
 
   private def createSqlQueryRequest(query: String) = {
-    val request = if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+    val request = if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       new HttpGetWithEntity(restClient.from("_sql", Map("format" -> "json")))
     } else {
       new HttpGetWithEntity(restClient.from("_xpack/sql", Map("format" -> "json")))
@@ -43,6 +42,7 @@ class SqlApiManager(restClient: RestClient, esVersion: String)
   }
 
   class SqlResult(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val queryResult: Map[String, Vector[JSON]] = {
       val columns = responseJson("columns").arr.map(_.obj("name").str).toVector
       val rows = responseJson("rows").arr.toVector.map(_.arr.toVector).transpose
@@ -63,4 +63,5 @@ class SqlApiManager(restClient: RestClient, esVersion: String)
 
     private def columnIdxBy(name: String) = columnNames.indexOf(name)
   }
+
 }

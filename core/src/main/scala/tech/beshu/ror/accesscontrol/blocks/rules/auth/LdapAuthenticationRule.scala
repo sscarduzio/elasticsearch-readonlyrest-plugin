@@ -30,21 +30,24 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, LocalUsers, RequestId, User}
 
-final class LdapAuthenticationRule(val settings: Settings,
-                                   override implicit val userIdCaseSensitivity: CaseSensitivity,
-                                   override val impersonation: Impersonation)
-  extends BaseBasicAuthAuthenticationRule {
+final class LdapAuthenticationRule(
+    val settings: Settings,
+    override implicit val userIdCaseSensitivity: CaseSensitivity,
+    override val impersonation: Impersonation
+) extends BaseBasicAuthAuthenticationRule {
 
   override val name: Rule.Name = LdapAuthenticationRule.Name.name
 
   override val localUsers: LocalUsers = LocalUsers.NotAvailable
 
-  override protected def authenticateUsing(credentials: Credentials)
-                                          (implicit requestId: RequestId): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
+  override protected def authenticateUsing(credentials: Credentials)(
+      implicit requestId: RequestId
+  ): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
-  override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)
-                                      (implicit requestId: RequestId): Task[UserExistence] = Task.delay {
+  override protected[rules] def exists(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Task[UserExistence] = Task.delay {
     mocksProvider
       .ldapServiceWith(settings.ldap.id)
       .map { mock =>
@@ -56,6 +59,7 @@ final class LdapAuthenticationRule(val settings: Settings,
         UserExistence.CannotCheck
       }
   }
+
 }
 
 object LdapAuthenticationRule {

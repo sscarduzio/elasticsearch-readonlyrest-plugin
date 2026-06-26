@@ -35,9 +35,11 @@ sealed abstract class RorActionListener[T](val underlying: ActionListener[T]) ex
   override def onFailure(e: Exception): Unit = underlying.onFailure(e)
 }
 
-final class HidingInternalErrorDetailsRorActionListener[T](underlying: ActionListener[T],
-                                                           correlationId: Eval[CorrelationId])
-  extends RorActionListener[T](underlying) with RequestIdAwareLogging {
+final class HidingInternalErrorDetailsRorActionListener[T](
+    underlying: ActionListener[T],
+    correlationId: Eval[CorrelationId]
+) extends RorActionListener[T](underlying)
+    with RequestIdAwareLogging {
 
   override def onFailure(e: Exception): Unit = {
     super.onFailure(adaptExceptionIfNeeded(e))
@@ -46,18 +48,21 @@ final class HidingInternalErrorDetailsRorActionListener[T](underlying: ActionLis
   private def adaptExceptionIfNeeded(ex: Exception) = {
     ex match {
       case esException: ElasticsearchException => esException
-      case other =>
+      case other                               =>
         noRequestIdLogger.error(s"[${correlationId.value.show}] Internal error.", other)
         new ElasticsearchException(s"[${correlationId.value.show}] Internal error. See logs for details.")
     }
   }
+
 }
 
-final class AtEsLevelUpdateActionResponseListener(esContext: EsContext,
-                                                  update: ActionResponse => Task[ActionResponse],
-                                                  threadPool: ThreadPool)
-                                                 (implicit scheduler: Scheduler)
-  extends RorActionListener[ActionResponse](esContext.listener.underlying) {
+final class AtEsLevelUpdateActionResponseListener(
+    esContext: EsContext,
+    update: ActionResponse => Task[ActionResponse],
+    threadPool: ThreadPool
+)(
+    implicit scheduler: Scheduler
+) extends RorActionListener[ActionResponse](esContext.listener.underlying) {
 
   override def onResponse(response: ActionResponse): Unit = {
     threadPool.getThreadContext.setupContextPropagation()
@@ -68,4 +73,5 @@ final class AtEsLevelUpdateActionResponseListener(esContext: EsContext,
         onFailure(new Exception(ex))
     }
   }
+
 }

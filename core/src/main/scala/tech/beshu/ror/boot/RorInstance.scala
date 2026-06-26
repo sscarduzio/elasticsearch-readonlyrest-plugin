@@ -40,23 +40,25 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import java.time.Instant
 import java.util.UUID
 
-class RorInstance private(boot: ReadonlyRest,
-                          mode: RorInstance.Mode,
-                          esConfigBasedRorSettings: EsConfigBasedRorSettings,
-                          creators: SettingsRelatedCreators,
-                          mainInitialEngine: ReadonlyRest.MainEngine,
-                          mainReloadInProgress: Semaphore[Task],
-                          testInitialEngine: ReadonlyRest.TestEngine,
-                          testReloadInProgress: Semaphore[Task])
-                         (implicit systemContext: SystemContext)
-  extends RequestIdAwareLogging {
+class RorInstance private (
+    boot: ReadonlyRest,
+    mode: RorInstance.Mode,
+    esConfigBasedRorSettings: EsConfigBasedRorSettings,
+    creators: SettingsRelatedCreators,
+    mainInitialEngine: ReadonlyRest.MainEngine,
+    mainReloadInProgress: Semaphore[Task],
+    testInitialEngine: ReadonlyRest.TestEngine,
+    testReloadInProgress: Semaphore[Task]
+)(
+    implicit systemContext: SystemContext
+) extends RequestIdAwareLogging {
 
   import RorInstance.*
   import creators.*
 
   private val settingsAutoReloader = mode match {
     case Mode.WithPeriodicIndexCheck(interval) => new EnabledRorSettingsAutoReloader(interval, this)
-    case Mode.NoPeriodicIndexCheck => DisabledRorSettingsAutoReloader
+    case Mode.NoPeriodicIndexCheck             => DisabledRorSettingsAutoReloader
   }
 
   private val theMainSettingsEngine = mainSettingsBasedReloadableEngineCreator.create(
@@ -65,6 +67,7 @@ class RorInstance private(boot: ReadonlyRest,
     mainInitialEngine,
     mainReloadInProgress
   )
+
   private val theTestSettingsEngine = testSettingsBasedReloadableEngineCreator.create(
     boot,
     esConfigBasedRorSettings,
@@ -91,31 +94,35 @@ class RorInstance private(boot: ReadonlyRest,
 
   def mocksProvider: MocksProvider = boot.authServicesMocksProvider
 
-  def forceReloadFromIndex()
-                          (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, Unit]] =
+  def forceReloadFromIndex()(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsReloadError, Unit]] =
     theMainSettingsEngine.forceReloadFromIndex()
 
-  def forceReloadAndSave(settings: RawRorSettings)
-                        (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] =
+  def forceReloadAndSave(settings: RawRorSettings)(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] =
     theMainSettingsEngine.forceReloadAndSave(MainRorSettings(settings))
 
   def currentTestSettings(): Task[TestSettings] = {
     theTestSettingsEngine.currentTestSettings()
   }
 
-  def forceReloadTestSettingsEngine(settings: RawRorSettings,
-                                    ttl: PositiveFiniteDuration)
-                                   (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, TestSettings.Present]] = {
+  def forceReloadTestSettingsEngine(settings: RawRorSettings, ttl: PositiveFiniteDuration)(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsReloadWithUpdateError, TestSettings.Present]] = {
     theTestSettingsEngine.forceReloadTestSettingsEngine(settings, ttl)
   }
 
-  def invalidateTestSettingsEngine()
-                                  (implicit requestId: RequestId): Task[Either[IndexSettingsInvalidationError, Unit]] = {
+  def invalidateTestSettingsEngine()(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsInvalidationError, Unit]] = {
     theTestSettingsEngine.invalidateTestSettingsEngine()
   }
 
-  def updateAuthMocks(mocks: AuthServicesMocks)
-                     (implicit requestId: RequestId): Task[Either[IndexSettingsUpdateError, Unit]] = {
+  def updateAuthMocks(mocks: AuthServicesMocks)(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsUpdateError, Unit]] = {
     theTestSettingsEngine.saveServicesMocks(mocks)
   }
 
@@ -151,8 +158,7 @@ class RorInstance private(boot: ReadonlyRest,
     }
   }
 
-  private def withGuard(semaphore: Semaphore[Task])
-                       (action: => Task[Either[ScheduledReloadError, Unit]]) = {
+  private def withGuard(semaphore: Semaphore[Task])(action: => Task[Either[ScheduledReloadError, Unit]]) = {
     val criticalSection = Resource.make(semaphore.tryAcquire) {
       case true =>
         semaphore.release
@@ -160,20 +166,24 @@ class RorInstance private(boot: ReadonlyRest,
         Task.unit
     }
     criticalSection.use {
-      case true => action
+      case true  => action
       case false => Task.now(Left(ScheduledReloadError.ReloadingInProgress))
     }
   }
+
 }
 
 object RorInstance {
 
-  def create(boot: ReadonlyRest,
-             esConfigBasedRorSettings: EsConfigBasedRorSettings,
-             creators: SettingsRelatedCreators,
-             mainEngine: ReadonlyRest.MainEngine,
-             testEngine: ReadonlyRest.TestEngine)
-            (implicit systemContext: SystemContext): Task[RorInstance] = {
+  def create(
+      boot: ReadonlyRest,
+      esConfigBasedRorSettings: EsConfigBasedRorSettings,
+      creators: SettingsRelatedCreators,
+      mainEngine: ReadonlyRest.MainEngine,
+      testEngine: ReadonlyRest.TestEngine
+  )(
+      implicit systemContext: SystemContext
+  ): Task[RorInstance] = {
     for {
       isReloadInProgressSemaphore <- Semaphore[Task](1)
       isTestReloadInProgressSemaphore <- Semaphore[Task](1)
@@ -195,12 +205,16 @@ object RorInstance {
         Mode.NoPeriodicIndexCheck
       case RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Disabled) =>
         Mode.NoPeriodicIndexCheck
-      case RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(_, CoreRefreshSettings.Enabled(refreshInterval)) =>
+      case RorCoreSettingsLoadingStrategy.LoadFromIndexWithFileFallback(
+            _,
+            CoreRefreshSettings.Enabled(refreshInterval)
+          ) =>
         Mode.WithPeriodicIndexCheck(refreshInterval)
     }
   }
 
   sealed trait RawSettingsReloadError
+
   object RawSettingsReloadError {
     final case class ReloadingFailed(failure: StartingFailure) extends RawSettingsReloadError
     final case class SettingsUpToDate(settings: RawRorSettings) extends RawSettingsReloadError
@@ -208,59 +222,64 @@ object RorInstance {
   }
 
   sealed trait IndexSettingsReloadWithUpdateError
+
   object IndexSettingsReloadWithUpdateError {
-    final case class ReloadError(undefined: RawSettingsReloadError)
-      extends IndexSettingsReloadWithUpdateError
+    final case class ReloadError(undefined: RawSettingsReloadError) extends IndexSettingsReloadWithUpdateError
     final case class IndexSettingsSavingError(underlying: SettingsSavingError[IndexSettingsSource.SavingError])
-      extends IndexSettingsReloadWithUpdateError
+        extends IndexSettingsReloadWithUpdateError
   }
 
   sealed trait IndexSettingsReloadError
+
   object IndexSettingsReloadError {
     final case class IndexLoadingSettingsError(underlying: SettingsLoadingError[IndexSettingsSource.LoadingError])
-      extends IndexSettingsReloadError
-    final case class ReloadError(underlying: RawSettingsReloadError)
-      extends IndexSettingsReloadError
+        extends IndexSettingsReloadError
+    final case class ReloadError(underlying: RawSettingsReloadError) extends IndexSettingsReloadError
   }
 
   sealed trait IndexSettingsUpdateError
+
   object IndexSettingsUpdateError {
     final case class IndexSettingsSavingError(underlying: SettingsSavingError[IndexSettingsSource.SavingError])
-      extends IndexSettingsUpdateError
-    case object TestSettingsNotSet
-      extends IndexSettingsUpdateError
-    case object TestSettingsInvalidated
-      extends IndexSettingsUpdateError
+        extends IndexSettingsUpdateError
+    case object TestSettingsNotSet extends IndexSettingsUpdateError
+    case object TestSettingsInvalidated extends IndexSettingsUpdateError
   }
 
   sealed trait IndexSettingsInvalidationError
+
   object IndexSettingsInvalidationError {
     final case class IndexSettingsSavingError(underlying: SettingsSavingError[IndexSettingsSource.SavingError])
-      extends IndexSettingsInvalidationError
+        extends IndexSettingsInvalidationError
   }
 
-  private [boot] sealed trait ScheduledReloadError
-  private [boot] object ScheduledReloadError {
+  private[boot] sealed trait ScheduledReloadError
+
+  private[boot] object ScheduledReloadError {
     case object ReloadingInProgress extends ScheduledReloadError
     final case class EngineReloadError(underlying: IndexSettingsReloadError) extends ScheduledReloadError
   }
 
   sealed trait TestSettings
+
   object TestSettings {
     case object NotSet extends TestSettings
-    final case class Present(rawSettings: RawRorSettings,
-                             dependencies: RorDependencies,
-                             configuredTtl: PositiveFiniteDuration,
-                             validTo: Instant) extends TestSettings
-    final case class Invalidated(recent: RawRorSettings,
-                                 configuredTtl: PositiveFiniteDuration) extends TestSettings
+
+    final case class Present(
+        rawSettings: RawRorSettings,
+        dependencies: RorDependencies,
+        configuredTtl: PositiveFiniteDuration,
+        validTo: Instant
+    ) extends TestSettings
+
+    final case class Invalidated(recent: RawRorSettings, configuredTtl: PositiveFiniteDuration) extends TestSettings
   }
 
   private sealed trait Mode
+
   private object Mode {
     final case class WithPeriodicIndexCheck(reloadInterval: PositiveFiniteDuration) extends Mode
     case object NoPeriodicIndexCheck extends Mode
   }
 
 }
-

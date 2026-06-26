@@ -76,9 +76,11 @@ abstract class WindowsPseudoContainer[T <: GenericContainer[T]] extends GenericC
 }
 
 object WindowsPseudoContainer {
+
   trait Service {
     def destroy(): Unit
 
     def getPort: Int
   }
+
 }

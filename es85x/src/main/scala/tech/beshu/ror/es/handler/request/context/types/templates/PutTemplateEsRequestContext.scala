@@ -29,12 +29,15 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class PutTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
-                                  esContext: EsContext,
-                                  override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[PutIndexTemplateRequest, AddingLegacyTemplate](
-    actionRequest, esContext, threadPool
-  ) {
+class PutTemplateEsRequestContext(
+    actionRequest: PutIndexTemplateRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[PutIndexTemplateRequest, AddingLegacyTemplate](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
   override protected def templateOperationFrom(request: PutIndexTemplateRequest): AddingLegacyTemplate = {
     val templateOperation = for {
@@ -49,7 +52,7 @@ class PutTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
 
     templateOperation match {
       case Right(operation) => operation
-      case Left(msg) => throw RequestSeemsToBeInvalid[PutIndexTemplateRequest](msg)
+      case Left(msg)        => throw RequestSeemsToBeInvalid[PutIndexTemplateRequest](msg)
     }
   }
 
@@ -57,4 +60,5 @@ class PutTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
     // nothing to modify - if it wasn't blocked, we are good
     Modified
   }
+
 }

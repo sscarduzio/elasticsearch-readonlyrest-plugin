@@ -23,43 +23,65 @@ import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyApplicationPermissionClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass, ModifyRoleClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{
+  CreateRorAuthorizationInfoProviderClass,
+  ModifyApplicationPermissionClass,
+  ModifyAuthorizationServiceClass,
+  ModifyRBACEngineClass,
+  ModifyRoleClass
+}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyCreateComponentsInSecurityClass, ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{CreateApiKeyServiceBridgeClass, CreateServiceAccountServiceBridgeClass, ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{
+  ModifyCreateComponentsInSecurityClass,
+  ModifySecurityClass,
+  ModifySecurityServerTransportInterceptorClass
+}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{
+  CreateApiKeyServiceBridgeClass,
+  CreateServiceAccountServiceBridgeClass,
+  ModifyRepositoriesServiceClass,
+  ModifySnapshotsServiceClass
+}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
 
 import scala.language.postfixOps
 
 private[patches] class Es716xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
-  extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    ElasticsearchJarPatchCreator(
-      ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
-        getPropertySecurityPermission
-      )),
-      CreateApiKeyServiceBridgeClass,
-      CreateServiceAccountServiceBridgeClass,
-      ModifyRepositoriesServiceClass(esVersion),
-      ModifySnapshotsServiceClass(esVersion)
-    ),
-    RorSecurityPolicyPatchCreator(
-      AddAdditionalPermissions(NonEmptyList.of(
-        getPropertySecurityPermission
-      )),
-    ),
-    XPackCoreJarPatchCreator(
-      ModifyRoleClass,
-      ModifyApplicationPermissionClass,
-    ),
-    XPackSecurityJarPatchCreator(
-      ModifyCreateComponentsInSecurityClass,
-      CreateRorAuthorizationInfoProviderClass(esVersion),
-      ModifyAuthenticationChainClass(esVersion),
-      ModifyAuthorizationServiceClass(esVersion),
-      ModifyRBACEngineClass,
-      ModifyRestHasPrivilegesActionClass,
-      ModifySecurityClass,
-      ModifySecurityServerTransportInterceptorClass,
+    extends SimpleEsPatch(
+      rorPluginDirectory,
+      esVersion,
+      ElasticsearchJarPatchCreator(
+        ModifyPolicyUtilClass(
+          esVersion,
+          NonEmptyList.of(
+            getPropertySecurityPermission
+          )
+        ),
+        CreateApiKeyServiceBridgeClass,
+        CreateServiceAccountServiceBridgeClass,
+        ModifyRepositoriesServiceClass(esVersion),
+        ModifySnapshotsServiceClass(esVersion)
+      ),
+      RorSecurityPolicyPatchCreator(
+        AddAdditionalPermissions(
+          NonEmptyList.of(
+            getPropertySecurityPermission
+          )
+        ),
+      ),
+      XPackCoreJarPatchCreator(
+        ModifyRoleClass,
+        ModifyApplicationPermissionClass,
+      ),
+      XPackSecurityJarPatchCreator(
+        ModifyCreateComponentsInSecurityClass,
+        CreateRorAuthorizationInfoProviderClass(esVersion),
+        ModifyAuthenticationChainClass(esVersion),
+        ModifyAuthorizationServiceClass(esVersion),
+        ModifyRBACEngineClass,
+        ModifyRestHasPrivilegesActionClass,
+        ModifySecurityClass,
+        ModifySecurityServerTransportInterceptorClass,
+      )
     )
-  )

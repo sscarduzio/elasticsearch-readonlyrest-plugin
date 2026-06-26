@@ -18,12 +18,15 @@ package tech.beshu.ror.mocks
 
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, RegularRule}
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{AuthenticationImpersonationCustomSupport, AuthorizationImpersonationCustomSupport}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{
+  AuthenticationImpersonationCustomSupport,
+  AuthorizationImpersonationCustomSupport
+}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, KibanaAccess, KibanaIndexName, LocalUsers, User}
 import tech.beshu.ror.utils.TestsUtils.{*, given}
@@ -37,40 +40,44 @@ trait MockRuleFactory {
   protected def passingRule(ruleName: String): RegularRule = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.now(Permitted(blockContext))
   }
 
   protected def notPassingRule(ruleName: String): RegularRule = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.now(Denied(Cause.NotAuthorized))
   }
 
   protected def throwingRule(ruleName: String): RegularRule = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
 
-  protected def passingAuthRule(ruleName: String,
-                                userId: User.Id,
-                                groups: UniqueList[Group],
-                                authInvocations: AtomicInteger = new AtomicInteger(0)): AuthRule =
+  protected def passingAuthRule(
+      ruleName: String,
+      userId: User.Id,
+      groups: UniqueList[Group],
+      authInvocations: AtomicInteger = new AtomicInteger(0)
+  ): AuthRule =
     new AuthRule with AuthenticationImpersonationCustomSupport with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name(ruleName)
 
       override def localUsers: LocalUsers = LocalUsers.NotAvailable
       override implicit def userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Disabled
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](
+          blockContext: B
+      ): Task[Decision[B]] = {
         authInvocations.incrementAndGet()
         Task.now(Permitted(blockContext.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(userId)))))
       }
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Permitted(blockContext.withBlockMetadata(_.withAvailableGroups(groups))))
     }
 
@@ -81,10 +88,10 @@ trait MockRuleFactory {
       override def localUsers: LocalUsers = LocalUsers.NotAvailable
       override implicit def userIdCaseSensitivity: CaseSensitivity = CaseSensitivity.Disabled
 
-      override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(Cause.AuthenticationFailed("mock failed")))
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         Task.now(Denied(Cause.AuthenticationFailed("mock failed")))
     }
 
@@ -92,33 +99,35 @@ trait MockRuleFactory {
     new Rule.AuthorizationRule with AuthorizationImpersonationCustomSupport {
       override val name: Rule.Name = Rule.Name(ruleName)
 
-      override protected def authorize[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
-        Task.now(Permitted(
-          blockContext.withBlockMetadata(_
-            .withLoggedUser(DirectlyLoggedUser(userId))
-            .withAvailableGroups(groups)
+      override protected def authorize[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+        Task.now(
+          Permitted(
+            blockContext.withBlockMetadata(
+              _.withLoggedUser(DirectlyLoggedUser(userId))
+                .withAvailableGroups(groups)
+            )
           )
-        ))
+        )
     }
 
   protected def kibanaAccessRule(ruleName: String, access: KibanaAccess): RegularRule = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.now(Permitted(blockContext.withBlockMetadata(_.withKibanaAccess(access))))
   }
 
   protected def kibanaIndexRule(ruleName: String, index: KibanaIndexName): RegularRule = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       Task.now(Permitted(blockContext.withBlockMetadata(_.withKibanaIndex(index))))
   }
 
   protected def perGroupKibanaIndexRule(ruleName: String): RegularRule = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
       blockContext.blockMetadata.currentGroupId match {
         case Some(groupId) =>
           val index = kibanaIndexName(NonEmptyString.unsafeFrom(s"kibana_${groupId.value.value}"))
@@ -127,4 +136,5 @@ trait MockRuleFactory {
           Task.now(Permitted(blockContext))
       }
   }
+
 }

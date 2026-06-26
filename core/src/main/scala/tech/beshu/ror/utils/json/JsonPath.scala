@@ -21,8 +21,7 @@ import tech.beshu.ror.utils.json.JsonPath.UnableToReadInputAtJsonPath
 
 import scala.util.{Failure, Try}
 
-
-final case class JsonPath private(rawPath: String) {
+final case class JsonPath private (rawPath: String) {
   private val path: JaywayJsonPath = JsonPath.compile(rawPath)
 
   def read[A](json: String): Try[A] = tryRead(path.read[A](json))
@@ -31,22 +30,26 @@ final case class JsonPath private(rawPath: String) {
 
   private def tryRead[A](value: => A): Try[A] =
     Try(value)
-      .recoverWith {
-        case cause: Throwable => Failure(UnableToReadInputAtJsonPath(cause))
+      .recoverWith { case cause: Throwable =>
+        Failure(UnableToReadInputAtJsonPath(cause))
       }
+
 }
 
 object JsonPath {
+
   def apply(value: String): Try[JsonPath] = {
     Try(compile(value))
-      .recoverWith {
-        case cause: Throwable => Failure(UnableToCompileJsonPath(cause))
+      .recoverWith { case cause: Throwable =>
+        Failure(UnableToCompileJsonPath(cause))
       }
       .map(_ => new JsonPath(value))
   }
 
   private def compile(path: String): JaywayJsonPath = JaywayJsonPath.compile(path)
 
-  private final case class UnableToCompileJsonPath(cause: Throwable) extends Exception("Unable to compile JSON path", cause)
-  private final case class UnableToReadInputAtJsonPath(cause: Throwable) extends Exception("Unable to read input at JSON path", cause)
+  private final case class UnableToCompileJsonPath(cause: Throwable)
+      extends Exception("Unable to compile JSON path", cause)
+  private final case class UnableToReadInputAtJsonPath(cause: Throwable)
+      extends Exception("Unable to read input at JSON path", cause)
 }

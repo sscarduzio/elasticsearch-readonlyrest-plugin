@@ -17,7 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{ConnectionError, LdapConnectionConfig}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.{
+  ConnectionError,
+  LdapConnectionConfig
+}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthorizationService, LdapService, LdapUsersService}
 
@@ -25,25 +28,44 @@ import java.time.Clock
 
 object UnboundidLdapAuthorizationService {
 
-  def create(id: LdapService#Id,
-             ldapUsersService: LdapUsersService,
-             poolProvider: UnboundidLdapConnectionPoolProvider,
-             connectionConfig: LdapConnectionConfig,
-             groupsSearchFilter: UserGroupsSearchFilterConfig)
-            (implicit clock: Clock): Task[Either[ConnectionError, LdapAuthorizationService]] = {
+  def create(
+      id: LdapService#Id,
+      ldapUsersService: LdapUsersService,
+      poolProvider: UnboundidLdapConnectionPoolProvider,
+      connectionConfig: LdapConnectionConfig,
+      groupsSearchFilter: UserGroupsSearchFilterConfig
+  )(
+      implicit clock: Clock
+  ): Task[Either[ConnectionError, LdapAuthorizationService]] = {
     groupsSearchFilter.mode match {
       case groupSearch: DefaultGroupSearch if groupSearch.serverSideGroupsFiltering =>
         UnboundidLdapDefaultGroupSearchAuthorizationServiceWithServerSideGroupsFiltering.create(
-          id, ldapUsersService, poolProvider, connectionConfig, groupSearch, groupsSearchFilter.nestedGroupsConfig
+          id,
+          ldapUsersService,
+          poolProvider,
+          connectionConfig,
+          groupSearch,
+          groupsSearchFilter.nestedGroupsConfig
         )
-      case groupSearch: DefaultGroupSearch  =>
+      case groupSearch: DefaultGroupSearch =>
         UnboundidLdapDefaultGroupSearchAuthorizationServiceWithoutServerSideGroupsFiltering.create(
-          id, ldapUsersService, poolProvider, connectionConfig, groupSearch, groupsSearchFilter.nestedGroupsConfig
+          id,
+          ldapUsersService,
+          poolProvider,
+          connectionConfig,
+          groupSearch,
+          groupsSearchFilter.nestedGroupsConfig
         )
       case groupSearch: GroupsFromUserEntry =>
         UnboundidLdapGroupsFromUserEntryAuthorizationService.create(
-            id, ldapUsersService, poolProvider, connectionConfig, groupSearch, groupsSearchFilter.nestedGroupsConfig
-          )
+          id,
+          ldapUsersService,
+          poolProvider,
+          connectionConfig,
+          groupSearch,
+          groupsSearchFilter.nestedGroupsConfig
+        )
     }
   }
+
 }

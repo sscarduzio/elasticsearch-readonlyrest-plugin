@@ -26,18 +26,21 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRRAuthMockAction(transportService: TransportService,
-                                actionFilters: ActionFilters,
-                                executor: Executor,
-                                @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
-    RRAuthMockActionType.name, transportService, actionFilters, RRAuthMockActionType.exceptionReader[RRAuthMockRequest], executor
-  ) {
+class TransportRRAuthMockAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    executor: Executor,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
+      RRAuthMockActionType.name,
+      transportService,
+      actionFilters,
+      RRAuthMockActionType.exceptionReader[RRAuthMockRequest],
+      executor
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           threadPool: ThreadPool) =
+  def this(transportService: TransportService, actionFilters: ActionFilters, threadPool: ThreadPool) =
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
   private val handler = new RRAuthMockActionHandler()
@@ -45,4 +48,5 @@ class TransportRRAuthMockAction(transportService: TransportService,
   override def doExecute(task: Task, request: RRAuthMockRequest, listener: ActionListener[RRAuthMockResponse]): Unit = {
     handler.handle(request, listener)
   }
+
 }

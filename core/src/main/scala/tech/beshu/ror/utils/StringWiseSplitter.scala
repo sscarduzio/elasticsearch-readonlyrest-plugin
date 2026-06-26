@@ -26,7 +26,7 @@ class StringWiseSplitter(val value: String) extends AnyVal {
   def toNonEmptyStringsTuple: Either[StringWiseSplitter.Error, (NonEmptyString, NonEmptyString)] = {
     val colonIndex = value.indexOf(':')
     colonIndex match {
-      case -1 => Left(CannotSplitUsingColon)
+      case -1  => Left(CannotSplitUsingColon)
       case idx =>
         val (beforeColon, secondPartOfString) = value.splitAt(idx)
         val result = for {
@@ -36,14 +36,17 @@ class StringWiseSplitter(val value: String) extends AnyVal {
         result.left.map(_ => TupleMemberCannotBeEmpty)
     }
   }
+
 }
 
 object StringWiseSplitter {
   implicit def toStringOps(value: String): StringWiseSplitter = new StringWiseSplitter(value)
 
   sealed trait Error
+
   object Error {
     case object CannotSplitUsingColon extends Error
     case object TupleMemberCannotBeEmpty extends Error
   }
+
 }

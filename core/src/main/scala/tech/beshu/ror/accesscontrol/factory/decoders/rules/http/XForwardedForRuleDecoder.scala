@@ -19,7 +19,10 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.http
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
@@ -28,15 +31,18 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
 class XForwardedForRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
+    extends RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
 
   private implicit val variableCreatorImplicit: RuntimeResolvableVariableCreator = variableCreator
 
   override protected def decoder: Decoder[RuleDefinition[XForwardedForRule]] = {
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-      .map(addresses => RuleDefinition.create(
-        new XForwardedForRule(XForwardedForRule.Settings(addresses), new Ip4sBasedHostnameResolver)
-      ))
+      .map(addresses =>
+        RuleDefinition.create(
+          new XForwardedForRule(XForwardedForRule.Settings(addresses), new Ip4sBasedHostnameResolver)
+        )
+      )
   }
+
 }

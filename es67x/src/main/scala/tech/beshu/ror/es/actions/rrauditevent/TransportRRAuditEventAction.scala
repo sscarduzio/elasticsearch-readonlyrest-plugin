@@ -26,25 +26,35 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRAuditEventAction(settings: Settings,
-                                  threadPool: ThreadPool,
-                                  transportService: TransportService,
-                                  actionFilters: ActionFilters,
-                                  indexNameExpressionResolver: IndexNameExpressionResolver,
-                                  @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
-    settings, RRAuditEventActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAuditEventRequest
-  ) {
+class TransportRRAuditEventAction(
+    settings: Settings,
+    threadPool: ThreadPool,
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    indexNameExpressionResolver: IndexNameExpressionResolver,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
+      settings,
+      RRAuditEventActionType.name,
+      threadPool,
+      transportService,
+      actionFilters,
+      indexNameExpressionResolver,
+      () => new RRAuditEventRequest
+    ) {
 
   @Inject
-  def this(settings: Settings,
-           threadPool: ThreadPool,
-           transportService: TransportService,
-           actionFilters: ActionFilters,
-           indexNameExpressionResolver: IndexNameExpressionResolver) =
+  def this(
+      settings: Settings,
+      threadPool: ThreadPool,
+      transportService: TransportService,
+      actionFilters: ActionFilters,
+      indexNameExpressionResolver: IndexNameExpressionResolver
+  ) =
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
 
   override def doExecute(request: RRAuditEventRequest, listener: ActionListener[RRAuditEventResponse]): Unit = {
     RRAuditEventActionHandler.handle(listener)
   }
+
 }

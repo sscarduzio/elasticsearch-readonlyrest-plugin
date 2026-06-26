@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, PlainT
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuthKeyRuleTests
-  extends BasicAuthenticationTestTemplate(supportingImpersonation = true, isUsernameMaskedByRule = false) {
+    extends BasicAuthenticationTestTemplate(supportingImpersonation = true, isUsernameMaskedByRule = false) {
 
   override protected def ruleName: String = classOf[AuthKeyRule].getSimpleName
 
@@ -33,4 +33,5 @@ class AuthKeyRuleTests
       CaseSensitivity.Enabled,
       impersonation
     )
+
 }
