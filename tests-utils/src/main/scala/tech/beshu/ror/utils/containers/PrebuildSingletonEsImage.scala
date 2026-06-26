@@ -16,9 +16,7 @@
  */
 package tech.beshu.ror.utils.containers
 
-import cats.effect.ExitCode
 import com.typesafe.scalalogging.StrictLogging
-import monix.eval.{Task, TaskApp}
 
 /**
  * Builds (and stably tags) the singleton ES+ROR image ONCE, in a single JVM, before the parallel
@@ -30,27 +28,29 @@ import monix.eval.{Task, TaskApp}
  * concurrent-build failures.
  *
  * Starts the singleton container (the only reliable way to trigger the full image build+tag), then
- * stops it. The named image is reaped by Ryuk on this JVM's exit (testcontainers labels every
- * ImageFromDockerfile build with DEFAULT_LABELS, which Ryuk reaps regardless of deleteOnExit); the
- * built LAYERS persist in the Docker graph store, so each worker rebuilds the named image fast.
+ * stops it. The named image is reaped by Ryuk on this JVM's exit; the built LAYERS persist in the
+ * Docker graph store, so each worker rebuilds the named image fast.
+ *
+ * NOTE: the explicit `sys.exit` is REQUIRED, not stylistic. testcontainers/Ryuk leave non-daemon
+ * threads alive; a graceful return (e.g. a monix TaskApp/IOApp) would NOT terminate the JVM, so the
+ * `prebuildEsImage` gradle task would hang instead of exiting — observed as 120-min CI leg timeouts
+ * (build 10584) when this was a TaskApp. `sys.exit` hard-kills regardless of lingering threads.
  */
-object PrebuildSingletonEsImage extends TaskApp with StrictLogging {
+object PrebuildSingletonEsImage extends StrictLogging {
 
-  override def run(args: List[String]): Task[ExitCode] =
-    (for {
-      _ <- Task.delay(logger.info("Pre-building the singleton ES image (once, before parallel test workers)..."))
+  def main(args: Array[String]): Unit = {
+    logger.info("Pre-building the singleton ES image (once, before parallel test workers)...")
+    try {
       // Touching `singleton` triggers its construction + start(), which builds the image + its layers.
-      _ <- Task.delay(SingletonEsContainerWithRorSecurity.singleton.nodes.head)
-      _ <- Task.delay(
-        logger.info("Singleton ES image pre-build complete; layers cached for the test workers to rebuild from.")
-      )
-      // Stop the container so the pre-build JVM doesn't hold an ES instance. Ryuk reaps the named image
-      // on this JVM's exit; the LAYERS persist, so workers rebuild the named image fast (cache hit).
-      _ <- Task.delay(SingletonEsContainerWithRorSecurity.singleton.stop())
-    } yield ExitCode.Success)
-      .onErrorHandle { ex =>
+      val _ = SingletonEsContainerWithRorSecurity.singleton.nodes.head
+      logger.info("Singleton ES image pre-build complete; layers cached for the test workers to rebuild from.")
+      SingletonEsContainerWithRorSecurity.singleton.stop()
+      sys.exit(0)
+    } catch {
+      case ex: Throwable =>
         logger.error("Pre-build of the singleton ES image failed", ex)
-        ExitCode.Error
-      }
+        sys.exit(1)
+    }
+  }
 
 }
