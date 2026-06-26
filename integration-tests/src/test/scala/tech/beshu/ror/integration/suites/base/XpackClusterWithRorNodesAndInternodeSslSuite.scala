@@ -34,7 +34,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait XpackClusterWithRorNodesAndInternodeSslSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -52,18 +52,22 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
       clusterName = "ror_xpack_cluster",
       nodeTypes = NonEmptyList.of(
         NodeType(
-          securityType = RorSecurity(ReadonlyRestPlugin.Config.Attributes.default.copy(
-            rorSettingsFileName = rorSettingsFileName,
-            restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
-            internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
-          )),
+          securityType = RorSecurity(
+            ReadonlyRestPlugin.Config.Attributes.default.copy(
+              rorSettingsFileName = rorSettingsFileName,
+              restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.RorFile)),
+              internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.RorFile))
+            )
+          ),
           numberOfInstances = positiveInt(1)
         ),
         NodeType(
-          securityType = XPackSecurity(XpackSecurityPlugin.Config.Attributes.default.copy(
-            restSslEnabled = true,
-            internodeSslEnabled = true
-          )),
+          securityType = XPackSecurity(
+            XpackSecurityPlugin.Config.Attributes.default.copy(
+              restSslEnabled = true,
+              internodeSslEnabled = true
+            )
+          ),
           numberOfInstances = positiveInt(2)
         )
       )
@@ -77,11 +81,14 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
 
     response should have statusCode 200
   }
+
   "ROR settings reload can be done" in {
     val rorApiManager = new RorApiManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
 
     val updateResult = rorApiManager
-      .updateRorInIndexSettings(getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml"))
+      .updateRorInIndexSettings(
+        getResourceContent("/xpack_cluster_with_ror_nodes_and_internode_ssl/readonlyrest_update.yml")
+      )
 
     updateResult should have statusCode 200
     updateResult.responseJson("status").str should be("ok")
@@ -94,6 +101,7 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
     getIndexResult should have statusCode 200
     getIndexResult.indicesAndAliases.keys.toList should be(List("test"))
   }
+
   // todo: this test is non-deterministic for es711x and es714x module (that's why we skip them). But we want to fix them in the future
   "Field caps request works" excludeES allEs7xBetweenEs711xAnd715x in {
     val documentManager = new DocumentManager(clusterContainer.nodes.head.adminClient, esVersion = esVersionUsed)
@@ -106,4 +114,5 @@ trait XpackClusterWithRorNodesAndInternodeSslSuite
       result should have statusCode 200
     }
   }
+
 }

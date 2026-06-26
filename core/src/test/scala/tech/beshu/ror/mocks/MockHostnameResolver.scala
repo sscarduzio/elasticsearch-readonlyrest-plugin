@@ -49,26 +49,34 @@ trait MockHostnameResolver extends MockFactory {
   }
 
   private def resolvedIpsFrom(resolveResult: ResolveResult) = resolveResult match {
-    case ip: ResolvedIps => Task.now(Some(
-      NonEmptyList
-        .of(ip.value, ip.values: _*)
-        .map(str => Ip(Cidr.fromString(str).get))
-    ))
+    case ip: ResolvedIps =>
+      Task.now(
+        Some(
+          NonEmptyList
+            .of(ip.value, ip.values: _*)
+            .map(str => Ip(Cidr.fromString(str).get))
+        )
+      )
     case Unresolvable =>
       Task.now(None)
   }
+
 }
 
 object MockHostnameResolver {
   sealed trait Behaviour
+
   object Behaviour {
     final case class MockAlways(hostname: String, result: ResolveResult) extends Behaviour
     final case class MockOnce(hostname: String, result: ResolveResult) extends Behaviour
 
     sealed trait ResolveResult
+
     object ResolveResult {
       final case class ResolvedIps(value: String, values: String*) extends ResolveResult
       case object Unresolvable extends ResolveResult
     }
+
   }
+
 }

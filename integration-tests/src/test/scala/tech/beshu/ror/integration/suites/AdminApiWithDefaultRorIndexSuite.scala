@@ -24,9 +24,7 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecuri
 import tech.beshu.ror.utils.containers.images.domain.Enabled
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, SecurityType}
 
-class AdminApiWithDefaultRorIndexSuite
-  extends BaseAdminApiSuite
-    with PluginTestSupport {
+class AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite with PluginTestSupport {
 
   override implicit val rorSettingsFileName: String = "/admin_api/readonlyrest.yml"
   override protected val readonlyrestIndexName: String = ".readonlyrest"
@@ -42,10 +40,12 @@ class AdminApiWithDefaultRorIndexSuite
 
     createLocalClusterContainer(
       esClusterSettingsCreator(
-        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorSettingsFileName,
-          rorSettingsReloading = Enabled.Yes(settingsReloadInterval)
-        ))
+        RorWithXpackSecurity(
+          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorSettingsFileName = rorSettingsFileName,
+            rorSettingsReloading = Enabled.Yes(settingsReloadInterval)
+          )
+        )
       )
     )
   }
@@ -59,10 +59,13 @@ class AdminApiWithDefaultRorIndexSuite
 
     createLocalClusterContainer(
       esClusterSettingsCreator(
-        RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-          rorSettingsFileName = rorSettingsFileName
-        ))
+        RorWithXpackSecurity(
+          ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+            rorSettingsFileName = rorSettingsFileName
+          )
+        )
       )
     )
   }
+
 }

@@ -20,7 +20,7 @@ import org.json.JSONObject;
 
 class JsonObjectJavaAdapter {
 
-    static JSONObject create(Object obj) {
-        return new JSONObject(obj);
-    }
+  static JSONObject create(Object obj) {
+    return new JSONObject(obj);
+  }
 }

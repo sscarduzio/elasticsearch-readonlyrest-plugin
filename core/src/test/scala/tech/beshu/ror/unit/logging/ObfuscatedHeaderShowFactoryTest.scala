@@ -23,10 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.implicits.*
 
-class ObfuscatedHeaderShowFactoryTest
-  extends AnyWordSpec
-    with TableDrivenPropertyChecks
-    with Matchers {
+class ObfuscatedHeaderShowFactoryTest extends AnyWordSpec with TableDrivenPropertyChecks with Matchers {
 
   private val customHeaderName = Header.Name(NonEmptyString.unsafeFrom("CustomHeader"))
   private val secretHeaderName = Header.Name(NonEmptyString.unsafeFrom("Secret"))
@@ -39,11 +36,17 @@ class ObfuscatedHeaderShowFactoryTest
   "LoggingContextFactory" should {
     "create Show[Header] instance" when {
       "no configuration is provided" in {
-        val table = Table(("conf", "authorization", "custom", "secret"),
+        val table = Table(
+          ("conf", "authorization", "custom", "secret"),
           (Set.empty[Header.Name], "Authorization=secretButAuth", "CustomHeader=business value", "Secret=secret"),
           (Set(capitalizedAuthorization), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
           (Set(Header.Name.authorization), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
-          (Set(Header.Name.authorization, secretHeaderName), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=<OMITTED>"),
+          (
+            Set(Header.Name.authorization, secretHeaderName),
+            "Authorization=<OMITTED>",
+            "CustomHeader=business value",
+            "Secret=<OMITTED>"
+          ),
         )
         forAll(table) { (conf, authorization, custom, secret) =>
           obfuscatedHeaderShow(conf).show(basicHeader) shouldEqual authorization

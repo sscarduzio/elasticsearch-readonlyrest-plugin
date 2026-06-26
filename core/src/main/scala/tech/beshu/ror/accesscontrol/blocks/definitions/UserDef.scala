@@ -28,64 +28,67 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.util.UUID
 
-final case class UserDef private(override val id: UUID,
-                                 usernames: UserIdPatterns,
-                                 mode: Mode)
-  extends Item {
+final case class UserDef private (override val id: UUID, usernames: UserIdPatterns, mode: Mode) extends Item {
 
   override type Id = UUID // artificial ID (won't be used)
   override val idShow: Show[UUID] = Show.show(_.toString)
 
   val localGroups: UniqueNonEmptyList[Group] =
     mode match {
-      case Mode.WithoutGroupsMapping(_, localGroups) => localGroups
+      case Mode.WithoutGroupsMapping(_, localGroups)                    => localGroups
       case Mode.WithGroupsMapping(_, GroupMappings.Simple(localGroups)) => localGroups
-      case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings)) =>
+      case Mode.WithGroupsMapping(_, GroupMappings.Advanced(mappings))  =>
         UniqueNonEmptyList.unsafeFrom(mappings.map(_.local))
     }
 
   val authenticationRule: AuthenticationRule = mode match {
-    case Mode.WithoutGroupsMapping(rule, _) => rule
+    case Mode.WithoutGroupsMapping(rule, _)                     => rule
     case Mode.WithGroupsMapping(Auth.SeparateRules(rule, _), _) => rule
-    case Mode.WithGroupsMapping(Auth.SingleRule(rule), _) => rule
+    case Mode.WithGroupsMapping(Auth.SingleRule(rule), _)       => rule
   }
+
 }
 
 object UserDef {
 
-  def apply(usernames: UserIdPatterns,
-            mode: Mode): UserDef =
+  def apply(usernames: UserIdPatterns, mode: Mode): UserDef =
     new UserDef(UUID.randomUUID(), usernames, mode)
 
   sealed trait Mode
-  object Mode {
-    final case class WithoutGroupsMapping(auth: AuthenticationRule,
-                                          localGroups: UniqueNonEmptyList[Group])
-      extends Mode
 
-    final case class WithGroupsMapping(auth: Auth,
-                                       groupMappings: GroupMappings)
-      extends Mode
+  object Mode {
+    final case class WithoutGroupsMapping(auth: AuthenticationRule, localGroups: UniqueNonEmptyList[Group]) extends Mode
+
+    final case class WithGroupsMapping(auth: Auth, groupMappings: GroupMappings) extends Mode
+
     object WithGroupsMapping {
       sealed trait Auth
+
       object Auth {
-        final case class SeparateRules(authenticationRule: AuthenticationRule,
-                                       authorizationRule: AuthorizationRule)
-          extends Auth
-        final case class SingleRule(rule: AuthRule)
-          extends Auth
+        final case class SeparateRules(authenticationRule: AuthenticationRule, authorizationRule: AuthorizationRule)
+            extends Auth
+        final case class SingleRule(rule: AuthRule) extends Auth
       }
+
     }
+
   }
 
   sealed trait GroupMappings
+
   object GroupMappings {
     final case class Simple(localGroups: UniqueNonEmptyList[Group]) extends GroupMappings
     final case class Advanced(mappings: UniqueNonEmptyList[Mapping]) extends GroupMappings
+
     object Advanced {
+
       final case class Mapping(local: Group, externalGroupPatterns: UniqueNonEmptyList[GroupIdLike]) {
-        val externalGroupIdPatternsMatcher: PatternsMatcher[GroupIdLike] = PatternsMatcher.create(externalGroupPatterns.toSet)
+        val externalGroupIdPatternsMatcher: PatternsMatcher[GroupIdLike] =
+          PatternsMatcher.create(externalGroupPatterns.toSet)
       }
+
     }
+
   }
+
 }

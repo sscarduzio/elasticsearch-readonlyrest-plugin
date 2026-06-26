@@ -20,10 +20,11 @@ import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRAdminActionType extends ActionType[RRAdminResponse](
-  RRAdminActionType.name,
-  RRAdminActionType.exceptionReader
-)
+class RRAdminActionType
+    extends ActionType[RRAdminResponse](
+      RRAdminActionType.name,
+      RRAdminActionType.exceptionReader
+    )
 
 object RRAdminActionType {
   val name: String = RorAction.RorRefreshSettingsAction.value

@@ -28,6 +28,6 @@ object RRTestSettingsActionType {
 
   case object RRTestSettingsActionCannotBeTransported extends Exception
 
-  private [rrtestsettings] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRTestSettingsActionCannotBeTransported
+  private[rrtestsettings] def exceptionReader[A]: Writeable.Reader[A] = _ =>
+    throw RRTestSettingsActionCannotBeTransported
 }
-

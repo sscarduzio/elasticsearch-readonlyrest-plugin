@@ -22,25 +22,29 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ResponseFieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, Decision}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision, FilteredResponseFields}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.*
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ResponseFieldsRule(val settings: Settings)
-  extends RegularRule {
+class ResponseFieldsRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = ResponseFieldsRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     val maybeResolvedFields = resolveAll(settings.responseFields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.from(maybeResolvedFields) match {
       case Some(resolvedFields) =>
-        Decision.Permitted(blockContext.withAddedResponseTransformation(FilteredResponseFields(ResponseFieldsRestrictions(resolvedFields, settings.accessMode))))
+        Decision.Permitted(
+          blockContext.withAddedResponseTransformation(
+            FilteredResponseFields(ResponseFieldsRestrictions(resolvedFields, settings.accessMode))
+          )
+        )
       case None =>
         Decision.Denied(Cause.NotAuthorized)
     }
   }
+
 }
 
 object ResponseFieldsRule {
@@ -49,6 +53,9 @@ object ResponseFieldsRule {
     override val name = Rule.Name("response_fields")
   }
 
-  final case class Settings(responseFields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[ResponseField]],
-                            accessMode: AccessMode)
+  final case class Settings(
+      responseFields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[ResponseField]],
+      accessMode: AccessMode
+  )
+
 }

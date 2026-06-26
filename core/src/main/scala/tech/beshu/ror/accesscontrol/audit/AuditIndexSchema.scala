@@ -38,4 +38,5 @@ object AuditIndexSchema {
     case other =>
       AuditIndexSchema.Custom
   }
+
 }

@@ -33,10 +33,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
           requestIndices = Set.empty,
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds")))
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds")))
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test_ds")),
         )
       }
@@ -44,13 +48,17 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set.empty,
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
-            ),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
+                ),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds")),
         )
       }
@@ -58,13 +66,17 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("_all")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
@@ -72,13 +84,17 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"))
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
@@ -86,10 +102,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
           requestIndices = Set(requestedIndex("test_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set.empty
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set.empty
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test_ds"))
         )
       }
@@ -97,10 +117,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
           requestIndices = Set(requestedIndex("te*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test_ds"))
         )
       }
@@ -108,10 +132,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("t*")),
           requestIndices = Set(requestedIndex("test_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test_ds"))
         )
       }
@@ -119,10 +147,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
           requestIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds"))
         )
       }
@@ -130,10 +162,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
           requestIndices = Set(requestedIndex("test1_ds"), requestedIndex("test3_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
@@ -141,10 +177,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
           requestIndices = Set(requestedIndex("*2_ds"), requestedIndex("*1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))
         )
       }
@@ -152,10 +192,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*1_ds"), indexNameVar("*2_ds")),
           requestIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test2_ds"), requestedIndex("test1_ds"))
         )
       }
@@ -163,10 +207,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("*2")),
           requestIndices = Set(requestedIndex("test1_ds"), requestedIndex("test3_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
@@ -174,10 +222,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("*2_ds")),
           requestIndices = Set(requestedIndex("*1_ds"), requestedIndex("test3_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
@@ -185,13 +237,17 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("test_alias")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
@@ -199,13 +255,17 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("*_alias")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"))
         )
       }
@@ -213,13 +273,17 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*_ds")),
           requestIndices = Set(requestedIndex("test_alias")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))
         )
       }
@@ -227,15 +291,19 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
           requestIndices = Set(requestedIndex("test_alias")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))
         )
       }
@@ -243,15 +311,19 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias")),
           requestIndices = Set(requestedIndex("test_alias")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test_alias"))
         )
       }
@@ -259,15 +331,19 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias")),
           requestIndices = Set(requestedIndex("test_al*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test_alias"))),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(requestedIndex("test_alias"))
         )
       }
@@ -275,10 +351,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex(".ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex(".ds-test1_ds"),
           )
@@ -288,10 +368,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex(".ds-test*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex(".ds-test1_ds"),
           )
@@ -301,10 +385,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar(".ds-test1_ds")),
           requestIndices = Set(requestedIndex(".ds-test*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex(".ds-test1_ds"),
           )
@@ -314,10 +402,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar(".ds-test1*")),
           requestIndices = Set(requestedIndex(".ds-test*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex(".ds-test1_ds"),
           )
@@ -327,10 +419,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test*")),
           requestIndices = Set(requestedIndex(".ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex(".ds-test1_ds"),
           )
@@ -340,10 +436,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test*")),
           requestIndices = Set(requestedIndex(".ds-test*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex(".ds-test1_ds"),
           )
@@ -353,10 +453,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("my-index"), indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("my-index"), requestedIndex(".ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex("my-index"),
             requestedIndex(".ds-test1_ds"),
@@ -367,10 +471,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("my-index")),
           requestIndices = Set(requestedIndex("my-index"), requestedIndex(".ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex("my-index"),
           )
@@ -380,10 +488,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("my-index"), requestedIndex(".ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
-            allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("my-index"))),
+                allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"))),
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex(".ds-test1_ds"),
           )
@@ -393,22 +505,26 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("es_pl:test1*"), indexNameVar("local*")),
           requestIndices = Set(requestedIndex("local_ds*"), requestedIndex("es_pl:test1_ds*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("local_ds1")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("local_ds2")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("other"))
-            ),
-            allRemoteDataStreamsAndAliases = Set(
-              fullRemoteDataStreamWithAliases("es_us", "test1_ds1"),
-              fullRemoteDataStreamWithAliases("es_us", "test1_ds2"),
-              fullRemoteDataStreamWithAliases("es_us", "test2_ds1"),
-              fullRemoteDataStreamWithAliases("es_pl", "test1_ds1"),
-              fullRemoteDataStreamWithAliases("es_pl", "test1_ds2"),
-              fullRemoteDataStreamWithAliases("es_pl", "test2_ds1"),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("local_ds1")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("local_ds2")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("other"))
+                ),
+                allRemoteDataStreamsAndAliases = Set(
+                  fullRemoteDataStreamWithAliases("es_us", "test1_ds1"),
+                  fullRemoteDataStreamWithAliases("es_us", "test1_ds2"),
+                  fullRemoteDataStreamWithAliases("es_us", "test2_ds1"),
+                  fullRemoteDataStreamWithAliases("es_pl", "test1_ds1"),
+                  fullRemoteDataStreamWithAliases("es_pl", "test1_ds2"),
+                  fullRemoteDataStreamWithAliases("es_pl", "test2_ds1"),
+                )
+              )
             )
-          ))),
+          ),
           filteredRequestedIndices = Set(
             requestedIndex("local_ds1"),
             requestedIndex("local_ds2"),
@@ -421,12 +537,16 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*:test1_ds")),
           requestIndices = Set(requestedIndex("es_us:.ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set.empty,
-            allRemoteDataStreamsAndAliases = Set(fullRemoteDataStreamWithAliases("es_us", "test1_ds")),
-            allRemoteClusterNames = Set(clusterName("es_us"))
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set.empty,
+                allRemoteDataStreamsAndAliases = Set(fullRemoteDataStreamWithAliases("es_us", "test1_ds")),
+                allRemoteClusterNames = Set(clusterName("es_us"))
+              )
+            )
+          ),
           filteredRequestedIndices = Set(
             requestedIndex("es_us:.ds-test1_ds"),
           ),
@@ -439,10 +559,14 @@ trait IndicesRuleDataStreamTests {
         assertMatchRuleForMultiIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           indexPacks = Indices.Found(Set(requestedIndex("test1_ds"), requestedIndex("test2_ds"))) :: Nil,
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
           allowed = Indices.Found(Set(requestedIndex("test1_ds"))) :: Nil
         )
       }
@@ -452,203 +576,319 @@ trait IndicesRuleDataStreamTests {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
           requestIndices = Set.empty,
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set.empty
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set.empty
+              )
+            )
+          ),
         )
       }
       "'_all' passed, one is configured, no real data streams" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
           requestIndices = Set(requestedIndex("_all")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set.empty
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set.empty
+              )
+            )
+          ),
         )
       }
       "'*' passed, one is configured, no real data streams" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_ds")),
           requestIndices = Set(requestedIndex("*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set.empty
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set.empty
+              )
+            )
+          ),
         )
       }
       "one full name data stream passed, different one full name data stream configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("test2_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
         )
       }
       "one wildcard data stream passed, non-matching data stream with full name configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("*2")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
         )
       }
       "one full name data stream passed, non-matching data stream with wildcard configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*1")),
           requestIndices = Set(requestedIndex("test2_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
         )
       }
       "two full name data streams passed, different two full name data streams configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
           requestIndices = Set(requestedIndex("test4_ds"), requestedIndex("test3_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
         )
       }
       "two wildcard data streams passed, non-matching two full name data streams configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds"), indexNameVar("test2_ds")),
           requestIndices = Set(requestedIndex("*4"), requestedIndex("*3")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
         )
       }
       "two full name data streams passed, non-matching two wildcard data streams configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*1"), indexNameVar("*2")),
           requestIndices = Set(requestedIndex("test4_ds"), requestedIndex("test3_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = testDataStreams
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = testDataStreams
+              )
+            )
+          ),
         )
       }
       "one full name alias passed, full name data stream with no alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("test_alias")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          )))
+          )
         )
       }
       "one data stream name passed, full name data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias")),
           requestIndices = Set(requestedIndex("test2_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          )))
+          )
         )
       }
       "wildcard alias passed, full name data stream with no alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_ds")),
           requestIndices = Set(requestedIndex("*_alias")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set.empty),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set.empty),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test_alias")))
+                )
+              )
             )
-          )))
+          )
         )
       }
       "full name data stream passed, data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test12_alias")),
           requestIndices = Set(requestedIndex("test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test12_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test12_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test34_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test34_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test1_ds"),
+                    Set(fullDataStreamName("test12_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test2_ds"),
+                    Set(fullDataStreamName("test12_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test3_ds"),
+                    Set(fullDataStreamName("test34_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test4_ds"),
+                    Set(fullDataStreamName("test34_alias"))
+                  )
+                )
+              )
             )
-          )))
+          )
         )
       }
       "one backing index passed, one full data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_alias1")),
           requestIndices = Set(requestedIndex(".ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test2_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test1_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test2_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test3_ds"),
+                    Set(fullDataStreamName("test2_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+                )
+              )
             )
-          )))
+          )
         )
       }
       "one backing index passed, one data stream alias pattern configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_al*")),
           requestIndices = Set(requestedIndex(".ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test2_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test1_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test2_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test3_ds"),
+                    Set(fullDataStreamName("test2_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+                )
+              )
             )
-          )))
+          )
         )
       }
       "one backing index pattern passed, one full data stream alias configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test1_alias")),
           requestIndices = Set(requestedIndex(".ds-test*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test2_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test1_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test2_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test3_ds"),
+                    Set(fullDataStreamName("test2_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+                )
+              )
             )
-          )))
+          )
         )
       }
       "one backing index pattern passed, one data stream alias pattern configured" in {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("test_al*")),
           requestIndices = Set(requestedIndex(".ds-test*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("test1_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test2_ds"), Set(fullDataStreamName("test1_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test3_ds"), Set(fullDataStreamName("test2_alias"))),
-              fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test1_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test2_ds"),
+                    Set(fullDataStreamName("test1_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(
+                    fullDataStreamName("test3_ds"),
+                    Set(fullDataStreamName("test2_alias"))
+                  ),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds"), Set(fullDataStreamName("test2_alias")))
+                )
+              )
             )
-          )))
+          )
         )
       }
     }
@@ -661,20 +901,25 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
             requestIndices = Set(requestedIndex("e*:*-logs-*")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
-                fullRemoteDataStreamWithAliases("es_uk", "other-index"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
+                    fullRemoteDataStreamWithAliases("es_uk", "other-index"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
@@ -687,20 +932,25 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
             requestIndices = Set(requestedIndex("e*:*-logs-*")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
-                fullRemoteDataStreamWithAliases("es_uk", "other-index"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
+                    fullRemoteDataStreamWithAliases("es_uk", "other-index"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
@@ -713,21 +963,26 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
             requestIndices = Set(requestedIndex("e*:*-logs-2020-03-2*")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-30"),
-                fullRemoteDataStreamWithAliases("es_uk", "other-index"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-30"),
+                    fullRemoteDataStreamWithAliases("es_uk", "other-index"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
@@ -740,20 +995,25 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("es_u*:*-logs-*")),
             requestIndices = Set(requestedIndex("e*:c0*")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
-                fullRemoteDataStreamWithAliases("es_uk", "other-index"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
-                fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
+                    fullRemoteDataStreamWithAliases("es_uk", "other-index"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
+                    fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:c01-logs-2020-03-27"),
               requestedIndex("es_us:c01-logs-2020-03-28"),
@@ -766,17 +1026,21 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test1_ds")),
             requestIndices = Set(requestedIndex("es_us:test1_al*")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test1_alias"),
-                fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test10_alias"),
-                fullRemoteDataStreamWithAliases("es_us", "test3_ds", "test2_alias"),
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test1_alias"),
+                    fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test10_alias"),
+                    fullRemoteDataStreamWithAliases("es_us", "test3_ds", "test2_alias"),
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test1_ds")
             ),
@@ -787,16 +1051,21 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test_ds")),
             requestIndices = Set(requestedIndex("es_us:test_alias")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
-                fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
-                fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
+                    fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
+                    fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(requestedIndex("es_us:test_ds")),
             allAllowedClusters = Set(clusterName("es_us"))
           )
@@ -805,16 +1074,21 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test_alias")),
             requestIndices = Set(requestedIndex("es_us:test_alias")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
-                fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
-                fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "test_ds", "test_alias"),
+                    fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
+                    fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(
               requestedIndex("es_us:test_alias")
             ),
@@ -825,15 +1099,20 @@ trait IndicesRuleDataStreamTests {
           assertMatchRuleForIndexRequest(
             configured = NonEmptySet.of(indexNameVar("*:test_alias")),
             requestIndices = Set(requestedIndex("es_us:test_al*")),
-            esServices = Some(MockEsServices.`with`(MockEsClusterService(
-              allIndicesAndAliases = Set.empty,
-              allDataStreamsAndAliases = Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
-              allRemoteDataStreamsAndAliases = Set(
-                fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
-                fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
-              ),
-              allRemoteClusterNames = Set(clusterName("es_us"))
-            ))),
+            esServices = Some(
+              MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty,
+                  allDataStreamsAndAliases =
+                    Set(fullLocalDataStreamWithAliases(fullDataStreamName("test_ds"), Set.empty)),
+                  allRemoteDataStreamsAndAliases = Set(
+                    fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
+                    fullRemoteDataStreamWithAliases("es_us", "test2_ds", "test_alias"),
+                  ),
+                  allRemoteClusterNames = Set(clusterName("es_us"))
+                )
+              )
+            ),
             filteredRequestedIndices = Set(requestedIndex("es_us:test_alias")),
             allAllowedClusters = Set(clusterName("es_us"))
           )
@@ -845,24 +1124,28 @@ trait IndicesRuleDataStreamTests {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*-logs-*"), indexNameVar("es_u*:*-logs-*")),
           requestIndices = Set(requestedIndex("pub*:*logs*")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set(
-              fullLocalDataStreamWithAliases(fullDataStreamName("clocal-logs-2020-03-27")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("clocal-logs-2020-03-28")),
-              fullLocalDataStreamWithAliases(fullDataStreamName("clocal-logs-2020-03-29")),
-            ),
-            allRemoteDataStreamsAndAliases = Set(
-              fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
-              fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
-              fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
-              fullRemoteDataStreamWithAliases("es_us", "other-index"),
-              fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
-              fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
-              fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
-            ),
-            allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set(
+                  fullLocalDataStreamWithAliases(fullDataStreamName("clocal-logs-2020-03-27")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("clocal-logs-2020-03-28")),
+                  fullLocalDataStreamWithAliases(fullDataStreamName("clocal-logs-2020-03-29")),
+                ),
+                allRemoteDataStreamsAndAliases = Set(
+                  fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-27"),
+                  fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-28"),
+                  fullRemoteDataStreamWithAliases("es_us", "c01-logs-2020-03-29"),
+                  fullRemoteDataStreamWithAliases("es_us", "other-index"),
+                  fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-27"),
+                  fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-28"),
+                  fullRemoteDataStreamWithAliases("es_pl", "c02-logs-2020-03-29")
+                ),
+                allRemoteClusterNames = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("es_pl"))
+              )
+            )
+          ),
           allAllowedClusters = Set(clusterName("es_us"), clusterName("es_uk"), clusterName("(local)"))
         )
       }
@@ -870,14 +1153,18 @@ trait IndicesRuleDataStreamTests {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("*:test_alias")),
           requestIndices = Set(requestedIndex("es_us:.ds-test1_ds")),
-          esServices = Some(MockEsServices.`with`(MockEsClusterService(
-            allIndicesAndAliases = Set.empty,
-            allDataStreamsAndAliases = Set.empty,
-            allRemoteDataStreamsAndAliases = Set(
-              fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
-            ),
-            allRemoteClusterNames = Set(clusterName("es_us"))
-          ))),
+          esServices = Some(
+            MockEsServices.`with`(
+              MockEsClusterService(
+                allIndicesAndAliases = Set.empty,
+                allDataStreamsAndAliases = Set.empty,
+                allRemoteDataStreamsAndAliases = Set(
+                  fullRemoteDataStreamWithAliases("es_us", "test1_ds", "test_alias"),
+                ),
+                allRemoteClusterNames = Set(clusterName("es_us"))
+              )
+            )
+          ),
           allAllowedClusters = Set(clusterName("es_us"))
         )
       }
@@ -891,4 +1178,5 @@ trait IndicesRuleDataStreamTests {
     fullLocalDataStreamWithAliases(fullDataStreamName("test4_ds")),
     fullLocalDataStreamWithAliases(fullDataStreamName("test5_ds"))
   )
+
 }

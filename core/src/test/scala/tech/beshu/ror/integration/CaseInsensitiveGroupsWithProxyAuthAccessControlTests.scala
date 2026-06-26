@@ -29,8 +29,10 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
-  with BaseYamlLoadedAccessControlTest with Inside {
+class CaseInsensitiveGroupsWithProxyAuthAccessControlTests
+    extends AnyWordSpec
+    with BaseYamlLoadedAccessControlTest
+    with Inside {
 
   override protected def settingsYaml: String =
     """
@@ -64,12 +66,14 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
             .withHeaders(header("X-Auth-Token", "user1-proxy-id"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              esServices = MockEsServices.`with`(MockEsClusterService(
-                allIndicesAndAliases = Set(
-                  fullLocalIndexWithAliases(fullIndexName("g12_index")),
-                  fullLocalIndexWithAliases(fullIndexName("g34_index"))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set(
+                    fullLocalIndexWithAliases(fullIndexName("g12_index")),
+                    fullLocalIndexWithAliases(fullIndexName("g34_index"))
+                  )
                 )
-              ))
+              )
             )
 
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -84,12 +88,14 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
             .withHeaders(header("X-Auth-Token", "User1-proxy-id"))
             .copy(
               filteredIndices = Set(requestedIndex("g12_index")),
-              esServices = MockEsServices.`with`(MockEsClusterService(
-                allIndicesAndAliases = Set(
-                  fullLocalIndexWithAliases(fullIndexName("g12_index")),
-                  fullLocalIndexWithAliases(fullIndexName("g34_index"))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set(
+                    fullLocalIndexWithAliases(fullIndexName("g12_index")),
+                    fullLocalIndexWithAliases(fullIndexName("g34_index"))
+                  )
                 )
-              ))
+              )
             )
 
           val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -102,4 +108,5 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec
       }
     }
   }
+
 }

@@ -42,11 +42,12 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}
 
-class UserMetadataRequestHandler(engine: Engine,
-                                 esContext: EsContext)
-  extends RequestIdAwareLogging {
+class UserMetadataRequestHandler(engine: Engine, esContext: EsContext) extends RequestIdAwareLogging {
 
-  def handle(request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext] with EsRequest[UserMetadataRequestBlockContext]): Task[Unit] = {
+  def handle(
+      request: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
+        with EsRequest[UserMetadataRequestBlockContext]
+  ): Task[Unit] = {
     engine.core.accessControl
       .handleMetadataRequest(request)
       .map { case (result, _) =>
@@ -56,23 +57,25 @@ class UserMetadataRequestHandler(engine: Engine,
       }
   }
 
-  private def commitResult(result: UserMetadataRequestResult,
-                           request: UserMetadataRequestContext): Unit = {
+  private def commitResult(result: UserMetadataRequestResult, request: UserMetadataRequestContext): Unit = {
     Try {
       result match {
         case UserMetadataRequestResult.Allowed(userMetadata) =>
           onAllow(request, userMetadata)
         case UserMetadataRequestResult.Forbidden(blockContext) =>
           onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
-        case f@UserMetadataRequestResult.ForbiddenByMismatched(_) =>
+        case f @ UserMetadataRequestResult.ForbiddenByMismatched(_) =>
           onForbidden(request, f.causes.toNonEmptyList.map(fromMismatchedCause))
         case UserMetadataRequestResult.PassedThrough =>
           onPassThrough(request)
         case UserMetadataRequestResult.RorKbnPluginNotSupported =>
-          onForbidden(request, RorKbnPluginNotSupported.forbiddenResponseContext(engine.core.accessControl.staticContext))
+          onForbidden(
+            request,
+            RorKbnPluginNotSupported.forbiddenResponseContext(engine.core.accessControl.staticContext)
+          )
       }
     } match {
-      case Success(_) =>
+      case Success(_)  =>
       case Failure(ex) =>
         implicit val requestContextImpl: RequestContext = request
         logger.errorEx(s"ACL committing result failure", ex)
@@ -80,8 +83,7 @@ class UserMetadataRequestHandler(engine: Engine,
     }
   }
 
-  private def onAllow(requestContext: UserMetadataRequestContext,
-                      userMetadata: UserMetadata): Unit = {
+  private def onAllow(requestContext: UserMetadataRequestContext, userMetadata: UserMetadata): Unit = {
     logRequestProcessingTime(requestContext)
     esContext.listener.onResponse(
       new RRMetadataResponse(requestContext.details.licenseType, userMetadata, esContext.correlationId.value)
@@ -93,26 +95,36 @@ class UserMetadataRequestHandler(engine: Engine,
 
   private def onForbidden(requestContext: RequestContext, forbiddenResponseContext: ForbiddenResponseContext): Unit = {
     logRequestProcessingTime(requestContext)
-    esContext.listener.onFailure(ForbiddenResponse.create(
-      forbiddenResponseContext
-    ))
+    esContext.listener.onFailure(
+      ForbiddenResponse.create(
+        forbiddenResponseContext
+      )
+    )
   }
 
-  private def onPassThrough(implicit requestContext: RequestContext): Unit = {
-    logger.warn(s"Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST plugin was disabled in settings")
+  private def onPassThrough(
+      implicit requestContext: RequestContext
+  ): Unit = {
+    logger.warn(
+      s"Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST plugin was disabled in settings"
+    )
     esContext.listener.onFailure(createRorNotEnabledResponse())
   }
 
-  private def logRequestProcessingTime(implicit requestContext: RequestContext): Unit = {
+  private def logRequestProcessingTime(
+      implicit requestContext: RequestContext
+  ): Unit = {
     logger.debug(s"Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
   }
 
 }
 
-private class RRMetadataResponse(licenseType: RorKbnLicenseType,
-                                 userMetadata: UserMetadata,
-                                 correlationId: CorrelationId)
-  extends ActionResponse with ToXContentObject {
+private class RRMetadataResponse(
+    licenseType: RorKbnLicenseType,
+    userMetadata: UserMetadata,
+    correlationId: CorrelationId
+) extends ActionResponse
+    with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     val json = MetadataResponse.fromAsJavaJsonObject(licenseType, userMetadata, correlationId)

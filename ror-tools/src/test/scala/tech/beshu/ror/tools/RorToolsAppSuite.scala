@@ -33,13 +33,13 @@ import tech.beshu.ror.tools.utils.{CapturingOutputAndMockingInput, ExampleEsWith
 import tech.beshu.ror.utils.files.FileUtils
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
+import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 import java.nio.file.Path
 import scala.language.postfixOps
-import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
 
 class RorToolsAppSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with ESVersionSupportForAnyWordSpecLike
     with BeforeAndAfterAll
     with BeforeAndAfterEach {
@@ -70,28 +70,30 @@ class RorToolsAppSuite
   "ROR tools app" should {
     "Patching successful for ES installation that was not patched (with consent given in arg)" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       result should equal(Result.Success)
       output should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Patching successful for ES installation that was not patched (with consent given in arg in format with =)" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       result should equal(Result.Success)
       output should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Patching successful for ES installation that was not patched (with consent given in env variable)" in {
@@ -104,13 +106,14 @@ class RorToolsAppSuite
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Patching successful for ES installation that was not patched (with consent given in both arg and env variable)" in {
       val (result, output) = captureResultAndOutput(
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _),
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _),
         mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes")
       )
       result should equal(Result.Success)
@@ -118,13 +121,14 @@ class RorToolsAppSuite
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Patching successful for ES installation that was not patched (with consent given in both arg and env variable, with mixed cases)" in {
       val (result, output) = captureResultAndOutput(
-        RorToolsTestApp.run(Array("patch", "--I_understand_AND_ACCEPT_ES_PATCHING", "yeS", "--es-path", esLocalPath.toString))(_, _),
+        RorToolsTestApp.run(
+          Array("patch", "--I_understand_AND_ACCEPT_ES_PATCHING", "yeS", "--es-path", esLocalPath.toString)
+        )(_, _),
         mockedEnvs = Map("I_UNDERSTAND_AND_accept_ES_PATCHING" -> "YEs")
       )
       result should equal(Result.Success)
@@ -132,8 +136,7 @@ class RorToolsAppSuite
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Patching successful for ES installation that was not patched (with consent given in interactive mode)" in {
@@ -153,24 +156,26 @@ class RorToolsAppSuite
     }
     "Patching successful first time, on second try not started because already patched" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       result should equal(Result.Success)
       output should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
       val (secondResult, secondOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       secondResult should equal(Result.Failure)
       secondOutput should include(
         """Checking if Elasticsearch is patched ...
-          |ERROR: Elasticsearch is already patched with current version"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |ERROR: Elasticsearch is already patched with current version""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Patching not started when user declines to accept implications of patching (in arg)" in {
@@ -214,7 +219,9 @@ class RorToolsAppSuite
         mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "no")
       )
       result should equal(Result.CommandNotParsed)
-      output should include("Error: There are conflicting values of the I_UNDERSTAND_AND_ACCEPT_ES_PATCHING setting. Please check env variables and program arguments.")
+      output should include(
+        "Error: There are conflicting values of the I_UNDERSTAND_AND_ACCEPT_ES_PATCHING setting. Please check env variables and program arguments."
+      )
       output should include(rorToolsUsageString)
     }
     "Patching not started when different consent values given in envs (yes) and args (no)" in {
@@ -223,7 +230,9 @@ class RorToolsAppSuite
         mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes")
       )
       result should equal(Result.CommandNotParsed)
-      output should include("Error: There are conflicting values of the I_UNDERSTAND_AND_ACCEPT_ES_PATCHING setting. Please check env variables and program arguments.")
+      output should include(
+        "Error: There are conflicting values of the I_UNDERSTAND_AND_ACCEPT_ES_PATCHING setting. Please check env variables and program arguments."
+      )
       output should include(rorToolsUsageString)
     }
     "Patching not started when user declines to accept implications of patching (in interactive mode)" in {
@@ -271,7 +280,9 @@ class RorToolsAppSuite
     }
     "Patching not started because of not existing directory" in {
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", "/wrong_directory"))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", "/wrong_directory")
+        )(_, _)
       }
       result should equal(Result.CommandNotParsed)
       output should include("Error: Path [/wrong_directory] does not exist")
@@ -285,7 +296,9 @@ class RorToolsAppSuite
       )
 
       val (result, output) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       result should equal(Result.Failure)
       output should include(
@@ -296,15 +309,16 @@ class RorToolsAppSuite
     }
     "Unpatching is not started when metadata file is missing" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
 
       patchMetadataFile.exists() should be(true)
@@ -313,15 +327,16 @@ class RorToolsAppSuite
 
       val (unpatchResult, unpatchOutput) = captureResultAndOutput(
         RorToolsTestApp.run(Array("unpatch", "--es-path", esLocalPath.toString))(_, _),
-        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes") // Additionally verifies, that `unpatch` can be executed when env consent is present
+        mockedEnvs = Map(
+          "I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes"
+        ) // Additionally verifies, that `unpatch` can be executed when env consent is present
       )
       unpatchResult should equal(Result.Failure)
       unpatchOutput.replace("\r\n", "\n") should include(
         """Checking if Elasticsearch is patched ...
           |ERROR: Elasticsearch is either patched by an older version of ROR or corrupted.
           | - if ES has been patched using some older ROR version, then try unpatching using that older ROR version
-          | - otherwise the ES installation is corrupted and ES must be reinstalled"""
-          .stripMarginAndReplaceWindowsLineBreak
+          | - otherwise the ES installation is corrupted and ES must be reinstalled""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Unpatching not started because ES is already patched by different version" in {
@@ -345,27 +360,29 @@ class RorToolsAppSuite
       patchMetadataFile.exists() should be(false)
       val (verifyResult, verifyOutput) = captureResultAndOutput(
         RorToolsTestApp.run(Array("verify", "--es-path", esLocalPath.toString))(_, _),
-        mockedEnvs = Map("I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes") // Additionally verifies, that `verify` can be executed when env consent is present
+        mockedEnvs = Map(
+          "I_UNDERSTAND_AND_ACCEPT_ES_PATCHING" -> "yes"
+        ) // Additionally verifies, that `verify` can be executed when env consent is present
       )
       verifyResult should equal(Result.Failure)
       verifyOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is NOT patched. ReadonlyREST cannot be used yet. For patching instructions see our docs: https://docs.readonlyrest.com/elasticsearch#id-3.-patch-elasticsearch""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "Verify detects patch when metadata file is present" in {
       // Patch
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
 
       patchMetadataFile.exists() should be(true)
@@ -376,21 +393,21 @@ class RorToolsAppSuite
       verifyResult should equal(Result.Success)
       verifyOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is patched! ReadonlyREST can be used"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST can be used""".stripMarginAndReplaceWindowsLineBreak
       )
     }
     "The patch is not detected when metadata file is missing and `verify` command is executed" in {
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
 
       patchMetadataFile.exists() should be(true)
@@ -411,17 +428,22 @@ class RorToolsAppSuite
            |""".stripMarginAndReplaceWindowsLineBreak
       )
     }
-    "The patch is not detected when metadata file is missing and `verify` command is executed (ES 9.x with detailed assertions)" excludeES(allEs6x, allEs7x, allEs8x) in {
+    "The patch is not detected when metadata file is missing and `verify` command is executed (ES 9.x with detailed assertions)" excludeES (
+      allEs6x,
+      allEs7x,
+      allEs8x
+    ) in {
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
 
       patchMetadataFile.exists() should be(true)
@@ -453,15 +475,16 @@ class RorToolsAppSuite
       // Patch
       val hashBeforePatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
       val hashAfterPatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
 
@@ -473,8 +496,7 @@ class RorToolsAppSuite
       verifyResult should equal(Result.Success)
       verifyOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is patched! ReadonlyREST can be used"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST can be used""".stripMarginAndReplaceWindowsLineBreak
       )
       patchMetadataFile.exists() should be(true)
 
@@ -487,8 +509,7 @@ class RorToolsAppSuite
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Elasticsearch is currently patched, restoring ...
-          |Elasticsearch is unpatched! ReadonlyREST can be removed now"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is unpatched! ReadonlyREST can be removed now""".stripMarginAndReplaceWindowsLineBreak
       )
       val hashAfterUnpatching = FileUtils.calculateHash(esLocalPath, filesExcludedFromHashCalculation)
 
@@ -499,15 +520,16 @@ class RorToolsAppSuite
     "Successfully patch, verify and unable to unpatch when one of the patched files was modified" in {
       // Patch
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
 
       // Verify
@@ -518,8 +540,7 @@ class RorToolsAppSuite
       verifyResult should equal(Result.Success)
       verifyOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is patched! ReadonlyREST can be used"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST can be used""".stripMarginAndReplaceWindowsLineBreak
       )
       patchMetadataFile.exists() should be(true)
 
@@ -538,23 +559,23 @@ class RorToolsAppSuite
       // The assertion cannot check specific filenames, because they are ES-version specific
       unpatchOutput should include(
         """Checking if Elasticsearch is patched ...
-          |ERROR: Elasticsearch was patched, but files"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |ERROR: Elasticsearch was patched, but files""".stripMarginAndReplaceWindowsLineBreak
       )
       unpatchOutput should include("were modified after patching")
     }
     "Successfully patch, verify and be unable to unpatch when it is simulated in test, that patch was performed on other ES version" in {
       // Patch
       val (patchResult, patchOutput) = captureResultAndOutput {
-        RorToolsTestApp.run(Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString))(_, _)
+        RorToolsTestApp.run(
+          Array("patch", "--I_UNDERSTAND_AND_ACCEPT_ES_PATCHING", "yes", "--es-path", esLocalPath.toString)
+        )(_, _)
       }
       patchResult should equal(Result.Success)
       patchOutput should include(
         """Checking if Elasticsearch is patched ...
           |Creating backup ...
           |Patching ...
-          |Elasticsearch is patched! ReadonlyREST is ready to use"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST is ready to use""".stripMarginAndReplaceWindowsLineBreak
       )
 
       // Verify
@@ -565,8 +586,7 @@ class RorToolsAppSuite
       verifyResult should equal(Result.Success)
       verifyOutput should include(
         """Checking if Elasticsearch is patched ...
-          |Elasticsearch is patched! ReadonlyREST can be used"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |Elasticsearch is patched! ReadonlyREST can be used""".stripMarginAndReplaceWindowsLineBreak
       )
       patchMetadataFile.exists() should be(true)
 
@@ -602,15 +622,16 @@ class RorToolsAppSuite
         """Error: No command provided. See usage below.
           |ROR tools 1.0.0
           |Usage: java -jar ror-tools.jar [patch|unpatch|verify] [options]
-          |"""
-          .stripMarginAndReplaceWindowsLineBreak
+          |""".stripMarginAndReplaceWindowsLineBreak
       )
     }
   }
 
-  private def givenPatchMetadata(rorVersionUsedForPatching: String,
-                                 esVersionThatWasPatched: String,
-                                 patchedFilesMetadata: List[FilePatchMetadata]): Unit = {
+  private def givenPatchMetadata(
+      rorVersionUsedForPatching: String,
+      esVersionThatWasPatched: String,
+      patchedFilesMetadata: List[FilePatchMetadata]
+  ): Unit = {
     File(backupDirectory.path).createDirectory()
     patchMetadataFile.createFile()
     patchMetadataFile.write(
@@ -629,8 +650,10 @@ class RorToolsAppSuite
     patchMetadataFile.overwrite(EsPatchMetadataCodec.encode(f(metadata)))
   }
 
-
-  private def captureResultAndOutput(block: (InOut, RawEnvVariablesProvider) => Result, mockedEnvs: Map[String, String] = Map.empty): (Result, String) = {
+  private def captureResultAndOutput(
+      block: (InOut, RawEnvVariablesProvider) => Result,
+      mockedEnvs: Map[String, String] = Map.empty
+  ): (Result, String) = {
     val inOut = new CapturingOutputAndMockingInput()
     val envProvider = new RawEnvVariablesProvider {
       override val getSysEnv: Map[String, String] = mockedEnvs
@@ -639,7 +662,10 @@ class RorToolsAppSuite
     (result, inOut.getOutputBuffer)
   }
 
-  private def captureResultAndOutputWithInteraction(block: (InOut, RawEnvVariablesProvider) => Result, response: Option[String]): (Result, String) = {
+  private def captureResultAndOutputWithInteraction(
+      block: (InOut, RawEnvVariablesProvider) => Result,
+      response: Option[String]
+  ): (Result, String) = {
     val inOut = new CapturingOutputAndMockingInput(response)
     val result = block(inOut, OsRawEnvVariablesProvider)
     (result, inOut.getOutputBuffer)
@@ -670,7 +696,18 @@ class RorToolsAppSuite
         Seq("tar", "-cvf", s"$localPath/elasticsearch.tar", "-C", esPath.toString, "modules", "bin", "lib", "plugins").!
       case CurrentOs.OtherThanWindows =>
         esContainer.withTestEsContainer { esContainer =>
-          esContainer.execInContainer("tar", "-cvf", "/tmp/elasticsearch.tar", "-C", "/usr/share/elasticsearch", "modules", "bin", "lib", "plugins", "tmp")
+          esContainer.execInContainer(
+            "tar",
+            "-cvf",
+            "/tmp/elasticsearch.tar",
+            "-C",
+            "/usr/share/elasticsearch",
+            "modules",
+            "bin",
+            "lib",
+            "plugins",
+            "tmp"
+          )
           esContainer.copyFileFromContainer("/tmp/elasticsearch.tar", s"$localPath/elasticsearch.tar")
         }
     }

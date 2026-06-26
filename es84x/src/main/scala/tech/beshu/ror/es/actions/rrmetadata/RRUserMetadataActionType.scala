@@ -20,9 +20,11 @@ import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRUserMetadataActionType extends ActionType[RRUserMetadataResponse](
-  RRUserMetadataActionType.name, RRUserMetadataActionType.exceptionReader
-)
+class RRUserMetadataActionType
+    extends ActionType[RRUserMetadataResponse](
+      RRUserMetadataActionType.name,
+      RRUserMetadataActionType.exceptionReader
+    )
 
 object RRUserMetadataActionType {
   val name: String = RorAction.RorUserMetadataAction.value
@@ -30,5 +32,5 @@ object RRUserMetadataActionType {
 
   case object RRUserMetadataActionCannotBeTransported extends Exception
 
-  private [rrmetadata] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRUserMetadataActionCannotBeTransported
+  private[rrmetadata] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRUserMetadataActionCannotBeTransported
 }

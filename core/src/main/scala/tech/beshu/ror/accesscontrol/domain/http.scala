@@ -32,10 +32,11 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import java.net.InetSocketAddress
 import java.util.{Locale, UUID}
-import scala.util.Try
 import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 final case class CorrelationId(value: NonEmptyString)
+
 object CorrelationId {
   def random: CorrelationId = new CorrelationId(NonEmptyString.unsafeFrom(UUID.randomUUID().toString))
 
@@ -43,8 +44,10 @@ object CorrelationId {
 }
 
 final case class Header(name: Header.Name, value: NonEmptyString)
+
 object Header {
   final case class Name(value: NonEmptyString)
+
   object Name {
     val authorization = Name(nes("Authorization"))
     val xApiKeyHeaderName = Header.Name(nes("X-Api-Key"))
@@ -67,12 +70,15 @@ object Header {
 
   def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
 
-  def apply[T](name: Name, value: T)
-              (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
+  def apply[T](name: Name, value: T)(
+      implicit ev: ToHeaderValue[T]
+  ): Header = new Header(name, ev.toRawValue(value))
 
   def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-  def fromRawHeaders(headers: java.util.Map[String, java.util.List[String]]): Either[AuthorizationValueError, Set[Header]] = {
+  def fromRawHeaders(
+      headers: java.util.Map[String, java.util.List[String]]
+  ): Either[AuthorizationValueError, Set[Header]] = {
     fromRawHeaders(headers.asScala.map { case (k, v) => (k, v.asScala) })
   }
 
@@ -83,7 +89,9 @@ object Header {
     } yield header
   }
 
-  def fromRawHeaders(headers: collection.Map[String, Iterable[String]]): Either[AuthorizationValueError, Set[Header]] = {
+  def fromRawHeaders(
+      headers: collection.Map[String, Iterable[String]]
+  ): Either[AuthorizationValueError, Set[Header]] = {
     val (authorizationHeaders, nonAuthorizationHeaders) =
       headers
         .map { case (name, values) => (name, values.toCovariantSet) }
@@ -131,14 +139,16 @@ object Header {
     NonEmptyString
       .from(sanitized)
       .map(new Header(Name.authorization, _))
-      .left.map(_ => EmptyAuthorizationValue)
+      .left
+      .map(_ => EmptyAuthorizationValue)
   }
 
   private def parseRorMetadataString(rorMetadataString: String) = {
     rorMetadataString.decodeBase64 match {
       case Some(value) =>
-        Try(ujson.read(value).obj("headers").arr.toList.map(_.str))
-          .toEither.left.map(_ => RorMetadataInvalidFormat(rorMetadataString, "Parsing JSON failed"))
+        Try(ujson.read(value).obj("headers").arr.toList.map(_.str)).toEither.left.map(_ =>
+          RorMetadataInvalidFormat(rorMetadataString, "Parsing JSON failed")
+        )
       case None =>
         Left(RorMetadataInvalidFormat(rorMetadataString, "Decoding Base64 failed"))
     }
@@ -146,8 +156,7 @@ object Header {
 
   private def headerFrom(value: String) = {
     import tech.beshu.ror.utils.StringWiseSplitter.*
-    value
-      .toNonEmptyStringsTuple
+    value.toNonEmptyStringsTuple
       .bimap(
         { case Error.CannotSplitUsingColon | Error.TupleMemberCannotBeEmpty => InvalidHeaderFormat(value) },
         { case (nonEmptyName, nonEmptyValue) => new Header(Name(nonEmptyName), nonEmptyValue) }
@@ -155,6 +164,7 @@ object Header {
   }
 
   sealed trait AuthorizationValueError
+
   object AuthorizationValueError {
     case object EmptyAuthorizationValue extends AuthorizationValueError
     final case class InvalidHeaderFormat(value: String) extends AuthorizationValueError
@@ -165,10 +175,13 @@ object Header {
 }
 
 sealed trait Address
+
 object Address {
+
   final case class Ip(value: Cidr[IpAddress]) extends Address {
     def contains(ip: Ip): Boolean = value.contains(ip.value.address)
   }
+
   final case class Name(value: Hostname) extends Address
 
   def from(value: String): Option[Address] = {
@@ -200,15 +213,16 @@ object Address {
   private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
 
   private def cutOffZoneIndex(value: String): String = {
-    //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
+    // https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
     value match {
       case ipv6WithLiteralScope(ipv6) => ipv6
-      case noLiteralIp => noLiteralIp
+      case noLiteralIp                => noLiteralIp
     }
   }
+
 }
 
-final case class UriPath private(value: NonEmptyString) {
+final case class UriPath private (value: NonEmptyString) {
   def isAuditEventPath: Boolean =
     this != UriPath.slashPath && value.value.startsWith(UriPath.auditEventPath.value.value)
 
@@ -232,7 +246,9 @@ final case class UriPath private(value: NonEmptyString) {
       value.value.startsWith("/_alias") ||
       "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value.value).isDefined ||
       "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value.value).isDefined
+
 }
+
 object UriPath {
   val userMetadataPath = UriPath(NonEmptyString.unsafeFrom(constants.USER_METADATA_PATH))
   val auditEventPath = UriPath(NonEmptyString.unsafeFrom(constants.AUDIT_EVENT_COLLECTOR_PATH))
@@ -242,7 +258,8 @@ object UriPath {
 
   def from(value: String): Option[UriPath] = {
     NonEmptyString
-      .from(value).toOption
+      .from(value)
+      .toOption
       .map(UriPath.from)
   }
 
@@ -252,35 +269,44 @@ object UriPath {
   }
 
   object CatTemplatePath {
+
     def unapply(uriPath: UriPath): Option[UriPath] = {
       if (uriPath.isCatTemplatePath) Some(uriPath)
       else None
     }
+
   }
 
   object CatIndicesPath {
+
     def unapply(uriPath: UriPath): Option[UriPath] = {
       if (uriPath.isCatIndicesPath) Some(uriPath)
       else None
     }
+
   }
 
   object TemplatePath {
+
     def unapply(uriPath: UriPath): Option[UriPath] = {
       if (uriPath.isTemplatePath) Some(uriPath)
       else None
     }
+
   }
+
 }
 
-final case class AuthorizationTokenDef(headerName: Header.Name,
-                                       allowedPrefix: AllowedPrefix)
+final case class AuthorizationTokenDef(headerName: Header.Name, allowedPrefix: AllowedPrefix)
+
 object AuthorizationTokenDef {
   sealed trait AllowedPrefix
+
   object AllowedPrefix {
     final case class StrictlyDefined(prefix: AuthorizationTokenPrefix) extends AllowedPrefix
     case object Any extends AllowedPrefix
   }
+
 }
 
 final case class UserOrigin(value: NonEmptyString)

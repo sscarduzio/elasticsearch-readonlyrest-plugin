@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
@@ -32,15 +32,15 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.{Clock, Instant}
 
-final class SessionMaxIdleRule(val settings: Settings,
-                               implicit val caseSensitivity: CaseSensitivity)
-                              (implicit clock: Clock,
-                               uuidProvider: UuidProvider)
-  extends RegularRule with RequestIdAwareLogging {
+final class SessionMaxIdleRule(val settings: Settings, implicit val caseSensitivity: CaseSensitivity)(
+    implicit clock: Clock,
+    uuidProvider: UuidProvider
+) extends RegularRule
+    with RequestIdAwareLogging {
 
   override val name: Rule.Name = SessionMaxIdleRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.blockMetadata.loggedUser match {
       case Some(user) =>
         checkCookieFor(user, blockContext)
@@ -51,8 +51,7 @@ final class SessionMaxIdleRule(val settings: Settings,
     }
   }
 
-  private def checkCookieFor[B <: BlockContext : BlockContextUpdater](user: LoggedUser,
-                                                                      blockContext: B): Decision[B] = {
+  private def checkCookieFor[B <: BlockContext: BlockContextUpdater](user: LoggedUser, blockContext: B): Decision[B] = {
     RorSessionCookie.extractFrom(blockContext.requestContext, user) match {
       case Right(_) | Left(ExtractingError.Absent) =>
         val newCookie = RorSessionCookie(user.id, newExpiryDate)

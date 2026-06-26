@@ -28,19 +28,21 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.syntax.*
 
-class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
-                                 esContext: EsContext,
-                                 override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
+class AuditEventESRequestContext(
+    actionRequest: RRAuditEventRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
-  override def initialBlockContext(block: Block): GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
-    block = block,
-    requestContext = this,
-    blockMetadata = BlockMetadata.from(this),
-    responseHeaders = Set.empty,
-    responseTransformations = List.empty
-  )
+  override def initialBlockContext(block: Block): GeneralNonIndexRequestBlockContext =
+    GeneralNonIndexRequestBlockContext(
+      block = block,
+      requestContext = this,
+      blockMetadata = BlockMetadata.from(this),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 
@@ -48,4 +50,3 @@ class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified
 }
-

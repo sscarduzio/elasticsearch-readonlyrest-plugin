@@ -23,8 +23,8 @@ import cats.kernel.Monoid
 
 import scala.collection.{IterableFactory, IterableFactoryDefaults, IterableOnce, mutable}
 
-final case class CovariantSet[+A] private[set](private[set] val underlying: Set[Any])
-  extends Iterable[A]
+final case class CovariantSet[+A] private[set] (private[set] val underlying: Set[Any])
+    extends Iterable[A]
     with IterableFactoryDefaults[A, CovariantSet] {
 
   override def iterableFactory: CovariantSetFactory = CovariantSet
@@ -32,6 +32,7 @@ final case class CovariantSet[+A] private[set](private[set] val underlying: Set[
   override def knownSize: Int = underlying.size
   override def size: Int = underlying.size
 }
+
 object CovariantSet extends CovariantSetFactory with CovariantSetInstances with CatsInstances {
 
   extension [A](covariantSet: CovariantSet[A]) {
@@ -43,9 +44,14 @@ object CovariantSet extends CovariantSetFactory with CovariantSetInstances with 
     def removedAll(that: IterableOnce[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.removedAll(that))
     inline def --(that: IterableOnce[A]): CovariantSet[A] = removedAll(that)
     def diff(other: CovariantSet[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.diff(other.underlying))
-    def intersect(other: CovariantSet[A]): CovariantSet[A] = CovariantSet(covariantSet.underlying.intersect(other.underlying))
+
+    def intersect(other: CovariantSet[A]): CovariantSet[A] = CovariantSet(
+      covariantSet.underlying.intersect(other.underlying)
+    )
+
     def subsetOf(other: CovariantSet[A]): Boolean = covariantSet.underlying.subsetOf(other.underlying)
   }
+
 }
 
 trait CovariantSetFactory extends IterableFactory[CovariantSet] {
@@ -57,16 +63,19 @@ trait CovariantSetFactory extends IterableFactory[CovariantSet] {
   override def newBuilder[A]: mutable.Builder[A, CovariantSet[A]] =
     Set.newBuilder.mapResult(scalaSet => new CovariantSet[A](scalaSet.asInstanceOf[Set[Any]]))
 }
+
 object CovariantSetFactory extends CovariantSetFactory
 
 trait CovariantSetConversions {
 
   extension [A](iterable: IterableOnce[A]) {
+
     def toCovariantSet: CovariantSet[A] = iterable match {
       case cs: CovariantSet[A @unchecked] => cs
-      case s: Set[A @unchecked] => new CovariantSet[A](s.asInstanceOf[Set[Any]])
-      case other => new CovariantSet[A](other.iterator.toSet.asInstanceOf[Set[Any]])
+      case s: Set[A @unchecked]           => new CovariantSet[A](s.asInstanceOf[Set[Any]])
+      case other                          => new CovariantSet[A](other.iterator.toSet.asInstanceOf[Set[Any]])
     }
+
   }
 
   extension [A](nonEmptyList: NonEmptyList[A]) {
@@ -76,6 +85,7 @@ trait CovariantSetConversions {
   extension [A](array: Array[A]) {
     def toCovariantSet: CovariantSet[A] = new CovariantSet[A](array.toSet.asInstanceOf[Set[Any]])
   }
+
 }
 
 trait CovariantSetInstances {
@@ -87,12 +97,13 @@ trait CovariantSetInstances {
     emptyValue = CovariantSetFactory.empty,
     cmb = (a, b) => a ++ b
   )
+
 }
 
 trait CatsInstances {
 
   implicit val covariantSetTraverse: Traverse[CovariantSet] = new Traverse[CovariantSet] {
-    override def traverse[G[_] : Applicative, A, B](fa: CovariantSet[A])(f: A => G[B]): G[CovariantSet[B]] = {
+    override def traverse[G[_]: Applicative, A, B](fa: CovariantSet[A])(f: A => G[B]): G[CovariantSet[B]] = {
       val G = Applicative[G]
       val gset = fa.underlying.foldLeft(G.pure(Set.newBuilder[Any])) { (acc, a) =>
         G.map2(acc, f(a.asInstanceOf[A]))((builder, b) => builder += b)
@@ -106,4 +117,5 @@ trait CatsInstances {
     override def foldRight[A, B](fa: CovariantSet[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
       fa.underlying.foldRight(lb)(f.asInstanceOf[(Any, Eval[B]) => Eval[B]])
   }
+
 }

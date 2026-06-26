@@ -38,4 +38,5 @@ class RorWrappedRestCatAction(catAction: RestCatAction) extends BaseRestHandler 
         }
       )
   }
+
 }

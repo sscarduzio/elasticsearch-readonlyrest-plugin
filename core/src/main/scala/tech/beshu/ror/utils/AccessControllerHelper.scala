@@ -23,19 +23,20 @@ import java.security.{AccessController, PrivilegedAction}
 import scala.concurrent.duration.TimeUnit
 
 object AccessControllerHelper {
+
   def doPrivileged[T](action: => T): T = {
     AccessController.doPrivileged(new PrivilegedAction[T] {
       override def run(): T = action
     })
   }
 
-  def doPrivileged[T](actionTask: Task[T])
-                     (implicit scheduler: Scheduler): Task[T] = {
+  def doPrivileged[T](actionTask: Task[T])(
+      implicit scheduler: Scheduler
+  ): Task[T] = {
     actionTask.executeOn(PrivilegedScheduler(scheduler))
   }
 
-  private final class PrivilegedScheduler(underlying: Scheduler)
-    extends Scheduler {
+  private final class PrivilegedScheduler(underlying: Scheduler) extends Scheduler {
 
     def execute(r: Runnable): Unit =
       underlying.execute(wrap(r))
@@ -62,9 +63,10 @@ object AccessControllerHelper {
     override def withUncaughtExceptionReporter(r: UncaughtExceptionReporter): Scheduler =
       underlying.withUncaughtExceptionReporter(underlying)
 
-    private def wrap(r: Runnable): Runnable = {
-      () => doPrivileged(r.run())
+    private def wrap(r: Runnable): Runnable = { () =>
+      doPrivileged(r.run())
     }
 
   }
+
 }

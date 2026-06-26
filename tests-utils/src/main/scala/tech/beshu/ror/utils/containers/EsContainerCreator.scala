@@ -25,7 +25,12 @@ import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.Awaiting
 import tech.beshu.ror.utils.containers.EsContainerCreator.EsNodeSettings
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.images.Elasticsearch.EsInstallationType
-import tech.beshu.ror.utils.containers.images.{Elasticsearch, ReadonlyRestPlugin, ReadonlyRestWithEnabledXpackSecurityPlugin, XpackSecurityPlugin}
+import tech.beshu.ror.utils.containers.images.{
+  Elasticsearch,
+  ReadonlyRestPlugin,
+  ReadonlyRestWithEnabledXpackSecurityPlugin,
+  XpackSecurityPlugin
+}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.misc.OsUtils
 import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
@@ -35,53 +40,100 @@ import java.util.function.Consumer
 
 object EsContainerCreator extends EsContainerCreator {
 
-  final case class EsNodeSettings(nodeName: String,
-                                  clusterName: String,
-                                  securityType: SecurityType,
-                                  containerSpecification: ContainerSpecification,
-                                  esVersion: EsVersion)
+  final case class EsNodeSettings(
+      nodeName: String,
+      clusterName: String,
+      securityType: SecurityType,
+      containerSpecification: ContainerSpecification,
+      esVersion: EsVersion
+  )
+
 }
 
 trait EsContainerCreator {
 
   val defaultEsInstallationType: EsInstallationType = OsUtils.currentOs match {
-    case CurrentOs.Windows => EsInstallationType.NativeWindowsProcess
+    case CurrentOs.Windows          => EsInstallationType.NativeWindowsProcess
     case CurrentOs.OtherThanWindows => EsInstallationType.EsDockerImage
   }
 
-  def create(nodeSettings: EsNodeSettings,
-             allNodeNames: NonEmptyList[String],
-             nodeDataInitializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             esInstallationType: EsInstallationType = defaultEsInstallationType,
-             additionalLogConsumer: Option[Consumer[OutputFrame]] = None,
-             awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness): EsContainer = {
+  def create(
+      nodeSettings: EsNodeSettings,
+      allNodeNames: NonEmptyList[String],
+      nodeDataInitializer: ElasticsearchNodeDataInitializer,
+      startedClusterDependencies: StartedClusterDependencies,
+      esInstallationType: EsInstallationType = defaultEsInstallationType,
+      additionalLogConsumer: Option[Consumer[OutputFrame]] = None,
+      awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness
+  ): EsContainer = {
     val project = nodeSettings.esVersion match {
-      case EsVersion.DeclaredInProject => RorPluginGradleProject.fromSystemProperty
+      case EsVersion.DeclaredInProject        => RorPluginGradleProject.fromSystemProperty
       case EsVersion.SpecificVersion(version) => RorPluginGradleProject.customModule(version)
     }
     nodeSettings.securityType match {
       case SecurityType.RorWithXpackSecurity(attributes) =>
-        createEsWithRorAndXpackSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
+        createEsWithRorAndXpackSecurityContainer(
+          nodeSettings,
+          allNodeNames,
+          project,
+          nodeDataInitializer,
+          attributes,
+          startedClusterDependencies,
+          esInstallationType,
+          additionalLogConsumer,
+          awaitingReadyStrategy
+        )
       case SecurityType.RorSecurity(attributes) =>
-        createEsWithRorContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
+        createEsWithRorContainer(
+          nodeSettings,
+          allNodeNames,
+          project,
+          nodeDataInitializer,
+          attributes,
+          startedClusterDependencies,
+          esInstallationType,
+          additionalLogConsumer,
+          awaitingReadyStrategy
+        )
       case SecurityType.XPackSecurity(attributes) =>
-        createEsWithXpackContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, attributes, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
+        createEsWithXpackContainer(
+          nodeSettings,
+          allNodeNames,
+          project,
+          nodeDataInitializer,
+          attributes,
+          startedClusterDependencies,
+          esInstallationType,
+          additionalLogConsumer,
+          awaitingReadyStrategy
+        )
       case SecurityType.NoSecurityCluster =>
-        createEsWithNoSecurityContainer(nodeSettings, allNodeNames, project, nodeDataInitializer, startedClusterDependencies, esInstallationType, additionalLogConsumer, awaitingReadyStrategy)
+        createEsWithNoSecurityContainer(
+          nodeSettings,
+          allNodeNames,
+          project,
+          nodeDataInitializer,
+          startedClusterDependencies,
+          esInstallationType,
+          additionalLogConsumer,
+          awaitingReadyStrategy
+        )
     }
   }
 
-  private def createEsWithRorAndXpackSecurityContainer(nodeSettings: EsNodeSettings,
-                                                       allNodeNames: NonEmptyList[String],
-                                                       project: RorPluginGradleProject,
-                                                       nodeDataInitializer: ElasticsearchNodeDataInitializer,
-                                                       attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
-                                                       startedClusterDependencies: StartedClusterDependencies,
-                                                       esInstallationType: EsInstallationType,
-                                                       additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                                       awaitingReadyStrategy: AwaitingReadyStrategy) = {
-    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+  private def createEsWithRorAndXpackSecurityContainer(
+      nodeSettings: EsNodeSettings,
+      allNodeNames: NonEmptyList[String],
+      project: RorPluginGradleProject,
+      nodeDataInitializer: ElasticsearchNodeDataInitializer,
+      attributes: ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes,
+      startedClusterDependencies: StartedClusterDependencies,
+      esInstallationType: EsInstallationType,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ) = {
+    val rorPluginFile: File =
+      project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val rawRorSettingsFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
     val adjustedRorSettings = RorSettingsAdjuster.adjustUsingDependencies(
@@ -111,16 +163,19 @@ trait EsContainerCreator {
     )
   }
 
-  private def createEsWithRorContainer(nodeSettings: EsNodeSettings,
-                                       allNodeNames: NonEmptyList[String],
-                                       project: RorPluginGradleProject,
-                                       nodeDataInitializer: ElasticsearchNodeDataInitializer,
-                                       attributes: ReadonlyRestPlugin.Config.Attributes,
-                                       startedClusterDependencies: StartedClusterDependencies,
-                                       esInstallationType: EsInstallationType,
-                                       additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                       awaitingReadyStrategy: AwaitingReadyStrategy) = {
-    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+  private def createEsWithRorContainer(
+      nodeSettings: EsNodeSettings,
+      allNodeNames: NonEmptyList[String],
+      project: RorPluginGradleProject,
+      nodeDataInitializer: ElasticsearchNodeDataInitializer,
+      attributes: ReadonlyRestPlugin.Config.Attributes,
+      startedClusterDependencies: StartedClusterDependencies,
+      esInstallationType: EsInstallationType,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ) = {
+    val rorPluginFile: File =
+      project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val rawRorSettingsFile = ContainerUtils.getResourceFile(attributes.rorSettingsFileName)
 
     val adjustedRorSettings = RorSettingsAdjuster.adjustUsingDependencies(
@@ -150,15 +205,17 @@ trait EsContainerCreator {
     )
   }
 
-  private def createEsWithXpackContainer(nodeSettings: EsNodeSettings,
-                                         allNodeNames: NonEmptyList[String],
-                                         project: RorPluginGradleProject,
-                                         nodeDataInitializer: ElasticsearchNodeDataInitializer,
-                                         attributes: XpackSecurityPlugin.Config.Attributes,
-                                         startedClusterDependencies: StartedClusterDependencies,
-                                         esInstallationType: EsInstallationType,
-                                         additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                         awaitingReadyStrategy: AwaitingReadyStrategy) = {
+  private def createEsWithXpackContainer(
+      nodeSettings: EsNodeSettings,
+      allNodeNames: NonEmptyList[String],
+      project: RorPluginGradleProject,
+      nodeDataInitializer: ElasticsearchNodeDataInitializer,
+      attributes: XpackSecurityPlugin.Config.Attributes,
+      startedClusterDependencies: StartedClusterDependencies,
+      esInstallationType: EsInstallationType,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ) = {
     EsContainerWithXpackSecurity.create(
       esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
@@ -177,14 +234,16 @@ trait EsContainerCreator {
     )
   }
 
-  private def createEsWithNoSecurityContainer(nodeSettings: EsNodeSettings,
-                                              allNodeNames: NonEmptyList[String],
-                                              project: RorPluginGradleProject,
-                                              nodeDataInitializer: ElasticsearchNodeDataInitializer,
-                                              startedClusterDependencies: StartedClusterDependencies,
-                                              esInstallationType: EsInstallationType,
-                                              additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                              awaitingReadyStrategy: AwaitingReadyStrategy) = {
+  private def createEsWithNoSecurityContainer(
+      nodeSettings: EsNodeSettings,
+      allNodeNames: NonEmptyList[String],
+      project: RorPluginGradleProject,
+      nodeDataInitializer: ElasticsearchNodeDataInitializer,
+      startedClusterDependencies: StartedClusterDependencies,
+      esInstallationType: EsInstallationType,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ) = {
     EsContainerWithNoSecurity.create(
       esVersion = project.getModuleESVersion,
       esConfig = Elasticsearch.Config(
@@ -201,6 +260,7 @@ trait EsContainerCreator {
       awaitingReadyStrategy = awaitingReadyStrategy
     )
   }
+
 }
 
 final case class StartedDependency(name: String, container: SingleContainer[JavaGenericContainer[_]], originalPort: Int)

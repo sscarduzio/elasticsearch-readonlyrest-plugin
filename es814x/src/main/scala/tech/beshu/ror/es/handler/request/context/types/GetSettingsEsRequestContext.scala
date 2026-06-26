@@ -28,21 +28,25 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class GetSettingsEsRequestContext(actionRequest: GetSettingsRequest,
-                                  esContext: EsContext,
-                                  aclContext: AccessControlStaticContext,
-                                  override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[GetSettingsRequest](actionRequest, esContext, aclContext, threadPool) {
+class GetSettingsEsRequestContext(
+    actionRequest: GetSettingsRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[GetSettingsRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: GetSettingsRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: GetSettingsRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: GetSettingsRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     Modified
   }
+
 }

@@ -19,10 +19,9 @@ package tech.beshu.ror.audit
 class Headers(originMap: Map[String, Set[String]]) {
 
   private val mapWithLowerCaseKeys = originMap
-    .foldLeft(Map.empty[String, Set[String]]) {
-      case (acc, (key, values)) =>
-        val headerValues = acc.get(key.toLowerCase()).toList.flatten.toSet ++ values
-        acc + (key.toLowerCase -> headerValues)
+    .foldLeft(Map.empty[String, Set[String]]) { case (acc, (key, values)) =>
+      val headerValues = acc.get(key.toLowerCase()).toList.flatten.toSet ++ values
+      acc + (key.toLowerCase -> headerValues)
     }
 
   def getValue(headerName: String): Option[Set[String]] = {

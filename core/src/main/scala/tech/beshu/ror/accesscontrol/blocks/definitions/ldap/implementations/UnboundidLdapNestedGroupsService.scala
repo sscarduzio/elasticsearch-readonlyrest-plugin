@@ -18,32 +18,37 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import com.unboundid.ldap.sdk.*
 import monix.eval.Task
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.SearchResultEntryOps.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.domain.LdapGroup
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ops.logs.*
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 import tech.beshu.ror.utils.GraphNodeAncestorsExplorer
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
-private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: UnboundidLdapConnectionPool,
-                                                                config: NestedGroupsConfig,
-                                                                serviceTimeout: PositiveFiniteDuration)
-  extends RequestIdAwareLogging {
+private[implementations] class UnboundidLdapNestedGroupsService(
+    connectionPool: UnboundidLdapConnectionPool,
+    config: NestedGroupsConfig,
+    serviceTimeout: PositiveFiniteDuration
+) extends RequestIdAwareLogging {
 
   private val ldapGroupsExplorer = new GraphNodeAncestorsExplorer[LdapGroup](
     kinshipLevel = config.nestedLevels,
     doFetchParentNodesOf = { case (ldapGroup, requestId) => doFetchGroupsOf(ldapGroup)(requestId) }
   )
 
-  def fetchNestedGroupsOf(mainGroups: Iterable[LdapGroup])(implicit requestId: RequestId): Task[Set[LdapGroup]] = {
+  def fetchNestedGroupsOf(mainGroups: Iterable[LdapGroup])(
+      implicit requestId: RequestId
+  ): Task[Set[LdapGroup]] = {
     ldapGroupsExplorer.findAllAncestorsOf(mainGroups)
   }
 
-  private def doFetchGroupsOf(group: LdapGroup)(implicit requestId: RequestId) = {
+  private def doFetchGroupsOf(group: LdapGroup)(
+      implicit requestId: RequestId
+  ) = {
     connectionPool
       .process(
         requestCreator = searchGroupsOfGroupLdapRequest(_, group),
@@ -63,20 +68,24 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
       }
   }
 
-  private def searchGroupsOfGroupLdapRequest(listener: AsyncSearchResultListener,
-                                             ldapGroup: LdapGroup)
-                                            (implicit requestId: RequestId): LDAPRequest = {
+  private def searchGroupsOfGroupLdapRequest(listener: AsyncSearchResultListener, ldapGroup: LdapGroup)(
+      implicit requestId: RequestId
+  ): LDAPRequest = {
     val baseDn = config.searchGroupBaseDN.value.value
     val scope = SearchScope.SUB
     val searchFilter = searchFilterFrom(config.groupSearchFilter, config.memberAttribute, ldapGroup)
     val groupAttributes = attributesFrom(config.groupAttribute)
-    logger.debug(s"LDAP search [base DN: ${baseDn.show}, scope: ${scope.show}, search filter: ${searchFilter.show}, attributes: ${groupAttributes.show}]")
+    logger.debug(
+      s"LDAP search [base DN: ${baseDn.show}, scope: ${scope.show}, search filter: ${searchFilter.show}, attributes: ${groupAttributes.show}]"
+    )
     new SearchRequest(listener, baseDn, scope, searchFilter, groupAttributes.toSeq*)
   }
 
-  private def searchFilterFrom(groupSearchFilter: GroupSearchFilter,
-                               memberAttribute: UniqueMemberAttribute,
-                               group: LdapGroup) = {
+  private def searchFilterFrom(
+      groupSearchFilter: GroupSearchFilter,
+      memberAttribute: UniqueMemberAttribute,
+      group: LdapGroup
+  ) = {
     s"(&${groupSearchFilter.value.value}(${Filter.encodeValue(memberAttribute.value.value)}=${Filter.encodeValue(group.dn.value.value)}))"
   }
 
@@ -85,4 +94,3 @@ private[implementations] class UnboundidLdapNestedGroupsService(connectionPool: 
   }
 
 }
-

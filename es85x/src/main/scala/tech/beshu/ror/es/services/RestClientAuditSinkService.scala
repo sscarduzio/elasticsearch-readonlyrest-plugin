@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.services
 
 import cats.data.NonEmptyList
+import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 import org.apache.http.HttpHost
 import org.apache.http.auth.{AuthScope, Credentials, UsernamePasswordCredentials}
 import org.apache.http.client.config.RequestConfig
@@ -32,20 +33,21 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.security.cert.X509Certificate
 import java.util.concurrent.Semaphore
-import javax.net.ssl.{SSLContext, TrustManager, X509TrustManager}
 
-final class RestClientAuditSinkService private(client: RestClient, inFlightRequestSemaphore: Semaphore)
-  extends IndexBasedAuditSinkService
+final class RestClientAuditSinkService private (client: RestClient, inFlightRequestSemaphore: Semaphore)
+    extends IndexBasedAuditSinkService
     with DataStreamBasedAuditSinkService
     with RequestIdAwareLogging {
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
-                     (implicit requestId: RequestId): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+      implicit requestId: RequestId
+  ): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord)
   }
 
-  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)
-                     (implicit requestId: RequestId): Unit = {
+  override def submit(dataStreamName: DataStreamName.Full, documentId: String, jsonRecord: String)(
+      implicit requestId: RequestId
+  ): Unit = {
     submitDocument(dataStreamName.value.value, documentId, jsonRecord)
   }
 
@@ -53,7 +55,9 @@ final class RestClientAuditSinkService private(client: RestClient, inFlightReque
     client.close()
   }
 
-  private def submitDocument(indexName: String, documentId: String, jsonRecord: String)(implicit requestId: RequestId): Unit = {
+  private def submitDocument(indexName: String, documentId: String, jsonRecord: String)(
+      implicit requestId: RequestId
+  ): Unit = {
     if (inFlightRequestSemaphore.tryAcquire()) {
       client
         .performRequestAsync(
@@ -72,8 +76,9 @@ final class RestClientAuditSinkService private(client: RestClient, inFlightReque
     request
   }
 
-  private def createResponseListener(indexName: String,
-                                     documentId: String)(implicit requestId: RequestId) =
+  private def createResponseListener(indexName: String, documentId: String)(
+      implicit requestId: RequestId
+  ) =
     new ResponseListener() {
       override def onSuccess(response: Response): Unit = {
         try {
@@ -81,7 +86,9 @@ final class RestClientAuditSinkService private(client: RestClient, inFlightReque
             case 2 => // 2xx
               logger.debug(s"Audit event handled by node ${response.getHost.getHostName}:${response.getHost.getPort}")
             case _ =>
-              logger.error(s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}")
+              logger.error(
+                s"Cannot submit audit event [index: $indexName, doc: $documentId] - response code: ${response.getStatusLine.getStatusCode}"
+              )
           }
         } finally {
           inFlightRequestSemaphore.release()
@@ -97,7 +104,10 @@ final class RestClientAuditSinkService private(client: RestClient, inFlightReque
       }
     }
 
-  override val dataStreamCreator: AuditDataStreamCreator = new AuditDataStreamCreator(NonEmptyList.one(client).map(new RestClientDataStreamService(_)))
+  override val dataStreamCreator: AuditDataStreamCreator = new AuditDataStreamCreator(
+    NonEmptyList.one(client).map(new RestClientDataStreamService(_))
+  )
+
 }
 
 object RestClientAuditSinkService extends RequestIdAwareLogging {
@@ -118,18 +128,16 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
     }
 
     val credentials =
-      remoteCluster
-        .credentials
+      remoteCluster.credentials
         .map(c => new UsernamePasswordCredentials(c.username.value, c.password.value))
 
     RestClient
       .builder(hosts.toSeq: _*)
-      .setHttpClientConfigCallback(
-        (httpClientBuilder: HttpAsyncClientBuilder) => {
-          val configurations = configureRequestConfig(remoteCluster) andThen configureCredentials(credentials) andThen configureSsl()
-          configurations apply httpClientBuilder
-        }
-      )
+      .setHttpClientConfigCallback((httpClientBuilder: HttpAsyncClientBuilder) => {
+        val configurations =
+          configureRequestConfig(remoteCluster) andThen configureCredentials(credentials) andThen configureSsl()
+        configurations apply httpClientBuilder
+      })
       .setFailureListener(
         new FailureListener {
           override def onFailure(node: Node): Unit = {
@@ -142,10 +150,13 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
       .build()
   }
 
-  private def configureRequestConfig(cluster: AuditCluster.RemoteAuditCluster): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {
+  private def configureRequestConfig(
+      cluster: AuditCluster.RemoteAuditCluster
+  ): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {
     httpClientBuilder
       .setDefaultRequestConfig(
-        RequestConfig.custom()
+        RequestConfig
+          .custom()
           .setConnectTimeout(cluster.connectionTimeout.toMillis.toInt)
           .setConnectionRequestTimeout(cluster.connectionRequestTimeout.toMillis.toInt)
           .setSocketTimeout(cluster.requestTimeout.toMillis.toInt)
@@ -153,33 +164,36 @@ object RestClientAuditSinkService extends RequestIdAwareLogging {
       )
   }
 
-  private def configureCredentials(credentials: Option[Credentials]): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {
-    credentials match {
-      case Some(c) =>
-        httpClientBuilder
-          .disableAuthCaching()
-          .setDefaultCredentialsProvider {
-            val credentialsProvider = new BasicCredentialsProvider
-            credentialsProvider.setCredentials(AuthScope.ANY, c)
-            credentialsProvider
-          }
-      case None =>
-        httpClientBuilder
+  private def configureCredentials(credentials: Option[Credentials]): HttpAsyncClientBuilder => HttpAsyncClientBuilder =
+    (httpClientBuilder: HttpAsyncClientBuilder) => {
+      credentials match {
+        case Some(c) =>
+          httpClientBuilder
+            .disableAuthCaching()
+            .setDefaultCredentialsProvider {
+              val credentialsProvider = new BasicCredentialsProvider
+              credentialsProvider.setCredentials(AuthScope.ANY, c)
+              credentialsProvider
+            }
+        case None =>
+          httpClientBuilder
+      }
     }
-  }
 
-  private def configureSsl(): HttpAsyncClientBuilder => HttpAsyncClientBuilder = (httpClientBuilder: HttpAsyncClientBuilder) => {
-    val trustAllCerts = createTrustAllManager()
-    val sslContext = SSLContext.getInstance("TLSv1.2")
-    sslContext.init(null, Array(trustAllCerts), null)
-    httpClientBuilder
-      .setSSLContext(sslContext)
-      .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-  }
+  private def configureSsl(): HttpAsyncClientBuilder => HttpAsyncClientBuilder =
+    (httpClientBuilder: HttpAsyncClientBuilder) => {
+      val trustAllCerts = createTrustAllManager()
+      val sslContext = SSLContext.getInstance("TLSv1.2")
+      sslContext.init(null, Array(trustAllCerts), null)
+      httpClientBuilder
+        .setSSLContext(sslContext)
+        .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+    }
 
   private def createTrustAllManager(): TrustManager = new X509TrustManager() {
     override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
     override def getAcceptedIssuers: Array[X509Certificate] = null
   }
+
 }

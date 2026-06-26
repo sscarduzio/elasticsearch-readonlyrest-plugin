@@ -24,16 +24,19 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRAuthMockAction(transportService: TransportService,
-                                actionFilters: ActionFilters,
-                                @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
-    RRAuthMockActionType.name, transportService, actionFilters, () => new RRAuthMockRequest
-  ) {
+class TransportRRAuthMockAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAuthMockRequest, RRAuthMockResponse](
+      RRAuthMockActionType.name,
+      transportService,
+      actionFilters,
+      () => new RRAuthMockRequest
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters) =
+  def this(transportService: TransportService, actionFilters: ActionFilters) =
     this(transportService, actionFilters, ())
 
   private val handler = new RRAuthMockActionHandler()
@@ -41,4 +44,5 @@ class TransportRRAuthMockAction(transportService: TransportService,
   override def doExecute(task: Task, request: RRAuthMockRequest, listener: ActionListener[RRAuthMockResponse]): Unit = {
     handler.handle(request, listener)
   }
+
 }

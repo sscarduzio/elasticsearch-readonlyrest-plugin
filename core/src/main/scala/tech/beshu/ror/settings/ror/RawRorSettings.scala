@@ -20,6 +20,7 @@ import cats.Eq
 import io.circe.Json
 
 final case class RawRorSettings(settingsJson: Json, rawYaml: String)
+
 object RawRorSettings {
   implicit val eq: Eq[RawRorSettings] = Eq.fromUniversalEquals
 }

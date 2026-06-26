@@ -24,7 +24,11 @@ import tech.beshu.ror.accesscontrol.blocks.mocks.AuthServicesMocks
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalAuthenticationServiceMock.ExternalAuthenticationUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.ExternalGroupsProviderServiceMock.ExternalGroupsProviderServiceUserMock
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.LdapServiceMock.LdapUserMock
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{
+  ExternalAuthenticationServiceMock,
+  ExternalGroupsProviderServiceMock,
+  LdapServiceMock
+}
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{Group, GroupName, RorSettingsIndex, User}
 import tech.beshu.ror.es.services.IndexDocumentManager
@@ -41,28 +45,31 @@ import java.time.{Instant, ZoneOffset}
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-class TestSettingsIndexSource private(indexDocumentManager: IndexDocumentManager,
-                                      settingsIndex: RorSettingsIndex)
-                                     (implicit codec: Codec[TestRorSettings])
-  extends IndexSettingsSource[TestRorSettings](indexDocumentManager, settingsIndex.index, documentId = Const.id)
+class TestSettingsIndexSource private (indexDocumentManager: IndexDocumentManager, settingsIndex: RorSettingsIndex)(
+    implicit codec: Codec[TestRorSettings]
+) extends IndexSettingsSource[TestRorSettings](indexDocumentManager, settingsIndex.index, documentId = Const.id)
 
 object TestSettingsIndexSource {
 
-  def create(indexDocumentManager: IndexDocumentManager,
-             settingsIndex: RorSettingsIndex,
-             settingsYamlParser: RawRorSettingsYamlParser): TestSettingsIndexSource = {
+  def create(
+      indexDocumentManager: IndexDocumentManager,
+      settingsIndex: RorSettingsIndex,
+      settingsYamlParser: RawRorSettingsYamlParser
+  ): TestSettingsIndexSource = {
     implicit val codec: Codec[TestRorSettings] = createTestRorSettingsCodec(settingsYamlParser)
     new TestSettingsIndexSource(indexDocumentManager, settingsIndex)
   }
 
   private object Const {
     val id = "2"
+
     object properties {
       val settings = "settings"
       val expirationTtl = "expiration_ttl_millis"
       val expirationTime = "expiration_timestamp"
       val mocks = "auth_services_mocks"
     }
+
   }
 
   private def createTestRorSettingsCodec(yamlParser: RawRorSettingsYamlParser): Codec[TestRorSettings] =
@@ -70,17 +77,22 @@ object TestSettingsIndexSource {
 
   import Const.*
 
-  private def encoder(implicit yamlParser: RawRorSettingsYamlParser): Encoder[TestRorSettings] =
-    Encoder.forProduct4(properties.settings, properties.mocks, properties.expirationTtl, properties.expirationTime){
-      testRorSettings => (
-        testRorSettings.rawSettings,
-        testRorSettings.mocks,
-        testRorSettings.expiration.ttl,
-        testRorSettings.expiration.validTo
-      )
+  private def encoder(
+      implicit yamlParser: RawRorSettingsYamlParser
+  ): Encoder[TestRorSettings] =
+    Encoder.forProduct4(properties.settings, properties.mocks, properties.expirationTtl, properties.expirationTime) {
+      testRorSettings =>
+        (
+          testRorSettings.rawSettings,
+          testRorSettings.mocks,
+          testRorSettings.expiration.ttl,
+          testRorSettings.expiration.validTo
+        )
     }
 
-  private def decoder(implicit yamlParser: RawRorSettingsYamlParser): Decoder[TestRorSettings] = Decoder.instance { c =>
+  private def decoder(
+      implicit yamlParser: RawRorSettingsYamlParser
+  ): Decoder[TestRorSettings] = Decoder.instance { c =>
     for {
       settings <- c.downField(properties.settings).as[RawRorSettings]
       mocks <- c.downField(properties.mocks).as[AuthServicesMocks]
@@ -89,7 +101,9 @@ object TestSettingsIndexSource {
     } yield TestRorSettings(settings, mocks, Expiration(expirationTtl, expirationTime))
   }
 
-  private implicit def settingsCodec(implicit yamlParser: RawRorSettingsYamlParser): Codec[RawRorSettings] =
+  private implicit def settingsCodec(
+      implicit yamlParser: RawRorSettingsYamlParser
+  ): Codec[RawRorSettings] =
     new RawRorSettingsCodec(yamlParser)
 
   private implicit val mocksCodec: Codec[AuthServicesMocks] = {
@@ -113,8 +127,8 @@ object TestSettingsIndexSource {
     implicit val ldapServiceMock: Codec[LdapServiceMock] = {
       implicit val userMock: Codec[LdapUserMock] = {
         // "groups" left for backward compatibility
-        val encoder: Encoder[LdapUserMock] = Encoder.forProduct3("id", "groups", "userGroups")(
-          userMock => (userMock.id, userMock.groups.map(_.id), userMock.groups)
+        val encoder: Encoder[LdapUserMock] = Encoder.forProduct3("id", "groups", "userGroups")(userMock =>
+          (userMock.id, userMock.groups.map(_.id), userMock.groups)
         )
         val deprecatedFormatDecoder = Decoder.forProduct2("id", "groups")((id: User.Id, groupIds: List[GroupId]) =>
           LdapUserMock(id, groupIds.map(Group.from).toCovariantSet)
@@ -167,13 +181,17 @@ object TestSettingsIndexSource {
       "ldapMocks",
       "externalAuthenticationMocks",
       "externalAuthorizationMocks"
-    )(AuthServicesMocks.apply)(e => (e.ldapMocks, e.externalAuthenticationServiceMocks, e.externalGroupsProviderServiceMocks))
+    )(AuthServicesMocks.apply)(e =>
+      (e.ldapMocks, e.externalAuthenticationServiceMocks, e.externalGroupsProviderServiceMocks)
+    )
   }
 
   private implicit lazy val expirationTtlDecoder: Codec[PositiveFiniteDuration] = {
     val decoder = Decoder.decodeString.emap { str =>
       for {
-        duration <- Try(Duration(str.toLong, "ms")).toEither.left.map(_ => s"Cannot create decode string '$str' to duration")
+        duration <- Try(Duration(str.toLong, "ms")).toEither.left.map(_ =>
+          s"Cannot create decode string '$str' to duration"
+        )
         positiveFiniteDuration <- duration.toRefinedPositive
       } yield positiveFiniteDuration
     }
@@ -186,7 +204,8 @@ object TestSettingsIndexSource {
       Try(DateTimeFormatter.ISO_DATE_TIME.parse(str))
         .map(Instant.from)
         .toEither
-        .left.map(_ => s"Cannot decode string 'str' to date")
+        .left
+        .map(_ => s"Cannot decode string 'str' to date")
     }
     val encoder: Encoder[Instant] = Encoder.encodeString.contramap(_.atOffset(ZoneOffset.UTC).toString)
     Codec.from(decoder, encoder)

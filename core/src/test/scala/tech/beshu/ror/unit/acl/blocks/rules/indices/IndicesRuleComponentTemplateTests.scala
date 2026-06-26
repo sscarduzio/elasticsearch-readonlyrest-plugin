@@ -19,7 +19,11 @@ package tech.beshu.ror.unit.acl.blocks.rules.indices
 import cats.data.{NonEmptyList, NonEmptySet}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingComponentTemplate, DeletingComponentTemplates, GettingComponentTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{
+  AddingComponentTemplate,
+  DeletingComponentTemplates,
+  GettingComponentTemplates
+}
 import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockRequestContext
@@ -75,19 +79,22 @@ private[indices] trait IndicesRuleComponentTemplateTests {
               requestContext = MockRequestContext
                 .template(
                   operation = GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
-                  templates = existingTemplate1, existingTemplate2, existingTemplate3
+                  templates = existingTemplate1,
+                  existingTemplate2,
+                  existingTemplate3
                 ),
-              templateOperationAfterProcessing =
-                GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+              templateOperationAfterProcessing = GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
               allAllowedIndices = Set(clusterIndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1, existingTemplate2)) should be(Set(
-                  ComponentTemplate(
-                    name = TemplateName("t1"),
-                    aliases = Set(clusterIndexName("test1_alias"))
-                  ),
-                  existingTemplate2
-                ))
+                blockContext.responseTemplateTransformation(Set(existingTemplate1, existingTemplate2)) should be(
+                  Set(
+                    ComponentTemplate(
+                      name = TemplateName("t1"),
+                      aliases = Set(clusterIndexName("test1_alias"))
+                    ),
+                    existingTemplate2
+                  )
+                )
             )
           }
           "all aliases are forbidden" in {
@@ -102,12 +109,14 @@ private[indices] trait IndicesRuleComponentTemplateTests {
               templateOperationAfterProcessing = gettingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("index1")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be(Set(
-                  ComponentTemplate(
-                    name = TemplateName("t1"),
-                    aliases = Set.empty
+                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be(
+                  Set(
+                    ComponentTemplate(
+                      name = TemplateName("t1"),
+                      aliases = Set.empty
+                    )
                   )
-                ))
+                )
             )
           }
         }
@@ -237,37 +246,45 @@ private[indices] trait IndicesRuleComponentTemplateTests {
           "rule allows access to index name which is not used in template's aliases list" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
-              requestContext = MockRequestContext.template(AddingComponentTemplate(
-                name = TemplateName("t1"),
-                aliases = Set(requestedIndex("test2"))
-              ))
+              requestContext = MockRequestContext.template(
+                AddingComponentTemplate(
+                  name = TemplateName("t1"),
+                  aliases = Set(requestedIndex("test2"))
+                )
+              )
             )
           }
           "rule allows access to index name which matches the pattern in template's aliases list" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
-              requestContext = MockRequestContext.template(AddingComponentTemplate(
-                name = TemplateName("t1"),
-                aliases = Set(requestedIndex("test*"))
-              ))
+              requestContext = MockRequestContext.template(
+                AddingComponentTemplate(
+                  name = TemplateName("t1"),
+                  aliases = Set(requestedIndex("test*"))
+                )
+              )
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in template's aliases list" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1*")),
-              requestContext = MockRequestContext.template(AddingComponentTemplate(
-                name = TemplateName("t1"),
-                aliases = Set(requestedIndex("test*"))
-              ))
+              requestContext = MockRequestContext.template(
+                AddingComponentTemplate(
+                  name = TemplateName("t1"),
+                  aliases = Set(requestedIndex("test*"))
+                )
+              )
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in template's aliases list" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext.template(AddingComponentTemplate(
-                name = TemplateName("t1"),
-                aliases = Set(requestedIndex("test1*"), requestedIndex("index1*"))
-              ))
+              requestContext = MockRequestContext.template(
+                AddingComponentTemplate(
+                  name = TemplateName("t1"),
+                  aliases = Set(requestedIndex("test1*"), requestedIndex("index1*"))
+                )
+              )
             )
           }
         }
@@ -378,7 +395,8 @@ private[indices] trait IndicesRuleComponentTemplateTests {
               configured = NonEmptySet.of(indexNameVar("*")),
               requestContext = MockRequestContext.template(
                 operation = deletingTemplateOperation,
-                templates = existingTemplate1, existingTemplate2
+                templates = existingTemplate1,
+                existingTemplate2
               ),
               templateOperationAfterProcessing = deletingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("*"))
@@ -398,7 +416,8 @@ private[indices] trait IndicesRuleComponentTemplateTests {
               configured = NonEmptySet.of(indexNameVar("index1"), indexNameVar("index2")),
               requestContext = MockRequestContext.template(
                 operation = deletingTemplateOperation,
-                templates = existingTemplate1, existingTemplate2
+                templates = existingTemplate1,
+                existingTemplate2
               ),
               templateOperationAfterProcessing = deletingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("index1"), clusterIndexName("index2"))
@@ -418,7 +437,8 @@ private[indices] trait IndicesRuleComponentTemplateTests {
               configured = NonEmptySet.of(indexNameVar("a*")),
               requestContext = MockRequestContext.template(
                 operation = deletingTemplateOperation,
-                templates = existingTemplate1, existingTemplate2
+                templates = existingTemplate1,
+                existingTemplate2
               ),
               templateOperationAfterProcessing = deletingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("a*"))
@@ -441,7 +461,8 @@ private[indices] trait IndicesRuleComponentTemplateTests {
               configured = NonEmptySet.of(indexNameVar("index1")),
               requestContext = MockRequestContext.template(
                 operation = DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
-                templates = existingTemplate1, existingTemplate2
+                templates = existingTemplate1,
+                existingTemplate2
               )
             )
           }
@@ -458,7 +479,8 @@ private[indices] trait IndicesRuleComponentTemplateTests {
               configured = NonEmptySet.of(indexNameVar("index1*")),
               requestContext = MockRequestContext.template(
                 operation = DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
-                templates = existingTemplate1, existingTemplate2
+                templates = existingTemplate1,
+                existingTemplate2
               )
             )
           }
@@ -485,4 +507,5 @@ private[indices] trait IndicesRuleComponentTemplateTests {
       }
     }
   }
+
 }

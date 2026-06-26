@@ -19,7 +19,10 @@ package tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser
 import cats.data.NonEmptyList
 import cats.implicits.*
 import monix.execution.atomic.Atomic
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.InfixParselet.{CallParselet, ChainParselet}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.InfixParselet.{
+  CallParselet,
+  ChainParselet
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.PrefixParselet.NameParselet
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parselet.{InfixParselet, PrefixParselet}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser.*
@@ -28,7 +31,8 @@ private[transformation] object Parser {
 
   def parse(str: String): Either[ParsingError, Expression] = {
     val tokens = Tokenizer.tokenize(str)
-    NonEmptyList.fromList(tokens)
+    NonEmptyList
+      .fromList(tokens)
       .toRight(ParsingError("Expression cannot be empty"))
       .flatMap { tokens =>
         new Parser(tokens).parse()
@@ -36,6 +40,7 @@ private[transformation] object Parser {
   }
 
   sealed trait Expression
+
   object Expression {
     final case class Name(value: String) extends Expression
     final case class Call(name: Expression, args: List[Expression]) extends Expression
@@ -45,7 +50,7 @@ private[transformation] object Parser {
   final case class ParsingError(message: String)
 }
 
-private class Parser private(tokens: NonEmptyList[Token]) {
+private class Parser private (tokens: NonEmptyList[Token]) {
   private val leftTokens: Atomic[List[Token]] = Atomic(List.empty[Token])
 
   // this method is not thread-safe
@@ -85,17 +90,17 @@ private class Parser private(tokens: NonEmptyList[Token]) {
 
   private def prefixParseletFor(tokenType: Token): Option[PrefixParselet] = {
     tokenType match {
-      case _: Token.Text => Some(NameParselet)
+      case _: Token.Text       => Some(NameParselet)
       case _: Token.Punctuator => None
     }
   }
 
   private def infixParseletFor(tokenType: Token): Option[InfixParselet] = {
     tokenType match {
-      case _: Token.Text => None
+      case _: Token.Text                    => None
       case Token.Punctuator.LeftParenthesis => Some(CallParselet)
-      case Token.Punctuator.Dot => Some(ChainParselet)
-      case _: Token.Punctuator => None
+      case Token.Punctuator.Dot             => Some(ChainParselet)
+      case _: Token.Punctuator              => None
     }
   }
 
@@ -124,4 +129,5 @@ private class Parser private(tokens: NonEmptyList[Token]) {
       Right(expression)
     }
   }
+
 }

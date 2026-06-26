@@ -27,36 +27,45 @@ class XpackApiWithRorWithDisabledXpackSecuritySuite extends BaseXpackApiSuite {
   override implicit val rorSettingsFileName: String = "/xpack_api/readonlyrest_with_ror_ssl.yml"
 
   override protected def rorClusterSecurityType: SecurityType =
-    SecurityType.RorSecurity(Attributes.default.copy(
-      rorSettingsFileName = rorSettingsFileName,
-      restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.EsFile)),
-      internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.EsFile))
-    ))
+    SecurityType.RorSecurity(
+      Attributes.default.copy(
+        rorSettingsFileName = rorSettingsFileName,
+        restSsl = Enabled.Yes(RestSsl.Ror(SourceFile.EsFile)),
+        internodeSsl = Enabled.Yes(InternodeSsl.Ror(SourceFile.EsFile))
+      )
+    )
 
   "Search API" when {
     "request with remote indices pattern and local indices pattern is called" should {
-      "return illegal_argument_exception when there are no remote clusters configured" excludeES(allEs6x, allEs7x) in {
+      "return illegal_argument_exception when there are no remote clusters configured" excludeES (allEs6x, allEs7x) in {
         val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
         val result = adminIndexManager.getIndex("*", "*:*")
         result should have statusCode 400
         result.responseJson("error")("type").str should be("illegal_argument_exception")
-        result.responseJson("error")("reason").str should include("Cross-cluster calls are not supported in this context but remote indices were requested: [*:*]")
+        result.responseJson("error")("reason").str should include(
+          "Cross-cluster calls are not supported in this context but remote indices were requested: [*:*]"
+        )
       }
-      "return indices successfully (no remote indices) when there are no remote clusters configured" excludeES(allEs8x, allEs9x) in {
+      "return indices successfully (no remote indices) when there are no remote clusters configured" excludeES (
+        allEs8x,
+        allEs9x
+      ) in {
         val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
         val result = adminIndexManager.getIndex("*", "*:*")
         result should have statusCode 200
       }
     }
     "request with only remote indices pattern is called" should {
-      "return illegal_argument_exception when there are no remote clusters configured" excludeES(allEs6x, allEs7x) in {
+      "return illegal_argument_exception when there are no remote clusters configured" excludeES (allEs6x, allEs7x) in {
         val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
         val result = adminIndexManager.getIndex("*:*")
         result should have statusCode 400
         result.responseJson("error")("type").str should be("illegal_argument_exception")
-        result.responseJson("error")("reason").str should include("Cross-cluster calls are not supported in this context but remote indices were requested: [*:*]")
+        result.responseJson("error")("reason").str should include(
+          "Cross-cluster calls are not supported in this context but remote indices were requested: [*:*]"
+        )
       }
-      "return no indices when there are no remote clusters configured" excludeES(allEs8x, allEs9x) in {
+      "return no indices when there are no remote clusters configured" excludeES (allEs8x, allEs9x) in {
         val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
         val result = adminIndexManager.getIndex("*:*")
         result should have statusCode 200
@@ -64,4 +73,5 @@ class XpackApiWithRorWithDisabledXpackSecuritySuite extends BaseXpackApiSuite {
       }
     }
   }
+
 }

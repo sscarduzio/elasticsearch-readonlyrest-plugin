@@ -21,20 +21,22 @@ import org.elasticsearch.transport.*
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.es.utils.ThreadContextOps.*
 
-class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String)
-  extends TransportInterceptor {
+class RorTransportInterceptor(threadContext: ThreadContext, nodeName: String) extends TransportInterceptor {
 
   override def interceptSender(sender: TransportInterceptor.AsyncSender): TransportInterceptor.AsyncSender =
     new TransportInterceptor.AsyncSender {
-      override def sendRequest[T <: TransportResponse](connection: Transport.Connection,
-                                                       action: String,
-                                                       request: TransportRequest,
-                                                       options: TransportRequestOptions,
-                                                       handler: TransportResponseHandler[T]): Unit = {
-        if(Action.isInternal(action) || Action.isMonitorState(action)) {
+      override def sendRequest[T <: TransportResponse](
+          connection: Transport.Connection,
+          action: String,
+          request: TransportRequest,
+          options: TransportRequestOptions,
+          handler: TransportResponseHandler[T]
+      ): Unit = {
+        if (Action.isInternal(action) || Action.isMonitorState(action)) {
           threadContext.addSystemAuthenticationHeader(nodeName)
         }
         sender.sendRequest(connection, action, request, options, handler)
       }
     }
+
 }
