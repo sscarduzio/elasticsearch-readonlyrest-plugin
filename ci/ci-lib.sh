@@ -120,22 +120,41 @@ function tag {
   return 0
 }
 
+# Upload a file to an S3-compatible store using the SigV4 curl uploader.
+#
+# The store is selected by the 3rd arg (default ARTIFACTS) and resolves the matching
+# ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
+# (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
+# own endpoint, credentials, bucket, region and path-prefix.
 function upload_using_aws_s3_uploader {
   local LOCAL_FILE="$1"
-  local S3_PATH BUCKET PATH_PREFIX
+  local S3_PATH STORE BUCKET PATH_PREFIX
   S3_PATH=$(echo "$2" | sed 's:/*$::')
+  STORE="${3:-ARTIFACTS}"
 
   if [[ ! -f "$LOCAL_FILE" ]]; then
     echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
     exit 1
   fi
 
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
-  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
+  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
+  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
+  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
+  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
+  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
+  local REGION_VAR="ROR_${STORE}_STORE_REGION"
+  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
+
+  local ENDPOINT="${!ENDPOINT_VAR-}"
+  local AK="${!AK_VAR-}"
+  local SK="${!SK_VAR-}"
+  local REGION="${!REGION_VAR-}"
+  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  PATH_PREFIX="${!PREFIX_VAR-}"
   [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
 
-  S3_ENDPOINT_URL="${ROR_ARTIFACTS_STORE_ENDPOINT_URL:-}" \
+  S3_ENDPOINT_URL="$ENDPOINT" \
     "$CI_DIR"/s3-uploader.sh \
-      "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" \
-      "$BUCKET@${ROR_ARTIFACTS_STORE_REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
+      "$AK" "$SK" \
+      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
 }
