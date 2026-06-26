@@ -2,19 +2,19 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 
-# On cancel/timeout (SIGTERM) kill the gradle process group + reap this leg's containers, else they
-# orphan (scoped by ror.leg=$ROR_LEG_ID so a sibling leg on the shared daemon is untouched).
+# On cancel/timeout (SIGTERM) kill the gradle process group + reap this CI job's containers, else they
+# orphan (scoped by ror.ci-job=$ROR_CI_JOB_ID so a sibling CI job on the shared daemon is untouched).
 
 # PIDs of gradle group leaders (1 per shard); an ARRAY not a string (find-replace pruning could
 # corrupt `123` vs `1234`). Never pruned — kill on a dead PID is a no-op.
 GRADLE_PIDS=()
 terminate() {
-  echo ">>> Termination signal received — killing gradle tree(s) + reaping this leg's containers..."
+  echo ">>> Termination signal received — killing gradle tree(s) + reaping this CI job's containers..."
   # Negative PID = signal the whole process group (gradle + its worker JVMs).
   for pid in "${GRADLE_PIDS[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
   sleep 5
   for pid in "${GRADLE_PIDS[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
-  reap_leg_containers
+  reap_ci_job_containers
   exit 1
 }
 trap terminate SIGTERM SIGINT
@@ -101,7 +101,7 @@ run_integration_tests() {
   fi
 
   ES_MODULE=$1
-  local shardCount="${IT_SHARD_COUNT:-1}"
+  local shardCount="${IT_PARALLELISM:-1}"
   local esArgs=("-PesModule=$ES_MODULE")
   [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 

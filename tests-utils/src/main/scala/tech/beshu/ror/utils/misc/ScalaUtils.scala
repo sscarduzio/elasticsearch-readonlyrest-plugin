@@ -115,34 +115,22 @@ object ScalaUtils extends LazyLogging {
   }
 
   /**
-   * Run `action` on a daemon thread; abandon (not kill) it if it doesn't finish within `timeout`.
-   * Bounds blocking ES teardown so a WEDGED ES can't hang the worker JVM for hours; the leaked daemon
-   * thread is OK because the leg JVM is short-lived and dies at end-of-leg.
+   * Run a blocking `action`, abandoning it if it doesn't finish within `timeout`. Bounds blocking ES
+   * teardown so a WEDGED ES can't hang the worker JVM for hours. The blocking call runs on the io
+   * scheduler (unbounded, blocking-friendly); on timeout the Task is abandoned and a TimeoutException
+   * is thrown. Fine for a short-lived per-leg JVM that dies at end-of-leg.
    */
   def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
-    val result = new java.util.concurrent.atomic.AtomicReference[Either[Throwable, A]]()
-    val worker = new Thread(
-      () => {
-        // Catch Throwable, not just NonFatal: a fatal error must still be RECORDED, else `result` stays
-        // null and the match below throws a misleading MatchError instead of the real cause.
-        result.set(try Right(action)
-        catch { case e: Throwable => Left(e) })
-      },
-      s"timeout-guard-$label"
-    )
-    worker.setDaemon(true)
-    worker.start()
-    worker.join(timeout.toMillis)
-    if (worker.isAlive) {
-      worker.interrupt()
-      logger.error(s"'$label' did not complete within $timeout — abandoning it (likely a wedged ES/container call).")
-      throw new java.util.concurrent.TimeoutException(s"'$label' timed out after $timeout")
-    }
-    result.get() match {
-      case null     => throw new IllegalStateException(s"'$label' worker exited without setting a result")
-      case Right(a) => a
-      case Left(e)  => throw e
-    }
+    import monix.execution.Scheduler
+    Task
+      .delay(action)
+      .timeoutWith(
+        timeout,
+        new java.util.concurrent.TimeoutException(
+          s"'$label' did not complete within $timeout — abandoning it (likely a wedged ES/container call)."
+        )
+      )
+      .runSyncUnsafe()(Scheduler.io(), implicitly)
   }
 
   def retryBackoff[A](source: Task[A], maxRetries: Int, firstDelay: FiniteDuration, backOffScaler: Int): Task[A] = {

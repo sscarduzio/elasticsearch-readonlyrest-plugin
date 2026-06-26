@@ -37,8 +37,8 @@ while read -r id created; do
   [ "$created_epoch" -eq 0 ] && continue
   age_min=$(( (now_epoch - created_epoch) / 60 ))
   if [ "$age_min" -ge "$REAP_MIN_AGE_MIN" ]; then
-    label=$(docker inspect -f '{{ index .Config.Labels "ror.leg" }}' "$id" 2>/dev/null || echo "?")
-    echo ">>> reaping orphan container $id (age ${age_min}m >= ${REAP_MIN_AGE_MIN}m, ror.leg=${label:-none})"
+    label=$(docker inspect -f '{{ index .Config.Labels "ror.ci-job" }}' "$id" 2>/dev/null || echo "?")
+    echo ">>> reaping orphan container $id (age ${age_min}m >= ${REAP_MIN_AGE_MIN}m, ror.ci-job=${label:-none})"
     docker rm -f "$id" >/dev/null 2>&1 && reaped=$((reaped+1)) || true
   fi
 done < <(docker ps -aq --filter "label=org.testcontainers=true" \

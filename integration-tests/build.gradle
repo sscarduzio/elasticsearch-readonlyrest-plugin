@@ -58,8 +58,17 @@ sourceSets {
 
 test {
     systemProperty "project.dir", rootProject.projectDir
-    enabled = project.hasProperty('esModule')
-    if (enabled) {
+    def hasModule = project.hasProperty('esModule')
+    // esModule is REQUIRED to run the IT suite. Fail loudly when the task is actually executed without
+    // it, rather than silently skipping (a green-looking no-op that hides "I forgot -PesModule").
+    doFirst {
+        if (!hasModule) {
+            throw new GradleException(
+                "integration-tests:test requires -PesModule=es<version>x (e.g. -PesModule=es818x). " +
+                "Refusing to run with no ES module selected.")
+        }
+    }
+    if (hasModule) {
         // Build the singleton ES image once up-front so parallel workers never build concurrently.
         // Redundant K+1 boots are cache hits; kept so a bare local `:test` (no run-pipeline) still works.
         dependsOn 'prebuildEsImage'

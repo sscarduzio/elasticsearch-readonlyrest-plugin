@@ -95,10 +95,10 @@ abstract class EsContainer(
         container.withCreateContainerCmdModifier { cmd =>
           cmd.getHostConfig.withCgroupnsMode("host")
         }
-        // Stamp this leg's id so cleanup reaps ONLY this leg's containers, never a sibling's on the
+        // Stamp this CI job's id so cleanup reaps ONLY this CI job's containers, never a sibling's on the
         // shared self-hosted Docker daemon. Absent off-CI -> no label, no-op.
-        Option(System.getenv("ROR_LEG_ID")).filter(_.nonEmpty).foreach { legId =>
-          container.withLabel("ror.leg", legId)
+        Option(System.getenv("ROR_CI_JOB_ID")).filter(_.nonEmpty).foreach { legId =>
+          container.withLabel("ror.ci-job", legId)
         }
         EsContainerImplementation.Linux(
           esImage = esImage,

@@ -1,21 +1,21 @@
 steps:
-  # On the self-hosted ryzen pool the Docker daemon is SHARED, so we only touch THIS leg's resources
-  # (scoped by the ROR_LEG_ID label); dangling-image/builder prune is daemon-wide but safe.
+  # On the self-hosted ryzen pool the Docker daemon is SHARED, so we only touch THIS CI job's resources
+  # (scoped by the ROR_CI_JOB_ID label); dangling-image/builder prune is daemon-wide but safe.
   - bash: |
-      echo ">>> reaping any leftover containers for THIS leg id ($ROR_LEG_ID) before start"
-      # Inline (not ci-lib.sh's reap_leg_containers) — runs BEFORE `checkout: self`, so ci-lib.sh
+      echo ">>> reaping any leftover containers for THIS CI job id ($ROR_CI_JOB_ID) before start"
+      # Inline (not ci-lib.sh's reap_ci_job_containers) — runs BEFORE `checkout: self`, so ci-lib.sh
       # isn't on disk yet. Same label-scoped logic; keep in sync with ci-lib.
-      ids=$(docker ps -aq --filter "label=ror.leg=$ROR_LEG_ID" 2>/dev/null)
+      ids=$(docker ps -aq --filter "label=ror.ci-job=$ROR_CI_JOB_ID" 2>/dev/null)
       [ -n "$ids" ] && docker rm -f $ids || echo "none"
       # Leaked ror-it-es:<hash> images are TAGGED (dangling-prune misses them) and fill disk. Prune
-      # images unused + older than 180m (> longest leg, so a sibling's in-flight image is never removed).
+      # images unused + older than 180m (> longest CI job, so a sibling job's in-flight image is never removed).
       docker image prune -af --filter "until=180m" >/dev/null 2>&1 || true
       docker image prune -f >/dev/null 2>&1 || true
       docker builder prune -f >/dev/null 2>&1 || true
       df -h /
     displayName: 'Pre-clean this leg''s Docker leftovers (shared-daemon safe)'
     env:
-      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
+      ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)
       AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
 
   # MUST run on the host (target: host), not in the container — else the `rm` runs in the container's
@@ -57,10 +57,10 @@ steps:
       ci/run-pipeline.sh
     env:
       GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
+      ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)
       # Intra-agent parallelism: K sharded test JVMs (each own ES), default 1. Must be declared here —
       # Azure scrubs step env to declared vars. Gate >1 only on agents with RAM for K ES instances.
-      IT_SHARD_COUNT: $(IT_SHARD_COUNT)
+      IT_PARALLELISM: $(IT_PARALLELISM)
       VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
       VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
       VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
@@ -77,12 +77,12 @@ steps:
       testResultsFiles: "**/TEST*xml"
       mergeTestResults: true
 
-  # Reap THIS leg's containers however the job ended (always() runs in the cancel grace period);
-  # the Abandoned case is covered by the host timer. Scoped by label -> never touches a sibling leg.
+  # Reap THIS CI job's containers however the job ended (always() runs in the cancel grace period);
+  # the Abandoned case is covered by the host timer. Scoped by label -> never touches a sibling job CI job.
   - bash: |
-      echo ">>> reaping THIS leg's containers ($ROR_LEG_ID) on exit"
-      source ci/ci-lib.sh && reap_leg_containers   # single source of truth (ci-lib.sh)
+      echo ">>> reaping THIS CI job's containers ($ROR_CI_JOB_ID) on exit"
+      source ci/ci-lib.sh && reap_ci_job_containers   # single source of truth (ci-lib.sh)
     displayName: 'Reap this leg''s containers (always)'
     condition: always()
     env:
-      ROR_LEG_ID: $(Build.BuildId)-$(System.JobId)
+      ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)
