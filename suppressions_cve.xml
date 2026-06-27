@@ -23,7 +23,7 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: elasticsearch-rest-client-X.Y.Z.jar - The CVEs affect the org.elasticserarch:elasticsearch package, which is not a dependency of elasticsearch-rest-client
+   file name: elasticsearch-rest-client-X.Y.Z.jar - The CVEs affect the org.elasticsearch:elasticsearch package, which is not a dependency of elasticsearch-rest-client
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.elasticsearch\.client/elasticsearch-rest-client@.*$</packageUrl>
         <cve>CVE-2019-7614</cve>
@@ -62,7 +62,7 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     </suppress>
     <suppress>
         <notes><![CDATA[
-   file name: transport-netty4-client-X.Y.Z.jar - The CVEs affect the org.elasticserarch:elasticsearch package, which is not a dependency of transport-netty4-client
+   file name: transport-netty4-client-X.Y.Z.jar - The CVEs affect the org.elasticsearch:elasticsearch package, which is not a dependency of transport-netty4-client
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.elasticsearch\.plugin/transport-netty4-client@.*$</packageUrl>
         <cve>CVE-2019-7614</cve>
@@ -85,6 +85,7 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2023-46674</cve>
         <cve>CVE-2023-49921</cve>
         <cve>CVE-2024-23444</cve>
+        <cve>CVE-2024-23445</cve>
         <cve>CVE-2024-23450</cve>
         <cve>CVE-2024-23451</cve>
         <cve>CVE-2024-43709</cve>
@@ -114,10 +115,10 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     </suppress>
     <suppress>
         <notes><![CDATA[
-   False positive: CVE-2026-42582 only affects netty-codec-http3, which is NOT a dependency of this project.
+   False positive: CVE-2026-42582 affects only netty-codec-http3 (HTTP/3 QPACK decoder) in Netty 4.2.x.
+   The project uses Netty 4.1.x, which does not include netty-codec-http3 at all — the module does not exist in the 4.1.x line.
    The flagged netty artifacts (netty-buffer, netty-codec, netty-codec-http, netty-codec-http2, netty-common,
-   netty-handler, netty-resolver, netty-transport, netty-transport-native-unix-common) at version 4.1.133.Final
-   are unaffected. Version 4.1.133.Final contains fix in the affected package anyway.
+   netty-handler, netty-resolver, netty-transport, netty-transport-native-unix-common) are unaffected.
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/io\.netty/(netty-buffer|netty-codec|netty-codec-http|netty-codec-http2|netty-common|netty-handler|netty-resolver|netty-transport|netty-transport-native-unix-common)@.*$</packageUrl>
         <cve>CVE-2026-42582</cve>
@@ -125,17 +126,15 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     <suppress>
         <notes><![CDATA[
    file name: log4j-api-2.11.2.jar
-    - CVE-2021-44228, CVE-2021-45046, CVE-2021-44832, CVE-2021-45105 (Log4Shell family) require log4j-core's JNDI lookup
-    - CVE-2020-9488  affects log4j-core's SMTP appender
-    - CVE-2025-68161 affects log4j-core's Socket Appender (TLS hostname verification)
-    - CVE-2026-34480 affects log4j-core's XmlLayout
-    - CVE-2026-34479 affects log4j-1.2-api Log4j1XmlLayout
-   The plugin:
-    - does not bundle log4j-core (it is provided by Elasticsearch at runtime)
-    - uses log4j-1.2-api only for tests, in an already patched version (for CVE-2026-34479)
-   The actual vulnerabilities exists in Elasticsearch's log4j-core, which the plugin cannot fix.
-   Upgrading log4j-api to 2.25.4 without matching log4j-core causes runtime compatibility issues.
-   This must be fixed by Elasticsearch upgrading to log4j-core:2.25.4+.
+    - CVE-2021-44228 (Log4Shell):  requires log4j-core's JNDI lookup; log4j-core is provided by Elasticsearch at runtime — must be fixed by Elasticsearch upgrading to log4j-core:2.25.4+
+    - CVE-2021-45046 (Log4Shell):  requires log4j-core's JNDI lookup; same as above
+    - CVE-2021-44832 (Log4Shell):  requires log4j-core's JNDI lookup; same as above
+    - CVE-2021-45105 (Log4Shell):  requires log4j-core's JNDI lookup; same as above
+    - CVE-2020-9488:  affects log4j-core's SMTP appender; same as above — log4j-core is not bundled by the plugin
+    - CVE-2025-68161: affects log4j-core's Socket Appender (TLS hostname verification); same as above
+    - CVE-2026-34480: affects log4j-core's XmlLayout; same as above
+    - CVE-2026-34479: affects log4j-1.2-api (Log4j 1-to-2 bridge) Log4j1XmlLayout; false positive for log4j-api — log4j-1.2-api is used only in tests in an already patched version
+   Note: upgrading log4j-api to 2.25.4 without matching log4j-core causes runtime compatibility issues.
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-api@2\.11\.2.*$</packageUrl>
         <cve>CVE-2021-44228</cve>
@@ -150,14 +149,8 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     <suppress>
         <notes><![CDATA[
    file name: log4j-slf4j-impl-2.11.2.jar
-    - CVE-2021-44228, CVE-2021-45046, CVE-2021-44832, CVE-2021-45105 (Log4Shell family) require log4j-core's JNDI lookup
-    - CVE-2020-9488  affects log4j-core's SMTP appender
-    - CVE-2025-68161 affects log4j-core's Socket Appender (TLS hostname verification)
-    - CVE-2026-34480 affects log4j-core's XmlLayout
-    - CVE-2026-34479 affects log4j-1.2-api Log4j1XmlLayout
-   The plugin:
-    - excludes log4j-core from this dependency (see core/build.gradle)
-    - does not bundle log4j-core (it is provided by Elasticsearch at runtime)
+    - CVE-2020-9488  affects log4j-core's SMTP appender; log4j-core is excluded from this dependency (see core/build.gradle)
+    - CVE-2026-34479 affects log4j-1.2-api (Log4j 1-to-2 bridge) Log4j1XmlLayout; log4j-slf4j-impl does not use Log4j1XmlLayout — false positive
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-slf4j-impl@2\.11\.2.*$</packageUrl>
         <cve>CVE-2020-9488</cve>
@@ -169,7 +162,7 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
    False positive: CVE-2017-1000034 is for akka:akka, CPE matcher incorrectly matches version 1.2.0
    to akka:akka:1.2.0. scala-parallel-collections is an unrelated Scala standard library module.
    ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.scala-lang\.modules/scala-parallel-collections_3@.*$</packageUrl>
+        <packageUrl regex="true">^pkg:maven/org\.scala-lang\.modules/scala-parallel-collections_3@1\.2\.0$</packageUrl>
         <cve>CVE-2017-1000034</cve>
     </suppress>
 </suppressions>
