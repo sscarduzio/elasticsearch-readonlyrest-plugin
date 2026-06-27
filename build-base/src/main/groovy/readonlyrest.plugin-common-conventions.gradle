@@ -23,7 +23,7 @@ project.ext {
     pluginName = rootProject.properties['pluginName']
     publishedPluginVersion = rootProject.properties['pluginVersion']
     pluginVersion = rootProject.properties['pluginVersion']
-    esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : project.property('latestSupportedEsVersion')
+    esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : project.property('supportedEsVersions').split(',')*.trim().findAll { it }.last()
     s3BucketName = System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
     s3StoreAddress = System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
     s3LibsPathPrefix = (System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs').replaceAll('^/+', '').replaceAll('/+$', '')
@@ -142,22 +142,21 @@ tasks.register('prepareMultiplatformBuilder') {
     }
 }
 
-// Downloads, for each target ES version, the dependency jars whose content depends on the ES version.
+// Downloads, for one target ES version, the dependency jars whose content depends on the ES version.
 // These are the `org.elasticsearch.*` artifacts that distJars keeps (elasticsearch-rest-client, plus
 // transport-netty4-client on es6x/es7x). We don't hardcode them: we discover them from the resolved
 // distJars, so a module bundling a different ES-versioned jar just works. Everything else in the zip is the
-// same across patch versions and gets reused by repackageRorPluginForVersions.
+// same across patch versions and gets reused by repackageRorPluginForVersion.
 //
-// Usage: -PtargetVersions=9.2.0,9.2.1,…  -PesJarsDir=<dir>   ->   <dir>/<version>/<artifact>-<version>.jar
+// Usage: -PtargetVersion=9.2.1  -PesJarsDir=<dir>   ->   <dir>/9.2.1/<artifact>-9.2.1.jar
 tasks.register('downloadEsVersionedDependencyJars') {
     outputs.upToDateWhen { false }
     doLast {
-        def targetVersionsProp = project.findProperty('targetVersions')
+        def target = project.findProperty('targetVersion')
         def esJarsDirProp = project.findProperty('esJarsDir')
-        if (targetVersionsProp == null || esJarsDirProp == null) {
-            throw new GradleException("downloadEsVersionedDependencyJars requires -PtargetVersions=<csv> and -PesJarsDir=<path>")
+        if (target == null || esJarsDirProp == null) {
+            throw new GradleException("downloadEsVersionedDependencyJars requires -PtargetVersion=<version> and -PesJarsDir=<path>")
         }
-        def versions = targetVersionsProp.toString().split(',').collect { it.trim() }.findAll { !it.isEmpty() }
 
         // These jars carry the ES version (e.g. elasticsearch-rest-client-9.3.5). ROR's own modules also
         // sit under `org.elasticsearch.plugin` but carry pluginVersion, so matching on esVersion skips them.
@@ -169,48 +168,46 @@ tasks.register('downloadEsVersionedDependencyJars') {
                 .collect { [group: it.moduleVersion.id.group, name: it.moduleVersion.id.name] }
                 .unique()
 
-        logger.lifecycle("Downloading ES-versioned dependency jars {} for {} version(s) into {}",
-                esVersionedArtifacts.collect { it.name }, versions.size(), esJarsDirProp)
+        logger.lifecycle("Downloading ES-versioned dependency jars {} for ES {} into {}",
+                esVersionedArtifacts.collect { it.name }, target, esJarsDirProp)
 
-        versions.each { v ->
-            def destDir = file("${esJarsDirProp}/${v}")
-            destDir.mkdirs()
-            esVersionedArtifacts.each { art ->
-                def detached = configurations.detachedConfiguration(dependencies.create("${art.group}:${art.name}:${v}"))
-                detached.transitive = false
-                detached.resolve().each { jarFile ->
-                    copy {
-                        from jarFile
-                        into destDir
-                    }
+        def destDir = file("${esJarsDirProp}/${target}")
+        destDir.mkdirs()
+        esVersionedArtifacts.each { art ->
+            def detached = configurations.detachedConfiguration(dependencies.create("${art.group}:${art.name}:${target}"))
+            detached.transitive = false
+            detached.resolve().each { jarFile ->
+                copy {
+                    from jarFile
+                    into destDir
                 }
             }
         }
     }
 }
 
-// Builds the plugin zip for each target ES patch version from the module's already-built BASE zip, WITHOUT
+// Builds the plugin zip for one target ES patch version from the module's already-built BASE zip, WITHOUT
 // recompiling. The bytecode is the same across a module's patch range; only three things differ per version:
 //   * plugin-descriptor.properties -> elasticsearch.version (ES requires it to match the node version)
 //   * ror-build-info.properties    -> es_version (inside the fat ROR jar; only shows up in the boot log)
 //   * the ES-versioned dependency jars from downloadEsVersionedDependencyJars (<esJarsDir>/<target>/)
-// We copy the base zip, patch those three, and re-zip. All versions are produced in ONE JVM, no per-version
-// process startup. Companion to downloadEsVersionedDependencyJars: together they keep zip derivation in Gradle.
+// We copy the base zip, patch those three, and re-zip. Depends on downloadEsVersionedDependencyJars (same
+// -PtargetVersion), so a single invocation fetches the target's jars and then repackages with them.
 //
-// Usage: -PesVersion=<base> -PtargetVersions=9.2.0,9.2.1,…  -PesJarsDir=<dir>  [-PoutputDir=<dir>]
+// Usage: -PesVersion=<base> -PtargetVersion=9.2.1  -PesJarsDir=<dir>  [-PoutputDir=<dir>]
 //   -> <outputDir>/<pluginName>-<pluginVersion>_es<target>.zip (+ .sha1 / .sha512)
 // outputDir defaults to build/distributions, so derived zips land next to the full-build zip and `clean`
 // removes them -- a deliverable is a deliverable regardless of whether it was compiled or repackaged.
-tasks.register('repackageRorPluginForVersions') {
+tasks.register('repackageRorPluginForVersion') {
+    dependsOn 'downloadEsVersionedDependencyJars'
     outputs.upToDateWhen { false }
     doLast {
-        def targetVersionsProp = project.findProperty('targetVersions')
+        def target = project.findProperty('targetVersion')
         def esJarsDirProp = project.findProperty('esJarsDir')
         def outputDirProp = project.findProperty('outputDir')
-        if (targetVersionsProp == null || esJarsDirProp == null) {
-            throw new GradleException("repackageRorPluginForVersions requires -PtargetVersions=<csv> and -PesJarsDir=<path>")
+        if (target == null || esJarsDirProp == null) {
+            throw new GradleException("repackageRorPluginForVersion requires -PtargetVersion=<version> and -PesJarsDir=<path>")
         }
-        def targets = targetVersionsProp.toString().split(',').collect { it.trim() }.findAll { !it.isEmpty() }
 
         def baseEs = project.ext.esVersion
         def baseZip = layout.buildDirectory.file("distributions/${pluginName}-${pluginVersion}_es${baseEs}.zip").get().asFile
@@ -231,128 +228,64 @@ tasks.register('repackageRorPluginForVersions') {
             new File(f.parentFile, f.name + ext).text = hex + '\n'
         }
 
-        targets.each { target ->
-            logger.lifecycle("Repackaging {} base ES {} -> ES {} (ROR {})", project.name, baseEs, target, pluginVersion)
+        logger.lifecycle("Repackaging {} base ES {} -> ES {} (ROR {})", project.name, baseEs, target, pluginVersion)
 
-            def work = java.nio.file.Files.createTempDirectory("ror-repkg").toFile()
-            try {
-                // 1) Extract the base zip (entries at the archive root). Done fully into `work` up front, so
-                //    when target == baseEs (output dir == the base zip's dir) step 5 can safely rewrite it.
-                copy { from zipTree(baseZip); into work }
+        def work = java.nio.file.Files.createTempDirectory("ror-repkg").toFile()
+        try {
+            // 1) Extract the base zip (entries at the archive root).
+            copy { from zipTree(baseZip); into work }
 
-                // 2) plugin-descriptor.properties: only elasticsearch.version changes per version (the
-                //    `version` field is the plugin version, same across patch versions).
-                def descriptor = new File(work, 'plugin-descriptor.properties')
-                descriptor.text = descriptor.readLines().collect {
-                    it.startsWith('elasticsearch.version=') ? "elasticsearch.version=${target}" : it
-                }.join('\n') + '\n'
+            // 2) plugin-descriptor.properties: only elasticsearch.version changes per version (the
+            //    `version` field is the plugin version, same across patch versions).
+            def descriptor = new File(work, 'plugin-descriptor.properties')
+            descriptor.text = descriptor.readLines().collect {
+                it.startsWith('elasticsearch.version=') ? "elasticsearch.version=${target}" : it
+            }.join('\n') + '\n'
 
-                // 3) ror-build-info.properties inside the fat ROR jar (boot-log only). Also rename the jar
-                //    to the target version -- cosmetic only, ES scans the dir and ignores the jar name.
-                def fatJarBase = new File(work, fatJarBaseName)
-                if (!fatJarBase.exists()) {
-                    throw new GradleException("fat ROR jar not found in base zip: ${fatJarBaseName}")
-                }
-                def buildInfo = new File(work, 'ror-build-info.properties')
-                buildInfo.text = "es_version=${target}\nplugin_version=${pluginVersion}"
-                ant.zip(destfile: fatJarBase, update: true) {
-                    fileset(dir: work, includes: 'ror-build-info.properties')
-                }
-                buildInfo.delete()
-                def fatJarTargetName = "${pluginName}-${pluginVersion}_es${target}.jar"
-                if (fatJarBaseName != fatJarTargetName) {
-                    fatJarBase.renameTo(new File(work, fatJarTargetName))
-                }
-
-                // 4) Swap the ES-versioned dependency jars: downloaded <target> in, <base> out. Downloaded
-                //    jars are named "<artifact>-<target>.jar"; the base zip has "<artifact>-<base>.jar".
-                def targetJarsDir = new File("${esJarsDirProp}/${target}")
-                def downloadedJars = (targetJarsDir.listFiles() ?: []).findAll { it.name.endsWith('.jar') }
-                if (downloadedJars.isEmpty()) {
-                    throw new GradleException("no ES jars for ES ${target} in ${targetJarsDir} (run downloadEsVersionedDependencyJars first)")
-                }
-                downloadedJars.each { jar ->
-                    def jarName = jar.name
-                    if (!jarName.endsWith("-${target}.jar")) {
-                        throw new GradleException("jar '${jarName}' does not match '<artifact>-${target}.jar'")
-                    }
-                    def artifact = jarName.substring(0, jarName.length() - "-${target}.jar".length())
-                    new File(work, "${artifact}-${baseEs}.jar").delete()
-                    copy { from jar; into work }
-                }
-
-                // 5) Re-zip flat (entries at the archive root, like packageRorPlugin) + checksums.
-                def outputZip = new File(outputDir, "${pluginName}-${pluginVersion}_es${target}.zip")
-                outputZip.delete()
-                ant.zip(destfile: outputZip, basedir: work)
-                writeChecksum(outputZip, 'SHA-1', '.sha1')
-                writeChecksum(outputZip, 'SHA-512', '.sha512')
-
-                logger.lifecycle("Wrote {} (+ .sha1 / .sha512)", outputZip)
-            } finally {
-                work.deleteDir()
+            // 3) ror-build-info.properties inside the fat ROR jar (boot-log only). Also rename the jar
+            //    to the target version -- cosmetic only, ES scans the dir and ignores the jar name.
+            def fatJarBase = new File(work, fatJarBaseName)
+            if (!fatJarBase.exists()) {
+                throw new GradleException("fat ROR jar not found in base zip: ${fatJarBaseName}")
             }
-        }
-    }
-}
-
-// Safety check for the "build once per module, repackage the rest" optimization. Compares a fat ROR jar
-// recompiled at a boundary ES version against the module's base jar: same bytecode => repackaging that
-// version is safe; any difference => the patch range isn't bytecode-stable, so FAIL and revert that module
-// to per-version compilation. Ignores ror-build-info.properties (per-version by design) and
-// META-INF/MANIFEST.MF (timestamp noise).
-//
-// This task only does the diff. The recompile is a SEPARATE `gradlew :module:toJar -PesVersion=<cmp>` run
-// by the pipeline, because a module can't recompile at another esVersion in-process (esVersion is fixed at
-// configuration time) and nesting a same-project Gradle build here would deadlock on the build lock.
-//
-// Usage: -PbaseFatJar=<path> -PcmpFatJar=<path>
-tasks.register('diffBytecode') {
-    outputs.upToDateWhen { false }
-    doLast {
-        def baseFatJarProp = project.findProperty('baseFatJar')
-        def cmpFatJarProp = project.findProperty('cmpFatJar')
-        if (baseFatJarProp == null || cmpFatJarProp == null) {
-            throw new GradleException("diffBytecode requires -PbaseFatJar=<path> and -PcmpFatJar=<path>")
-        }
-        // Resolve against the repo root: the pipeline passes module-prefixed paths (es818x/build/...)
-        // relative to where gradlew runs, not to this subproject. Absolute paths pass through unchanged.
-        def baseJar = rootProject.file(baseFatJarProp)
-        def cmpJar = rootProject.file(cmpFatJarProp)
-        [baseJar, cmpJar].each { if (!it.exists()) throw new GradleException("jar not found: ${it}") }
-
-        def ignored = ['ror-build-info.properties', 'META-INF/MANIFEST.MF'] as Set
-
-        def digest = { File jar ->
-            def result = new TreeMap<String, String>()
-            new java.util.zip.ZipFile(jar).withCloseable { zf ->
-                zf.entries().each { entry ->
-                    if (!entry.directory && !ignored.contains(entry.name)) {
-                        def md = java.security.MessageDigest.getInstance('SHA-256')
-                        zf.getInputStream(entry).withCloseable { is ->
-                            def buf = new byte[64 * 1024]; int n
-                            while ((n = is.read(buf)) != -1) md.update(buf, 0, n)
-                        }
-                        result[entry.name] = md.digest().collect { String.format('%02x', it) }.join('')
-                    }
-                }
+            def buildInfo = new File(work, 'ror-build-info.properties')
+            buildInfo.text = "es_version=${target}\nplugin_version=${pluginVersion}"
+            ant.zip(destfile: fatJarBase, update: true) {
+                fileset(dir: work, includes: 'ror-build-info.properties')
             }
-            result
-        }
+            buildInfo.delete()
+            def fatJarTargetName = "${pluginName}-${pluginVersion}_es${target}.jar"
+            if (fatJarBaseName != fatJarTargetName) {
+                fatJarBase.renameTo(new File(work, fatJarTargetName))
+            }
 
-        def baseDigest = digest(baseJar)
-        def cmpDigest = digest(cmpJar)
+            // 4) Swap the ES-versioned dependency jars: downloaded <target> in, <base> out. Downloaded
+            //    jars are named "<artifact>-<target>.jar"; the base zip has "<artifact>-<base>.jar".
+            def targetJarsDir = new File("${esJarsDirProp}/${target}")
+            def downloadedJars = (targetJarsDir.listFiles() ?: []).findAll { it.name.endsWith('.jar') }
+            if (downloadedJars.isEmpty()) {
+                throw new GradleException("no ES jars for ES ${target} in ${targetJarsDir} (run downloadEsVersionedDependencyJars first)")
+            }
+            downloadedJars.each { jar ->
+                def jarName = jar.name
+                if (!jarName.endsWith("-${target}.jar")) {
+                    throw new GradleException("jar '${jarName}' does not match '<artifact>-${target}.jar'")
+                }
+                def artifact = jarName.substring(0, jarName.length() - "-${target}.jar".length())
+                new File(work, "${artifact}-${baseEs}.jar").delete()
+                copy { from jar; into work }
+            }
 
-        if (baseDigest == cmpDigest) {
-            logger.lifecycle("OK [{}]: bytecode identical to base -- reuse safe ({} vs {})",
-                    project.name, baseJar.name, cmpJar.name)
-        } else {
-            def diverging = (baseDigest.keySet() + cmpDigest.keySet()).findAll {
-                baseDigest[it] != cmpDigest[it]
-            }.sort()
-            throw new GradleException("Bytecode reuse guard FAILED for ${project.name}: ${cmpJar.name} " +
-                    "differs from base ${baseJar.name}. Diverging entries: ${diverging}. Repackaging is " +
-                    "unsafe for this range; revert ${project.name} to per-version compilation.")
+            // 5) Re-zip flat (entries at the archive root, like packageRorPlugin) + checksums.
+            def outputZip = new File(outputDir, "${pluginName}-${pluginVersion}_es${target}.zip")
+            outputZip.delete()
+            ant.zip(destfile: outputZip, basedir: work)
+            writeChecksum(outputZip, 'SHA-1', '.sha1')
+            writeChecksum(outputZip, 'SHA-512', '.sha512')
+
+            logger.lifecycle("Wrote {} (+ .sha1 / .sha512)", outputZip)
+        } finally {
+            work.deleteDir()
         }
     }
 }

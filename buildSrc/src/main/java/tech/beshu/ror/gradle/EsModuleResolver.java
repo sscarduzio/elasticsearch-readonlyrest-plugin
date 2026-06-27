@@ -20,6 +20,7 @@ package tech.beshu.ror.gradle;
 import org.gradle.api.Project;
 import org.gradle.util.internal.VersionNumber;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -27,9 +28,11 @@ import java.util.stream.Collectors;
 
 /**
  * Single source of truth for mapping an ES version to the {@code esXXx} module that builds the plugin
- * for it. The matching rule: ES modules are sorted by their {@code latestSupportedEsVersion}; a version
- * belongs to the first module whose range {@code (previousModuleLatest, thisModuleLatest]} contains it
- * (the oldest module's lower bound is {@link #OLDEST_ES_VERSION_SUPPORTED}).
+ * for it. Each module declares the ES versions it supports via the {@code supportedEsVersions} gradle
+ * property (newest-first CSV); everything else is derived from that one list. The matching rule: ES
+ * modules are sorted by their newest supported version; a version belongs to the first module whose range
+ * {@code (previousModuleNewest, thisModuleNewest]} contains it (the oldest module's lower bound is
+ * {@link #OLDEST_ES_VERSION_SUPPORTED}).
  */
 public final class EsModuleResolver {
 
@@ -65,7 +68,24 @@ public final class EsModuleResolver {
   }
 
   public static VersionNumber newestEsVersionFor(Project esModule) {
-    return versionNumberFrom((String) esModule.findProperty("latestSupportedEsVersion"));
+    return supportedEsVersionsFor(esModule).stream()
+        .map(EsModuleResolver::versionNumberFrom)
+        .max(Comparator.naturalOrder())
+        .orElseThrow(() -> new IllegalArgumentException(
+            String.format("Module %s has an empty 'supportedEsVersions'", esModule.getName())));
+  }
+
+  /** The ES versions a module publishes, as declared (trimmed) in its {@code supportedEsVersions} property. */
+  public static List<String> supportedEsVersionsFor(Project esModule) {
+    Object raw = esModule.findProperty("supportedEsVersions");
+    if (raw == null || ((String) raw).isBlank()) {
+      throw new IllegalArgumentException(
+          String.format("Module %s is missing the 'supportedEsVersions' gradle property", esModule.getName()));
+    }
+    return Arrays.stream(((String) raw).split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .collect(Collectors.toList());
   }
 
   public static List<Project> sortedEsModules(Project rootProject, Comparator<Project> comparator) {

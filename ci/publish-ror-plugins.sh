@@ -7,8 +7,13 @@
 # is the most involved part of the pipeline; run-pipeline.sh stays a thin task router.
 #
 # Depends on functions from ci-lib.sh (checkTagNotExist, tag) and on the Gradle tasks
-# downloadEsVersionedDependencyJars / repackageRorPluginForVersions / diffBytecode. Both ci-lib.sh and this
+# downloadEsVersionedDependencyJars / repackageRorPluginForVersion / diffBytecode. Both ci-lib.sh and this
 # file are sourced before any ROR_TASK dispatch runs, so cross-references resolve at call time.
+#
+# Gradle calls here intentionally run on the daemon (NO --no-daemon): the module-grouped flow makes many
+# small invocations -- one compile + one repackage per version + guard recompiles/diffs + the push -- and a
+# warm daemon amortizes JVM start + configuration across them (measured ~20s -> ~4s per call). The docker
+# push tasks already ran on the daemon, so one is resident during the run regardless.
 
 log_disk_usage() {
   local label="${1:-}"
@@ -55,66 +60,68 @@ cleanup_docker_and_build() {
 # of recompiling for every ES version we compile ONCE (at the module's latestSupportedEsVersion) and
 # derive every other version's zip by swapping only the per-version bits (descriptor, in-jar build-info,
 # and the ES-versioned dependency jars). See the Gradle downloadEsVersionedDependencyJars +
-# repackageRorPluginForVersions tasks. A per-module bytecode guard (the diffBytecode task against a
+# repackageRorPluginForVersion tasks. A per-module bytecode guard (the diffBytecode task against a
 # boundary recompile) proves the reuse is safe before any release is published.
 # ----------------------------------------------------------------------------------------------------
 
-# Reads a generation's version file and emits one line per module (in file order):
-#   "<module> <moduleLatest> <target version> [<target version> ...]"
+# Emits one line per module in the given ES generation (major), newest module first:
+#   "<module> <target version> [<target version> ...]"   (versions newest-first)
+# Each module's versions come from its own supportedEsVersions gradle property (the single source of truth);
+# the printEsModuleGroups task already groups + orders them, so this is just a thin wrapper.
 build_module_groups() {
-  local versions_file=$1
-  local map_file
-  map_file=$(mktemp)
-  ./gradlew --no-daemon printEsModuleMap "-PversionsFile=$versions_file" "-PoutputFile=$map_file" </dev/null >/dev/null
-  awk '
-    { ver=$1; mod=$2; latest=$3
-      if (!(mod in seen)) { order[++n]=mod; seen[mod]=1; modlatest[mod]=latest }
-      vers[mod]=vers[mod] (vers[mod]=="" ? "" : " ") ver }
-    END { for (i=1;i<=n;i++){ m=order[i]; print m" "modlatest[m]" "vers[m] } }
-  ' "$map_file"
-  rm -f "$map_file"
+  local es_major=$1
+  local groups_file
+  groups_file=$(mktemp)
+  ./gradlew printEsModuleGroups "-PesMajor=$es_major" "-PoutputFile=$groups_file" </dev/null >/dev/null
+  cat "$groups_file"
+  rm -f "$groups_file"
 }
 
-# Builds a module's base once, derives every target version's zip from it (no recompile, via the Gradle
-# repackageRorPluginForVersions task), optionally guards bytecode reuse (release), then publishes each
-# version with an in-place per-version retry (so a transient publish blip never re-triggers a recompile).
-#   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 base_version
-#   $5 es_jars_dir  $@(6..) target versions (file order: newest..oldest)
+# Builds a module's base once, guards bytecode reuse (release) BEFORE shipping anything, then derives each
+# remaining version's zip from the base (no recompile, via the Gradle repackageRorPluginForVersion task) and
+# publishes it one by one, with an in-place per-version publish retry (a transient blip never re-recompiles).
+#   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 es_jars_dir
+#   $@(5..) target versions (file order: newest..oldest)
 publish_module_group() {
-  local mode=$1 ror_version=$2 module=$3 base_version=$4 es_jars_dir=$5
-  shift 5
+  local mode=$1 ror_version=$2 module=$3 es_jars_dir=$4
+  shift 4
   local targets=("$@")
   local dist_dir="${module}/build/distributions"
-  local target_csv
-  target_csv=$(IFS=,; echo "${targets[*]}")
+
+  # The base version is the NEWEST version we're publishing for this module: it's compiled once and every
+  # other version is derived (repackaged) from it. targets arrive newest-first, but sort -rV so we never
+  # depend on ordering.
+  local base_version
+  base_version=$(printf '%s\n' "${targets[@]}" | sort -rV | head -1)
+  if [ -z "$base_version" ]; then
+    echo "ERROR: no target versions for $module"
+    return 1
+  fi
 
   echo ""
   echo ">>> Module $module: base ES $base_version, ${#targets[@]} target version(s): ${targets[*]}"
 
-  # 1) ONE compile for the module + download the ES-versioned dependency jars for all of its target versions.
-  if ! ./gradlew --no-daemon ":${module}:buildRorPluginZip" ":${module}:downloadEsVersionedDependencyJars" \
-        "-PesVersion=${base_version}" "-PtargetVersions=${target_csv}" "-PesJarsDir=${es_jars_dir}" </dev/null; then
-    echo "ERROR: base build/download failed for $module @ $base_version"
+  # 1) ONE compile for the module, at its base version. Every other version is derived from this zip without
+  #    recompiling (step 2).
+  if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
+    echo "ERROR: base build failed for $module @ $base_version"
     return 1
   fi
 
-  local base_fat_jar="${module}/build/libs/readonlyrest-${ror_version}_es${base_version}.jar"
-
-  # 2) Derive every target version's zip from the freshly-built base, in one JVM. No recompile. The derived
-  #    zips land in the module's build/distributions (the task's default), next to the full-build base zip.
-  #    Runs BEFORE the guard so it reads a pristine build/ (the guard recompiles boundaries afterwards);
-  #    the guard still gates publishing in step 4. The base fat jar's name carries the base ES version, so
-  #    the boundary recompiles below produce differently-named jars and never clobber it -- no stash needed.
-  if ! ./gradlew --no-daemon ":${module}:repackageRorPluginForVersions" \
-        "-PesVersion=${base_version}" "-PtargetVersions=${target_csv}" \
-        "-PesJarsDir=${es_jars_dir}" </dev/null; then
-    echo "ERROR: repackage failed for $module"
-    return 1
-  fi
-
-  # 3) (release only) Bytecode reuse guard at the range boundaries that differ from the base compile:
-  #    recompile each boundary (separate gradlew invocation) and diff its fat jar against the base.
+  # 2) (release only) Bytecode reuse guard, BEFORE deriving or publishing anything -- this is what decides
+  #    whether repackaging is valid for this module at all. Recompile the range boundaries that differ from
+  #    the base (separate gradlew invocations) and diff each fat jar against the base; any difference means
+  #    the patch range isn't bytecode-stable, so abort the module without shipping a single version. The base
+  #    fat jar's name carries the base ES version, so these boundary recompiles produce differently-named jars
+  #    and never clobber it. They do overwrite build/classes, but step 3's repackage reads the already-built
+  #    base zip (not build/), so that's harmless.
   if [ "$mode" = "release" ]; then
+    local base_fat_jar="${module}/build/libs/readonlyrest-${ror_version}_es${base_version}.jar"
+    # Only check the ENDS of the requested range -- the versions farthest from the base, most likely to have
+    # drifted; interior versions are interpolations we trust once both ends match the base. Usually the base
+    # is itself the newest end (it's the module's latest), so only the oldest needs a check; if the base sits
+    # outside the requested range, both ends differ from it and both are checked. A single-version range
+    # checks just that one. (Recompiling all versions would defeat the compile-once optimization.)
     local newest="${targets[0]}" oldest="${targets[$((${#targets[@]} - 1))]}"
     local guard_versions=()
     [ "$oldest" != "$base_version" ] && guard_versions+=("$oldest")
@@ -122,7 +129,7 @@ publish_module_group() {
     local cmp
     for cmp in "${guard_versions[@]}"; do
       echo "==> Compiling ${module} at ES ${cmp} for bytecode comparison ..."
-      if ! ./gradlew --no-daemon ":${module}:toJar" "-PesVersion=${cmp}" </dev/null; then
+      if ! ./gradlew ":${module}:toJar" "-PesVersion=${cmp}" </dev/null; then
         echo "ERROR: compile at ES $cmp failed for $module (range not API-monotonic)"
         return 1
       fi
@@ -132,22 +139,30 @@ publish_module_group() {
         echo "ERROR: expected fat jar not produced for $module @ $cmp"
         return 1
       fi
-      if ! ./gradlew --no-daemon ":${module}:diffBytecode" \
-            "-PesVersion=${base_version}" "-PbaseFatJar=${base_fat_jar}" "-PcmpFatJar=${cmp_jar}" </dev/null; then
+      if ! ./gradlew ":diffBytecode" \
+            "-PbaseFatJar=${base_fat_jar}" "-PcmpFatJar=${cmp_jar}" </dev/null; then
         echo "ERROR: bytecode reuse guard failed for $module @ $cmp"
         return 1
       fi
     done
   fi
 
-  # 4) Publish each derived version, then free its disk. The expensive build/download/repackage/guard above
-  #    (steps 1-3) is deterministic and local; the failures that actually happen here are transient and
-  #    per-version (Docker Hub rate limits, registry/S3 blips, docker disk pressure). So retry each version
-  #    in place -- prune docker + back off between tries -- instead of bubbling up and forcing the caller
-  #    to nuke build/ and cold-recompile the whole module. Already-released versions are skipped cheaply by
-  #    release_docker_and_tag's remote tag check, so a retry never re-pushes a version that already shipped.
+  # 3) Guard passed (or skipped for upload_pre) -- now release each version ONE BY ONE: derive its zip from
+  #    the base (repackageRorPluginForVersion; the base version's zip already exists from step 1, so it isn't
+  #    repackaged), publish it, then free its disk. Repackaging is deterministic and stays OUTSIDE the publish
+  #    retry below; only the publish is retried, since the failures that actually happen there are transient
+  #    and per-version (Docker Hub rate limits, registry/S3 blips). Already-released versions are skipped
+  #    cheaply by release_docker_and_tag's remote tag check, so a retry never re-pushes a shipped version.
   local target
   for target in "${targets[@]}"; do
+    if [ "$target" != "$base_version" ]; then
+      if ! ./gradlew ":${module}:repackageRorPluginForVersion" \
+            "-PesVersion=${base_version}" "-PtargetVersion=${target}" "-PesJarsDir=${es_jars_dir}" </dev/null; then
+        echo "ERROR: repackage failed for $module @ $target"
+        return 1
+      fi
+    fi
+
     local zip="${dist_dir}/readonlyrest-${ror_version}_es${target}.zip"
 
     local pattempt published=0
@@ -175,7 +190,7 @@ publish_module_group() {
     rm -f "$zip" "${zip}.sha1" "${zip}.sha512"
   done
 
-  # 5) Bound disk at the MODULE boundary (not per version). The multi-platform builds run in the
+  # 4) Bound disk at the MODULE boundary (not per version). The multi-platform builds run in the
   #    docker-container buildx builder (ror_kbn_builder), whose BuildKit cache lives in its own volume
   #    -- `docker system prune` / `docker builder prune` can't reach it, so without this it grows
   #    unbounded across the 34 modules (pulled ES base images + layers, ~GBs each). Trim the CURRENT
@@ -189,7 +204,7 @@ publish_module_group() {
 }
 
 # Release-only: build & push the ES+ROR image for one version, then create the git tag. The version's zip is
-# already in the module's build/distributions (from repackageRorPluginForVersions), so -PreusePackagedZip
+# already in the module's build/distributions (from repackageRorPluginForVersion), so -PreusePackagedZip
 # tells the image build to reuse it instead of recompiling. Mirrors the original release_ror_plugin tail.
 release_docker_and_tag() {
   local ror_version=$1 es_version=$2 module=$3
@@ -238,10 +253,10 @@ publish_one_version() {
 # failure bubbles up here and triggers a heavy cleanup + full module rebuild.
 publish_ror_plugins_grouped() {
   if [ "$#" -ne 2 ]; then
-    echo "Usage: publish_ror_plugins_grouped <versions file> <upload_pre|release>"
+    echo "Usage: publish_ror_plugins_grouped <es major: 6|7|8|9> <upload_pre|release>"
     return 1
   fi
-  local versions_file=$1 mode=$2
+  local es_major=$1 mode=$2
   local ror_version
   ror_version=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
@@ -258,20 +273,19 @@ publish_ror_plugins_grouped() {
   es_jars_dir=$(mktemp -d)
 
   local groups
-  groups=$(build_module_groups "$versions_file")
+  groups=$(build_module_groups "$es_major")
 
   local line
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    local module base_version
+    local module
     module=$(echo "$line" | awk '{print $1}')
-    base_version=$(echo "$line" | awk '{print $2}')
     local targets
-    read -r -a targets <<< "$(echo "$line" | cut -d' ' -f3-)"
+    read -r -a targets <<< "$(echo "$line" | cut -d' ' -f2-)"
 
     local attempt
     for attempt in 1 2 3; do
-      if time publish_module_group "$mode" "$ror_version" "$module" "$base_version" "$es_jars_dir" "${targets[@]}"; then
+      if time publish_module_group "$mode" "$ror_version" "$module" "$es_jars_dir" "${targets[@]}"; then
         break
       fi
       if [ "$attempt" -lt 3 ]; then

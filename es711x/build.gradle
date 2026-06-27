@@ -23,7 +23,7 @@ plugins {
 
 def pluginFullName = pluginName + '-' + version
 def projectJavaLanguageVersion = JavaLanguageVersion.of(11)
-def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
+def moduleEsVersion = project.ext.esVersion
 def releaseDockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
 def releaseDockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
 def preBuildDockerImageVersion = 'beshultd/elasticsearch-readonlyrest-dev:' + moduleEsVersion + '-ror-' + pluginVersion
@@ -172,7 +172,7 @@ tasks.register('prepareDockerBuildContext', Copy) {
 }
 
 tasks.register('pushRorDockerImage', Exec) {
-    dependsOn('prepareDockerBuildContext', 'prepareMultiplatformBuilder')
+    dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
@@ -188,7 +188,7 @@ tasks.register('pushRorDockerImage', Exec) {
 }
 
 tasks.register('pushRorPreBuildDockerImage', Exec) {
-    dependsOn('prepareDockerBuildContext', 'prepareMultiplatformBuilder')
+    dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'
@@ -205,7 +205,7 @@ tasks.register('pushRorPreBuildDockerImage', Exec) {
 
 tasks.register('localRorDockerImage', Exec) {
     // we prepare docker image for local architecture - the image is loaded to local registry
-    dependsOn('prepareDockerBuildContext')
+    dependsOn prepareDockerBuildContext
     group 'docker'
     executable 'docker'
     workingDir 'build/docker-image'

@@ -189,15 +189,17 @@ fi
 
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
-    echo "What ES versions should I build plugins for?"
+    echo "What ES generation (major: 6|7|8|9) should I build plugins for?"
     return 1
   fi
 
-  local ROR_VERSIONS_FILE=$1
-
-  while IFS= read -r version || [[ -n "$version" ]]; do
+  local es_major=$1
+  # build_module_groups (from publish-ror-plugins.sh) prints "<module> <ver> <ver> ..." per line; flatten to
+  # the bare version list and build each. Versions come from each module's supportedEsVersions property.
+  local version
+  for version in $(build_module_groups "$es_major" | awk '{for (i = 2; i <= NF; i++) print $i}'); do
     time build_ror_plugin "$version"
-  done <"$ROR_VERSIONS_FILE"
+  done
 }
 
 build_ror_plugin() {
@@ -214,51 +216,51 @@ build_ror_plugin() {
 }
 
 if [[ $ROR_TASK == "build_es9xx" ]]; then
-  build_ror_plugins "ci/supported-es-versions/es9x.txt"
+  build_ror_plugins "9"
 fi
 
 if [[ $ROR_TASK == "build_es8xx" ]]; then
-  build_ror_plugins "ci/supported-es-versions/es8x.txt"
+  build_ror_plugins "8"
 fi
 
 if [[ $ROR_TASK == "build_es7xx" ]]; then
-  build_ror_plugins "ci/supported-es-versions/es7x.txt"
+  build_ror_plugins "7"
 fi
 
 if [[ $ROR_TASK == "build_es6xx" ]]; then
-  build_ror_plugins "ci/supported-es-versions/es6x.txt"
+  build_ror_plugins "6"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es9x.txt" "upload_pre"
+  publish_ror_plugins_grouped "9" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es8x.txt" "upload_pre"
+  publish_ror_plugins_grouped "8" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es7xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es7x.txt" "upload_pre"
+  publish_ror_plugins_grouped "7" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es6xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es6x.txt" "upload_pre"
+  publish_ror_plugins_grouped "6" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "release_es9xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es9x.txt" "release"
+  publish_ror_plugins_grouped "9" "release"
 fi
 
 if [[ $ROR_TASK == "release_es8xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es8x.txt" "release"
+  publish_ror_plugins_grouped "8" "release"
 fi
 
 if [[ $ROR_TASK == "release_es7xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es7x.txt" "release"
+  publish_ror_plugins_grouped "7" "release"
 fi
 
 if [[ $ROR_TASK == "release_es6xx" ]]; then
-  publish_ror_plugins_grouped "ci/supported-es-versions/es6x.txt" "release"
+  publish_ror_plugins_grouped "6" "release"
 fi
 
 check_maven_artifacts_exist() {
