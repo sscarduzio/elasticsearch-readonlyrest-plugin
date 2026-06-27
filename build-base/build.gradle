@@ -27,4 +27,5 @@ dependencies {
     implementation "com.star-zero.gradle:githook:1.2.1"
     implementation "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1"
     implementation "org.owasp.dependencycheck:org.owasp.dependencycheck.gradle.plugin:12.1.6"
+    implementation "com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.6.0"
 }
