@@ -46,11 +46,15 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2023-46674</cve>
         <cve>CVE-2023-49921</cve>
         <cve>CVE-2024-23444</cve>
+        <cve>CVE-2024-23445</cve>
         <cve>CVE-2024-23449</cve>
         <cve>CVE-2024-23450</cve>
         <cve>CVE-2024-23451</cve>
         <cve>CVE-2024-37280</cve>
         <cve>CVE-2024-43709</cve>
+        <cve>CVE-2024-52979</cve>
+        <cve>CVE-2024-52980</cve>
+        <cve>CVE-2024-52981</cve>
         <cve>CVE-2025-37727</cve>
         <cve>CVE-2025-37731</cve>
         <cve>CVE-2025-68384</cve>
@@ -84,6 +88,9 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2024-23450</cve>
         <cve>CVE-2024-23451</cve>
         <cve>CVE-2024-43709</cve>
+        <cve>CVE-2024-52979</cve>
+        <cve>CVE-2024-52980</cve>
+        <cve>CVE-2024-52981</cve>
         <cve>CVE-2025-37727</cve>
         <cve>CVE-2025-37731</cve>
         <cve>CVE-2025-68384</cve>
@@ -138,6 +145,22 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2020-9488</cve>
         <cve>CVE-2025-68161</cve>
         <cve>CVE-2026-34480</cve>
+        <cve>CVE-2026-34479</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: log4j-slf4j-impl-2.11.2.jar
+    - CVE-2021-44228, CVE-2021-45046, CVE-2021-44832, CVE-2021-45105 (Log4Shell family) require log4j-core's JNDI lookup
+    - CVE-2020-9488  affects log4j-core's SMTP appender
+    - CVE-2025-68161 affects log4j-core's Socket Appender (TLS hostname verification)
+    - CVE-2026-34480 affects log4j-core's XmlLayout
+    - CVE-2026-34479 affects log4j-1.2-api Log4j1XmlLayout
+   The plugin:
+    - excludes log4j-core from this dependency (see core/build.gradle)
+    - does not bundle log4j-core (it is provided by Elasticsearch at runtime)
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-slf4j-impl@2\.11\.2.*$</packageUrl>
+        <cve>CVE-2020-9488</cve>
         <cve>CVE-2026-34479</cve>
     </suppress>
     <suppress>
