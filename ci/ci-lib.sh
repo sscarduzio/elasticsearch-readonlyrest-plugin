@@ -120,45 +120,41 @@ function tag {
   return 0
 }
 
-# not used at the moment - it may be needed laterok,
+# Upload a file to an S3-compatible store using the SigV4 curl uploader.
+#
+# The store is selected by the 3rd arg (default ARTIFACTS) and resolves the matching
+# ROR_<STORE>_STORE_* env vars, so the same logic serves both the artifacts store
+# (ROR_ARTIFACTS_STORE_*) and the libs store (ROR_LIBS_STORE_*). Each store keeps its
+# own endpoint, credentials, bucket, region and path-prefix.
 function upload_using_aws_s3_uploader {
-  LOCAL_FILE="$1"
-  S3_PATH="$2"
-
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_aws_s3_uploader does not support URL endpoints; set ROR_ARTIFACTS_STORE_URL_OR_REGION to a region name (e.g. eu-west-1)"
-    exit 1
-  fi
-
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
-  REGION="${STORE_ADDR:-us-east-1}"
-  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
-  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  "$CI_DIR"/s3-uploader.sh "$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID" "$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET" "$BUCKET@$REGION" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}"
-}
-
-function upload_using_deltaglider_uploader {
-  LOCAL_FILE="$1"
+  local LOCAL_FILE="$1"
+  local S3_PATH STORE BUCKET PATH_PREFIX
   S3_PATH=$(echo "$2" | sed 's:/*$::')
-  FILE_NAME=$(basename "$LOCAL_FILE")
+  STORE="${3:-ARTIFACTS}"
 
-  STORE_ADDR="${ROR_ARTIFACTS_STORE_URL_OR_REGION:-}"
-  if [[ ! "$STORE_ADDR" =~ ^https?:// ]]; then
-    echo "ERROR: upload_using_deltaglider_uploader requires a URL endpoint; set ROR_ARTIFACTS_STORE_URL_OR_REGION to an http(s):// URL"
+  if [[ ! -f "$LOCAL_FILE" ]]; then
+    echo "ERROR: artifact to upload not found (or not a regular file): $LOCAL_FILE"
     exit 1
   fi
 
-  BUCKET="${ROR_ARTIFACTS_STORE_BUCKET:-beshu}"
-  PATH_PREFIX="${ROR_ARTIFACTS_STORE_PATH_PREFIX:-}"
-  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
-  DELTA_GLIDER_VERSION="6.1.1"
+  # Indirectly resolve the store-specific env vars (e.g. ROR_LIBS_STORE_BUCKET).
+  local ENDPOINT_VAR="ROR_${STORE}_STORE_ENDPOINT_URL"
+  local AK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_ID"
+  local SK_VAR="ROR_${STORE}_STORE_ACCESS_KEY_SECRET"
+  local BUCKET_VAR="ROR_${STORE}_STORE_BUCKET"
+  local REGION_VAR="ROR_${STORE}_STORE_REGION"
+  local PREFIX_VAR="ROR_${STORE}_STORE_PATH_PREFIX"
 
-  docker run --rm \
-    -e AWS_ENDPOINT_URL=$STORE_ADDR \
-    -e AWS_ACCESS_KEY_ID=$ROR_ARTIFACTS_STORE_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET \
-    -v "$LOCAL_FILE":"/tmp/$FILE_NAME":ro \
-    beshultd/deltaglider:$DELTA_GLIDER_VERSION \
-    cp "/tmp/$FILE_NAME" "s3://$BUCKET/${PATH_PREFIX}${S3_PATH}/${FILE_NAME}"
+  local ENDPOINT="${!ENDPOINT_VAR-}"
+  local AK="${!AK_VAR-}"
+  local SK="${!SK_VAR-}"
+  local REGION="${!REGION_VAR-}"
+  BUCKET="${!BUCKET_VAR-}"; BUCKET="${BUCKET:-beshu}"
+  PATH_PREFIX="${!PREFIX_VAR-}"
+  [ -n "$PATH_PREFIX" ] && PATH_PREFIX="${PATH_PREFIX%/}/"
+
+  S3_ENDPOINT_URL="$ENDPOINT" \
+    "$CI_DIR"/s3-uploader.sh \
+      "$AK" "$SK" \
+      "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
 }

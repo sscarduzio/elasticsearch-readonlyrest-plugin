@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 
 import scala.collection.immutable.ListMap
 
-final class NonEmptyListMap[K, +V] private(val underlying: ListMap[K, V]):
+final class NonEmptyListMap[K, +V] private (val underlying: ListMap[K, V]):
   def head: (K, V) = underlying.head
 
   def tail: ListMap[K, V] = underlying.tail
@@ -37,7 +37,7 @@ final class NonEmptyListMap[K, +V] private(val underlying: ListMap[K, V]):
 
   override def equals(other: Any): Boolean = other match
     case that: NonEmptyListMap[_, _] => underlying == that.underlying
-    case _ => false
+    case _                           => false
 
   override def hashCode: Int = underlying.hashCode
 

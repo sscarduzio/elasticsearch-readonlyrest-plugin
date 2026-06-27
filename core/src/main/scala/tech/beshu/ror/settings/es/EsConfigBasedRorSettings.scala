@@ -26,27 +26,31 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.language.{implicitConversions, postfixOps}
 
-final case class EsConfigBasedRorSettings(settingsSource: RorSettingsSourcesConfig,
-                                          boot: RorBootSettings,
-                                          ssl: Option[RorSslSettings],
-                                          rorCoreSettingsLoadingStrategy: RorCoreSettingsLoadingStrategy)
+final case class EsConfigBasedRorSettings(
+    settingsSource: RorSettingsSourcesConfig,
+    boot: RorBootSettings,
+    ssl: Option[RorSslSettings],
+    rorCoreSettingsLoadingStrategy: RorCoreSettingsLoadingStrategy
+)
 
 object EsConfigBasedRorSettings extends RequestIdAwareLogging {
 
-  def from(esEnv: EsEnv)
-          (implicit systemContext: SystemContext): Task[Either[LoadingError, EsConfigBasedRorSettings]] = {
+  def from(esEnv: EsEnv)(
+      implicit systemContext: SystemContext
+  ): Task[Either[LoadingError, EsConfigBasedRorSettings]] = {
     for {
-     _ <- Task.delay(noRequestIdLogger.info("Loading ROR node settings ..."))
-     result <- doLoad(esEnv).value
-     _ <- result match {
-       case Right(settings) => Task.delay(noRequestIdLogger.debug(s"Loaded ROR node settings:\n${settings.show}"))
-       case Left(_) => Task.unit
-     }
+      _ <- Task.delay(noRequestIdLogger.info("Loading ROR node settings ..."))
+      result <- doLoad(esEnv).value
+      _ <- result match {
+        case Right(settings) => Task.delay(noRequestIdLogger.debug(s"Loaded ROR node settings:\n${settings.show}"))
+        case Left(_)         => Task.unit
+      }
     } yield result
   }
 
-  private def doLoad(esEnv: EsEnv)
-                    (implicit systemContext: SystemContext) = {
+  private def doLoad(esEnv: EsEnv)(
+      implicit systemContext: SystemContext
+  ) = {
     for {
       settingsSource <- EitherT(RorSettingsSourcesConfig.from(esEnv))
       bootSettings <- EitherT(RorBootSettings.load(esEnv))
@@ -54,4 +58,5 @@ object EsConfigBasedRorSettings extends RequestIdAwareLogging {
       loadingRorCoreStrategy <- EitherT(RorCoreSettingsLoadingStrategy.load(esEnv))
     } yield EsConfigBasedRorSettings(settingsSource, bootSettings, sslSettings, loadingRorCoreStrategy)
   }
+
 }

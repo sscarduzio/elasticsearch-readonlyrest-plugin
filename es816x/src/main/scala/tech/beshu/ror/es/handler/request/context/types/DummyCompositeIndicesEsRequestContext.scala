@@ -27,16 +27,27 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.syntax.*
 
-class DummyCompositeIndicesEsRequestContext(actionRequest: ActionRequest with CompositeIndicesRequest,
-                                            esContext: EsContext,
-                                            aclContext: AccessControlStaticContext,
-                                            override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, threadPool) {
+class DummyCompositeIndicesEsRequestContext(
+    actionRequest: ActionRequest with CompositeIndicesRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](
+      actionRequest,
+      esContext,
+      aclContext,
+      threadPool
+    ) {
 
-  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = Set.empty
+  override protected def requestedIndicesFrom(
+      request: ActionRequest with CompositeIndicesRequest
+  ): Set[RequestedIndex[ClusterIndexName]] = Set.empty
 
-  override protected def update(request: ActionRequest & CompositeIndicesRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = Modified
+  override protected def update(
+      request: ActionRequest & CompositeIndicesRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = Modified
+
 }

@@ -32,16 +32,20 @@ import tech.beshu.ror.utils.TaskOps.*
 
 import scala.util.{Failure, Success}
 
-class AccessControlListLoggingDecorator(val underlying: AccessControlList,
-                                        auditingTool: AuditingTool)
-                                       (implicit scheduler: Scheduler)
-  extends AccessControlList with RequestIdAwareLogging {
+class AccessControlListLoggingDecorator(val underlying: AccessControlList, auditingTool: AuditingTool)(
+    implicit scheduler: Scheduler
+) extends AccessControlList
+    with RequestIdAwareLogging {
 
   override def description: String = underlying.description
 
-  override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])] = {
+  override def handleRegularRequest[B <: BlockContext: BlockContextUpdater](
+      requestContext: RequestContext.Aux[B]
+  ): Task[(RegularRequestResult[B], History[B])] = {
     implicit val requestContextImpl: RequestContext.Aux[B] = requestContext
-    logger.debug(s"checking request ${requestContext.restRequest.method.show} ${requestContext.restRequest.path.show} ...")
+    logger.debug(
+      s"checking request ${requestContext.restRequest.method.show} ${requestContext.restRequest.path.show} ..."
+    )
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
@@ -70,7 +74,9 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
   }
 
   // todo: logging metadata should be a little bit different
-  override def handleMetadataRequest(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] = {
+  override def handleMetadataRequest(
+      requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
+  ): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] = {
     implicit val requestContextImpl: RequestContext.Aux[UserMetadataRequestBlockContext] = requestContext
     logger.debug(s"checking user metadata request ...")
     underlying
@@ -85,7 +91,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             case UserMetadataRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, history))
             case UserMetadataRequestResult.PassedThrough =>
-              // ignore
+            // ignore
             case UserMetadataRequestResult.RorKbnPluginNotSupported =>
               logger.warn(RorKbnPluginNotSupported.message)
               log(Forbidden(requestContext, History.empty))
@@ -110,4 +116,3 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
 
   override val staticContext: AccessControlList.AccessControlStaticContext = underlying.staticContext
 }
-

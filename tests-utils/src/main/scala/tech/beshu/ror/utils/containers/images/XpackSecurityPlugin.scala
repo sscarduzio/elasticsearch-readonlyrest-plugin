@@ -26,26 +26,36 @@ import tech.beshu.ror.utils.misc.Version
 object XpackSecurityPlugin {
 
   final case class Config(attributes: Attributes)
+
   object Config {
-    final case class Attributes(restSslEnabled: Boolean,
-                                internodeSslEnabled: Boolean)
+    final case class Attributes(restSslEnabled: Boolean, internodeSslEnabled: Boolean)
+
     object Attributes {
+
       val default: Attributes = Attributes(
         restSslEnabled = true,
         internodeSslEnabled = true
       )
+
     }
+
   }
+
 }
-class XpackSecurityPlugin(esVersion: String,
-                          config: Config)
-  extends Elasticsearch.Plugin {
+
+class XpackSecurityPlugin(esVersion: String, config: Config) extends Elasticsearch.Plugin {
 
   override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
     emptyPluginInstallationSteps
       .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
-      .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
-      .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
+      .copyFile(
+        esConfig.esConfigDir / "elastic-certificates-cert.pem",
+        fromResourceBy(name = "elastic-certificates-cert.pem")
+      )
+      .copyFile(
+        esConfig.esConfigDir / "elastic-certificates-pkey.pem",
+        fromResourceBy(name = "elastic-certificates-pkey.pem")
+      )
       .configureKeystore(esConfig)
   }
 
@@ -73,6 +83,7 @@ class XpackSecurityPlugin(esVersion: String,
         builder
       }
     }
+
   }
 
   private implicit class ConfigureTransportSsl(val builder: EsConfigBuilder) {
@@ -89,6 +100,7 @@ class XpackSecurityPlugin(esVersion: String,
         builder
       }
     }
+
   }
 
   private implicit class ConfigureKeystore(val pluginInstallationSteps: PluginInstallationSteps) {
@@ -101,23 +113,55 @@ class XpackSecurityPlugin(esVersion: String,
         )
         .runWhen(
           condition = config.attributes.internodeSslEnabled,
-          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.transport.ssl.keystore.secure_password", value = "readonlyrest"),
-          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.transport.ssl.keystore.secure_password", value = "readonlyrest"),
+          linuxCommand = addToKeystoreLinuxCommand(
+            esConfig,
+            key = "xpack.security.transport.ssl.keystore.secure_password",
+            value = "readonlyrest"
+          ),
+          windowsCommand = addToKeystoreWindowsCommand(
+            esConfig,
+            key = "xpack.security.transport.ssl.keystore.secure_password",
+            value = "readonlyrest"
+          ),
         )
         .runWhen(
           condition = config.attributes.internodeSslEnabled,
-          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.transport.ssl.truststore.secure_password", value = "readonlyrest"),
-          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.transport.ssl.truststore.secure_password", value = "readonlyrest"),
+          linuxCommand = addToKeystoreLinuxCommand(
+            esConfig,
+            key = "xpack.security.transport.ssl.truststore.secure_password",
+            value = "readonlyrest"
+          ),
+          windowsCommand = addToKeystoreWindowsCommand(
+            esConfig,
+            key = "xpack.security.transport.ssl.truststore.secure_password",
+            value = "readonlyrest"
+          ),
         )
         .runWhen(
           condition = config.attributes.restSslEnabled,
-          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.http.ssl.keystore.secure_password", value = "readonlyrest"),
-          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.http.ssl.keystore.secure_password", value = "readonlyrest"),
+          linuxCommand = addToKeystoreLinuxCommand(
+            esConfig,
+            key = "xpack.security.http.ssl.keystore.secure_password",
+            value = "readonlyrest"
+          ),
+          windowsCommand = addToKeystoreWindowsCommand(
+            esConfig,
+            key = "xpack.security.http.ssl.keystore.secure_password",
+            value = "readonlyrest"
+          ),
         )
         .runWhen(
           condition = config.attributes.restSslEnabled,
-          linuxCommand = addToKeystoreLinuxCommand(esConfig, key = "xpack.security.http.ssl.truststore.secure_password", value = "readonlyrest"),
-          windowsCommand = addToKeystoreWindowsCommand(esConfig, key = "xpack.security.http.ssl.truststore.secure_password", value = "readonlyrest"),
+          linuxCommand = addToKeystoreLinuxCommand(
+            esConfig,
+            key = "xpack.security.http.ssl.truststore.secure_password",
+            value = "readonlyrest"
+          ),
+          windowsCommand = addToKeystoreWindowsCommand(
+            esConfig,
+            key = "xpack.security.http.ssl.truststore.secure_password",
+            value = "readonlyrest"
+          ),
         )
         .runWhen(
           condition = Version.greaterOrEqualThan(esVersion, 6, 6, 0),
@@ -126,7 +170,8 @@ class XpackSecurityPlugin(esVersion: String,
         )
     }
 
-    private def createKeystoreCommand(esConfig: Elasticsearch.Config) = s"${esConfig.esDir.toString()}/bin/elasticsearch-keystore create"
+    private def createKeystoreCommand(esConfig: Elasticsearch.Config) =
+      s"${esConfig.esDir.toString()}/bin/elasticsearch-keystore create"
 
     private def addToKeystoreLinuxCommand(esConfig: Elasticsearch.Config, key: String, value: String) = {
       s"printf '$value\\n' | ${esConfig.esDir.toString()}/bin/elasticsearch-keystore add --force $key"
@@ -135,5 +180,7 @@ class XpackSecurityPlugin(esVersion: String,
     private def addToKeystoreWindowsCommand(esConfig: Elasticsearch.Config, key: String, value: String) = {
       s"""cmd /c "echo|set /p="$value" | "${esConfig.esDir}\\bin\\elasticsearch-keystore.bat" add --force $key" """
     }
+
   }
+
 }

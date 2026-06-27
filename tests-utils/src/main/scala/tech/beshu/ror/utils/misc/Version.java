@@ -41,13 +41,16 @@ public class Version {
     return compare(esVersion, maj, min, patchLevel, result -> result < 0);
   }
 
-  private static boolean compare(String esVersion, int maj, int min, int patchLevel, Function<Integer, Boolean> comparator) {
+  private static boolean compare(
+      String esVersion, int maj, int min, int patchLevel, Function<Integer, Boolean> comparator) {
     if (Strings.isNullOrEmpty(esVersion)) {
       throw new IllegalArgumentException("invalid esVersion: " + esVersion);
     }
-    Integer compareResult = VersionUtil.parseVersion(esVersion, "x", "y").compareTo(
-        new org.testcontainers.shaded.com.fasterxml.jackson.core.Version(maj, min, patchLevel, "", "x", "y"));
+    Integer compareResult =
+        VersionUtil.parseVersion(esVersion, "x", "y")
+            .compareTo(
+                new org.testcontainers.shaded.com.fasterxml.jackson.core.Version(
+                    maj, min, patchLevel, "", "x", "y"));
     return comparator.apply(compareResult);
   }
-
 }

@@ -25,8 +25,10 @@ import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.*
 
-final class ForbiddenResponseContext(aclStaticContext: Option[AccessControlStaticContext],
-                                     forbiddenCauses: NonEmptyList[ForbiddenResponseContext.Cause]) {
+final class ForbiddenResponseContext(
+    aclStaticContext: Option[AccessControlStaticContext],
+    forbiddenCauses: NonEmptyList[ForbiddenResponseContext.Cause]
+) {
 
   import ForbiddenResponseContext.forbiddenCauseShow
 
@@ -48,7 +50,7 @@ final class ForbiddenResponseContext(aclStaticContext: Option[AccessControlStati
 
   private def forbiddenRequestMessageFromBlock: Option[String] =
     block.map(_.policy).flatMap {
-      case Policy.Allow => None
+      case Policy.Allow                      => None
       case Policy.Forbid(maybeCustomMessage) => maybeCustomMessage
     }
 
@@ -58,26 +60,30 @@ final class ForbiddenResponseContext(aclStaticContext: Option[AccessControlStati
 
   private def blockFrom: Cause => Option[Block] = {
     case ForbiddenBlockMatch(block) => Some(block)
-    case OperationNotAllowed => None
-    case ImpersonationNotSupported => None
-    case ImpersonationNotAllowed => None
-    case RorNotReadyYet => None
-    case RorNotEnabled => None
-    case RorFailedToStart => None
-    case TestSettingsNotConfigured => None
+    case OperationNotAllowed        => None
+    case ImpersonationNotSupported  => None
+    case ImpersonationNotAllowed    => None
+    case RorNotReadyYet             => None
+    case RorNotEnabled              => None
+    case RorFailedToStart           => None
+    case TestSettingsNotConfigured  => None
   }
+
 }
 
 object ForbiddenResponseContext {
   sealed trait Cause
+
   object Cause {
+
     def fromMismatchedCause(cause: ForbiddenCause): Cause = {
       cause match {
-        case ForbiddenCause.OperationNotAllowed => OperationNotAllowed
+        case ForbiddenCause.OperationNotAllowed       => OperationNotAllowed
         case ForbiddenCause.ImpersonationNotSupported => ImpersonationNotSupported
-        case ForbiddenCause.ImpersonationNotAllowed => ImpersonationNotAllowed
+        case ForbiddenCause.ImpersonationNotAllowed   => ImpersonationNotAllowed
       }
     }
+
   }
 
   final case class ForbiddenBlockMatch(block: Block) extends Cause
@@ -89,18 +95,20 @@ object ForbiddenResponseContext {
   case object RorFailedToStart extends Cause
   case object TestSettingsNotConfigured extends Cause
 
-  def from(causes: NonEmptyList[ForbiddenResponseContext.Cause],
-           aclStaticContext: AccessControlStaticContext): ForbiddenResponseContext =
+  def from(
+      causes: NonEmptyList[ForbiddenResponseContext.Cause],
+      aclStaticContext: AccessControlStaticContext
+  ): ForbiddenResponseContext =
     new ForbiddenResponseContext(Some(aclStaticContext), causes)
 
   private implicit val forbiddenCauseShow: Show[Cause] = Show.show {
-    case ForbiddenBlockMatch(_) => "FORBIDDEN_BY_BLOCK"
-    case OperationNotAllowed => "OPERATION_NOT_ALLOWED"
+    case ForbiddenBlockMatch(_)    => "FORBIDDEN_BY_BLOCK"
+    case OperationNotAllowed       => "OPERATION_NOT_ALLOWED"
     case ImpersonationNotSupported => "IMPERSONATION_NOT_SUPPORTED"
-    case ImpersonationNotAllowed => "IMPERSONATION_NOT_ALLOWED"
-    case RorNotReadyYet => "READONLYREST_NOT_READY_YET"
-    case RorNotEnabled => "READONLYREST_NOT_ENABLED"
-    case RorFailedToStart => "READONLYREST_FAILED_TO_START"
+    case ImpersonationNotAllowed   => "IMPERSONATION_NOT_ALLOWED"
+    case RorNotReadyYet            => "READONLYREST_NOT_READY_YET"
+    case RorNotEnabled             => "READONLYREST_NOT_ENABLED"
+    case RorFailedToStart          => "READONLYREST_FAILED_TO_START"
     case TestSettingsNotConfigured => "TEST_SETTINGS_NOT_CONFIGURED"
   }
 

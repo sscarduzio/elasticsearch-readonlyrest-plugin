@@ -29,4 +29,5 @@ final class XContentJsonParserFactory(xContent: NamedXContentRegistry) {
       ujson.write(json)
     )
   }
+
 }

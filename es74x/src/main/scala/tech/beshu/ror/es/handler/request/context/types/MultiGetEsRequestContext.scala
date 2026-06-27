@@ -43,37 +43,38 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
-class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
-                               esContext: EsContext,
-                               override val threadPool: ThreadPool)
-                              (implicit scheduler: Scheduler)
-  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
+class MultiGetEsRequestContext(
+    actionRequest: MultiGetRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+)(
+    implicit scheduler: Scheduler
+) extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
   private val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
-  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
-    block = block,
-    requestContext = this,
-    blockMetadata = BlockMetadata.from(this),
-    responseHeaders = Set.empty,
-    responseTransformations = List.empty,
-    indexPacks = discoveredIndexPacks,
-    filter = None,
-    fieldLevelSecurity = None,
-    requestFieldsUsage = requestFieldsUsage
-  )
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext =
+    FilterableMultiRequestBlockContext(
+      block = block,
+      requestContext = this,
+      blockMetadata = BlockMetadata.from(this),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      indexPacks = discoveredIndexPacks,
+      filter = None,
+      fieldLevelSecurity = None,
+      requestFieldsUsage = requestFieldsUsage
+    )
 
   override lazy val indexAttributes: IndexAttributeFilter =
     IndexAttributeFilter.from(actionRequest.getItems.asScala.map(indexAttributesFrom))
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
-    discoveredIndexPacks
-      .flatMap {
-        case Indices.Found(indices) => indices
-        case Indices.NotFound => Set.empty
-      }
-      .toCovariantSet
+    discoveredIndexPacks.flatMap {
+      case Indices.Found(indices) => indices
+      case Indices.NotFound       => Set.empty
+    }.toCovariantSet
   }
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
@@ -89,7 +90,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     } else {
       logger.error(
         s"""[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different
-           |number of items, than altered one. This can be security issue. So, it's better for forbid the request""".stripMargin)
+           |number of items, than altered one. This can be security issue. So, it's better for forbid the request""".stripMargin
+      )
       ShouldBeInterrupted
     }
   }
@@ -97,21 +99,16 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
 
   private def indexPacksFrom(request: MultiGetRequest): List[Indices] = {
-    request
-      .getItems.asScala
-      .map { item => Indices.Found(requestedIndicesFrom(item)) }
-      .toList
+    request.getItems.asScala.map { item => Indices.Found(requestedIndicesFrom(item)) }.toList
   }
 
   private def requestedIndicesFrom(item: MultiGetRequest.Item): Set[RequestedIndex[ClusterIndexName]] = {
-    item
-      .indices.asSafeSet
+    item.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
 
-  private def updateItem(item: MultiGetRequest.Item,
-                         indexPack: Indices): Unit = {
+  private def updateItem(item: MultiGetRequest.Item, indexPack: Indices): Unit = {
     indexPack match {
       case Indices.Found(indices) =>
         updateItemWithIndices(item, indices)
@@ -122,10 +119,12 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[RequestedIndex[ClusterIndexName]]) = {
     indices.toList match {
-      case Nil => updateItemWithNonExistingIndex(item)
+      case Nil           => updateItemWithNonExistingIndex(item)
       case index :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+          logger.warn(
+            s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]"
+          )
         }
         item.index(index.stringify)
     }
@@ -137,15 +136,14 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     item.index(notExistingIndex.stringify)
   }
 
-  private def updateFunction(filter: Option[Filter],
-                             fieldLevelSecurity: Option[FieldLevelSecurity])
-                            (actionResponse: ActionResponse): Task[ActionResponse] = {
+  private def updateFunction(filter: Option[Filter], fieldLevelSecurity: Option[FieldLevelSecurity])(
+      actionResponse: ActionResponse
+  ): Task[ActionResponse] = {
     filterResponse(filter, actionResponse)
       .map(response => filterFieldsFromResponse(fieldLevelSecurity, response))
   }
 
-  private def filterResponse(filter: Option[Filter],
-                             actionResponse: ActionResponse): Task[ActionResponse] = {
+  private def filterResponse(filter: Option[Filter], actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, filter) match {
       case (response: MultiGetResponse, Some(definedFilter)) =>
         applyFilter(response, definedFilter)
@@ -154,14 +152,12 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     }
   }
 
-  private def applyFilter(response: MultiGetResponse,
-                          definedFilter: Filter): Task[ActionResponse] = {
+  private def applyFilter(response: MultiGetResponse, definedFilter: Filter): Task[ActionResponse] = {
     val originalResponses = response.getResponses.toList
 
     NonEmptyList.fromList(identifyDocumentsToVerifyUsing(originalResponses)) match {
       case Some(existingDocumentsToVerify) =>
-        esContext
-          .esServices.clusterService
+        esContext.esServices.clusterService
           .verifyDocumentsAccessibility(existingDocumentsToVerify, definedFilter)
           .map { results => prepareNewResponse(originalResponses, results) }
       case None =>
@@ -180,26 +176,31 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     !item.isFailed && item.getResponse.isExists
   }
 
-  private def prepareNewResponse(originalResponses: List[MultiGetItemResponse],
-                                 verificationResults: Map[DocumentWithIndex, DocumentAccessibility]) = {
+  private def prepareNewResponse(
+      originalResponses: List[MultiGetItemResponse],
+      verificationResults: Map[DocumentWithIndex, DocumentAccessibility]
+  ) = {
     val newResponses = originalResponses
       .map(adjustResponseUsingResolvedAccessibility(verificationResults))
       .toArray
     new MultiGetResponse(newResponses)
   }
 
-  private def adjustResponseUsingResolvedAccessibility(accessibilityPerDocument: Map[DocumentWithIndex, DocumentAccessibility])
-                                                      (item: MultiGetItemResponse) = {
+  private def adjustResponseUsingResolvedAccessibility(
+      accessibilityPerDocument: Map[DocumentWithIndex, DocumentAccessibility]
+  )(item: MultiGetItemResponse) = {
     accessibilityPerDocument.get(item.asDocumentWithIndex) match {
       case None | Some(Accessible) => item
-      case Some(Inaccessible) =>
+      case Some(Inaccessible)      =>
         val newResponse = GetApi.doesNotExistResponse(original = item.getResponse)
         new MultiGetItemResponse(newResponse, null)
     }
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity],
-                                       actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity],
+      actionResponse: ActionResponse
+  ): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
       case (response: MultiGetResponse, Some(definedFieldLevelSecurity)) =>
         val newResponses = response.getResponses
@@ -214,4 +215,5 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         actionResponse
     }
   }
+
 }

@@ -26,22 +26,29 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRorWrappedUpgradeAction(transportService: TransportService,
-                                       actionFilters: ActionFilters,
-                                       executor: Executor,
-                                       @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RorWrappedUpgradeRequest, RorWrappedUpgradeResponse](
-    RorWrappedUpgradeActionType.name, transportService, actionFilters, RorWrappedUpgradeActionType.exceptionReader[RorWrappedUpgradeRequest], executor
-  ) {
+class TransportRorWrappedUpgradeAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    executor: Executor,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RorWrappedUpgradeRequest, RorWrappedUpgradeResponse](
+      RorWrappedUpgradeActionType.name,
+      transportService,
+      actionFilters,
+      RorWrappedUpgradeActionType.exceptionReader[RorWrappedUpgradeRequest],
+      executor
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           threadPool: ThreadPool) =
+  def this(transportService: TransportService, actionFilters: ActionFilters, threadPool: ThreadPool) =
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
-  override def doExecute(task: Task, request: RorWrappedUpgradeRequest,
-                         listener: ActionListener[RorWrappedUpgradeResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RorWrappedUpgradeRequest,
+      listener: ActionListener[RorWrappedUpgradeResponse]
+  ): Unit = {
     listener.onResponse(new RorWrappedUpgradeResponse)
   }
+
 }

@@ -69,20 +69,19 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val requestContext = MockRequestContext.indices
         val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
-        inside(result) {
-          case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
-            block.name should be(blockName)
-            assertPermitted(rulesHistory(0))(
-              hasRuleName = Rule.Name("r1")
-            )
-            assertPermitted(rulesHistory(1))(
-              hasRuleName = Rule.Name("r2")
-            )
-            assertDenied(rulesHistory(2))(
-              hasRuleName = Rule.Name("r3"),
-              hasCause = NotAuthorized
-            )
-            rulesHistory should have size 3
+        inside(result) { case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
+          block.name should be(blockName)
+          assertPermitted(rulesHistory(0))(
+            hasRuleName = Rule.Name("r1")
+          )
+          assertPermitted(rulesHistory(1))(
+            hasRuleName = Rule.Name("r2")
+          )
+          assertDenied(rulesHistory(2))(
+            hasRuleName = Rule.Name("r3"),
+            hasCause = NotAuthorized
+          )
+          rulesHistory should have size 3
         }
       }
       "one of rules throws exception" in {
@@ -91,7 +90,9 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           name = blockName,
           policy = Block.Policy.Allow,
           rules = NonEmptyList.fromListUnsafe(
-            passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule("r5") :: Nil
+            passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule(
+              "r5"
+            ) :: Nil
           ),
           audit = Block.Audit.Enabled(),
           auditSinks = List.empty,
@@ -99,20 +100,19 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val requestContext = MockRequestContext.indices
         val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
 
-        inside(result) {
-          case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
-            block.name should be(blockName)
-            assertPermitted(rulesHistory(0))(
-              hasRuleName = Rule.Name("r1")
-            )
-            assertPermitted(rulesHistory(1))(
-              hasRuleName = Rule.Name("r2")
-            )
-            assertDenied(rulesHistory(2))(
-              hasRuleName = Rule.Name("r3"),
-              hasCause = NotAuthorized
-            )
-            rulesHistory should have size 3
+        inside(result) { case (Decision.Denied(_), BlockHistory.Denied(block, Decision.Denied(_), rulesHistory)) =>
+          block.name should be(blockName)
+          assertPermitted(rulesHistory(0))(
+            hasRuleName = Rule.Name("r1")
+          )
+          assertPermitted(rulesHistory(1))(
+            hasRuleName = Rule.Name("r2")
+          )
+          assertDenied(rulesHistory(2))(
+            hasRuleName = Rule.Name("r3"),
+            hasCause = NotAuthorized
+          )
+          rulesHistory should have size 3
         }
       }
     }
@@ -187,8 +187,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           rulesHistory should have size 3
 
           blockContext.blockMetadata should be(
-            BlockMetadata
-              .empty
+            BlockMetadata.empty
               .withLoggedUser(DirectlyLoggedUser(User.Id("user1")))
           )
           blockContext.filteredIndices should be(Set(requestedIndex("idx1")))
@@ -224,8 +223,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           rulesHistory should have size 2
 
           blockContext.blockMetadata should be(
-            BlockMetadata
-              .empty
+            BlockMetadata.empty
               .withLoggedUser(DirectlyLoggedUser(User.Id("user2")))
           )
           blockContext.filteredIndices should be(empty)
@@ -257,10 +255,9 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
 
       result.size should be(1)
-      inside(result.head) {
-        case (Decision.Denied(cause), BlockHistory.Denied(_, Decision.Denied(_), rulesHistory)) =>
-          cause should be(Cause.AuthenticationFailed("mock failed"))
-          rulesHistory.map(_.rule) should be(Vector(Rule.Name("auth")))
+      inside(result.head) { case (Decision.Denied(cause), BlockHistory.Denied(_, Decision.Denied(_), rulesHistory)) =>
+        cause should be(Cause.AuthenticationFailed("mock failed"))
+        rulesHistory.map(_.rule) should be(Vector(Rule.Name("auth")))
       }
     }
     "be permitted and return one result per available group, each carrying that group as the current one and the full rule history" in {
@@ -302,14 +299,16 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       )
       val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
 
-      val resolvedKibanaIndices = result.toList.collect {
-        case (Decision.Permitted(blockContext), _) => blockContext.blockMetadata.kibanaPolicy.flatMap(_.index)
+      val resolvedKibanaIndices = result.toList.collect { case (Decision.Permitted(blockContext), _) =>
+        blockContext.blockMetadata.kibanaPolicy.map(_.index)
       }
-      resolvedKibanaIndices should be(List(
-        Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g1"))),
-        Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g2"))),
-        Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g3")))
-      ))
+      resolvedKibanaIndices should be(
+        List(
+          Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g1"))),
+          Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g2"))),
+          Some(kibanaIndexName(NonEmptyString.unsafeFrom("kibana_g3")))
+        )
+      )
     }
     "be permitted and execute the authentication/authorization rule exactly once regardless of the number of groups" in {
       val authInvocations = new AtomicInteger(0)
@@ -339,21 +338,29 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
     inside(ruleHistory.decision) { case Permitted(_) => }
   }
 
-  private def assertDenied[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name, hasCause: Cause): Assertion = {
+  private def assertDenied[T <: BlockContext](
+      ruleHistory: RuleHistory[T]
+  )(hasRuleName: Rule.Name, hasCause: Cause): Assertion = {
     ruleHistory.rule should be(hasRuleName)
     ruleHistory.decision should be(Denied(hasCause))
   }
 
   // Overload for tests that need to modify a GeneralIndexRequestBlockContext specifically
-  private def passingRule(ruleName: String,
-                          modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext): RegularRule =
+  private def passingRule(
+      ruleName: String,
+      modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext
+  ): RegularRule =
     new RegularRule {
       override val name: Rule.Name = Rule.Name(ruleName)
 
-      override protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
         BlockContextUpdater[B] match {
           case GeneralIndexRequestBlockContextUpdater => Task.now(Permitted(modifyBlockContext(blockContext)))
-          case _ => throw new IllegalStateException("Assuming that only GeneralIndexRequestBlockContext can be used in this test")
+          case _                                      =>
+            throw new IllegalStateException(
+              "Assuming that only GeneralIndexRequestBlockContext can be used in this test"
+            )
         }
     }
+
 }

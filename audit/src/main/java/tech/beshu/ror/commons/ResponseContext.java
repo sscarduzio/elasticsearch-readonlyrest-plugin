@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.commons;
 
-
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
 
 /**
@@ -33,7 +32,13 @@ public class ResponseContext {
   private final String reason;
   private final boolean isMatch;
 
-  public ResponseContext(FinalState finalState, RequestContextShim rc, Throwable error, Verbosity verbosity, String reason, boolean isMatch) {
+  public ResponseContext(
+      FinalState finalState,
+      RequestContextShim rc,
+      Throwable error,
+      Verbosity verbosity,
+      String reason,
+      boolean isMatch) {
     this.finalState = finalState;
     this.finishedHandling = System.currentTimeMillis();
     this.rc = rc;

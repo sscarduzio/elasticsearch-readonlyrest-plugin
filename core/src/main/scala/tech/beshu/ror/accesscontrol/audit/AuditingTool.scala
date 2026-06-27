@@ -42,9 +42,10 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 
-final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
-                                (implicit loggingContext: LoggingContext,
-                                 auditEnvironmentContext: AuditEnvironmentContext) {
+final class AuditingTool private (private[ror] val sinks: List[BaseAuditSink])(
+    implicit loggingContext: LoggingContext,
+    auditEnvironmentContext: AuditEnvironmentContext
+) {
 
   def audit[B <: BlockContext](response: ResponseContext[B]): Task[Unit] = {
     NonEmptyList.fromList(activeSinksFor(response)) match {
@@ -79,7 +80,10 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
 
   def close(): Task[Unit] = sinks.traverse(_.close()).void
 
-  private def toAuditResponse[B <: BlockContext](responseContext: ResponseContext[B], auditEnvironmentContext: AuditEnvironmentContext): AuditResponseContext = {
+  private def toAuditResponse[B <: BlockContext](
+      responseContext: ResponseContext[B],
+      auditEnvironmentContext: AuditEnvironmentContext
+  ): AuditResponseContext = {
     responseContext match {
       case allowedBy: ResponseContext.AllowedBy[B] =>
         AuditResponseContext.Allowed(
@@ -167,18 +171,19 @@ final class AuditingTool private(private[ror] val sinks: List[BaseAuditSink])
 
   private def toAuditVerbosity(audit: Audit): AuditResponseContext.Verbosity = audit match {
     case Audit.Enabled(logAllowedEvents, _) =>
-      if (logAllowedEvents) AuditResponseContext.Verbosity.Info else AuditResponseContext.Verbosity.Error
+      if (logAllowedEvents) AuditResponseContext.Verbosity.Info  else AuditResponseContext.Verbosity.Error
     case Audit.Disabled =>
       AuditResponseContext.Verbosity.Info
   }
 
-  private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                       loggedUser: Option[LoggedUser],
-                                                       auditEnvironmentContext: AuditEnvironmentContext,
-                                                       blockContext: Option[B],
-                                                       matchedBlocks: Option[NonEmptyList[Block]],
-                                                       historyEntries: History[B],
-                                                       responseContext: ResponseContext[B],
+  private def toAuditRequestContext[B <: BlockContext](
+      requestContext: RequestContext.Aux[B],
+      loggedUser: Option[LoggedUser],
+      auditEnvironmentContext: AuditEnvironmentContext,
+      blockContext: Option[B],
+      matchedBlocks: Option[NonEmptyList[Block]],
+      historyEntries: History[B],
+      responseContext: ResponseContext[B],
                                                        generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
     new AuditRequestContextBasedOnAclResult(
       requestContext,
@@ -214,38 +219,48 @@ object AuditingTool extends RequestIdAwareLogging {
       }
 
       object Config {
-        final case class EsIndexBasedSink(logSerializer: AuditLogSerializer,
-                                          rorAuditIndexTemplate: RorAuditIndexTemplate,
-                                          auditCluster: AuditCluster) extends Config
+
+        final case class EsIndexBasedSink(
+            logSerializer: AuditLogSerializer,
+            rorAuditIndexTemplate: RorAuditIndexTemplate,
+            auditCluster: AuditCluster
+        ) extends Config
 
         object EsIndexBasedSink {
+
           val default: EsIndexBasedSink = EsIndexBasedSink(
             logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
+
         }
 
-        final case class EsDataStreamBasedSink(logSerializer: AuditLogSerializer,
-                                               rorAuditDataStream: RorAuditDataStream,
-                                               auditCluster: AuditCluster) extends Config
+        final case class EsDataStreamBasedSink(
+            logSerializer: AuditLogSerializer,
+            rorAuditDataStream: RorAuditDataStream,
+            auditCluster: AuditCluster
+        ) extends Config
 
         object EsDataStreamBasedSink {
+
           val default: EsDataStreamBasedSink = EsDataStreamBasedSink(
             logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             rorAuditDataStream = RorAuditDataStream.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
+
         }
 
-        final case class LogBasedSink(logSerializer: AuditLogSerializer,
-                                      loggerName: RorAuditLoggerName) extends Config
+        final case class LogBasedSink(logSerializer: AuditLogSerializer, loggerName: RorAuditLoggerName) extends Config
 
         object LogBasedSink {
+
           val default: LogBasedSink = LogBasedSink(
             logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             loggerName = RorAuditLoggerName.default
           )
+
         }
 
         final case class RollingFileBasedSink(logSerializer: AuditLogSerializer,
@@ -258,7 +273,9 @@ object AuditingTool extends RequestIdAwareLogging {
                                               maxFiles: PosInt)
         }
       }
+
     }
+
   }
 
   sealed trait AuditOutputsConfig
@@ -315,15 +332,15 @@ object AuditingTool extends RequestIdAwareLogging {
     AuditSink.Config.EsIndexBasedSink.default
   )
 
-  private def createAuditSinks(sinks: List[AuditSink],
-                               auditSinkServiceCreator: AuditSinkServiceCreator)
-                              (using Clock): Task[ValidatedNel[CreationError, List[SupportedAuditSink]]] = {
+  private def createAuditSinks(sinks: List[AuditSink], auditSinkServiceCreator: AuditSinkServiceCreator)(
+      using Clock
+  ): Task[ValidatedNel[CreationError, List[SupportedAuditSink]]] = {
     sinks
       .map[Task[Validated[CreationError, Option[SupportedAuditSink]]]] {
         case Enabled(name, config: AuditSink.Config.EsIndexBasedSink) =>
           val serviceCreator: IndexBasedAuditSinkServiceCreator = auditSinkServiceCreator match {
             case creator: DataStreamAndIndexBasedAuditSinkServiceCreator => creator
-            case creator: IndexBasedAuditSinkServiceCreator => creator
+            case creator: IndexBasedAuditSinkServiceCreator              => creator
           }
           createIndexSink(name, config, serviceCreator).map(_.some.valid)
         case Enabled(name, config: AuditSink.Config.EsDataStreamBasedSink) =>
@@ -349,8 +366,8 @@ object AuditingTool extends RequestIdAwareLogging {
           case ((errorsAcc, sinksAcc), result) =>
             result match {
               case Validated.Valid(Some(auditSink)) => (errorsAcc, sinksAcc :+ auditSink)
-              case Validated.Valid(None) => (errorsAcc, sinksAcc)
-              case Validated.Invalid(error) => (errorsAcc :+ error, sinksAcc)
+              case Validated.Valid(None)            => (errorsAcc, sinksAcc)
+              case Validated.Invalid(error)         => (errorsAcc :+ error, sinksAcc)
             }
         }
       }
@@ -359,10 +376,13 @@ object AuditingTool extends RequestIdAwareLogging {
       }
   }
 
-  private def createIndexSink(name: Block.SinkName,
+  private def createIndexSink(
+      name: Block.SinkName,
                               config: AuditSink.Config.EsIndexBasedSink,
-                              serviceCreator: IndexBasedAuditSinkServiceCreator)
-                             (using Clock): Task[SupportedAuditSink] = Task.delay {
+                              serviceCreator: IndexBasedAuditSinkServiceCreator
+  )(
+      using Clock
+  ): Task[SupportedAuditSink] = Task.delay {
     val service = serviceCreator.index(config.auditCluster)
     EsIndexBasedAuditSink(
       sinkName = name,
@@ -372,25 +392,27 @@ object AuditingTool extends RequestIdAwareLogging {
     )
   }
 
-  private def createDataStreamSink(name: Block.SinkName,
+  private def createDataStreamSink(
+      name: Block.SinkName,
                                    config: AuditSink.Config.EsDataStreamBasedSink,
                                    serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator): Task[Validated[CreationError, SupportedAuditSink]] =
     Task.delay(serviceCreator.dataStream(config.auditCluster))
       .flatMap { auditSinkService =>
-        EsDataStreamBasedAuditSink.create(
-          name,
+        EsDataStreamBasedAuditSink
+          .create(
+            name,
           config.logSerializer,
           config.rorAuditDataStream,
           auditSinkService,
-          config.auditCluster
-        ).map(_.leftMap(error => CreationError(error.message)).toValidated)
+          config.auditCluster)
+          .map(_.leftMap(error => CreationError(error.message)).toValidated)
       }
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink | RollingFileBasedAuditSink
 
   private given showSupportedAuditSink: Show[SupportedAuditSink] = Show.show {
-    case _: EsIndexBasedAuditSink => "index"
-    case _: LogBasedAuditSink => "log"
+    case _: EsIndexBasedAuditSink      => "index"
+    case _: LogBasedAuditSink          => "log"
     case _: RollingFileBasedAuditSink => "log_file"
     case _: EsDataStreamBasedAuditSink => "data_stream"
   }
@@ -398,9 +420,10 @@ object AuditingTool extends RequestIdAwareLogging {
   private given Show[List[SupportedAuditSink]] = sinks => sinks.map(_.show).mkString(", ")
 
   extension (userMetadata: UserMetadata) {
+
     def loggedUser: LoggedUser = userMetadata match {
       case UserMetadata.WithoutGroups(loggedUser, _, _, _) => loggedUser
-      case UserMetadata.WithGroups(groupsMetadata) => groupsMetadata.values.head.loggedUser
+      case UserMetadata.WithGroups(groupsMetadata)         => groupsMetadata.values.head.loggedUser
     }
 
     def matchedBlocks: NonEmptyList[Block] = userMetadata match {
@@ -416,5 +439,7 @@ object AuditingTool extends RequestIdAwareLogging {
       case UserMetadata.WithGroups(groupsMetadata) =>
         groupsMetadata.values.map(_.metadataOrigin.blockContext.block).toList.show
     }
+
   }
+
 }

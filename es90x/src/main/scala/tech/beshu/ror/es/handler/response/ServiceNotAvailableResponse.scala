@@ -23,8 +23,8 @@ import tech.beshu.ror.accesscontrol.response.ServiceNotAvailableResponseContext.
 
 import scala.jdk.CollectionConverters.*
 
-final class ServiceNotAvailableResponse private(context: ServiceNotAvailableResponseContext)
-  extends ElasticsearchException(context.responseMessage) {
+final class ServiceNotAvailableResponse private (context: ServiceNotAvailableResponseContext)
+    extends ElasticsearchException(context.responseMessage) {
 
   addMetadata("es.due_to", context.causes.asJava)
 

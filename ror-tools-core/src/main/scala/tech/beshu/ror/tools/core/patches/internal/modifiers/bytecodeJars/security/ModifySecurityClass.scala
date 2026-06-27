@@ -35,7 +35,7 @@ import java.io.InputStream
  * The goal is to prevent Security from altering request-cache keys and from injecting index-module
  * behavior that can conflict with ReadonlyREST’s request handling.
  */
-private [patches] object ModifySecurityClass extends BytecodeJarModifier {
+private[patches] object ModifySecurityClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -52,14 +52,15 @@ private [patches] object ModifySecurityClass extends BytecodeJarModifier {
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "onIndexModule" =>
           // removing the onIndexModule method
@@ -72,10 +73,11 @@ private [patches] object ModifySecurityClass extends BytecodeJarModifier {
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
   private class GetRequestCacheKeyDifferentiatorReturningNull(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+      extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -84,6 +86,7 @@ private [patches] object ModifySecurityClass extends BytecodeJarModifier {
       underlying.visitMaxs(1, 1)
       underlying.visitEnd()
     }
+
   }
 
 }

@@ -22,17 +22,15 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleA
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.ImpersonationResult
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 
-private [auth] trait BaseAuthenticationRule
-  extends AuthenticationRule
-    with SimpleAuthenticationImpersonationSupport {
+private[auth] trait BaseAuthenticationRule extends AuthenticationRule with SimpleAuthenticationImpersonationSupport {
 
-  protected def tryToAuthenticateUser[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]]
+  protected def tryToAuthenticateUser[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]]
 
-  override protected def authenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
+  override protected def authenticate[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = {
     tryToImpersonateUser(blockContext)
       .flatMap {
         case ImpersonationResult.NotImpersonationRequest() => tryToAuthenticateUser(blockContext)
-        case ImpersonationResult.Handled(result) => Task.now(result)
+        case ImpersonationResult.Handled(result)           => Task.now(result)
       }
   }
 

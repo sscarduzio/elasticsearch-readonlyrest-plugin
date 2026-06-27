@@ -36,12 +36,9 @@ class ActionTests extends AnyWordSpec with Matchers {
         )
 
         val rorActionNamesByOutdatedName =
-          expectedRorActionNamesByOutdatedName
-            .view
-            .map {
-              case (oldName, _) => (oldName, Action(oldName).value)
-            }
-            .toMap
+          expectedRorActionNamesByOutdatedName.view.map { case (oldName, _) =>
+            (oldName, Action(oldName).value)
+          }.toMap
 
         rorActionNamesByOutdatedName should be(expectedRorActionNamesByOutdatedName)
       }
@@ -58,12 +55,9 @@ class ActionTests extends AnyWordSpec with Matchers {
         )
 
         val rorActionPatternsByOutdatedNamePatterns =
-          expectedRorActionPatternsByOutdatedNamePatterns
-            .view
-            .map {
-              case (oldName, _) => (oldName, Action(oldName).value)
-            }
-            .toMap
+          expectedRorActionPatternsByOutdatedNamePatterns.view.map { case (oldName, _) =>
+            (oldName, Action(oldName).value)
+          }.toMap
 
         rorActionPatternsByOutdatedNamePatterns should be(expectedRorActionPatternsByOutdatedNamePatterns)
       }
@@ -83,12 +77,9 @@ class ActionTests extends AnyWordSpec with Matchers {
         )
 
         val result =
-          expectedPatterns
-            .view
-            .map {
-              case (pattern, _) => (pattern, Action(pattern).value)
-            }
-            .toMap
+          expectedPatterns.view.map { case (pattern, _) =>
+            (pattern, Action(pattern).value)
+          }.toMap
 
         result should be(expectedPatterns)
       }
@@ -119,4 +110,5 @@ class ActionTests extends AnyWordSpec with Matchers {
       }
     }
   }
+
 }

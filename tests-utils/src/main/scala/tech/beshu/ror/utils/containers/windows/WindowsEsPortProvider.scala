@@ -24,7 +24,7 @@ object WindowsEsPortProvider {
   private val esPortProvider = new BoundedAtomicInt(start = 9200, max = 9299)
 
   // Node ports need to be predefined, because each ES process must be aware on startup time of ports used by all other cluster nodes.
-  // In testcontainers implementation all nodes are identifiable by host name in docker network, with all using the same port. 
+  // In testcontainers implementation all nodes are identifiable by host name in docker network, with all using the same port.
   // On Windows, each ES is a process running on the same host, with unique ports.
   val esNodeNameToEsPorts: Map[String, WindowsEsPorts] =
     ListMap.from(
@@ -91,5 +91,7 @@ object WindowsEsPortProvider {
         throw new IllegalStateException(s"Limit exceeded: $value > $max")
       value
     }
+
   }
+
 }

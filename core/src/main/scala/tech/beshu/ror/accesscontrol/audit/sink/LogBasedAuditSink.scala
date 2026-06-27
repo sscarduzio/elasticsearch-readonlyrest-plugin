@@ -25,13 +25,14 @@ import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 private[audit] final class LogBasedAuditSink(sinkName: Block.SinkName,
-                                             serializer: AuditLogSerializer,
-                                             loggerName: RorAuditLoggerName) extends BaseAuditSink(sinkName, serializer) {
+                                             serializer: AuditLogSerializer, loggerName: RorAuditLoggerName)
+    extends BaseAuditSink(sinkName, serializer) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
 
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
-                               (implicit requestId: RequestId): Task[Unit] = Task {
+  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
+      implicit requestId: RequestId
+  ): Task[Unit] = Task {
     serializer match {
       case s: AclAuditLogSerializer =>
         logger.info(s"[${requestId.value}] ${s.formatMessage(event, logger.isDebugEnabled)}")

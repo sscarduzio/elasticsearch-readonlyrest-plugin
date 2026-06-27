@@ -1,0 +1,50 @@
+# Maven publish steps shared by the PUBLISH_MVN_ARTIFACTS (auto, post-test) and
+# PUBLISH_MVN_ARTIFACTS_WITHOUT_TESTING (manual, skip-test) stages.
+#
+# NOTE: there is deliberately no Sonatype pre-check here. The old pre-check probed the
+# decommissioned oss.sonatype.org endpoint; it returned neither 200 nor 404, so every gated step
+# silently SKIPPED and releases could ship without Maven artifacts while the stage stayed green.
+# run-pipeline.sh's publish_maven_artifacts already does the artifact-existence check correctly
+# (against repo1.maven.org) and skips/publishes accordingly.
+parameters:
+  - name: phase
+    type: string
+    default: 'MVN_PUBLISH'
+
+steps:
+  - checkout: self
+    fetchDepth: 1
+    clean: false
+    persistCredentials: true
+  - task: DownloadSecureFile@1
+    name: pgp
+    displayName: 'Download secret.pgp secret file'
+    inputs:
+      secureFile: 'secret.pgp'
+
+  - script: |
+      # Runs inside the toolchains container as root, so no sudo needed (and the image
+      # does not ship sudo). Previously this stage ran on a bare agent where sudo existed.
+      echo Installing $(pgp.secureFilePath) to directory...
+      chown root:root $(pgp.secureFilePath)
+      chmod a+r $(pgp.secureFilePath)
+      mkdir .travis
+      ln -s -t .travis/ $(pgp.secureFilePath)
+      echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+
+  - script: |
+      echo "[${{ parameters.phase }}] executing ROR_TASK=$ROR_TASK"
+      export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
+      export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
+      export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
+      export GPG_KEY_ID=$VAR_GPG_KEY_ID
+      export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
+      echo ">>> ($ROR_TASK) Publishing MVN artifacts" && ci/run-pipeline.sh
+    env:
+      ROR_TASK: publish_maven_artifacts
+      VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
+      VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
+      VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
+      VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
+      VAR_GPG_KEY_ID: $(GPG_KEY_ID)
+      GRADLE_USER_HOME: $(GRADLE_USER_HOME)

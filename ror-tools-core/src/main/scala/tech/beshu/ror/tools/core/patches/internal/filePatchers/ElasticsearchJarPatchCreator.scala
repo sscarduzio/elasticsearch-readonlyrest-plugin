@@ -20,22 +20,27 @@ import just.semver.SemVer
 import tech.beshu.ror.tools.core.patches.internal.modifiers.FileModifier
 import tech.beshu.ror.tools.core.patches.internal.{FileModifiersBasedPatch, RorPluginDirectory}
 
-private[patches] class ElasticsearchJarPatchCreator private(patchingSteps: Iterable[FileModifier])
-  extends FilePatchCreator[ElasticsearchJarPatch] {
+private[patches] class ElasticsearchJarPatchCreator private (patchingSteps: Iterable[FileModifier])
+    extends FilePatchCreator[ElasticsearchJarPatch] {
 
-  override def create(rorPluginDirectory: RorPluginDirectory,
-                      esVersion: SemVer): ElasticsearchJarPatch =
+  override def create(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer): ElasticsearchJarPatch =
     new ElasticsearchJarPatch(rorPluginDirectory, esVersion, patchingSteps)
 }
+
 object ElasticsearchJarPatchCreator {
-  def apply(patchingSteps: FileModifier*): ElasticsearchJarPatchCreator = new ElasticsearchJarPatchCreator(patchingSteps)
+
+  def apply(patchingSteps: FileModifier*): ElasticsearchJarPatchCreator = new ElasticsearchJarPatchCreator(
+    patchingSteps
+  )
+
 }
 
-private[patches] class ElasticsearchJarPatch(rorPluginDirectory: RorPluginDirectory,
-                                             esVersion: SemVer,
-                                             patchingSteps: Iterable[FileModifier])
-  extends FileModifiersBasedPatch(
-    rorPluginDirectory = rorPluginDirectory,
-    fileToPatchPath = rorPluginDirectory.esDirectory.libPath / s"elasticsearch-${esVersion.render}.jar",
-    patchingSteps = patchingSteps
-  )
+private[patches] class ElasticsearchJarPatch(
+    rorPluginDirectory: RorPluginDirectory,
+    esVersion: SemVer,
+    patchingSteps: Iterable[FileModifier]
+) extends FileModifiersBasedPatch(
+      rorPluginDirectory = rorPluginDirectory,
+      fileToPatchPath = rorPluginDirectory.esDirectory.libPath / s"elasticsearch-${esVersion.render}.jar",
+      patchingSteps = patchingSteps
+    )

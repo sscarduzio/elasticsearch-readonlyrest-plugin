@@ -35,9 +35,11 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
-                                          rawPattern: String,
-                                          val rorAuditIndexPattern: IndexPattern) {
+final class RorAuditIndexTemplate private (
+    nameFormatter: DateTimeFormatter,
+    rawPattern: String,
+    val rorAuditIndexPattern: IndexPattern
+) {
 
   def indexName(instant: Instant): IndexName.Full = {
     IndexName.Full(NonEmptyString.unsafeFrom(nameFormatter.format(instant)))
@@ -57,7 +59,9 @@ final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
           }
     }
   }
+
 }
+
 object RorAuditIndexTemplate {
   val default: RorAuditIndexTemplate = from(constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).toOption.get
 
@@ -72,7 +76,7 @@ object RorAuditIndexTemplate {
   private def formatterOfPattern(pattern: NonEmptyString): Either[CreationError.ParsingError, DateTimeFormatter] = {
     Try(DateTimeFormatter.ofPattern(pattern.value).withZone(ZoneId.of("UTC"))) match {
       case Success(formatter) => Right(formatter)
-      case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
+      case Failure(ex)        => Left(CreationError.ParsingError(ex.getMessage))
     }
   }
 
@@ -88,12 +92,15 @@ object RorAuditIndexTemplate {
   }
 
   sealed trait CreationError
+
   object CreationError {
     final case class ParsingError(msg: String) extends CreationError
   }
+
 }
 
-final case class RorAuditDataStream private(dataStream: DataStreamName.Full)
+final case class RorAuditDataStream private (dataStream: DataStreamName.Full)
+
 object RorAuditDataStream {
   val default: RorAuditDataStream = RorAuditDataStream(DataStreamName.Full.fromNes(nes("readonlyrest_audit")))
 
@@ -126,21 +133,26 @@ object RorAuditDataStream {
 
     List[(String => Boolean, String)](
       (_.exists(c => c.isLetter && c.isUpper), "name must be lowercase"),
-      (_.exists(forbiddenCharactersSet.contains), s"name must not contain forbidden characters ${forbiddenCharacters.show}"),
+      (
+        _.exists(forbiddenCharactersSet.contains),
+        s"name must not contain forbidden characters ${forbiddenCharacters.show}"
+      ),
       (value => forbiddenPrefixes.exists(value.startsWith), s"name must not start with ${forbiddenPrefixes.show}"),
       (value => forbiddenVariants.contains(value), s"name cannot be any of ${forbiddenVariants.show}"),
       (value => value.getBytes.length > maxBytes, s"name must be not longer than 255 bytes"),
     )
-      .map {
-        case (test, errorMsg) => Validated.cond(!test(value.value), (), errorMsg).toValidatedNel
+      .map { case (test, errorMsg) =>
+        Validated.cond(!test(value.value), (), errorMsg).toValidatedNel
       }
       .sequence
       .toEither
-      .leftMap {
-        errors =>
-          CreationError.FormatError(s"Data stream '${value.show}' has an invalid format. Cause: ${errors.toList.mkString(", ")}.")
+      .leftMap { errors =>
+        CreationError.FormatError(
+          s"Data stream '${value.show}' has an invalid format. Cause: ${errors.toList.mkString(", ")}."
+        )
 
-      }.as(value)
+      }
+      .as(value)
   }
 
   sealed trait CreationError
@@ -148,14 +160,19 @@ object RorAuditDataStream {
   object CreationError {
     final case class FormatError(msg: String) extends CreationError
   }
+
 }
 
 sealed trait AuditCluster
+
 object AuditCluster {
   case object LocalAuditCluster extends AuditCluster
-  final case class RemoteAuditCluster(nodes: UniqueNonEmptyList[AuditClusterNode],
-                                      mode: ClusterMode,
-                                      credentials: Option[NodeCredentials]) extends AuditCluster {
+
+  final case class RemoteAuditCluster(
+      nodes: UniqueNonEmptyList[AuditClusterNode],
+      mode: ClusterMode,
+      credentials: Option[NodeCredentials]
+  ) extends AuditCluster {
     def requestTimeout: FiniteDuration = 30.seconds
     def connectionTimeout: FiniteDuration = 1.seconds
     def connectionRequestTimeout: FiniteDuration = 10.seconds
@@ -175,17 +192,21 @@ object AuditCluster {
         password <- uri.toUrl.password.flatMap(NonEmptyString.unapply)
       } yield NodeCredentials(username, password)
     }
+
   }
 
   final case class NodeCredentials(username: NonEmptyString, password: NonEmptyString)
 
   sealed trait ClusterMode
+
   object ClusterMode {
     case object RoundRobin extends ClusterMode
   }
+
 }
 
 final case class RorAuditLoggerName(value: NonEmptyString)
+
 object RorAuditLoggerName {
   val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
 }

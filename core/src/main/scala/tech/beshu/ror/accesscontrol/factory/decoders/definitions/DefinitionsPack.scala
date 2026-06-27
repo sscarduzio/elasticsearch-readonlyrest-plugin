@@ -20,17 +20,20 @@ import cats.Show
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 
-final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
-                                 users: Definitions[UserDef],
-                                 authenticationServices: Definitions[ExternalAuthenticationService],
-                                 externalGroupsProviderServices: Definitions[ExternalGroupsProviderService],
-                                 jwts: Definitions[JwtDef],
-                                 rorKbns: Definitions[RorKbnDef],
-                                 ldaps: Definitions[LdapService],
-                                 impersonators: Definitions[ImpersonatorDef],
-                                 variableTransformationAliases: Definitions[VariableTransformationAliasDef])
+final case class DefinitionsPack(
+    proxies: Definitions[ProxyAuth],
+    users: Definitions[UserDef],
+    authenticationServices: Definitions[ExternalAuthenticationService],
+    externalGroupsProviderServices: Definitions[ExternalGroupsProviderService],
+    jwts: Definitions[JwtDef],
+    rorKbns: Definitions[RorKbnDef],
+    ldaps: Definitions[LdapService],
+    impersonators: Definitions[ImpersonatorDef],
+    variableTransformationAliases: Definitions[VariableTransformationAliasDef]
+)
 
 final case class Definitions[Item](items: List[Item]) extends AnyVal
+
 object Definitions {
 
   trait Item {
@@ -38,4 +41,5 @@ object Definitions {
     def id: Id
     def idShow: Show[Id]
   }
+
 }

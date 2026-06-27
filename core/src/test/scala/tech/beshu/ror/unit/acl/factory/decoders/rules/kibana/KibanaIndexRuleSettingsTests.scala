@@ -18,9 +18,18 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaIndexRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  BlocksLevelCreationError,
+  RulesLevelCreationError
+}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.*
 
@@ -30,16 +39,15 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
     "be able to be loaded from settings" when {
       "kibana index is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_index: some_kibana_index
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_index: some_kibana_index
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.kibanaIndex should be(AlreadyResolved(kibanaIndexName("some_kibana_index")))
           }
@@ -47,36 +55,34 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
       }
       "kibana index is defined with variable" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    kibana_index: "@{user}_kibana_index"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    kibana_index: "@{user}_kibana_index"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaIndex shouldBe a [ToBeResolved[_]]
+            rule.settings.kibanaIndex shouldBe a[ToBeResolved[_]]
           }
         )
       }
       "it's defined with 'actions' rule" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    auth_key: user:pass
-              |    kibana_index: "@{user}_kibana_index"
-              |    actions: ["*"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    auth_key: user:pass
+                   |    kibana_index: "@{user}_kibana_index"
+                   |    actions: ["*"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.kibanaIndex shouldBe a[ToBeResolved[_]]
           }
@@ -86,86 +92,94 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
     "not be able to be loaded from settings" when {
       "no kibana index is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_index:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_index:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """kibana_index: null
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""kibana_index: null
+                                                                                      |""".stripMargin)))
           }
         )
       }
       "it's defined with other rule in the block" when {
         "the rule is 'filter' rule" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_index: some_kibana_index
-                |    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block
+                     |    kibana_index: some_kibana_index
+                     |    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'filter' rule. These two cannot be used together in one block."
-              )))
+              errors.head should be(
+                BlocksLevelCreationError(
+                  Message(
+                    "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'filter' rule. These two cannot be used together in one block."
+                  )
+                )
+              )
             }
           )
         }
         "the rule is 'fields' rule" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_index: some_kibana_index
-                |    fields: ["_source","user1"]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block
+                     |    kibana_index: some_kibana_index
+                     |    fields: ["_source","user1"]
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'fields' rule. These two cannot be used together in one block."
-              )))
+              errors.head should be(
+                BlocksLevelCreationError(
+                  Message(
+                    "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'fields' rule. These two cannot be used together in one block."
+                  )
+                )
+              )
             }
           )
         }
         "the rule is 'response_fields' rule" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_index: some_kibana_index
-                |    response_fields: ["hits.hits"]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block
+                     |    kibana_index: some_kibana_index
+                     |    response_fields: ["hits.hits"]
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'response_fields' rule. These two cannot be used together in one block."
-              )))
+              errors.head should be(
+                BlocksLevelCreationError(
+                  Message(
+                    "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'response_fields' rule. These two cannot be used together in one block."
+                  )
+                )
+              )
             }
           )
         }
       }
     }
   }
+
 }

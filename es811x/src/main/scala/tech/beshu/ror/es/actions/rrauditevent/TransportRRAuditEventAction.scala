@@ -26,22 +26,29 @@ import org.elasticsearch.transport.TransportService
 import java.util.concurrent.Executor
 import scala.annotation.unused
 
-class TransportRRAuditEventAction(transportService: TransportService,
-                                  actionFilters: ActionFilters,
-                                  executor: Executor,
-                                  @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
-    RRAuditEventActionType.name, transportService, actionFilters, RRAuditEventActionType.exceptionReader[RRAuditEventRequest], executor
-  ) {
+class TransportRRAuditEventAction(
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    executor: Executor,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRAuditEventRequest, RRAuditEventResponse](
+      RRAuditEventActionType.name,
+      transportService,
+      actionFilters,
+      RRAuditEventActionType.exceptionReader[RRAuditEventRequest],
+      executor
+    ) {
 
   @Inject
-  def this(transportService: TransportService,
-           actionFilters: ActionFilters,
-           threadPool: ThreadPool) =
+  def this(transportService: TransportService, actionFilters: ActionFilters, threadPool: ThreadPool) =
     this(transportService, actionFilters, threadPool.executor(ThreadPool.Names.GENERIC), ())
 
-  override def doExecute(task: Task, request: RRAuditEventRequest,
-                         listener: ActionListener[RRAuditEventResponse]): Unit = {
+  override def doExecute(
+      task: Task,
+      request: RRAuditEventRequest,
+      listener: ActionListener[RRAuditEventResponse]
+  ): Unit = {
     RRAuditEventActionHandler.handle(listener)
   }
+
 }

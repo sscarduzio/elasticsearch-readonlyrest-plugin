@@ -29,4 +29,5 @@ object CryptoOps {
     val kf = KeyFactory.getInstance(algorithm)
     kf.generatePublic(new X509EncodedKeySpec(keyBytes))
   }
+
 }

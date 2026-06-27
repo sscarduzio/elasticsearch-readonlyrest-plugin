@@ -18,7 +18,6 @@ package tech.beshu.ror.es.utils
 
 import cats.Show
 import cats.implicits.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.internal.node.NodeClient
 import org.elasticsearch.rest.*
@@ -32,12 +31,14 @@ import tech.beshu.ror.es.actions.wrappers._upgrade.rest.RorWrappedRestUpgradeAct
 import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util
 import scala.util.Try
 
-class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler)
-  extends RestHandler with RequestIdAwareLogging {
+class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandler)
+    extends RestHandler
+    with RequestIdAwareLogging {
 
   private val wrapped = doPrivileged {
     wrapSomeActions(underlying)
@@ -75,9 +76,9 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
 
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
-      case action: RestCatAction => new RorWrappedRestCatAction(action)
+      case action: RestCatAction               => new RorWrappedRestCatAction(action)
       case action: RestUpgradeActionDeprecated => new RorWrappedRestUpgradeAction(action)
-      case action => action
+      case action                              => action
     }
   }
 
@@ -92,16 +93,18 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     }
   }
 
-  private def tryToGetUnderlyingRestHandler(restHandler: RestHandler,
-                                            fieldName: String) = {
+  private def tryToGetUnderlyingRestHandler(restHandler: RestHandler, fieldName: String) = {
     Try(on(restHandler).get[RestHandler](fieldName))
   }
 
-  private def addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest,
-                                                                         client: NodeClient): Unit = {
+  private def addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(
+      request: RestRequest,
+      client: NodeClient
+  ): Unit = {
     if (request.path().contains("/_security") || request.path().contains("/_xpack/security")) {
       client
-        .threadPool().getThreadContext
+        .threadPool()
+        .getThreadContext
         .addXpackUserAuthenticationHeader(client.getLocalNodeId)
     }
   }
@@ -120,8 +123,10 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
 }
 
 object ChannelInterceptingRestHandlerDecorator {
+
   def create(restHandler: RestHandler): ChannelInterceptingRestHandlerDecorator = restHandler match {
     case alreadyDecoratedHandler: ChannelInterceptingRestHandlerDecorator => alreadyDecoratedHandler
     case handler => new ChannelInterceptingRestHandlerDecorator(handler)
   }
+
 }

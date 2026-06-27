@@ -28,13 +28,14 @@ import tech.beshu.ror.utils.containers.windows.WindowsPseudoWiremockContainer.Wi
 import java.io.File
 
 class WindowsPseudoWiremockContainer(val port: Int, mappings: List[String])
-  extends SingleContainer[GenericContainer[_]] {
+    extends SingleContainer[GenericContainer[_]] {
   override val container: GenericContainer[_] = new WindowsPseudoGenericContainerWiremock(port, mappings)
 }
 
 object WindowsPseudoWiremockContainer {
+
   private class WindowsPseudoGenericContainerWiremock(port: Int, mappings: List[String])
-    extends WindowsPseudoContainer[WindowsPseudoGenericContainerWiremock] {
+      extends WindowsPseudoContainer[WindowsPseudoGenericContainerWiremock] {
 
     override protected def name: String =
       "WireMockServerPseudoGenericContainer"
@@ -46,9 +47,11 @@ object WindowsPseudoWiremockContainer {
       ()
 
   }
+
 }
 
 private object WireMockServerCreator {
+
   def create(port: Int, mappings: List[String]): WindowsPseudoContainer.Service = synchronized {
     val mappingFiles: Seq[File] =
       mappings.map(ContainerUtils.getResourceFile)
@@ -69,4 +72,5 @@ private object WireMockServerCreator {
       override def getPort: Int = wmServer.port()
     }
   }
+
 }

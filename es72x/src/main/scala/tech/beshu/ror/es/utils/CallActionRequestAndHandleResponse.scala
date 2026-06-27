@@ -22,21 +22,27 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionRequestBui
 import scala.concurrent.Promise
 
 object CallActionRequestAndHandleResponse {
+
   extension [REQUEST <: ActionRequest, RESPONSE <: ActionResponse](builder: ActionRequestBuilder[REQUEST, RESPONSE])
+
     def call[R](f: RESPONSE => R): Task[R] = {
       val listener = new GenericResponseListener[RESPONSE]()
       builder.execute(listener)
       listener.result(f)
     }
+
 }
 
 object InvokeCallerAndHandleResponse {
+
   extension [RESPONSE <: ActionResponse](caller: ActionListener[RESPONSE] => Unit)
+
     def execute[R](f: RESPONSE => R): Task[R] = {
       val listener = new GenericResponseListener[RESPONSE]()
       caller(listener)
       listener.result(f)
     }
+
 }
 
 private final class GenericResponseListener[RESPONSE <: ActionResponse] extends ActionListener[RESPONSE] {

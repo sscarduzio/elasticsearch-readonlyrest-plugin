@@ -44,10 +44,12 @@ object Wiremock {
     }
   }
 
-  class WiremockContainer(val container: SingleContainer[GenericContainer[_]],
-                          val host: String,
-                          val portProvider: WiremockPortProvider,
-                          val originalPort: Int)
+  class WiremockContainer(
+      val container: SingleContainer[GenericContainer[_]],
+      val host: String,
+      val portProvider: WiremockPortProvider,
+      val originalPort: Int
+  )
 
   trait WiremockPortProvider {
     def providePort(): Int
