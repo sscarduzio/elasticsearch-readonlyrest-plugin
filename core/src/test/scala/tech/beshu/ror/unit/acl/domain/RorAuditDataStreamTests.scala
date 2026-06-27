@@ -76,7 +76,8 @@ class RorAuditDataStreamTests extends AnyWordSpec with TableDrivenPropertyChecks
     CreationError.FormatError(s"Data stream '$name' has an invalid format. Cause: $cause.")
 
   private lazy val lowercaseError = "name must be lowercase"
-  private lazy val forbiddenCharactersError = "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' '"
+  private lazy val forbiddenCharactersError =
+    "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' '"
   private lazy val forbiddenPrefixError = "name must not start with '-', '_', '+', '.ds-'"
   private lazy val forbiddenNameError = "name cannot be any of '.', '..'"
   private lazy val maxSizeExceededError = "name must be not longer than 255 bytes"

@@ -35,22 +35,28 @@ import java.util.List as JList
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
-                                                     requestedIndices: Set[RequestedIndex[ClusterIndexName]],
-                                                     esContext: EsContext,
-                                                     aclContext: AccessControlStaticContext,
-                                                     override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
+class ReflectionBasedIndicesEsRequestContext private (
+    actionRequest: ActionRequest,
+    requestedIndices: Set[RequestedIndex[ClusterIndexName]],
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
-  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = requestedIndices
+  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] =
+    requestedIndices
 
-  override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
-      logger.error(s"Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
+      logger.error(
+        s"Cannot update ${actionRequest.getClass.show} request. We're using reflection to modify the request indices and it fails. Please, report the issue."
+      )
       ShouldBeInterrupted
     }
   }
@@ -63,13 +69,22 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
       indices.stringify.toSet.asJava
     )
   }
+
 }
 
 object ReflectionBasedIndicesEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
     requestedIndicesFrom(arg.esContext.actionRequest)
-      .map(new ReflectionBasedIndicesEsRequestContext(arg.esContext.actionRequest, _, arg.esContext, arg.aclContext, arg.threadPool))
+      .map(
+        new ReflectionBasedIndicesEsRequestContext(
+          arg.esContext.actionRequest,
+          _,
+          arg.esContext,
+          arg.aclContext,
+          arg.threadPool
+        )
+      )
   }
 
   private def requestedIndicesFrom(request: ActionRequest) = {
@@ -121,4 +136,5 @@ object ReflectionBasedIndicesEsRequestContext {
     import org.joor.Reflect.*
     Try(on(obj).get[RESULT](fieldName))
   }
+
 }

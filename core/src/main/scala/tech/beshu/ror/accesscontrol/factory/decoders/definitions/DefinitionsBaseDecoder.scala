@@ -28,23 +28,30 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 object DefinitionsBaseDecoder {
 
-  def instance[F[_] : Applicative, A <: Item](definitionsSectionName: String)
-                                             (implicit decoder: ADecoder[F, A]): ADecoder[F, Definitions[A]] = {
+  def instance[F[_]: Applicative, A <: Item](definitionsSectionName: String)(
+      implicit decoder: ADecoder[F, A]
+  ): ADecoder[F, Definitions[A]] = {
     DecoderHelpers
       .decodeFieldList[A, F](definitionsSectionName, DefinitionsLevelCreationError.apply)
       .emapE {
         case NoField =>
           Right(Definitions(List.empty[A]))
         case FieldListValue(Nil) =>
-          Left(DefinitionsLevelCreationError(Message(s"${definitionsSectionName.show} declared, but no definition found")))
+          Left(
+            DefinitionsLevelCreationError(Message(s"${definitionsSectionName.show} declared, but no definition found"))
+          )
         case FieldListValue(list) =>
           list.findDuplicates(_.id) match {
             case Nil =>
               Right(Definitions(list))
             case duplicates =>
-              Left(DefinitionsLevelCreationError(Message(
-                s"${definitionsSectionName.show} definitions must have unique identifiers. Duplicates: ${duplicates.map(showId).show}"
-              )))
+              Left(
+                DefinitionsLevelCreationError(
+                  Message(
+                    s"${definitionsSectionName.show} definitions must have unique identifiers. Duplicates: ${duplicates.map(showId).show}"
+                  )
+                )
+              )
           }
       }
   }
@@ -52,4 +59,5 @@ object DefinitionsBaseDecoder {
   private def showId(item: Item): String = {
     item.idShow.show(item.id)
   }
+
 }

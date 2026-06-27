@@ -22,10 +22,11 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
 
-class ClusterManager(client: RestClient,
-                     esVersion: String,
-                     override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client, esVersion, esNativeApi = true)  {
+class ClusterManager(
+    client: RestClient,
+    esVersion: String,
+    override val additionalHeaders: Map[String, String] = Map.empty
+) extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def allocationExplain(): JsonResponse = allocationExplain(None)
 
@@ -72,47 +73,55 @@ class ClusterManager(client: RestClient,
     index match {
       case Some(indexName) =>
         request.addHeader("Content-Type", "application/json")
-        request.setEntity(new StringEntity(
-          s"""{
-             |"index":"$indexName",
-             |"shard": 0,
-             |"primary": true
-             |}""".stripMargin
-        ))
+        request.setEntity(
+          new StringEntity(
+            s"""{
+               |"index":"$indexName",
+               |"shard": 0,
+               |"primary": true
+               |}""".stripMargin
+          )
+        )
       case None =>
     }
     request
   }
 
   private def createHealthRequest(index: Option[String]) = {
-    new HttpGet(client.from(
-      index match {
-        case Some(value) => s"_cluster/health/$value"
-        case None => "_cluster/health"
-      },
-      Map("timeout" -> "2s")
-    ))
+    new HttpGet(
+      client.from(
+        index match {
+          case Some(value) => s"_cluster/health/$value"
+          case None        => "_cluster/health"
+        },
+        Map("timeout" -> "2s")
+      )
+    )
   }
 
   private def createStateRequest(indices: Seq[String]) = {
-    new HttpGet(client.from(
-      indices.toList match {
-        case Nil => "_cluster/state/_all"
-        case names => s"_cluster/state/_all/${names.mkString(",")}"
-      }
-    ))
+    new HttpGet(
+      client.from(
+        indices.toList match {
+          case Nil   => "_cluster/state/_all"
+          case names => s"_cluster/state/_all/${names.mkString(",")}"
+        }
+      )
+    )
   }
 
   private def createRerouteRequest(commands: List[JSON]) = {
     val request = new HttpPost(client.from("_cluster/reroute"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{
-         |"commands":[
-         |  ${commands.map(ujson.write(_)).mkString(",")}
-         |]
-         |}""".stripMargin
-    ))
+    request.setEntity(
+      new StringEntity(
+        s"""{
+           |"commands":[
+           |  ${commands.map(ujson.write(_)).mkString(",")}
+           |]
+           |}""".stripMargin
+      )
+    )
     request
   }
 
@@ -129,33 +138,35 @@ class ClusterManager(client: RestClient,
 
     val request = new HttpPut(client.from("_cluster/settings"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      if (Version.greaterOrEqualThan(esVersion, 6, 5, 0)) {
-        s"""
-           |{
-           |  "persistent": {
-           |    "cluster": {
-           |      "remote": {
-           |        $remoteClustersConfigString
-           |      }
-           |    }
-           |  }
-           |}
+    request.setEntity(
+      new StringEntity(
+        if (Version.greaterOrEqualThan(esVersion, 6, 5, 0)) {
+          s"""
+             |{
+             |  "persistent": {
+             |    "cluster": {
+             |      "remote": {
+             |        $remoteClustersConfigString
+             |      }
+             |    }
+             |  }
+             |}
           """.stripMargin
-      } else {
-        s"""
-           |{
-           |  "persistent": {
-           |    "search": {
-           |      "remote": {
-           |        $remoteClustersConfigString
-           |      }
-           |    }
-           |  }
-           |}
+        } else {
+          s"""
+             |{
+             |  "persistent": {
+             |    "search": {
+             |      "remote": {
+             |        $remoteClustersConfigString
+             |      }
+             |    }
+             |  }
+             |}
           """.stripMargin
-      }
-    ))
+        }
+      )
+    )
     request
   }
 
@@ -166,9 +177,12 @@ class ClusterManager(client: RestClient,
   private def createPutSettingsRequest(content: JSON) = {
     val request = new HttpPut(client.from("_cluster/settings"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      content.toString()
-    ))
+    request.setEntity(
+      new StringEntity(
+        content.toString()
+      )
+    )
     request
   }
+
 }

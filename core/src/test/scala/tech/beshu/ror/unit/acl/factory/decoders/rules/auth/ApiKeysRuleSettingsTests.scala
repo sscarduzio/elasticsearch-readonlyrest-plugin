@@ -31,16 +31,15 @@ class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] 
     "be able to be loaded from settings" when {
       "only one api key is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    api_keys: "example_api_key"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    api_keys: "example_api_key"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.apiKeys should be(NonEmptySet.one(apiKeyFrom("example_api_key")))
           }
@@ -48,16 +47,15 @@ class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] 
       }
       "several api keys are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    api_keys: [one, two, three]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    api_keys: [one, two, three]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.apiKeys should be(NonEmptySet.of(apiKeyFrom("one"), apiKeyFrom("two"), apiKeyFrom("three")))
           }
@@ -67,24 +65,23 @@ class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] 
     "not be able to be loaded from settings" when {
       "no api key is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    api_keys:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    api_keys:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """api_keys: null
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""api_keys: null
+                                                                                      |""".stripMargin)))
           }
         )
       }
     }
   }
+
 }

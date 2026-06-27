@@ -27,43 +27,45 @@ sealed trait RuntimeMultiResolvableVariable[T] extends RuntimeResolvableVariable
 
 object RuntimeMultiResolvableVariable {
 
-  final case class AlreadyResolved[T](value: NonEmptyList[T])
-    extends RuntimeMultiResolvableVariable[T] {
+  final case class AlreadyResolved[T](value: NonEmptyList[T]) extends RuntimeMultiResolvableVariable[T] {
 
     override def resolve(blockContext: BlockContext): Either[Unresolvable, NonEmptyList[T]] =
       Right(value)
   }
 
   final case class ToBeResolved[T: Convertible](values: NonEmptyList[MultiExtractable])
-    extends RuntimeMultiResolvableVariable[T] {
+      extends RuntimeMultiResolvableVariable[T] {
 
     override def resolve(blockContext: BlockContext): Either[Unresolvable, NonEmptyList[T]] = {
       values
         .map { extractable =>
           extractable
             .extractUsing(blockContext)
-            .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotExtractValue(error.msg))
+            .left
+            .map(error => RuntimeResolvableVariable.Unresolvable.CannotExtractValue(error.msg))
         }
         .sequence
         .flatMap { resolvedVars =>
-          resolvedVars
-            .cartesian
+          resolvedVars.cartesian
             .map(_.toList.mkString)
             .map { result =>
-              implicitly[Convertible[T]].convert(result)
-                .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotInstantiateResolvedValue(error.msg))
+              implicitly[Convertible[T]]
+                .convert(result)
+                .left
+                .map(error => RuntimeResolvableVariable.Unresolvable.CannotInstantiateResolvedValue(error.msg))
             }
             .sequence
         }
     }
+
   }
 
   implicit def runtimeResolvableOrder[T: Order]: Order[RuntimeMultiResolvableVariable[T]] =
     Order.from {
       case (AlreadyResolved(c1), AlreadyResolved(c2)) => c1 compare c2
-      case (AlreadyResolved(_), _) => -1
-      case (_, AlreadyResolved(_)) => 1
-      case (v1, v2) => v1.hashCode() compareTo v2.hashCode()
+      case (AlreadyResolved(_), _)                    => -1
+      case (_, AlreadyResolved(_))                    => 1
+      case (v1, v2)                                   => v1.hashCode() compareTo v2.hashCode()
     }
 
 }

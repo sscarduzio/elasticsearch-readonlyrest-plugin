@@ -26,7 +26,9 @@ class RuleOrderingTests extends AnyWordSpec {
   "RuleOrdering" should {
     "place all auth rules before any non-auth rule (fixed-prefix invariant)" in {
       // Scala 3 mangles private vals in companion objects; name derived from javap on RuleOrdering$.class
-      val field = RuleOrdering.getClass.getDeclaredField("tech$beshu$ror$accesscontrol$blocks$RuleOrdering$$$orderedListOrRuleType")
+      val field = RuleOrdering.getClass.getDeclaredField(
+        "tech$beshu$ror$accesscontrol$blocks$RuleOrdering$$$orderedListOrRuleType"
+      )
       field.setAccessible(true)
       val orderedTypes = field.get(RuleOrdering).asInstanceOf[Seq[Class[_ <: Rule]]]
 
@@ -45,4 +47,5 @@ class RuleOrderingTests extends AnyWordSpec {
       }
     }
   }
+
 }

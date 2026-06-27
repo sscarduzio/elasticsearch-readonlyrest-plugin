@@ -35,30 +35,36 @@ import tech.beshu.ror.implicits.*
 // Those 2 usages are different, because for authorization rules (LDAP, External, JWT etc.) we use GroupIds representation underneath, and for GroupsRule the runtime resolvable representation.
 // todo: We should unify those 2 implementations, probably by using the runtime resolvable representation everywhere.
 private[auth] class GroupsLogicRepresentationDecoder[
-  RULE_REPRESENTATION,
-  POSITIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
-  NEGATIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
-  ALL_OF_REPRESENTATION <: POSITIVE_RULE_REPRESENTATION : Decoder,
-  ANY_OF_REPRESENTATION <: POSITIVE_RULE_REPRESENTATION : Decoder,
-  NOT_ALL_OF_REPRESENTATION <: NEGATIVE_RULE_REPRESENTATION : Decoder,
-  NOT_ANY_OF_REPRESENTATION <: NEGATIVE_RULE_REPRESENTATION : Decoder,
+    RULE_REPRESENTATION,
+    POSITIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
+    NEGATIVE_RULE_REPRESENTATION <: RULE_REPRESENTATION,
+    ALL_OF_REPRESENTATION <: POSITIVE_RULE_REPRESENTATION: Decoder,
+    ANY_OF_REPRESENTATION <: POSITIVE_RULE_REPRESENTATION: Decoder,
+    NOT_ALL_OF_REPRESENTATION <: NEGATIVE_RULE_REPRESENTATION: Decoder,
+    NOT_ANY_OF_REPRESENTATION <: NEGATIVE_RULE_REPRESENTATION: Decoder,
 ](combinedRuleCreator: (POSITIVE_RULE_REPRESENTATION, NEGATIVE_RULE_REPRESENTATION) => RULE_REPRESENTATION) {
 
-  def decoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] = {
+  def decoder[T <: Rule](
+      implicit ruleName: RuleName[T]
+  ): Decoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] = {
     syncDecoder.decoder
   }
 
-  def simpleDecoder[T <: Rule](implicit ruleName: RuleName[T]): Decoder[RULE_REPRESENTATION] = {
+  def simpleDecoder[T <: Rule](
+      implicit ruleName: RuleName[T]
+  ): Decoder[RULE_REPRESENTATION] = {
     syncDecoder[T]
       .emapE[RULE_REPRESENTATION] {
-        case GroupsLogicDecodingResult.Success(groupsLogic) => Right(groupsLogic)
-        case GroupsLogicDecodingResult.GroupsLogicNotDefined(error) => Left(error)
+        case GroupsLogicDecodingResult.Success(groupsLogic)                  => Right(groupsLogic)
+        case GroupsLogicDecodingResult.GroupsLogicNotDefined(error)          => Left(error)
         case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(error, _) => Left(error)
       }
       .decoder
   }
 
-  def syncDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] = {
+  def syncDecoder[T <: Rule](
+      implicit ruleName: RuleName[T]
+  ): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] = {
     withGroupsSectionDecoder[T].flatMap[GroupsLogicDecodingResult[RULE_REPRESENTATION]] {
       case success: GroupsLogicDecodingResult.Success[RULE_REPRESENTATION] =>
         SyncDecoderCreator.pure(success)
@@ -69,22 +75,30 @@ private[auth] class GroupsLogicRepresentationDecoder[
     }
   }
 
-  private def withGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
+  private def withGroupsSectionDecoder[T <: Rule](
+      implicit ruleName: RuleName[T]
+  ): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
     Decoder
       .instance { c =>
         val groupsSection = c.downField("groups")
         for {
           groupsAllOf <- decodeAsOption[ALL_OF_REPRESENTATION](groupsSection)(AllOfGroupsRule.ExtendedSyntaxName)
           groupsAnyOf <- decodeAsOption[ANY_OF_REPRESENTATION](groupsSection)(AnyOfGroupsRule.ExtendedSyntaxName)
-          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection)(NotAllOfGroupsRule.ExtendedSyntaxName)
-          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection)(NotAnyOfGroupsRule.ExtendedSyntaxName)
+          groupsNotAllOf <- decodeAsOption[NOT_ALL_OF_REPRESENTATION](groupsSection)(
+            NotAllOfGroupsRule.ExtendedSyntaxName
+          )
+          groupsNotAnyOf <- decodeAsOption[NOT_ANY_OF_REPRESENTATION](groupsSection)(
+            NotAnyOfGroupsRule.ExtendedSyntaxName
+          )
         } yield (groupsAllOf, groupsAnyOf, groupsNotAllOf, groupsNotAnyOf)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .map(resultFromLogic)
 
-  private def legacyWithoutGroupsSectionDecoder[T <: Rule](implicit ruleName: RuleName[T]): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
+  private def legacyWithoutGroupsSectionDecoder[T <: Rule](
+      implicit ruleName: RuleName[T]
+  ): SyncDecoder[GroupsLogicDecodingResult[RULE_REPRESENTATION]] =
     Decoder
       .instance { c =>
         val section = c
@@ -112,11 +126,21 @@ private[auth] class GroupsLogicRepresentationDecoder[
       .mapError(RulesLevelCreationError.apply)
       .map(resultFromLogic)
 
-  private def resultFromLogic[T <: Rule](logic: (Option[(ALL_OF_REPRESENTATION, String)], Option[(ANY_OF_REPRESENTATION, String)], Option[(NOT_ALL_OF_REPRESENTATION, String)], Option[(NOT_ANY_OF_REPRESENTATION, String)]))
-                                        (implicit ruleName: RuleName[T]): GroupsLogicDecodingResult[RULE_REPRESENTATION] =
+  private def resultFromLogic[T <: Rule](
+      logic: (
+          Option[(ALL_OF_REPRESENTATION, String)],
+          Option[(ANY_OF_REPRESENTATION, String)],
+          Option[(NOT_ALL_OF_REPRESENTATION, String)],
+          Option[(NOT_ANY_OF_REPRESENTATION, String)]
+      )
+  )(
+      implicit ruleName: RuleName[T]
+  ): GroupsLogicDecodingResult[RULE_REPRESENTATION] =
     logic match {
       case (None, None, None, None) =>
-        GroupsLogicDecodingResult.GroupsLogicNotDefined(RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName))))
+        GroupsLogicDecodingResult.GroupsLogicNotDefined(
+          RulesLevelCreationError(Message(errorMsgNoGroupsList(ruleName)))
+        )
       case (Some((groupsAllOf, _)), None, None, None) =>
         GroupsLogicDecodingResult.Success(groupsAllOf)
       case (None, Some((groupsAnyOf, _)), None, None) =>
@@ -146,7 +170,7 @@ private[auth] class GroupsLogicRepresentationDecoder[
     val (cursor, key) = c.downFieldsAlternativesWithKey(field, fields: _*)
     cursor match {
       case _: FailedCursor => Right(None)
-      case _ => cursor.as[Option[REPRESENTATION]].map(_.map((_, key)))
+      case _               => cursor.as[Option[REPRESENTATION]].map(_.map((_, key)))
     }
   }
 
@@ -165,12 +189,16 @@ object GroupsLogicRepresentationDecoder {
 
   object GroupsLogicDecodingResult {
     final case class Success[RULE_REPRESENTATION](groupsLogic: RULE_REPRESENTATION)
-      extends GroupsLogicDecodingResult[RULE_REPRESENTATION]
+        extends GroupsLogicDecodingResult[RULE_REPRESENTATION]
 
     final case class GroupsLogicNotDefined[RULE_REPRESENTATION](error: RulesLevelCreationError)
-      extends GroupsLogicDecodingResult[RULE_REPRESENTATION]
+        extends GroupsLogicDecodingResult[RULE_REPRESENTATION]
 
-    final case class MultipleGroupsLogicsDefined[RULE_REPRESENTATION](error: RulesLevelCreationError, fields: List[String])
-      extends GroupsLogicDecodingResult[RULE_REPRESENTATION]
+    final case class MultipleGroupsLogicsDefined[RULE_REPRESENTATION](
+        error: RulesLevelCreationError,
+        fields: List[String]
+    ) extends GroupsLogicDecodingResult[RULE_REPRESENTATION]
+
   }
+
 }

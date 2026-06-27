@@ -30,15 +30,17 @@ import scala.language.implicitConversions
 
 //TODO change test names. Current names are copies from old java integration tests
 class JwtAuthSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
   private val algo = Jwts.SIG.HS256
-  private val validKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-  private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
+  private val validKey =
+    "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+  private val validKeyRole =
+    "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
   private val wrongKey = "abcdefdsadsadsafdsfsadasdfdsfdfdsfdsfsadsdsaffds"
 
   override implicit val rorSettingsFileName: String = "/jwt_auth/readonlyrest.yml"
@@ -51,13 +53,18 @@ class JwtAuthSuite
   }
 
   "rejectTokenWithWrongKey" in {
-    val jwt = Jwt(algo, wrongKey, claims = List(
-      "user" := "user"
-    ))
+    val jwt = Jwt(
+      algo,
+      wrongKey,
+      claims = List(
+        "user" := "user"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 403
@@ -68,73 +75,99 @@ class JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 403
   }
 
   "acceptValidTokenWithUserClaim" in {
-    val jwt = Jwt(algo, validKey, claims = List(
-      "user" := "user"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKey,
+      claims = List(
+        "user" := "user"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 200
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeader" in {
-    val jwt = Jwt(algo, validKey, claims = List(
-      "user" := "user"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKey,
+      claims = List(
+        "user" := "user"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header" -> s"${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 200
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeaderAndCustomHeaderPrefix" in {
-    val jwt = Jwt(algo, validKey, claims = List(
-      "user" := "user"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKey,
+      claims = List(
+        "user" := "user"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 200
   }
 
   "rejectTokenWithUserClaimAndCustomHeader" in {
-    val jwt = Jwt(algo, validKey, claims = List(
-      "inexistent_claim" := "user"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKey,
+      claims = List(
+        "inexistent_claim" := "user"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header" -> s"${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 403
   }
 
   "rejectExpiredToken" in {
-    val jwt = Jwt(algo, validKey, claims = List(
-      "user" := "user",
-      "exp" := "0"
-    ))
+    val jwt = Jwt(
+      algo,
+      validKey,
+      claims = List(
+        "user" := "user",
+        "exp" := "0"
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 403
@@ -145,39 +178,56 @@ class JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 403
   }
 
   "rejectTokenWithWrongRolesClaim" in {
-    val jwt = Jwt(algo, validKeyRole, claims = List(
-      Claim(NonEmptyList.one(ClaimKey("roles")), List(
-        Map("id" -> "role_wrong", "name" -> "Wrong").asJava,
-      ).asJava)
-    ))
+    val jwt = Jwt(
+      algo,
+      validKeyRole,
+      claims = List(
+        Claim(
+          NonEmptyList.one(ClaimKey("roles")),
+          List(
+            Map("id" -> "role_wrong", "name" -> "Wrong").asJava,
+          ).asJava
+        )
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 403
   }
 
   "acceptValidTokenWithRolesClaim" in {
-    val jwt = Jwt(algo, validKeyRole, claims = List(
-      "user" := "user1",
-      Claim(NonEmptyList.one(ClaimKey("roles")), List(
-        Map("id" -> "role_viewer", "name" -> "Viewer").asJava,
-        Map("id" -> "role_manager", "name" -> "Manager").asJava
-      ).asJava)
-    ))
+    val jwt = Jwt(
+      algo,
+      validKeyRole,
+      claims = List(
+        "user" := "user1",
+        Claim(
+          NonEmptyList.one(ClaimKey("roles")),
+          List(
+            Map("id" -> "role_viewer", "name" -> "Viewer").asJava,
+            Map("id" -> "role_manager", "name" -> "Manager").asJava
+          ).asJava
+        )
+      )
+    )
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
-      esVersion = esVersionUsed)
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response should have statusCode 200

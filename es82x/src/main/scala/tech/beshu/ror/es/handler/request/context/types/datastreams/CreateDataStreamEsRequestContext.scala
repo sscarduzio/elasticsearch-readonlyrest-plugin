@@ -26,10 +26,11 @@ import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
 import tech.beshu.ror.syntax.*
 
-class CreateDataStreamEsRequestContext(actionRequest: CreateDataStreamAction.Request,
-                                       esContext: EsContext,
-                                       override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+class CreateDataStreamEsRequestContext(
+    actionRequest: CreateDataStreamAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   private lazy val originDataStreams =
     Option(actionRequest.getName)
@@ -46,4 +47,3 @@ class CreateDataStreamEsRequestContext(actionRequest: CreateDataStreamAction.Req
     ModificationResult.Modified // data stream already processed by ACL
 
 }
-

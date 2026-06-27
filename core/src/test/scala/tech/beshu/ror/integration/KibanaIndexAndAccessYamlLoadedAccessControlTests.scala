@@ -33,9 +33,10 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
-  with BaseYamlLoadedAccessControlTest
-  with Inside {
+class KibanaIndexAndAccessYamlLoadedAccessControlTests
+    extends AnyWordSpec
+    with BaseYamlLoadedAccessControlTest
+    with Inside {
 
   override protected def settingsYaml: String =
     """
@@ -110,10 +111,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
               indices = Set(requestedIndex(".readonlyrest")),
-              kibanaPolicy = Some(KibanaPolicy.default.copy(
-                access = KibanaAccess.Admin,
-                index = Some(kibanaIndexName(".kibana_template")),
-              )),
+              kibanaPolicy = Some(
+                KibanaPolicy.default.copy(
+                  access = KibanaAccess.Admin,
+                  index = Some(kibanaIndexName(".kibana_template")),
+                )
+              ),
             )
           }
         }
@@ -132,10 +135,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             blockContext.block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaPolicy = Some(KibanaPolicy.default.copy(
-                access = KibanaAccess.Admin,
-                index = Some(kibanaIndexName(".kibana_template")),
-              )),
+              kibanaPolicy = Some(
+                KibanaPolicy.default.copy(
+                  access = KibanaAccess.Admin,
+                  index = Some(kibanaIndexName(".kibana_template")),
+                )
+              ),
             )
           }
         }
@@ -156,10 +161,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
               loggedUser = Some(DirectlyLoggedUser(User.Id("testuser_ro_master_rw_custom"))),
               currentGroup = Some(GroupId("RW_ror_custom")),
               availableGroups = UniqueList.of(group("RW_ror_custom")),
-              kibanaPolicy = Some(KibanaPolicy.default.copy(
-                access = KibanaAccess.RW,
-                index = Some(kibanaIndexName(".kibana_ror_custom")),
-              )),
+              kibanaPolicy = Some(
+                KibanaPolicy.default.copy(
+                  access = KibanaAccess.RW,
+                  index = Some(kibanaIndexName(".kibana_ror_custom")),
+                )
+              ),
             )
           }
         }
@@ -178,10 +185,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             blockContext.block.name should be(Block.Name("Template Tenancy"))
             assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("john"))),
-              kibanaPolicy = Some(KibanaPolicy.default.copy(
-                access = KibanaAccess.Admin,
-                index = Some(kibanaIndexName(".kibana_template")),
-              )),
+              kibanaPolicy = Some(
+                KibanaPolicy.default.copy(
+                  access = KibanaAccess.Admin,
+                  index = Some(kibanaIndexName(".kibana_template")),
+                )
+              ),
             )
           }
         }
@@ -207,10 +216,12 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             currentGroup = Some(GroupId("RW_ror_custom")),
             availableGroups = UniqueList.of(group("RW_ror_custom")),
             indices = Set(requestedIndex(".kibana_ror_custom")),
-            kibanaPolicy = Some(KibanaPolicy.default.copy(
-              access = KibanaAccess.RW,
-              index = Some(kibanaIndexName(".kibana_ror_custom")),
-            )),
+            kibanaPolicy = Some(
+              KibanaPolicy.default.copy(
+                access = KibanaAccess.RW,
+                index = Some(kibanaIndexName(".kibana_ror_custom")),
+              )
+            ),
           )
         }
       }
@@ -221,41 +232,49 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
 
         val (loginResult, _) = acl.handleMetadataRequest(loginRequest).runSyncUnsafe()
 
-        inside(loginResult) { case UserMetadataRequestResult.Allowed(metadata@UserMetadata.WithGroups(_)) =>
+        inside(loginResult) { case UserMetadataRequestResult.Allowed(metadata @ UserMetadata.WithGroups(_)) =>
           metadata.groupsMetadata.keys.toList should be(GroupId("Administrators") :: GroupId("Infosec") :: Nil)
 
           val adminMetadata = metadata.groupsMetadata(GroupId("Administrators"))
           adminMetadata.metadataOrigin.blockContext.block.name should be(Block.Name("ADMIN_GRP"))
           adminMetadata.loggedUser should be(DirectlyLoggedUser(User.Id("admin")))
           adminMetadata.userOrigin should be(None)
-          adminMetadata.kibanaPolicy should be(Some(KibanaPolicy(
-            access = KibanaAccess.Admin,
-            index = Some(kibanaIndexName(".kibana_admins")),
-            templateIndex = None,
-            hiddenApps = Set(
-              FullNameKibanaApp("Enterprise Search|Overview"),
-              FullNameKibanaApp("Observability"),
-              kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
-            ),
-            allowedApiPaths = Set.empty,
-            genericMetadata = None
-          )))
+          adminMetadata.kibanaPolicy should be(
+            Some(
+              KibanaPolicy(
+                access = KibanaAccess.Admin,
+                index = Some(kibanaIndexName(".kibana_admins")),
+                templateIndex = None,
+                hiddenApps = Set(
+                  FullNameKibanaApp("Enterprise Search|Overview"),
+                  FullNameKibanaApp("Observability"),
+                  kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+                ),
+                allowedApiPaths = Set.empty,
+                genericMetadata = None
+              )
+            )
+          )
 
           val infosecMetadata = metadata.groupsMetadata(GroupId("Infosec"))
           infosecMetadata.metadataOrigin.blockContext.block.name should be(Block.Name("Infosec"))
           infosecMetadata.loggedUser should be(DirectlyLoggedUser(User.Id("admin")))
           infosecMetadata.userOrigin should be(None)
-          infosecMetadata.kibanaPolicy should be(Some(KibanaPolicy(
-            access = KibanaAccess.RW,
-            index = Some(kibanaIndexName(".kibana_infosec")),
-            templateIndex = None,
-            hiddenApps = Set(
-              FullNameKibanaApp("Enterprise Search|Overview"),
-              FullNameKibanaApp("Observability")
-            ),
-            allowedApiPaths = Set.empty,
-            genericMetadata = None
-          )))
+          infosecMetadata.kibanaPolicy should be(
+            Some(
+              KibanaPolicy(
+                access = KibanaAccess.RW,
+                index = Some(kibanaIndexName(".kibana_infosec")),
+                templateIndex = None,
+                hiddenApps = Set(
+                  FullNameKibanaApp("Enterprise Search|Overview"),
+                  FullNameKibanaApp("Observability")
+                ),
+                allowedApiPaths = Set.empty,
+                genericMetadata = None
+              )
+            )
+          )
         }
 
         val request = MockRequestContext.indices.copy(
@@ -277,15 +296,17 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec
             currentGroup = Some(GroupId("Administrators")),
             availableGroups = UniqueList.of(group("Administrators")),
             indices = Set(requestedIndex(".kibana_admins")),
-            kibanaPolicy = Some(KibanaPolicy.default.copy(
-              access = KibanaAccess.Admin,
-              index = Some(kibanaIndexName(".kibana_admins")),
-              hiddenApps = Set(
-                FullNameKibanaApp("Observability"),
-                FullNameKibanaApp("Enterprise Search|Overview"),
-                kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+            kibanaPolicy = Some(
+              KibanaPolicy.default.copy(
+                access = KibanaAccess.Admin,
+                index = Some(kibanaIndexName(".kibana_admins")),
+                hiddenApps = Set(
+                  FullNameKibanaApp("Observability"),
+                  FullNameKibanaApp("Enterprise Search|Overview"),
+                  kibanaAppRegex("/^Analytics\\|(?!(Maps)$).*$/")
+                )
               )
-            )),
+            ),
           )
         }
       }

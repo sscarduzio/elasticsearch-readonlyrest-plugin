@@ -19,8 +19,14 @@ package tech.beshu.ror.unit.acl.factory.decoders.rules.kibana
 import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaHideAppsRule
 import tech.beshu.ror.accesscontrol.domain.KibanaApp.FullNameKibanaApp
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{BlocksLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  BlocksLevelCreationError,
+  RulesLevelCreationError
+}
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
 import tech.beshu.ror.utils.TestsUtils.{kibanaAppRegex, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -31,16 +37,15 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
     "be able to be loaded from settings" when {
       "only one kibana app is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_hide_apps: "app1"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_hide_apps: "app1"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.kibanaAppsToHide should be(UniqueNonEmptyList.of(FullNameKibanaApp("app1")))
           }
@@ -48,16 +53,15 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
       }
       "several kibana apps are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_hide_apps: [app1, "/^Analytics\\|(?!(Maps)$).*$/"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_hide_apps: [app1, "/^Analytics\\|(?!(Maps)$).*$/"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val apps = UniqueNonEmptyList.of(
               FullNameKibanaApp("app1"),
@@ -69,17 +73,16 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
       }
       "it's defined with 'actions' rule" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_hide_apps: [app1, "/^Analytics\\|(?!(Maps)$).*$/"]
-              |    actions: ["*"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_hide_apps: [app1, "/^Analytics\\|(?!(Maps)$).*$/"]
+                   |    actions: ["*"]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             val apps = UniqueNonEmptyList.of(
               FullNameKibanaApp("app1"),
@@ -93,129 +96,135 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
     "not be able to be loaded from settings" when {
       "empty string kibana app is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_hide_apps: [""]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_hide_apps: [""]
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """kibana_hide_apps:
-                |- ""
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""kibana_hide_apps:
+                                                                                      |- ""
+                                                                                      |""".stripMargin)))
           }
         )
       }
       "no kibana app is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_hide_apps:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_hide_apps:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """kibana_hide_apps: null
-                |""".stripMargin)))
+            errors.head should be(RulesLevelCreationError(MalformedValue.fromString("""kibana_hide_apps: null
+                                                                                      |""".stripMargin)))
           }
         )
       }
       "at least one kibana app regex cannot be compiled" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_hide_apps: ["/^(?!(Analytics\\|Management).*$).*$/", "/^(?!(Analytics\\|Maps).*$.*$/"]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    kibana_hide_apps: ["/^(?!(Analytics\\|Management).*$).*$/", "/^(?!(Analytics\\|Maps).*$.*$/"]
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """kibana_hide_apps:
-                |- "/^(?!(Analytics\\|Management).*$).*$/"
-                |- "/^(?!(Analytics\\|Maps).*$.*$/"
-                |""".stripMargin)))
+            errors.head should be(
+              RulesLevelCreationError(MalformedValue.fromString("""kibana_hide_apps:
+                                                                  |- "/^(?!(Analytics\\|Management).*$).*$/"
+                                                                  |- "/^(?!(Analytics\\|Maps).*$.*$/"
+                                                                  |""".stripMargin))
+            )
           }
         )
       }
       "it's defined with other rule in the block" when {
         "the rule is 'filter' rule" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_hide_apps: "app1"
-                |    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block
+                     |    kibana_hide_apps: "app1"
+                     |    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'filter' rule. These two cannot be used together in one block."
-              )))
+              errors.head should be(
+                BlocksLevelCreationError(
+                  Message(
+                    "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'filter' rule. These two cannot be used together in one block."
+                  )
+                )
+              )
             }
           )
         }
         "the rule is 'fields' rule" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_hide_apps: "app1"
-                |    fields: ["_source","user1"]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block
+                     |    kibana_hide_apps: "app1"
+                     |    fields: ["_source","user1"]
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'fields' rule. These two cannot be used together in one block."
-              )))
+              errors.head should be(
+                BlocksLevelCreationError(
+                  Message(
+                    "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'fields' rule. These two cannot be used together in one block."
+                  )
+                )
+              )
             }
           )
         }
         "the rule is 'response_fields' rule" in {
           assertDecodingFailure(
-            yaml =
-              """
-                |readonlyrest:
-                |  access_control_rules:
-                |
-                |  - name: test_block
-                |    kibana_hide_apps: "app1"
-                |    response_fields: ["hits.hits"]
-                |
-                |""".stripMargin,
+            yaml = """
+                     |readonlyrest:
+                     |  access_control_rules:
+                     |
+                     |  - name: test_block
+                     |    kibana_hide_apps: "app1"
+                     |    response_fields: ["hits.hits"]
+                     |
+                     |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(BlocksLevelCreationError(Message(
-                "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'response_fields' rule. These two cannot be used together in one block."
-              )))
+              errors.head should be(
+                BlocksLevelCreationError(
+                  Message(
+                    "The 'test_block' block contains 'kibana' rule (or any deprecated kibana-related rule) and 'response_fields' rule. These two cannot be used together in one block."
+                  )
+                )
+              )
             }
           )
         }
       }
     }
   }
+
 }

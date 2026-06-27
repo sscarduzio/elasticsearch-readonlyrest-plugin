@@ -23,8 +23,8 @@ import tech.beshu.ror.audit.utils.AuditSerializationHelper
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode,
-                              includeFullRequestContent: Boolean) extends AuditLogSerializer {
+class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode, includeFullRequestContent: Boolean)
+    extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
     AuditSerializationHelper.serialize(responseContext, auditFields(includeFullRequestContent), allowedEventMode)
@@ -33,6 +33,7 @@ class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode,
 }
 
 object EcsV1AuditLogSerializer {
+
   private def auditFields(includeFullRequestContent: Boolean): Map[AuditFieldPath, AuditFieldValueDescriptor] = fields(
     withPrefix("ecs")(
       // Schema defined by EcsV1AuditLogSerializer is ECS 1.6.0 compliant and does not use newer features
@@ -90,4 +91,5 @@ object EcsV1AuditLogSerializer {
       AuditFieldPath("presented_identity") -> AuditFieldValueDescriptor.PresentedIdentity,
     ),
   )
+
 }

@@ -23,6 +23,11 @@ plugins {
     id 'io.github.gradle-nexus.publish-plugin'      version '2.0.0-rc-1'
     id 'org.gradle.crypto.checksum'                 version '1.4.0'
     id "idea"
+    // Loads Spotless into the root project's classloader (parent of all subproject classloaders),
+    // so SpotlessTaskService is shared across sibling projects instead of loaded separately by each.
+    // Without this, applying the plugin via the convention plugin to two sibling projects causes a
+    // classloader conflict. Not applied here — the convention plugin handles that.
+    id "com.diffplug.spotless" version "8.6.0" apply false
 }
 
 idea {

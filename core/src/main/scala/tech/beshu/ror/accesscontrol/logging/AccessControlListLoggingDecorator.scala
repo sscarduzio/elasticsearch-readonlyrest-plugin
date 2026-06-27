@@ -20,7 +20,6 @@ import cats.Show
 import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.accesscontrol.AccessControlList.{RegularRequestResult, UserMetadataRequestResult}
-import tech.beshu.ror.accesscontrol.{AccessControlList, History}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
@@ -30,23 +29,28 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
 import tech.beshu.ror.accesscontrol.response.RorKbnPluginNotSupported
+import tech.beshu.ror.accesscontrol.{AccessControlList, History}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.TaskOps.*
 
 import scala.util.{Failure, Success}
 
-class AccessControlListLoggingDecorator(val underlying: AccessControlList,
-                                        auditingTool: Option[AuditingTool])
-                                       (implicit loggingContext: LoggingContext,
-                                        scheduler: Scheduler)
-  extends AccessControlList with RequestIdAwareLogging {
+class AccessControlListLoggingDecorator(val underlying: AccessControlList, auditingTool: Option[AuditingTool])(
+    implicit loggingContext: LoggingContext,
+    scheduler: Scheduler
+) extends AccessControlList
+    with RequestIdAwareLogging {
 
   override def description: String = underlying.description
 
-  override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])] = {
+  override def handleRegularRequest[B <: BlockContext: BlockContextUpdater](
+      requestContext: RequestContext.Aux[B]
+  ): Task[(RegularRequestResult[B], History[B])] = {
     implicit val requestContextImpl: RequestContext.Aux[B] = requestContext
-    logger.debug(s"checking request ${requestContext.restRequest.method.show} ${requestContext.restRequest.path.show} ...")
+    logger.debug(
+      s"checking request ${requestContext.restRequest.method.show} ${requestContext.restRequest.path.show} ..."
+    )
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
@@ -75,7 +79,9 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
   }
 
   // todo: logging metadata should be a little bit different
-  override def handleMetadataRequest(requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] = {
+  override def handleMetadataRequest(
+      requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
+  ): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] = {
     implicit val requestContextImpl: RequestContext.Aux[UserMetadataRequestBlockContext] = requestContext
     logger.debug(s"checking user metadata request ...")
     underlying
@@ -90,7 +96,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             case UserMetadataRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, history))
             case UserMetadataRequestResult.PassedThrough =>
-              // ignore
+            // ignore
             case UserMetadataRequestResult.RorKbnPluginNotSupported =>
               logger.warn(RorKbnPluginNotSupported.message)
               log(Forbidden(requestContext, History.empty))
@@ -110,8 +116,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
         ()
       case None | Some(Block.Audit.Enabled) =>
         auditingTool.foreach {
-          _
-            .audit(responseContext)
+          _.audit(responseContext)
             .runAsync {
               case Right(_) =>
               case Left(ex) =>
@@ -132,7 +137,7 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
   private def blockAuditSettings[B <: BlockContext](responseContext: ResponseContext[B]): Option[Block.Audit] = {
     responseContext match {
       case AllowedBy(_, blockContext, _) => Some(blockContext.block.audit)
-      case Allowed(_, userMetadata, _) =>
+      case Allowed(_, userMetadata, _)   =>
         userMetadata match {
           case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
             Some(metadataOrigin.blockContext.block.audit)
@@ -144,27 +149,26 @@ class AccessControlListLoggingDecorator(val underlying: AccessControlList,
             }
         }
       case ForbiddenBy(_, blockContext, _) => Some(blockContext.block.audit)
-      case Forbidden(_, _) => None
-      case RequestedIndexNotExist(_, _) => None
-      case Errored(_, _) => None
+      case Forbidden(_, _)                 => None
+      case RequestedIndexNotExist(_, _)    => None
+      case Errored(_, _)                   => None
     }
   }
 
   private def isLoggableEntry(context: ResponseContext[_]): Boolean = {
     def shouldBeLogged(block: Block) = {
       block.verbosity match {
-        case Verbosity.Info => true
+        case Verbosity.Info  => true
         case Verbosity.Error => false
       }
     }
 
     context match {
       case AllowedBy(_, blockContext, _) => shouldBeLogged(blockContext.block)
-      case Allowed(_, _, _) => true
+      case Allowed(_, _, _)              => true
       case _: ForbiddenBy[_] | _: Forbidden[_] | _: Errored[_] | _: RequestedIndexNotExist[_] => true
     }
   }
 
   override val staticContext: AccessControlList.AccessControlStaticContext = underlying.staticContext
 }
-

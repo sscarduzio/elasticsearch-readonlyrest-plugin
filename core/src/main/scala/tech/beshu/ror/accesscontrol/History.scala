@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, Decision}
 
 final case class History[B <: BlockContext](blocks: Vector[BlockHistory[B]])
+
 object History {
   def empty[B <: BlockContext]: History[B] = History(Vector.empty)
 
@@ -28,19 +29,22 @@ object History {
     def block: Block
     def history: Vector[RuleHistory[B]]
   }
+
   object BlockHistory {
 
-    final case class Permitted[B <: BlockContext](override val block: Block,
-                                                  decision: Decision.Permitted[B],
-                                                  override val history: Vector[RuleHistory[B]])
-      extends BlockHistory[B]
+    final case class Permitted[B <: BlockContext](
+        override val block: Block,
+        decision: Decision.Permitted[B],
+        override val history: Vector[RuleHistory[B]]
+    ) extends BlockHistory[B]
 
-    final case class Denied[B <: BlockContext](override val block: Block,
-                                               decision: Decision.Denied[B],
-                                               override val history: Vector[RuleHistory[B]])
-      extends BlockHistory[B]
+    final case class Denied[B <: BlockContext](
+        override val block: Block,
+        decision: Decision.Denied[B],
+        override val history: Vector[RuleHistory[B]]
+    ) extends BlockHistory[B]
+
   }
 
-  final case class RuleHistory[B <: BlockContext](rule: Rule.Name,
-                                                  decision: Decision[B])
+  final case class RuleHistory[B <: BlockContext](rule: Rule.Name, decision: Decision[B])
 }

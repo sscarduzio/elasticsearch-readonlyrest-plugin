@@ -29,16 +29,14 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 
-class UsersRule(val settings: Settings,
-                implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends RegularRule {
+class UsersRule(val settings: Settings, implicit val userIdCaseSensitivity: CaseSensitivity) extends RegularRule {
 
   override val name: Rule.Name = UsersRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.blockMetadata.loggedUser match {
       case Some(user) => matchUser(user, blockContext)
-      case None => Denied(Cause.NotAuthorized)
+      case None       => Denied(Cause.NotAuthorized)
     }
   }
 
@@ -48,6 +46,7 @@ class UsersRule(val settings: Settings,
       when = PatternsMatcher.create(resolvedIds).`match`(user.id)
     )
   }
+
 }
 
 object UsersRule {
@@ -58,4 +57,3 @@ object UsersRule {
 
   final case class Settings(userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]])
 }
-

@@ -20,30 +20,32 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.LocalIndicesManager
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.IndexAttribute.{Closed, Opened}
 import tech.beshu.ror.accesscontrol.domain.IndexAttributeFilter
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.syntax.*
 
 class LocalIndicesManagerTest extends AnyWordSpec {
 
-  private val esServices = MockEsServices.`with`(MockEsServices.MockEsClusterService(
-    allIndicesAndAliases = Set(
-      fullLocalIndex("open-1", Opened, "alias-open", "alias-both"),
-      fullLocalIndex("closed-1", Closed, "alias-closed", "alias-both")
-    ),
-    allDataStreamsAndAliases = Set(
-      FullLocalDataStreamWithAliases(
-        dataStreamName = dataStreamName("logs-app"),
-        aliasesNames = Set(dataStreamName("logs-alias")),
-        backingIndices = Set(indexName(".ds-logs-app-000001"))
+  private val esServices = MockEsServices.`with`(
+    MockEsServices.MockEsClusterService(
+      allIndicesAndAliases = Set(
+        fullLocalIndex("open-1", Opened, "alias-open", "alias-both"),
+        fullLocalIndex("closed-1", Closed, "alias-closed", "alias-both")
+      ),
+      allDataStreamsAndAliases = Set(
+        FullLocalDataStreamWithAliases(
+          dataStreamName = dataStreamName("logs-app"),
+          aliasesNames = Set(dataStreamName("logs-alias")),
+          backingIndices = Set(indexName(".ds-logs-app-000001"))
+        )
       )
     )
-  ))
+  )
 
   "LocalIndicesManager" when {
     "index attribute filter is Closed" should {
@@ -72,7 +74,7 @@ class LocalIndicesManagerTest extends AnyWordSpec {
       "return an alias-to-closed-index map from indicesPerAliasMap" in {
         manager.indicesPerAliasMap.runSyncUnsafe() shouldBe Map(
           localIndex("alias-closed") -> Set(localIndex("closed-1")),
-          localIndex("alias-both")   -> Set(localIndex("closed-1"))
+          localIndex("alias-both") -> Set(localIndex("closed-1"))
         )
       }
       "return empty data streams from allDataStreams" in {
@@ -175,9 +177,9 @@ class LocalIndicesManagerTest extends AnyWordSpec {
       }
       "return a full alias-to-indices map from indicesPerAliasMap" in {
         manager.indicesPerAliasMap.runSyncUnsafe() shouldBe Map(
-          localIndex("alias-open")   -> Set(localIndex("open-1")),
+          localIndex("alias-open") -> Set(localIndex("open-1")),
           localIndex("alias-closed") -> Set(localIndex("closed-1")),
-          localIndex("alias-both")   -> Set(localIndex("open-1"), localIndex("closed-1"))
+          localIndex("alias-both") -> Set(localIndex("open-1"), localIndex("closed-1"))
         )
       }
       "return the data stream from allDataStreams" in {
@@ -206,9 +208,7 @@ class LocalIndicesManagerTest extends AnyWordSpec {
     }
   }
 
-  private def fullLocalIndex(name: String,
-                              attribute: IndexAttribute,
-                              aliases: String*): FullLocalIndexWithAliases =
+  private def fullLocalIndex(name: String, attribute: IndexAttribute, aliases: String*): FullLocalIndexWithAliases =
     new FullLocalIndexWithAliases(indexName(name), attribute, aliases.map(indexName).toCovariantSet)
 
   private def localIndex(name: String): LocalIndexName =

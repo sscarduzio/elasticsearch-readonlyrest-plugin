@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.domain.indices
+
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.TestsUtils.*
@@ -38,4 +39,5 @@ class IndexMatchTests extends AnyWordSpec {
       (clusterIndexName("test") matches clusterIndexName("tests")) should be(false)
     }
   }
+
 }

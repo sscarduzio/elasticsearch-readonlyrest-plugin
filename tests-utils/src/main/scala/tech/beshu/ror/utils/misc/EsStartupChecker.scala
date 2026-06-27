@@ -29,10 +29,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils.retryBackoff
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class EsStartupChecker private(name: String,
-                               client: RestClient,
-                               mode: Mode)
-  extends LazyLogging {
+class EsStartupChecker private (name: String, client: RestClient, mode: Mode) extends LazyLogging {
 
   def waitForStart(): Boolean = {
     retryBackoff(clusterIsReady(client), maxRetries = 150, firstDelay = 2 seconds, backOffScaler = 1)
@@ -47,10 +44,10 @@ class EsStartupChecker private(name: String,
       .use { response =>
         val isOk = mode match {
           case Mode.GreenCluster => isClusterGreen(response)
-          case Mode.Accessible => isClusterAccessible(response)
-          case Mode.Reachable => isClusterReachable(response)
+          case Mode.Accessible   => isClusterAccessible(response)
+          case Mode.Reachable    => isClusterReachable(response)
         }
-        if(isOk) Task.unit
+        if (isOk) Task.unit
         else Task.raiseError(ClusterNotReady)
       }
   }
@@ -88,6 +85,7 @@ class EsStartupChecker private(name: String,
     logger.info(s"[$name] ES is reachable")
     true
   }
+
 }
 
 object EsStartupChecker {
@@ -110,4 +108,5 @@ object EsStartupChecker {
     case object Accessible extends Mode
     case object Reachable extends Mode
   }
+
 }

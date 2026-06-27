@@ -22,11 +22,15 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.es.services.IndexDocumentManager.{ReadError, WriteError}
 
 trait IndexDocumentManager {
-  def documentAsJson(index: IndexName.Full, id: String)
-                    (implicit requestId: RequestId): Task[Either[ReadError, Json]]
 
-  def saveDocumentJson(index: IndexName.Full, id: String, document: Json)
-                      (implicit requestId: RequestId): Task[Either[WriteError, Unit]]
+  def documentAsJson(index: IndexName.Full, id: String)(
+      implicit requestId: RequestId
+  ): Task[Either[ReadError, Json]]
+
+  def saveDocumentJson(index: IndexName.Full, id: String, document: Json)(
+      implicit requestId: RequestId
+  ): Task[Either[WriteError, Unit]]
+
 }
 
 object IndexDocumentManager {

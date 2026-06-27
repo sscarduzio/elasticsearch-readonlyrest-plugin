@@ -23,26 +23,31 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
 object JwtAuthRulesDecoders
-  extends JwtLikeRulesDecoders[
-    JwtDef,
-    JwtDefForAuthentication,
-    JwtDefForAuthorization,
-    JwtDefForAuth,
-    JwtAuthenticationRule,
-    JwtAuthorizationRule,
-    JwtAuthRule,
-  ] with RequestIdAwareLogging {
+    extends JwtLikeRulesDecoders[
+      JwtDef,
+      JwtDefForAuthentication,
+      JwtDefForAuthorization,
+      JwtDefForAuth,
+      JwtAuthenticationRule,
+      JwtAuthorizationRule,
+      JwtAuthRule,
+    ]
+    with RequestIdAwareLogging {
 
   override protected def ruleTypePrefix: String = "jwt"
 
   override protected def docsUrl: String = "https://docs.readonlyrest.com/elasticsearch#json-web-token-jwt-auth"
 
-  override protected def createAuthenticationRule(definition: JwtDefForAuthentication,
-                                                  globalSettings: GlobalSettings): JwtAuthenticationRule =
+  override protected def createAuthenticationRule(
+      definition: JwtDefForAuthentication,
+      globalSettings: GlobalSettings
+  ): JwtAuthenticationRule =
     new JwtAuthenticationRule(JwtAuthenticationRule.Settings(definition), globalSettings.userIdCaseSensitivity)
 
-  override protected def createAuthorizationRule(definition: JwtDefForAuthorization,
-                                                 groupsLogic: GroupsLogic): JwtAuthorizationRule =
+  override protected def createAuthorizationRule(
+      definition: JwtDefForAuthorization,
+      groupsLogic: GroupsLogic
+  ): JwtAuthorizationRule =
     new JwtAuthorizationRule(JwtAuthorizationRule.Settings(definition, groupsLogic))
 
   override def createAuthRule(authnRule: JwtAuthenticationRule, authzRule: JwtAuthorizationRule): JwtAuthRule =

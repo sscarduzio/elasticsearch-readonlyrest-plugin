@@ -18,21 +18,28 @@ package tech.beshu.ror.accesscontrol.blocks.mocks
 
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalGroupsProviderServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{
+  ExternalAuthenticationServiceMock,
+  ExternalGroupsProviderServiceMock,
+  LdapServiceMock
+}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 
-private[mocks] final case class SimpleMocksProvider(mocks: AuthServicesMocks)
-  extends MocksProvider {
+private[mocks] final case class SimpleMocksProvider(mocks: AuthServicesMocks) extends MocksProvider {
 
-  override def ldapServiceWith(id: LdapService.Name)
-                              (implicit context: RequestId): Option[LdapServiceMock] =
+  override def ldapServiceWith(id: LdapService.Name)(
+      implicit context: RequestId
+  ): Option[LdapServiceMock] =
     mocks.ldapMocks.get(id)
 
-  override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
-                                                (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] =
+  override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)(
+      implicit context: RequestId
+  ): Option[ExternalAuthenticationServiceMock] =
     mocks.externalAuthenticationServiceMocks.get(id)
 
-  override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)
-                                                (implicit context: RequestId): Option[ExternalGroupsProviderServiceMock] =
+  override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)(
+      implicit context: RequestId
+  ): Option[ExternalGroupsProviderServiceMock] =
     mocks.externalGroupsProviderServiceMocks.get(id)
+
 }

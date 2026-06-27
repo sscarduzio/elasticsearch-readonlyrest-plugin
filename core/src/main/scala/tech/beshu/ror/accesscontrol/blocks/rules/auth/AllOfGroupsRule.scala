@@ -22,9 +22,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseGroupsRule.{Creator, Settings}
 import tech.beshu.ror.accesscontrol.domain.*
 
-class AllOfGroupsRule(override val settings: Settings[GroupsLogic.AllOf])
-                     (override implicit val userIdCaseSensitivity: CaseSensitivity)
-  extends BaseGroupsRule[GroupsLogic.AllOf](AllOfGroupsRule.SimpleSyntaxName.name, settings)
+class AllOfGroupsRule(override val settings: Settings[GroupsLogic.AllOf])(
+    override implicit val userIdCaseSensitivity: CaseSensitivity
+) extends BaseGroupsRule[GroupsLogic.AllOf](AllOfGroupsRule.SimpleSyntaxName.name, settings)
 
 object AllOfGroupsRule {
   implicit val allOfCreator: Creator[GroupsLogic.AllOf] = new AllOfGroupsRule(_)(_)
@@ -44,4 +44,5 @@ object AllOfGroupsRule {
   case object DeprecatedSimpleSyntaxNameV1 extends RuleName[AllOfGroupsRule] {
     override val name: Name = Rule.Name("roles_and")
   }
+
 }

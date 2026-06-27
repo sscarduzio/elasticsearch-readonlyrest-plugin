@@ -18,10 +18,10 @@ package tech.beshu.ror.unit.es.services
 
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Local as LocalIndexName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.{Full, FullLocalDataStreamWithAliases}
 import tech.beshu.ror.accesscontrol.domain.IndexAttribute.{Closed, Opened}
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.services.EsClusterService.{LocalDataStreamsSnapshot, LocalIndicesSnapshot}
 import tech.beshu.ror.syntax.*
 
@@ -29,10 +29,12 @@ class EsClusterServiceSnapshotsTest extends AnyWordSpec {
 
   "LocalIndicesSnapshot" should {
     "reuse precomputed sets and alias maps for attribute filters" in {
-      val snapshot = new LocalIndicesSnapshot(Set(
-        fullLocalIndex("open-1", Opened, "alias-open", "alias-both"),
-        fullLocalIndex("closed-1", Closed, "alias-closed", "alias-both")
-      ))
+      val snapshot = new LocalIndicesSnapshot(
+        Set(
+          fullLocalIndex("open-1", Opened, "alias-open", "alias-both"),
+          fullLocalIndex("closed-1", Closed, "alias-closed", "alias-both")
+        )
+      )
 
       snapshot.indicesAndAliasesFor(IndexAttributeFilter.All) shouldBe Set(
         localIndex("open-1"),
@@ -70,13 +72,15 @@ class EsClusterServiceSnapshotsTest extends AnyWordSpec {
 
   "LocalDataStreamsSnapshot" should {
     "treat closed-only filters as empty and reuse opened data" in {
-      val snapshot = new LocalDataStreamsSnapshot(Set(
-        FullLocalDataStreamWithAliases(
-          dataStreamName = dataStreamName("logs-app"),
-          aliasesNames = Set(dataStreamName("logs-alias")),
-          backingIndices = Set(indexName(".ds-logs-app-000001"), indexName(".ds-logs-app-000002"))
+      val snapshot = new LocalDataStreamsSnapshot(
+        Set(
+          FullLocalDataStreamWithAliases(
+            dataStreamName = dataStreamName("logs-app"),
+            aliasesNames = Set(dataStreamName("logs-alias")),
+            backingIndices = Set(indexName(".ds-logs-app-000001"), indexName(".ds-logs-app-000002"))
+          )
         )
-      ))
+      )
 
       snapshot.dataStreamsAndAliasesFor(IndexAttributeFilter.All) shouldBe Set(
         localIndex("logs-app"),
@@ -92,14 +96,14 @@ class EsClusterServiceSnapshotsTest extends AnyWordSpec {
       snapshot.backingIndicesPerDataStreamMapFor(IndexAttributeFilter.All) shouldBe Map(
         localIndex("logs-app") -> Set(localIndex(".ds-logs-app-000001"), localIndex(".ds-logs-app-000002"))
       )
-      snapshot.dataStreamsPerAliasMapFor(IndexAttributeFilter.Closed) shouldBe Map.empty[LocalIndexName, Set[LocalIndexName]]
-      snapshot.backingIndicesPerDataStreamMapFor(IndexAttributeFilter.Closed) shouldBe Map.empty[LocalIndexName, Set[LocalIndexName]]
+      snapshot.dataStreamsPerAliasMapFor(IndexAttributeFilter.Closed) shouldBe Map
+        .empty[LocalIndexName, Set[LocalIndexName]]
+      snapshot.backingIndicesPerDataStreamMapFor(IndexAttributeFilter.Closed) shouldBe Map
+        .empty[LocalIndexName, Set[LocalIndexName]]
     }
   }
 
-  private def fullLocalIndex(name: String,
-                             attribute: IndexAttribute,
-                             aliases: String*): FullLocalIndexWithAliases =
+  private def fullLocalIndex(name: String, attribute: IndexAttribute, aliases: String*): FullLocalIndexWithAliases =
     new FullLocalIndexWithAliases(indexName(name), attribute, aliases.map(indexName).toCovariantSet)
 
   private def localIndex(name: String): LocalIndexName =

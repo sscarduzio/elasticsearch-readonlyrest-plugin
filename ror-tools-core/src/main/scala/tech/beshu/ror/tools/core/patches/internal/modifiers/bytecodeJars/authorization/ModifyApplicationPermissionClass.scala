@@ -26,8 +26,8 @@ import java.io.InputStream
   It replaces the implementation of the grants(...) method so that it always returns true,
   causing the ApplicationPermission to grant access to any requested application privilege and resource,
   regardless of the actual permission configuration.
-*/
-private [patches] object ModifyApplicationPermissionClass extends BytecodeJarModifier {
+ */
+private[patches] object ModifyApplicationPermissionClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -44,14 +44,15 @@ private [patches] object ModifyApplicationPermissionClass extends BytecodeJarMod
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "grants" =>
           new GrantsMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
@@ -59,10 +60,10 @@ private [patches] object ModifyApplicationPermissionClass extends BytecodeJarMod
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
-  private class GrantsMethodReturningTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class GrantsMethodReturningTrue(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -78,12 +79,28 @@ private [patches] object ModifyApplicationPermissionClass extends BytecodeJarMod
       underlying.visitLabel(label1)
 
       // locals
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission;", null, label0, label1, 0)
-      underlying.visitLocalVariable("other", "Lorg/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilege;", null, label0, label1, 1)
+      underlying.visitLocalVariable(
+        "this",
+        "Lorg/elasticsearch/xpack/core/security/authz/permission/ApplicationPermission;",
+        null,
+        label0,
+        label1,
+        0
+      )
+      underlying.visitLocalVariable(
+        "other",
+        "Lorg/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilege;",
+        null,
+        label0,
+        label1,
+        1
+      )
       underlying.visitLocalVariable("resource", "Ljava/lang/String;", null, label0, label1, 2)
 
       underlying.visitMaxs(1, 3)
       underlying.visitEnd()
     }
+
   }
+
 }

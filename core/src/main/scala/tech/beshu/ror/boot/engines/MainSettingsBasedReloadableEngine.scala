@@ -36,24 +36,32 @@ import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSaving
 import tech.beshu.ror.settings.ror.source.{IndexSettingsSource, MainSettingsIndexSource}
 import tech.beshu.ror.utils.ScalaOps.value
 
-private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest,
-                                                              esConfigBasedRorSettings: EsConfigBasedRorSettings,
-                                                              initialEngine: MainEngine,
-                                                              reloadInProgress: Semaphore[Task],
-                                                              settingsSource: IndexSettingsSource[MainRorSettings])
-                                                             (implicit systemContext: SystemContext)
-  extends BaseReloadableEngine(
-    name = "main",
-    boot = boot,
-    esConfigBasedRorSettings = esConfigBasedRorSettings,
-    initialEngine = InitialEngine.Configured(engine = initialEngine._1, settings = initialEngine._2, expiration = None),
-    reloadInProgress = reloadInProgress
-  ) {
+private[boot] class MainSettingsBasedReloadableEngine private (
+    boot: ReadonlyRest,
+    esConfigBasedRorSettings: EsConfigBasedRorSettings,
+    initialEngine: MainEngine,
+    reloadInProgress: Semaphore[Task],
+    settingsSource: IndexSettingsSource[MainRorSettings]
+)(
+    implicit systemContext: SystemContext
+) extends BaseReloadableEngine(
+      name = "main",
+      boot = boot,
+      esConfigBasedRorSettings = esConfigBasedRorSettings,
+      initialEngine =
+        InitialEngine.Configured(engine = initialEngine._1, settings = initialEngine._2, expiration = None),
+      reloadInProgress = reloadInProgress
+    ) {
 
-  def forceReloadAndSave(settings: MainRorSettings)
-                        (implicit requestId: RequestId): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] = {
+  def forceReloadAndSave(settings: MainRorSettings)(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsReloadWithUpdateError, Unit]] = {
     for {
-      _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of provided settings was forced (new engine id=${settings.rawSettings.hashString()}) ..."))
+      _ <- Task.delay(
+        logger.info(
+          s"[${requestId.show}] Reloading of provided settings was forced (new engine id=${settings.rawSettings.hashString()}) ..."
+        )
+      )
       reloadResult <- reloadInProgress.withPermit {
         value {
           for {
@@ -64,11 +72,18 @@ private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest
       }
       _ <- Task.delay(reloadResult match {
         case Right(_) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${settings.rawSettings.hashString().show}) settings reloaded!")
+          logger.info(
+            s"[${requestId.show}] ROR ${name.show} engine (id=${settings.rawSettings.hashString().show}) settings reloaded!"
+          )
         case Left(ReloadError(SettingsUpToDate(oldSettings))) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${oldSettings.hashString().show}) already loaded!")
+          logger.info(
+            s"[${requestId.show}] ROR ${name.show} engine (id=${oldSettings.hashString().show}) already loaded!"
+          )
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
-          logger.error(s"[${requestId.show}] [${settings.rawSettings.hashString()}] Cannot reload ROR settings - failure: ${message.show}", ex)
+          logger.error(
+            s"[${requestId.show}] [${settings.rawSettings.hashString()}] Cannot reload ROR settings - failure: ${message.show}",
+            ex
+          )
         case Left(ReloadError(ReloadingFailed(StartingFailure(message, None)))) =>
           logger.error(s"[${requestId.show}] Cannot reload ROR settings - failure: ${message.show}")
         case Left(ReloadError(RorInstanceStopped)) =>
@@ -80,14 +95,17 @@ private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest
     } yield reloadResult
   }
 
-  def forceReloadFromIndex()
-                          (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, Unit]] = {
+  def forceReloadFromIndex()(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsReloadError, Unit]] = {
     for {
       _ <- Task.delay(logger.info(s"[${requestId.show}] Reloading of in-index settings was forced ..."))
       reloadResult <- reloadEngineUsingIndexSettings()
       _ <- Task.delay(reloadResult match {
         case Right(settings) =>
-          logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${settings.rawSettings.hashString().show}) settings reloaded!")
+          logger.info(
+            s"[${requestId.show}] ROR ${name.show} engine (id=${settings.rawSettings.hashString().show}) settings reloaded!"
+          )
         case Left(IndexSettingsReloadError.ReloadError(SettingsUpToDate(settings))) =>
           logger.info(s"[${requestId.show}] ROR ${name.show} engine (id=${settings.hashString().show}) already loaded!")
         case Left(IndexSettingsReloadError.ReloadError(ReloadingFailed(StartingFailure(message, Some(ex))))) =>
@@ -102,15 +120,17 @@ private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest
     } yield reloadResult.map(_ => ())
   }
 
-  private def reloadEngineUsingIndexSettings()
-                                            (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, MainRorSettings]] = {
+  private def reloadEngineUsingIndexSettings()(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsReloadError, MainRorSettings]] = {
     reloadInProgress.withPermit {
       reloadEngineUsingIndexSettingsWithoutPermit()
     }
   }
 
-  private[boot] def reloadEngineUsingIndexSettingsWithoutPermit()
-                                                               (implicit requestId: RequestId): Task[Either[IndexSettingsReloadError, MainRorSettings]] = {
+  private[boot] def reloadEngineUsingIndexSettingsWithoutPermit()(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsReloadError, MainRorSettings]] = {
     val result = for {
       newSettings <- loadRorSettingFromIndex()
       _ <- reloadEngine(newSettings.rawSettings)
@@ -120,29 +140,43 @@ private[boot] class MainSettingsBasedReloadableEngine private(boot: ReadonlyRest
     result.value
   }
 
-  private def loadRorSettingFromIndex()
-                                     (implicit requestId: RequestId)= {
+  private def loadRorSettingFromIndex()(
+      implicit requestId: RequestId
+  ) = {
     EitherT(settingsSource.load())
       .leftMap(IndexSettingsReloadError.IndexLoadingSettingsError.apply)
   }
 
-  private def saveSettings(settings: MainRorSettings)
-                          (implicit requestId: RequestId): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = {
+  private def saveSettings(settings: MainRorSettings)(
+      implicit requestId: RequestId
+  ): EitherT[Task, IndexSettingsReloadWithUpdateError, Unit] = {
     EitherT(settingsSource.save(settings))
       .leftMap(IndexSettingsReloadWithUpdateError.IndexSettingsSavingError.apply)
   }
 
 }
+
 object MainSettingsBasedReloadableEngine {
 
   final class Creator(settingsSource: MainSettingsIndexSource) {
 
-    def create(boot: ReadonlyRest,
-               esConfigBasedRorSettings: EsConfigBasedRorSettings,
-               initialEngine: MainEngine,
-               reloadInProgress: Semaphore[Task])
-              (implicit systemContext: SystemContext): MainSettingsBasedReloadableEngine = {
-      new MainSettingsBasedReloadableEngine(boot, esConfigBasedRorSettings, initialEngine, reloadInProgress, settingsSource)
+    def create(
+        boot: ReadonlyRest,
+        esConfigBasedRorSettings: EsConfigBasedRorSettings,
+        initialEngine: MainEngine,
+        reloadInProgress: Semaphore[Task]
+    )(
+        implicit systemContext: SystemContext
+    ): MainSettingsBasedReloadableEngine = {
+      new MainSettingsBasedReloadableEngine(
+        boot,
+        esConfigBasedRorSettings,
+        initialEngine,
+        reloadInProgress,
+        settingsSource
+      )
     }
+
   }
+
 }

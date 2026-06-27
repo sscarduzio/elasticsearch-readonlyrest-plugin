@@ -24,10 +24,11 @@ import tech.beshu.ror.utils.containers.windows.WindowsEsSetup.prepareAndStartEs
 
 import java.util.function.Consumer
 
-class WindowsPseudoEsContainer(elasticsearch: Elasticsearch,
-                               waitStrategy: ElasticsearchNodeWaitingStrategy,
-                               additionalLogConsumer: Option[Consumer[OutputFrame]])
-  extends WindowsPseudoContainer[WindowsPseudoEsContainer] {
+class WindowsPseudoEsContainer(
+    elasticsearch: Elasticsearch,
+    waitStrategy: ElasticsearchNodeWaitingStrategy,
+    additionalLogConsumer: Option[Consumer[OutputFrame]]
+) extends WindowsPseudoContainer[WindowsPseudoEsContainer] {
 
   override protected def name: String = "WindowsPseudoEsContainer"
 

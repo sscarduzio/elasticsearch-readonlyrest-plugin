@@ -23,11 +23,9 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
-private[http] abstract class BaseHeaderRule
-  extends RegularRule {
+private[http] abstract class BaseHeaderRule extends RegularRule {
 
-  protected def isFulfilled(accessRequirement: AccessRequirement[Header],
-                            requestHeaders: Set[Header]): Boolean = {
+  protected def isFulfilled(accessRequirement: AccessRequirement[Header], requestHeaders: Set[Header]): Boolean = {
     accessRequirement match {
       case AccessRequirement.MustBePresent(requiredHeader) =>
         requestHeaders.exists(matches(requiredHeader, _))
@@ -46,4 +44,5 @@ private[http] abstract class BaseHeaderRule
       false
     }
   }
+
 }

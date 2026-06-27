@@ -20,7 +20,11 @@ import better.files.File
 import io.circe.{Json, ParsingFailure}
 import squants.information.Information
 import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError
-import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser.ParsingRorSettingsError.{
+  InvalidContent,
+  MoreThanOneRorSection,
+  NoRorSection
+}
 import tech.beshu.ror.utils.yaml.{YamlOps, YamlParser}
 
 class RawRorSettingsYamlParser(maxSize: Information) {
@@ -38,25 +42,29 @@ class RawRorSettingsYamlParser(maxSize: Information) {
   }
 
   private def handleParseResult(result: Either[ParsingFailure, Json]) = {
-    result
-      .left.map(InvalidContent.apply)
+    result.left
+      .map(InvalidContent.apply)
       .flatMap { json => validateRorJson(json) }
   }
 
   private def validateRorJson(json: Json) = {
     json \\ "readonlyrest" match {
-      case Nil => Left(NoRorSection)
+      case Nil      => Left(NoRorSection)
       case _ :: Nil => Right(json)
-      case _ => Left(MoreThanOneRorSection)
+      case _        => Left(MoreThanOneRorSection)
     }
   }
+
 }
+
 object RawRorSettingsYamlParser {
 
   sealed trait ParsingRorSettingsError
+
   object ParsingRorSettingsError {
     case object NoRorSection extends ParsingRorSettingsError
     case object MoreThanOneRorSection extends ParsingRorSettingsError
     final case class InvalidContent(throwable: Throwable) extends ParsingRorSettingsError
   }
+
 }

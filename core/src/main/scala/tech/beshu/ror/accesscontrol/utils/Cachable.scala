@@ -27,22 +27,24 @@ import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext.*
 
-class AsyncCacheableAction[K, V](ttl: Option[PositiveFiniteDuration],
-                                 action: (K, RequestId) => Task[V])
-  extends AsyncCacheableActionWithKeyMapping[K, K, V](ttl, action, identity[K]) {
+class AsyncCacheableAction[K, V](ttl: Option[PositiveFiniteDuration], action: (K, RequestId) => Task[V])
+    extends AsyncCacheableActionWithKeyMapping[K, K, V](ttl, action, identity[K]) {
 
   def this(action: (K, RequestId) => Task[V]) = this(None, action)
 
   def this(ttl: PositiveFiniteDuration, action: (K, RequestId) => Task[V]) = this(Some(ttl), action)
 }
 
-class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDuration],
-                                                   action: (K, RequestId) => Task[V],
-                                                   keyMap: K => K1) {
+class AsyncCacheableActionWithKeyMapping[K, K1, V](
+    ttl: Option[PositiveFiniteDuration],
+    action: (K, RequestId) => Task[V],
+    keyMap: K => K1
+) {
 
   def this(action: (K, RequestId) => Task[V], keyMap: K => K1) = this(None, action, keyMap)
 
-  def this(ttl: PositiveFiniteDuration, action: (K, RequestId) => Task[V], keyMap: K => K1) = this(Some(ttl), action, keyMap)
+  def this(ttl: PositiveFiniteDuration, action: (K, RequestId) => Task[V], keyMap: K => K1) =
+    this(Some(ttl), action, keyMap)
 
   import CacheableActionCaffeineOps.*
 
@@ -50,18 +52,21 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
 
   private val cache: Cache[K1, V] =
     doPrivileged {
-      Caffeine.newBuilder()
+      Caffeine
+        .newBuilder()
         .executor(global)
         .removalListener(onRemoveHook)
         .withOptionalTtl(ttl)
         .build[K1, V]()
     }
 
-  def call(key: K)(implicit requestId: RequestId): Task[V] = Task.defer {
+  def call(key: K)(
+      implicit requestId: RequestId
+  ): Task[V] = Task.defer {
     val mappedKey = keyMap(key)
     Option(cache.getIfPresent(mappedKey)) match {
       case Some(value) => Task.now(value)
-      case None =>
+      case None        =>
         semaphoreOf(mappedKey).flatMap { semaphore =>
           semaphore.withPermit {
             getFromCacheOrRunAction(key, mappedKey).uncancelable.asyncBoundary
@@ -70,7 +75,9 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
     }
   }
 
-  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(implicit requestId: RequestId): Task[V] = Task.defer {
+  private def getFromCacheOrRunAction(key: K, mappedKey: K1)(
+      implicit requestId: RequestId
+  ): Task[V] = Task.defer {
     Option(cache.getIfPresent(mappedKey)) match {
       case Some(value) =>
         Task.now(value)
@@ -87,50 +94,52 @@ class AsyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDur
     keySemaphoresMap.clear()
   }
 
-  private def onRemoveHook(mappedKey: K1,
-                           @nowarn value: V,
-                           @nowarn cause: RemovalCause): Unit = {
+  private def onRemoveHook(mappedKey: K1, @nowarn value: V, @nowarn cause: RemovalCause): Unit = {
     keySemaphoresMap.remove(mappedKey)
   }
 
   private def semaphoreOf(key: K1): Task[Semaphore[Task]] = {
     Option(keySemaphoresMap.get(key)) match {
       case Some(existing) => Task.now(existing)
-      case None =>
+      case None           =>
         Semaphore[Task](1).map { newSemaphore =>
           Option(keySemaphoresMap.putIfAbsent(key, newSemaphore)).getOrElse(newSemaphore)
         }
     }
   }
+
 }
 
-class AsyncCacheableActionWithTimeout[K, V](ttl: PositiveFiniteDuration,
-                                            action: (K, RequestId) => Task[V])
-  extends AsyncCacheableActionWithKeyMappingAndTimeout[K, K, V](ttl, action, identity[K])
+class AsyncCacheableActionWithTimeout[K, V](ttl: PositiveFiniteDuration, action: (K, RequestId) => Task[V])
+    extends AsyncCacheableActionWithKeyMappingAndTimeout[K, K, V](ttl, action, identity[K])
 
-class AsyncCacheableActionWithKeyMappingAndTimeout[K, K1, V](ttl: PositiveFiniteDuration,
-                                                             action: (K, RequestId) => Task[V],
-                                                             keyMap: K => K1)
-  extends AsyncCacheableActionWithKeyMapping[K, K1, V](Some(ttl), action, keyMap) {
+class AsyncCacheableActionWithKeyMappingAndTimeout[K, K1, V](
+    ttl: PositiveFiniteDuration,
+    action: (K, RequestId) => Task[V],
+    keyMap: K => K1
+) extends AsyncCacheableActionWithKeyMapping[K, K1, V](Some(ttl), action, keyMap) {
 
-  def call(key: K, requestTimeout: PositiveFiniteDuration)
-          (implicit requestId: RequestId): Task[V] = {
+  def call(key: K, requestTimeout: PositiveFiniteDuration)(
+      implicit requestId: RequestId
+  ): Task[V] = {
     call(key).timeout(requestTimeout.value)
   }
+
 }
 
-class SyncCacheableAction[K, V](ttl: Option[PositiveFiniteDuration],
-                                action: (K, RequestId) => V)
-  extends SyncCacheableActionWithKeyMapping[K, K, V](ttl, action, identity[K]) {
+class SyncCacheableAction[K, V](ttl: Option[PositiveFiniteDuration], action: (K, RequestId) => V)
+    extends SyncCacheableActionWithKeyMapping[K, K, V](ttl, action, identity[K]) {
 
   def this(action: (K, RequestId) => V) = this(None, action)
 
   def this(ttl: PositiveFiniteDuration, action: (K, RequestId) => V) = this(Some(ttl), action)
 }
 
-class SyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDuration],
-                                                  action: (K, RequestId) => V,
-                                                  keyMap: K => K1) {
+class SyncCacheableActionWithKeyMapping[K, K1, V](
+    ttl: Option[PositiveFiniteDuration],
+    action: (K, RequestId) => V,
+    keyMap: K => K1
+) {
 
   def this(action: (K, RequestId) => V, keyMap: K => K1) = this(None, action, keyMap)
 
@@ -140,26 +149,33 @@ class SyncCacheableActionWithKeyMapping[K, K1, V](ttl: Option[PositiveFiniteDura
 
   private val cache: Cache[K1, V] =
     doPrivileged {
-      Caffeine.newBuilder()
+      Caffeine
+        .newBuilder()
         .withOptionalTtl(ttl)
         .build[K1, V]()
     }
 
-  def call(key: K)(implicit requestId: RequestId): V = {
+  def call(key: K)(
+      implicit requestId: RequestId
+  ): V = {
     cache.get(keyMap(key), _ => action(key, requestId))
   }
 
   def invalidateAll(): Unit = {
     cache.invalidateAll()
   }
+
 }
 
 object CacheableActionCaffeineOps {
 
   extension [K, V](builder: Caffeine[K, V]) {
+
     def withOptionalTtl(ttl: Option[PositiveFiniteDuration]): Caffeine[K, V] = {
       ttl.foreach(t => builder.expireAfterWrite(t.value.toMillis, TimeUnit.MILLISECONDS))
       builder
     }
+
   }
+
 }

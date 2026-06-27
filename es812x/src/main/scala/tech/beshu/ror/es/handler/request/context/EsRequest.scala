@@ -45,7 +45,8 @@ trait EsRequest[B <: BlockContext] extends RequestIdAwareLogging {
       )
   }
 
-  def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult = ModificationResult.CannotModify
+  def modifyWhenIndexNotFound(allowedClusters: Set[ClusterName.Full]): ModificationResult =
+    ModificationResult.CannotModify
 
   def modifyWhenAliasNotFound: ModificationResult = ModificationResult.CannotModify
 
@@ -60,30 +61,39 @@ trait EsRequest[B <: BlockContext] extends RequestIdAwareLogging {
   private def modifyResponseHeaders(blockContext: B): Unit = {
     val threadContext = threadPool.getThreadContext
     blockContext.responseHeaders.foreach(header =>
-      threadContext.addResponseHeader(header.name.value.value, header.value.value))
+      threadContext.addResponseHeader(header.name.value.value, header.value.value)
+    )
   }
+
 }
 
 sealed trait ModificationResult
+
 object ModificationResult {
   case object Modified extends ModificationResult
   case object CannotModify extends ModificationResult
   case object ShouldBeInterrupted extends ModificationResult
   sealed trait CustomResponse extends ModificationResult
+
   object CustomResponse {
     final case class Success(response: ActionResponse) extends CustomResponse
     final case class Failure(exception: ElasticsearchException) extends CustomResponse
   }
-  final case class UpdateResponse private(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
+
+  final case class UpdateResponse private (update: ActionResponse => Task[ActionResponse]) extends ModificationResult
 
   object UpdateResponse {
+
     def sync(update: ActionResponse => ActionResponse): UpdateResponse = {
       new UpdateResponse(response => Task.delay(doPrivileged(update(response))))
     }
 
-    def async(update: ActionResponse => Task[ActionResponse])
-             (implicit scheduler: Scheduler): UpdateResponse = {
+    def async(update: ActionResponse => Task[ActionResponse])(
+        implicit scheduler: Scheduler
+    ): UpdateResponse = {
       new UpdateResponse(response => doPrivileged(update(response)))
     }
+
   }
+
 }

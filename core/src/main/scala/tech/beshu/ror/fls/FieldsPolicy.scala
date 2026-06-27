@@ -41,7 +41,8 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
     val fieldParts = field.split("\\.").toList
     if (enhancedField.fieldPartPatterns.length < fieldParts.length) false
     else {
-      val foundMismatch = fieldParts.zip(enhancedField.fieldPartPatterns)
+      val foundMismatch = fieldParts
+        .zip(enhancedField.fieldPartPatterns)
         .exists { case (fieldPart, patternPart) =>
           if (fieldPart == patternPart.pattern()) false
           else !wildcardedPatternMatch(patternPart, fieldPart)
@@ -54,7 +55,8 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
     val fieldParts = field.split("\\.").toList
     if (enhancedField.fieldPartPatterns.length > fieldParts.length) false
     else {
-      val foundMismatch = enhancedField.fieldPartPatterns.zip(fieldParts)
+      val foundMismatch = enhancedField.fieldPartPatterns
+        .zip(fieldParts)
         .forall { case (patternPart, fieldPart) =>
           if (patternPart.pattern() == fieldPart) true
           else wildcardedPatternMatch(patternPart, fieldPart)
@@ -70,12 +72,17 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
 }
 
 object FieldsPolicy {
+
   private class EnhancedDocumentField(field: DocumentField) {
+
     val fieldPartPatterns: List[Pattern] =
       field.value.value
-        .split("\\.").toList
+        .split("\\.")
+        .toList
         .map { part =>
           Pattern.compile(s"^${part.replace("*", ".*")}$$")
         }
+
   }
+
 }

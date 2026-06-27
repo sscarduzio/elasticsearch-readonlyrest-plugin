@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule.Settings
@@ -32,14 +32,13 @@ import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeMatc
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.syntax.*
 
-class SnapshotsRule(val settings: Settings)
-  extends RegularRule {
+class SnapshotsRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = SnapshotsRule.Name.name
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.UserMetadataRequestBlockContextUpdater =>
         Permitted(blockContext)
@@ -53,9 +52,12 @@ class SnapshotsRule(val settings: Settings)
     }
   }
 
-  private def checkAllowedSnapshots[B <: BlockContext](allowedSnapshots: Set[SnapshotName],
-                                                       blockContext: SnapshotRequestBlockContext)
-                                                      (implicit ev: SnapshotRequestBlockContext <:< B): Decision[B] = {
+  private def checkAllowedSnapshots[B <: BlockContext](
+      allowedSnapshots: Set[SnapshotName],
+      blockContext: SnapshotRequestBlockContext
+  )(
+      implicit ev: SnapshotRequestBlockContext <:< B
+  ): Decision[B] = {
     if (allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)) {
       Permitted(blockContext)
     } else {
@@ -65,13 +67,15 @@ class SnapshotsRule(val settings: Settings)
       ) match {
         case NotAltered() =>
           Permitted(blockContext)
-        case Altered(filteredSnapshots) if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
+        case Altered(filteredSnapshots)
+            if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
           Permitted(blockContext.withSnapshots(filteredSnapshots))
         case Altered(_) =>
           Denied(Cause.NotAuthorized)
       }
     }
   }
+
 }
 
 object SnapshotsRule {

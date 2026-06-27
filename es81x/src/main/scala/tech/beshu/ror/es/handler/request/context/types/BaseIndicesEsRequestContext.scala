@@ -32,11 +32,12 @@ import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsReques
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
-                                                               esContext: EsContext,
-                                                               aclContext: AccessControlStaticContext,
-                                                               override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext)
+abstract class BaseIndicesEsRequestContext[R <: ActionRequest](
+    actionRequest: R,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext)
     with EsRequest[GeneralIndexRequestBlockContext] {
 
   override def initialBlockContext(block: Block): GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
@@ -65,7 +66,12 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
       }
     } else {
       val randomNonExistingIndex = discoverIndices.randomNonexistentLocalIndex()
-      update(actionRequest, NonEmptyList.of(randomNonExistingIndex), NonEmptyList.of(randomNonExistingIndex.name), allowedClusters)
+      update(
+        actionRequest,
+        NonEmptyList.of(randomNonExistingIndex),
+        NonEmptyList.of(randomNonExistingIndex.name),
+        allowedClusters
+      )
     }
   }
 
@@ -83,16 +89,18 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   protected def requestedIndicesFrom(request: R): Set[RequestedIndex[ClusterIndexName]]
 
-  protected def update(request: R,
-                       filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                       allAllowedIndices: NonEmptyList[ClusterIndexName],
-                       allowedClusters: Set[ClusterName.Full]): ModificationResult
+  protected def update(
+      request: R,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult
 
   private lazy val discoverIndices: Set[RequestedIndex[ClusterIndexName]] = {
-    val indices = requestedIndicesFrom(actionRequest)
-      .orWildcardWhenEmpty
+    val indices = requestedIndicesFrom(actionRequest).orWildcardWhenEmpty
       .skipRemoteIndicesIfNeeded(esContext)
     logger.debug(s"Discovered indices: ${indices.show}")
     indices
   }
+
 }

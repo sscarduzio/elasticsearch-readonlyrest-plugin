@@ -29,8 +29,7 @@ object JarManifestModifier {
 
   private val patchedByRorVersionPropertyName = "Patched-By-Ror-Version"
 
-  def addPatchedByRorVersionProperty(file: File,
-                                     rorVersion: String): Unit = {
+  def addPatchedByRorVersionProperty(file: File, rorVersion: String): Unit = {
     val originalFilePermissionsAndOwner = file.getFilePermissionsAndOwner
     val tempJarFile = File(s"temp-${UUID.randomUUID()}.jar")
     Using(new JarFile(file.toJava)) { jarFile =>
@@ -40,11 +39,19 @@ object JarManifestModifier {
       Using(new JarOutputStream(tempJarFile.newOutputStream.buffered, manifest)) { jarOutput =>
         copyJarContentExceptManifestFile(jarFile, jarOutput)
       }.fold(
-        ex => throw IllegalStateException(s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]", ex),
+        ex =>
+          throw IllegalStateException(
+            s"Could not copy content of jar file ${file.name} because of [${ex.getMessage}]",
+            ex
+          ),
         (_: Unit) => ()
       )
     }.fold(
-      ex => throw IllegalStateException(s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]", ex),
+      ex =>
+        throw IllegalStateException(
+          s"Could not add ROR version to jar file ${file.name} because of [${ex.getMessage}]",
+          ex
+        ),
       (_: Unit) => ()
     )
     tempJarFile.moveTo(file)(File.CopyOptions(overwrite = true))
@@ -71,7 +78,11 @@ object JarManifestModifier {
         newEntry.setTime(entry.getTime)
         jarOutput.putNextEntry(newEntry)
         Using(originalJarFile.getInputStream(entry))(_.transferTo(jarOutput)).fold(
-          ex => throw IllegalStateException(s"Could not copy content of ${entry.getName} because of [${ex.getMessage}]", ex),
+          ex =>
+            throw IllegalStateException(
+              s"Could not copy content of ${entry.getName} because of [${ex.getMessage}]",
+              ex
+            ),
           (_: Long) => ()
         )
         jarOutput.closeEntry()

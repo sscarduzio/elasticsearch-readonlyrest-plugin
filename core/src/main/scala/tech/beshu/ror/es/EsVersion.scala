@@ -25,7 +25,9 @@ final case class EsVersion(major: Int, minor: Int, revision: Int) extends Ordere
 }
 
 object EsVersion {
-  given Ordering[EsVersion] = Ordering.by[EsVersion, Version](
-    esVersion => Version(esVersion.major, esVersion.minor, esVersion.revision, "", "", "")
+
+  given Ordering[EsVersion] = Ordering.by[EsVersion, Version](esVersion =>
+    Version(esVersion.major, esVersion.minor, esVersion.revision, "", "", "")
   )(Ordering.by(identity))
+
 }

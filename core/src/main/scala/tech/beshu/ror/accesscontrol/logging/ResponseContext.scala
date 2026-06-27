@@ -27,30 +27,30 @@ sealed trait ResponseContext[B <: BlockContext] {
 
 object ResponseContext {
 
-  final case class AllowedBy[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                blockContext: B,
-                                                history: History[B])
-    extends ResponseContext[B]
+  final case class AllowedBy[B <: BlockContext](
+      requestContext: RequestContext.Aux[B],
+      blockContext: B,
+      history: History[B]
+  ) extends ResponseContext[B]
 
-  final case class Allowed[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                              userMetadata: UserMetadata,
-                                              history: History[B])
-    extends ResponseContext[B]
+  final case class Allowed[B <: BlockContext](
+      requestContext: RequestContext.Aux[B],
+      userMetadata: UserMetadata,
+      history: History[B]
+  ) extends ResponseContext[B]
 
-  final case class ForbiddenBy[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                  blockContext: B,
-                                                  history: History[B])
-    extends ResponseContext[B]
+  final case class ForbiddenBy[B <: BlockContext](
+      requestContext: RequestContext.Aux[B],
+      blockContext: B,
+      history: History[B]
+  ) extends ResponseContext[B]
 
-  final case class Forbidden[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                history: History[B])
-    extends ResponseContext[B]
+  final case class Forbidden[B <: BlockContext](requestContext: RequestContext.Aux[B], history: History[B])
+      extends ResponseContext[B]
 
-  final case class RequestedIndexNotExist[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                             history: History[B])
-    extends ResponseContext[B]
+  final case class RequestedIndexNotExist[B <: BlockContext](requestContext: RequestContext.Aux[B], history: History[B])
+      extends ResponseContext[B]
 
-  final case class Errored[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                              cause: Throwable)
-    extends ResponseContext[B]
+  final case class Errored[B <: BlockContext](requestContext: RequestContext.Aux[B], cause: Throwable)
+      extends ResponseContext[B]
 }

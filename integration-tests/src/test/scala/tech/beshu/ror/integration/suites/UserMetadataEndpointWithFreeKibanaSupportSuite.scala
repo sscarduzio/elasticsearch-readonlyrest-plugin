@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.containers.EsClusterProvider
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 
 trait UserMetadataEndpointWithFreeKibanaSupportSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike {
   this: EsClusterProvider with EnabledPromptForBasicAuthSettingSuite =>

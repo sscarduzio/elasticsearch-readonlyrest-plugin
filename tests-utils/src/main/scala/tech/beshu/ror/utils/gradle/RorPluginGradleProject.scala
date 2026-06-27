@@ -25,6 +25,7 @@ import java.nio.file.Paths
 import scala.util.Try
 
 object RorPluginGradleProject {
+
   def fromSystemProperty: RorPluginGradleProject =
     Option(System.getProperty("esModule"))
       .map(new RorPluginGradleProject(_))
@@ -40,21 +41,22 @@ object RorPluginGradleProject {
   }
 
   def availableEsModules: List[String] =
-    RorPluginGradleProject
-      .getRootProject.toScala
-      .children
+    RorPluginGradleProject.getRootProject.toScala.children
       .filter { f => f.isDirectory }
       .map(_.name)
       .filter(_.matches("^es\\d{2,3}x$"))
       .toList
+
 }
 
 class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   private val project = esProject(moduleName)
+
   private val esProjectProperties =
     GradleProperties
       .create(project)
       .getOrElse(throw new IllegalStateException("cannot load '" + moduleName + "' project gradle.properties file"))
+
   private val rootProjectProperties =
     GradleProperties
       .create(RorPluginGradleProject.getRootProject)
@@ -98,12 +100,13 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     val connect = Try(connector.connect())
     val result = connect.map { c =>
       val args =
-        if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList else Nil
+        if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
+        else Nil
       val build = c.newBuild().forTasks(task)
       (if (args.nonEmpty) build.withArguments(args*) else build).run()
     }
     connect.map(_.close())
     result.fold(throw _, _ => ())
   }
-}
 
+}
