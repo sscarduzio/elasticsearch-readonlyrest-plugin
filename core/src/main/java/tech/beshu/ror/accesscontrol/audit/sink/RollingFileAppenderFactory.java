@@ -34,24 +34,24 @@ import java.io.Serializable;
  */
 public final class RollingFileAppenderFactory {
 
-    private RollingFileAppenderFactory() {}
+  private RollingFileAppenderFactory() {}
 
-    public static RollingFileAppender create(
-            String name,
-            String fileName,
-            String filePattern,
-            Layout<? extends Serializable> layout,
-            TriggeringPolicy policy,
-            RolloverStrategy strategy,
-            Configuration configuration) {
-        return RollingFileAppender.newBuilder()
-                .withFileName(fileName)
-                .withFilePattern(filePattern)
-                .setLayout(layout)
-                .withPolicy(policy)
-                .withStrategy(strategy)
-                .setName(name)
-                .setConfiguration(configuration)
-                .build();
-    }
+  public static RollingFileAppender create(
+      String name,
+      String fileName,
+      String filePattern,
+      Layout<? extends Serializable> layout,
+      TriggeringPolicy policy,
+      RolloverStrategy strategy,
+      Configuration configuration) {
+    return RollingFileAppender.newBuilder()
+        .withFileName(fileName)
+        .withFilePattern(filePattern)
+        .setLayout(layout)
+        .withPolicy(policy)
+        .withStrategy(strategy)
+        .setName(name)
+        .setConfiguration(configuration)
+        .build();
+  }
 }

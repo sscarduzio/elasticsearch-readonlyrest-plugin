@@ -38,7 +38,7 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
     matchedBlocks: Option[NonEmptyList[Block]],
     aclProcessingHistory: History[B],
     private[audit] val loggingContext: LoggingContext,
-                                                                            private[audit] val responseContext: ResponseContext[B],
+    private[audit] val responseContext: ResponseContext[B],
     override val auditEnvironmentContext: AuditEnvironmentContext,
     override val generalAuditEvents: JSONObject,
     override val involvesIndices: Boolean
@@ -113,6 +113,9 @@ private[audit] class AuditRequestContextBasedOnAclResult[B <: BlockContext](
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
 
-  private[audit] def aclMessageShow(debugEnabled: Boolean)(using Show[Header]): Show[ResponseContext[B]] =
+  private[audit] def aclMessageShow(debugEnabled: Boolean)(
+      using Show[Header]
+  ): Show[ResponseContext[B]] =
     responseContextShow[B](debugEnabled)
+
 }

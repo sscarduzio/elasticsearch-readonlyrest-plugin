@@ -224,7 +224,15 @@ class ReadonlyRestStartingTests
             resourcesPath + secondNewIndexSettingsFile,
             createCoreResult = Task
               .sleep(100 millis)
-              .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)))) // very long creation
+              .map(_ =>
+                Right(
+                  Core(
+                    mockEnabledAccessControl,
+                    RorDependencies.noOp,
+                    AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+                  )
+                )
+              ) // very long creation
           )
           mockSavingMainSettings(
             mockedIndexDocumentManager,
@@ -1559,9 +1567,10 @@ class ReadonlyRestStartingTests
             AuditingTool.AuditOutputsConfig.WithOutputs(
               NonEmptyList.of(
                 AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig1),
-              AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig2)
+                AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig2)
+              )
             )
-          ))
+          )
         )
 
         val dataStreamService1 = mockedDataSteamService(dataStreamExists = false, ilmCreationResult = NotAcknowledged)
@@ -1679,7 +1688,17 @@ class ReadonlyRestStartingTests
         settings == loadedMainSettings
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, dependencies, AuditingTool.AuditingConfig(auditingSettings, defaultAclLog = true, defaultTestEsNodeSettings)))))
+      .returns(
+        Task.now(
+          Right(
+            Core(
+              accessControlMock,
+              dependencies,
+              AuditingTool.AuditingConfig(auditingSettings, defaultAclLog = true, defaultTestEsNodeSettings)
+            )
+          )
+        )
+      )
     mockedCoreFactory
   }
 

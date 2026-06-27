@@ -27,9 +27,10 @@ import java.time.Clock
 
 private[audit] final class EsIndexBasedAuditSink private (
     sinkName: Block.SinkName,
-                                                         serializer: AuditLogSerializer,
-                                                         rorAuditIndexTemplate: RorAuditIndexTemplate,
-                                                         auditSinkService: IndexBasedAuditSinkService)(
+    serializer: AuditLogSerializer,
+    rorAuditIndexTemplate: RorAuditIndexTemplate,
+    auditSinkService: IndexBasedAuditSinkService
+)(
     implicit clock: Clock
 ) extends BaseAuditSink(sinkName, serializer) {
 
@@ -50,10 +51,12 @@ object EsIndexBasedAuditSink {
 
   def apply(
       sinkName: Block.SinkName,
-            serializer: AuditLogSerializer,
-            indexTemplate: RorAuditIndexTemplate,
-            auditSinkService: IndexBasedAuditSinkService)
-           (implicit clock: Clock): EsIndexBasedAuditSink = {
+      serializer: AuditLogSerializer,
+      indexTemplate: RorAuditIndexTemplate,
+      auditSinkService: IndexBasedAuditSinkService
+  )(
+      implicit clock: Clock
+  ): EsIndexBasedAuditSink = {
     new EsIndexBasedAuditSink(sinkName, serializer, indexTemplate, auditSinkService)
   }
 

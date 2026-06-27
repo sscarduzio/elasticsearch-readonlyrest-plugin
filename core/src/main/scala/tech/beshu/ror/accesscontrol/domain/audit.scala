@@ -211,25 +211,33 @@ object RorAuditLoggerName {
   val default: RorAuditLoggerName = RorAuditLoggerName(nes("readonlyrest_audit"))
 }
 
-final case class FileSize private(value: String)
+final case class FileSize private (value: String)
+
 object FileSize {
+
   def from(raw: String): Either[CreationError, FileSize] = {
     val trimmed = raw.trim
     if (trimmed.matches("(?i)^\\d+\\s*(B|KB|MB|GB|TB)?$")) {
       if (trimmed.takeWhile(_.isDigit).toLong > 0L)
         Right(new FileSize(trimmed))
       else
-        Left(CreationError.InvalidFormat(
-          s"'$raw'. Size must be greater than zero, e.g. '100MB', '1 GB', '500'"
-        ))
+        Left(
+          CreationError.InvalidFormat(
+            s"'$raw'. Size must be greater than zero, e.g. '100MB', '1 GB', '500'"
+          )
+        )
     } else
-      Left(CreationError.InvalidFormat(
-        s"'$raw'. Expected a whole number followed by an optional unit (B, KB, MB, GB, TB), e.g. '100MB', '1 GB', '500'"
-      ))
+      Left(
+        CreationError.InvalidFormat(
+          s"'$raw'. Expected a whole number followed by an optional unit (B, KB, MB, GB, TB), e.g. '100MB', '1 GB', '500'"
+        )
+      )
   }
 
   sealed trait CreationError
+
   object CreationError {
     final case class InvalidFormat(msg: String) extends CreationError
   }
+
 }

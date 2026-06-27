@@ -73,9 +73,9 @@ class MainSettingsApi(
 
   private def fetchCurrentAuditConfiguration(): Task[ProvideAuditSettings] = Task.delay {
     val sinks = rorInstance.auditSettings match {
-      case Some(AuditOutputsConfig.NoOutputsConfigured) => List.empty
+      case Some(AuditOutputsConfig.NoOutputsConfigured)     => List.empty
       case Some(AuditOutputsConfig.WithOutputs(auditSinks)) => auditSinks.toList
-      case None => List.empty
+      case None                                             => List.empty
     }
     val auditOutputs = sinks.flatMap {
       case AuditSink.Enabled(_, config) =>
@@ -89,9 +89,11 @@ class MainSettingsApi(
           case Config.EsDataStreamBasedSink(_, ds, _: AuditCluster.RemoteAuditCluster) =>
             Some(OtherAuditOutput(s"Remote ${ds.dataStream.value.value} data stream"))
           case s: Config.LogBasedSink =>
-          Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
-        case s: Config.RollingFileBasedSink =>
-            Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}] to file [${s.fileAppender.filePath}]"))
+            Some(OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}]"))
+          case s: Config.RollingFileBasedSink =>
+            Some(
+              OtherAuditOutput(s"Logger with name [${s.loggerName.value.value}] to file [${s.fileAppender.filePath}]")
+            )
         }
       case AuditSink.Disabled => None
     }

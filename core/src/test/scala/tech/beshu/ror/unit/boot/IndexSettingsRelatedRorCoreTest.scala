@@ -221,7 +221,17 @@ class IndexSettingsRelatedRorCoreTest
         settings == rawRorSettings
       })
       .once()
-      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)))))
+      .returns(
+        Task.now(
+          Right(
+            Core(
+              mockAccessControl,
+              RorDependencies.noOp,
+              AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+            )
+          )
+        )
+      )
     mockedCoreFactory
   }
 

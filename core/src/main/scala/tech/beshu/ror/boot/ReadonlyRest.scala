@@ -21,7 +21,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditingConfig
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -216,10 +215,11 @@ class ReadonlyRest(
   private def createAuditingTool(auditingConfig: AuditingConfig)(
       implicit loggingContext: LoggingContext
   ): Task[Either[NonEmptyList[CoreCreationError], AuditingTool]] = {
-    AuditingTool.create(auditingConfig, auditSinkServiceCreator)(
-          using systemContext.clock,
-          loggingContext
-        )
+    AuditingTool
+      .create(auditingConfig, auditSinkServiceCreator)(
+        using systemContext.clock,
+        loggingContext
+      )
       .map {
         _.leftMap {
           _.map(creationError => CoreCreationError.AuditingSettingsCreationError(Message(creationError.message)))
@@ -276,11 +276,14 @@ object ReadonlyRest {
     final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 
-  final class Engine(val core: Core,
-                     httpClientsFactory: HttpClientsFactory,
-                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     auditingTool: AuditingTool)
-                    (implicit scheduler: Scheduler) {
+  final class Engine(
+      val core: Core,
+      httpClientsFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      auditingTool: AuditingTool
+  )(
+      implicit scheduler: Scheduler
+  ) {
 
     private[ror] def shutdown(): Unit = {
       httpClientsFactory.shutdown().runAsyncAndForget

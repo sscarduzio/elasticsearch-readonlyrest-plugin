@@ -24,9 +24,11 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-private[audit] final class LogBasedAuditSink(sinkName: Block.SinkName,
-                                             serializer: AuditLogSerializer, loggerName: RorAuditLoggerName)
-    extends BaseAuditSink(sinkName, serializer) {
+private[audit] final class LogBasedAuditSink(
+    sinkName: Block.SinkName,
+    serializer: AuditLogSerializer,
+    loggerName: RorAuditLoggerName
+) extends BaseAuditSink(sinkName, serializer) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
 

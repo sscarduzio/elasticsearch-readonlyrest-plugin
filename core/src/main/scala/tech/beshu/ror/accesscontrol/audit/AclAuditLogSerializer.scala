@@ -19,8 +19,8 @@ package tech.beshu.ror.accesscontrol.audit
 import cats.Show
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.{Header, RorAuditLoggerName}
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.implicits.{headerShow, obfuscatedHeaderShow}
 import tech.beshu.ror.utils.RefinedUtils.nes
 
@@ -37,7 +37,8 @@ class AclAuditLogSerializer extends AuditLogSerializer {
   private[audit] def formatMessage(responseContext: AuditResponseContext, debugEnabled: Boolean): String = {
     responseContext.requestContext match {
       case ctx: AuditRequestContextBasedOnAclResult[?] =>
-        given Show[Header] = if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
+        given Show[Header] =
+          if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
         ctx.aclMessageShow(debugEnabled).show(ctx.responseContext)
       case ctx =>
         // AuditRequestContext is an open trait in the published audit module, so a third-party
@@ -46,6 +47,7 @@ class AclAuditLogSerializer extends AuditLogSerializer {
         s"[unknown-context:${ctx.getClass.getSimpleName}] id=${ctx.id} action=${ctx.action} uri=${ctx.uriPath}"
     }
   }
+
 }
 
 object AclAuditLogSerializer {

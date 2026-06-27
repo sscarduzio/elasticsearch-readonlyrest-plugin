@@ -55,7 +55,6 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class Core(
@@ -268,9 +267,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           enabledAuditSinks <- (enabledSinksRaw, disabledSinksRaw) match {
             case (Some(_), Some(_)) =>
               Left(
-                decodingFailureFrom(BlocksLevelCreationError(Message(
-                  "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
-                )))
+                decodingFailureFrom(
+                  BlocksLevelCreationError(
+                    Message(
+                      "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
+                    )
+                  )
+                )
               )
             case (Some(enabledSinks), None) =>
               Right(EnabledAuditSinks.Selected(enabledSinks.toSet))
@@ -320,17 +323,26 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
 
   private val legacyVerbosityAuditDecoder: Decoder[Option[Block.Audit]] = Decoder.instance { c =>
     c.downField(Attributes.Block.verbosity).as[Option[String]].flatMap {
-      case None => Right(None)
-      case Some("info") => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
+      case None          => Right(None)
+      case Some("info")  => Right(Some(Block.Audit.Enabled(logAllowedEvents = true)))
       case Some("error") => Right(Some(Block.Audit.Enabled(logAllowedEvents = false)))
-      case Some(unknown) => Left(decodingFailureFrom(BlocksLevelCreationError(Message(
-        s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'."
-      ))))
+      case Some(unknown) =>
+        Left(
+          decodingFailureFrom(
+            BlocksLevelCreationError(
+              Message(
+                s"Unknown verbosity value: ${unknown.show}. Supported types: 'info'(default), 'error'."
+              )
+            )
+          )
+        )
     }
   }
 
-  private def auditSinkNamesDecoder(blocksNel: NonEmptyList[BlockDecodingResult],
-                                    auditingConfig: AuditingTool.AuditingConfig): AsyncDecoder[Unit] =
+  private def auditSinkNamesDecoder(
+      blocksNel: NonEmptyList[BlockDecodingResult],
+      auditingConfig: AuditingTool.AuditingConfig
+  ): AsyncDecoder[Unit] =
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
         val configuredSinkNames: scala.collection.Set[Block.SinkName] = auditingConfig.outputsConfig match {
@@ -345,11 +357,15 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           block.audit match {
             case Block.Audit.Enabled(_, EnabledAuditSinks.Selected(enabledSinks)) =>
               if (enabledSinks.isEmpty)
-                List(s"Block '${block.name.value}': 'enabled_audit_sinks' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'")
+                List(
+                  s"Block '${block.name.value}': 'enabled_audit_sinks' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'"
+                )
               else {
                 val unknown = enabledSinks -- globalSinkNames
                 if (unknown.nonEmpty)
-                  List(s"Block '${block.name.value}': 'enabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+                  List(
+                    s"Block '${block.name.value}': 'enabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]"
+                  )
                 else Nil
               }
             case Block.Audit.Enabled(_, EnabledAuditSinks.AllExcept(disabledSinks)) =>
@@ -358,7 +374,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
               else {
                 val unknown = disabledSinks -- globalSinkNames
                 if (unknown.nonEmpty)
-                  List(s"Block '${block.name.value}': 'disabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]")
+                  List(
+                    s"Block '${block.name.value}': 'disabled_audit_sinks' references unknown sink names [${unknown.map(_.value).mkString(", ")}]"
+                  )
                 else Nil
               }
             case _ => Nil
@@ -462,18 +480,20 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           esEnv
         )
         impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
-        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(
-          authenticationServices,
-          externalGroupsProviderServices,
-          authProxies,
-          jwtDefs,
-          rorKbnDefs,
-          ldapServices,
-          Some(impersonationDefs),
-          mocksProvider,
-          globalSettings,
-          esEnv
-        ))
+        userDefs <- AsyncDecoderCreator.from(
+          UsersDefinitionsDecoder.instance(
+            authenticationServices,
+            externalGroupsProviderServices,
+            authProxies,
+            jwtDefs,
+            rorKbnDefs,
+            ldapServices,
+            Some(impersonationDefs),
+            mocksProvider,
+            globalSettings,
+            esEnv
+          )
+        )
         blocksNel <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           implicit val blockAsyncDecoder: AsyncDecoder[BlockDecodingResult] = AsyncDecoderCreator.from {
@@ -564,6 +584,7 @@ object RawRorSettingsBasedCoreFactory {
       final case class Message(value: String) extends Reason
 
       final case class MalformedValue private (value: String) extends Reason
+
       object MalformedValue {
 
         def fromString(raw: String): MalformedValue = {

@@ -19,7 +19,11 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import monix.eval.Task
 import org.apache.logging.log4j.core.LoggerContext
 import org.apache.logging.log4j.core.appender.RollingFileAppender
-import org.apache.logging.log4j.core.appender.rolling.{CompositeTriggeringPolicy, DefaultRolloverStrategy, SizeBasedTriggeringPolicy}
+import org.apache.logging.log4j.core.appender.rolling.{
+  CompositeTriggeringPolicy,
+  DefaultRolloverStrategy,
+  SizeBasedTriggeringPolicy
+}
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.{LogManager, Logger}
 import org.json.JSONObject
@@ -29,15 +33,18 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-private[audit] final class RollingFileBasedAuditSink private(sinkName: Block.SinkName,
-                                                             serializer: AuditLogSerializer,
-                                                             loggerName: RorAuditLoggerName,
-                                                             appender: RollingFileAppender) extends BaseAuditSink(sinkName, serializer) {
+private[audit] final class RollingFileBasedAuditSink private (
+    sinkName: Block.SinkName,
+    serializer: AuditLogSerializer,
+    loggerName: RorAuditLoggerName,
+    appender: RollingFileAppender
+) extends BaseAuditSink(sinkName, serializer) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
 
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
-                               (implicit requestId: RequestId): Task[Unit] = Task {
+  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
+      implicit requestId: RequestId
+  ): Task[Unit] = Task {
     serializer match {
       case s: AclAuditLogSerializer =>
         logger.info(s"[${requestId.value}] ${s.formatMessage(event, logger.isDebugEnabled)}")
@@ -52,32 +59,38 @@ private[audit] final class RollingFileBasedAuditSink private(sinkName: Block.Sin
     ctx.updateLoggers()
     appender.stop()
   }
+
 }
 
 object RollingFileBasedAuditSink {
 
   final case class CreationError(message: String) extends AnyVal
 
-  def create(sinkName: Block.SinkName,
-             serializer: AuditLogSerializer,
-             loggerName: RorAuditLoggerName,
-             config: FileAppenderConfig): Task[Either[CreationError, RollingFileBasedAuditSink]] = {
+  def create(
+      sinkName: Block.SinkName,
+      serializer: AuditLogSerializer,
+      loggerName: RorAuditLoggerName,
+      config: FileAppenderConfig
+  ): Task[Either[CreationError, RollingFileBasedAuditSink]] = {
     directoryError(config.filePath) match {
       case Some(err) => Task.pure(Left(err))
-      case None =>
+      case None      =>
         buildAndRegisterAppender(loggerName, config)
           .map(appender => Right(new RollingFileBasedAuditSink(sinkName, serializer, loggerName, appender)))
           .onErrorHandle(_ => Left(appenderCreationErrorMessage(config.filePath)))
     }
   }
 
-  private def buildAndRegisterAppender(loggerName: RorAuditLoggerName,
-                                       config: FileAppenderConfig): Task[RollingFileAppender] =
+  private def buildAndRegisterAppender(
+      loggerName: RorAuditLoggerName,
+      config: FileAppenderConfig
+  ): Task[RollingFileAppender] =
     Task.delay {
       val ctx = LogManager.getContext(false).asInstanceOf[LoggerContext]
       val log4jConfig = ctx.getConfiguration
 
-      val layout = PatternLayout.newBuilder()
+      val layout = PatternLayout
+        .newBuilder()
         .withPattern("%msg%n")
         .withConfiguration(log4jConfig)
         .build()
@@ -86,20 +99,23 @@ object RollingFileBasedAuditSink {
         SizeBasedTriggeringPolicy.createPolicy(config.maxFileSize.value)
       )
 
-      val rolloverStrategy = DefaultRolloverStrategy.newBuilder()
+      val rolloverStrategy = DefaultRolloverStrategy
+        .newBuilder()
         .withMax(config.maxFiles.value.toString)
         .withConfig(log4jConfig)
         .build()
 
-      val appender = Option(RollingFileAppenderFactory.create(
-        s"RorAuditFile-${loggerName.value.value}",
-        config.filePath.toString,
-        config.filePath.toString + ".%i",
-        layout,
-        triggeringPolicy,
-        rolloverStrategy,
-        log4jConfig
-      )).getOrElse(throw new IllegalStateException("Appender builder returned null"))
+      val appender = Option(
+        RollingFileAppenderFactory.create(
+          s"RorAuditFile-${loggerName.value.value}",
+          config.filePath.toString,
+          config.filePath.toString + ".%i",
+          layout,
+          triggeringPolicy,
+          rolloverStrategy,
+          log4jConfig
+        )
+      ).getOrElse(throw new IllegalStateException("Appender builder returned null"))
 
       appender.start()
       ctx.getLogger(loggerName.value.value).addAppender(appender)
@@ -109,10 +125,12 @@ object RollingFileBasedAuditSink {
 
   private def directoryError(filePath: java.nio.file.Path): Option[CreationError] =
     filePath.getParent match {
-      case null                          => None
-      case dir if !dir.toFile.exists()   => Some(CreationError(s"Cannot create audit log file '$filePath': directory '$dir' does not exist"))
-      case dir if !dir.toFile.canWrite   => Some(CreationError(s"Cannot create audit log file '$filePath': no write permission on directory '$dir'"))
-      case _                             => None
+      case null                        => None
+      case dir if !dir.toFile.exists() =>
+        Some(CreationError(s"Cannot create audit log file '$filePath': directory '$dir' does not exist"))
+      case dir if !dir.toFile.canWrite =>
+        Some(CreationError(s"Cannot create audit log file '$filePath': no write permission on directory '$dir'"))
+      case _ => None
     }
 
   private def appenderCreationErrorMessage(filePath: java.nio.file.Path): CreationError =
@@ -120,6 +138,9 @@ object RollingFileBasedAuditSink {
       if (filePath.toFile.exists() && !filePath.toFile.canWrite)
         CreationError(s"Cannot create audit log file '$filePath': no write permission on file '$filePath'")
       else
-        CreationError(s"Cannot create audit log file '$filePath': ensure the path is valid and the Elasticsearch process has write permission")
+        CreationError(
+          s"Cannot create audit log file '$filePath': ensure the path is valid and the Elasticsearch process has write permission"
+        )
     }
+
 }

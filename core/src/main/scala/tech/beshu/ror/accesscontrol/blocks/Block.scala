@@ -21,8 +21,6 @@ import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
-import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
@@ -30,12 +28,14 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -58,11 +58,11 @@ class Block(
       case Audit.Disabled =>
         noRequestIdLogger.warn(
           s"Block '${name.value}' has 'audit: disabled', which suppresses ALL audit output including the default ACL log. " +
-          s"To keep ACL log visibility while silencing other sinks, use 'enabled_audit_sinks: [${SinkName.defaultAclLog.value}]' instead."
+            s"To keep ACL log visibility while silencing other sinks, use 'enabled_audit_sinks: [${SinkName.defaultAclLog.value}]' instead."
         )
         Nil
-      case Audit.Enabled(_, EnabledAuditSinks.All) => allSinks
-      case Audit.Enabled(_, EnabledAuditSinks.Selected(on)) => allSinks.filter(s => on.contains(s.name))
+      case Audit.Enabled(_, EnabledAuditSinks.All)            => allSinks
+      case Audit.Enabled(_, EnabledAuditSinks.Selected(on))   => allSinks.filter(s => on.contains(s.name))
       case Audit.Enabled(_, EnabledAuditSinks.AllExcept(off)) => allSinks.filter(s => !off.contains(s.name))
     }
     new Block(name, policy, rules, audit, resolvedSinks)(loggingContext)
@@ -209,8 +209,11 @@ object Block {
 
   trait AuditSink {
     def name: SinkName
-    def submit(event: AuditResponseContext)
-              (implicit requestId: RequestId): Task[Unit]
+
+    def submit(event: AuditResponseContext)(
+        implicit requestId: RequestId
+    ): Task[Unit]
+
   }
 
   final case class Name(value: String) extends AnyVal
@@ -242,21 +245,26 @@ object Block {
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
   }
 
-  def createFrom(name: Block.Name,
-                 policy: Option[Block.Policy],
-                 audit: Option[Block.Audit],
-                 rules: NonEmptyList[Block.RuleDefinition[Rule]])
-                (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
+  def createFrom(
+      name: Block.Name,
+      policy: Option[Block.Policy],
+      audit: Option[Block.Audit],
+      rules: NonEmptyList[Block.RuleDefinition[Rule]]
+  )(
+      implicit loggingContext: LoggingContext
+  ): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(name, sortedRules) match {
       case Validated.Valid(_) =>
-        Right(new Block(
-          name = name,
-          policy = policy.getOrElse(Block.Policy.Allow),
-          rules = sortedRules.map(_.rule),
-          audit = audit.getOrElse(Block.Audit.Enabled()),
-          auditSinks = List.empty,
-        ))
+        Right(
+          new Block(
+            name = name,
+            policy = policy.getOrElse(Block.Policy.Allow),
+            rules = sortedRules.map(_.rule),
+            audit = audit.getOrElse(Block.Audit.Enabled()),
+            auditSinks = List.empty,
+          )
+        )
       case Validated.Invalid(errors) =>
         implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
         Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
@@ -264,6 +272,7 @@ object Block {
   }
 
   final case class SinkName(value: String) extends AnyVal
+
   object SinkName {
     val defaultAclLog: SinkName = SinkName("default_acl_log")
     val defaultIndexStorage: SinkName = SinkName("default_audit_index")
@@ -273,8 +282,11 @@ object Block {
   sealed trait Audit
 
   object Audit {
-    final case class Enabled(logAllowedEvents: Boolean = true,
-                             enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All) extends Audit
+
+    final case class Enabled(
+        logAllowedEvents: Boolean = true,
+        enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All
+    ) extends Audit
 
     object Enabled {
       sealed trait EnabledAuditSinks
@@ -286,6 +298,7 @@ object Block {
 
         final case class AllExcept(disabledSinks: Set[SinkName]) extends EnabledAuditSinks
       }
+
     }
 
     case object Disabled extends Audit
