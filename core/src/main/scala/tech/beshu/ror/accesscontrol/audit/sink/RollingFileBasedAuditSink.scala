@@ -26,32 +26,19 @@ import org.apache.logging.log4j.core.appender.rolling.{
 }
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.{LogManager, Logger}
-import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.audit.AclAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.RollingFileBasedSink.FileAppenderConfig
+import tech.beshu.ror.accesscontrol.audit.CoreAuditSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.accesscontrol.domain.RorAuditLoggerName
 
 private[audit] final class RollingFileBasedAuditSink private (
     sinkName: Block.SinkName,
-    serializer: AuditLogSerializer,
+    serializer: CoreAuditSerializer,
     loggerName: RorAuditLoggerName,
     appender: RollingFileAppender
-) extends BaseAuditSink(sinkName, serializer) {
+) extends TextBasedAuditSink(sinkName, serializer) {
 
-  private val logger: Logger = LogManager.getLogger(loggerName.value.value)
-
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
-      implicit requestId: RequestId
-  ): Task[Unit] = Task {
-    serializer match {
-      case s: AclAuditLogSerializer =>
-        logger.info(s"[${requestId.value}] ${s.formatMessage(event, logger.isDebugEnabled)}")
-      case _ =>
-        logger.info(serializedEvent.toString)
-    }
-  }
+  override protected val logger: Logger = LogManager.getLogger(loggerName.value.value)
 
   override def close(): Task[Unit] = Task.delay {
     val ctx = LogManager.getContext(false).asInstanceOf[LoggerContext]
@@ -68,7 +55,7 @@ object RollingFileBasedAuditSink {
 
   def create(
       sinkName: Block.SinkName,
-      serializer: AuditLogSerializer,
+      serializer: CoreAuditSerializer,
       loggerName: RorAuditLoggerName,
       config: FileAppenderConfig
   ): Task[Either[CreationError, RollingFileBasedAuditSink]] = {

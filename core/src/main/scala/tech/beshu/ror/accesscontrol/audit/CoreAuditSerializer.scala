@@ -17,24 +17,31 @@
 package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
-import org.json.JSONObject
+import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.{Header, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.implicits.{headerShow, obfuscatedHeaderShow}
 import tech.beshu.ror.utils.RefinedUtils.nes
 
-class AclAuditLogSerializer extends AuditLogSerializer {
+sealed trait CoreAuditSerializer
 
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
+object CoreAuditSerializer {
+  final case class External(serializer: AuditLogSerializer) extends CoreAuditSerializer
+}
+
+class AclAuditLogSerializer extends CoreAuditSerializer {
+
+  private[accesscontrol] def format(responseContext: AuditResponseContext, debugEnabled: Boolean): Option[String] = {
     val suppress = responseContext match {
       case allowed: AuditResponseContext.Allowed => allowed.verbosity != Verbosity.Info
       case _                                     => false
     }
-    if (suppress) None else Some(new JSONObject())
+    if (suppress) None else Some(formatMessage(responseContext, debugEnabled))
   }
 
-  private[audit] def formatMessage(responseContext: AuditResponseContext, debugEnabled: Boolean): String = {
+  private def formatMessage(responseContext: AuditResponseContext, debugEnabled: Boolean): String = {
     responseContext.requestContext match {
       case ctx: AuditRequestContextBasedOnAclResult[?] =>
         given Show[Header] =
@@ -54,5 +61,5 @@ object AclAuditLogSerializer {
   // Preserved from the class that originally emitted ACL log entries, so existing
   // log4j configurations targeting that logger name continue to work unchanged.
   val defaultLoggerName: RorAuditLoggerName =
-    RorAuditLoggerName(nes("tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator"))
+    RorAuditLoggerName(NonEmptyString.unsafeFrom(classOf[AccessControlListLoggingDecorator].getName))
 }

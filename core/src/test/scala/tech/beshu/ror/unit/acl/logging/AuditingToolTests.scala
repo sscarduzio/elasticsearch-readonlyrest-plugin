@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.CoreAuditSerializer
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
@@ -291,7 +292,10 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                     NonEmptyList.of(
                       AuditSink.Enabled(
                         Block.SinkName.random(),
-                        Config.LogBasedSink(new DefaultAuditLogSerializer, RorAuditLoggerName.default)
+                        Config.LogBasedSink(
+                          CoreAuditSerializer.External(new DefaultAuditLogSerializer),
+                          RorAuditLoggerName.default
+                        )
                       )
                     )
                   )
@@ -339,7 +343,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                       AuditSink.Enabled(
                         Block.SinkName.random(),
                         Config.RollingFileBasedSink(
-                          logSerializer = new DefaultAuditLogSerializer,
+                          logSerializer = CoreAuditSerializer.External(new DefaultAuditLogSerializer),
                           loggerName = isolatedLoggerName,
                           fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
                             filePath = filePathAuditLog.path,
@@ -393,7 +397,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                       AuditSink.Enabled(
                         Block.SinkName.random(),
                         Config.RollingFileBasedSink(
-                          logSerializer = new DefaultAuditLogSerializer,
+                          logSerializer = CoreAuditSerializer.External(new DefaultAuditLogSerializer),
                           loggerName = customLoggerName,
                           fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
                             filePath = customLogFile.path,
@@ -641,7 +645,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
       AuditSink.Enabled(
         Block.SinkName.random(),
         Config.RollingFileBasedSink(
-          logSerializer = new DefaultAuditLogSerializer,
+          logSerializer = CoreAuditSerializer.External(new DefaultAuditLogSerializer),
           loggerName = RorAuditLoggerName(nes("ror-audit-error-test")),
           fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
             filePath = filePath,

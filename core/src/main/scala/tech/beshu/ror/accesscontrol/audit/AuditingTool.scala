@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
+import tech.beshu.ror.accesscontrol.audit.CoreAuditSerializer
 import tech.beshu.ror.accesscontrol.audit.sink.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -42,7 +43,7 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 
-final class AuditingTool private (private[ror] val sinks: List[BaseAuditSink])(
+final class AuditingTool private (private[ror] val sinks: List[Block.AuditSink])(
     implicit loggingContext: LoggingContext,
     auditEnvironmentContext: AuditEnvironmentContext
 ) {
@@ -215,9 +216,7 @@ object AuditingTool extends RequestIdAwareLogging {
 
       case object Disabled extends AuditSink
 
-      sealed trait Config {
-        def logSerializer: AuditLogSerializer
-      }
+      sealed trait Config
 
       object Config {
 
@@ -253,19 +252,19 @@ object AuditingTool extends RequestIdAwareLogging {
 
         }
 
-        final case class LogBasedSink(logSerializer: AuditLogSerializer, loggerName: RorAuditLoggerName) extends Config
+        final case class LogBasedSink(logSerializer: CoreAuditSerializer, loggerName: RorAuditLoggerName) extends Config
 
         object LogBasedSink {
 
           val default: LogBasedSink = LogBasedSink(
-            logSerializer = new BlockVerbosityAwareAuditLogSerializer,
+            logSerializer = CoreAuditSerializer.External(new BlockVerbosityAwareAuditLogSerializer),
             loggerName = RorAuditLoggerName.default
           )
 
         }
 
         final case class RollingFileBasedSink(
-            logSerializer: AuditLogSerializer,
+            logSerializer: CoreAuditSerializer,
             loggerName: RorAuditLoggerName,
             fileAppender: RollingFileBasedSink.FileAppenderConfig
         ) extends Config

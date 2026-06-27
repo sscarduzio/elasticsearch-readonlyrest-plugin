@@ -32,9 +32,10 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.C
   RollingFileBasedSink
 }
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.CoreAuditSerializer.External
 import tech.beshu.ror.accesscontrol.audit.configurable.{AuditFieldValueDescriptorParser, ConfigurableAuditLogSerializer}
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
-import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool}
+import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, AuditingTool, CoreAuditSerializer}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
   AuditClusterNode,
@@ -224,16 +225,16 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       } yield RollingFileBasedSink.FileAppenderConfig(filePath, maxFileSize, maxFiles)
     }
 
-    given logSinkSerializerDecoder: Decoder[Option[AuditLogSerializer]] = Decoder.instance { c =>
+    given logSinkSerializerDecoder: Decoder[Option[CoreAuditSerializer]] = Decoder.instance { c =>
       c.as[SerializerType].flatMap {
         case SerializerType.AclSerializer => Right(Some(new AclAuditLogSerializer))
-        case st                           => decodeNonAclSerializer(st, c)
+        case st                           => decodeNonAclSerializer(st, c).map(_.map(External(_)))
       }
     }
 
     given logBasedSinkConfigDecoder: Decoder[AuditSink.Config] = Decoder.instance { c =>
       for {
-        logSerializer <- c.as[Option[AuditLogSerializer]]
+        logSerializer <- c.as[Option[CoreAuditSerializer]]
         loggerName <- c.downField("logger_name").as[Option[RorAuditLoggerName]]
         fileAppender <- c.downField("file_appender").as[Option[RollingFileBasedSink.FileAppenderConfig]]
       } yield {

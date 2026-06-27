@@ -33,7 +33,11 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.C
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
-import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, AuditFieldUtils}
+import tech.beshu.ror.accesscontrol.audit.{
+  AuditEnvironmentContextBasedOnEsNodeSettings,
+  AuditFieldUtils,
+  CoreAuditSerializer
+}
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, FileSize, IndexName, RorAuditLoggerName, RorSettingsIndex}
@@ -2469,7 +2473,20 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       case Right(Core(_, _, AuditingConfig(Some(WithOutputs(auditSinks)), _, _))) =>
         val headSink = auditSinks.head
         val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
-        headSinkConfig.logSerializer
+        headSinkConfig match {
+          case c: Config.EsIndexBasedSink      => c.logSerializer
+          case c: Config.EsDataStreamBasedSink => c.logSerializer
+          case c: Config.LogBasedSink          =>
+            c.logSerializer match {
+              case CoreAuditSerializer.External(s) => s
+              case _ => throw new IllegalStateException("Expected External serializer for log sink")
+            }
+          case c: Config.RollingFileBasedSink =>
+            c.logSerializer match {
+              case CoreAuditSerializer.External(s) => s
+              case _ => throw new IllegalStateException("Expected External serializer for rolling file sink")
+            }
+        }
       case _ =>
         throw new IllegalStateException("Expected auditingSettings are not present")
     }
@@ -2499,7 +2516,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
       val sinkConfig = headSinkConfig.asInstanceOf[Config.LogBasedSink]
       sinkConfig.loggerName should be(RorAuditLoggerName(expectedLoggerName))
-      sinkConfig.logSerializer shouldBe a[EXPECTED_SERIALIZER]
+      sinkConfig.logSerializer match {
+        case CoreAuditSerializer.External(s) => s shouldBe a[EXPECTED_SERIALIZER]
+        case s                               => s shouldBe a[EXPECTED_SERIALIZER]
+      }
     }
   }
 

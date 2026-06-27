@@ -214,6 +214,8 @@ object Block {
         implicit requestId: RequestId
     ): Task[Unit]
 
+    def close(): Task[Unit] = Task.unit
+
   }
 
   final case class Name(value: String) extends AnyVal
