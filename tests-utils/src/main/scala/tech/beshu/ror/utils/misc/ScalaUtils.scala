@@ -93,8 +93,9 @@ object ScalaUtils extends LazyLogging {
   def retry(times: Int, cleanBeforeRetrying: => Unit = ())(action: => Unit): Unit = {
     @tailrec
     def loop(attempt: Int): Unit = {
-      try { action }
-      catch {
+      try {
+        action
+      } catch {
         case NonFatal(e) =>
           val nextAttempt = attempt + 1
           if (nextAttempt > times) {
