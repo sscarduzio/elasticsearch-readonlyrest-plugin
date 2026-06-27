@@ -18,12 +18,12 @@ package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.{Header, RorAuditLoggerName}
-import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
+import tech.beshu.ror.accesscontrol.logging.{AccessControlListLoggingDecorator, ResponseContext}
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.implicits.{headerShow, obfuscatedHeaderShow}
-import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.implicits.{headerShow, obfuscatedHeaderShow, responseContextShow}
 
 sealed trait CoreAuditSerializer
 
@@ -46,7 +46,7 @@ class AclAuditLogSerializer extends CoreAuditSerializer {
       case ctx: AuditRequestContextBasedOnAclResult[?] =>
         given Show[Header] =
           if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
-        ctx.aclMessageShow(debugEnabled).show(ctx.responseContext)
+        aclMessageShow(debugEnabled).show(ctx.responseContext)
       case ctx =>
         // AuditRequestContext is an open trait in the published audit module, so a third-party
         // implementation could reach here. Throwing would surface as silent "Auditing issue" noise
@@ -54,6 +54,11 @@ class AclAuditLogSerializer extends CoreAuditSerializer {
         s"[unknown-context:${ctx.getClass.getSimpleName}] id=${ctx.id} action=${ctx.action} uri=${ctx.uriPath}"
     }
   }
+
+  private def aclMessageShow[B <: BlockContext](debugEnabled: Boolean)(
+      using Show[Header]
+  ): Show[ResponseContext[B]] =
+    responseContextShow[B](debugEnabled)
 
 }
 
