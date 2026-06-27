@@ -14,11 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-import org.gradle.crypto.checksum.Checksum
-
 plugins {
     id "readonlyrest.base-common-conventions"
-    id "org.gradle.crypto.checksum"
 }
 
 project.ext {
@@ -34,12 +31,23 @@ project.ext {
 group = 'org.elasticsearch.plugin'
 version = "${pluginVersion}_es${project.ext.esVersion}"
 
-// Names derived per es module (same shape everywhere), consumed by each module's docker/zip tasks.
-ext.pluginFullName = "${pluginName}-${version}"
+ext.pluginFullNameFor = { esVer -> "${pluginName}-${pluginVersion}_es${esVer}" }
+ext.pluginFullName = pluginFullNameFor(project.ext.esVersion)
 ext.releaseDockerImageLatest = "beshultd/elasticsearch-readonlyrest:${project.ext.esVersion}-ror-latest"
 ext.releaseDockerImageVersion = "beshultd/elasticsearch-readonlyrest:${project.ext.esVersion}-ror-${pluginVersion}"
 ext.preBuildDockerImageVersion = "beshultd/elasticsearch-readonlyrest-dev:${project.ext.esVersion}-ror-${pluginVersion}"
-ext.dockerImageSourceZip = layout.buildDirectory.file("distributions/${pluginFullName}.zip")
+ext.distributionsDir = layout.buildDirectory.dir("distributions")
+ext.dockerImageSourceZip = distributionsDir.map { it.file("${pluginFullName}.zip") }
+ext.writeRorBuildInfo = { File dir, esVer ->
+    def file = new File(dir, 'ror-build-info.properties')
+    file.text = "es_version=${esVer}\nplugin_version=${pluginVersion}"
+    return file
+}
+ext.writeSha512 = { File file ->
+    def md = java.security.MessageDigest.getInstance('SHA-512')
+    file.eachByte(64 * 1024) { byte[] buf, int n -> md.update(buf, 0, n) }
+    new File(file.parentFile, file.name + '.sha512').text = md.digest().collect { String.format('%02x', it) }.join('')
+}
 
 repositories {
     maven {
@@ -107,20 +115,13 @@ tasks.withType(ScalaCompile).configureEach {
     ]
 }
 
-tasks.withType(Zip).configureEach { task ->
-    task.doLast {
-        ant.checksum file: task.archiveFile.get().asFile, algorithm: 'sha1'
-    }
-}
-
 tasks.register('generateVersionsFile') {
     outputs.upToDateWhen { false }
     doFirst {
         def resourcesDir = sourceSets.main.output.resourcesDir
 
         resourcesDir.mkdirs()
-        def contents = "es_version=$project.ext.esVersion\nplugin_version=$pluginVersion"
-        new File(resourcesDir, "ror-build-info.properties").text = contents
+        writeRorBuildInfo(resourcesDir, project.ext.esVersion)
     }
 }
 
@@ -221,7 +222,7 @@ tasks.register('downloadEsVersionedDependencyJars') {
 // -PtargetVersion), so a single invocation fetches the target's jars and then repackages with them.
 //
 // Usage: -PesVersion=<base> -PtargetVersion=9.2.1  -PesJarsDir=<dir>  [-PoutputDir=<dir>]
-//   -> <outputDir>/<pluginName>-<pluginVersion>_es<target>.zip (+ .sha1 / .sha512)
+//   -> <outputDir>/<pluginName>-<pluginVersion>_es<target>.zip (+ .sha512)
 // outputDir defaults to build/distributions, so derived zips land next to the full-build zip and `clean`
 // removes them -- a deliverable is a deliverable regardless of whether it was compiled or repackaged.
 tasks.register('repackageRorPluginForVersion') {
@@ -236,23 +237,14 @@ tasks.register('repackageRorPluginForVersion') {
         }
 
         def baseEs = project.ext.esVersion
-        def baseZip = layout.buildDirectory.file("distributions/${pluginName}-${pluginVersion}_es${baseEs}.zip").get().asFile
+        def baseZip = distributionsDir.get().file("${pluginFullName}.zip").asFile
         if (!baseZip.exists()) {
             throw new GradleException("base zip not found (build the module first): ${baseZip}")
         }
-        def fatJarBaseName = "${pluginName}-${pluginVersion}_es${baseEs}.jar"
+        def fatJarBaseName = "${pluginFullName}.jar"
 
-        def outputDir = outputDirProp != null ? file(outputDirProp) : layout.buildDirectory.dir("distributions").get().asFile
+        def outputDir = outputDirProp != null ? file(outputDirProp) : distributionsDir.get().asFile
         outputDir.mkdirs()
-
-        // Writes a bare lowercase hex digest to <zip><ext>, same format the normal build emits
-        // (.sha512 from createRorPluginChecksums, .sha1 from the Zip doLast above).
-        def writeChecksum = { File f, String alg, String ext ->
-            def md = java.security.MessageDigest.getInstance(alg)
-            f.eachByte(64 * 1024) { byte[] buf, int n -> md.update(buf, 0, n) }
-            def hex = md.digest().collect { String.format('%02x', it) }.join('')
-            new File(f.parentFile, f.name + ext).text = hex + '\n'
-        }
 
         logger.lifecycle("Repackaging {} base ES {} -> ES {} (ROR {})", project.name, baseEs, target, pluginVersion)
 
@@ -264,9 +256,10 @@ tasks.register('repackageRorPluginForVersion') {
             // 2) plugin-descriptor.properties: only elasticsearch.version changes per version (the
             //    `version` field is the plugin version, same across patch versions).
             def descriptor = new File(work, 'plugin-descriptor.properties')
-            descriptor.text = descriptor.readLines().collect {
-                it.startsWith('elasticsearch.version=') ? "elasticsearch.version=${target}" : it
-            }.join('\n') + '\n'
+            descriptor.text = descriptor
+                    .readLines()
+                    .collect { it.startsWith('elasticsearch.version=') ? "elasticsearch.version=${target}" : it }
+                    .join('\n') + '\n'
 
             // 3) ror-build-info.properties inside the fat ROR jar (boot-log only). Also rename the jar
             //    to the target version -- cosmetic only, ES scans the dir and ignores the jar name.
@@ -274,13 +267,12 @@ tasks.register('repackageRorPluginForVersion') {
             if (!fatJarBase.exists()) {
                 throw new GradleException("fat ROR jar not found in base zip: ${fatJarBaseName}")
             }
-            def buildInfo = new File(work, 'ror-build-info.properties')
-            buildInfo.text = "es_version=${target}\nplugin_version=${pluginVersion}"
+            def buildInfo = writeRorBuildInfo(work, target)
             ant.zip(destfile: fatJarBase, update: true) {
-                fileset(dir: work, includes: 'ror-build-info.properties')
+                fileset(dir: work, includes: buildInfo.name)
             }
             buildInfo.delete()
-            def fatJarTargetName = "${pluginName}-${pluginVersion}_es${target}.jar"
+            def fatJarTargetName = "${pluginFullNameFor(target)}.jar"
             if (fatJarBaseName != fatJarTargetName) {
                 fatJarBase.renameTo(new File(work, fatJarTargetName))
             }
@@ -303,13 +295,12 @@ tasks.register('repackageRorPluginForVersion') {
             }
 
             // 5) Re-zip flat (entries at the archive root, like packageRorPlugin) + checksums.
-            def outputZip = new File(outputDir, "${pluginName}-${pluginVersion}_es${target}.zip")
+            def outputZip = new File(outputDir, "${pluginFullNameFor(target)}.zip")
             outputZip.delete()
             ant.zip(destfile: outputZip, basedir: work)
-            writeChecksum(outputZip, 'SHA-1', '.sha1')
-            writeChecksum(outputZip, 'SHA-512', '.sha512')
+            writeSha512(outputZip)
 
-            logger.lifecycle("Wrote {} (+ .sha1 / .sha512)", outputZip)
+            logger.lifecycle("Wrote {} (+ .sha512)", outputZip)
         } finally {
             work.deleteDir()
         }
@@ -360,33 +351,32 @@ tasks.register('packageRorPlugin', Zip) {
     }
 }
 
-tasks.register('createRorPluginChecksums', Checksum) {
+tasks.register('createRorPluginChecksums') {
     dependsOn(packageRorPlugin)
-    def distributionsDir = layout.buildDirectory.dir("distributions")
-
     outputs.upToDateWhen { false }
-    inputFiles.setFrom(packageRorPlugin.archiveFile)
-    outputDirectory.set(distributionsDir)
-    checksumAlgorithm.set(Checksum.Algorithm.SHA512)
+    doLast {
+        writeSha512(packageRorPlugin.archiveFile.get().asFile)
+    }
 }
 
 tasks.register('uploadRorPluginToS3', Exec) {
     dependsOn(packageRorPlugin, createRorPluginChecksums)
 
-    def distributionsDir = layout.buildDirectory.get().asFile.path + "/distributions"
-    def pluginFileZip = distributionsDir + "/" + pluginFullName + ".zip"
-    def pluginSha1 = distributionsDir + "/" + pluginFullName + ".zip.sha1"
-    def pluginSha512 = distributionsDir + "/" + pluginFullName + ".zip.sha512"
+    def distributionsPath = distributionsDir.get().asFile.path
+    def pluginFileZip = distributionsPath + "/" + pluginFullName + ".zip"
+    def pluginSha512 = distributionsPath + "/" + pluginFullName + ".zip.sha512"
     def targetS3Dir = pluginVersion + "/"
 
-    commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
+    commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, targetS3Dir
 }
 
 // Plugin files that are the same for every patch version of this module (the fixed dependency
 // jars and entitlement-policy.yaml). Docker builds this as one layer and reuses it across all
 // versions, so the files that change per version are excluded here -- they go in the thin layer.
 tasks.register('prepareDockerFatLayer', Sync) {
-    if (!project.hasProperty('reusePackagedZip')) { dependsOn packageRorPlugin }
+    if (!project.hasProperty('reusePackagedZip')) {
+        dependsOn packageRorPlugin
+    }
     outputs.upToDateWhen { false }
 
     from(zipTree(dockerImageSourceZip)) {
@@ -401,7 +391,9 @@ tasks.register('prepareDockerFatLayer', Sync) {
 // The files that change between patch versions: the descriptor and the jars tied to the ES
 // version. Kept in their own layer so the fat layer above stays identical and shared.
 tasks.register('prepareDockerThinLayer', Sync) {
-    if (!project.hasProperty('reusePackagedZip')) { dependsOn packageRorPlugin }
+    if (!project.hasProperty('reusePackagedZip')) {
+        dependsOn packageRorPlugin
+    }
     outputs.upToDateWhen { false }
 
     from(zipTree(dockerImageSourceZip)) {

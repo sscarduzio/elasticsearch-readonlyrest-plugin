@@ -187,7 +187,7 @@ publish_module_group() {
       return 1
     fi
 
-    rm -f "$zip" "${zip}.sha1" "${zip}.sha512"
+    rm -f "$zip" "${zip}.sha512"
   done
 
   # 4) Bound disk at the MODULE boundary (not per version). The multi-platform builds run in the
@@ -233,7 +233,7 @@ release_docker_and_tag() {
 publish_one_version() {
   local mode=$1 ror_version=$2 module=$3 target=$4 zip=$5
 
-  if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${zip}.sha1" "${ror_version}/"; then
+  if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
     echo "ERROR: S3 upload failed for $module ES $target"
     return 1
   fi
