@@ -18,13 +18,17 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.apache.logging.log4j.Logger
-import tech.beshu.ror.accesscontrol.audit.CoreAuditSerializer.External
-import tech.beshu.ror.accesscontrol.audit.{AclAuditLogSerializer, CoreAuditSerializer}
+import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer.Delegating
+import tech.beshu.ror.accesscontrol.audit.acl.AclAuditLogSerializer
+import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.audit.AuditResponseContext
 
-private[audit] abstract class TextBasedAuditSink(val name: Block.SinkName, serializer: CoreAuditSerializer)
+private[audit] abstract class TextBasedAuditSink(val name: Block.SinkName, serializer: AuditSerializer)
     extends Block.AuditSink {
 
   protected val logger: Logger
@@ -33,12 +37,20 @@ private[audit] abstract class TextBasedAuditSink(val name: Block.SinkName, seria
       implicit requestId: RequestId
   ): Task[Unit] = Task {
     serializer match {
-      case External(s) =>
-        s.onResponse(event).foreach(json => logger.info(json.toString))
-      case s: AclAuditLogSerializer =>
-        s.format(event, logger.isDebugEnabled).foreach(msg => logger.info(s"[${requestId.value}] $msg"))
+      case Delegating(serializer) =>
+        serializer.onResponse(event).foreach(log)
+      case AuditSerializer.EcsV1(allowedEventMode, includeFullRequestContent) =>
+        EcsV1AuditLogSerializer.onResponse(event, allowedEventMode, includeFullRequestContent).foreach(log)
+      case AuditSerializer.Configurable(allowedEventMode, fields) =>
+        ConfigurableAuditLogSerializer.onResponse(event, allowedEventMode, fields).foreach(log)
+      case AuditSerializer.Acl =>
+        AclAuditLogSerializer
+          .format(event, logger.isDebugEnabled)
+          .foreach(msg => logger.info(s"[${requestId.value}] $msg"))
     }
   }
+
+  private def log(json: JSONObject): Unit = logger.info(json.toString)
 
   def close(): Task[Unit]
 }

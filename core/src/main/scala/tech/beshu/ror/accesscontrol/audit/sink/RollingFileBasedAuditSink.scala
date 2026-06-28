@@ -26,14 +26,14 @@ import org.apache.logging.log4j.core.appender.rolling.{
 }
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.{LogManager, Logger}
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.RollingFileBasedSink.FileAppenderConfig
-import tech.beshu.ror.accesscontrol.audit.CoreAuditSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.RorAuditLoggerName
 
 private[audit] final class RollingFileBasedAuditSink private (
     sinkName: Block.SinkName,
-    serializer: CoreAuditSerializer,
+    serializer: AuditSerializer,
     loggerName: RorAuditLoggerName,
     appender: RollingFileAppender
 ) extends TextBasedAuditSink(sinkName, serializer) {
@@ -55,7 +55,7 @@ object RollingFileBasedAuditSink {
 
   def create(
       sinkName: Block.SinkName,
-      serializer: CoreAuditSerializer,
+      serializer: AuditSerializer,
       loggerName: RorAuditLoggerName,
       config: FileAppenderConfig
   ): Task[Either[CreationError, RollingFileBasedAuditSink]] = {

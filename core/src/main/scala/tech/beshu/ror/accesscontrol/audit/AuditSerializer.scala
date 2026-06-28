@@ -16,26 +16,21 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
-sealed trait AuditIndexSchema
+import tech.beshu.ror.audit.AuditLogSerializer
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 
-object AuditIndexSchema {
-  case object RorDefault extends AuditIndexSchema
+sealed trait AuditSerializer
 
-  case object EcsV1 extends AuditIndexSchema
+object AuditSerializer {
+  final case class Delegating(serializer: AuditLogSerializer) extends AuditSerializer
 
-  case object Custom extends AuditIndexSchema
+  case object Acl extends AuditSerializer
 
-  def from(serializer: AuditSerializer): AuditIndexSchema = serializer match {
-    case AuditSerializer.EcsV1(_, _) =>
-      AuditIndexSchema.EcsV1
-    case AuditSerializer.Delegating(serializer)
-        if serializer.getClass.getName.startsWith("tech.beshu.ror.audit.instances") =>
-      AuditIndexSchema.RorDefault
-    case AuditSerializer.Delegating(serializer)
-        if serializer.getClass.getName.startsWith("tech.beshu.ror.requestcontext") =>
-      AuditIndexSchema.RorDefault
-    case other =>
-      AuditIndexSchema.Custom
-  }
+  final case class EcsV1(allowedEventMode: AllowedEventMode, includeFullRequestContent: Boolean) extends AuditSerializer
+
+  final case class Configurable(
+      allowedEventMode: AllowedEventMode,
+      fields: Map[AuditFieldPath, AuditFieldValueDescriptor]
+  ) extends AuditSerializer
 
 }

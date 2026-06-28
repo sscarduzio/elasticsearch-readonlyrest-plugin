@@ -14,24 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit
+package tech.beshu.ror.accesscontrol.audit.acl
 
 import cats.Show
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.audit.AuditRequestContextBasedOnAclResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.{Header, RorAuditLoggerName}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlListLoggingDecorator, ResponseContext}
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.implicits.{headerShow, obfuscatedHeaderShow, responseContextShow}
 
-sealed trait CoreAuditSerializer
-
-object CoreAuditSerializer {
-  final case class External(serializer: AuditLogSerializer) extends CoreAuditSerializer
-}
-
-class AclAuditLogSerializer extends CoreAuditSerializer {
+object AclAuditLogSerializer {
 
   private[accesscontrol] def format(responseContext: AuditResponseContext, debugEnabled: Boolean): Option[String] = {
     val suppress = responseContext match {
@@ -46,6 +41,7 @@ class AclAuditLogSerializer extends CoreAuditSerializer {
       case ctx: AuditRequestContextBasedOnAclResult[?] =>
         given Show[Header] =
           if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
+
         aclMessageShow(debugEnabled).show(ctx.responseContext)
       case ctx =>
         // AuditRequestContext is an open trait in the published audit module, so a third-party
@@ -60,11 +56,9 @@ class AclAuditLogSerializer extends CoreAuditSerializer {
   ): Show[ResponseContext[B]] =
     responseContextShow[B](debugEnabled)
 
-}
-
-object AclAuditLogSerializer {
   // Preserved from the class that originally emitted ACL log entries, so existing
   // log4j configurations targeting that logger name continue to work unchanged.
   val defaultLoggerName: RorAuditLoggerName =
     RorAuditLoggerName(NonEmptyString.unsafeFrom(classOf[AccessControlListLoggingDecorator].getName))
+
 }

@@ -18,11 +18,14 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer
+import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.RequestId
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.audit.AuditResponseContext
 
-private[audit] abstract class BaseAuditSink(val name: Block.SinkName, auditLogSerializer: AuditLogSerializer)
+private[audit] abstract class BaseAuditSink(val name: Block.SinkName, auditSerializer: AuditSerializer)
     extends Block.AuditSink {
 
   final def submit(auditEvent: AuditResponseContext)(
@@ -42,7 +45,16 @@ private[audit] abstract class BaseAuditSink(val name: Block.SinkName, auditLogSe
   ): Task[Unit]
 
   private def safeRunSerializer(context: AuditResponseContext) = {
-    Task(auditLogSerializer.onResponse(context))
+    auditSerializer match {
+      case AuditSerializer.Delegating(serializer) =>
+        Task.delay(serializer.onResponse(context))
+      case AuditSerializer.Acl =>
+        Task.delay(None)
+      case AuditSerializer.EcsV1(allowedEventMode, includeFullRequestContent) =>
+        Task.delay(EcsV1AuditLogSerializer.onResponse(context, allowedEventMode, includeFullRequestContent))
+      case AuditSerializer.Configurable(allowedEventMode, fields) =>
+        Task.delay(ConfigurableAuditLogSerializer.onResponse(context, allowedEventMode, fields))
+    }
   }
 
 }

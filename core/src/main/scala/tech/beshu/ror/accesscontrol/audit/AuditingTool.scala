@@ -23,10 +23,11 @@ import eu.timepit.refined.types.numeric.PosInt
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.History
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
-import tech.beshu.ror.accesscontrol.audit.CoreAuditSerializer
+import tech.beshu.ror.accesscontrol.audit.acl.AclAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.sink.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -36,7 +37,7 @@ import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
-import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.EsNodeSettings
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
@@ -63,15 +64,12 @@ final class AuditingTool private (private[ror] val sinks: List[Block.AuditSink])
     responseContext match {
       case AllowedBy(_, blockContext, _) =>
         blockContext.block.auditSinks
-      case Allowed(_, userMetadata, _) =>
-        userMetadata match {
-          case UserMetadata.WithoutGroups(_, _, _, metadataOrigin) =>
-            metadataOrigin.blockContext.block.auditSinks
-          case UserMetadata.WithGroups(groupsMetadata) =>
-            groupsMetadata.values.toList
-              .flatMap(_.metadataOrigin.blockContext.block.auditSinks)
-              .distinct
-        }
+      case Allowed(_, UserMetadata.WithoutGroups(_, _, _, metadataOrigin), _) =>
+        metadataOrigin.blockContext.block.auditSinks
+      case Allowed(_, UserMetadata.WithGroups(groupsMetadata), _) =>
+        groupsMetadata.values.toList
+          .flatMap(_.metadataOrigin.blockContext.block.auditSinks)
+          .distinct
       case ForbiddenBy(_, blockContext, _) => blockContext.block.auditSinks
       case Forbidden(_, _)                 => sinks
       case RequestedIndexNotExist(_, _)    => sinks
@@ -221,7 +219,7 @@ object AuditingTool extends RequestIdAwareLogging {
       object Config {
 
         final case class EsIndexBasedSink(
-            logSerializer: AuditLogSerializer,
+            serializer: AuditSerializer,
             rorAuditIndexTemplate: RorAuditIndexTemplate,
             auditCluster: AuditCluster
         ) extends Config
@@ -229,7 +227,7 @@ object AuditingTool extends RequestIdAwareLogging {
         object EsIndexBasedSink {
 
           val default: EsIndexBasedSink = EsIndexBasedSink(
-            logSerializer = new BlockVerbosityAwareAuditLogSerializer,
+            serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
@@ -237,7 +235,7 @@ object AuditingTool extends RequestIdAwareLogging {
         }
 
         final case class EsDataStreamBasedSink(
-            logSerializer: AuditLogSerializer,
+            serializer: AuditSerializer,
             rorAuditDataStream: RorAuditDataStream,
             auditCluster: AuditCluster
         ) extends Config
@@ -245,26 +243,26 @@ object AuditingTool extends RequestIdAwareLogging {
         object EsDataStreamBasedSink {
 
           val default: EsDataStreamBasedSink = EsDataStreamBasedSink(
-            logSerializer = new BlockVerbosityAwareAuditLogSerializer,
+            serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             rorAuditDataStream = RorAuditDataStream.default,
             auditCluster = AuditCluster.LocalAuditCluster,
           )
 
         }
 
-        final case class LogBasedSink(logSerializer: CoreAuditSerializer, loggerName: RorAuditLoggerName) extends Config
+        final case class LogBasedSink(serializer: AuditSerializer, loggerName: RorAuditLoggerName) extends Config
 
         object LogBasedSink {
 
           val default: LogBasedSink = LogBasedSink(
-            logSerializer = CoreAuditSerializer.External(new BlockVerbosityAwareAuditLogSerializer),
+            serializer = AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             loggerName = RorAuditLoggerName.default
           )
 
         }
 
         final case class RollingFileBasedSink(
-            logSerializer: CoreAuditSerializer,
+            serializer: AuditSerializer,
             loggerName: RorAuditLoggerName,
             fileAppender: RollingFileBasedSink.FileAppenderConfig
         ) extends Config
@@ -327,7 +325,7 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private def defaultAclSink = AuditSink.Enabled(
     Block.SinkName.defaultAclLog,
-    AuditSink.Config.LogBasedSink(new AclAuditLogSerializer, AclAuditLogSerializer.defaultLoggerName)
+    AuditSink.Config.LogBasedSink(AuditSerializer.Acl, AclAuditLogSerializer.defaultLoggerName)
   )
 
   private def defaultIndexStorageSink = AuditSink.Enabled(
@@ -355,10 +353,10 @@ object AuditingTool extends RequestIdAwareLogging {
               Task.raiseError(new IllegalStateException("Data stream audit sink is not supported in this version"))
           }
         case Enabled(name, config: AuditSink.Config.LogBasedSink) =>
-          Task.delay(new LogBasedAuditSink(name, config.logSerializer, config.loggerName).some.valid)
+          Task.delay(new LogBasedAuditSink(name, config.serializer, config.loggerName).some.valid)
         case Enabled(name, config: AuditSink.Config.RollingFileBasedSink) =>
           RollingFileBasedAuditSink
-            .create(name, config.logSerializer, config.loggerName, config.fileAppender)
+            .create(name, config.serializer, config.loggerName, config.fileAppender)
             .map(_.map(_.some).leftMap(e => CreationError(e.message)).toValidated)
         case Disabled =>
           Task.pure(None.valid)
@@ -389,7 +387,7 @@ object AuditingTool extends RequestIdAwareLogging {
     val service = serviceCreator.index(config.auditCluster)
     EsIndexBasedAuditSink(
       sinkName = name,
-      serializer = config.logSerializer,
+      serializer = config.serializer,
       indexTemplate = config.rorAuditIndexTemplate,
       auditSinkService = service
     )
@@ -404,7 +402,7 @@ object AuditingTool extends RequestIdAwareLogging {
       .delay(serviceCreator.dataStream(config.auditCluster))
       .flatMap { auditSinkService =>
         EsDataStreamBasedAuditSink
-          .create(name, config.logSerializer, config.rorAuditDataStream, auditSinkService, config.auditCluster)
+          .create(name, config.serializer, config.rorAuditDataStream, auditSinkService, config.auditCluster)
           .map(_.leftMap(error => CreationError(error.message)).toValidated)
       }
 
