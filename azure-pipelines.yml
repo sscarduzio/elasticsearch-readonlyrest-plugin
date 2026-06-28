@@ -14,8 +14,8 @@ variables:
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
   isEpicBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
-  dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
-  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
+  dependencyCheckCacheKey: $[format('dependency-check-v2-{0:yyyyMM}', pipeline.startTime)]
+  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v2'
   # Use the Gradle home baked into the CI image (ci/toolchains/JdkToolchains.Dockerfile): it already contains the
   # Gradle distribution + resolved plugins/dependencies, so in the common (warm-cache) case builds make
   # no network calls to flaky external CDNs. Cache misses (e.g. a dep bumped since the last image
@@ -228,8 +228,6 @@ stages:
     condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
-        # TEMPORARILY DISABLED — re-enable when https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/1275 is done
-        condition: false
         container: ror-toolchains
         steps:
           - checkout: self
@@ -241,7 +239,7 @@ stages:
             inputs:
               key: '$(dependencyCheckCacheKey)'
               # prefix fallback to any prior cache entry
-              restoreKeys: dependency-check-v1-
+              restoreKeys: dependency-check-v2-
               path: $(dependencyCheckDataDir)
           - script: |
               echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
