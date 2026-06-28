@@ -44,9 +44,9 @@ object AclAuditLogSerializer {
 
         aclMessageShow(debugEnabled).show(ctx.responseContext)
       case ctx =>
-        // AuditRequestContext is an open trait in the published audit module, so a third-party
-        // implementation could reach here. Throwing would surface as silent "Auditing issue" noise
-        // at the Task boundary; instead emit a minimal but identifiable line from the base-trait fields.
+        // AuditRequestContext is an open trait in the audit module, which is a public API.
+        // AuditRequestContextBasedOnAclResult is the only implementation of that trait in the production codebase.
+        // As a result, this case will never be executed, but it is not guaranteed on the type level.
         s"[unknown-context:${ctx.getClass.getSimpleName}] id=${ctx.id} action=${ctx.action} uri=${ctx.uriPath}"
     }
   }
