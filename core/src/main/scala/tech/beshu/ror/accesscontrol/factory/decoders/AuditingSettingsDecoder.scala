@@ -673,38 +673,37 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
 
   private object DeprecatedAuditSettingsDecoder {
 
-    def instance(esEnv: EsEnv): Decoder[Option[AuditSettings[Config.Standard with Config.Legacy]]] = Decoder.instance {
-      c =>
-        whenEnabled(c) {
-          for {
-            auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)(
-              "index_template",
-              fallbackKey = "audit_index_template"
-            )
-            logSerializerOutsideAuditSection <- c.as[Option[AuditLogSerializer]]
-            logSerializerInAuditSection <- c
-              .downField("audit")
-              .success
-              .map(_.as[Option[AuditLogSerializer]])
-              .getOrElse(Right(None))
-            logSerializer = logSerializerOutsideAuditSection.orElse(logSerializerInAuditSection)
-            remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)(
-              "cluster",
-              fallbackKey = "audit_cluster"
-            )
-          } yield AuditSettings(
-            auditSinks = NonEmptyList.one(
-              AuditSink.Enabled[Config.Standard with Config.Legacy](
-                EsIndexBasedSink(
-                  logSerializer = logSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
-                  rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
-                  auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
-                )
-              )
-            ),
-            esEnv.esNodeSettings
+    def instance(esEnv: EsEnv): Decoder[Option[AuditSettings[EsIndexBasedSink]]] = Decoder.instance { c =>
+      whenEnabled(c) {
+        for {
+          auditIndexTemplate <- decodeOptionalSetting[RorAuditIndexTemplate](c)(
+            "index_template",
+            fallbackKey = "audit_index_template"
           )
-        }
+          logSerializerOutsideAuditSection <- c.as[Option[AuditLogSerializer]]
+          logSerializerInAuditSection <- c
+            .downField("audit")
+            .success
+            .map(_.as[Option[AuditLogSerializer]])
+            .getOrElse(Right(None))
+          logSerializer = logSerializerOutsideAuditSection.orElse(logSerializerInAuditSection)
+          remoteAuditCluster <- decodeOptionalSetting[AuditCluster.RemoteAuditCluster](c)(
+            "cluster",
+            fallbackKey = "audit_cluster"
+          )
+        } yield AuditSettings(
+          auditSinks = NonEmptyList.one(
+            AuditSink.Enabled[EsIndexBasedSink](
+              EsIndexBasedSink(
+                logSerializer = logSerializer.getOrElse(EsIndexBasedSink.default.logSerializer),
+                rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),
+                auditCluster = remoteAuditCluster.getOrElse(EsIndexBasedSink.default.auditCluster),
+              )
+            )
+          ),
+          esEnv.esNodeSettings
+        )
+      }
     }
 
     private def whenEnabled[C](cursor: HCursor)(decoding: => Decoder.Result[AuditSettings[C]]) = {

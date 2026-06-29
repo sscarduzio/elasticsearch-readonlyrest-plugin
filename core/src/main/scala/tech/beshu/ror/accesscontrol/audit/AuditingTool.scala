@@ -184,7 +184,6 @@ object AuditingTool extends RequestIdAwareLogging {
 
     type Standard = AuditSettings[AuditSink.Config.Standard]
     type Legacy = AuditSettings[AuditSink.Config.Legacy]
-    type Any = AuditSettings[AuditSink.Config]
 
     sealed trait AuditSink[+C]
 

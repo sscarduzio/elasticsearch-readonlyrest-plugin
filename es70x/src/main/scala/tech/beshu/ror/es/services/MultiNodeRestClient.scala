@@ -72,7 +72,7 @@ final class FailoverClient private (nodeClients: NonEmptyList[NodeClient])
       case ((aliveList, backoffList), nodeClient) =>
         val maybeNodeBackoffState = currentBackoffState.get(nodeClient.id)
         maybeNodeBackoffState match {
-          case Some(backoffState) if backoffState.isAlive =>
+          case Some(backoffState) if backoffState.isReadyForRetry =>
             (nodeClient :: aliveList, backoffList)
           case None =>
             (nodeClient :: aliveList, backoffList)
@@ -189,7 +189,7 @@ object FailoverClient {
   }
 
   private final case class BackoffState(failureCount: Int, deadUntilMillis: Long) {
-    def isAlive: Boolean = System.currentTimeMillis() >= deadUntilMillis
+    def isReadyForRetry: Boolean = System.currentTimeMillis() >= deadUntilMillis
   }
 
   private object BackoffState {
