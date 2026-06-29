@@ -14,43 +14,38 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import tech.beshu.ror.gradle.EsVersions
+import tech.beshu.ror.gradle.PluginArtifact
+
 plugins {
     id "readonlyrest.base-common-conventions"
+    id "readonlyrest.verify-repackage-bytecode"
+    id "readonlyrest.scala-compile-conventions"
+    id "readonlyrest.docker-image-conventions"
 }
 
-def supportedEsVersionsList = project.property('supportedEsVersions').split(',')*.trim().findAll { it }
-def newestSupportedEsVersion = supportedEsVersionsList.last()
-def oldestSupportedEsVersion = supportedEsVersionsList.first()
-
 project.ext {
-    pluginName = rootProject.properties['pluginName']
-    publishedPluginVersion = rootProject.properties['pluginVersion']
-    pluginVersion = rootProject.properties['pluginVersion']
+    pluginName = PluginArtifact.name(project)
+    publishedPluginVersion = PluginArtifact.version(project)
+    pluginVersion = PluginArtifact.version(project)
     // esVersion = which version we DELIVER (and which module the RorTaskFinder selects). Default: newest.
-    esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : newestSupportedEsVersion
+    esVersion = EsVersions.delivered(project)
     // baselineEsVersion = which version we COMPILE against (the base). Always the oldest supported in normal
     // builds, so the deliverable reuses one set of base bytecode. The -P override exists ONLY for the CI
     // bytecode guard: it forces a recompile at a boundary version to prove that version's bytecode matches
     // the base before trusting the repackage.
-    baselineEsVersion = project.hasProperty('baselineEsVersion') ? project.property('baselineEsVersion') : oldestSupportedEsVersion
+    baselineEsVersion = EsVersions.baseline(project)
     s3BucketName = System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
     s3StoreAddress = System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
     s3LibsPathPrefix = (System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs').replaceAll('^/+', '').replaceAll('/+$', '')
 }
 
 group = 'org.elasticsearch.plugin'
-version = "${pluginVersion}_es${project.ext.baselineEsVersion}"
 
-ext.pluginFullNameFor = { esVer -> "${pluginName}-${pluginVersion}_es${esVer}" }
-// pluginFullName names the DELIVERABLE (target esVersion); baselineFullName names the base build artifacts
-// (fat jar, base zip, tmp dir) produced by the compile at baselineEsVersion.
+ext.pluginFullNameFor = { esVer -> PluginArtifact.fullName(project, esVer) }
 ext.pluginFullName = pluginFullNameFor(project.ext.esVersion)
 ext.baselineFullName = pluginFullNameFor(project.ext.baselineEsVersion)
-ext.releaseDockerImageLatest = "beshultd/elasticsearch-readonlyrest:${project.ext.esVersion}-ror-latest"
-ext.releaseDockerImageVersion = "beshultd/elasticsearch-readonlyrest:${project.ext.esVersion}-ror-${pluginVersion}"
-ext.preBuildDockerImageVersion = "beshultd/elasticsearch-readonlyrest-dev:${project.ext.esVersion}-ror-${pluginVersion}"
-ext.distributionsDir = layout.buildDirectory.dir("distributions")
-ext.dockerImageSourceZip = distributionsDir.map { it.file("${pluginFullName}.zip") }
+ext.distributionsDir = PluginArtifact.distributionsDir(project)
 ext.writeRorBuildInfo = { File dir, esVer ->
     def file = new File(dir, 'ror-build-info.properties')
     file.text = "es_version=${esVer}\nplugin_version=${pluginVersion}"
@@ -83,10 +78,15 @@ repositories {
 }
 
 // Each es module declares its target JDK via `ext.javaLanguageVersion` (an int); read lazily because the
-// module body that sets it runs after this convention plugin is applied.
+// module body that sets it runs after this convention plugin is applied. Shared by the toolchain below and
+// the jarHellCheck launcher.
+def javaLanguageVersionProvider = providers.provider {
+    JavaLanguageVersion.of(project.ext.javaLanguageVersion as int)
+}
+
 java {
     toolchain {
-        languageVersion = providers.provider { JavaLanguageVersion.of(project.ext.javaLanguageVersion as int) }
+        languageVersion = javaLanguageVersionProvider
     }
 }
 
@@ -111,48 +111,22 @@ configurations {
 // libs requested at esVersion -- ROR's own modules also live under org.elasticsearch.plugin but carry
 // pluginVersion, so the version check leaves them alone. Detached configs (downloadEsVersionedDependencyJars,
 // which fetches the TARGET jars) aren't in this container, so they're untouched.
-configurations.matching {
-    it.name in ['compileClasspath', 'runtimeClasspath', 'distJars', 'testCompileClasspath', 'testRuntimeClasspath']
-}.configureEach {
-    resolutionStrategy.eachDependency { details ->
-        if (details.requested.group.startsWith('org.elasticsearch') && details.requested.version == project.ext.esVersion) {
-            details.useVersion(project.ext.baselineEsVersion)
+configurations
+        .matching {
+            it.name in ['compileClasspath', 'runtimeClasspath', 'distJars', 'testCompileClasspath', 'testRuntimeClasspath']
         }
-    }
-}
+        .configureEach {
+            resolutionStrategy.eachDependency { details ->
+                if (details.requested.group.startsWith('org.elasticsearch') && details.requested.version == project.ext.esVersion) {
+                    details.useVersion(project.ext.baselineEsVersion)
+                }
+            }
+        }
 
 dependencyCheck {
     // Override base convention: ES plugin modules should scan distJars configuration
     // which contains the actual dependencies that get packaged with the plugin
     scanConfigurations = ['distJars']
-}
-
-docker {
-    registryCredentials {
-        username = System.getenv('DOCKER_REGISTRY_USER')
-        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
-    }
-}
-
-tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = [
-            "-feature",
-            "-Xfatal-warnings",
-            "-Wunused:implicits",
-            "-Wunused:imports",
-            "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
-            "-Wunused:locals",
-            "-Wunused:params",
-            "-Wunused:privates",
-            "-Wconf:cat=deprecation&msg=\\[ROR\\].*:i"
-            // There are multiple reports of issues with `-Wunused:nowarn` flag when using Scala 3.3.X
-            // It seems that this problem occurs in es{version}x modules when using deprecated `org.elasticsearch.index.query.CommonTermsQueryBuilder`
-            // - https://github.com/scala/scala3/issues/19992
-            // - https://github.com/scala/scala3/issues/18341
-            // - https://users.scala-lang.org/t/wunused-on-scala-3-3-0/9401
-            // "-Wunused:nowarn",
-    ]
 }
 
 tasks.register('generateVersionsFile') {
@@ -168,45 +142,9 @@ tasks.register('generateVersionsFile') {
 tasks.register('toJar', Jar) {
     dependsOn generateVersionsFile
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    archiveBaseName = pluginName
+    // The base fat jar; packageRorPlugin reads it by this exact name (build/libs/<baselineFullName>.jar).
+    archiveFileName = "${baselineFullName}.jar"
     from sourceSets.main.getOutput()
-}
-
-tasks.register('prepareMultiplatformBuilder') {
-    group = 'docker'
-    doLast {
-        def execOps = project.services.get(ExecOperations)
-        def output = new ByteArrayOutputStream()
-        execOps.exec {
-            executable = 'docker'
-            args = ['buildx', 'inspect']
-            standardOutput = output
-            errorOutput = System.err
-        }
-        def supportedPlatforms = output.toString().find(/Platforms: ([^\n]+)/)?.replace("Platforms: ", "")?.split(',')
-
-        if (supportedPlatforms == null || !(supportedPlatforms.contains('linux/amd64') && supportedPlatforms.contains('linux/arm64'))) {
-            try {
-                execOps.exec {
-                    executable = 'docker'
-                    args = ['buildx', 'inspect', 'ror_kbn_builder']
-                    errorOutput = new ByteArrayOutputStream()
-                }
-            } catch (Exception e) {
-                if (e.getMessage().contains("non-zero exit")) {
-                    execOps.exec {
-                        executable = 'docker'
-                        args = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', '--name=ror_kbn_builder']
-                    }
-                }
-            }
-
-            execOps.exec {
-                executable = 'docker'
-                args = ['buildx', 'use', 'ror_kbn_builder']
-            }
-        }
-    }
 }
 
 // Downloads, for one target ES version, the dependency jars whose content depends on the ES version.
@@ -358,7 +296,7 @@ tasks.register('jarHellCheck', JavaExec) {
     // invariant that makes the repackage valid.
     classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = providers.provider { JavaLanguageVersion.of(project.ext.javaLanguageVersion as int) }
+        languageVersion = javaLanguageVersionProvider
     }
 }
 
@@ -413,95 +351,3 @@ tasks.register('uploadRorPluginToS3', Exec) {
     commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, targetS3Dir
 }
 
-// Plugin files that are the same for every patch version of this module (the fixed dependency
-// jars and entitlement-policy.yaml). Docker builds this as one layer and reuses it across all
-// versions, so the files that change per version are excluded here -- they go in the thin layer.
-tasks.register('prepareDockerFatLayer', Sync) {
-    if (!project.hasProperty('reusePackagedZip')) {
-        dependsOn buildRorPluginZip
-    }
-    outputs.upToDateWhen { false }
-
-    from(zipTree(dockerImageSourceZip)) {
-        exclude 'plugin-descriptor.properties'
-        exclude 'elasticsearch-rest-client-*.jar'
-        exclude 'transport-netty4-client-*.jar'
-        exclude 'readonlyrest-*_es*.jar'
-    }
-    into layout.buildDirectory.dir("docker-image/payload")
-}
-
-// The files that change between patch versions: the descriptor and the jars tied to the ES
-// version. Kept in their own layer so the fat layer above stays identical and shared.
-tasks.register('prepareDockerThinLayer', Sync) {
-    if (!project.hasProperty('reusePackagedZip')) {
-        dependsOn buildRorPluginZip
-    }
-    outputs.upToDateWhen { false }
-
-    from(zipTree(dockerImageSourceZip)) {
-        include 'plugin-descriptor.properties'
-        include 'elasticsearch-rest-client-*.jar'
-        include 'transport-netty4-client-*.jar'
-        include 'readonlyrest-*_es*.jar'
-    }
-    into layout.buildDirectory.dir("docker-image/per-version")
-}
-
-tasks.register('prepareDockerBuildContext', Copy) {
-    dependsOn prepareDockerFatLayer, prepareDockerThinLayer
-    outputs.upToDateWhen { false }
-
-    from layout.projectDirectory.file("Dockerfile")
-    from(rootProject.files("docker-image")) {
-        exclude 'gosu/**'
-    }
-
-    into layout.buildDirectory.dir("docker-image")
-}
-
-tasks.register('pushRorDockerImage', Exec) {
-    dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
-    group 'docker'
-    executable 'docker'
-    workingDir 'build/docker-image'
-    // Pin every build timestamp to a fixed value, so rebuilds produce the same bytes and Docker
-    // can reuse the shared fat layer instead of treating each build as new.
-    environment 'SOURCE_DATE_EPOCH', (System.getenv('SOURCE_DATE_EPOCH') ?: '1704067200')
-    args = [
-            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
-            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.ext.esVersion,
-            '-t', releaseDockerImageLatest, '-t', releaseDockerImageVersion,
-            '--output', 'type=image,push=true,rewrite-timestamp=true', '.'
-    ]
-}
-
-tasks.register('pushRorPreBuildDockerImage', Exec) {
-    dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
-    group 'docker'
-    executable 'docker'
-    workingDir 'build/docker-image'
-    // Pin every build timestamp to a fixed value, so rebuilds produce the same bytes and Docker
-    // can reuse the shared fat layer instead of treating each build as new.
-    environment 'SOURCE_DATE_EPOCH', (System.getenv('SOURCE_DATE_EPOCH') ?: '1704067200')
-    args = [
-            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
-            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.ext.esVersion,
-            '-t', preBuildDockerImageVersion,
-            '--output', 'type=image,push=true,rewrite-timestamp=true', '.'
-    ]
-}
-
-tasks.register('localRorDockerImage', Exec) {
-    // we prepare docker image for local architecture - the image is loaded to local registry
-    dependsOn prepareDockerBuildContext
-    group 'docker'
-    executable 'docker'
-    workingDir 'build/docker-image'
-    args = [
-            'buildx', 'build',
-            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.ext.esVersion,
-            '-t', releaseDockerImageVersion,
-            '--load', '.'
-    ]
-}

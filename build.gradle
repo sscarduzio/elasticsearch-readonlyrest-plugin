@@ -16,6 +16,7 @@
  */
 import tech.beshu.ror.gradle.RorTaskFinder
 import tech.beshu.ror.gradle.PrintEsModuleGroupsTask
+import tech.beshu.ror.gradle.BytecodeComparison
 
 plugins {
     id 'base'
@@ -62,8 +63,9 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
 // Usage: ./gradlew printEsModuleGroups -PesMajor=8 -PoutputFile=/tmp/es8.groups
 tasks.register("printEsModuleGroups", PrintEsModuleGroupsTask)
 
-// Compares two jars entry-by-entry: same contents => OK, any difference => FAIL. Ignores
-// ror-build-info.properties (per-version by design) and META-INF/MANIFEST.MF (timestamp noise).
+// Compares two jars entry-by-entry: same contents => OK, any difference => FAIL. The comparison logic lives
+// in buildSrc (BytecodeComparison) so it can be unit-tested; this task only does the property/file wiring and
+// turns the result into a lifecycle log or a build failure.
 //
 // Usage: -PbaseFatJar=<path> -PcmpFatJar=<path>
 tasks.register('diffBytecode') {
@@ -80,38 +82,14 @@ tasks.register('diffBytecode') {
         def cmpJar = project.file(cmpFatJarProp)
         [baseJar, cmpJar].each { if (!it.exists()) throw new GradleException("jar not found: ${it}") }
 
-        def ignored = ['ror-build-info.properties', 'META-INF/MANIFEST.MF'] as Set
-
-        def digest = { File jar ->
-            def result = new TreeMap<String, String>()
-            new java.util.zip.ZipFile(jar).withCloseable { zf ->
-                zf.entries().each { entry ->
-                    if (!entry.directory && !ignored.contains(entry.name)) {
-                        def md = java.security.MessageDigest.getInstance('SHA-256')
-                        zf.getInputStream(entry).withCloseable { is ->
-                            def buf = new byte[64 * 1024]; int n
-                            while ((n = is.read(buf)) != -1) md.update(buf, 0, n)
-                        }
-                        result[entry.name] = md.digest().collect { String.format('%02x', it) }.join('')
-                    }
-                }
-            }
-            result
-        }
-
-        def baseDigest = digest(baseJar)
-        def cmpDigest = digest(cmpJar)
-
-        if (baseDigest == cmpDigest) {
+        def result = BytecodeComparison.compare(baseJar, cmpJar)
+        if (result.identical) {
             logger.lifecycle("OK: bytecode identical to base -- reuse safe ({} vs {})",
                     baseJar.name, cmpJar.name)
         } else {
-            def diverging = (baseDigest.keySet() + cmpDigest.keySet()).findAll {
-                baseDigest[it] != cmpDigest[it]
-            }.sort()
             throw new GradleException("Bytecode reuse guard FAILED: ${cmpJar.name} differs from base " +
-                    "${baseJar.name}. Diverging entries: ${diverging}. Repackaging is unsafe for this " +
-                    "range; revert to per-version compilation.")
+                    "${baseJar.name}. Diverging entries: ${result.divergingEntries}. Repackaging is unsafe " +
+                    "for this range; revert to per-version compilation.")
         }
     }
 }

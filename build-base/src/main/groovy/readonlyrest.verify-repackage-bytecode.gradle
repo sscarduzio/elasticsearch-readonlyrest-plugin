@@ -1,0 +1,92 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+import tech.beshu.ror.gradle.EsVersions
+import tech.beshu.ror.gradle.PluginArtifact
+
+// ---------------------------------------------------------------------------------------------------------
+// verifyRepackageBytecode: proves this module's whole supported ES range is buildable by repackaging from its
+// base, WITHOUT producing or publishing any deliverable. It is the Gradle-native equivalent of the CI
+// guard_module_bytecode shell function, scoped to a single module's (static) supportedEsVersions.
+//
+// It can't be done in a single build: baselineEsVersion is a configuration-time project property (it drives
+// the ES dependency pin and the jar naming), so compiling at two baselines requires two builds. We therefore
+// orchestrate nested builds (GradleBuild, the same mechanism eshome:buildRor uses):
+//   1) compile the base (oldest)           -> build/libs/<name>_es<oldest>.jar
+//   2) recompile each differing range end  -> build/libs/<name>_es<end>.jar
+//   3) :diffBytecode each end vs the base  -> fails if any end's bytecode drifted from the base
+// Only the ENDS of the range are recompiled; interior patch versions are trusted interpolations once both
+// ends match (the same policy as the CI guard). The base is always the oldest here, so in practice only the
+// newest end is checked; a single-version module just confirms the base compiles.
+//
+// Self-contained on purpose: it derives the version list and jar names straight from the gradle properties
+// rather than the values set by readonlyrest.plugin-common-conventions, so it doesn't depend on that plugin's
+// apply order (it is applied from that plugin's `plugins {}` block, i.e. before its body runs).
+// ---------------------------------------------------------------------------------------------------------
+def esVersions = EsVersions.of(project)
+
+def verifyBaselineVer = esVersions.oldest
+def verifyGuardVersions = [esVersions.oldest, esVersions.newest]
+        .findAll { it != verifyBaselineVer }
+        .unique()
+
+def verifyCompileBaseline = tasks.register('verifyCompileBaseline', GradleBuild) {
+    group = 'verification'
+    description = "Compiles ${project.name} at its base ES ${verifyBaselineVer} (for the repackage bytecode check)"
+    dir = rootDir
+    startParameter.projectProperties = ['baselineEsVersion': verifyBaselineVer]
+    tasks = [":${project.name}:toJar"]
+}
+
+def verifySteps = []
+verifyGuardVersions.each { ver ->
+    def verTag = ver.replace('.', '_')
+    def compileEnd = tasks.register("verifyCompile_es${verTag}", GradleBuild) {
+        group = 'verification'
+        description = "Recompiles ${project.name} at ES ${ver} to compare its bytecode against the base"
+        dir = rootDir
+        startParameter.projectProperties = ['baselineEsVersion': ver]
+        tasks = [":${project.name}:toJar"]
+        // Each nested compile overwrites build/classes + build/libs, so they must run one at a time.
+        mustRunAfter verifyCompileBaseline
+    }
+    def baseJar = layout.buildDirectory.file("libs/${PluginArtifact.fullName(project, verifyBaselineVer)}.jar")
+    def endJar = layout.buildDirectory.file("libs/${PluginArtifact.fullName(project, ver)}.jar")
+    def diffEnd = tasks.register("verifyDiff_es${verTag}", GradleBuild) {
+        group = 'verification'
+        description = "Diffs ${project.name} ES ${ver} bytecode against the base via :diffBytecode"
+        dir = rootDir
+        startParameter.projectProperties = [
+                'baseFatJar': baseJar.get().asFile.path,
+                'cmpFatJar' : endJar.get().asFile.path
+        ]
+        tasks = [':diffBytecode']
+        mustRunAfter compileEnd
+    }
+    verifySteps << compileEnd << diffEnd
+}
+
+tasks.register('verifyRepackageBytecode') {
+    group = 'verification'
+    description = "Verifies every supported ES version of ${project.name} is buildable by repackaging from the base"
+    dependsOn verifyCompileBaseline
+    dependsOn verifySteps
+    doLast {
+        logger.lifecycle("{}: repackage bytecode verified -- base ES {}, recompiled ends: {}",
+                project.name, verifyBaselineVer,
+                verifyGuardVersions.isEmpty() ? '(none, single-version module)' : verifyGuardVersions.join(', '))
+    }
+}

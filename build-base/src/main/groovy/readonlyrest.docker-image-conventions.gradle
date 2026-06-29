@@ -1,0 +1,163 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+import tech.beshu.ror.gradle.EsVersions
+import tech.beshu.ror.gradle.PluginArtifact
+
+// Docker image build/publish for the ES plugin modules: a fixed "fat" layer shared across a module's patch
+// range plus a per-version "thin" layer, assembled from the plugin zip and pushed via `docker buildx`.
+//
+// Self-contained (like readonlyrest.verify-repackage-bytecode): it derives esVersion / names / the source zip
+// straight from the gradle properties rather than the ext values set by readonlyrest.plugin-common-conventions,
+// so it can be applied from that plugin's `plugins {}` block (i.e. before its body runs). buildRorPluginZip is
+// referenced by name (lazy string) so it resolves regardless of registration order. The `docker {}` extension
+// comes from com.bmuschko.docker-remote-api (loaded by the root project's classloader).
+def esVersion = EsVersions.delivered(project)
+def pluginVersion = PluginArtifact.version(project)
+def dockerImageSourceZip = PluginArtifact.zip(project, esVersion)
+// Pin every build timestamp to a fixed value so rebuilds produce the same bytes and Docker can reuse the
+// shared fat layer instead of treating each build as new.
+def sourceDateEpoch = System.getenv('SOURCE_DATE_EPOCH') ?: '1704067200'
+def releaseDockerImageLatest = "beshultd/elasticsearch-readonlyrest:${esVersion}-ror-latest"
+def releaseDockerImageVersion = "beshultd/elasticsearch-readonlyrest:${esVersion}-ror-${pluginVersion}"
+def preBuildDockerImageVersion = "beshultd/elasticsearch-readonlyrest-dev:${esVersion}-ror-${pluginVersion}"
+
+// Shared docker CLI task setup + the multi-arch `buildx build ... --push` invocation (latest/version and dev
+// images differ only in their -t tags). Keeps the three buildx tasks below from repeating the platform list,
+// build-args and output flags.
+def dockerCliDefaults = { Exec t ->
+    t.group = 'docker'
+    t.executable = 'docker'
+    t.workingDir = 'build/docker-image'
+}
+def commonBuildArgs = ['--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', 'ES_VERSION=' + esVersion]
+def buildxPushArgs = { List<String> tags ->
+    def cmd = ['buildx', 'build', '--platform', 'linux/amd64,linux/arm64'] + commonBuildArgs
+    tags.each { cmd += ['-t', it] }
+    cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
+}
+
+docker {
+    registryCredentials {
+        username = System.getenv('DOCKER_REGISTRY_USER')
+        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
+    }
+}
+
+tasks.register('prepareMultiplatformBuilder') {
+    group = 'docker'
+    doLast {
+        def execOps = project.services.get(ExecOperations)
+        def output = new ByteArrayOutputStream()
+        execOps.exec {
+            executable = 'docker'
+            args = ['buildx', 'inspect']
+            standardOutput = output
+            errorOutput = System.err
+        }
+        def supportedPlatforms = output.toString().find(/Platforms: ([^\n]+)/)?.replace("Platforms: ", "")?.split(',')
+
+        if (supportedPlatforms == null || !(supportedPlatforms.contains('linux/amd64') && supportedPlatforms.contains('linux/arm64'))) {
+            try {
+                execOps.exec {
+                    executable = 'docker'
+                    args = ['buildx', 'inspect', 'ror_kbn_builder']
+                    errorOutput = new ByteArrayOutputStream()
+                }
+            } catch (Exception e) {
+                if (e.getMessage().contains("non-zero exit")) {
+                    execOps.exec {
+                        executable = 'docker'
+                        args = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', '--name=ror_kbn_builder']
+                    }
+                }
+            }
+
+            execOps.exec {
+                executable = 'docker'
+                args = ['buildx', 'use', 'ror_kbn_builder']
+            }
+        }
+    }
+}
+
+// Plugin files that are the same for every patch version of this module (the fixed dependency
+// jars and entitlement-policy.yaml). Docker builds this as one layer and reuses it across all
+// versions, so the files that change per version are excluded here -- they go in the thin layer.
+tasks.register('prepareDockerFatLayer', Sync) {
+    if (!project.hasProperty('reusePackagedZip')) {
+        dependsOn 'buildRorPluginZip'
+    }
+    outputs.upToDateWhen { false }
+
+    from(zipTree(dockerImageSourceZip)) {
+        exclude 'plugin-descriptor.properties'
+        exclude 'elasticsearch-rest-client-*.jar'
+        exclude 'transport-netty4-client-*.jar'
+        exclude 'readonlyrest-*_es*.jar'
+    }
+    into layout.buildDirectory.dir("docker-image/payload")
+}
+
+// The files that change between patch versions: the descriptor and the jars tied to the ES
+// version. Kept in their own layer so the fat layer above stays identical and shared.
+tasks.register('prepareDockerThinLayer', Sync) {
+    if (!project.hasProperty('reusePackagedZip')) {
+        dependsOn 'buildRorPluginZip'
+    }
+    outputs.upToDateWhen { false }
+
+    from(zipTree(dockerImageSourceZip)) {
+        include 'plugin-descriptor.properties'
+        include 'elasticsearch-rest-client-*.jar'
+        include 'transport-netty4-client-*.jar'
+        include 'readonlyrest-*_es*.jar'
+    }
+    into layout.buildDirectory.dir("docker-image/per-version")
+}
+
+tasks.register('prepareDockerBuildContext', Copy) {
+    dependsOn prepareDockerFatLayer, prepareDockerThinLayer
+    outputs.upToDateWhen { false }
+
+    from layout.projectDirectory.file("Dockerfile")
+    from(rootProject.files("docker-image")) {
+        exclude 'gosu/**'
+    }
+
+    into layout.buildDirectory.dir("docker-image")
+}
+
+tasks.register('pushRorDockerImage', Exec) {
+    dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
+    dockerCliDefaults(delegate)
+    environment 'SOURCE_DATE_EPOCH', sourceDateEpoch
+    args = buildxPushArgs([releaseDockerImageLatest, releaseDockerImageVersion])
+}
+
+tasks.register('pushRorPreBuildDockerImage', Exec) {
+    dependsOn prepareDockerBuildContext, prepareMultiplatformBuilder
+    dockerCliDefaults(delegate)
+    environment 'SOURCE_DATE_EPOCH', sourceDateEpoch
+    args = buildxPushArgs([preBuildDockerImageVersion])
+}
+
+tasks.register('localRorDockerImage', Exec) {
+    // we prepare docker image for local architecture - the image is loaded to local registry
+    dependsOn prepareDockerBuildContext
+    dockerCliDefaults(delegate)
+    args = ['buildx', 'build'] + commonBuildArgs + ['-t', releaseDockerImageVersion, '--load', '.']
+}

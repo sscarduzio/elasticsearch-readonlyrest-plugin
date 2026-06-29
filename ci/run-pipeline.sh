@@ -1,8 +1,6 @@
 #!/bin/bash -ex
 
 source "$(dirname "$0")/ci-lib.sh"
-# Module-grouped publishing functions (build_module_groups, publish_module_group,
-# publish_ror_plugins_grouped, …) + their disk/docker helpers live here; this script only routes ROR_TASK.
 source "$(dirname "$0")/publish-ror-plugins.sh"
 
 trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
@@ -187,32 +185,50 @@ if [[ $ROR_TASK == "integration_es67x" ]]; then
   run_integration_tests "es67x"
 fi
 
+# Verifies every version of every module in an ES generation is buildable -- WITHOUT publishing anything.
+# Under the repackage model a deliverable is the module base (compiled once) plus swapped per-version bits, so
+# "can we build version X" no longer means "compile X from scratch" but "is X's bytecode identical to the
+# base" (the precondition for repackaging it). Per module we therefore build the base once and run the same
+# guard the release path uses: guard_module_bytecode recompiles the range boundaries and diffs them against
+# the base, so a genuine compile failure at a boundary still fails the job, and a bytecode drift -- which the
+# old per-version build couldn't even detect -- now fails it too. Shares guard_module_bytecode +
+# build_module_groups with publish-ror-plugins.sh (sourced above); the only thing skipped here is the
+# repackage/upload of the non-base versions.
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
-    echo "What ES generation (major: 6|7|8|9) should I build plugins for?"
+    echo "What ES generation (major: 6|7|8|9) should I verify plugins for?"
     return 1
   fi
 
   local es_major=$1
-  # build_module_groups (from publish-ror-plugins.sh) prints "<module> <ver> <ver> ..." per line; flatten to
-  # the bare version list and build each. Versions come from each module's supportedEsVersions property.
-  local version
-  for version in $(build_module_groups "$es_major" | awk '{for (i = 2; i <= NF; i++) print $i}'); do
-    time build_ror_plugin "$version"
-  done
-}
+  local ror_version
+  ror_version=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
-build_ror_plugin() {
-  if [ "$#" -ne 1 ]; then
-    echo "What ES version should I build plugin for?"
-    return 1
-  fi
+  # build_module_groups (from publish-ror-plugins.sh) prints "<module> <ver> <ver> ..." per line, versions
+  # newest-first. Versions come from each module's supportedEsVersions property.
+  local line
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    local module
+    module=$(echo "$line" | awk '{print $1}')
+    local targets
+    read -r -a targets <<< "$(echo "$line" | cut -d' ' -f2-)"
 
-  local ROR_VERSION=$1
+    # Base = OLDEST version (lowest-common-denominator ES API); matches the Gradle baselineEsVersion default.
+    local base_version
+    base_version=$(printf '%s\n' "${targets[@]}" | sort -V | head -1)
 
-  echo ""
-  echo "Building ROR for ES $ROR_VERSION:"
-  ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
+    echo ""
+    echo ">>> Verify $module buildable: base ES $base_version, ${#targets[@]} version(s): ${targets[*]}"
+
+    if ! time ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
+      echo "ERROR: base build failed for $module @ $base_version"
+      return 1
+    fi
+    if ! guard_module_bytecode "$ror_version" "$module" "$base_version" "${targets[@]}"; then
+      return 1
+    fi
+  done < <(build_module_groups "$es_major")
 }
 
 if [[ $ROR_TASK == "build_es9xx" ]]; then

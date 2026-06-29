@@ -77,6 +77,52 @@ build_module_groups() {
   rm -f "$groups_file"
 }
 
+# Bytecode reuse guard: proves a module's whole requested version range is buildable from its base by
+# repackaging, i.e. that every version produces bytecode identical to the base. Recompiles the range
+# boundaries that differ from the base (separate gradlew invocations) and diffs each fat jar against the
+# base; any compile failure OR bytecode difference fails the guard, meaning the range isn't bytecode-stable
+# and must not be repackaged/shipped. Only the ENDS of the range are checked -- the versions farthest from
+# the base, most likely to have drifted; interior versions are interpolations we trust once both ends match.
+# Usually the base is itself one end (the module's oldest), so only the other end needs a recompile; if the
+# base sits outside the range, both ends differ from it and both are checked; a single-version range needs no
+# boundary check (the base build already covered it). Recompiling every version would defeat compile-once.
+# Assumes the base fat jar already exists at build/libs/readonlyrest-<ror_version>_es<base_version>.jar.
+#   $1 ror_version  $2 module  $3 base_version  $4.. target versions (newest-first)
+guard_module_bytecode() {
+  local ror_version=$1 module=$2 base_version=$3
+  shift 3
+  local targets=("$@")
+
+  local base_fat_jar="${module}/build/libs/readonlyrest-${ror_version}_es${base_version}.jar"
+  local newest="${targets[0]}" oldest="${targets[$((${#targets[@]} - 1))]}"
+  local guard_versions=()
+  [ "$oldest" != "$base_version" ] && guard_versions+=("$oldest")
+  [ "$newest" != "$base_version" ] && [ "$newest" != "$oldest" ] && guard_versions+=("$newest")
+  local cmp
+  for cmp in "${guard_versions[@]}"; do
+    echo "==> Compiling ${module} at ES ${cmp} for bytecode comparison ..."
+    # -PbaselineEsVersion (not -PesVersion): force the COMPILE at cmp. The build otherwise always compiles
+    # the module base and derives other versions by repackaging, so the guard must opt into a real recompile
+    # to prove cmp's bytecode matches the base. The fat jar is named after baselineEsVersion, so it lands at
+    # readonlyrest-*_es<cmp>.jar below.
+    if ! ./gradlew ":${module}:toJar" "-PbaselineEsVersion=${cmp}" </dev/null; then
+      echo "ERROR: compile at ES $cmp failed for $module (range not API-monotonic)"
+      return 1
+    fi
+    local cmp_jar
+    cmp_jar=$(ls -1 "${module}"/build/libs/readonlyrest-*_es"${cmp}".jar 2>/dev/null | head -1 || true)
+    if [ -z "$cmp_jar" ] || [ ! -f "$cmp_jar" ]; then
+      echo "ERROR: expected fat jar not produced for $module @ $cmp"
+      return 1
+    fi
+    if ! ./gradlew ":diffBytecode" \
+          "-PbaseFatJar=${base_fat_jar}" "-PcmpFatJar=${cmp_jar}" </dev/null; then
+      echo "ERROR: bytecode reuse guard failed for $module @ $cmp"
+      return 1
+    fi
+  done
+}
+
 # Builds a module's base once, guards bytecode reuse (release) BEFORE shipping anything, then derives each
 # remaining version's zip from the base (no recompile, via the Gradle repackageRorPluginForVersion task) and
 # publishes it one by one, with an in-place per-version publish retry (a transient blip never re-recompiles).
@@ -110,46 +156,14 @@ publish_module_group() {
   fi
 
   # 2) (release only) Bytecode reuse guard, BEFORE deriving or publishing anything -- this is what decides
-  #    whether repackaging is valid for this module at all. Recompile the range boundaries that differ from
-  #    the base (separate gradlew invocations) and diff each fat jar against the base; any difference means
-  #    the patch range isn't bytecode-stable, so abort the module without shipping a single version. The base
-  #    fat jar's name carries the base ES version, so these boundary recompiles produce differently-named jars
-  #    and never clobber it. They do overwrite build/classes, but step 3's repackage reads the already-built
-  #    base zip (not build/), so that's harmless.
+  #    whether repackaging is valid for this module at all. Any failure aborts the module without shipping a
+  #    single version. The boundary recompiles produce differently-named fat jars (named after their ES
+  #    version) so they never clobber the base; they do overwrite build/classes, but step 3's repackage reads
+  #    the already-built base zip (not build/), so that's harmless.
   if [ "$mode" = "release" ]; then
-    local base_fat_jar="${module}/build/libs/readonlyrest-${ror_version}_es${base_version}.jar"
-    # Only check the ENDS of the requested range -- the versions farthest from the base, most likely to have
-    # drifted; interior versions are interpolations we trust once both ends match the base. Usually the base
-    # is itself the newest end (it's the module's latest), so only the oldest needs a check; if the base sits
-    # outside the requested range, both ends differ from it and both are checked. A single-version range
-    # checks just that one. (Recompiling all versions would defeat the compile-once optimization.)
-    local newest="${targets[0]}" oldest="${targets[$((${#targets[@]} - 1))]}"
-    local guard_versions=()
-    [ "$oldest" != "$base_version" ] && guard_versions+=("$oldest")
-    [ "$newest" != "$base_version" ] && [ "$newest" != "$oldest" ] && guard_versions+=("$newest")
-    local cmp
-    for cmp in "${guard_versions[@]}"; do
-      echo "==> Compiling ${module} at ES ${cmp} for bytecode comparison ..."
-      # -PbaselineEsVersion (not -PesVersion): force the COMPILE at cmp. The build otherwise always compiles
-      # the module base and derives other versions by repackaging, so the guard must opt into a real recompile
-      # to prove cmp's bytecode matches the base. The fat jar is named after baselineEsVersion, so it lands at
-      # readonlyrest-*_es<cmp>.jar below.
-      if ! ./gradlew ":${module}:toJar" "-PbaselineEsVersion=${cmp}" </dev/null; then
-        echo "ERROR: compile at ES $cmp failed for $module (range not API-monotonic)"
-        return 1
-      fi
-      local cmp_jar
-      cmp_jar=$(ls -1 "${module}"/build/libs/readonlyrest-*_es"${cmp}".jar 2>/dev/null | head -1 || true)
-      if [ -z "$cmp_jar" ] || [ ! -f "$cmp_jar" ]; then
-        echo "ERROR: expected fat jar not produced for $module @ $cmp"
-        return 1
-      fi
-      if ! ./gradlew ":diffBytecode" \
-            "-PbaseFatJar=${base_fat_jar}" "-PcmpFatJar=${cmp_jar}" </dev/null; then
-        echo "ERROR: bytecode reuse guard failed for $module @ $cmp"
-        return 1
-      fi
-    done
+    if ! guard_module_bytecode "$ror_version" "$module" "$base_version" "${targets[@]}"; then
+      return 1
+    fi
   fi
 
   # 3) Guard passed (or skipped for upload_pre) -- now release each version ONE BY ONE: derive its zip from
