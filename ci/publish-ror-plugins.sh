@@ -88,11 +88,12 @@ publish_module_group() {
   local targets=("$@")
   local dist_dir="${module}/build/distributions"
 
-  # The base version is the NEWEST version we're publishing for this module: it's compiled once and every
-  # other version is derived (repackaged) from it. targets arrive newest-first, but sort -rV so we never
-  # depend on ordering.
+  # The base version is the OLDEST version we're publishing for this module: it's compiled once (against the
+  # lowest-common-denominator ES API) and every other version is derived (repackaged) from it. This matches
+  # the Gradle build's baselineEsVersion default (oldest supported). targets arrive newest-first, but sort -V
+  # so we never depend on ordering.
   local base_version
-  base_version=$(printf '%s\n' "${targets[@]}" | sort -rV | head -1)
+  base_version=$(printf '%s\n' "${targets[@]}" | sort -V | head -1)
   if [ -z "$base_version" ]; then
     echo "ERROR: no target versions for $module"
     return 1
@@ -129,7 +130,11 @@ publish_module_group() {
     local cmp
     for cmp in "${guard_versions[@]}"; do
       echo "==> Compiling ${module} at ES ${cmp} for bytecode comparison ..."
-      if ! ./gradlew ":${module}:toJar" "-PesVersion=${cmp}" </dev/null; then
+      # -PbaselineEsVersion (not -PesVersion): force the COMPILE at cmp. The build otherwise always compiles
+      # the module base and derives other versions by repackaging, so the guard must opt into a real recompile
+      # to prove cmp's bytecode matches the base. The fat jar is named after baselineEsVersion, so it lands at
+      # readonlyrest-*_es<cmp>.jar below.
+      if ! ./gradlew ":${module}:toJar" "-PbaselineEsVersion=${cmp}" </dev/null; then
         echo "ERROR: compile at ES $cmp failed for $module (range not API-monotonic)"
         return 1
       fi
