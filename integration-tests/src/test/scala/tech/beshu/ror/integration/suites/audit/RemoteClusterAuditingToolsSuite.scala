@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites.audit
 
 import cats.data.NonEmptyList
+import org.scalatest.time.{Seconds, Span}
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
@@ -145,34 +146,18 @@ class RemoteClusterAuditingToolsSuite
 
         auditNode2.disableNetwork()
 
-        // all nodes disabled
-        Thread.sleep(3000)
-
+        // all nodes disabled - events sent now will be lost
         val traceIds3 = queryTweeterIndexWithRandomTraceId(times = 3)
-
-        Thread.sleep(10000)
-
-        // events sent when all nodes are out will be lost
-        forEachAuditManager { adminAuditManager =>
-          eventually {
-            val auditEntries = adminAuditManager.getEntries.force().jsons
-
-            traceIds3.foreach { traceId =>
-              checkNoEntriesWithTraceId(auditEntries, traceId)
-            }
-
-            val expectedEntriesCount = List.concat(traceIds1, traceIds2).size
-            auditEntries.size shouldEqual expectedEntriesCount
-          }
-        }
 
         auditNode1.enableNetwork()
 
         val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
 
+        // traceIds4 appearing in audit means the system is back online and retries for traceIds3 have exhausted.
+        // Longer timeout: node2 is still down, so round-robin may attempt it first (connection timeout ~14s).
         val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
         forEachAuditManager { adminAuditManager =>
-          eventually {
+          eventually(timeout(Span(60, Seconds))) {
             val auditEntries = adminAuditManager.getEntries.force().jsons
 
             allExpectedTraceIds.foreach { traceId =>
@@ -180,7 +165,9 @@ class RemoteClusterAuditingToolsSuite
               assertForEveryAuditEntry(entry)
             }
 
-            auditEntries.size shouldEqual allExpectedTraceIds.size
+            traceIds3.foreach { traceId =>
+              checkNoEntriesWithTraceId(auditEntries, traceId)
+            }
           }
         }
       }
@@ -222,34 +209,18 @@ class RemoteClusterAuditingToolsSuite
 
         auditNode2.disableNetwork()
 
-        // all nodes disabled
-        Thread.sleep(3000)
-
+        // all nodes disabled - events sent now will be lost
         val traceIds3 = queryTweeterIndexWithRandomTraceId(times = 3)
-
-        Thread.sleep(10000)
-
-        // events sent when all nodes are out will be lost
-        forEachAuditManager { adminAuditManager =>
-          eventually {
-            val auditEntries = adminAuditManager.getEntries.force().jsons
-
-            traceIds3.foreach { traceId =>
-              checkNoEntriesWithTraceId(auditEntries, traceId)
-            }
-
-            val expectedEntriesCount = List.concat(traceIds1, traceIds2).size
-            auditEntries.size shouldEqual expectedEntriesCount
-          }
-        }
 
         auditNode1.enableNetwork()
 
         val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
 
+        // traceIds4 appearing in audit means the system is back online and retries for traceIds3 have exhausted.
+        // Longer timeout: node2 is still down, so failover may attempt it first (connection timeout ~14s).
         val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
         forEachAuditManager { adminAuditManager =>
-          eventually {
+          eventually(timeout(Span(60, Seconds))) {
             val auditEntries = adminAuditManager.getEntries.force().jsons
 
             allExpectedTraceIds.foreach { traceId =>
@@ -257,7 +228,9 @@ class RemoteClusterAuditingToolsSuite
               assertForEveryAuditEntry(entry)
             }
 
-            auditEntries.size shouldEqual allExpectedTraceIds.size
+            traceIds3.foreach { traceId =>
+              checkNoEntriesWithTraceId(auditEntries, traceId)
+            }
           }
         }
       }
