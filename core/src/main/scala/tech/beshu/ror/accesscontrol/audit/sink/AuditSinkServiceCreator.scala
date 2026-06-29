@@ -28,9 +28,10 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 sealed trait AuditSinkServiceCreator extends RequestIdAwareLogging {
 
-  protected final def withConnectivityCheck[AUDIT_SERVICE](cluster: AuditCluster,
-                                                           httpClientsFactory: HttpClientsFactory,
-                                                           create: Task[AUDIT_SERVICE]
+  protected final def withConnectivityCheck[AUDIT_SERVICE](
+      cluster: AuditCluster,
+      httpClientsFactory: HttpClientsFactory,
+      create: Task[AUDIT_SERVICE]
   ): Task[Either[AuditSinkServiceCreator.InitializationError, AUDIT_SERVICE]] = {
     cluster match {
       case AuditCluster.LocalAuditCluster =>
@@ -83,9 +84,7 @@ trait IndexBasedAuditSinkServiceCreator extends AuditSinkServiceCreator {
 
 }
 
-trait DataStreamAndIndexBasedAuditSinkServiceCreator
-    extends AuditSinkServiceCreator
-    with IndexBasedAuditSinkServiceCreator {
+trait DataStreamBasedAuditSinkServiceCreator extends AuditSinkServiceCreator {
 
   protected def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService
 

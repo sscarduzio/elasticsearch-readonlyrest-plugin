@@ -26,7 +26,11 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
+import tech.beshu.ror.accesscontrol.audit.sink.{
+  AuditDataStreamCreator,
+  DataStreamBasedAuditSinkServiceCreator,
+  IndexBasedAuditSinkServiceCreator
+}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
@@ -209,12 +213,8 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     val auditingTool = AuditingTool
       .create(
         settings = settings,
-        auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
-          override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
-            dataStreamBasedAuditSinkService
-
-          override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
-        },
+        indexCreator = (_: AuditCluster) => indexBasedAuditSinkService,
+        dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditSinkService,
         httpClientsFactory = MockHttpClientsFactory,
       )
       .runSyncUnsafe()

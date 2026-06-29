@@ -21,7 +21,6 @@ import cats.data.{Ior, NonEmptyList}
 import cats.effect.Resource
 import cats.implicits.*
 import io.circe.Decoder
-import io.lemonlabs.uri.config.UriConfig
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{AuditClusterNode, NodeCredentials, RemoteAuditCluster}
