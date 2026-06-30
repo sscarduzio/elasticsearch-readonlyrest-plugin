@@ -64,7 +64,7 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   def assemble: Option[JFile] = {
     logger.info(s"Assembling ROR in module $moduleName")
-    runTask(moduleName + ":packageRorPlugin")
+    runTask(moduleName + ":buildRorPluginZip")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
     logger.info(s"Finished assembling ROR in module $moduleName")
     if (!plugin.exists) None
