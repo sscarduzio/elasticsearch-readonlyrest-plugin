@@ -416,6 +416,46 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
             )
           }
+          "file_appender max_file_size rejects mixed-case bit-unit suffix (Mb)" in {
+            // squants 1.8.3 uses "Mbit" for megabits, not "Mb" — "Mb" is not a valid symbol
+            // and must produce an error rather than silently parse as megabits (8x smaller than MB).
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      file_appender:
+                |        file_path: /tmp/ror-audit-test.log
+                |        max_file_size: 100Mb
+                |        max_files: 7
+              """.stripMargin
+            )
+            assertInvalidSettings(
+              settings,
+              expectedErrorMessage =
+                "Invalid audit 'max_file_size': Cannot parse '100Mb' as a data size. Expected format like '1 MB', '512 KB'"
+            )
+          }
+          "file_appender max_file_size rejects all-lowercase unit suffix (mb)" in {
+            val settings = rorSettingsWithAuditUnsafe(
+              """
+                |  audit:
+                |    enabled: true
+                |    outputs:
+                |    - type: log
+                |      file_appender:
+                |        file_path: /tmp/ror-audit-test.log
+                |        max_file_size: 100mb
+                |        max_files: 7
+              """.stripMargin
+            )
+            assertInvalidSettings(
+              settings,
+              expectedErrorMessage =
+                "Invalid audit 'max_file_size': Cannot parse '100mb' as a data size. Expected format like '1 MB', '512 KB'"
+            )
+          }
           "configurable serializer is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """

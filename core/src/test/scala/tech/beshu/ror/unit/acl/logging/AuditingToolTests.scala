@@ -35,8 +35,11 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, Audi
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
+  GeneralIndexRequestBlockContext,
+  UserMetadataRequestBlockContext
+}
+import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
@@ -555,6 +558,91 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             tempDir.delete(swallowIOExceptions = true)
           }
         }
+      }
+    }
+
+    "multi-group user matched by the same block" should {
+      "submit audit event to each sink exactly once, not once per matched group" in {
+        // A user can belong to multiple groups all granted by the same block.
+        // The audit event describes the request, not the group — so each sink
+        // should receive it once regardless of how many groups matched.
+        val requestId = RequestId("mock-withgroups-dedup")
+        val indexAuditSink = mock[IndexBasedAuditSinkService]
+        (indexAuditSink
+          .submit(_: IndexName.Full, _: String, _: String)(_: RequestId))
+          .expects(fullIndexName("test_2018-12-31"), "mock-withgroups-dedup", *, requestId)
+          .returning(())
+          .once()
+
+        @nowarn("cat=deprecation")
+        val auditingTool = AuditingTool
+          .create(
+            config = AuditingConfig(
+              Some(
+                AuditOutputsConfig.WithOutputs(
+                  NonEmptyList.of(
+                    AuditSink.Enabled(
+                      SinkName.random(),
+                      Config.EsIndexBasedSink(
+                        AuditSerializer.Delegating(new DefaultAuditLogSerializer),
+                        RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
+                        AuditCluster.LocalAuditCluster
+                      )
+                    )
+                  )
+                )
+              ),
+              defaultAclLog = false,
+              defaultTestEsNodeSettings
+            ),
+            auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
+              override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
+                mock[DataStreamBasedAuditSinkService]
+              override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexAuditSink
+            }
+          )
+          .runSyncUnsafe()
+          .toOption
+          .get
+
+        val metaRequestContext = MockRequestContext.metadata.copy(
+          timestamp = someday.toInstant,
+          id = RequestContext.Id.fromString("mock-withgroups-dedup")
+        )
+
+        val block = new Block(
+          Block.Name("mock-block"),
+          Block.Policy.Allow,
+          NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
+          Block.Audit.Enabled()
+        ).withResolvedAuditSinks(auditingTool.sinks)
+
+        val blockContext = UserMetadataRequestBlockContext(
+          block = block,
+          requestContext = metaRequestContext,
+          blockMetadata = BlockMetadata.empty,
+          responseHeaders = Set.empty,
+          responseTransformations = List.empty
+        )
+
+        val metadataOrigin = UserMetadata.MetadataOrigin(blockContext)
+        val makeGroupMetadata = (groupStr: String) =>
+          UserMetadata.WithGroups.GroupMetadata(
+            group = group(groupStr),
+            loggedUser = LoggedUser.DirectlyLoggedUser(User.Id(nes("testuser"))),
+            userOrigin = None,
+            kibanaPolicy = None,
+            metadataOrigin = metadataOrigin
+          )
+
+        val responseContext = Allowed(
+          requestContext = metaRequestContext,
+          userMetadata =
+            UserMetadata.WithGroups(NonEmptyList.of(makeGroupMetadata("group1"), makeGroupMetadata("group2"))),
+          history = History.empty
+        )
+
+        auditingTool.audit(responseContext).runSyncUnsafe()
       }
     }
 

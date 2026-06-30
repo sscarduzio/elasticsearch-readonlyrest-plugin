@@ -29,6 +29,7 @@ import org.apache.logging.log4j.{LogManager, Logger}
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.RollingFileBasedSink.FileAppenderConfig
 import tech.beshu.ror.accesscontrol.domain.{RorAuditLoggerName, SinkName}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 private[audit] final class RollingFileBasedAuditSink private (
     sinkName: SinkName,
@@ -48,7 +49,7 @@ private[audit] final class RollingFileBasedAuditSink private (
 
 }
 
-object RollingFileBasedAuditSink {
+object RollingFileBasedAuditSink extends RequestIdAwareLogging {
 
   final case class CreationError(message: String) extends AnyVal
 
@@ -63,7 +64,10 @@ object RollingFileBasedAuditSink {
       case None      =>
         buildAndRegisterAppender(loggerName, config)
           .map(appender => Right(new RollingFileBasedAuditSink(sinkName, serializer, loggerName, appender)))
-          .onErrorHandle(_ => Left(appenderCreationErrorMessage(config.filePath)))
+          .onErrorHandle { ex =>
+            noRequestIdLogger.warn(s"Failed to create rolling file appender for audit log '${config.filePath}'", ex)
+            Left(appenderCreationErrorMessage(config.filePath))
+          }
     }
   }
 
@@ -105,6 +109,10 @@ object RollingFileBasedAuditSink {
 
       appender.start()
       ctx.getLogger(loggerName.value.value).addAppender(appender)
+      val loggerConfig = log4jConfig.getLoggerConfig(loggerName.value.value)
+      if (loggerConfig.getName == loggerName.value.value) {
+        loggerConfig.setAdditive(false)
+      }
       ctx.updateLoggers()
       appender
     }
