@@ -21,7 +21,7 @@ plugins {
     id "org.owasp.dependencycheck"
     id "maven-publish"
     id "scala"
-    id "com.diffplug.spotless"
+    id "readonlyrest.format-conventions"
 }
 
 repositories {
@@ -120,57 +120,4 @@ license {
         java = 'SLASHSTAR_STYLE'
         scala = 'SLASHSTAR_STYLE'
     }
-}
-
-def stagedFilesFor = { String ext ->
-    if (!project.hasProperty('spotlessStagedFiles')) return null
-    def projectPrefix = rootProject.projectDir.toURI()
-        .relativize(project.projectDir.toURI()).toString()
-    (project.property('spotlessStagedFiles') as String)
-        .split(',')
-        .findAll { it.startsWith(projectPrefix) && it.endsWith(ext) }
-        .collect { rootProject.file(it) }
-        .findAll { it.exists() }
-}
-
-spotless {
-    enforceCheck = false
-
-    def scalafmtVersion = rootProject.file('.scalafmt.conf')
-        .readLines()
-            .findResult { line ->
-                def m = (line =~ /^\s*version\s*=\s*"([^"]+)"/)
-                m.matches() ? m[0][1] : null
-            }
-    if (!scalafmtVersion) {
-        throw new GradleException("Could not determine scalafmt version from .scalafmt.conf")
-    }
-    java {
-        googleJavaFormat().reorderImports(false).formatJavadoc(false)
-        removeUnusedImports()
-        importOrder('', 'java|javax')
-        def files = stagedFilesFor('.java')
-        // null = property not set, format everything; empty = no staged files in this project,
-        // use non-matching glob so Spotless skips this project without falling back to all files
-        if (files != null) target(files.isEmpty() ? ['**/__no_staged_files__'] : files)
-    }
-    scala {
-        scalafmt(scalafmtVersion).configFile("${rootProject.projectDir}/.scalafmt.conf")
-        def files = stagedFilesFor('.scala')
-        // null = property not set, format everything; empty = no staged files in this project,
-        // use non-matching glob so Spotless skips this project without falling back to all files
-        if (files != null) target(files.isEmpty() ? ['**/__no_staged_files__'] : files)
-    }
-}
-
-tasks.register("formatCode") {
-    group = "verification"
-    description = "Format all sources (alias for spotlessApply)"
-    dependsOn "spotlessApply"
-}
-
-tasks.register("formatCodeCheck") {
-    group = "verification"
-    description = "Check all sources are formatted (alias for spotlessCheck)"
-    dependsOn "spotlessCheck"
 }
