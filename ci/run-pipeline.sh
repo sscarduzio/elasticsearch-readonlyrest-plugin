@@ -185,10 +185,9 @@ if [[ $ROR_TASK == "integration_es67x" ]]; then
   run_integration_tests "es67x"
 fi
 
-# Verifies every version of every module in an ES generation is buildable -- WITHOUT publishing anything.
-# Per module: builds the base, then runs verifyRepackageBytecodeNewest to prove the newest version's
-# bytecode is identical to the base (the precondition for repackaging). A drift or compile failure fails
-# the job. Shares build_module_groups with publish-ror-plugins.sh (sourced above).
+# Verifies every module in an ES generation is buildable -- WITHOUT publishing anything.
+# Per module: compiles the base version, then proves the newest version's bytecode is repackage-safe.
+# A compile or bytecode drift failure fails the job.
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
     echo "What ES generation (major: 6|7|8|9) should I verify plugins for?"
@@ -197,27 +196,11 @@ build_ror_plugins() {
 
   local es_major=$1
 
-  # build_module_groups (from publish-ror-plugins.sh) prints "<module> <ver> <ver> ..." per line, versions
-  # newest-first. Versions come from each module's supportedEsVersions property.
   local line
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     local module
     module=$(echo "$line" | awk '{print $1}')
-    local targets
-    read -r -a targets <<< "$(echo "$line" | cut -d' ' -f2-)"
-
-    # Base = OLDEST version (lowest-common-denominator ES API); matches the Gradle baselineEsVersion default.
-    local base_version
-    base_version=$(printf '%s\n' "${targets[@]}" | sort -V | head -1)
-
-    echo ""
-    echo ">>> Verify $module buildable: base ES $base_version, ${#targets[@]} version(s): ${targets[*]}"
-
-    if ! time ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
-      echo "ERROR: base build failed for $module @ $base_version"
-      return 1
-    fi
     if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
       return 1
     fi

@@ -1,46 +1,10 @@
 #!/bin/bash
 #
-# Module-grouped ROR plugin publishing ("build once per module, repackage the rest").
-#
-# This file is a function library: it is SOURCED by ci/run-pipeline.sh, which owns the ROR_TASK dispatch
-# (upload_pre_es*/release_es* -> publish_ror_plugins_grouped). Kept separate because the publishing flow
-# is the most involved part of the pipeline; run-pipeline.sh stays a thin task router.
-#
-# Depends on functions from ci-lib.sh (checkTagNotExist, tag) and on the Gradle tasks
-# downloadEsVersionedDependencyJars / repackageRorPluginForVersion / verifyRepackageBytecodeNewest. Both ci-lib.sh and this
-# file are sourced before any ROR_TASK dispatch runs, so cross-references resolve at call time.
-#
-# Gradle calls here intentionally run on the daemon (NO --no-daemon): the module-grouped flow makes many
-# small invocations -- one compile + one repackage per version + guard recompiles/diffs + the push -- and a
-# warm daemon amortizes JVM start + configuration across them (measured ~20s -> ~4s per call). The docker
-# push tasks already ran on the daemon, so one is resident during the run regardless.
-
-log_disk_usage() {
-  local label="${1:-}"
-  echo "=== Disk usage ($label) ==="
-  df -h / || true
-  df -i / || true
-
-  echo "--- Docker ---"
-  docker system df || true
-  docker ps -a || true
-  docker volume ls || true
-
-  echo "--- Workspace build dirs ---"
-  du -sh */build 2>/dev/null || true
-
-  echo "--- Temp dirs ---"
-  du -sh /tmp 2>/dev/null || true
-
-  echo "--- Gradle ---"
-  du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
-
-  echo "=== End disk usage ==="
-}
+# Function library for module-grouped ROR plugin publishing (build once per module, repackage the rest).
+# Sourced by ci/run-pipeline.sh.
 
 cleanup_docker_and_build() {
   # Exclude the container this script is running inside (prevents self-removal in DinD setups).
-  # In Azure Pipelines container jobs, `hostname` is the short container ID used by `docker ps -aq`.
   local SELF_ID
   SELF_ID=$(hostname 2>/dev/null || true)
   local containers_to_remove
@@ -55,19 +19,7 @@ cleanup_docker_and_build() {
   find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
 }
 
-# ----------------------------------------------------------------------------------------------------
-# Within an esXXx module the compiled bytecode is identical across the module's patch range, so instead
-# of recompiling for every ES version we compile ONCE (at the oldest supported version) and derive every
-# other version's zip by swapping only the per-version bits (descriptor, in-jar build-info, and the
-# ES-versioned dependency jars). See the Gradle downloadEsVersionedDependencyJars +
-# repackageRorPluginForVersion tasks. A per-module bytecode guard (verifyRepackageBytecodeNewest) proves
-# the reuse is safe before any release is published.
-# ----------------------------------------------------------------------------------------------------
-
-# Emits one line per module in the given ES generation (major), newest module first:
-#   "<module> <target version> [<target version> ...]"   (versions newest-first)
-# Each module's versions come from its own supportedEsVersions gradle property (the single source of truth);
-# the printEsModuleGroups task already groups + orders them, so this is just a thin wrapper.
+# Emits one line per module in the given ES generation: "<module> <ver> ..." (versions newest-first).
 build_module_groups() {
   local es_major=$1
   local groups_file
@@ -77,22 +29,15 @@ build_module_groups() {
   rm -f "$groups_file"
 }
 
-
-# Builds a module's base once, guards bytecode reuse (release) BEFORE shipping anything, then derives each
-# remaining version's zip from the base (no recompile, via the Gradle repackageRorPluginForVersion task) and
-# publishes it one by one, with an in-place per-version publish retry (a transient blip never re-recompiles).
-#   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 es_jars_dir
-#   $@(5..) target versions (file order: newest..oldest)
+# Builds the module's base version once, verifies bytecode reuse (release only), then derives and
+# publishes each version.
+#   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 es_jars_dir  $@(5..) target versions
 publish_module_group() {
   local mode=$1 ror_version=$2 module=$3 es_jars_dir=$4
   shift 4
   local targets=("$@")
   local dist_dir="${module}/build/distributions"
 
-  # The base version is the OLDEST version we're publishing for this module: it's compiled once (against the
-  # lowest-common-denominator ES API) and every other version is derived (repackaged) from it. This matches
-  # the Gradle build's baselineEsVersion default (oldest supported). targets arrive newest-first, but sort -V
-  # so we never depend on ordering.
   local base_version
   base_version=$(printf '%s\n' "${targets[@]}" | sort -V | head -1)
   if [ -z "$base_version" ]; then
@@ -103,28 +48,17 @@ publish_module_group() {
   echo ""
   echo ">>> Module $module: base ES $base_version, ${#targets[@]} target version(s): ${targets[*]}"
 
-  # 1) ONE compile for the module, at its base version. Every other version is derived from this zip without
-  #    recompiling (step 2).
   if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
     echo "ERROR: base build failed for $module @ $base_version"
     return 1
   fi
 
-  # 2) (release only) Bytecode reuse guard, BEFORE deriving or publishing anything -- this is what decides
-  #    whether repackaging is valid for this module at all. Any failure aborts the module without shipping a
-  #    single version.
   if [ "$mode" = "release" ]; then
     if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
       return 1
     fi
   fi
 
-  # 3) Guard passed (or skipped for upload_pre) -- now release each version ONE BY ONE: derive its zip from
-  #    the base (repackageRorPluginForVersion; the base version's zip already exists from step 1, so it isn't
-  #    repackaged), publish it, then free its disk. Repackaging is deterministic and stays OUTSIDE the publish
-  #    retry below; only the publish is retried, since the failures that actually happen there are transient
-  #    and per-version (Docker Hub rate limits, registry/S3 blips). Already-released versions are skipped
-  #    cheaply by release_docker_and_tag's remote tag check, so a retry never re-pushes a shipped version.
   local target
   for target in "${targets[@]}"; do
     if [ "$target" != "$base_version" ]; then
@@ -144,12 +78,6 @@ publish_module_group() {
         break
       fi
       if [ "$pattempt" -lt 3 ]; then
-        # Publish failures here are virtually always transient registry-side errors (Docker Hub rate
-        # limit / blip), not local disk: the push streams straight to the registry and `--load`s
-        # nothing locally. So just back off and retry -- deliberately WITHOUT pruning, so the retry
-        # reuses the already-built buildx cache instead of cold-rebuilding the image. Real disk
-        # pressure is bounded at the module boundary (buildx --keep-storage) and, as a last resort,
-        # by cleanup_docker_and_build on the module-level retry.
         echo "WARN: publish of $module ES $target failed (attempt $pattempt/3); backing off..."
         sleep $((pattempt * 15))
       fi
@@ -162,22 +90,13 @@ publish_module_group() {
     rm -f "$zip" "${zip}.sha512"
   done
 
-  # 4) Bound disk at the MODULE boundary (not per version). The multi-platform builds run in the
-  #    docker-container buildx builder (ror_kbn_builder), whose BuildKit cache lives in its own volume
-  #    -- `docker system prune` / `docker builder prune` can't reach it, so without this it grows
-  #    unbounded across the 34 modules (pulled ES base images + layers, ~GBs each). Trim the CURRENT
-  #    builder (which is ror_kbn_builder after the push's `buildx use`) but keep a working set so the
-  #    shared ES base + fat ROR layer stay hot for the next module. Working set defaults to 5GB and is
-  #    overridable via BUILDX_KEEP_STORAGE (e.g. "20GB" on roomier agents, "0" to clear everything).
   rm -rf "${es_jars_dir:?}/"*
   find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
   docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" >/dev/null 2>&1 || true
   return 0
 }
 
-# Release-only: build & push the ES+ROR image for one version, then create the git tag. The version's zip is
-# already in the module's build/distributions (from repackageRorPluginForVersion), so -PreusePackagedZip
-# tells the image build to reuse it instead of recompiling. Mirrors the original release_ror_plugin tail.
+# Pushes the ES+ROR Docker image for one version and creates the git tag. Skips if already tagged.
 release_docker_and_tag() {
   local ror_version=$1 es_version=$2 module=$3
   local TAG="v${ror_version}_es${es_version}"
@@ -198,10 +117,7 @@ release_docker_and_tag() {
   tag "$TAG"
 }
 
-# Publishes ONE already-derived version: S3 upload + (release) docker image & git tag. No recompile.
-# Returns non-zero on failure so the per-version retry in publish_module_group can re-attempt just this
-# version. Idempotent on re-run: S3 overwrites, and release_docker_and_tag skips versions already tagged
-# on the remote.
+# Publishes one already-derived version: S3 upload + (release) Docker image and git tag.
 publish_one_version() {
   local mode=$1 ror_version=$2 module=$3 target=$4 zip=$5
 
@@ -220,9 +136,8 @@ publish_one_version() {
   return 0
 }
 
-# Drives a whole generation file through the module-grouped flow. Two-level retry: transient per-version
-# publish failures are absorbed in place by publish_module_group (no recompile); only a build/download/guard
-# failure bubbles up here and triggers a heavy cleanup + full module rebuild.
+# Drives a whole ES generation through the module-grouped publish flow, with per-module retry on failure.
+# Usage: publish_ror_plugins_grouped <es major: 6|7|8|9> <upload_pre|release>
 publish_ror_plugins_grouped() {
   if [ "$#" -ne 2 ]; then
     echo "Usage: publish_ror_plugins_grouped <es major: 6|7|8|9> <upload_pre|release>"
@@ -232,13 +147,6 @@ publish_ror_plugins_grouped() {
   local ror_version
   ror_version=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
-  # Pin SOURCE_DATE_EPOCH for the whole run so BuildKit normalises every build-time timestamp (file
-  # mtimes + the parent dirs `COPY --link` synthesises) to a constant. This is what makes the
-  # version-independent fat ROR docker layer keep ONE content digest across every patch version, so the
-  # registry stores/pushes that ~95 MB blob once per module instead of once per version. The Gradle push
-  # tasks read this env (with a constant fallback); exporting the commit time here just gives the images a
-  # meaningful, reproducible "created" date. Must be set before the first gradlew call so the daemon (if
-  # any) inherits it.
   export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
 
   local es_jars_dir
