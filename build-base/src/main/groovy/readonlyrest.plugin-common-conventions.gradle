@@ -313,7 +313,7 @@ tasks.register('resolvePluginDescriptorTemplate', Copy) {
     ])
 }
 
-// The single entry point for producing a deliverable: packageRorPlugin compiles the module base ONCE and
+// The single entry point for producing a deliverable: packageRorPlugin compiles the module base  ONCE and
 // zips it; when the requested esVersion differs from the compiled base, the target zip is then DERIVED from
 // that base by repackageRorPluginForVersion (no second compile). When they're equal (the default, and the
 // CI base build), the base zip IS the deliverable, so there's nothing to repackage.
@@ -327,6 +327,9 @@ tasks.register('buildRorPluginZip') {
 // Compiles the module base (baselineEsVersion) and zips it into build/distributions/<baselineFullName>.zip.
 tasks.register('packageRorPlugin') {
     dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
+    // distJars is accessed in doLast (not as a typed task input), so Gradle cannot auto-discover the artifact
+    // tasks (e.g. core:jar). buildDependencies makes them explicit so all dependency JARs exist at execution time.
+    dependsOn(configurations.distJars.buildDependencies)
     outputs.upToDateWhen { false }
     doLast {
         def contentsDir = layout.buildDirectory.dir("plugin-contents/${baselineFullName}").get().asFile
