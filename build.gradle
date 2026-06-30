@@ -16,7 +16,6 @@
  */
 import tech.beshu.ror.gradle.RorTaskFinder
 import tech.beshu.ror.gradle.PrintEsModuleGroupsTask
-import tech.beshu.ror.gradle.BytecodeComparison
 
 plugins {
     id 'base'
@@ -63,36 +62,6 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
 // Usage: ./gradlew printEsModuleGroups -PesMajor=8 -PoutputFile=/tmp/es8.groups
 tasks.register("printEsModuleGroups", PrintEsModuleGroupsTask)
 
-// Compares two jars entry-by-entry: same contents => OK, any difference => FAIL. The comparison logic lives
-// in buildSrc (BytecodeComparison) so it can be unit-tested; this task only does the property/file wiring and
-// turns the result into a lifecycle log or a build failure.
-//
-// Usage: -PbaseFatJar=<path> -PcmpFatJar=<path>
-tasks.register('diffBytecode') {
-    outputs.upToDateWhen { false }
-    doLast {
-        def baseFatJarProp = project.findProperty('baseFatJar')
-        def cmpFatJarProp = project.findProperty('cmpFatJar')
-        if (baseFatJarProp == null || cmpFatJarProp == null) {
-            throw new GradleException("diffBytecode requires -PbaseFatJar=<path> and -PcmpFatJar=<path>")
-        }
-        // Resolve against the repo root: the pipeline passes module-prefixed paths (es818x/build/...)
-        // relative to where gradlew runs. Absolute paths pass through unchanged.
-        def baseJar = project.file(baseFatJarProp)
-        def cmpJar = project.file(cmpFatJarProp)
-        [baseJar, cmpJar].each { if (!it.exists()) throw new GradleException("jar not found: ${it}") }
-
-        def result = BytecodeComparison.compare(baseJar, cmpJar)
-        if (result.identical) {
-            logger.lifecycle("OK: bytecode identical to base -- reuse safe ({} vs {})",
-                    baseJar.name, cmpJar.name)
-        } else {
-            throw new GradleException("Bytecode reuse guard FAILED: ${cmpJar.name} differs from base " +
-                    "${baseJar.name}. Diverging entries: ${result.divergingEntries}. Repackaging is unsafe " +
-                    "for this range; revert to per-version compilation.")
-        }
-    }
-}
 
 group = 'tech.beshu.ror'
 version = pluginVersion

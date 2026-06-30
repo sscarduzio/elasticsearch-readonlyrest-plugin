@@ -186,14 +186,9 @@ if [[ $ROR_TASK == "integration_es67x" ]]; then
 fi
 
 # Verifies every version of every module in an ES generation is buildable -- WITHOUT publishing anything.
-# Under the repackage model a deliverable is the module base (compiled once) plus swapped per-version bits, so
-# "can we build version X" no longer means "compile X from scratch" but "is X's bytecode identical to the
-# base" (the precondition for repackaging it). Per module we therefore build the base once and run the same
-# guard the release path uses: guard_module_bytecode recompiles the range boundaries and diffs them against
-# the base, so a genuine compile failure at a boundary still fails the job, and a bytecode drift -- which the
-# old per-version build couldn't even detect -- now fails it too. Shares guard_module_bytecode +
-# build_module_groups with publish-ror-plugins.sh (sourced above); the only thing skipped here is the
-# repackage/upload of the non-base versions.
+# Per module: builds the base, then runs verifyRepackageBytecodeNewest to prove the newest version's
+# bytecode is identical to the base (the precondition for repackaging). A drift or compile failure fails
+# the job. Shares build_module_groups with publish-ror-plugins.sh (sourced above).
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
     echo "What ES generation (major: 6|7|8|9) should I verify plugins for?"
@@ -201,8 +196,6 @@ build_ror_plugins() {
   fi
 
   local es_major=$1
-  local ror_version
-  ror_version=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
 
   # build_module_groups (from publish-ror-plugins.sh) prints "<module> <ver> <ver> ..." per line, versions
   # newest-first. Versions come from each module's supportedEsVersions property.
@@ -225,7 +218,7 @@ build_ror_plugins() {
       echo "ERROR: base build failed for $module @ $base_version"
       return 1
     fi
-    if ! guard_module_bytecode "$ror_version" "$module" "$base_version" "${targets[@]}"; then
+    if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
       return 1
     fi
   done < <(build_module_groups "$es_major")
