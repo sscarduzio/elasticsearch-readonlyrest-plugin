@@ -74,7 +74,15 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   def getModuleESVersion: String =
     Option(System.getProperty("esVersion"))
       .filter(_ => isExplicitlyTargetedModule)
-      .getOrElse(esProjectProperties.getProperty("latestSupportedEsVersion"))
+      .getOrElse(newestSupportedEsVersion)
+
+  private def newestSupportedEsVersion: String =
+    esProjectProperties
+      .getProperty("supportedEsVersions")
+      .split(",")
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .last
 
   private def isExplicitlyTargetedModule: Boolean =
     moduleName == System.getProperty("esModule")
