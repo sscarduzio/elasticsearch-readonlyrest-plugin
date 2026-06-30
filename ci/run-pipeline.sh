@@ -204,7 +204,7 @@ build_ror_plugins() {
     if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
       return 1
     fi
-  done < <(build_module_groups "$es_major")
+  done < <(list_es_modules "$es_major")
 }
 
 if [[ $ROR_TASK == "build_es9xx" ]]; then
@@ -224,35 +224,35 @@ if [[ $ROR_TASK == "build_es6xx" ]]; then
 fi
 
 if [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
-  publish_ror_plugins_grouped "9" "upload_pre"
+  publish_ror_plugins "9" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
-  publish_ror_plugins_grouped "8" "upload_pre"
+  publish_ror_plugins "8" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es7xx" ]]; then
-  publish_ror_plugins_grouped "7" "upload_pre"
+  publish_ror_plugins "7" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es6xx" ]]; then
-  publish_ror_plugins_grouped "6" "upload_pre"
+  publish_ror_plugins "6" "upload_pre"
 fi
 
 if [[ $ROR_TASK == "release_es9xx" ]]; then
-  publish_ror_plugins_grouped "9" "release"
+  publish_ror_plugins "9" "release"
 fi
 
 if [[ $ROR_TASK == "release_es8xx" ]]; then
-  publish_ror_plugins_grouped "8" "release"
+  publish_ror_plugins "8" "release"
 fi
 
 if [[ $ROR_TASK == "release_es7xx" ]]; then
-  publish_ror_plugins_grouped "7" "release"
+  publish_ror_plugins "7" "release"
 fi
 
 if [[ $ROR_TASK == "release_es6xx" ]]; then
-  publish_ror_plugins_grouped "6" "release"
+  publish_ror_plugins "6" "release"
 fi
 
 check_maven_artifacts_exist() {
