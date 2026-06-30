@@ -14,20 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.audit.sink
+package tech.beshu.ror.accesscontrol.audit
 
-import monix.eval.Task
-import org.apache.logging.log4j.{LogManager, Logger}
-import tech.beshu.ror.accesscontrol.audit.AuditSerializer
-import tech.beshu.ror.accesscontrol.domain.{RorAuditLoggerName, SinkName}
+import tech.beshu.ror.audit.AuditLogSerializer
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 
-private[audit] final class LogBasedAuditSink(
-    sinkName: SinkName,
-    serializer: AuditSerializer,
-    loggerName: RorAuditLoggerName
-) extends TextBasedAuditSink(sinkName, serializer) {
+sealed trait AuditSerializer
 
-  override protected val logger: Logger = LogManager.getLogger(loggerName.value.value)
+object AuditSerializer {
+  final case class Delegating(serializer: AuditLogSerializer) extends AuditSerializer
 
-  override def close(): Task[Unit] = Task.unit
+  case object Acl extends AuditSerializer
+
+  final case class EcsV1(allowedEventMode: AllowedEventMode, includeFullRequestContent: Boolean) extends AuditSerializer
+
+  final case class Configurable(
+      allowedEventMode: AllowedEventMode,
+      fields: Map[AuditFieldPath, AuditFieldValueDescriptor]
+  ) extends AuditSerializer
+
 }

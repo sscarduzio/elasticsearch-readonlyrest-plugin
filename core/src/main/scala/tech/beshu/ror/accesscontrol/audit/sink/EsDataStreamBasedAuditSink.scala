@@ -19,17 +19,19 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId, RorAuditDataStream}
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId, RorAuditDataStream, SinkName}
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.DataStreamBasedAuditSinkService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[audit] final class EsDataStreamBasedAuditSink private (
-    serializer: AuditLogSerializer,
+    sinkName: SinkName,
+    serializer: AuditSerializer,
     rorAuditDataStream: RorAuditDataStream,
     auditSinkService: DataStreamBasedAuditSinkService
-) extends BaseAuditSink(serializer) {
+) extends BaseAuditSink(sinkName, serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
       implicit requestId: RequestId
@@ -64,14 +66,15 @@ object EsDataStreamBasedAuditSink {
   }
 
   def create(
-      serializer: AuditLogSerializer,
+      sinkName: SinkName,
+      serializer: AuditSerializer,
       rorAuditDataStream: RorAuditDataStream,
       auditSinkService: DataStreamBasedAuditSinkService,
       auditCluster: AuditCluster
   ): Task[Either[CreationError, EsDataStreamBasedAuditSink]] = value {
     for {
       _ <- createRorAuditDataStreamIfNotExists(rorAuditDataStream, auditSinkService, auditCluster)
-      auditSink <- createAuditSink(serializer, rorAuditDataStream, auditSinkService)
+      auditSink <- createAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService)
     } yield auditSink
   }
 
@@ -85,13 +88,14 @@ object EsDataStreamBasedAuditSink {
   }
 
   private def createAuditSink(
-      serializer: AuditLogSerializer,
+      sinkName: SinkName,
+      serializer: AuditSerializer,
       rorAuditDataStream: RorAuditDataStream,
       auditSinkService: DataStreamBasedAuditSinkService
   ) = {
     EitherT.right[CreationError](
       Task.delay(
-        new EsDataStreamBasedAuditSink(serializer, rorAuditDataStream, auditSinkService)
+        new EsDataStreamBasedAuditSink(sinkName, serializer, rorAuditDataStream, auditSinkService)
       )
     )
   }

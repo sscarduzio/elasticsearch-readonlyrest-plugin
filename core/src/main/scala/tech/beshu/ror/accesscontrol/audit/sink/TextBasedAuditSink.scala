@@ -17,44 +17,40 @@
 package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
+import org.apache.logging.log4j.Logger
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer.Delegating
+import tech.beshu.ror.accesscontrol.audit.acl.AclAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{RequestId, SinkName}
 import tech.beshu.ror.audit.AuditResponseContext
 
-private[audit] abstract class BaseAuditSink(val name: SinkName, auditSerializer: AuditSerializer)
+private[audit] abstract class TextBasedAuditSink(val name: SinkName, serializer: AuditSerializer)
     extends Block.AuditSink {
 
-  final def submit(auditEvent: AuditResponseContext)(
+  protected val logger: Logger
+
+  final def submit(event: AuditResponseContext)(
       implicit requestId: RequestId
-  ): Task[Unit] = {
-    safeRunSerializer(auditEvent)
-      .flatMap {
-        case Some(serializedEvent) => submit(auditEvent, serializedEvent)
-        case None                  => Task.unit
-      }
-  }
-
-  def close(): Task[Unit]
-
-  protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
-      implicit requestId: RequestId
-  ): Task[Unit]
-
-  private def safeRunSerializer(context: AuditResponseContext) = {
-    auditSerializer match {
-      case AuditSerializer.Delegating(serializer) =>
-        Task.delay(serializer.onResponse(context))
-      case AuditSerializer.Acl =>
-        Task.delay(None)
+  ): Task[Unit] = Task {
+    serializer match {
+      case Delegating(serializer) =>
+        serializer.onResponse(event).foreach(log)
       case AuditSerializer.EcsV1(allowedEventMode, includeFullRequestContent) =>
-        Task.delay(EcsV1AuditLogSerializer.onResponse(context, allowedEventMode, includeFullRequestContent))
+        EcsV1AuditLogSerializer.onResponse(event, allowedEventMode, includeFullRequestContent).foreach(log)
       case AuditSerializer.Configurable(allowedEventMode, fields) =>
-        Task.delay(ConfigurableAuditLogSerializer.onResponse(context, allowedEventMode, fields))
+        ConfigurableAuditLogSerializer.onResponse(event, allowedEventMode, fields).foreach(log)
+      case AuditSerializer.Acl =>
+        AclAuditLogSerializer
+          .format(event, logger.isDebugEnabled)
+          .foreach(msg => logger.info(s"[${requestId.value}] $msg"))
     }
   }
 
+  private def log(json: JSONObject): Unit = logger.info(json.toString)
+
+  def close(): Task[Unit]
 }

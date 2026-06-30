@@ -127,13 +127,13 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Allow)
-          firstBlock.verbosity should be(Block.Verbosity.Info)
+          firstBlock.audit should be(Block.Audit.Enabled(logAllowedEvents = true))
           firstBlock.rules should have size 1
 
           val secondBlock = acl.blocks.tail.head
           secondBlock.name should be(Block.Name("test_block2"))
           secondBlock.policy should be(Block.Policy.Allow)
-          secondBlock.verbosity should be(Block.Verbosity.Info)
+          secondBlock.audit should be(Block.Audit.Enabled(logAllowedEvents = true))
           secondBlock.rules should have size 1
         }
       }
@@ -163,19 +163,19 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid(None))
-          firstBlock.verbosity should be(Block.Verbosity.Info)
+          firstBlock.audit should be(Block.Audit.Enabled(logAllowedEvents = true))
           firstBlock.rules should have size 1
 
           val secondBlock = acl.blocks.tail.head
           secondBlock.name should be(Block.Name("test_block2"))
           secondBlock.policy should be(Block.Policy.Forbid(None))
-          secondBlock.verbosity should be(Block.Verbosity.Info)
+          secondBlock.audit should be(Block.Audit.Enabled(logAllowedEvents = true))
           secondBlock.rules should have size 1
 
           val thirdBlock = acl.blocks.tail(1)
           thirdBlock.name should be(Block.Name("test_block3"))
           thirdBlock.policy should be(Block.Policy.Forbid(Some("you are unauthorized to access this resource")))
-          thirdBlock.verbosity should be(Block.Verbosity.Info)
+          thirdBlock.audit should be(Block.Audit.Enabled(logAllowedEvents = true))
           thirdBlock.rules should have size 1
         }
       }
@@ -515,13 +515,13 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         val firstBlock = acl.blocks.head
         firstBlock.name should be(Block.Name("test_block1"))
         firstBlock.policy should be(Block.Policy.Forbid(None))
-        firstBlock.verbosity should be(Block.Verbosity.Info)
+        firstBlock.audit should be(Block.Audit.Enabled(logAllowedEvents = true))
         firstBlock.rules should have size 1
 
         val secondBlock = acl.blocks.tail.head
         secondBlock.name should be(Block.Name("test_block2"))
         secondBlock.policy should be(Block.Policy.Allow)
-        secondBlock.verbosity should be(Block.Verbosity.Error)
+        secondBlock.audit should be(Block.Audit.Enabled(logAllowedEvents = false))
         secondBlock.rules should have size 1
       }
     }

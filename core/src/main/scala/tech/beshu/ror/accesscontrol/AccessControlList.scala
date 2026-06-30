@@ -48,6 +48,8 @@ trait AccessControlList {
   ): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])]
 
   def staticContext: AccessControlStaticContext
+
+  def withBlockTransformation(f: Block => Block): AccessControlList
 }
 
 object AccessControlList {

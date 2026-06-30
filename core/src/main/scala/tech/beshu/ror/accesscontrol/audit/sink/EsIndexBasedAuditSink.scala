@@ -18,19 +18,21 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate}
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.accesscontrol.audit.AuditSerializer
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate, SinkName}
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.IndexBasedAuditSinkService
 
 import java.time.Clock
 
 private[audit] final class EsIndexBasedAuditSink private (
-    serializer: AuditLogSerializer,
+    sinkName: SinkName,
+    serializer: AuditSerializer,
     rorAuditIndexTemplate: RorAuditIndexTemplate,
     auditSinkService: IndexBasedAuditSinkService
 )(
     implicit clock: Clock
-) extends BaseAuditSink(serializer) {
+) extends BaseAuditSink(sinkName, serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
       implicit requestId: RequestId
@@ -48,13 +50,14 @@ private[audit] final class EsIndexBasedAuditSink private (
 object EsIndexBasedAuditSink {
 
   def apply(
-      serializer: AuditLogSerializer,
+      sinkName: SinkName,
+      serializer: AuditSerializer,
       indexTemplate: RorAuditIndexTemplate,
       auditSinkService: IndexBasedAuditSinkService
   )(
       implicit clock: Clock
   ): EsIndexBasedAuditSink = {
-    new EsIndexBasedAuditSink(serializer, indexTemplate, auditSinkService)
+    new EsIndexBasedAuditSink(sinkName, serializer, indexTemplate, auditSinkService)
   }
 
 }
