@@ -25,6 +25,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import squants.information.Megabytes
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
@@ -38,7 +39,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.FileSize
 import tech.beshu.ror.accesscontrol.logging.ResponseContext.*
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -188,7 +188,6 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   Block.Policy.Forbid(),
                   NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
                   Block.Audit.Enabled(),
-                  List.empty,
                 ).withResolvedAuditSinks(auditingTool.sinks),
                 requestContext = requestContext,
                 blockMetadata = BlockMetadata.empty,
@@ -291,7 +290,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   AuditOutputsConfig.WithOutputs(
                     NonEmptyList.of(
                       AuditSink.Enabled(
-                        Block.SinkName.random(),
+                        SinkName.random(),
                         Config.LogBasedSink(
                           AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                           RorAuditLoggerName.default
@@ -341,13 +340,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   AuditOutputsConfig.WithOutputs(
                     NonEmptyList.of(
                       AuditSink.Enabled(
-                        Block.SinkName.random(),
+                        SinkName.random(),
                         Config.RollingFileBasedSink(
                           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                           loggerName = isolatedLoggerName,
                           fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
                             filePath = filePathAuditLog.path,
-                            maxFileSize = FileSize.from("100MB").toOption.get,
+                            maxFileSize = Megabytes(100),
                             maxFiles = positiveInt(7)
                           )
                         )
@@ -395,13 +394,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                   AuditOutputsConfig.WithOutputs(
                     NonEmptyList.of(
                       AuditSink.Enabled(
-                        Block.SinkName.random(),
+                        SinkName.random(),
                         Config.RollingFileBasedSink(
                           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
                           loggerName = customLoggerName,
                           fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
                             filePath = customLogFile.path,
-                            maxFileSize = FileSize.from("100MB").toOption.get,
+                            maxFileSize = Megabytes(100),
                             maxFiles = positiveInt(7)
                           )
                         )
@@ -588,7 +587,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private def auditSettings(serializer: AuditLogSerializer) = AuditOutputsConfig.WithOutputs(
     auditSinks = NonEmptyList.of(
       AuditSink.Enabled(
-        Block.SinkName.random(),
+        SinkName.random(),
         Config.EsIndexBasedSink(
           AuditSerializer.Delegating(serializer),
           RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").toOption.get,
@@ -596,7 +595,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
         )
       ),
       AuditSink.Enabled(
-        Block.SinkName.random(),
+        SinkName.random(),
         Config.EsDataStreamBasedSink(
           AuditSerializer.Delegating(serializer),
           RorAuditDataStream.from("test_ds").toOption.get,
@@ -623,7 +622,6 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           policy = policy,
           rules = NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
           audit = Block.Audit.Enabled(logAllowedEvents),
-          auditSinks = List.empty,
         ).withResolvedAuditSinks(allSinks),
         requestContext = requestContext,
         blockMetadata = BlockMetadata.empty,
@@ -643,13 +641,13 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   private def rollingFileSinkSettings(filePath: java.nio.file.Path) = AuditOutputsConfig.WithOutputs(
     NonEmptyList.of(
       AuditSink.Enabled(
-        Block.SinkName.random(),
+        SinkName.random(),
         Config.RollingFileBasedSink(
           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
           loggerName = RorAuditLoggerName(nes("ror-audit-error-test")),
           fileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
             filePath = filePath,
-            maxFileSize = FileSize.from("100MB").toOption.get,
+            maxFileSize = Megabytes(100),
             maxFiles = positiveInt(7)
           )
         )

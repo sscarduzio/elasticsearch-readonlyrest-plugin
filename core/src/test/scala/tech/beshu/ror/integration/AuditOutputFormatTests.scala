@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.C
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
@@ -191,7 +190,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     val settings = AuditOutputsConfig.WithOutputs(
       NonEmptyList.of(
         AuditSink.Enabled(
-          Block.SinkName.random(),
+          SinkName.random(),
           Config.EsIndexBasedSink(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditIndexTemplate.default,
@@ -199,7 +198,7 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
           )
         ),
         AuditSink.Enabled(
-          Block.SinkName.random(),
+          SinkName.random(),
           Config.EsDataStreamBasedSink(
             AuditSerializer.Delegating(new BlockVerbosityAwareAuditLogSerializer),
             RorAuditDataStream.default,

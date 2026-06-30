@@ -23,6 +23,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
+import squants.information.Information
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{
@@ -34,7 +35,6 @@ import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.C
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings, AuditingConfig}
 import tech.beshu.ror.accesscontrol.audit.configurable.AuditFieldValueDescriptorParser
 import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, AuditingTool}
-import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
   AuditClusterNode,
   ClusterMode,
@@ -44,10 +44,10 @@ import tech.beshu.ror.accesscontrol.domain.AuditCluster.{
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{
   AuditCluster,
-  FileSize,
   RorAuditDataStream,
   RorAuditIndexTemplate,
-  RorAuditLoggerName
+  RorAuditLoggerName,
+  SinkName
 }
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
@@ -183,7 +183,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         case AuditSinkType.Log =>
           Config.LogBasedSink.default.asRight
       }
-      .map(config => AuditSink.Enabled(Block.SinkName.random(), config))
+      .map(config => AuditSink.Enabled(SinkName.random(), config))
   }
 
   private def auditSinkConfigExtendedDecoder(
@@ -201,14 +201,24 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       for {
         filePath <- c.downField("file_path").as[String].map(java.nio.file.Paths.get(_))
         maxFileSize <- c.downField("max_file_size").as[String].flatMap { raw =>
-          FileSize.from(raw).leftMap { case FileSize.CreationError.InvalidFormat(msg) =>
-            DecodingFailure(
-              AclCreationErrorCoders.stringify(
-                auditSettingsError(s"Invalid audit 'max_file_size': $msg")
-              ),
-              Nil
+          Information
+            .parseString(raw)
+            .toEither
+            .flatMap(info =>
+              if (info.toBytes > 0.0) Right(info)
+              else Left(new Exception(""))
             )
-          }
+            .left
+            .map { _ =>
+              DecodingFailure(
+                AclCreationErrorCoders.stringify(
+                  auditSettingsError(
+                    s"Cannot parse audit 'max_file_size': '$raw'. Expected a positive size like '100 MB', '1 GB'"
+                  )
+                ),
+                Nil
+              )
+            }
         }
         maxFiles <- c.downField("max_files").as[Int].flatMap { n =>
           refineV[Positive](n).leftMap(_ =>
@@ -279,16 +289,16 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
             case AuditSinkType.Log        => c.as[AuditSink.Config](logBasedSinkConfigDecoder)
           }
           isSinkEnabledOpt <- c.downFieldAs[Option[Boolean]]("enabled")
-          sinkNameOpt <- c.downField("name").as[Option[Block.SinkName]]
+          sinkNameOpt <- c.downField("name").as[Option[SinkName]]
         } yield {
           val isSinkEnabled = isSinkEnabledOpt.getOrElse(true)
-          lazy val sinkName = sinkNameOpt.getOrElse(Block.SinkName.random())
+          lazy val sinkName = sinkNameOpt.getOrElse(SinkName.random())
           if (isSinkEnabled) AuditSink.Enabled(sinkName, sinkConfig) else AuditSink.Disabled
         }
       }
   }
 
-  private given Decoder[Block.SinkName] = Decoder.decodeString.map(Block.SinkName.apply)
+  private given Decoder[SinkName] = Decoder.decodeString.map(SinkName.apply)
 
   private given Decoder[RorAuditDataStream] =
     SyncDecoderCreator
@@ -786,7 +796,7 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
         } yield AuditOutputsConfig.WithOutputs(
           auditSinks = NonEmptyList.one(
             AuditSink.Enabled(
-              Block.SinkName.random(),
+              SinkName.random(),
               EsIndexBasedSink(
                 serializer = logSerializer.getOrElse(EsIndexBasedSink.default.serializer),
                 rorAuditIndexTemplate = auditIndexTemplate.getOrElse(EsIndexBasedSink.default.rorAuditIndexTemplate),

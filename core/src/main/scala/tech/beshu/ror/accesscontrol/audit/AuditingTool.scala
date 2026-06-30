@@ -22,14 +22,15 @@ import cats.implicits.*
 import eu.timepit.refined.types.numeric.PosInt
 import monix.eval.Task
 import org.json.JSONObject
+import squants.information.Information
 import tech.beshu.ror.accesscontrol.History
-import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.*
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.{Disabled, Enabled}
 import tech.beshu.ror.accesscontrol.audit.acl.AclAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.sink.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.PrecomputedAuditSinks
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
@@ -63,18 +64,25 @@ final class AuditingTool private (private[ror] val sinks: List[Block.AuditSink])
   private def activeSinksFor[B <: BlockContext](responseContext: ResponseContext[B]): List[Block.AuditSink] = {
     responseContext match {
       case AllowedBy(_, blockContext, _) =>
-        blockContext.block.auditSinks
+        auditSinksFor(blockContext.block)
       case Allowed(_, UserMetadata.WithoutGroups(_, _, _, metadataOrigin), _) =>
-        metadataOrigin.blockContext.block.auditSinks
+        auditSinksFor(metadataOrigin.blockContext.block)
       case Allowed(_, UserMetadata.WithGroups(groupsMetadata), _) =>
         groupsMetadata.values.toList
-          .flatMap(_.metadataOrigin.blockContext.block.auditSinks)
+          .map(_.metadataOrigin.blockContext.block)
+          .flatMap(auditSinksFor)
           .distinct
-      case ForbiddenBy(_, blockContext, _) => blockContext.block.auditSinks
+      case ForbiddenBy(_, blockContext, _) => auditSinksFor(blockContext.block)
       case Forbidden(_, _)                 => sinks
       case RequestedIndexNotExist(_, _)    => sinks
       case Errored(_, _)                   => sinks
     }
+  }
+
+  private def auditSinksFor(block: Block): List[Block.AuditSink] = block.audit match {
+    case Audit.Enabled(_, _, PrecomputedAuditSinks.Available(auditSinks)) => auditSinks
+    case Audit.Enabled(_, _, PrecomputedAuditSinks.NotAvailable)          => Nil
+    case Audit.Disabled                                                   => Nil
   }
 
   def close(): Task[Unit] = sinks.traverse(_.close()).void
@@ -169,7 +177,7 @@ final class AuditingTool private (private[ror] val sinks: List[Block.AuditSink])
   }
 
   private def toAuditVerbosity(audit: Audit): AuditResponseContext.Verbosity = audit match {
-    case Audit.Enabled(logAllowedEvents, _) =>
+    case Audit.Enabled(logAllowedEvents, _, _) =>
       if (logAllowedEvents) AuditResponseContext.Verbosity.Info else AuditResponseContext.Verbosity.Error
     case Audit.Disabled =>
       AuditResponseContext.Verbosity.Info
@@ -210,7 +218,7 @@ object AuditingTool extends RequestIdAwareLogging {
     sealed trait AuditSink
 
     object AuditSink {
-      final case class Enabled(name: Block.SinkName, config: AuditSink.Config) extends AuditSink
+      final case class Enabled(name: SinkName, config: AuditSink.Config) extends AuditSink
 
       case object Disabled extends AuditSink
 
@@ -268,7 +276,7 @@ object AuditingTool extends RequestIdAwareLogging {
         ) extends Config
 
         object RollingFileBasedSink {
-          final case class FileAppenderConfig(filePath: java.nio.file.Path, maxFileSize: FileSize, maxFiles: PosInt)
+          final case class FileAppenderConfig(filePath: java.nio.file.Path, maxFileSize: Information, maxFiles: PosInt)
         }
 
       }
@@ -324,12 +332,12 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   private def defaultAclSink = AuditSink.Enabled(
-    Block.SinkName.defaultAclLog,
+    SinkName.defaultAclLog,
     AuditSink.Config.LogBasedSink(AuditSerializer.Acl, AclAuditLogSerializer.defaultLoggerName)
   )
 
   private def defaultIndexStorageSink = AuditSink.Enabled(
-    Block.SinkName.defaultIndexStorage,
+    SinkName.defaultIndexStorage,
     AuditSink.Config.EsIndexBasedSink.default
   )
 
@@ -378,7 +386,7 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   private def createIndexSink(
-      name: Block.SinkName,
+      name: SinkName,
       config: AuditSink.Config.EsIndexBasedSink,
       serviceCreator: IndexBasedAuditSinkServiceCreator
   )(
@@ -394,7 +402,7 @@ object AuditingTool extends RequestIdAwareLogging {
   }
 
   private def createDataStreamSink(
-      name: Block.SinkName,
+      name: SinkName,
       config: AuditSink.Config.EsDataStreamBasedSink,
       serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator
   ): Task[Validated[CreationError, SupportedAuditSink]] =

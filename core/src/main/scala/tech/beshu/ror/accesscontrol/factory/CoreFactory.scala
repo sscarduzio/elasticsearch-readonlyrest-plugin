@@ -253,8 +253,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
   ): Decoder[BlockDecodingResult] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
-    implicit val sinkNameDecoder: Decoder[Block.SinkName] =
-      Decoder.decodeString.map(Block.SinkName.apply)
+    implicit val sinkNameDecoder: Decoder[SinkName] =
+      Decoder.decodeString.map(SinkName.apply)
     implicit val blockAuditDecoder: Decoder[Block.Audit] =
       Decoder.instance { c =>
         for {
@@ -262,8 +262,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           enabled = enabledOpt.getOrElse(true)
           logAllowedEventsOpt <- c.downField("log_allowed_events").as[Option[Boolean]]
           logAllowedEvents = logAllowedEventsOpt.getOrElse(true)
-          enabledSinksRaw <- c.downField("enabled_audit_sinks").as[Option[List[Block.SinkName]]]
-          disabledSinksRaw <- c.downField("disabled_audit_sinks").as[Option[List[Block.SinkName]]]
+          enabledSinksRaw <- c.downField("enabled_audit_sinks").as[Option[List[SinkName]]]
+          disabledSinksRaw <- c.downField("disabled_audit_sinks").as[Option[List[SinkName]]]
           enabledAuditSinks <- (enabledSinksRaw, disabledSinksRaw) match {
             case (Some(_), Some(_)) =>
               Left(
@@ -345,17 +345,17 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
   ): AsyncDecoder[Unit] =
     AsyncDecoderCreator.instance[Unit] { _ =>
       Task.now {
-        val configuredSinkNames: scala.collection.Set[Block.SinkName] = auditingConfig.outputsConfig match {
+        val configuredSinkNames: scala.collection.Set[SinkName] = auditingConfig.outputsConfig match {
           case Some(AuditOutputsConfig.WithOutputs(sinks)) =>
             sinks.toList.collect { case AuditSink.Enabled(name, _) => name }.toSet
           case _ => scala.collection.Set.empty
         }
-        val globalSinkNames: scala.collection.Set[Block.SinkName] =
-          if (auditingConfig.defaultAclLog) configuredSinkNames ++ Set(Block.SinkName.defaultAclLog)
+        val globalSinkNames: scala.collection.Set[SinkName] =
+          if (auditingConfig.defaultAclLog) configuredSinkNames ++ Set(SinkName.defaultAclLog)
           else configuredSinkNames
         val errors = blocksNel.toList.map(_.block).flatMap { block =>
           block.audit match {
-            case Block.Audit.Enabled(_, EnabledAuditSinks.Selected(enabledSinks)) =>
+            case Block.Audit.Enabled(_, EnabledAuditSinks.Selected(enabledSinks), _) =>
               if (enabledSinks.isEmpty)
                 List(
                   s"Block '${block.name.value}': 'enabled_audit_sinks' cannot be empty; to disable all audit for this block use 'audit: {enabled: false}'"
@@ -368,7 +368,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
                   )
                 else Nil
               }
-            case Block.Audit.Enabled(_, EnabledAuditSinks.AllExcept(disabledSinks)) =>
+            case Block.Audit.Enabled(_, EnabledAuditSinks.AllExcept(disabledSinks), _) =>
               if (disabledSinks.isEmpty)
                 List(s"Block '${block.name.value}': 'disabled_audit_sinks' cannot be empty")
               else {

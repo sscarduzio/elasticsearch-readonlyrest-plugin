@@ -20,15 +20,14 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
-import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId, RorAuditDataStream}
+import tech.beshu.ror.accesscontrol.domain.{AuditCluster, RequestId, RorAuditDataStream, SinkName}
 import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.DataStreamBasedAuditSinkService
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.value
 
 private[audit] final class EsDataStreamBasedAuditSink private (
-    sinkName: Block.SinkName,
+    sinkName: SinkName,
     serializer: AuditSerializer,
     rorAuditDataStream: RorAuditDataStream,
     auditSinkService: DataStreamBasedAuditSinkService
@@ -67,7 +66,7 @@ object EsDataStreamBasedAuditSink {
   }
 
   def create(
-      sinkName: Block.SinkName,
+      sinkName: SinkName,
       serializer: AuditSerializer,
       rorAuditDataStream: RorAuditDataStream,
       auditSinkService: DataStreamBasedAuditSinkService,
@@ -89,7 +88,7 @@ object EsDataStreamBasedAuditSink {
   }
 
   private def createAuditSink(
-      sinkName: Block.SinkName,
+      sinkName: SinkName,
       serializer: AuditSerializer,
       rorAuditDataStream: RorAuditDataStream,
       auditSinkService: DataStreamBasedAuditSinkService

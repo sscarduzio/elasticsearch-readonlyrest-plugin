@@ -19,15 +19,14 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import monix.eval.Task
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
-import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate}
+import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate, SinkName}
 import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.IndexBasedAuditSinkService
 
 import java.time.Clock
 
 private[audit] final class EsIndexBasedAuditSink private (
-    sinkName: Block.SinkName,
+    sinkName: SinkName,
     serializer: AuditSerializer,
     rorAuditIndexTemplate: RorAuditIndexTemplate,
     auditSinkService: IndexBasedAuditSinkService
@@ -51,7 +50,7 @@ private[audit] final class EsIndexBasedAuditSink private (
 object EsIndexBasedAuditSink {
 
   def apply(
-      sinkName: Block.SinkName,
+      sinkName: SinkName,
       serializer: AuditSerializer,
       indexTemplate: RorAuditIndexTemplate,
       auditSinkService: IndexBasedAuditSinkService

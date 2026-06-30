@@ -28,11 +28,10 @@ import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.{LogManager, Logger}
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.RollingFileBasedSink.FileAppenderConfig
-import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.RorAuditLoggerName
+import tech.beshu.ror.accesscontrol.domain.{RorAuditLoggerName, SinkName}
 
 private[audit] final class RollingFileBasedAuditSink private (
-    sinkName: Block.SinkName,
+    sinkName: SinkName,
     serializer: AuditSerializer,
     loggerName: RorAuditLoggerName,
     appender: RollingFileAppender
@@ -54,7 +53,7 @@ object RollingFileBasedAuditSink {
   final case class CreationError(message: String) extends AnyVal
 
   def create(
-      sinkName: Block.SinkName,
+      sinkName: SinkName,
       serializer: AuditSerializer,
       loggerName: RorAuditLoggerName,
       config: FileAppenderConfig
@@ -83,7 +82,7 @@ object RollingFileBasedAuditSink {
         .build()
 
       val triggeringPolicy = CompositeTriggeringPolicy.createPolicy(
-        SizeBasedTriggeringPolicy.createPolicy(config.maxFileSize.value)
+        SizeBasedTriggeringPolicy.createPolicy(config.maxFileSize.toBytes.toLong.toString)
       )
 
       val rolloverStrategy = DefaultRolloverStrategy
@@ -102,7 +101,7 @@ object RollingFileBasedAuditSink {
           rolloverStrategy,
           log4jConfig
         )
-      ).getOrElse(throw new IllegalStateException("Appender builder returned null"))
+      ).getOrElse(throw new IllegalStateException("Could not create RollingFileAppender"))
 
       appender.start()
       ctx.getLogger(loggerName.value.value).addAppender(appender)

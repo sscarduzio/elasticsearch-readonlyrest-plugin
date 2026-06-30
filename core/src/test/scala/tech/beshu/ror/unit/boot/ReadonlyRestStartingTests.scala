@@ -42,7 +42,6 @@ import tech.beshu.ror.accesscontrol.audit.sink.{
   AuditSinkServiceCreator,
   DataStreamAndIndexBasedAuditSinkServiceCreator
 }
-import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{
@@ -1566,8 +1565,8 @@ class ReadonlyRestStartingTests
           Some(
             AuditingTool.AuditOutputsConfig.WithOutputs(
               NonEmptyList.of(
-                AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig1),
-                AuditSink.Enabled(Block.SinkName.random(), dataStreamSinkConfig2)
+                AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig1),
+                AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig2)
               )
             )
           )

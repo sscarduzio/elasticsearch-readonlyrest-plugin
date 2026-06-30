@@ -22,10 +22,10 @@ import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.accesscontrol.domain.{RequestId, SinkName}
 import tech.beshu.ror.audit.AuditResponseContext
 
-private[audit] abstract class BaseAuditSink(val name: Block.SinkName, auditSerializer: AuditSerializer)
+private[audit] abstract class BaseAuditSink(val name: SinkName, auditSerializer: AuditSerializer)
     extends Block.AuditSink {
 
   final def submit(auditEvent: AuditResponseContext)(

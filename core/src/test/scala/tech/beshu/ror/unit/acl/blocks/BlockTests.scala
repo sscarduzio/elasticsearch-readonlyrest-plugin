@@ -64,7 +64,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
               passingRule("r4") :: Nil
           ),
           audit = Block.Audit.Enabled(),
-          auditSinks = List.empty,
         )
         val requestContext = MockRequestContext.indices
         val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -95,7 +94,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
             ) :: Nil
           ),
           audit = Block.Audit.Enabled(),
-          auditSinks = List.empty,
         )
         val requestContext = MockRequestContext.indices
         val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -125,7 +123,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
         ),
         audit = Block.Audit.Enabled(),
-        auditSinks = List.empty,
       )
       val requestContext = MockRequestContext.indices
       val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -167,7 +164,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
             Nil
         ),
         audit = Block.Audit.Enabled(),
-        auditSinks = List.empty,
       )
       val requestContext = MockRequestContext.indices
       val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -206,7 +202,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
             Nil
         ),
         audit = Block.Audit.Enabled(),
-        auditSinks = List.empty,
       )
       val requestContext = MockRequestContext.indices
       val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -330,7 +325,6 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       policy = Block.Policy.Allow,
       rules = NonEmptyList.fromListUnsafe(rules.toList),
       audit = Block.Audit.Enabled(),
-      auditSinks = List.empty,
     )
 
   private def assertPermitted[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name): Unit = {

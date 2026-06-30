@@ -19,11 +19,10 @@ package tech.beshu.ror.accesscontrol.audit.sink
 import monix.eval.Task
 import org.apache.logging.log4j.{LogManager, Logger}
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
-import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.RorAuditLoggerName
+import tech.beshu.ror.accesscontrol.domain.{RorAuditLoggerName, SinkName}
 
 private[audit] final class LogBasedAuditSink(
-    sinkName: Block.SinkName,
+    sinkName: SinkName,
     serializer: AuditSerializer,
     loggerName: RorAuditLoggerName
 ) extends TextBasedAuditSink(sinkName, serializer) {

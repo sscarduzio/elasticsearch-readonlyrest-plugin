@@ -22,13 +22,14 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
 import tech.beshu.ror.accesscontrol.blocks.Block.*
-import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.EnabledAuditSinks
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.PrecomputedAuditSinks.Available
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.{EnabledAuditSinks, PrecomputedAuditSinks}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
-import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.accesscontrol.domain.{RequestId, SinkName}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
@@ -46,7 +47,6 @@ class Block(
     val policy: Block.Policy,
     val rules: NonEmptyList[Rule],
     val audit: Block.Audit,
-    val auditSinks: List[Block.AuditSink]
 )(
     implicit val loggingContext: LoggingContext
 ) extends RequestIdAwareLogging {
@@ -54,18 +54,21 @@ class Block(
   import Lifter.*
 
   def withResolvedAuditSinks(allSinks: List[Block.AuditSink]): Block = {
-    val resolvedSinks = audit match {
+    val newAudit = audit match {
       case Audit.Disabled =>
         noRequestIdLogger.warn(
           s"Block '${name.value}' has 'audit: disabled', which suppresses ALL audit output including the default ACL log. " +
             s"To keep ACL log visibility while silencing other sinks, use 'enabled_audit_sinks: [${SinkName.defaultAclLog.value}]' instead."
         )
-        Nil
-      case Audit.Enabled(_, EnabledAuditSinks.All)            => allSinks
-      case Audit.Enabled(_, EnabledAuditSinks.Selected(on))   => allSinks.filter(s => on.contains(s.name))
-      case Audit.Enabled(_, EnabledAuditSinks.AllExcept(off)) => allSinks.filter(s => !off.contains(s.name))
+        Audit.Disabled
+      case enabled @ Audit.Enabled(_, EnabledAuditSinks.All, _) =>
+        enabled.copy(precomputedAuditSinks = Available(allSinks))
+      case enabled @ Audit.Enabled(_, EnabledAuditSinks.Selected(on), _) =>
+        enabled.copy(precomputedAuditSinks = Available(allSinks.filter(s => on.contains(s.name))))
+      case enabled @ Audit.Enabled(_, EnabledAuditSinks.AllExcept(off), _) =>
+        enabled.copy(precomputedAuditSinks = Available(allSinks.filter(s => !off.contains(s.name))))
     }
-    new Block(name, policy, rules, audit, resolvedSinks)(loggingContext)
+    new Block(name, policy, rules, newAudit)(loggingContext)
   }
 
   def evaluateForRegularRequest[B <: BlockContext: BlockContextUpdater](
@@ -264,7 +267,6 @@ object Block {
             policy = policy.getOrElse(Block.Policy.Allow),
             rules = sortedRules.map(_.rule),
             audit = audit.getOrElse(Block.Audit.Enabled()),
-            auditSinks = List.empty,
           )
         )
       case Validated.Invalid(errors) =>
@@ -273,21 +275,14 @@ object Block {
     }
   }
 
-  final case class SinkName(value: String) extends AnyVal
-
-  object SinkName {
-    val defaultAclLog: SinkName = SinkName("default_acl_log")
-    val defaultIndexStorage: SinkName = SinkName("default_audit_index")
-    def random(): SinkName = SinkName(java.util.UUID.randomUUID().toString)
-  }
-
   sealed trait Audit
 
   object Audit {
 
     final case class Enabled(
         logAllowedEvents: Boolean = true,
-        enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All
+        enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All,
+        precomputedAuditSinks: PrecomputedAuditSinks = PrecomputedAuditSinks.NotAvailable,
     ) extends Audit
 
     object Enabled {
@@ -299,6 +294,14 @@ object Block {
         final case class Selected(enabledSinks: Set[SinkName]) extends EnabledAuditSinks
 
         final case class AllExcept(disabledSinks: Set[SinkName]) extends EnabledAuditSinks
+      }
+
+      sealed trait PrecomputedAuditSinks
+
+      object PrecomputedAuditSinks {
+        case object NotAvailable extends PrecomputedAuditSinks
+
+        final case class Available(auditSinks: List[Block.AuditSink]) extends PrecomputedAuditSinks
       }
 
     }
