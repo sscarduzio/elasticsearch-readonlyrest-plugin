@@ -84,7 +84,15 @@ dependencyCheck {
         }
     }
     nvd {
+        // Not required when using datafeedUrl — API key is only needed for NVD REST API rate limiting.
+        // Kept here as fallback in case datafeedUrl is removed.
         apiKey = System.getenv('NVD_API_KEY')
+        autoUpdate = true
+        // Use bulk NVD data feeds instead of the NVD REST API. Static .gz files are downloaded
+        // directly — no rate limits, no API key required, resilient to NVD API instability.
+        // {0} is replaced with the year (e.g. 2026).
+        datafeedUrl = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz'
+        validForHours = 12
     }
 }
 
