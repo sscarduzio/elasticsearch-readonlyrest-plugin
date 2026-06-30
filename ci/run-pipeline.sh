@@ -32,7 +32,7 @@ fi
 
 if [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  ./gradlew --no-daemon --stacktrace core:test audit:test
+  ./gradlew --no-daemon --stacktrace core:test audit:test build-base:test
 fi
 
 run_integration_tests() {

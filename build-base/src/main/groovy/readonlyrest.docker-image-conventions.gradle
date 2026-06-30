@@ -71,18 +71,16 @@ tasks.register('prepareMultiplatformBuilder') {
         def supportedPlatforms = output.toString().find(/Platforms: ([^\n]+)/)?.replace("Platforms: ", "")?.split(',')
 
         if (supportedPlatforms == null || !(supportedPlatforms.contains('linux/amd64') && supportedPlatforms.contains('linux/arm64'))) {
-            try {
+            def inspectResult = execOps.exec {
+                executable = 'docker'
+                args = ['buildx', 'inspect', 'ror_kbn_builder']
+                ignoreExitValue = true
+                errorOutput = new ByteArrayOutputStream()
+            }
+            if (inspectResult.exitValue != 0) {
                 execOps.exec {
                     executable = 'docker'
-                    args = ['buildx', 'inspect', 'ror_kbn_builder']
-                    errorOutput = new ByteArrayOutputStream()
-                }
-            } catch (Exception e) {
-                if (e.getMessage().contains("non-zero exit")) {
-                    execOps.exec {
-                        executable = 'docker'
-                        args = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', '--name=ror_kbn_builder']
-                    }
+                    args = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', '--name=ror_kbn_builder']
                 }
             }
 

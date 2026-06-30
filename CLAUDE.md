@@ -46,7 +46,7 @@ ReadonlyREST is an Elasticsearch security plugin providing access control, authe
 ## Module Architecture
 
 - **`core/`** — Shared security logic (Scala 3). Contains access control rules, settings parsing, API endpoints, field-level security, and boot/engine initialization. All ES modules depend on this.
-- **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to a specific ES version's internal APIs. Each module's `gradle.properties` defines `supportedEsVersions` (newest-first CSV of the ES versions it publishes) — the single source of truth from which the module's newest/default ES version and version-range mapping (`EsModuleResolver`) are derived.
+- **`es{version}x/`** — ES version-specific adapter modules (e.g., `es818x`, `es92x`). Each adapts core logic to a specific ES version's internal APIs. Each module's `gradle.properties` defines `supportedEsVersions` (CSV of the ES versions it publishes) — the single source of truth from which the module's newest/default ES version and version-range mapping (`EsModuleResolver`) are derived.
 - **`audit/`** — Audit event module, cross-compiled for Scala 2.11/2.12/2.13/3.3. Published to Maven Central separately.
 - **`ror-shadowed-libs/`** — Shaded dependencies (auto-relocated to `tech.beshu.ror` prefix via Shadow plugin to avoid classpath conflicts with ES internals).
 - **`integration-tests/`** — Docker-based integration tests using TestContainers. Runs sequentially (`maxParallelForks=1`).

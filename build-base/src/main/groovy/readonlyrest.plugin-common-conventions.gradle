@@ -63,7 +63,7 @@ ext.assemblePluginZip = { File contentsDir, esVer, File outputDir = distribution
     outputDir.mkdirs()
     def zip = new File(outputDir, "${pluginFullNameFor(esVer)}.zip")
     zip.delete()
-    ant.zip(destfile: zip, basedir: contentsDir)
+    ant.zip(destfile: zip, basedir: contentsDir, modificationtime: '0')
     writeSha512(zip)
     return zip
 }
