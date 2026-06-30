@@ -29,9 +29,14 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
+import tech.beshu.ror.accesscontrol.audit.EsAuditCapabilities.Index
 import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
 import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
-import tech.beshu.ror.accesscontrol.audit.{AuditEnvironmentContextBasedOnEsNodeSettings, AuditFieldUtils}
+import tech.beshu.ror.accesscontrol.audit.{
+  AuditEnvironmentContextBasedOnEsNodeSettings,
+  AuditFieldUtils,
+  EsAuditCapabilities
+}
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
 import tech.beshu.ror.accesscontrol.domain.{AuditCluster, IndexName, RorAuditLoggerName, RorSettingsIndex}
@@ -44,7 +49,12 @@ import tech.beshu.ror.audit.adapters.{DeprecatedAuditLogSerializerAdapter, Envir
 import tech.beshu.ror.audit.instances.*
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
 import tech.beshu.ror.es.{EsEnv, EsVersion}
-import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
+import tech.beshu.ror.mocks.{
+  MockHttpClientsFactory,
+  MockIndexBasedAuditSinkServiceCreator,
+  MockLdapConnectionPoolProvider,
+  MockedCapabilities
+}
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -53,6 +63,11 @@ import java.time.{Instant, ZoneId, ZonedDateTime}
 import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
+
+  private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
+
+  private val defaultIgnoreRemoteClusterConnectivityProblems = false
+  private val defaultRemoteClusterMode = ClusterMode.RoundRobin
 
   "Audit settings" when {
     "audit is not configured" should {
@@ -191,15 +206,17 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               RorSettingsIndex(IndexName.Full(".readonlyrest")),
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
-              NoOpMocksProvider
+              NoOpMocksProvider,
+              MockedCapabilities.standard
             )
+            .map(_.map(_.core))
             .runSyncUnsafe()
           inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
             auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
-            sink1 shouldBe a[AuditSink.Enabled]
-            val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
+            sink1 shouldBe a[AuditSink.Enabled[?]]
+            val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled[?]].config
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
             sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
@@ -209,16 +226,16 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
             val sink2 = auditingSettings.auditSinks.toList(1)
-            sink2 shouldBe a[AuditSink.Enabled]
-            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled].config
+            sink2 shouldBe a[AuditSink.Enabled[?]]
+            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled[?]].config
             enabledSink2 shouldBe a[Config.LogBasedSink]
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
             sink2Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
 
             val sink3 = auditingSettings.auditSinks.toList(2)
-            sink3 shouldBe a[AuditSink.Enabled]
-            val enabledSink3 = sink3.asInstanceOf[AuditSink.Enabled].config
+            sink3 shouldBe a[AuditSink.Enabled[?]]
+            val enabledSink3 = sink3.asInstanceOf[AuditSink.Enabled[?]].config
             enabledSink3 shouldBe a[Config.EsDataStreamBasedSink]
             val sink3Config = enabledSink3.asInstanceOf[Config.EsDataStreamBasedSink]
             sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
@@ -842,8 +859,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedIndexName = "readonlyrest_audit-2018-12-31",
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
-                  mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  mode = defaultRemoteClusterMode,
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -866,7 +884,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                     AuditClusterNode(Uri.parse("https://user:pass@2.2.2.2:9200"))
                   ),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -888,7 +907,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -916,7 +936,36 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                     AuditClusterNode(Uri.parse("3.3.3.3"))
                   ),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
+                )
+              )
+            }
+            "ignore_es_connectivity_problems flag is set" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: index
+                  |      cluster:
+                  |        nodes: ["1.1.1.1", "2.2.2.2", "3.3.3.3"]
+                  |        mode: round-robin
+                  |        ignore_es_connectivity_problems: true
+                """.stripMargin
+              )
+              assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = RemoteAuditCluster(
+                  nodes = UniqueNonEmptyList.of(
+                    AuditClusterNode(Uri.parse("1.1.1.1")),
+                    AuditClusterNode(Uri.parse("2.2.2.2")),
+                    AuditClusterNode(Uri.parse("3.3.3.3"))
+                  ),
+                  mode = ClusterMode.RoundRobin,
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = true
                 )
               )
             }
@@ -940,7 +989,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedAuditCluster = RemoteAuditCluster(
                 nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                 mode = ClusterMode.RoundRobin,
-                credentials = None
+                credentials = None,
+                ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
               )
             )
           }
@@ -1067,7 +1117,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -1087,7 +1138,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("https://user:pass@1.1.1.1:9200"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -1109,7 +1161,31 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
+                )
+              )
+            }
+            "extended syntax for cluster with failover mode" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                """
+                  |  audit:
+                  |    enabled: true
+                  |    outputs:
+                  |    - type: data_stream
+                  |      cluster:
+                  |        nodes: ["1.1.1.1"]
+                  |        mode: failover
+                """.stripMargin
+              )
+              assertDataStreamAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedDataStreamName = "readonlyrest_audit",
+                expectedAuditCluster = RemoteAuditCluster(
+                  nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
+                  mode = ClusterMode.Failover,
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -1125,6 +1201,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |        mode: round-robin
                   |        username: "user"
                   |        password: "pass"
+                  |        ignore_es_connectivity_problems: true
                 """.stripMargin
               )
               assertDataStreamAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
@@ -1137,7 +1214,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                     AuditClusterNode(Uri.parse("3.3.3.3"))
                   ),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "pass"))
+                  credentials = Some(NodeCredentials("user", "pass")),
+                  ignoreClusterConnectivityProblems = true
                 )
               )
             }
@@ -1156,6 +1234,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |        mode: round-robin
                 |        username: "user"
                 |        password: "pass"
+                |        ignore_es_connectivity_problems: true
               """.stripMargin
             )
 
@@ -1168,7 +1247,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   AuditClusterNode(Uri.parse("2.2.2.2")),
                 ),
                 mode = ClusterMode.RoundRobin,
-                credentials = Some(NodeCredentials("user", "pass"))
+                credentials = Some(NodeCredentials("user", "pass")),
+                ignoreClusterConnectivityProblems = true
               )
             )
           }
@@ -1196,16 +1276,16 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               """.stripMargin
             )
 
-            esVersions.foreach { esVersion =>
+            esVersions.foreach { _ =>
               assertDataStreamAuditSinkSettingsPresent[QueryAuditLogSerializer](
                 settings,
                 expectedDataStreamName = "custom_audit_data_stream",
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 ),
-                esVersion = esVersion
               )
             }
           }
@@ -1230,15 +1310,17 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               RorSettingsIndex(IndexName.Full(".readonlyrest")),
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
-              NoOpMocksProvider
+              NoOpMocksProvider,
+              MockedCapabilities.standard
             )
+            .map(_.map(_.core))
             .runSyncUnsafe()
           inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
             auditingSettings.auditSinks.size should be(3)
 
             val sink1 = auditingSettings.auditSinks.head
-            sink1 shouldBe a[AuditSink.Enabled]
-            val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
+            sink1 shouldBe a[AuditSink.Enabled[?]]
+            val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled[?]].config
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
             sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
@@ -1248,16 +1330,16 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
             val sink2 = auditingSettings.auditSinks.toList(1)
-            sink2 shouldBe a[AuditSink.Enabled]
-            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled].config
+            sink2 shouldBe a[AuditSink.Enabled[?]]
+            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled[?]].config
             enabledSink2 shouldBe a[Config.LogBasedSink]
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
             sink2Config.logSerializer shouldBe a[QueryAuditLogSerializer]
 
             val sink3 = auditingSettings.auditSinks.toList(2)
-            sink3 shouldBe a[AuditSink.Enabled]
-            val enabledSink3 = sink3.asInstanceOf[AuditSink.Enabled].config
+            sink3 shouldBe a[AuditSink.Enabled[?]]
+            val enabledSink3 = sink3.asInstanceOf[AuditSink.Enabled[?]].config
             enabledSink3 shouldBe a[Config.EsDataStreamBasedSink]
             val sink3Config = enabledSink3.asInstanceOf[Config.EsDataStreamBasedSink]
             sink3Config.rorAuditDataStream.dataStream should be(fullDataStreamName("readonlyrest_audit"))
@@ -1284,8 +1366,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               RorSettingsIndex(IndexName.Full(".readonlyrest")),
               MockHttpClientsFactory,
               MockLdapConnectionPoolProvider,
-              NoOpMocksProvider
+              NoOpMocksProvider,
+              MockedCapabilities.standard
             )
+            .map(_.map(_.core))
             .runSyncUnsafe()
           inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
             auditingSettings.auditSinks.size should be(2)
@@ -1294,8 +1378,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             sink1 should be(AuditSink.Disabled)
 
             val sink2 = auditingSettings.auditSinks.toList(1)
-            sink2 shouldBe a[AuditSink.Enabled]
-            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled].config
+            sink2 shouldBe a[AuditSink.Enabled[?]]
+            val enabledSink2 = sink2.asInstanceOf[AuditSink.Enabled[?]].config
             enabledSink2 shouldBe a[Config.LogBasedSink]
             val sink2Config = enabledSink2.asInstanceOf[Config.LogBasedSink]
             sink2Config.loggerName should be(RorAuditLoggerName("readonlyrest_audit"))
@@ -1470,7 +1554,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               assertInvalidSettings(
                 settings,
                 expectedErrorMessage =
-                  "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
+                  "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin,failover]"
               )
             }
             "remote cluster credentials malformed" when {
@@ -1490,7 +1574,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = "Audit output configuration is missing the ‘password’ field."
+                  expectedErrorMessage = "Audit output configuration is missing the 'password' field."
                 )
               }
               "username not provided" in {
@@ -1509,7 +1593,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = "Audit output configuration is missing the ‘username’ field."
+                  expectedErrorMessage = "Audit output configuration is missing the 'username' field."
                 )
               }
             }
@@ -1589,13 +1673,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 """.stripMargin
               )
 
-              esVersions.foreach { esVersion =>
+              esVersions.foreach { _ =>
                 assertInvalidSettings(
                   settings,
                   expectedErrorMessage =
-                    s"Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0, " +
-                      s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
-                  esVersion = esVersion
+                    "Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0. Use 'index' type or upgrade to 7.9.0 or later.",
+                  auditCapabilities = Index(MockIndexBasedAuditSinkServiceCreator)
                 )
               }
             }
@@ -1628,13 +1711,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             assertInvalidSettings(
               settings,
               expectedErrorMessage =
-                "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
+                "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]",
+              auditCapabilities = MockedCapabilities.standard
             )
 
             assertInvalidSettings(
               settings,
               expectedErrorMessage = "Unsupported type of audit output: custom_type. Supported types: [index, log]",
-              esVersion = EsVersion(7, 8, 0)
+              auditCapabilities = MockedCapabilities.legacy
             )
           }
           "'outputs' array is empty" in {
@@ -1813,7 +1897,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -1834,7 +1919,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -1907,7 +1993,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("http://user:test@1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = Some(NodeCredentials("user", "test"))
+                  credentials = Some(NodeCredentials("user", "test")),
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -1927,7 +2014,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = RemoteAuditCluster(
                   nodes = UniqueNonEmptyList.of(AuditClusterNode(Uri.parse("1.1.1.1"))),
                   mode = ClusterMode.RoundRobin,
-                  credentials = None
+                  credentials = None,
+                  ignoreClusterConnectivityProblems = defaultIgnoreRemoteClusterConnectivityProblems
                 )
               )
             }
@@ -2029,11 +2117,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private lazy val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-
-  private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
+  private def factory() = {
     implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, defaultTestEsNodeSettings)
+    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, defaultTestEsNodeSettings)
     new RawRorSettingsBasedCoreFactory(esEnv)
   }
 
@@ -2059,21 +2145,25 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
     inside(core) { case Right(Core(_, RorDependencies(_, _, _), None)) => }
   }
 
-  private def assertSettings(settings: RawRorSettings, expectedAuditSinks: NonEmptyList[AuditSink]): Unit = {
+  private def assertSettings(settings: RawRorSettings, expectedAuditSinks: NonEmptyList[AuditSink[?]]): Unit = {
     val core = factory()
       .createCoreFrom(
         settings,
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
     inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(settings))) =>
       settings.auditSinks should be(expectedAuditSinks)
@@ -2091,16 +2181,18 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
     inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
-      headSink shouldBe a[AuditSink.Enabled]
+      headSink shouldBe a[AuditSink.Enabled[?]]
 
-      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled[?]].config
       headSinkConfig shouldBe a[Config.EsIndexBasedSink]
 
       val sinkConfig = headSinkConfig.asInstanceOf[Config.EsIndexBasedSink]
@@ -2114,24 +2206,25 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
       settings: RawRorSettings,
       expectedDataStreamName: NonEmptyString,
       expectedAuditCluster: AuditCluster,
-      esVersion: EsVersion = defaultEsVersionForTests
   ) = {
-    val core = factory(esVersion)
+    val core = factory()
       .createCoreFrom(
         settings,
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
     inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
-      headSink shouldBe a[AuditSink.Enabled]
+      headSink shouldBe a[AuditSink.Enabled[?]]
 
-      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled[?]].config
       headSinkConfig shouldBe a[Config.EsDataStreamBasedSink]
 
       val sinkConfig = headSinkConfig.asInstanceOf[Config.EsDataStreamBasedSink]
@@ -2143,22 +2236,23 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
   private def serializer(
       settings: RawRorSettings,
-      esVersion: EsVersion = defaultEsVersionForTests
   ): AuditLogSerializer = {
-    val core = factory(esVersion)
+    val core = factory()
       .createCoreFrom(
         settings,
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
 
     core match {
       case Right(Core(_, _, Some(auditingSettings))) =>
         val headSink = auditingSettings.auditSinks.head
-        val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+        val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled[?]].config
         headSinkConfig.logSerializer
       case _ =>
         throw new IllegalStateException("Expected auditingSettings are not present")
@@ -2175,16 +2269,18 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        MockedCapabilities.standard
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
     inside(core) { case Right(Core(_, RorDependencies(_, _, _), Some(auditingSettings))) =>
       auditingSettings.auditSinks.size should be(1)
 
       val headSink = auditingSettings.auditSinks.head
-      headSink shouldBe a[AuditSink.Enabled]
+      headSink shouldBe a[AuditSink.Enabled[?]]
 
-      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled].config
+      val headSinkConfig = headSink.asInstanceOf[AuditSink.Enabled[?]].config
       headSinkConfig shouldBe a[Config.LogBasedSink]
 
       val sinkConfig = headSinkConfig.asInstanceOf[Config.LogBasedSink]
@@ -2196,16 +2292,18 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   private def assertInvalidSettings(
       settings: RawRorSettings,
       expectedErrorMessage: String,
-      esVersion: EsVersion = defaultEsVersionForTests
+      auditCapabilities: EsAuditCapabilities = MockedCapabilities.standard
   ): Unit = {
-    val core = factory(esVersion)
+    val core = factory()
       .createCoreFrom(
         settings,
         RorSettingsIndex(IndexName.Full(".readonlyrest")),
         MockHttpClientsFactory,
         MockLdapConnectionPoolProvider,
-        NoOpMocksProvider
+        NoOpMocksProvider,
+        auditCapabilities
       )
+      .map(_.map(_.core))
       .runSyncUnsafe()
     inside(core) { case Left(errors) =>
       errors.length should be(1)

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.audit
 
 import cats.Show
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits.*
 import monix.eval.Task
 import org.json.JSONObject
@@ -30,11 +30,14 @@ import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.domain.AuditCluster.*
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.logging.ResponseContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.audit.{AuditEnvironmentContext, AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.EsNodeSettings
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -175,35 +178,41 @@ final class AuditingTool private (auditSinks: NonEmptyList[BaseAuditSink])(
 
 object AuditingTool extends RequestIdAwareLogging {
 
-  final case class AuditSettings(auditSinks: NonEmptyList[AuditSettings.AuditSink], esNodeSettings: EsNodeSettings)
+  final case class AuditSettings[+C](auditSinks: NonEmptyList[AuditSink[C]], esNodeSettings: EsNodeSettings)
 
   object AuditSettings {
 
-    sealed trait AuditSink
+    type Standard = AuditSettings[AuditSink.Config.Standard]
+    type Legacy = AuditSettings[AuditSink.Config.Legacy]
+
+    sealed trait AuditSink[+C]
 
     object AuditSink {
-      final case class Enabled(config: AuditSink.Config) extends AuditSink
+      final case class Enabled[C <: Config](config: C) extends AuditSink[C]
 
-      case object Disabled extends AuditSink
+      case object Disabled extends AuditSink[Nothing]
 
       sealed trait Config {
         def logSerializer: AuditLogSerializer
       }
 
       object Config {
+        sealed trait Standard extends Config
+        sealed trait Legacy extends Config
 
         final case class EsIndexBasedSink(
             logSerializer: AuditLogSerializer,
             rorAuditIndexTemplate: RorAuditIndexTemplate,
             auditCluster: AuditCluster
-        ) extends Config
+        ) extends Standard
+            with Legacy
 
         object EsIndexBasedSink {
 
           val default: EsIndexBasedSink = EsIndexBasedSink(
             logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             rorAuditIndexTemplate = RorAuditIndexTemplate.default,
-            auditCluster = AuditCluster.LocalAuditCluster,
+            auditCluster = LocalAuditCluster,
           )
 
         }
@@ -212,19 +221,21 @@ object AuditingTool extends RequestIdAwareLogging {
             logSerializer: AuditLogSerializer,
             rorAuditDataStream: RorAuditDataStream,
             auditCluster: AuditCluster
-        ) extends Config
+        ) extends Standard
 
         object EsDataStreamBasedSink {
 
           val default: EsDataStreamBasedSink = EsDataStreamBasedSink(
             logSerializer = new BlockVerbosityAwareAuditLogSerializer,
             rorAuditDataStream = RorAuditDataStream.default,
-            auditCluster = AuditCluster.LocalAuditCluster,
+            auditCluster = LocalAuditCluster,
           )
 
         }
 
-        final case class LogBasedSink(logSerializer: AuditLogSerializer, loggerName: RorAuditLoggerName) extends Config
+        final case class LogBasedSink(logSerializer: AuditLogSerializer, loggerName: RorAuditLoggerName)
+            extends Standard
+            with Legacy
 
         object LogBasedSink {
 
@@ -243,74 +254,90 @@ object AuditingTool extends RequestIdAwareLogging {
 
   final case class CreationError(message: String) extends AnyVal
 
-  def create(settings: AuditSettings, auditSinkServiceCreator: AuditSinkServiceCreator)(
-      implicit clock: Clock,
-      loggingContext: LoggingContext
+  def create(
+      settings: AuditSettings.Legacy,
+      creator: IndexBasedAuditSinkServiceCreator,
+      httpClientsFactory: HttpClientsFactory
+  )(
+      using Clock,
+      LoggingContext
   ): Task[Either[NonEmptyList[CreationError], Option[AuditingTool]]] = {
-    createAuditSinks(settings, auditSinkServiceCreator).map {
-      _.map {
-        case Some(auditSinks) =>
-          implicit val auditEnvironmentContext: AuditEnvironmentContext =
-            new AuditEnvironmentContextBasedOnEsNodeSettings(settings.esNodeSettings)
-          noRequestIdLogger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
-          Some(new AuditingTool(auditSinks))
-        case None =>
-          noRequestIdLogger.info("The audit is disabled because no output is enabled")
-          None
-      }.toEither
-        .leftMap { errors =>
-          errors.map(error => CreationError(error.message))
-        }
+    val sinkTasks = settings.auditSinks.map[Task[Either[CreationError, Option[SupportedAuditSink]]]] {
+      case Enabled(config: AuditSink.Config.EsIndexBasedSink) =>
+        (for {
+          service <- EitherT(creator.createIndexService(config.auditCluster, httpClientsFactory))
+            .leftMap(e => CreationError(e.message))
+          auditSink <- EitherT.right(createIndexSink(config, service))
+        } yield Some(auditSink)).value
+      case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
+        Task.delay(Right(new LogBasedAuditSink(serializer, loggerName).some))
+      case Disabled =>
+        Task.pure(Right(None))
     }
+    createInternal(settings, sinkTasks)
   }
 
-  private def createAuditSinks(settings: AuditSettings, auditSinkServiceCreator: AuditSinkServiceCreator)(
-      using Clock
-  ): Task[ValidatedNel[CreationError, Option[NonEmptyList[SupportedAuditSink]]]] = {
-    settings.auditSinks.toList
-      .map[Task[Validated[CreationError, Option[SupportedAuditSink]]]] {
-        case Enabled(config: AuditSink.Config.EsIndexBasedSink) =>
-          val serviceCreator: IndexBasedAuditSinkServiceCreator = auditSinkServiceCreator match {
-            case creator: DataStreamAndIndexBasedAuditSinkServiceCreator => creator
-            case creator: IndexBasedAuditSinkServiceCreator              => creator
-          }
-          createIndexSink(config, serviceCreator).map(_.some.valid)
-        case Enabled(config: AuditSink.Config.EsDataStreamBasedSink) =>
-          auditSinkServiceCreator match {
-            case creator: DataStreamAndIndexBasedAuditSinkServiceCreator =>
-              createDataStreamSink(config, creator).map(_.map(_.some))
-            case _: IndexBasedAuditSinkServiceCreator =>
-              // todo improvement - make this state impossible
-              Task.raiseError(new IllegalStateException("Data stream audit sink is not supported in this version"))
-          }
-        case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
-          Task.delay(new LogBasedAuditSink(serializer, loggerName).some.valid)
-        case Disabled =>
-          Task.pure(None.valid)
-      }
-      .sequence
+  def create(
+      settings: AuditSettings.Standard,
+      indexCreator: IndexBasedAuditSinkServiceCreator,
+      dataStreamCreator: DataStreamBasedAuditSinkServiceCreator,
+      httpClientsFactory: HttpClientsFactory
+  )(
+      using Clock,
+      LoggingContext
+  ): Task[Either[NonEmptyList[CreationError], Option[AuditingTool]]] = {
+    val sinkTasks = settings.auditSinks.map[Task[Either[CreationError, Option[SupportedAuditSink]]]] {
+      case Enabled(config: AuditSink.Config.EsIndexBasedSink) =>
+        (for {
+          service <- EitherT(indexCreator.createIndexService(config.auditCluster, httpClientsFactory))
+            .leftMap(e => CreationError(e.message))
+          auditSink <- EitherT.right(createIndexSink(config, service))
+        } yield Some(auditSink)).value
+      case Enabled(config: AuditSink.Config.EsDataStreamBasedSink) =>
+        (for {
+          service <- EitherT(dataStreamCreator.createDataStreamService(config.auditCluster, httpClientsFactory))
+            .leftMap(e => CreationError(e.message))
+          auditSink <- EitherT(createDataStreamSink(config, service))
+        } yield Some(auditSink)).value
+      case Enabled(AuditSink.Config.LogBasedSink(serializer, loggerName)) =>
+        Task.delay(Right(new LogBasedAuditSink(serializer, loggerName).some))
+      case Disabled =>
+        Task.pure(Right(None))
+    }
+    createInternal(settings, sinkTasks)
+  }
+
+  private def createInternal[C](
+      settings: AuditSettings[C],
+      sinkTasks: NonEmptyList[Task[Either[CreationError, Option[SupportedAuditSink]]]]
+  )(
+      using LoggingContext
+  ): Task[Either[NonEmptyList[CreationError], Option[AuditingTool]]] = {
+    sinkTasks.sequence
       .map { sinkCreationResults =>
-        sinkCreationResults.foldLeft[(List[CreationError], List[SupportedAuditSink])](List.empty, List.empty) {
-          case ((errorsAcc, sinksAcc), result) =>
-            result match {
-              case Validated.Valid(Some(auditSink)) => (errorsAcc, sinksAcc :+ auditSink)
-              case Validated.Valid(None)            => (errorsAcc, sinksAcc)
-              case Validated.Invalid(error)         => (errorsAcc :+ error, sinksAcc)
-            }
-        }
+        val (errors, sinks) = sinkCreationResults.toList.separate
+        NonEmptyList.fromList(errors).toLeft(NonEmptyList.fromList(sinks.flatten))
       }
-      .map { case (errors, sinks) =>
-        NonEmptyList.fromList(errors).toInvalid(NonEmptyList.fromList(sinks))
+      .map {
+        _.map {
+          case Some(auditSinks) =>
+            implicit val auditEnvironmentContext: AuditEnvironmentContext =
+              new AuditEnvironmentContextBasedOnEsNodeSettings(settings.esNodeSettings)
+            noRequestIdLogger.info(s"The audit is enabled with the given outputs: [${auditSinks.toList.show}]")
+            Some(new AuditingTool(auditSinks))
+          case None =>
+            noRequestIdLogger.info("The audit is disabled because no output is enabled")
+            None
+        }
       }
   }
 
   private def createIndexSink(
       config: AuditSink.Config.EsIndexBasedSink,
-      serviceCreator: IndexBasedAuditSinkServiceCreator
+      service: IndexBasedAuditSinkService
   )(
       using Clock
   ): Task[SupportedAuditSink] = Task.delay {
-    val service = serviceCreator.index(config.auditCluster)
     EsIndexBasedAuditSink(
       serializer = config.logSerializer,
       indexTemplate = config.rorAuditIndexTemplate,
@@ -320,20 +347,11 @@ object AuditingTool extends RequestIdAwareLogging {
 
   private def createDataStreamSink(
       config: AuditSink.Config.EsDataStreamBasedSink,
-      serviceCreator: DataStreamAndIndexBasedAuditSinkServiceCreator
-  ): Task[Validated[CreationError, SupportedAuditSink]] =
-    Task
-      .delay(serviceCreator.dataStream(config.auditCluster))
-      .flatMap { auditSinkService =>
-        EsDataStreamBasedAuditSink
-          .create(
-            config.logSerializer,
-            config.rorAuditDataStream,
-            auditSinkService,
-            config.auditCluster
-          )
-          .map(_.leftMap(error => CreationError(error.message)).toValidated)
-      }
+      service: DataStreamBasedAuditSinkService
+  ): Task[Either[CreationError, SupportedAuditSink]] =
+    EsDataStreamBasedAuditSink
+      .create(config.logSerializer, config.rorAuditDataStream, service, config.auditCluster)
+      .map(_.leftMap(error => CreationError(error.message)))
 
   private type SupportedAuditSink = EsIndexBasedAuditSink | EsDataStreamBasedAuditSink | LogBasedAuditSink
 

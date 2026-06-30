@@ -23,7 +23,9 @@ import monix.eval.Task
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.*
 import tech.beshu.ror.accesscontrol.EnabledAccessControlList.AccessControlListStaticContext
-import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
+import tech.beshu.ror.accesscontrol.audit.{EsAuditCapabilities, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.{RuleDefinition, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -33,6 +35,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.*
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.*
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult.AuditSetup.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.*
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
@@ -59,7 +64,7 @@ import tech.beshu.ror.utils.yaml.YamlOps
 final case class Core(
     accessControl: AccessControlList,
     dependencies: RorDependencies,
-    auditingSettings: Option[AuditingTool.AuditSettings]
+    auditingSettings: Option[AuditSettings[AuditSink.Config]]
 )
 
 trait CoreFactory {
@@ -69,8 +74,43 @@ trait CoreFactory {
       rorSettingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
-  ): Task[Either[NonEmptyList[CoreCreationError], Core]]
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
+  ): Task[Either[NonEmptyList[CoreCreationError], CoreCreationResult]]
+
+}
+
+object CoreFactory {
+
+  final class CoreCreationResult(val core: Core, val auditSetup: Option[CoreCreationResult.AuditSetup])
+
+  object CoreCreationResult {
+    sealed trait AuditSetup
+
+    object AuditSetup {
+
+      final class Index(
+          val capability: EsAuditCapabilities.Index,
+          val settings: AuditSettings.Legacy
+      ) extends AuditSetup
+
+      final class IndexWithDataStream(
+          val capability: EsAuditCapabilities.IndexWithDataStream,
+          val settings: AuditSettings.Standard
+      ) extends AuditSetup
+
+    }
+
+    extension (audit: AuditSetup) {
+
+      def settings: AuditSettings[AuditSink.Config] = audit match {
+        case index: AuditSetup.Index                => index.settings
+        case stream: AuditSetup.IndexWithDataStream => stream.settings
+      }
+
+    }
+
+  }
 
 }
 
@@ -84,8 +124,9 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       rorSettingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
-  ): Task[Either[NonEmptyList[CoreCreationError], Core]] = {
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
+  ): Task[Either[NonEmptyList[CoreCreationError], CoreCreationResult]] = {
     rorSettings.settingsJson \\ Attributes.rorSectionName match {
       case Nil =>
         createCoreFromRorSection(
@@ -93,7 +134,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           rorSettingsIndex,
           httpClientFactory,
           ldapConnectionPoolProvider,
-          mocksProvider
+          mocksProvider,
+          auditCapabilities
         )
       case rorSection :: Nil =>
         createCoreFromRorSection(
@@ -101,7 +143,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           rorSettingsIndex,
           httpClientFactory,
           ldapConnectionPoolProvider,
-          mocksProvider
+          mocksProvider,
+          auditCapabilities
         )
       case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
     }
@@ -112,7 +155,8 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       rorSettingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
   ) = {
     val resolver = new JsonStaticVariablesResolver(
       systemContext.envVarsProvider,
@@ -120,7 +164,14 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     )
     resolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
-        createFrom(resolvedRorSection, rorSettingsIndex, httpClientFactory, ldapConnectionPoolProvider, mocksProvider)
+        createFrom(
+          resolvedRorSection,
+          rorSettingsIndex,
+          httpClientFactory,
+          ldapConnectionPoolProvider,
+          mocksProvider,
+          auditCapabilities
+        )
           .map {
             case Right(settings) =>
               Right(settings)
@@ -141,20 +192,29 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       settingsIndex: RorSettingsIndex,
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-      mocksProvider: MocksProvider
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
   ) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
-      core <-
+      result <-
         if (!enabled) {
-          AsyncDecoderCreator.from(Decoder.const(Core(DisabledAccessControlList, RorDependencies.noOp, None)))
+          AsyncDecoderCreator.from(
+            Decoder.const(new CoreCreationResult(Core(DisabledAccessControlList, RorDependencies.noOp, None), None))
+          )
         } else {
           for {
             globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(settingsIndex))
-            core <- coreDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings, mocksProvider)
-          } yield core
+            result <- coreDecoder(
+              httpClientFactory,
+              ldapConnectionPoolProvider,
+              globalSettings,
+              mocksProvider,
+              auditCapabilities
+            )
+          } yield result
         }
-    } yield core
+    } yield result
 
     decoder(HCursor.fromJson(settingsJson))
   }
@@ -343,13 +403,27 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     }
   }
 
+  private def auditSettingsDecoder(
+      capabilities: EsAuditCapabilities
+  )(esEnv: EsEnv): Decoder[Option[CoreCreationResult.AuditSetup]] = capabilities match {
+    case cap: EsAuditCapabilities.Index =>
+      AuditingSettingsDecoder
+        .legacy(esEnv)
+        .map(_.map(settings => new CoreCreationResult.AuditSetup.Index(cap, settings)))
+    case cap: EsAuditCapabilities.IndexWithDataStream =>
+      AuditingSettingsDecoder
+        .standard(esEnv)
+        .map(_.map(settings => new CoreCreationResult.AuditSetup.IndexWithDataStream(cap, settings)))
+  }
+
   private def coreDecoder(
       httpClientFactory: HttpClientsFactory,
       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
       globalSettings: GlobalSettings,
-      mocksProvider: MocksProvider
-  ): AsyncDecoder[Core] = {
-    AsyncDecoderCreator.instance[Core] { c =>
+      mocksProvider: MocksProvider,
+      auditCapabilities: EsAuditCapabilities
+  ): AsyncDecoder[CoreCreationResult] = {
+    AsyncDecoderCreator.instance[CoreCreationResult] { c =>
       val decoder = for {
         dynamicVariableTransformationAliases <-
           AsyncDecoderCreator.from(
@@ -361,7 +435,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             dynamicVariableTransformationAliases.items.map(_.alias)
           )
         )
-        auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance(esEnv))
+        auditSettings <- AsyncDecoderCreator.from(auditSettingsDecoder(auditCapabilities)(esEnv))
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(
           ExternalAuthenticationServicesDecoder.instance(httpClientFactory)
@@ -452,7 +526,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
             obfuscatedHeaders
           )
         ): AccessControlList
-        Core(accessControl, rorDependencies, auditingTools)
+        new CoreCreationResult(Core(accessControl, rorDependencies, auditSettings.map(_.settings)), auditSettings)
       }
       decoder.apply(c)
     }

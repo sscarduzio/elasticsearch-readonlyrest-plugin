@@ -31,14 +31,15 @@ import org.scalatest.{EitherValues, Inside, OptionValues}
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.AccessControlList
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsFile}
+import tech.beshu.ror.accesscontrol.factory.CoreFactory.CoreCreationResult
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.boot.RorInstance.TestSettings
 import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.mocks.MockedCapabilities
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -211,16 +212,16 @@ class IndexSettingsRelatedRorCoreTest
 
   private def createReadonlyRestBoot(factory: CoreFactory, indexDocumentManager: IndexDocumentManager) = {
     implicit val systemContext: SystemContext = SystemContext.default
-    ReadonlyRest.create(factory, indexDocumentManager, mock[AuditSinkServiceCreator])
+    ReadonlyRest.create(factory, indexDocumentManager, MockedCapabilities.standard)
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory, rawRorSettings: RawRorSettings): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
-      .expects(where { (settings: RawRorSettings, _, _, _, _) =>
+      .expects(where { (settings: RawRorSettings, _, _, _, _, _) =>
         settings == rawRorSettings
       })
       .once()
-      .returns(Task.now(Right(Core(mockAccessControl, RorDependencies.noOp, None))))
+      .returns(Task.now(Right(new CoreCreationResult(Core(mockAccessControl, RorDependencies.noOp, None), None))))
     mockedCoreFactory
   }
 

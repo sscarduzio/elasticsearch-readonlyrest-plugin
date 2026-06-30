@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -25,13 +26,17 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
+import tech.beshu.ror.accesscontrol.audit.sink.{
+  AuditDataStreamCreator,
+  DataStreamBasedAuditSinkServiceCreator,
+  IndexBasedAuditSinkServiceCreator
+}
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.audit.instances.BlockVerbosityAwareAuditLogSerializer
 import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, DataStreamService, IndexBasedAuditSinkService}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.TestsUtils.{defaultTestEsNodeSettings, fullDataStreamName, header, nes}
@@ -208,12 +213,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
     val auditingTool = AuditingTool
       .create(
         settings = settings,
-        auditSinkServiceCreator = new DataStreamAndIndexBasedAuditSinkServiceCreator {
-          override def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService =
-            dataStreamBasedAuditSinkService
-
-          override def index(cluster: AuditCluster): IndexBasedAuditSinkService = indexBasedAuditSinkService
-        }
+        indexCreator = (_: AuditCluster) => indexBasedAuditSinkService,
+        dataStreamCreator = (_: AuditCluster) => dataStreamBasedAuditSinkService,
+        httpClientsFactory = MockHttpClientsFactory,
       )
       .runSyncUnsafe()
       .toOption
@@ -271,9 +273,9 @@ class AuditOutputFormatTests extends AnyWordSpec with BaseYamlLoadedAccessContro
       .expects(RorAuditDataStream.default.dataStream)
       .returning(Task.now(true))
 
-    override def dataStreamCreator: AuditDataStreamCreator = AuditDataStreamCreator(
-      NonEmptyList.one(mockedDataStreamService)
-    )
+    override def dataStreamCreator: Resource[Task, AuditDataStreamCreator] = Resource.pure {
+      AuditDataStreamCreator(NonEmptyList.one(mockedDataStreamService))
+    }
 
   }
 
