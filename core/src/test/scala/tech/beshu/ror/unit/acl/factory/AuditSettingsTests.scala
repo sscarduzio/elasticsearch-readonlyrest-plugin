@@ -26,6 +26,7 @@ import org.json.JSONObject
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{Assertion, Inside}
+import squants.information.Megabytes
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditOutputsConfig.WithOutputs
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
@@ -386,7 +387,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedLoggerName = "readonlyrest_audit",
               expectedFileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
                 filePath = java.nio.file.Paths.get("/tmp/ror-audit-test.log"),
-                maxFileSize = FileSize.from("100MB").toOption.get,
+                maxFileSize = Megabytes(100),
                 maxFiles = positiveInt(7)
               )
             )
@@ -410,7 +411,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               expectedLoggerName = "readonlyrest_audit",
               expectedFileAppender = Config.RollingFileBasedSink.FileAppenderConfig(
                 filePath = java.nio.file.Paths.get("/tmp/ror-audit-test.log"),
-                maxFileSize = FileSize.from("50MB").toOption.get,
+                maxFileSize = Megabytes(50),
                 maxFiles = positiveInt(3)
               )
             )

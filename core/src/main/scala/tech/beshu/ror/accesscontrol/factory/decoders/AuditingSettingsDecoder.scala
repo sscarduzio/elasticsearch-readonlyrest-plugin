@@ -23,7 +23,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.*
 import io.circe.Decoder.*
 import io.lemonlabs.uri.Uri
-import squants.information.Information
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config.{
@@ -64,6 +63,7 @@ import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, Au
 import tech.beshu.ror.constants.EsFeatureVersions
 import tech.beshu.ror.es.{EsEnv, EsVersion}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.FromString
 import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -201,20 +201,14 @@ object AuditingSettingsDecoder extends RequestIdAwareLogging {
       for {
         filePath <- c.downField("file_path").as[String].map(java.nio.file.Paths.get(_))
         maxFileSize <- c.downField("max_file_size").as[String].flatMap { raw =>
-          Information
-            .parseString(raw)
-            .toEither
-            .flatMap(info =>
-              if (info.toBytes > 0.0) Right(info)
-              else Left(new Exception(""))
-            )
+          FromString.information
+            .decode(raw)
+            .filterOrElse(_.toBytes > 0.0, s"Size must be greater than zero")
             .left
-            .map { _ =>
+            .map { msg =>
               DecodingFailure(
                 AclCreationErrorCoders.stringify(
-                  auditSettingsError(
-                    s"Cannot parse audit 'max_file_size': '$raw'. Expected a positive size like '100 MB', '1 GB'"
-                  )
+                  auditSettingsError(s"Invalid audit 'max_file_size': $msg")
                 ),
                 Nil
               )
