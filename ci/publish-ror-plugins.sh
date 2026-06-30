@@ -19,27 +19,29 @@ cleanup_docker_and_build() {
   find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
 }
 
-# Emits one line per ES module in the given generation: "<module> <ver> ..." (versions newest-first).
+# Emits one ES module name per line for the given generation (newest module first).
 list_es_modules() {
   local es_major=$1
-  local modules_file
-  modules_file=$(mktemp)
-  ./gradlew printEsModuleGroups "-PesMajor=$es_major" "-PoutputFile=$modules_file" </dev/null >/dev/null
-  cat "$modules_file"
-  rm -f "$modules_file"
+  ./gradlew printEsModules "-PesMajor=$es_major" --quiet </dev/null
 }
 
-# Builds the module's base version once, verifies bytecode reuse for the newest version (release only),
-# then repackages and publishes every supported ES version.
-#   $1 mode (upload_pre|release)  $2 ror_version  $3 module  $4 es_jars_dir  $@(5..) versions (newest-first)
-publish_module_versions() {
-  local mode=$1 ror_version=$2 module=$3 es_jars_dir=$4
-  shift 4
-  local versions=("$@")
-  local dist_dir="${module}/build/distributions"
+# Emits two lines: the base ES version on line 1, all supported versions space-separated on line 2.
+list_es_module_versions() {
+  local module=$1
+  ./gradlew ":${module}:printEsVersionsForModule" --quiet </dev/null
+}
 
-  local base_version
-  base_version=$(printf '%s\n' "${versions[@]}" | sort -V | head -1)
+# Builds the module's base version once, verifies bytecode reuse for the newest version,
+# then repackages and publishes every supported ES version.
+#   $1 mode (upload_pre|release)  $2 ror_version  $3 module
+publish_module_versions() {
+  local mode=$1 ror_version=$2 module=$3
+  local dist_dir="${module}/build/distributions"
+  local es_jars_dir
+  es_jars_dir=$(mktemp -d)
+
+  local base_version versions
+  { read -r base_version; read -r -a versions; } < <(list_es_module_versions "$module")
   if [ -z "$base_version" ]; then
     echo "ERROR: no versions for module $module"
     return 1
@@ -48,15 +50,13 @@ publish_module_versions() {
   echo ""
   echo ">>> Module $module: base ES $base_version, ${#versions[@]} version(s): ${versions[*]}"
 
-  if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
-    echo "ERROR: base build failed for $module @ $base_version"
+  if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
     return 1
   fi
 
-  if [ "$mode" = "release" ]; then
-    if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
-      return 1
-    fi
+  if ! ./gradlew ":${module}:buildRorPluginZip" "-PesVersion=${base_version}" </dev/null; then
+    echo "ERROR: base build failed for $module @ $base_version"
+    return 1
   fi
 
   local version
@@ -90,9 +90,12 @@ publish_module_versions() {
     rm -f "$zip" "${zip}.sha512"
   done
 
-  rm -rf "${es_jars_dir:?}/"*
-  find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
-  docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" >/dev/null 2>&1 || true
+  rm -rf "$es_jars_dir"
+  if [ "$mode" = "release" ]; then
+    find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+    docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" >/dev/null 2>&1 || true
+  fi
+
   return 0
 }
 
@@ -149,23 +152,13 @@ publish_ror_plugins() {
 
   export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
 
-  local es_jars_dir
-  es_jars_dir=$(mktemp -d)
-
-  local modules
-  modules=$(list_es_modules "$es_major")
-
-  local line
-  while IFS= read -r line; do
-    [ -z "$line" ] && continue
-    local module
-    module=$(echo "$line" | awk '{print $1}')
-    local versions
-    read -r -a versions <<< "$(echo "$line" | cut -d' ' -f2-)"
+  local module
+  while IFS= read -r module; do
+    [ -z "$module" ] && continue
 
     local attempt
     for attempt in 1 2 3; do
-      if time publish_module_versions "$mode" "$ror_version" "$module" "$es_jars_dir" "${versions[@]}"; then
+      if time publish_module_versions "$mode" "$ror_version" "$module"; then
         break
       fi
       if [ "$attempt" -lt 3 ]; then
@@ -175,11 +168,8 @@ publish_ror_plugins() {
         log_disk_usage "after retry cleanup ($module attempt $attempt)"
       else
         echo "ERROR: module $module failed after 3 attempts"
-        rm -rf "$es_jars_dir"
         return 1
       fi
     done
-  done <<< "$modules"
-
-  rm -rf "$es_jars_dir"
+  done < <(list_es_modules "$es_major")
 }

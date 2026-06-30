@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 import tech.beshu.ror.gradle.RorTaskFinder
-import tech.beshu.ror.gradle.PrintEsModuleGroupsTask
+import tech.beshu.ror.gradle.PrintEsModulesTask
 
 plugins {
     id 'base'
@@ -56,12 +56,8 @@ tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
     dependsOn it.findRorTaskForEsVersion('pushRorPreBuildDockerImage')
 }
 
-// Emits the per-module ES-version groups for one ES generation (major), so the publishing pipeline can
-// build each module once and repackage the rest. Each esXXx module owns its publishable versions via the
-// supportedEsVersions gradle property (the single source of truth).
-// Usage: ./gradlew printEsModuleGroups -PesMajor=8 -PoutputFile=/tmp/es8.groups
-tasks.register("printEsModuleGroups", PrintEsModuleGroupsTask)
-
+// Usage: ./gradlew printEsModules -PesMajor=8 --quiet
+tasks.register("printEsModules", PrintEsModulesTask)
 
 group = 'tech.beshu.ror'
 version = pluginVersion

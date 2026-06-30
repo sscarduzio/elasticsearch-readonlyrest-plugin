@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * Single source of truth for mapping an ES version to the {@code esXXx} module that builds the plugin
  * for it. Each module declares the ES versions it supports via the {@code supportedEsVersions} gradle
- * property (newest-first CSV); everything else is derived from that one list. The matching rule: ES
+ * property (oldest-first CSV); everything else is derived from that one list. The matching rule: ES
  * modules are sorted by their newest supported version; a version belongs to the first module whose range
  * {@code (previousModuleNewest, thisModuleNewest]} contains it (the oldest module's lower bound is
  * {@link #OLDEST_ES_VERSION_SUPPORTED}).

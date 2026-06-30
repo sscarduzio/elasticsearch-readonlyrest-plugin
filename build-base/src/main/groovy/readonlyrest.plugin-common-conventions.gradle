@@ -340,6 +340,20 @@ tasks.register('packageRorPlugin') {
     }
 }
 
+// Prints two lines to stdout: the base ES version (EsVersions.oldest) on line 1, then all supported
+// versions oldest-first space-separated on line 2. Invoke with --quiet to suppress Gradle noise.
+// Usage: ./gradlew :es818x:printEsVersionsForModule --quiet
+tasks.register('printEsVersionsForModule') {
+    group = 'help'
+    description = "Prints base version and all supported versions for ${project.name} to stdout"
+    outputs.upToDateWhen { false }
+    doLast {
+        def esVersions = EsVersions.of(project)
+        println esVersions.oldest
+        println esVersions.all.join(' ')
+    }
+}
+
 tasks.register('uploadRorPluginToS3', Exec) {
     dependsOn(buildRorPluginZip)
 

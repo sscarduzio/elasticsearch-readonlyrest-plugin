@@ -21,30 +21,22 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Emits the per-module ES-version groups for one ES generation (major), used by the publishing pipeline.
- * Each {@code esXXx} module owns the versions it publishes via its {@code supportedEsVersions} gradle
- * property (the single source of truth), so this task just selects the modules in the requested major and
- * prints their lists -- there is no central per-generation version file.
+ * Prints the names of all {@code esXXx} modules for one ES generation (major) to stdout, newest
+ * module first. Invoke with {@code --quiet} to suppress Gradle's own output so only module names
+ * come through. Pair with {@code :esXXx:printEsVersionsForModule} to get each module's versions.
  *
- * <p>Inputs (project properties): {@code -PesMajor=<n>} and {@code -PoutputFile=<path>}. Output: one line
- * per module (newest module first), {@code <moduleName> <esVersion> [<esVersion> ...]} (newest version
- * first), which the pipeline consumes to build each module once and repackage the rest.
+ * <p>Input (project property): {@code -PesMajor=<n>}.
+ * Usage: {@code ./gradlew printEsModules -PesMajor=8 --quiet}
  */
-public class PrintEsModuleGroupsTask extends DefaultTask {
+public class PrintEsModulesTask extends DefaultTask {
 
   @TaskAction
-  public void printGroups() throws IOException {
+  public void printModules() {
     int esMajor = Integer.parseInt(requiredProperty("esMajor"));
-    String outputFile = requiredProperty("outputFile");
 
     List<Project> modules = EsModuleResolver
         .sortedEsModules(getProject(), EsModuleResolver.newestEsVersionComparator().reversed())
@@ -52,16 +44,9 @@ public class PrintEsModuleGroupsTask extends DefaultTask {
         .filter(module -> EsModuleResolver.newestEsVersionFor(module).getMajor() == esMajor)
         .collect(Collectors.toList());
 
-    StringBuilder mapping = new StringBuilder();
     for (Project module : modules) {
-      List<String> versions = EsModuleResolver.supportedEsVersionsFor(module).stream()
-          .sorted(Comparator.comparing(EsModuleResolver::versionNumberFrom).reversed())
-          .collect(Collectors.toList());
-      mapping.append(module.getName()).append(' ').append(String.join(" ", versions)).append('\n');
+      System.out.println(module.getName());
     }
-
-    Files.writeString(Path.of(outputFile), mapping.toString(), StandardCharsets.UTF_8);
-    getLogger().lifecycle("Wrote {} module group(s) for ES {}.x to {}", modules.size(), esMajor, outputFile);
   }
 
   private String requiredProperty(String name) {

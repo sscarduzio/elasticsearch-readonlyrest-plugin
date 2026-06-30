@@ -185,9 +185,6 @@ if [[ $ROR_TASK == "integration_es67x" ]]; then
   run_integration_tests "es67x"
 fi
 
-# Verifies every module in an ES generation is buildable -- WITHOUT publishing anything.
-# Per module: compiles the base version, then proves the newest version's bytecode is repackage-safe.
-# A compile or bytecode drift failure fails the job.
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
     echo "What ES generation (major: 6|7|8|9) should I verify plugins for?"
@@ -196,11 +193,9 @@ build_ror_plugins() {
 
   local es_major=$1
 
-  local line
-  while IFS= read -r line; do
-    [ -z "$line" ] && continue
-    local module
-    module=$(echo "$line" | awk '{print $1}')
+  local module
+  while IFS= read -r module; do
+    [ -z "$module" ] && continue
     if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
       return 1
     fi
