@@ -131,3 +131,16 @@ object Json {
   }
 
 }
+
+/**
+ * Caches a case class's `hashCode` eagerly. Mixed into small immutable domain identities that
+ * appear at high frequency in `Set`/`Map` operations on the hot ACL request-evaluation path, so
+ * their `hashCode` is computed once instead of being recomputed on every lookup/insertion.
+ *
+ * The cached value is identical to the compiler-generated case class `hashCode`
+ * (`MurmurHash3.productHash`), so it stays consistent with structural `equals` and changes no
+ * equality semantics — only when the hash is computed.
+ */
+private[domain] trait EagerHashCode { this: Product =>
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+}

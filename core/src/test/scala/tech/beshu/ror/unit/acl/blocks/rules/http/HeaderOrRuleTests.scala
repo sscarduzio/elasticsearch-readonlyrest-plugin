@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBl
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.http.HeadersOrRule
+import tech.beshu.ror.accesscontrol.blocks.rules.http.{BaseHeaderRule, HeadersOrRule}
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
@@ -177,7 +177,7 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
       requestHeaders: Set[Header],
       isMatched: Boolean
   ) = {
-    val rule = new HeadersOrRule(HeadersOrRule.Settings(configuredHeaders))
+    val rule = new HeadersOrRule(BaseHeaderRule.Settings(configuredHeaders))
     val restRequest = mock[RestRequest]
     (() => restRequest.allHeaders).expects().returning(requestHeaders)
     (() => restRequest.path).expects().returning(UriPath.from("/_cat/indices"))

@@ -124,19 +124,22 @@ class Block(
       initBlockContext: B,
       priorHistory: Vector[RuleHistory[B]]
   ): Task[(Decision[B], BlockHistory[B])] = {
-    rulesToCheck
-      .foldLeft(matched[B](Decision.Permitted(initBlockContext))) { case (currentResult, rule) =>
-        for {
-          previousRulesResult <- currentResult
-          resultAfterRulesCheck <- previousRulesResult match {
-            case Decision.Permitted(blockContext) =>
-              checkRule(rule, blockContext)
-            case r @ Decision.Denied(_) =>
-              mismatched(r)
+    // Recursion instead of a fold: a Denied decision returns immediately, skipping the per-rule
+    // wrapping of the remaining rules (which never run and add no history anyway).
+    def checkRules(rules: List[Rule], blockContext: B): WriterT[Task, Vector[RuleHistory[B]], Decision[B]] =
+      rules match {
+        case Nil =>
+          matched(Decision.Permitted(blockContext))
+        case rule :: remainingRules =>
+          checkRule(rule, blockContext).flatMap {
+            case Decision.Permitted(newBlockContext) =>
+              checkRules(remainingRules, newBlockContext)
+            case denied @ Decision.Denied(_) =>
+              mismatched(denied)
           }
-        } yield resultAfterRulesCheck
       }
-      .run
+
+    checkRules(rulesToCheck, initBlockContext).run
       .map { case (history, result) =>
         val fullHistory = priorHistory ++ history
         val blockHistory = result match {
