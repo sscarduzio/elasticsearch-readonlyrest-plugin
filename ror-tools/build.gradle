@@ -130,31 +130,27 @@ def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport
 def elasticsearchArtifactName = "elasticsearch-${esVersion}.jar"
 def elasticsearchArtifactDestinationPath = "org/elasticsearch/elasticsearch/${esVersion}/"
 
-tasks.register('uploadArtifactsFromEsBinaries') {
-    dependsOn getArtifactsFromEsBinaries
-    doLast {
-        // These artifacts go to the *libs* store, not the artifacts store.
-        // Select the LIBS store and provide its ROR_LIBS_STORE_* vars (falling back to sane defaults
-        // for local runs where the CI secrets are absent).
-        def libsStoreEnv = [
-            'ROR_S3_TARGET_STORE'             : 'LIBS',
-            'ROR_LIBS_STORE_ENDPOINT_URL'     : System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech',
-            'ROR_LIBS_STORE_ACCESS_KEY_ID'    : System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: '',
-            'ROR_LIBS_STORE_ACCESS_KEY_SECRET': System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: '',
-            'ROR_LIBS_STORE_BUCKET'           : System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu',
-            'ROR_LIBS_STORE_REGION'           : System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1',
-            'ROR_LIBS_STORE_PATH_PREFIX'      : System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
-        ]
-        def buildDir = layout.buildDirectory.get().asFile.path
-        project.exec {
-            environment libsStoreEnv
-            commandLine '../ci/upload-files-to-s3.sh', "${buildDir}/${netty4TransportArtifactName}", netty4TransportArtifactDestinationPath
-        }
-        project.exec {
-            environment libsStoreEnv
-            commandLine '../ci/upload-files-to-s3.sh', "${buildDir}/${elasticsearchArtifactName}", elasticsearchArtifactDestinationPath
-        }
+def registerLibsStoreUpload = { String taskName, String artifactName, String destinationPath ->
+    tasks.register(taskName, Exec) {
+        dependsOn getArtifactsFromEsBinaries
+        environment 'ROR_S3_TARGET_STORE',              'LIBS'
+        environment 'ROR_LIBS_STORE_ENDPOINT_URL',      System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
+        environment 'ROR_LIBS_STORE_ACCESS_KEY_ID',     System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
+        environment 'ROR_LIBS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
+        environment 'ROR_LIBS_STORE_BUCKET',            System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
+        environment 'ROR_LIBS_STORE_REGION',            System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
+        environment 'ROR_LIBS_STORE_PATH_PREFIX',       System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
+        commandLine '../ci/upload-files-to-s3.sh',
+            "${layout.buildDirectory.get().asFile.path}/${artifactName}",
+            destinationPath
     }
+}
+
+registerLibsStoreUpload('uploadNetty4TransportFromEsBinaries', netty4TransportArtifactName, netty4TransportArtifactDestinationPath)
+registerLibsStoreUpload('uploadElasticsearchFromEsBinaries', elasticsearchArtifactName, elasticsearchArtifactDestinationPath)
+
+tasks.register('uploadArtifactsFromEsBinaries') {
+    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries'
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
