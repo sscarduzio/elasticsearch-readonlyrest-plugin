@@ -114,6 +114,28 @@ object ScalaUtils extends LazyLogging {
     loop(1)
   }
 
+  // One shared io scheduler for all runWithTimeout calls (don't allocate a pool per call). Daemon
+  // threads, so it never blocks JVM exit; abandoned-on-timeout work dies with the short-lived leg JVM.
+  private lazy val timeoutScheduler: monix.execution.Scheduler =
+    monix.execution.Scheduler.io(name = "ror-it-timeout-guard")
+
+  /**
+   * Run a blocking `action`, abandoning it if it doesn't finish within `timeout`. Bounds blocking ES
+   * teardown so a WEDGED ES can't hang the worker JVM for hours. On timeout the Task is abandoned (the
+   * blocking call can't be interrupted, but dies with the leg JVM) and a TimeoutException is thrown.
+   */
+  def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
+    Task
+      .delay(action)
+      .timeoutWith(
+        timeout,
+        new java.util.concurrent.TimeoutException(
+          s"'$label' did not complete within $timeout — abandoning it (likely a wedged ES/container call)."
+        )
+      )
+      .runSyncUnsafe()(timeoutScheduler, implicitly)
+  }
+
   def retryBackoff[A](source: Task[A], maxRetries: Int, firstDelay: FiniteDuration, backOffScaler: Int): Task[A] = {
     source.onErrorHandleWith { case ex: Exception =>
       if (maxRetries > 0)

@@ -22,6 +22,7 @@ import tech.beshu.ror.utils.containers.images.ReadonlyRestWithEnabledXpackSecuri
 import tech.beshu.ror.utils.elasticsearch.{IndexManager, LegacyTemplateManager, RorApiManager, SnapshotManager}
 import tech.beshu.ror.utils.misc.EsModulePatterns
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.util.{Failure, Success, Try}
 
 object SingletonEsContainerWithRorSecurity
@@ -47,20 +48,60 @@ object SingletonEsContainerWithRorSecurity
   logger.info("Starting singleton es container...")
   singleton.start()
 
-  def cleanUpContainer(): Unit = {
+  // Ensures only one suite uses the shared singleton ES at a time within this worker JVM. Ownership
+  // is a VALUE: acquire() returns the sole token, every mutating op requires it and checks it is
+  // still current — so a missed acquire or a stale owner fails at use time, not by convention.
+  final class Ownership private[containers] (private[containers] val owner: String)
+
+  private val currentOwner = new AtomicReference[Ownership](null)
+
+  def acquire(owner: String): Ownership = {
+    val ownership = new Ownership(owner)
+    if (!currentOwner.compareAndSet(null, ownership)) {
+      throw new IllegalStateException(
+        s"Singleton ES is already in use by suite '${currentOwner.get().owner}' — '$owner' cannot use " +
+          s"it concurrently. Suites sharing this singleton must run one at a time within a JVM."
+      )
+    }
+    ownership
+  }
+
+  def release(ownership: Ownership): Unit = {
+    // Only the current owner clears it; mismatches are logged (afterAll must not mask the real failure).
+    if (!currentOwner.compareAndSet(ownership, null)) {
+      logger.warn(
+        s"Singleton ES release by '${ownership.owner}' but current owner is " +
+          s"'${Option(currentOwner.get()).map(_.owner).getOrElse("<none>")}' — ignoring."
+      )
+    }
+  }
+
+  def cleanUpContainer(ownership: Ownership): Unit = {
+    requireCurrent(ownership)
     logOnFailure(indexManager.removeAllIndices().force())
     logOnFailure(templateManager.deleteAllTemplates().force())
     logOnFailure(snapshotManager.deleteAllRepositories().force())
   }
 
-  def updateSettings(rorSettings: String): Unit = {
+  def updateSettings(rorSettings: String, ownership: Ownership): Unit = {
+    requireCurrent(ownership)
     rorApiManager
       .updateRorInIndexSettings(rorSettings)
       .forceOKStatusOrSettingsAlreadyLoaded()
   }
 
-  def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
+  def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer, ownership: Ownership): Unit = {
+    requireCurrent(ownership)
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
+  }
+
+  private def requireCurrent(ownership: Ownership): Unit = {
+    if (currentOwner.get() ne ownership) {
+      throw new IllegalStateException(
+        s"Singleton ES mutation by '${ownership.owner}' without current ownership (current: " +
+          s"'${Option(currentOwner.get()).map(_.owner).getOrElse("<none>")}') — acquire() it first."
+      )
+    }
   }
 
   private def logOnFailure[A](action: => A): Unit = {

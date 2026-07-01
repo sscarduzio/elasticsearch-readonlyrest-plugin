@@ -20,8 +20,8 @@ import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
-import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
 import tech.beshu.ror.utils.containers.ElasticsearchNodeWaitingStrategy.AwaitingReadyStrategy
 import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, None, Token}
@@ -89,11 +89,16 @@ abstract class EsContainer(
         container.addExposedPort(9300)
         container.addExposedPort(8000)
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
-        container.setNetwork(Network.SHARED)
+        container.setNetwork(TestNetwork.perJvm)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
         // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
         container.withCreateContainerCmdModifier { cmd =>
           cmd.getHostConfig.withCgroupnsMode("host")
+        }
+        // Stamp this CI job's id so cleanup reaps ONLY this CI job's containers, never a sibling's on the
+        // shared self-hosted Docker daemon. Absent off-CI -> no label, no-op.
+        Option(System.getenv("ROR_CI_JOB_ID")).filter(_.nonEmpty).foreach { legId =>
+          container.withLabel("ror.ci-job", legId)
         }
         EsContainerImplementation.Linux(
           esImage = esImage,
@@ -112,7 +117,10 @@ abstract class EsContainer(
       case EsContainerImplementation.Windows(_) =>
         ()
       case EsContainerImplementation.Linux(esImage, _) =>
-        dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+        // Best-effort: an image still referenced by a sibling container can't be removed (Docker 409)
+        // — swallow it; this node's own uniquely-tagged image is what we reclaim.
+        try dockerClient.removeImageCmd(esImage.get()).withForce(true).exec()
+        catch { case scala.util.control.NonFatal(_) => () }
     }
   }
 
