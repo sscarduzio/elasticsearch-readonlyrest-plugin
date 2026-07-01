@@ -1,6 +1,4 @@
 steps:
-  # On the self-hosted ryzen pool the Docker daemon is SHARED, so we only touch THIS CI job's resources
-  # (scoped by the ROR_CI_JOB_ID label); dangling-image/builder prune is daemon-wide but safe.
   - bash: |
       echo ">>> reaping any leftover containers for THIS CI job id ($ROR_CI_JOB_ID) before start"
       # Inline (not ci-lib.sh's reap_ci_job_containers) — runs BEFORE `checkout: self`, so ci-lib.sh

@@ -48,6 +48,9 @@ trait SingletonPluginTestSupport
 
   private var startedDependencies = StartedClusterDependencies(Nil)
 
+  // The ownership token for the shared singleton — held from beforeAll to afterAll.
+  private var ownership: Option[SingletonEsContainerWithRorSecurity.Ownership] = None
+
   override final def resolvedRorSettingsFile: File = {
     resolveSettings.toTry.get
   }
@@ -55,20 +58,22 @@ trait SingletonPluginTestSupport
   override protected def beforeAll(): Unit = {
     // Claim exclusive ownership of the shared singleton BEFORE mutating it; fails loudly if another
     // suite still owns it (i.e. suites ever stop running serially within this JVM).
-    SingletonEsContainerWithRorSecurity.acquire(this.getClass.getName)
+    val own = SingletonEsContainerWithRorSecurity.acquire(this.getClass.getName)
+    ownership = Some(own)
     // ScalaTest skips afterAll if beforeAll throws, so any failure after acquire() must release the
-    // latch here too — else the singleton stays owned and every later suite fails at acquire().
+    // token here too — else the singleton stays owned and every later suite fails at acquire().
     try {
       startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
       // Bound the blocking ES cleanup: if ES is wedged this used to hang the worker JVM at suite
       // start; on timeout we throw, failing THIS suite fast instead of hanging the leg for hours.
-      runWithTimeout("cleanUpContainer", 2 minutes)(SingletonEsContainerWithRorSecurity.cleanUpContainer())
-      SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString)
-      nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode)
+      runWithTimeout("cleanUpContainer", 2 minutes)(SingletonEsContainerWithRorSecurity.cleanUpContainer(own))
+      SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString, own)
+      nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode(_, own))
       super.beforeAll()
     } catch {
       case NonFatal(e) =>
-        SingletonEsContainerWithRorSecurity.release(this.getClass.getName)
+        SingletonEsContainerWithRorSecurity.release(own)
+        ownership = None
         throw e
     }
   }
@@ -91,7 +96,8 @@ trait SingletonPluginTestSupport
         }
       }
     } finally {
-      SingletonEsContainerWithRorSecurity.release(this.getClass.getName)
+      ownership.foreach(SingletonEsContainerWithRorSecurity.release)
+      ownership = None
     }
   }
 

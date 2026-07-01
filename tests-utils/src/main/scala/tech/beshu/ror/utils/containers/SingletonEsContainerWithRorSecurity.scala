@@ -48,53 +48,60 @@ object SingletonEsContainerWithRorSecurity
   logger.info("Starting singleton es container...")
   singleton.start()
 
-  // --- Non-interference guard (parallel-safety by construction) ----------------------------------
-  // This singleton is ONE mutable ES shared by ~all single-node suites *within a worker JVM*. The
-  // model is only safe because suites run STRICTLY SERIALLY inside a JVM (the scalatest-junit engine
-  // is a non-hierarchical, single-threaded TestEngine; suites carry no ParallelTestExecution), while
-  // parallelism happens ACROSS Gradle worker JVMs — each a separate process with its OWN singleton.
-  // This latch turns that invariant from "remember not to break it" into "the build fails loudly if
-  // it's ever broken" (e.g. a future parallel engine, or a suite that mutates the singleton without
-  // going through beforeAll/afterAll). It does NOT add locking/coordination — concurrent ownership is
-  // a test-harness bug to surface, not a race to serialize.
-  private val currentOwner = new AtomicReference[String](null)
+  // Ensures only one suite uses the shared singleton ES at a time within this worker JVM. Ownership
+  // is a VALUE: acquire() returns the sole token, every mutating op requires it and checks it is
+  // still current — so a missed acquire or a stale owner fails at use time, not by convention.
+  final class Ownership private[containers] (private[containers] val owner: String)
 
-  def acquire(owner: String): Unit = {
-    if (!currentOwner.compareAndSet(null, owner)) {
+  private val currentOwner = new AtomicReference[Ownership](null)
+
+  def acquire(owner: String): Ownership = {
+    val ownership = new Ownership(owner)
+    if (!currentOwner.compareAndSet(null, ownership)) {
       throw new IllegalStateException(
-        s"Singleton ES non-interference violated: '$owner' tried to use the shared singleton while " +
-          s"'${currentOwner.get()}' still owns it. Suites sharing this singleton MUST run serially " +
-          s"within a JVM (parallelism is across worker JVMs only). A concurrent owner means the test " +
-          s"engine started running suites in parallel, or a suite mutated the singleton outside " +
-          s"beforeAll/afterAll — fix that rather than adding locking."
+        s"Singleton ES is already in use by suite '${currentOwner.get().owner}' — '$owner' cannot use " +
+          s"it concurrently. Suites sharing this singleton must run one at a time within a JVM."
       )
     }
+    ownership
   }
 
-  def release(owner: String): Unit = {
-    // Only the owner clears it; mismatches are logged (afterAll must not mask the real test failure).
-    if (!currentOwner.compareAndSet(owner, null)) {
+  def release(ownership: Ownership): Unit = {
+    // Only the current owner clears it; mismatches are logged (afterAll must not mask the real failure).
+    if (!currentOwner.compareAndSet(ownership, null)) {
       logger.warn(
-        s"Singleton ES release by '$owner' but current owner is '${currentOwner.get()}' — " +
-          s"ignoring (possible missed acquire/double release)."
+        s"Singleton ES release by '${ownership.owner}' but current owner is " +
+          s"'${Option(currentOwner.get()).map(_.owner).getOrElse("<none>")}' — ignoring."
       )
     }
   }
 
-  def cleanUpContainer(): Unit = {
+  def cleanUpContainer(ownership: Ownership): Unit = {
+    requireCurrent(ownership)
     logOnFailure(indexManager.removeAllIndices().force())
     logOnFailure(templateManager.deleteAllTemplates().force())
     logOnFailure(snapshotManager.deleteAllRepositories().force())
   }
 
-  def updateSettings(rorSettings: String): Unit = {
+  def updateSettings(rorSettings: String, ownership: Ownership): Unit = {
+    requireCurrent(ownership)
     rorApiManager
       .updateRorInIndexSettings(rorSettings)
       .forceOKStatusOrSettingsAlreadyLoaded()
   }
 
-  def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
+  def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer, ownership: Ownership): Unit = {
+    requireCurrent(ownership)
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
+  }
+
+  private def requireCurrent(ownership: Ownership): Unit = {
+    if (currentOwner.get() ne ownership) {
+      throw new IllegalStateException(
+        s"Singleton ES mutation by '${ownership.owner}' without current ownership (current: " +
+          s"'${Option(currentOwner.get()).map(_.owner).getOrElse("<none>")}') — acquire() it first."
+      )
+    }
   }
 
   private def logOnFailure[A](action: => A): Unit = {

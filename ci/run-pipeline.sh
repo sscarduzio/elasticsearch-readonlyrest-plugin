@@ -106,13 +106,10 @@ run_integration_tests() {
   local esArgs=("-PesModule=$ES_MODULE")
   [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
-  echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests in ${parallelism} shard(s).."
+  echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests:shardedTest (${parallelism} shard(s)).."
 
   # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
   # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
-
-  # Do NOT give shards separate --project-cache-dirs: they'd rebuild shared :build-base concurrently
-  # and race (':build-base:generatePluginAdapters FAILED', 10502). Shared cache lets file-locking serialize it.
   LAST_PID=""
   run_one() {  # args: <gradle args...>
     setsid ./gradlew --no-daemon "$@" &
@@ -124,24 +121,10 @@ run_integration_tests() {
   wait "$LAST_PID"; local rc=$?
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 
-  # 2) Build the singleton ES image + test classes ONCE before the parallel shards, so the K shards do
-  #    NO shared build work — only run their disjoint test subset.
-  run_one integration-tests:prebuildEsImage integration-tests:testClasses "${esArgs[@]}"
+  # 2) All sharding orchestration lives in integration-tests:shardedTest (see its build.gradle):
+  #    prebuild barrier via task deps, K child ./gradlew spawn/wait, ProcessHandle kill on cancel.
+  run_one integration-tests:shardedTest "${esArgs[@]}" -PshardCount="$parallelism"
   wait "$LAST_PID"; rc=$?
-  if [ "$rc" -ne 0 ]; then return "$rc"; fi
-
-  # Disk: each distinct ES config builds a ~1GB+ ror-it-es:<hash> image. Do NOT prune mid-run — it races
-  # concurrent builds and removes in-use layers ("unknown parent image ID", 10532); out of disk => bigger runner.
-
-  # 3) integration-tests:test — K shards in PARALLEL (shared cache). Each is a separate JVM => its own
-  #    ES container, running a disjoint suite subset (name-hash mod K, see build.gradle).
-  local pids="" idx
-  for idx in $(seq 0 $((parallelism - 1))); do
-    run_one integration-tests:test "${esArgs[@]}" -PshardCount="$parallelism" -PshardIndex="$idx"
-    pids="$pids $LAST_PID"
-  done
-  rc=0
-  for p in $pids; do wait "$p" || rc=$?; done
   if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 }
 

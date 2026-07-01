@@ -53,6 +53,9 @@ object DockerImageCreator extends StrictLogging {
     val dockerfile = imageDescription.copyFiles.zipWithIndex
       .foldLeft(to) { case (dockerfile, (copy, idx)) =>
         val source = File(copy.file.pathAsString)
+        // Fail loud on a missing/empty source: a silently-staged empty file would build an image with
+        // wrong content while imageTag (hashed from the ORIGINAL file) still claims a valid cache hit.
+        require(source.exists && source.size > 0, s"Docker COPY source is missing or empty: $source")
         // index-prefix the staged name so two sources sharing a filename can't clobber each other
         val privateCopy = source.copyTo(stagingDir / s"$idx-${source.name}", overwrite = true)
         dockerfile.withFileFromFile(copy.destination.toIO.getAbsolutePath, privateCopy.toJava)
