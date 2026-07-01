@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.gradle;
+package tech.beshu.ror.gradle.utils;
 
 import java.io.File;
 import java.io.IOException;

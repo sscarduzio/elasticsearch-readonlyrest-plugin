@@ -44,7 +44,7 @@ object RorPluginGradleProject {
     RorPluginGradleProject.getRootProject.toScala.children
       .filter { f => f.isDirectory }
       .map(_.name)
-      .filter(_.matches("^es\\d{2,3}x$"))
+      .filter(_.matches("^es\\d+x$"))
       .toList
 
 }

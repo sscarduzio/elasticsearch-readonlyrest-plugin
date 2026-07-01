@@ -14,8 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-import tech.beshu.ror.gradle.EsVersions
-import tech.beshu.ror.gradle.PluginArtifact
+import tech.beshu.ror.gradle.utils.EsVersions
+import tech.beshu.ror.gradle.utils.PluginArtifact
 
 // Docker image build/publish for the ES plugin modules: a fixed "fat" layer shared across a module's patch
 // range plus a per-version "thin" layer, assembled from the plugin zip and pushed via `docker buildx`.

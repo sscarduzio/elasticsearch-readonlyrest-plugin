@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.gradle;
+package tech.beshu.ror.gradle.utils;
 
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
@@ -86,6 +86,8 @@ public final class EsVersions {
         ? String.valueOf(project.property("baselineEsVersion"))
         : of(project).oldest;
   }
+
+  public static final Comparator<String> VERSION_COMPARATOR = EsVersionComparator.INSTANCE;
 
   private static final class EsVersionComparator implements Comparator<String> {
 

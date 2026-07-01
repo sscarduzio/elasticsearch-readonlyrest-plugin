@@ -20,6 +20,7 @@ package tech.beshu.ror.gradle;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
+import tech.beshu.ror.gradle.utils.EsModuleFinder;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,14 +40,22 @@ public class PrintEsModulesTask extends DefaultTask {
     int esMajor = Integer.parseInt(requiredProperty("esMajor"));
 
     List<Project> modules =
-        EsModuleResolver.sortedEsModules(
-                getProject(), EsModuleResolver.newestEsVersionComparator().reversed())
+        EsModuleFinder.sortedEsModules(
+                getProject(), EsModuleFinder.newestEsVersionComparator().reversed())
             .stream()
-            .filter(module -> EsModuleResolver.newestEsVersionFor(module).getMajor() == esMajor)
+            .filter(module -> majorVersionOf(EsModuleFinder.newestEsVersionFor(module)) == esMajor)
             .collect(Collectors.toList());
 
     for (Project module : modules) {
       System.out.println(module.getName());
+    }
+  }
+
+  private static int majorVersionOf(String version) {
+    try {
+      return Integer.parseInt(version.split("\\.")[0]);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Cannot parse major version from: " + version, e);
     }
   }
 

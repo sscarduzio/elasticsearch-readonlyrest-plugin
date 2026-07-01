@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.gradle;
+package tech.beshu.ror.gradle.utils;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;

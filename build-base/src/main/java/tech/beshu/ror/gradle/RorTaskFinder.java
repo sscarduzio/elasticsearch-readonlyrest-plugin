@@ -21,7 +21,7 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.util.internal.VersionNumber;
+import tech.beshu.ror.gradle.utils.EsModuleFinder;
 
 import java.util.Optional;
 
@@ -43,35 +43,32 @@ public class RorTaskFinder extends DefaultTask {
   }
 
   private Project findEsModuleForEsVersionToBuild() {
-    VersionNumber esVersionToBuild = getEsVersionToBuild();
-    Optional<Project> foundEsModule =
-        EsModuleResolver.findEsModuleFor(getProject(), esVersionToBuild);
+    String esVersion = getEsVersionToBuild();
+    Optional<Project> foundEsModule = EsModuleFinder.findEsModuleFor(getProject(), esVersion);
     if (foundEsModule.isPresent()) {
       getLogger().info(String.format("Found es module: %s", foundEsModule.get().getName()));
       return foundEsModule.get();
     } else {
       throw new IllegalArgumentException(
-          String.format("Cannot find ES module to build plugin for ES %s", esVersionToBuild));
+          String.format("Cannot find ES module to build plugin for ES %s", esVersion));
     }
   }
 
-  private VersionNumber getEsVersionToBuild() {
+  private String getEsVersionToBuild() {
     Optional<String> esVersionStr =
         Optional.ofNullable((String) getProject().findProperty("esVersion"));
     if (esVersionStr.isPresent()) {
-      return EsModuleResolver.versionNumberFrom(esVersionStr.get());
-    } else {
-      Optional<VersionNumber> theNewestSupportedEsVersion =
-          EsModuleResolver.findTheNewestSupportedEsVersion(getProject());
-      if (theNewestSupportedEsVersion.isPresent()) {
-        getLogger()
-            .warn(
-                "NO 'esVersion' was explicitly set!!! Using the newest found one: {}",
-                theNewestSupportedEsVersion.get());
-        return theNewestSupportedEsVersion.get();
-      } else {
-        throw new IllegalArgumentException("No 'esVersion' property set. Cannot continue!");
-      }
+      return esVersionStr.get();
     }
+    Optional<String> newestSupportedVersion =
+        EsModuleFinder.findTheNewestSupportedEsVersion(getProject());
+    if (newestSupportedVersion.isPresent()) {
+      getLogger()
+          .warn(
+              "NO 'esVersion' was explicitly set!!! Using the newest found one: {}",
+              newestSupportedVersion.get());
+      return newestSupportedVersion.get();
+    }
+    throw new IllegalArgumentException("No 'esVersion' property set. Cannot continue!");
   }
 }

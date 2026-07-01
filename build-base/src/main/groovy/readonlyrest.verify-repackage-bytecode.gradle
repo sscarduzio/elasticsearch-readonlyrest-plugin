@@ -14,9 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-import tech.beshu.ror.gradle.BytecodeComparison
-import tech.beshu.ror.gradle.EsVersions
-import tech.beshu.ror.gradle.PluginArtifact
+import tech.beshu.ror.gradle.utils.BytecodeComparison
+import tech.beshu.ror.gradle.utils.EsVersions
+import tech.beshu.ror.gradle.utils.PluginArtifact
 
 // ---------------------------------------------------------------------------------------------------------
 // verifyRepackageBytecode: proves a requested ES version of this module is buildable by repackaging from
