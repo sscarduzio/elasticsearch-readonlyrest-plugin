@@ -32,8 +32,7 @@ import java.util
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-class RestRRAuditEventAction
-  extends BaseRestHandler with RestHandler {
+class RestRRAuditEventAction extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
     new Route(POST, constants.AUDIT_EVENT_COLLECTOR_PATH)
@@ -41,8 +40,7 @@ class RestRRAuditEventAction
 
   override val getName: String = "ror-audit-event-collector-handler"
 
-  override def prepareRequest(request: RestRequest,
-                              client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
     private val rorAuditRequest = for {
       _ <- validateContentSize(request)
       json <- validateBodyJson(request)
@@ -80,7 +78,7 @@ class RestRRAuditEventAction
   }
 
   private class AuditEventRequestPayloadTooLarge(maxContentSize: Information)
-    extends ElasticsearchException(s"Max request content allowed = ${maxContentSize.toKilobits}KB") {
+      extends ElasticsearchException(s"Max request content allowed = ${maxContentSize.toKilobits}KB") {
     override def status(): RestStatus = RestStatus.REQUEST_ENTITY_TOO_LARGE
   }
 

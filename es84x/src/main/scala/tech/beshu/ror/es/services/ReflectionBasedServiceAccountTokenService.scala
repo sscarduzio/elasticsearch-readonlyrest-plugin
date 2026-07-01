@@ -30,19 +30,23 @@ class ReflectionBasedServiceAccountTokenService extends ServiceAccountTokenServi
 
   private lazy val underlying = ServiceAccountServiceRef.getInstance match {
     case Success(ref) => new ServiceAccountTokenServiceRefAvailable(ref)
-    case Failure(ex) => new ServiceAccountTokenServiceRefNotAvailable(ex)
+    case Failure(ex)  => new ServiceAccountTokenServiceRefNotAvailable(ex)
   }
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] =
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] =
     underlying.validateToken(token)
+
 }
 
 private class ServiceAccountTokenServiceRefAvailable(serviceAccountServiceRef: AnyRef)
-  extends ServiceAccountTokenService with RequestIdAwareLogging {
+    extends ServiceAccountTokenService
+    with RequestIdAwareLogging {
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] = {
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] = {
     parseToken(token) match {
       case Success(Some(serviceAccountToken)) =>
         authenticateToken(serviceAccountToken)
@@ -67,22 +71,24 @@ private class ServiceAccountTokenServiceRefAvailable(serviceAccountServiceRef: A
   private def authenticateToken(serviceAccountToken: AnyRef): Task[Boolean] = {
     val listener = new ActionListenerToTaskAdapter[AnyRef]
     on(serviceAccountServiceRef).call("authenticateToken", serviceAccountToken, "any", listener)
-    listener
-      .result
+    listener.result
       .map(ref => Option(ref).isDefined)
       .onErrorRecover {
         case _: ElasticsearchSecurityException => false
-        case ex => throw ex
+        case ex                                => throw ex
       }
   }
+
 }
 
 private class ServiceAccountTokenServiceRefNotAvailable(cause: Throwable) extends ServiceAccountTokenService {
 
-  override def validateToken(token: AuthorizationToken)
-                            (implicit requestId: RequestId): Task[Boolean] = Task.raiseError {
+  override def validateToken(token: AuthorizationToken)(
+      implicit requestId: RequestId
+  ): Task[Boolean] = Task.raiseError {
     new Exception("ServiceAccount Service Ref is not available. Please report the issue!", cause)
   }
+
 }
 
 private object ServiceAccountServiceRef {
@@ -93,11 +99,11 @@ private object ServiceAccountServiceRef {
       .map(c => onClass(c).call("get").get[AnyRef])
 
   private def loadBridgeClass(): Try[Class[_]] =
-    classLoaderCandidates.view
-      .flatMap { classLoader => Try(Class.forName(bridge, false, classLoader)).toOption }
-      .headOption match {
+    classLoaderCandidates.view.flatMap { classLoader =>
+      Try(Class.forName(bridge, false, classLoader)).toOption
+    }.headOption match {
       case Some(classLoader) => Success(classLoader)
-      case None => Failure(new IllegalStateException(s"Cannot load $bridge class"))
+      case None              => Failure(new IllegalStateException(s"Cannot load $bridge class"))
     }
 
   private def classLoaderCandidates: List[ClassLoader] = AccessControllerHelper.doPrivileged {
@@ -109,4 +115,5 @@ private object ServiceAccountServiceRef {
       Option(ClassLoader.getPlatformClassLoader)
     ).flatten.distinct
   }
+
 }

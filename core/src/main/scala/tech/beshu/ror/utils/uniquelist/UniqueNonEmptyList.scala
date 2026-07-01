@@ -21,8 +21,8 @@ import cats.implicits.*
 import cats.kernel.Semigroup
 import tech.beshu.ror.utils.set.CovariantSet
 
-final case class UniqueNonEmptyList[+T] private[uniquelist](private val underlying: UniqueList[T])
-  extends Iterable[T] {
+final case class UniqueNonEmptyList[+T] private[uniquelist] (private val underlying: UniqueList[T])
+    extends Iterable[T] {
 
   override def iterator: Iterator[T] = underlying.iterator
 }
@@ -48,8 +48,7 @@ object UniqueNonEmptyList {
     def toSet: CovariantSet[T] = CovariantSet.from(uniqueNonEmptyList.iterator)
   }
 
-  implicit def semigroup[T]: Semigroup[UniqueNonEmptyList[T]] = Semigroup.instance(
-    (a, b) => UniqueNonEmptyList.unsafeFrom(a.toList ++ b.toList)
-  )
+  implicit def semigroup[T]: Semigroup[UniqueNonEmptyList[T]] =
+    Semigroup.instance((a, b) => UniqueNonEmptyList.unsafeFrom(a.toList ++ b.toList))
 
 }

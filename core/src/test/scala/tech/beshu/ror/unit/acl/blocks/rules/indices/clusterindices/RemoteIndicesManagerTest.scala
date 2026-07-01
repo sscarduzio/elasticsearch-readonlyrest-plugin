@@ -21,12 +21,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices.clusterindices.RemoteIndicesManager
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
+import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote as RemoteIndexName
 import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullRemoteDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.domain.IndexAttribute.{Closed, Opened}
 import tech.beshu.ror.accesscontrol.domain.IndexAttributeFilter
-import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.syntax.*
@@ -40,7 +40,8 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
       )
       val requestContext = MockRequestContext.indices.withEsServices(MockEsServices.`with`(clusterService))
       given RequestId = requestContext.id.toRequestId
-      val manager = new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "logs-000001"))))
+      val manager =
+        new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "logs-000001"))))
 
       val task = for {
         _ <- manager.allIndicesAndAliases
@@ -58,7 +59,8 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
       )
       val requestContext = MockRequestContext.indices.withEsServices(MockEsServices.`with`(clusterService))
       given RequestId = requestContext.id.toRequestId
-      val manager = new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "logs-ds"))))
+      val manager =
+        new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "logs-ds"))))
 
       val task = for {
         _ <- manager.allDataStreamsAndDataStreamAliases
@@ -74,12 +76,16 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
     "not filter aliases by index attribute" in {
       val requestContext = MockRequestContext.indices
         .copy(indexAttributes = IndexAttributeFilter.Closed)
-        .withEsServices(MockEsServices.`with`(MockEsServices.MockEsClusterService(
-          allRemoteIndicesAndAliases = Set(
-            fullRemoteIndexWithAliases("es_us", "open-1", Opened, "alias-open", "alias-both"),
-            fullRemoteIndexWithAliases("es_us", "closed-1", Closed, "alias-closed", "alias-both")
+        .withEsServices(
+          MockEsServices.`with`(
+            MockEsServices.MockEsClusterService(
+              allRemoteIndicesAndAliases = Set(
+                fullRemoteIndexWithAliases("es_us", "open-1", Opened, "alias-open", "alias-both"),
+                fullRemoteIndexWithAliases("es_us", "closed-1", Closed, "alias-closed", "alias-both")
+              )
+            )
           )
-        )))
+        )
       given RequestId = requestContext.id.toRequestId
       val manager = new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "*"))))
 
@@ -93,12 +99,16 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
     "filter indices by Opened attribute" in {
       val requestContext = MockRequestContext.indices
         .copy(indexAttributes = IndexAttributeFilter.Opened)
-        .withEsServices(MockEsServices.`with`(MockEsServices.MockEsClusterService(
-          allRemoteIndicesAndAliases = Set(
-            fullRemoteIndexWithAliases("es_us", "open-1", Opened, "alias-open"),
-            fullRemoteIndexWithAliases("es_us", "closed-1", Closed, "alias-closed")
+        .withEsServices(
+          MockEsServices.`with`(
+            MockEsServices.MockEsClusterService(
+              allRemoteIndicesAndAliases = Set(
+                fullRemoteIndexWithAliases("es_us", "open-1", Opened, "alias-open"),
+                fullRemoteIndexWithAliases("es_us", "closed-1", Closed, "alias-closed")
+              )
+            )
           )
-        )))
+        )
       given RequestId = requestContext.id.toRequestId
       val manager = new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "*"))))
 
@@ -114,12 +124,16 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
     "filter indices by Closed attribute" in {
       val requestContext = MockRequestContext.indices
         .copy(indexAttributes = IndexAttributeFilter.Closed)
-        .withEsServices(MockEsServices.`with`(MockEsServices.MockEsClusterService(
-          allRemoteIndicesAndAliases = Set(
-            fullRemoteIndexWithAliases("es_us", "open-1", Opened, "alias-open"),
-            fullRemoteIndexWithAliases("es_us", "closed-1", Closed, "alias-closed")
+        .withEsServices(
+          MockEsServices.`with`(
+            MockEsServices.MockEsClusterService(
+              allRemoteIndicesAndAliases = Set(
+                fullRemoteIndexWithAliases("es_us", "open-1", Opened, "alias-open"),
+                fullRemoteIndexWithAliases("es_us", "closed-1", Closed, "alias-closed")
+              )
+            )
           )
-        )))
+        )
       given RequestId = requestContext.id.toRequestId
       val manager = new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "*"))))
 
@@ -135,11 +149,15 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
     "return empty data stream results when index attribute filter is Closed" in {
       val requestContext = MockRequestContext.indices
         .copy(indexAttributes = IndexAttributeFilter.Closed)
-        .withEsServices(MockEsServices.`with`(MockEsServices.MockEsClusterService(
-          allRemoteDataStreamsAndAliases = Set(
-            fullRemoteDataStreamWithAliases("es_us", "logs-ds", "logs-ds-alias")
+        .withEsServices(
+          MockEsServices.`with`(
+            MockEsServices.MockEsClusterService(
+              allRemoteDataStreamsAndAliases = Set(
+                fullRemoteDataStreamWithAliases("es_us", "logs-ds", "logs-ds-alias")
+              )
+            )
           )
-        )))
+        )
       given RequestId = requestContext.id.toRequestId
       val manager = new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "*"))))
 
@@ -151,11 +169,15 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
     "not filter data stream aliases by index attribute" in {
       val requestContext = MockRequestContext.indices
         .copy(indexAttributes = IndexAttributeFilter.Closed)
-        .withEsServices(MockEsServices.`with`(MockEsServices.MockEsClusterService(
-          allRemoteDataStreamsAndAliases = Set(
-            fullRemoteDataStreamWithAliases("es_us", "logs-ds", "logs-ds-alias")
+        .withEsServices(
+          MockEsServices.`with`(
+            MockEsServices.MockEsClusterService(
+              allRemoteDataStreamsAndAliases = Set(
+                fullRemoteDataStreamWithAliases("es_us", "logs-ds", "logs-ds-alias")
+              )
+            )
           )
-        )))
+        )
       given RequestId = requestContext.id.toRequestId
       val manager = new RemoteIndicesManager(requestContext, PatternsMatcher.create(Set(remoteIndex("es_us", "*"))))
 
@@ -164,31 +186,39 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
     }
   }
 
-  private final class CountingRemoteClusterService(remoteIndices: Set[FullRemoteIndexWithAliases] = Set.empty,
-                                                   remoteDataStreams: Set[FullRemoteDataStreamWithAliases] = Set.empty)
-    extends MockEsServices.MockEsClusterService(
-      allRemoteIndicesAndAliases = remoteIndices,
-      allRemoteDataStreamsAndAliases = remoteDataStreams
-    ) {
+  private final class CountingRemoteClusterService(
+      remoteIndices: Set[FullRemoteIndexWithAliases] = Set.empty,
+      remoteDataStreams: Set[FullRemoteDataStreamWithAliases] = Set.empty
+  ) extends MockEsServices.MockEsClusterService(
+        allRemoteIndicesAndAliases = remoteIndices,
+        allRemoteDataStreamsAndAliases = remoteDataStreams
+      ) {
 
     var remoteIndicesCalls = 0
     var remoteDataStreamsCalls = 0
 
-    override def allRemoteIndicesAndAliases(implicit id: RequestId): Task[Set[FullRemoteIndexWithAliases]] = {
+    override def allRemoteIndicesAndAliases(
+        implicit id: RequestId
+    ): Task[Set[FullRemoteIndexWithAliases]] = {
       remoteIndicesCalls += 1
       super.allRemoteIndicesAndAliases
     }
 
-    override def allRemoteDataStreamsAndAliases(implicit id: RequestId): Task[Set[FullRemoteDataStreamWithAliases]] = {
+    override def allRemoteDataStreamsAndAliases(
+        implicit id: RequestId
+    ): Task[Set[FullRemoteDataStreamWithAliases]] = {
       remoteDataStreamsCalls += 1
       super.allRemoteDataStreamsAndAliases
     }
+
   }
 
-  private def fullRemoteIndexWithAliases(clusterName: String,
-                                         indexName: String,
-                                         attribute: IndexAttribute,
-                                         aliasNames: String*): FullRemoteIndexWithAliases =
+  private def fullRemoteIndexWithAliases(
+      clusterName: String,
+      indexName: String,
+      attribute: IndexAttribute,
+      aliasNames: String*
+  ): FullRemoteIndexWithAliases =
     new FullRemoteIndexWithAliases(
       ClusterName.Full.fromString(clusterName).get,
       IndexName.Full.fromString(indexName).get,
@@ -196,9 +226,11 @@ class RemoteIndicesManagerTest extends AnyWordSpec {
       aliasNames.map(alias => IndexName.Full.fromString(alias).get).toCovariantSet
     )
 
-  private def fullRemoteDataStreamWithAliases(clusterName: String,
-                                              dataStreamName: String,
-                                              dataStreamAliases: String*): FullRemoteDataStreamWithAliases =
+  private def fullRemoteDataStreamWithAliases(
+      clusterName: String,
+      dataStreamName: String,
+      dataStreamAliases: String*
+  ): FullRemoteDataStreamWithAliases =
     FullRemoteDataStreamWithAliases(
       ClusterName.Full.fromString(clusterName).get,
       DataStreamName.Full.fromString(dataStreamName).get,

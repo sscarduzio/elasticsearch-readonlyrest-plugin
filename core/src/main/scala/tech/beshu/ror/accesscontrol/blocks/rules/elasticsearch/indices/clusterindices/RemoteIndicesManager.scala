@@ -28,24 +28,23 @@ import tech.beshu.ror.utils.ScalaOps.drainToMap
 
 import scala.collection.mutable
 
-class RemoteIndicesManager(requestContext: RequestContext,
-                           override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName])
-  extends IndicesManager[RemoteIndexName] {
+class RemoteIndicesManager(
+    requestContext: RequestContext,
+    override val allowedIndicesMatcher: PatternsMatcher[RemoteIndexName]
+) extends IndicesManager[RemoteIndexName] {
 
   private implicit val implicitRequestId: RequestId = requestContext.id.toRequestId
   private val clusterService = requestContext.esServices.clusterService
   private val indexAttributesFromRequest = requestContext.indexAttributes
 
   private lazy val cachedRemoteIndices =
-    clusterService.allRemoteIndicesAndAliases
-      .map { all =>
-        indexAttributesFromRequest match {
-          case IndexAttributeFilter.All    => all
-          case IndexAttributeFilter.Opened => all.filter(_.attribute == IndexAttribute.Opened)
-          case IndexAttributeFilter.Closed => all.filter(_.attribute == IndexAttribute.Closed)
-        }
+    clusterService.allRemoteIndicesAndAliases.map { all =>
+      indexAttributesFromRequest match {
+        case IndexAttributeFilter.All    => all
+        case IndexAttributeFilter.Opened => all.filter(_.attribute == IndexAttribute.Opened)
+        case IndexAttributeFilter.Closed => all.filter(_.attribute == IndexAttribute.Closed)
       }
-      .memoize
+    }.memoize
 
   private lazy val cachedAllIndicesAndAliases: Task[Set[RemoteIndexName]] =
     cachedRemoteIndices.map(_.flatMap(_.all)).memoize
@@ -62,15 +61,13 @@ class RemoteIndicesManager(requestContext: RequestContext,
     cachedRemoteIndices.map(indicesPerAliasMapFrom).memoize
 
   private lazy val cachedRemoteDataStreams =
-    clusterService.allRemoteDataStreamsAndAliases
-      .map { all =>
-        indexAttributesFromRequest match {
-          case IndexAttributeFilter.Closed => Set.empty[FullRemoteDataStreamWithAliases]
-          case IndexAttributeFilter.Opened => all
-          case IndexAttributeFilter.All    => all
-        }
+    clusterService.allRemoteDataStreamsAndAliases.map { all =>
+      indexAttributesFromRequest match {
+        case IndexAttributeFilter.Closed => Set.empty[FullRemoteDataStreamWithAliases]
+        case IndexAttributeFilter.Opened => all
+        case IndexAttributeFilter.All    => all
       }
-      .memoize
+    }.memoize
 
   private lazy val cachedAllDataStreamsAndAliases: Task[Set[RemoteIndexName]] =
     cachedRemoteDataStreams.map(_.flatMap(_.all)).memoize
@@ -89,34 +86,54 @@ class RemoteIndicesManager(requestContext: RequestContext,
   private lazy val cachedBackingIndicesPerDataStreamMap: Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
     cachedRemoteDataStreams.map(backingIndicesPerDataStreamMapFrom).memoize
 
-  override def allIndicesAndAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+  override def allIndicesAndAliases(
+      implicit id: RequestId
+  ): Task[Set[RemoteIndexName]] =
     cachedAllIndicesAndAliases
 
-  override def allIndices(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+  override def allIndices(
+      implicit id: RequestId
+  ): Task[Set[RemoteIndexName]] =
     cachedAllIndices
 
-  override def allAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+  override def allAliases(
+      implicit id: RequestId
+  ): Task[Set[RemoteIndexName]] =
     cachedAllAliases
 
-  override def indicesPerAliasMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+  override def indicesPerAliasMap(
+      implicit id: RequestId
+  ): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
     cachedIndicesPerAliasMap
 
-  override def allDataStreamsAndDataStreamAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+  override def allDataStreamsAndDataStreamAliases(
+      implicit id: RequestId
+  ): Task[Set[RemoteIndexName]] =
     cachedAllDataStreamsAndAliases
 
-  override def allDataStreams(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+  override def allDataStreams(
+      implicit id: RequestId
+  ): Task[Set[RemoteIndexName]] =
     cachedAllDataStreams
 
-  override def allDataStreamAliases(implicit id: RequestId): Task[Set[RemoteIndexName]] =
+  override def allDataStreamAliases(
+      implicit id: RequestId
+  ): Task[Set[RemoteIndexName]] =
     cachedAllDataStreamAliases
 
-  override def dataStreamsPerAliasMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+  override def dataStreamsPerAliasMap(
+      implicit id: RequestId
+  ): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
     cachedDataStreamsPerAliasMap
 
-  override def backingIndicesPerDataStreamMap(implicit id: RequestId): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
+  override def backingIndicesPerDataStreamMap(
+      implicit id: RequestId
+  ): Task[Map[RemoteIndexName, Set[RemoteIndexName]]] =
     cachedBackingIndicesPerDataStreamMap
 
-  private def indicesPerAliasMapFrom(indices: Iterable[FullRemoteIndexWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
+  private def indicesPerAliasMapFrom(
+      indices: Iterable[FullRemoteIndexWithAliases]
+  ): Map[RemoteIndexName, Set[RemoteIndexName]] = {
     val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
     indices.foreach { remoteIndexWithAliases =>
       remoteIndexWithAliases.aliases.foreach { alias =>
@@ -126,7 +143,9 @@ class RemoteIndicesManager(requestContext: RequestContext,
     collected.drainToMap
   }
 
-  private def dataStreamsPerAliasMapFrom(dataStreams: Iterable[FullRemoteDataStreamWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
+  private def dataStreamsPerAliasMapFrom(
+      dataStreams: Iterable[FullRemoteDataStreamWithAliases]
+  ): Map[RemoteIndexName, Set[RemoteIndexName]] = {
     val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
     dataStreams.foreach { dataStreamWithAliases =>
       dataStreamWithAliases.aliases.foreach { alias =>
@@ -136,7 +155,9 @@ class RemoteIndicesManager(requestContext: RequestContext,
     collected.drainToMap
   }
 
-  private def backingIndicesPerDataStreamMapFrom(dataStreams: Iterable[FullRemoteDataStreamWithAliases]): Map[RemoteIndexName, Set[RemoteIndexName]] = {
+  private def backingIndicesPerDataStreamMapFrom(
+      dataStreams: Iterable[FullRemoteDataStreamWithAliases]
+  ): Map[RemoteIndexName, Set[RemoteIndexName]] = {
     val collected = mutable.HashMap.empty[RemoteIndexName, mutable.Builder[RemoteIndexName, Set[RemoteIndexName]]]
     dataStreams.foreach { fullRemoteDataStream =>
       fullRemoteDataStream.indices.foreach { index =>
@@ -145,4 +166,5 @@ class RemoteIndicesManager(requestContext: RequestContext,
     }
     collected.drainToMap
   }
+
 }

@@ -31,12 +31,12 @@ class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with Mock
 
   "Parents of 1 are" in {
     val graph = createDynamicallyTraversableGraph(nestedLevels = positiveInt(2))
-    graph.findAllAncestorsOf(Set("1")).runSyncUnsafe() should be (Set("2", "3", "4", "6"))
+    graph.findAllAncestorsOf(Set("1")).runSyncUnsafe() should be(Set("2", "3", "4", "6"))
   }
 
   "Parents of 2 are" in {
     val graph = createDynamicallyTraversableGraph(nestedLevels = positiveInt(1))
-    graph.findAllAncestorsOf(Set("2")).runSyncUnsafe() should be (Set("4"))
+    graph.findAllAncestorsOf(Set("2")).runSyncUnsafe() should be(Set("4"))
   }
 
   private def createDynamicallyTraversableGraph(nestedLevels: Int Refined Positive) = {
@@ -71,4 +71,5 @@ class GraphNodeAncestorsExplorerTest extends AnyWordSpec with Matchers with Mock
     mock.expects("7", *).returns(Task.delay(Set.empty)).noMoreThanOnce()
     mock
   }
+
 }

@@ -20,7 +20,9 @@ import org.elasticsearch.action.ActionRequest
 import tech.beshu.ror.accesscontrol.request.LoggedUserSupport
 
 package object actions {
+
   trait RorActionRequest extends LoggedUserSupport {
     this: ActionRequest =>
   }
+
 }

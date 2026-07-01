@@ -18,7 +18,10 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import org.elasticsearch.action.admin.indices.template.delete.{DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
+import org.elasticsearch.action.admin.indices.template.delete.{
+  DeleteComposableIndexTemplateAction,
+  DeleteIndexTemplateRequest
+}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
@@ -31,14 +34,19 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposableIndexTemplateAction.Request,
-                                                    esContext: EsContext,
-                                                    override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[DeleteComposableIndexTemplateAction.Request, DeletingIndexTemplates](
-    actionRequest, esContext, threadPool
-  ) {
+class DeleteComposableIndexTemplateEsRequestContext(
+    actionRequest: DeleteComposableIndexTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[DeleteComposableIndexTemplateAction.Request, DeletingIndexTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
-  override protected def templateOperationFrom(request: DeleteComposableIndexTemplateAction.Request): DeletingIndexTemplates = {
+  override protected def templateOperationFrom(
+      request: DeleteComposableIndexTemplateAction.Request
+  ): DeletingIndexTemplates = {
     NonEmptyList.fromList(request.getNames) match {
       case Some(patterns) => DeletingIndexTemplates(patterns)
       case None => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
@@ -53,12 +61,14 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposa
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
 
   extension (request: DeleteComposableIndexTemplateAction.Request)
+
     private def getNames: List[TemplateNamePattern] = {
       val names: Array[String] = on(request).call("names").get[Array[String]]
       names.asSafeList.flatMap(TemplateNamePattern.fromString)
@@ -67,4 +77,5 @@ class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposa
     private def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
       on(request).set("names", names.toList.map(_.value.value).toArray)
     }
+
 }

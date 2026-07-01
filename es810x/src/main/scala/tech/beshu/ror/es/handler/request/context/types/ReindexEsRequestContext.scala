@@ -30,11 +30,12 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class ReindexEsRequestContext(actionRequest: ReindexRequest,
-                              esContext: EsContext,
-                              aclContext: AccessControlStaticContext,
-                              override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, threadPool) {
+class ReindexEsRequestContext(
+    actionRequest: ReindexRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ReindexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val searchRequestIndices = request.getSearchRequest.indices.asSafeSet
@@ -44,15 +45,18 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
       .flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: ReindexRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ReindexRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(RequestedIndex.fromString)
     val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty
 
     val indexOfIndexRequest = actionRequest.getDestination.index()
-    val isDestinationIndexOnFilteredIndicesList = RequestedIndex.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
+    val isDestinationIndexOnFilteredIndicesList =
+      RequestedIndex.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
 
     if (isDestinationIndexOnFilteredIndicesList && isSearchRequestComposedOnlyOfAllowedIndices) {
       Modified
@@ -66,4 +70,5 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
       ShouldBeInterrupted
     }
   }
+
 }

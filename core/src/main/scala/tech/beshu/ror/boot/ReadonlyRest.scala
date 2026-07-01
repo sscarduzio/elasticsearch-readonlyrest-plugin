@@ -21,7 +21,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
 import tech.beshu.ror.accesscontrol.audit.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
@@ -40,14 +39,17 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Instant
 
-class ReadonlyRest(coreFactory: CoreFactory,
-                   indexDocumentManager: IndexDocumentManager,
-                   auditSinkServiceCreator: AuditSinkServiceCreator)
-                  (implicit systemContext: SystemContext)
-  extends RequestIdAwareLogging {
+class ReadonlyRest(
+    coreFactory: CoreFactory,
+    indexDocumentManager: IndexDocumentManager,
+    auditSinkServiceCreator: AuditSinkServiceCreator
+)(
+    implicit systemContext: SystemContext
+) extends RequestIdAwareLogging {
 
   import systemContext.scheduler
 
@@ -56,28 +58,48 @@ class ReadonlyRest(coreFactory: CoreFactory,
   def start(esConfigBasedRorSettings: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
     (for {
-      creatorsAndLoaders <- lift(SettingsRelatedCreatorsAndLoaders.create(esConfigBasedRorSettings, indexDocumentManager))
+      creatorsAndLoaders <- lift(
+        SettingsRelatedCreatorsAndLoaders.create(esConfigBasedRorSettings, indexDocumentManager)
+      )
       loadedSettings <- EitherT(creatorsAndLoaders.startingRorSettingsLoader.load()).leftMap(StartingFailure(_))
       (loadedMainRorSettings, loadedTestRorSettings) = loadedSettings
-      instance <- startRor(esConfigBasedRorSettings, creatorsAndLoaders.creators, loadedMainRorSettings, loadedTestRorSettings)
+      instance <- startRor(
+        esConfigBasedRorSettings,
+        creatorsAndLoaders.creators,
+        loadedMainRorSettings,
+        loadedTestRorSettings
+      )
     } yield instance).value
   }
 
-  private def startRor(esConfigBasedRorSettings: EsConfigBasedRorSettings,
-                       creators: SettingsRelatedCreators,
-                       loadedMainRorSettings: MainRorSettings,
-                       loadedTestRorSettings: Option[TestRorSettings])
-                      (implicit requestId: RequestId) = {
+  private def startRor(
+      esConfigBasedRorSettings: EsConfigBasedRorSettings,
+      creators: SettingsRelatedCreators,
+      loadedMainRorSettings: MainRorSettings,
+      loadedTestRorSettings: Option[TestRorSettings]
+  )(
+      implicit requestId: RequestId
+  ) = {
     for {
-      mainEngine <- EitherT(loadRorEngine(loadedMainRorSettings.rawSettings, esConfigBasedRorSettings.settingsSource.settingsIndex))
-      testEngine <- EitherT.right(loadTestEngine(loadedTestRorSettings, esConfigBasedRorSettings.settingsSource.settingsIndex))
-      rorInstance <- createRorInstance(esConfigBasedRorSettings, creators, mainEngine, testEngine, loadedMainRorSettings)
+      mainEngine <- EitherT(
+        loadRorEngine(loadedMainRorSettings.rawSettings, esConfigBasedRorSettings.settingsSource.settingsIndex)
+      )
+      testEngine <- EitherT.right(
+        loadTestEngine(loadedTestRorSettings, esConfigBasedRorSettings.settingsSource.settingsIndex)
+      )
+      rorInstance <- createRorInstance(
+        esConfigBasedRorSettings,
+        creators,
+        mainEngine,
+        testEngine,
+        loadedMainRorSettings
+      )
     } yield rorInstance
   }
 
-  private def loadTestEngine(loadedTestRorSettings: Option[TestRorSettings],
-                             settingsIndex: RorSettingsIndex)
-                            (implicit requestId: RequestId) = {
+  private def loadTestEngine(loadedTestRorSettings: Option[TestRorSettings], settingsIndex: RorSettingsIndex)(
+      implicit requestId: RequestId
+  ) = {
     loadedTestRorSettings match {
       case None =>
         Task.now(TestEngine.NotConfigured)
@@ -88,9 +110,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
     }
   }
 
-  private def loadActiveTestEngine(settingsIndex: RorSettingsIndex,
-                                   testSettings: TestRorSettings)
-                                  (implicit requestId: RequestId) = {
+  private def loadActiveTestEngine(settingsIndex: RorSettingsIndex, testSettings: TestRorSettings)(
+      implicit requestId: RequestId
+  ) = {
     for {
       _ <- Task.delay(authServicesMocksProvider.update(testSettings.mocks))
       testEngine <- loadRorEngine(testSettings.rawSettings, settingsIndex)
@@ -102,7 +124,9 @@ class ReadonlyRest(coreFactory: CoreFactory,
               expiration = TestEngine.Expiration(testSettings.expiration.ttl, testSettings.expiration.validTo)
             )
           case Left(startingFailure) =>
-            logger.error(s"Unable to start test engine. Cause: ${startingFailure.message.show}. Test settings engine will be marked as invalidated.")
+            logger.error(
+              s"Unable to start test engine. Cause: ${startingFailure.message.show}. Test settings engine will be marked as invalidated."
+            )
             invalidatedTestEngine(testSettings)
         }
     } yield testEngine
@@ -121,25 +145,39 @@ class ReadonlyRest(coreFactory: CoreFactory,
     )
   }
 
-  private def createRorInstance(esConfigBasedRorSettings: EsConfigBasedRorSettings,
-                                creators: SettingsRelatedCreators,
-                                mainEngine: Engine,
-                                testEngine: TestEngine,
-                                alreadyLoadedSettings: MainRorSettings) = {
+  private def createRorInstance(
+      esConfigBasedRorSettings: EsConfigBasedRorSettings,
+      creators: SettingsRelatedCreators,
+      mainEngine: Engine,
+      testEngine: TestEngine,
+      alreadyLoadedSettings: MainRorSettings
+  ) = {
     EitherT.right[StartingFailure] {
-      RorInstance.create(this, esConfigBasedRorSettings, creators, MainEngine(mainEngine, alreadyLoadedSettings.rawSettings), testEngine)
+      RorInstance.create(
+        this,
+        esConfigBasedRorSettings,
+        creators,
+        MainEngine(mainEngine, alreadyLoadedSettings.rawSettings),
+        testEngine
+      )
     }
   }
 
-  private[ror] def loadRorEngine(settings: RawRorSettings,
-                                 settingsIndex: RorSettingsIndex)
-                                (implicit requestId: RequestId): Task[Either[StartingFailure, Engine]] = {
+  private[ror] def loadRorEngine(settings: RawRorSettings, settingsIndex: RorSettingsIndex)(
+      implicit requestId: RequestId
+  ): Task[Either[StartingFailure, Engine]] = {
     val httpClientsFactory = HttpClientsFactory.default()
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
     EitherT(
       coreFactory
-        .createCoreFrom(settings, settingsIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
+        .createCoreFrom(
+          settings,
+          settingsIndex,
+          httpClientsFactory,
+          ldapConnectionPoolProvider,
+          authServicesMocksProvider
+        )
     )
       .flatMap(core => createEngine(httpClientsFactory, ldapConnectionPoolProvider, core))
       .semiflatTap { engine =>
@@ -149,9 +187,11 @@ class ReadonlyRest(coreFactory: CoreFactory,
       .value
   }
 
-  private def createEngine(httpClientsFactory: HttpClientsFactory,
-                           ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                           core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
+  private def createEngine(
+      httpClientsFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      core: Core
+  ): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
     EitherT(createAuditingTool(core.auditingSettings))
       .map { auditingTool =>
@@ -172,11 +212,15 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
   }
 
-  private def createAuditingTool(auditingSettings: Option[AuditSettings])
-                                (implicit loggingContext: LoggingContext): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
+  private def createAuditingTool(auditingSettings: Option[AuditSettings])(
+      implicit loggingContext: LoggingContext
+  ): Task[Either[NonEmptyList[CoreCreationError], Option[AuditingTool]]] = {
     auditingSettings
       .map { settings =>
-        AuditingTool.create(settings, auditSinkServiceCreator)(using systemContext.clock, loggingContext)
+        AuditingTool.create(settings, auditSinkServiceCreator)(
+          using systemContext.clock,
+          loggingContext
+        )
       }
       .sequence
       .map {
@@ -188,13 +232,18 @@ class ReadonlyRest(coreFactory: CoreFactory,
       }
   }
 
-  private def inspectFlsEngine(engine: Engine)
-                              (implicit requestId: RequestId): Unit = {
+  private def inspectFlsEngine(engine: Engine)(
+      implicit requestId: RequestId
+  ): Unit = {
     engine.core.accessControl.staticContext.usedFlsEngineInFieldsRule.foreach {
       case FlsEngine.Lucene | FlsEngine.ESWithLucene =>
-        logger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")
+        logger.warn(
+          "Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed."
+        )
       case FlsEngine.ES =>
-        logger.warn("Defined fls engine relies on ES only. This engine doesn't provide full FLS functionality hence some requests may be rejected.")
+        logger.warn(
+          "Defined fls engine relies on ES only. This engine doesn't provide full FLS functionality hence some requests may be rejected."
+        )
     }
   }
 
@@ -202,7 +251,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
     val errorsMessage = errors
       .map(_.reason)
       .map {
-        case Reason.Message(msg) => msg
+        case Reason.Message(msg)               => msg
         case Reason.MalformedValue(yamlString) => s"Malformed settings: ${yamlString.show}"
       }
       .toList
@@ -213,55 +262,59 @@ class ReadonlyRest(coreFactory: CoreFactory,
   private def lift[A](value: => A) = {
     EitherT.liftF(Task.delay(value))
   }
+
 }
 
 object ReadonlyRest {
 
-  final case class MainEngine(engine: Engine,
-                              settings: RawRorSettings)
+  final case class MainEngine(engine: Engine, settings: RawRorSettings)
 
   sealed trait TestEngine
 
   object TestEngine {
     object NotConfigured extends TestEngine
 
-    final case class Configured(engine: Engine,
-                                settings: RawRorSettings,
-                                expiration: Expiration) extends TestEngine
+    final case class Configured(engine: Engine, settings: RawRorSettings, expiration: Expiration) extends TestEngine
 
-    final case class Invalidated(settings: RawRorSettings,
-                                 expiration: Expiration) extends TestEngine
+    final case class Invalidated(settings: RawRorSettings, expiration: Expiration) extends TestEngine
 
     final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 
-  final class Engine(val core: Core,
-                     httpClientsFactory: HttpClientsFactory,
-                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     auditingTool: Option[AuditingTool])
-                    (implicit scheduler: Scheduler) {
+  final class Engine(
+      val core: Core,
+      httpClientsFactory: HttpClientsFactory,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+      auditingTool: Option[AuditingTool]
+  )(
+      implicit scheduler: Scheduler
+  ) {
 
     private[ror] def shutdown(): Unit = {
       httpClientsFactory.shutdown().runAsyncAndForget
       ldapConnectionPoolProvider.close().runAsyncAndForget
       auditingTool.foreach(_.close().runAsyncAndForget)
     }
+
   }
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-  def create(indexContentService: IndexDocumentManager,
-             auditSinkServiceCreator: AuditSinkServiceCreator,
-             env: EsEnv)
-            (implicit systemContext: SystemContext): ReadonlyRest = {
+  def create(indexContentService: IndexDocumentManager, auditSinkServiceCreator: AuditSinkServiceCreator, env: EsEnv)(
+      implicit systemContext: SystemContext
+  ): ReadonlyRest = {
     val coreFactory: CoreFactory = new RawRorSettingsBasedCoreFactory(env)
     create(coreFactory, indexContentService, auditSinkServiceCreator)
   }
 
-  def create(coreFactory: CoreFactory,
-             indexDocumentManager: IndexDocumentManager,
-             auditSinkServiceCreator: AuditSinkServiceCreator)
-            (implicit systemContext: SystemContext): ReadonlyRest = {
+  def create(
+      coreFactory: CoreFactory,
+      indexDocumentManager: IndexDocumentManager,
+      auditSinkServiceCreator: AuditSinkServiceCreator
+  )(
+      implicit systemContext: SystemContext
+  ): ReadonlyRest = {
     new ReadonlyRest(coreFactory, indexDocumentManager, auditSinkServiceCreator)
   }
+
 }

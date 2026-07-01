@@ -22,7 +22,9 @@ import java.util.function.Consumer
 import scala.language.postfixOps
 
 class CompositeLogConsumer(consumers: Consumer[OutputFrame]*) extends Consumer[OutputFrame] {
+
   override def accept(frame: OutputFrame): Unit = {
     consumers.foreach(_.accept(frame))
   }
+
 }

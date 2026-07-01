@@ -41,9 +41,10 @@ import java.security.Permission
  * `validatePolicyPermissions(...)` is executed against the extended matcher instead of the default
  * allowed-permissions set; all other plugins continue to use the standard PolicyUtil validation.
  */
-private[patches] class ModifyPolicyUtilClass private(esVersion: SemVer,
-                                                     additionalAllowedPermissions: NonEmptyList[Permission])
-  extends BytecodeJarModifier {
+private[patches] class ModifyPolicyUtilClass private (
+    esVersion: SemVer,
+    additionalAllowedPermissions: NonEmptyList[Permission]
+) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -60,20 +61,28 @@ private[patches] class ModifyPolicyUtilClass private(esVersion: SemVer,
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visit(version: Int, access: Int, name: String, signature: String, superName: String, interfaces: Array[String]): Unit = {
+    override def visit(
+        version: Int,
+        access: Int,
+        name: String,
+        signature: String,
+        superName: String,
+        interfaces: Array[String]
+    ): Unit = {
       super.visit(version, access, name, signature, superName, interfaces)
       IsItRorPluginMethod.create(this)
       AllowedPluginPermissionsExclusivelyForRorMethod.create(this)
     }
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "getPluginPolicyInfo" =>
           new GetPluginPolicyInfoAddingRorExtraPermission(
@@ -83,6 +92,7 @@ private[patches] class ModifyPolicyUtilClass private(esVersion: SemVer,
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
   private object IsItRorPluginMethod {
@@ -140,6 +150,7 @@ private[patches] class ModifyPolicyUtilClass private(esVersion: SemVer,
       methodVisitor.visitMaxs(2, 1)
       methodVisitor.visitEnd()
     }
+
   }
 
   private object AllowedPluginPermissionsExclusivelyForRorMethod {
@@ -282,7 +293,7 @@ private[patches] class ModifyPolicyUtilClass private(esVersion: SemVer,
   }
 
   private class GetPluginPolicyInfoAddingRorExtraPermission(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+      extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -373,12 +384,12 @@ private[patches] class ModifyPolicyUtilClass private(esVersion: SemVer,
       underlying.visitMaxs(4, 3)
       underlying.visitEnd()
     }
+
   }
 
 }
 
 object ModifyPolicyUtilClass {
-  def apply(esVersion: SemVer,
-            additionalAllowedPermissions: NonEmptyList[Permission]): ModifyPolicyUtilClass =
+  def apply(esVersion: SemVer, additionalAllowedPermissions: NonEmptyList[Permission]): ModifyPolicyUtilClass =
     new ModifyPolicyUtilClass(esVersion, additionalAllowedPermissions)
 }

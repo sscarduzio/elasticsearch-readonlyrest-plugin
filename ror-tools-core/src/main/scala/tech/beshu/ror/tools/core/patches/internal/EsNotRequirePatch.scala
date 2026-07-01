@@ -21,8 +21,7 @@ import tech.beshu.ror.tools.core.patches.base.EsPatch
 import tech.beshu.ror.tools.core.patches.internal.FilePatch.FilePatchMetadata
 import tech.beshu.ror.tools.core.utils.RorToolsException.EsPatchingNotRequired
 
-private[patches] class EsNotRequirePatch(esVersion: SemVer)
-  extends EsPatch {
+private[patches] class EsNotRequirePatch(esVersion: SemVer) extends EsPatch {
 
   override def performPatching(): List[FilePatchMetadata] = throw new EsPatchingNotRequired(esVersion)
 

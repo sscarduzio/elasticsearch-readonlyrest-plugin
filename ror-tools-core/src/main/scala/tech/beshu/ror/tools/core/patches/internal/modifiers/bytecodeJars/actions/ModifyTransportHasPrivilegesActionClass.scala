@@ -27,8 +27,8 @@ import java.io.InputStream
   bypassing the identity check that normally restricts the "has privileges" transport action to only
   allow a user to query privileges for themselves. This ensures ROR can perform privilege checks on
   behalf of any user without being blocked by the same-user guard.
-*/
-private [patches] object ModifyTransportHasPrivilegesActionClass extends BytecodeJarModifier {
+ */
+private[patches] object ModifyTransportHasPrivilegesActionClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -45,14 +45,15 @@ private [patches] object ModifyTransportHasPrivilegesActionClass extends Bytecod
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "isSameUser" =>
           new IsSameUserMethodReturningTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
@@ -60,10 +61,11 @@ private [patches] object ModifyTransportHasPrivilegesActionClass extends Bytecod
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
-  private class IsSameUserMethodReturningTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class IsSameUserMethodReturningTrue(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
+
     override def visitCode(): Unit = {
       underlying.visitCode()
 
@@ -74,5 +76,7 @@ private [patches] object ModifyTransportHasPrivilegesActionClass extends Bytecod
       underlying.visitMaxs(1, 2)
       underlying.visitEnd()
     }
+
   }
+
 }

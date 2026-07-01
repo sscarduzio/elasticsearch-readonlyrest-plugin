@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 trait BaseIndexApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
@@ -56,26 +56,32 @@ trait BaseIndexApiSuite
             val indexResponse = dev1IndexManager.getIndex("index1")
 
             indexResponse should have statusCode 200
-            indexResponse.indicesAndAliases should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            indexResponse.indicesAndAliases should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
           "its alias is called" in {
             val indexResponse = dev1IndexManager.getIndex("index1_alias")
 
             indexResponse should have statusCode 200
-            indexResponse.indicesAndAliases should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            indexResponse.indicesAndAliases should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
           "the index name with wildcard is used" when {
             "there is a matching index" in {
               val indexResponse = dev1IndexManager.getIndex("index*")
 
               indexResponse should have statusCode 200
-              indexResponse.indicesAndAliases should be(Map(
-                "index1" -> Set("index1_alias")
-              ))
+              indexResponse.indicesAndAliases should be(
+                Map(
+                  "index1" -> Set("index1_alias")
+                )
+              )
             }
           }
           "the alias name with wildcard is used" when {
@@ -83,18 +89,22 @@ trait BaseIndexApiSuite
               val indexResponse = dev1IndexManager.getIndex("index1_a*")
 
               indexResponse should have statusCode 200
-              indexResponse.indicesAndAliases should be(Map(
-                "index1" -> Set("index1_alias")
-              ))
+              indexResponse.indicesAndAliases should be(
+                Map(
+                  "index1" -> Set("index1_alias")
+                )
+              )
             }
           }
           "one of called indices doesn't exist" in {
             val indexResponse = dev1IndexManager.getIndex("index1", "index3")
 
             indexResponse should have statusCode 200
-            indexResponse.indicesAndAliases should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            indexResponse.indicesAndAliases should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
         }
         "he has access to its alias" when {
@@ -102,9 +112,11 @@ trait BaseIndexApiSuite
             val indexResponse = dev2IndexManager.getIndex("index2_alias")
 
             indexResponse should have statusCode 200
-            indexResponse.indicesAndAliases should be(Map(
-              "index2" -> Set("index2_alias")
-            ))
+            indexResponse.indicesAndAliases should be(
+              Map(
+                "index2" -> Set("index2_alias")
+              )
+            )
           }
         }
       }
@@ -129,7 +141,7 @@ trait BaseIndexApiSuite
       "pretend that index doesn't exist" when {
         "called index really doesn't exist" in {
           val indexResponse = dev1IndexManager.getIndex("index3")
-          
+
           indexResponse should have statusCode notFoundIndexStatusReturned
         }
         "called index exists, but the user has no access to it" in {
@@ -147,10 +159,12 @@ trait BaseIndexApiSuite
         val indexResponse = dev7IndexManager.getIndex("index7*")
 
         indexResponse should have statusCode 200
-        indexResponse.indicesAndAliases should be(Map(
-          "index7-000001" -> Set("index7"),
-          "index7-000002" -> Set.empty
-        ))
+        indexResponse.indicesAndAliases should be(
+          Map(
+            "index7-000001" -> Set("index7"),
+            "index7-000002" -> Set.empty
+          )
+        )
       }
       "forbid to query index" when {
         "default forbidden response configured" in {
@@ -173,43 +187,53 @@ trait BaseIndexApiSuite
           val aliasResponse = dev1IndexManager.getAliases
 
           aliasResponse should have statusCode 200
-          aliasResponse.aliasesOfIndices should be(Map(
-            "index1" -> Set("index1_alias")
-          ))
+          aliasResponse.aliasesOfIndices should be(
+            Map(
+              "index1" -> Set("index1_alias")
+            )
+          )
         }
         "/[index]/_alias API is used" when {
           "index full name is passed" in {
             val aliasResponse = dev1IndexManager.getAlias("index1")
 
             aliasResponse should have statusCode 200
-            aliasResponse.aliasesOfIndices should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            aliasResponse.aliasesOfIndices should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
           "index name has wildcard" in {
             val aliasResponse = dev1IndexManager.getAlias("index*")
 
             aliasResponse should have statusCode 200
-            aliasResponse.aliasesOfIndices should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            aliasResponse.aliasesOfIndices should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
           "one of passed indices doesn't exist" in {
             val aliasResponse = dev1IndexManager.getAlias(indices = "index1", "nonexistent")
 
             aliasResponse should have statusCode 200
-            aliasResponse.aliasesOfIndices should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            aliasResponse.aliasesOfIndices should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
           "one index has no aliases" in {
             val aliasResponse = dev7IndexManager.getAlias("index7*")
 
             aliasResponse should have statusCode 200
-            aliasResponse.aliasesOfIndices should be(Map(
-              "index7-000001" -> Set("index7"),
-              "index7-000002" -> Set.empty
-            ))
+            aliasResponse.aliasesOfIndices should be(
+              Map(
+                "index7-000001" -> Set("index7"),
+                "index7-000002" -> Set.empty
+              )
+            )
           }
         }
         "/[index]/_alias/[alias] API is used" when {
@@ -217,17 +241,21 @@ trait BaseIndexApiSuite
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1_alias")
 
             aliasResponse should have statusCode 200
-            aliasResponse.aliasesOfIndices should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            aliasResponse.aliasesOfIndices should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
           "alias name has wildcard" in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1*")
 
             aliasResponse should have statusCode 200
-            aliasResponse.aliasesOfIndices should be(Map(
-              "index1" -> Set("index1_alias")
-            ))
+            aliasResponse.aliasesOfIndices should be(
+              Map(
+                "index1" -> Set("index1_alias")
+              )
+            )
           }
         }
       }
@@ -399,7 +427,7 @@ trait BaseIndexApiSuite
     }
     "Resolve index API is used" should {
       "be allowed" when {
-        "user has access to the requested index" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "user has access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolveIndex("index7-000001")
 
           result should have statusCode 200
@@ -410,7 +438,7 @@ trait BaseIndexApiSuite
 
           result.aliases.size should be(0)
         }
-        "user has access to the requested index pattern" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "user has access to the requested index pattern" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolveIndex("index7*")
 
           result should have statusCode 200
@@ -449,7 +477,12 @@ trait BaseIndexApiSuite
           result.indices.size should be(0)
           result.aliases.size should be(0)
         }
-        "user has no access to the requested index" excludeES (allEs6x, allEs7xBelowEs79x, allEs8xAboveEs86x, allEs9x) in {
+        "user has no access to the requested index" excludeES (
+          allEs6x,
+          allEs7xBelowEs79x,
+          allEs8xAboveEs86x,
+          allEs9x
+        ) in {
           val result = dev7IndexManager.resolveIndex("index2")
 
           result should have statusCode 200
@@ -569,6 +602,7 @@ trait BaseIndexApiSuite
       }
     }
   }
+
 }
 
 object BaseIndexApiSuite {
@@ -591,4 +625,5 @@ object BaseIndexApiSuite {
     indexManager.createAliasOf("index7-000001", "special_index7").force()
     documentManager.createDoc("index7-000002", 1, ujson.read("""{"hello":"world"}""")).force()
   }
+
 }

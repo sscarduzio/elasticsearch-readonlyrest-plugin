@@ -48,6 +48,7 @@ object JwtDef {
   final case class Name(value: NonEmptyString)
 
   sealed trait SignatureCheckMethod
+
   object SignatureCheckMethod {
     final case class NoCheck(service: ExternalAuthenticationService) extends SignatureCheckMethod
     final case class Hmac(key: Array[Byte]) extends SignatureCheckMethod
@@ -70,19 +71,24 @@ trait JwtDefForAuthorization extends JwtDef {
 
 trait JwtDefForAuth extends JwtDefForAuthentication with JwtDefForAuthorization
 
+final case class AuthenticationJwtDef(
+    override val id: Name,
+    authorizationTokenDef: AuthorizationTokenDef,
+    checkMethod: SignatureCheckMethod,
+    userClaim: Jwt.ClaimName
+) extends JwtDefForAuthentication
 
-final case class AuthenticationJwtDef(override val id: Name,
-                                      authorizationTokenDef: AuthorizationTokenDef,
-                                      checkMethod: SignatureCheckMethod,
-                                      userClaim: Jwt.ClaimName) extends JwtDefForAuthentication
+final case class AuthorizationJwtDef(
+    override val id: Name,
+    authorizationTokenDef: AuthorizationTokenDef,
+    checkMethod: SignatureCheckMethod,
+    groupsConfig: GroupsConfig
+) extends JwtDefForAuthorization
 
-final case class AuthorizationJwtDef(override val id: Name,
-                                     authorizationTokenDef: AuthorizationTokenDef,
-                                     checkMethod: SignatureCheckMethod,
-                                     groupsConfig: GroupsConfig) extends JwtDefForAuthorization
-
-final case class AuthJwtDef(override val id: Name,
-                            authorizationTokenDef: AuthorizationTokenDef,
-                            checkMethod: SignatureCheckMethod,
-                            userClaim: Jwt.ClaimName,
-                            groupsConfig: GroupsConfig) extends JwtDefForAuth
+final case class AuthJwtDef(
+    override val id: Name,
+    authorizationTokenDef: AuthorizationTokenDef,
+    checkMethod: SignatureCheckMethod,
+    userClaim: Jwt.ClaimName,
+    groupsConfig: GroupsConfig
+) extends JwtDefForAuth

@@ -34,10 +34,8 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
-class BulkEsRequestContext(actionRequest: BulkRequest,
-                           esContext: EsContext,
-                           override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext)
+class BulkEsRequestContext(actionRequest: BulkRequest, esContext: EsContext, override val threadPool: ThreadPool)
+    extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext)
     with EsRequest[MultiIndexRequestBlockContext] {
 
   override def initialBlockContext(block: Block): MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
@@ -50,12 +48,10 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
   )
 
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
-    discoveredIndexPacks
-      .flatMap {
-        case Indices.Found(indices) => indices
-        case Indices.NotFound => Set.empty
-      }
-      .toCovariantSet
+    discoveredIndexPacks.flatMap {
+      case Indices.Found(indices) => indices
+      case Indices.NotFound       => Set.empty
+    }.toCovariantSet
   }
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
@@ -66,11 +62,13 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
         .zip(modifiedPacksOfIndices)
         .foldLeft(Modified: ModificationResult) {
           case (Modified, (request, pack)) => updateRequest(request, pack)
-          case (_, _) => ShouldBeInterrupted
+          case (_, _)                      => ShouldBeInterrupted
         }
     } else {
-      logger.error(s"Cannot alter MultiGetRequest request, because origin request contained different " +
-        s"number of requests, than altered one. This can be security issue. So, it's better for forbid the request")
+      logger.error(
+        s"Cannot alter MultiGetRequest request, because origin request contained different " +
+          s"number of requests, than altered one. This can be security issue. So, it's better for forbid the request"
+      )
       ShouldBeInterrupted
     }
   }
@@ -79,14 +77,14 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
 
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {
     request
-      .requests().asScala
+      .requests()
+      .asScala
       .map { r => Indices.Found(requestedIndicesFrom(r)) }
       .toList
   }
 
   private def requestedIndicesFrom(request: DocWriteRequest[_]): Set[RequestedIndex[ClusterIndexName]] = {
-    request
-      .indices.asSafeSet
+    request.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
@@ -108,9 +106,14 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     }
   }
 
-  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
+  private def updateRequestWithIndices(
+      request: DocWriteRequest[_],
+      indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+      logger.warn(
+        s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]"
+      )
     }
     request.index(indices.head.stringify)
   }

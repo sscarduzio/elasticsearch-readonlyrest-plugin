@@ -121,7 +121,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
         assertInvalidSettings(
           settings,
-          expectedErrorMessage = "Duplicated audit 'enabled' setting: use either the nested form 'audit: {enabled: ...}' or the flat form 'audit.enabled', not both"
+          expectedErrorMessage =
+            "Duplicated audit 'enabled' setting: use either the nested form 'audit: {enabled: ...}' or the flat form 'audit.enabled', not both"
         )
       }
     }
@@ -201,7 +202,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
-            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
+            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
+              indexName("readonlyrest_audit-2018-12-31")
+            )
             sink1Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
@@ -387,8 +390,16 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   ),
                 ),
               ),
-              AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
-              AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
+              AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(
+                List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))
+              ),
+              AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(
+                List(
+                  AuditFieldValueDescriptor.EsClusterName,
+                  AuditFieldValueDescriptor.StaticText(" "),
+                  AuditFieldValueDescriptor.HttpMethod
+                )
+              ),
               AuditFieldPath("matched_blocks") -> AuditFieldValueDescriptor.MatchedBlockNames,
               AuditFieldPath("tid") -> AuditFieldValueDescriptor.TaskId,
               AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
@@ -500,7 +511,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
               val createdSerializer = serializer(settings)
               val serializedResponse = createdSerializer.onResponse(
-                AuditResponseContext.Forbidden(new DummyAuditRequestContext(loggedInUserName = None, attemptedUserName = None))
+                AuditResponseContext.Forbidden(
+                  new DummyAuditRequestContext(loggedInUserName = None, attemptedUserName = None)
+                )
               )
 
               serializedResponse shouldBe defined
@@ -551,7 +564,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               serializedResponse shouldBe defined
               serializedResponse.get.get("custom_field_for_es_node_name") shouldBe "testEsNode"
@@ -577,7 +591,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               val expectedJsonStr =
                 """{
@@ -656,7 +671,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               val expectedJsonStr =
                 """{
@@ -733,7 +749,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               val expectedJsonStr =
                 """{
@@ -1224,7 +1241,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
-            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
+            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
+              indexName("readonlyrest_audit-2018-12-31")
+            )
             sink1Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
@@ -1298,7 +1317,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "logger name is empty" in {
@@ -1332,7 +1352,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "custom audit index name pattern is invalid" in {
@@ -1348,7 +1369,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage =
+                  "Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list (array syntax)" in {
@@ -1390,7 +1412,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
+                  expectedErrorMessage =
+                    s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
                 )
               }
 
@@ -1407,7 +1430,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
+                  expectedErrorMessage =
+                    s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
                 )
               }
             }
@@ -1445,7 +1469,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
+                expectedErrorMessage =
+                  "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
               )
             }
             "remote cluster credentials malformed" when {
@@ -1503,7 +1528,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "data stream name is invalid" in {
@@ -1519,11 +1545,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'data_stream': Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
-                  "name must be lowercase, " +
-                  "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' ', " +
-                  "name must not start with '-', '_', '+', '.ds-'."
-
+                expectedErrorMessage =
+                  "Error for field 'data_stream': Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
+                    "name must be lowercase, " +
+                    "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' ', " +
+                    "name must not start with '-', '_', '+', '.ds-'."
               )
             }
             "remote cluster is empty list" in {
@@ -1566,8 +1592,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               esVersions.foreach { esVersion =>
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = s"Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0, " +
-                    s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
+                  expectedErrorMessage =
+                    s"Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0, " +
+                      s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
                   esVersion = esVersion
                 )
               }
@@ -1585,7 +1612,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Error for field 'type': Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
+              expectedErrorMessage =
+                "Error for field 'type': Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
             )
           }
           "unknown output type is set when using simple format" in {
@@ -1599,7 +1627,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
+              expectedErrorMessage =
+                "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
             )
 
             assertInvalidSettings(
@@ -1642,7 +1671,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Configurable serializer is used, but the 'fields' setting is missing or invalid: There are invalid placeholder values: HTTP_METHOD2"
+              expectedErrorMessage =
+                "Configurable serializer is used, but the 'fields' setting is missing or invalid: There are invalid placeholder values: HTTP_METHOD2"
             )
           }
           "configurable serializer is set, but without fields setting" in {
@@ -1660,7 +1690,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Configurable serializer is used, but the 'fields' setting is missing or invalid: Missing required field"
+              expectedErrorMessage =
+                "Configurable serializer is used, but the 'fields' setting is missing or invalid: Missing required field"
             )
           }
         }
@@ -1916,7 +1947,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "custom audit index name pattern is invalid" in {
@@ -1930,7 +1962,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage =
+                  "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
@@ -1959,7 +1992,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "custom audit index name pattern is invalid" in {
@@ -1972,7 +2006,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage =
+                  "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
@@ -2045,9 +2080,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
-                                                                                      expectedIndexName: NonEmptyString,
-                                                                                      expectedAuditCluster: AuditCluster) = {
+  private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](
+      settings: RawRorSettings,
+      expectedIndexName: NonEmptyString,
+      expectedAuditCluster: AuditCluster
+  ) = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2073,10 +2110,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
-                                                                                      expectedDataStreamName: NonEmptyString,
-                                                                                      expectedAuditCluster: AuditCluster,
-                                                                                      esVersion: EsVersion = defaultEsVersionForTests) = {
+  private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](
+      settings: RawRorSettings,
+      expectedDataStreamName: NonEmptyString,
+      expectedAuditCluster: AuditCluster,
+      esVersion: EsVersion = defaultEsVersionForTests
+  ) = {
     val core = factory(esVersion)
       .createCoreFrom(
         settings,
@@ -2102,8 +2141,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def serializer(settings: RawRorSettings,
-                         esVersion: EsVersion = defaultEsVersionForTests): AuditLogSerializer = {
+  private def serializer(
+      settings: RawRorSettings,
+      esVersion: EsVersion = defaultEsVersionForTests
+  ): AuditLogSerializer = {
     val core = factory(esVersion)
       .createCoreFrom(
         settings,
@@ -2124,8 +2165,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
-                                                                                    expectedLoggerName: NonEmptyString) = {
+  private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](
+      settings: RawRorSettings,
+      expectedLoggerName: NonEmptyString
+  ) = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2150,9 +2193,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertInvalidSettings(settings: RawRorSettings,
-                                    expectedErrorMessage: String,
-                                    esVersion: EsVersion = defaultEsVersionForTests): Unit = {
+  private def assertInvalidSettings(
+      settings: RawRorSettings,
+      expectedErrorMessage: String,
+      esVersion: EsVersion = defaultEsVersionForTests
+  ): Unit = {
     val core = factory(esVersion)
       .createCoreFrom(
         settings,
@@ -2176,9 +2221,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   extension (jsonObject: JSONObject) {
+
     private def withTimestampValue(value: String): JSONObject = {
       jsonObject.put("@timestamp", value)
     }
+
     private def circeJsonE: Either[String, Json] =
       parser.parse(jsonObject.toString(0)).left.map(_.getMessage)
   }
@@ -2187,8 +2234,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
 private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAuditLogSerializer {
 
-  def onResponse(responseContext: AuditResponseContext,
-                 environmentContext: AuditEnvironmentContext): Option[JSONObject] = Some(
+  def onResponse(
+      responseContext: AuditResponseContext,
+      environmentContext: AuditEnvironmentContext
+  ): Option[JSONObject] = Some(
     new JSONObject()
       .put("custom_field_for_es_node_name", environmentContext.esNodeName)
       .put("custom_field_for_es_cluster_name", environmentContext.esClusterName)
@@ -2196,9 +2245,10 @@ private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAud
 
 }
 
-private class DummyAuditRequestContext(override val loggedInUserName: Option[String] = Some("logged_user"),
-                                       override val attemptedUserName: Option[String] = Some("basic auth user"))
-  extends AuditRequestContext {
+private class DummyAuditRequestContext(
+    override val loggedInUserName: Option[String] = Some("logged_user"),
+    override val attemptedUserName: Option[String] = Some("basic auth user")
+) extends AuditRequestContext {
   override def timestamp: Instant = Instant.now().minusSeconds(5)
 
   override def id: String = "trace_id_123"
@@ -2239,7 +2289,9 @@ private class DummyAuditRequestContext(override val loggedInUserName: Option[Str
 
   override def generalAuditEvents: JSONObject = new JSONObject
 
-  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(defaultTestEsNodeSettings)
+  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(
+    defaultTestEsNodeSettings
+  )
 
   override def matchedBlockNames: Option[List[String]] = Some(List("block1", "block2"))
 }

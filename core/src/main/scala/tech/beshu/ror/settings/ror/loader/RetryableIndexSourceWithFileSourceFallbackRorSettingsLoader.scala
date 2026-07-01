@@ -23,19 +23,23 @@ import tech.beshu.ror.settings.ror.source.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
-class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIndexSource: MainSettingsIndexSource,
-                                                                  mainSettingsIndexLoadingRetryStrategy: RetryStrategy,
-                                                                  mainSettingsFileSource: MainSettingsFileSource,
-                                                                  testSettingsIndexSource: TestSettingsIndexSource)
-  extends StartingRorSettingsLoader with RequestIdAwareLogging {
+class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
+    mainSettingsIndexSource: MainSettingsIndexSource,
+    mainSettingsIndexLoadingRetryStrategy: RetryStrategy,
+    mainSettingsFileSource: MainSettingsFileSource,
+    testSettingsIndexSource: TestSettingsIndexSource
+) extends StartingRorSettingsLoader
+    with RequestIdAwareLogging {
 
-  override def load()
-                   (implicit requestId: RequestId): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
+  override def load()(
+      implicit requestId: RequestId
+  ): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = for {
       mainSettings <- mainSettingsIndexLoadingRetryStrategy
         .withRetryT(
           operation = loadMainSettingsFromIndex(),
-          operationDescription = s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
+          operationDescription =
+            s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
         )
         .orElse(loadMainSettingsFromFile())
       testSettings <- loadTestSettingsFromIndex()
@@ -45,24 +49,27 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
     result.value
   }
 
-  private def loadMainSettingsFromIndex()
-                                       (implicit requestId: RequestId)= {
+  private def loadMainSettingsFromIndex()(
+      implicit requestId: RequestId
+  ) = {
     loadSettingsFromSource(
       source = mainSettingsIndexSource,
       settingsDescription = s"main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
     )
   }
 
-  private def loadMainSettingsFromFile()
-                                      (implicit requestId: RequestId)= {
+  private def loadMainSettingsFromFile()(
+      implicit requestId: RequestId
+  ) = {
     loadSettingsFromSource(
       source = mainSettingsFileSource,
       settingsDescription = s"main settings from file '${mainSettingsFileSource.settingsFile.show}''"
     )
   }
 
-  private def loadTestSettingsFromIndex()
-                                       (implicit requestId: RequestId)= {
+  private def loadTestSettingsFromIndex()(
+      implicit requestId: RequestId
+  ) = {
     loadSettingsFromSource(
       source = testSettingsIndexSource,
       settingsDescription = s"test settings from index '${testSettingsIndexSource.settingsIndex.show}'"

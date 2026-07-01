@@ -16,38 +16,50 @@
  */
 package tech.beshu.ror.settings.ror.source
 
-import scala.annotation.nowarn
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 
+import scala.annotation.nowarn
+
 sealed trait SettingsSource[SETTINGS]
 
 @nowarn("msg=unused implicit parameter")
 trait ReadOnlySettingsSource[SETTINGS: Decoder, ERROR] extends SettingsSource[SETTINGS] {
-  def load()
-          (implicit requestId: RequestId): Task[Either[SettingsLoadingError[ERROR], SETTINGS]]
+
+  def load()(
+      implicit requestId: RequestId
+  ): Task[Either[SettingsLoadingError[ERROR], SETTINGS]]
+
 }
+
 object ReadOnlySettingsSource {
   sealed trait SettingsLoadingError[+ERROR]
+
   object SettingsLoadingError {
     final case class SettingsMalformed(cause: String) extends SettingsLoadingError[Nothing]
     final case class SourceSpecificError[ERROR](error: ERROR) extends SettingsLoadingError[ERROR]
   }
+
 }
 
 @nowarn("msg=unused implicit parameter")
-trait ReadWriteSettingsSource[SETTINGS: Encoder : Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
-  extends ReadOnlySettingsSource[SETTINGS, READ_SPECIFIC_ERROR] {
+trait ReadWriteSettingsSource[SETTINGS: Encoder: Decoder, READ_SPECIFIC_ERROR, WRITE_SPECIFIC_ERROR]
+    extends ReadOnlySettingsSource[SETTINGS, READ_SPECIFIC_ERROR] {
 
-  def save(settings: SETTINGS)
-          (implicit requestId: RequestId): Task[Either[SettingsSavingError[WRITE_SPECIFIC_ERROR], Unit]]
+  def save(settings: SETTINGS)(
+      implicit requestId: RequestId
+  ): Task[Either[SettingsSavingError[WRITE_SPECIFIC_ERROR], Unit]]
+
 }
+
 object ReadWriteSettingsSource {
   sealed trait SettingsSavingError[+ERROR]
+
   object SettingsSavingError {
     final case class SourceSpecificError[ERROR](error: ERROR) extends SettingsSavingError[ERROR]
   }
+
 }

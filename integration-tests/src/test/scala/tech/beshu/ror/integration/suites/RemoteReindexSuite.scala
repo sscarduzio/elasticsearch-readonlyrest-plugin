@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.misc.OsUtils.CurrentOs
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, OsUtils}
 
 class RemoteReindexSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
     with PluginTestSupport
     with MultipleClientsSupport
@@ -58,7 +58,8 @@ class RemoteReindexSuite
         ReadonlyRestPlugin.Config.Attributes.default.copy(
           rorSettingsFileName = RemoteReindexSuite.this.sourceEsRorSettingsFileName,
           restSsl = Enabled.No
-        ))
+        )
+      )
     )
   )
 
@@ -107,12 +108,14 @@ class RemoteReindexSuite
         result should have statusCode 403
       }
       "request specifies source index that isn't allowed, but dest that is allowed" in {
-        val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "test1_index_reindexed")
+        val result =
+          destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "test1_index_reindexed")
 
         result should have statusCode 403
       }
       "request specifies both source index and dest index that are not allowed" in {
-        val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "not_allowed_index_reindexed")
+        val result =
+          destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "not_allowed_index_reindexed")
 
         result should have statusCode 403
       }
@@ -139,13 +142,17 @@ class RemoteReindexSuite
       password = "test"
     )
   }
+
 }
 
 object RemoteReindexSuite {
+
   private def sourceEsDataInitializer(): ElasticsearchNodeDataInitializer = {
-    (esVersion: String, adminRestClient: RestClient) => {
-      val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}""")).force()
-    }
+    (esVersion: String, adminRestClient: RestClient) =>
+      {
+        val documentManager = new DocumentManager(adminRestClient, esVersion)
+        documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}""")).force()
+      }
   }
+
 }

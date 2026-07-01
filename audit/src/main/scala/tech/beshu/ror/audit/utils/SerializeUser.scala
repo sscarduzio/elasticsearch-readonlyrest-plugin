@@ -23,4 +23,5 @@ private[ror] object SerializeUser {
   def serialize(requestContext: AuditRequestContext): Option[String] = {
     requestContext.loggedInUserName.orElse(requestContext.attemptedUserName).orElse(requestContext.rawAuthHeader)
   }
+
 }

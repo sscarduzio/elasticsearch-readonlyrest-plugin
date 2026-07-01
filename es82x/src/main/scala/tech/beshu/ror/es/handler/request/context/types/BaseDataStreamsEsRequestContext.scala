@@ -29,10 +29,11 @@ import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsReques
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest: R,
-                                                                   esContext: EsContext,
-                                                                   override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[DataStreamRequestBlockContext](esContext)
+abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](
+    actionRequest: R,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[DataStreamRequestBlockContext](esContext)
     with EsRequest[DataStreamRequestBlockContext] {
 
   override def initialBlockContext(block: Block): DataStreamRequestBlockContext = DataStreamRequestBlockContext(
@@ -48,7 +49,7 @@ abstract class BaseDataStreamsEsRequestContext[R <: ActionRequest](actionRequest
   override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
     discoveredBackingIndices match {
       case BackingIndices.IndicesInvolved(filteredIndices, _) => filteredIndices
-      case BackingIndices.IndicesNotInvolved => Set.empty
+      case BackingIndices.IndicesNotInvolved                  => Set.empty
     }
   }
 

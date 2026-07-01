@@ -166,9 +166,17 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |    auth_key: "user4:pass"
                |""".stripMargin
 
-          assertLocalUsersFromSettings(settings, allUsersResolved(UniqueNonEmptyList.of(
-            User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
-          )))
+          assertLocalUsersFromSettings(
+            settings,
+            allUsersResolved(
+              UniqueNonEmptyList.of(
+                User.Id("admin"),
+                User.Id("user1"),
+                User.Id("user2"),
+                User.Id("user4")
+              )
+            )
+          )
         }
         "auth_key rules used" in {
           val settings =
@@ -201,9 +209,8 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |""".stripMargin
           }
 
-          inside(createCore(settings, new UnboundidLdapConnectionPoolProvider())) {
-            case Right(core) =>
-              core.dependencies.localUsers should be(allUsersResolved(UniqueNonEmptyList.of(User.Id("admin"))))
+          inside(createCore(settings, new UnboundidLdapConnectionPoolProvider())) { case Right(core) =>
+            core.dependencies.localUsers should be(allUsersResolved(UniqueNonEmptyList.of(User.Id("admin"))))
           }
         }
         "ror_kbn_auth rule used" in {
@@ -224,11 +231,14 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |""".stripMargin
 
           val rorSettings = rorSettingsFromUnsafe(settings)
-          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
-            case Right(core) =>
-              core.dependencies.localUsers should be(allUsersResolved(UniqueNonEmptyList.of(
-                User.Id("admin")
-              )))
+          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) { case Right(core) =>
+            core.dependencies.localUsers should be(
+              allUsersResolved(
+                UniqueNonEmptyList.of(
+                  User.Id("admin")
+                )
+              )
+            )
           }
         }
         "ror_kbn_authentication rule used" in {
@@ -249,11 +259,14 @@ class LocalUsersTest extends AnyWordSpec with Inside {
                |""".stripMargin
 
           val rorSettings = rorSettingsFromUnsafe(settings)
-          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) {
-            case Right(core) =>
-              core.dependencies.localUsers should be(allUsersResolved(UniqueNonEmptyList.of(
-                User.Id("admin")
-              )))
+          inside(createCore(rorSettings, new UnboundidLdapConnectionPoolProvider())) { case Right(core) =>
+            core.dependencies.localUsers should be(
+              allUsersResolved(
+                UniqueNonEmptyList.of(
+                  User.Id("admin")
+                )
+              )
+            )
           }
         }
       }
@@ -286,9 +299,14 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |     auth_key: devAdmin3:pass
              |     users: ["*", "user*"]
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = allUsersResolved(UniqueNonEmptyList.of(
-          User.Id("admin")
-        )))
+        assertLocalUsersFromSettings(
+          settings,
+          expected = allUsersResolved(
+            UniqueNonEmptyList.of(
+              User.Id("admin")
+            )
+          )
+        )
       }
     }
     "return info that unknown users in settings" when {
@@ -345,9 +363,17 @@ class LocalUsersTest extends AnyWordSpec with Inside {
              |    groups: ["group5", "group6"]
              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
              |""".stripMargin
-        assertLocalUsersFromSettings(settings, expected = withUnknownUsers(UniqueNonEmptyList.of(
-          User.Id("admin"), User.Id("user1"), User.Id("user2"), User.Id("user4")
-        )))
+        assertLocalUsersFromSettings(
+          settings,
+          expected = withUnknownUsers(
+            UniqueNonEmptyList.of(
+              User.Id("admin"),
+              User.Id("user1"),
+              User.Id("user2"),
+              User.Id("user4")
+            )
+          )
+        )
       }
     }
     "return error" when {
@@ -379,7 +405,13 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         val settings = rorSettingsFromUnsafe(settingsStr)
         inside(createCore(settings)) {
           case Left(errors) if errors.size == 1 =>
-            errors.head should be(BlocksLevelCreationError(Message("The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.")))
+            errors.head should be(
+              BlocksLevelCreationError(
+                Message(
+                  "The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL."
+                )
+              )
+            )
         }
       }
       "two blocks have the same names and users section defined, but there is no groups rule" in {
@@ -412,7 +444,13 @@ class LocalUsersTest extends AnyWordSpec with Inside {
         val settings = rorSettingsFromUnsafe(settingsStr)
         inside(createCore(settings)) {
           case Left(errors) if errors.size == 1 =>
-            errors.head should be(BlocksLevelCreationError(Message("Blocks must have unique names. Duplicates: test_block1; The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL.")))
+            errors.head should be(
+              BlocksLevelCreationError(
+                Message(
+                  "Blocks must have unique names. Duplicates: test_block1; The `users` config section is defined, but there is no groups rule that uses it. Either remove the `users` section in the config, or add the groups rule in the ACL."
+                )
+              )
+            )
         }
       }
     }
@@ -424,15 +462,16 @@ class LocalUsersTest extends AnyWordSpec with Inside {
 
   private def assertLocalUsersFromSettings(settingsString: String, expected: LocalUsers) = {
     val settings = rorSettingsFromUnsafe(settingsString)
-    inside(createCore(settings)) {
-      case Right(core) =>
-        core.dependencies.localUsers should be(expected)
+    inside(createCore(settings)) { case Right(core) =>
+      core.dependencies.localUsers should be(expected)
     }
   }
 
-  private def createCore(settings: RawRorSettings,
-                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider,
-                         clientsFactory: HttpClientsFactory = MockHttpClientsFactory) = {
+  private def createCore(
+      settings: RawRorSettings,
+      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider,
+      clientsFactory: HttpClientsFactory = MockHttpClientsFactory
+  ) = {
     factory
       .createCoreFrom(
         settings,

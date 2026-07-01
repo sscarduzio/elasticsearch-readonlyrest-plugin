@@ -23,6 +23,7 @@ import ujson.Value
 import scala.util.Try
 
 object RestResponseOps {
+
   extension (response: Response) {
     def isSuccess: Boolean = statusCode / 100 == 2
 
@@ -40,8 +41,11 @@ object RestResponseOps {
   }
 
   extension (request: Request) {
+
     def setJsonBody(json: Value): Unit = {
       request.setJsonEntity(ujson.write(json))
     }
+
   }
+
 }

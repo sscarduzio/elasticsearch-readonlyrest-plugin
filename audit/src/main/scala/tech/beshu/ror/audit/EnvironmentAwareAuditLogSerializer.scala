@@ -21,6 +21,5 @@ import org.json.JSONObject
 // The `AuditResponseContext` now contains the `AuditEnvironmentContext` and there is no need to use this trait.
 // This trait is preserved and supported for compatibility reasons, but we should not include it in our docs and use `AuditLogSerializer` instead
 trait EnvironmentAwareAuditLogSerializer {
-  def onResponse(responseContext: AuditResponseContext,
-                 environmentContext: AuditEnvironmentContext): Option[JSONObject]
+  def onResponse(responseContext: AuditResponseContext, environmentContext: AuditEnvironmentContext): Option[JSONObject]
 }

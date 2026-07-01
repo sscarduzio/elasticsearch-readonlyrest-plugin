@@ -27,13 +27,10 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderOps
 import tech.beshu.ror.implicits.*
 
-object MaxBodyLengthRuleDecoder
-  extends RuleBaseDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
+object MaxBodyLengthRuleDecoder extends RuleBaseDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
 
   override protected def decoder: Decoder[RuleDefinition[MaxBodyLengthRule]] = {
-    Decoder
-      .decodeLong
-      .toSyncDecoder
+    Decoder.decodeLong.toSyncDecoder
       .emapE { value =>
         if (value >= 0) Right(Bytes(value))
         else Left(RulesLevelCreationError(Message(s"Invalid max body length: ${value.show}")))
@@ -41,4 +38,5 @@ object MaxBodyLengthRuleDecoder
       .map(maxBodyLength => RuleDefinition.create(new MaxBodyLengthRule(Settings(maxBodyLength))))
       .decoder
   }
+
 }

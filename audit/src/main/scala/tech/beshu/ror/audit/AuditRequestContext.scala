@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.audit
 
-import java.time.Instant
-
 import org.json.JSONObject
+
+import java.time.Instant
 
 trait AuditRequestContext {
   def timestamp: Instant

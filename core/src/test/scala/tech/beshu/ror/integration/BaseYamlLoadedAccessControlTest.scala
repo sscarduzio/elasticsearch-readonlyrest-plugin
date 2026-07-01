@@ -45,6 +45,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     envVarsProvider = envVarsProvider,
     propertiesProvider = propertiesProvider
   )
+
   private val factory = new RawRorSettingsBasedCoreFactory(defaultEsEnv())
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
   protected val httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
@@ -54,7 +55,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     val yamlParser = new RawRorSettingsYamlParser(Megabytes(3))
     val rorSettings = yamlParser.fromString(settingsYaml) match {
       case Right(value) => value
-      case Left(error) => throw new IllegalStateException(error.show)
+      case Left(error)  => throw new IllegalStateException(error.show)
     }
     factory
       .createCoreFrom(
@@ -67,4 +68,5 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
       .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), _.accessControl))
       .runSyncUnsafe()
   }
+
 }

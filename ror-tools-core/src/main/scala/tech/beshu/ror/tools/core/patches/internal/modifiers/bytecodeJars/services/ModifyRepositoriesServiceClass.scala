@@ -29,8 +29,7 @@ import java.io.InputStream
   RepositoriesService to handle repositories and snapshots. In this bytecode modifier we remove the conditional check
   which was responsible for disabling cluster events update on RepositoriesService instance.
  */
-private[patches] class ModifyRepositoriesServiceClass private(esVersion: SemVer)
-  extends BytecodeJarModifier {
+private[patches] class ModifyRepositoriesServiceClass private (esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -47,53 +46,74 @@ private[patches] class ModifyRepositoriesServiceClass private(esVersion: SemVer)
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "<init>" =>
           esVersion match {
             case v if v >= es790 =>
-              new ConstructorWithAlwaysAddingHighPriorityApplier(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new ConstructorWithAlwaysAddingHighPriorityApplier(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case _ =>
-              new ConstructorWithAlwaysAddingStateApplier(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new ConstructorWithAlwaysAddingStateApplier(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
           }
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
   private class ConstructorWithAlwaysAddingHighPriorityApplier(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9, underlying) {
+      extends MethodVisitor(Opcodes.ASM9, underlying) {
 
     override def visitInsn(opcode: Int): Unit = {
       if (opcode == Opcodes.RETURN) {
         underlying.visitVarInsn(Opcodes.ALOAD, 2)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
-        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addHighPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
+        underlying.visitMethodInsn(
+          Opcodes.INVOKEVIRTUAL,
+          "org/elasticsearch/cluster/service/ClusterService",
+          "addHighPriorityApplier",
+          "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V",
+          false
+        );
       }
       underlying.visitInsn(opcode)
     }
+
   }
 
   private class ConstructorWithAlwaysAddingStateApplier(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9, underlying) {
+      extends MethodVisitor(Opcodes.ASM9, underlying) {
 
     override def visitInsn(opcode: Int): Unit = {
       if (opcode == Opcodes.RETURN) {
         underlying.visitVarInsn(Opcodes.ALOAD, 2)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
-        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addStateApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
+        underlying.visitMethodInsn(
+          Opcodes.INVOKEVIRTUAL,
+          "org/elasticsearch/cluster/service/ClusterService",
+          "addStateApplier",
+          "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V",
+          false
+        );
       }
       underlying.visitInsn(opcode)
     }
+
   }
+
 }
 
 object ModifyRepositoriesServiceClass {

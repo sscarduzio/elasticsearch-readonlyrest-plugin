@@ -21,6 +21,7 @@ plugins {
     id "org.owasp.dependencycheck"
     id "maven-publish"
     id "scala"
+    id "readonlyrest.format-conventions"
 }
 
 repositories {
@@ -29,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'org.scala-lang',     name: 'scala3-library_3',      version: '3.3.7'
+    implementation "org.scala-lang:scala3-library_3:3.3.7"
 }
 
 tasks.withType(ScalaCompile).configureEach {
@@ -83,22 +84,38 @@ dependencyCheck {
         }
     }
     nvd {
+        // Not required when using datafeedUrl — API key is only needed for NVD REST API rate limiting.
+        // Kept here as fallback in case datafeedUrl is removed.
         apiKey = System.getenv('NVD_API_KEY')
+        autoUpdate = true
+        // Use bulk NVD data feeds instead of the NVD REST API. Static .gz files are downloaded
+        // directly — no rate limits, no API key required, resilient to NVD API instability.
+        // {0} is replaced with the year (e.g. 2026).
+        datafeedUrl = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz'
+        validForHours = 12
     }
 }
 
 githook {
     hooks {
         "pre-commit" {
-            shell = "./gradlew license --rerun-tasks"
+            shell = """
+                ./gradlew license --rerun-tasks || exit 1
+                STAGED=\$(git diff --cached --name-only --diff-filter=ACMR -- '*.scala' '*.java' | tr '\\n' ',' | sed 's/,\$//')
+                if [ -n "\$STAGED" ]; then
+                    ./gradlew spotlessApply -PspotlessStagedFiles="\$STAGED" || exit 1
+                    echo "\$STAGED" | tr ',' '\\n' | xargs git add --
+                fi
+            """
         }
     }
 }
 
 license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
-    skipExistingHeaders true
+    header = rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders = true
     useDefaultMappings = false
+    includes(['**/*.java', '**/*.scala'])
     mapping {
         java = 'SLASHSTAR_STYLE'
         scala = 'SLASHSTAR_STYLE'

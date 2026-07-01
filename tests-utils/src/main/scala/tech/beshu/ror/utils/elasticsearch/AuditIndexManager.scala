@@ -24,10 +24,8 @@ import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class AuditIndexManager(restClient: RestClient,
-                        esVersion: String,
-                        indexName: String)
-  extends BaseManager(restClient, esVersion, esNativeApi = true) {
+class AuditIndexManager(restClient: RestClient, esVersion: String, indexName: String)
+    extends BaseManager(restClient, esVersion, esNativeApi = true) {
 
   final lazy val searchManager = new SearchManager(restClient, esVersion)
   final lazy val indexManager = new IndexManager(restClient, esVersion)
@@ -52,8 +50,7 @@ class AuditIndexManager(restClient: RestClient,
     result.jsons.toList shouldBe List.empty[Value]
   }
 
-  class AuditEntriesResult(response: HttpResponse)
-    extends searchManager.SearchResult(response) {
+  class AuditEntriesResult(response: HttpResponse) extends searchManager.SearchResult(response) {
 
     def this(searchResult: searchManager.SearchResult) = {
       this(AuditEntriesResult.refreshEntity(searchResult))
@@ -65,10 +62,14 @@ class AuditIndexManager(restClient: RestClient,
         .toVector
 
   }
+
   object AuditEntriesResult {
+
     private def refreshEntity(simpleResponse: searchManager.SimpleResponse) = {
       simpleResponse.response.setEntity(new StringEntity(simpleResponse.body))
       simpleResponse.response
     }
+
   }
+
 }

@@ -21,7 +21,9 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 
-final case class ReflectionBasedActionRequest(esContext: EsContext,
-                                              aclContext: AccessControlStaticContext,
-                                              nodeClient: NodeClient,
-                                              threadPool: ThreadPool)
+final case class ReflectionBasedActionRequest(
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    nodeClient: NodeClient,
+    threadPool: ThreadPool
+)

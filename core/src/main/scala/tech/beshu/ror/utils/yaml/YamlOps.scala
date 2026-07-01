@@ -46,4 +46,5 @@ object YamlOps {
         .foldLeft(JsonObject.empty)(_.deepMerge(_))
     }
   }
+
 }

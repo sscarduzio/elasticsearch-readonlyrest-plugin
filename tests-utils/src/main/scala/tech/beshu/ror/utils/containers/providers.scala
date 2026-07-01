@@ -32,8 +32,10 @@ object providers {
     def basicAuthClientWithRorMetadataAttached(user: String, pass: String, headers: (String, String)*): RestClient = {
       val encoder = Base64.getEncoder
       val userPassString = s"$user:$pass"
-      val rorMetadataJsonString = s"""{ "headers": [ ${headers.map { case (name, value) => s"\"$name:$value\"" }.mkString(",")} ] }"""
-      val basicAuthWithRorMetadata = s"Basic ${encoder.encodeToString(userPassString.getBytes)}, ror_metadata=${encoder.encodeToString(rorMetadataJsonString.getBytes)}"
+      val rorMetadataJsonString =
+        s"""{ "headers": [ ${headers.map { case (name, value) => s"\"$name:$value\"" }.mkString(",")} ] }"""
+      val basicAuthWithRorMetadata =
+        s"Basic ${encoder.encodeToString(userPassString.getBytes)}, ror_metadata=${encoder.encodeToString(rorMetadataJsonString.getBytes)}"
       client(Credentials.Token(basicAuthWithRorMetadata))
     }
 
@@ -94,5 +96,7 @@ object providers {
         }
       }
     }
+
   }
+
 }

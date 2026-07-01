@@ -19,7 +19,8 @@ package tech.beshu.ror.accesscontrol.audit
 import tech.beshu.ror.audit.AuditEnvironmentContext
 import tech.beshu.ror.es.EsNodeSettings
 
-final class AuditEnvironmentContextBasedOnEsNodeSettings(esNodeSettings: EsNodeSettings) extends AuditEnvironmentContext {
+final class AuditEnvironmentContextBasedOnEsNodeSettings(esNodeSettings: EsNodeSettings)
+    extends AuditEnvironmentContext {
   override val esNodeName: String = esNodeSettings.nodeName
   override val esClusterName: String = esNodeSettings.clusterName
 }

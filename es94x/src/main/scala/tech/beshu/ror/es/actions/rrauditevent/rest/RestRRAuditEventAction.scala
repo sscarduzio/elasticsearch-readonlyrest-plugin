@@ -24,7 +24,14 @@ import org.elasticsearch.rest.*
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
 import org.elasticsearch.rest.RestRequest.Method.POST
-import org.elasticsearch.xcontent.{DeprecationHandler, NamedXContentRegistry, XContentFactory, XContentParser, XContentParserConfiguration, XContentType}
+import org.elasticsearch.xcontent.{
+  DeprecationHandler,
+  NamedXContentRegistry,
+  XContentFactory,
+  XContentParser,
+  XContentParserConfiguration,
+  XContentType
+}
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.constants
@@ -34,8 +41,7 @@ import java.util
 import scala.jdk.CollectionConverters.*
 import scala.util.{Try, Using}
 
-class RestRRAuditEventAction
-  extends BaseRestHandler with RestHandler {
+class RestRRAuditEventAction extends BaseRestHandler with RestHandler {
 
   private val strictParserConfig = XContentParserConfiguration.EMPTY
     .withRegistry(NamedXContentRegistry.EMPTY)
@@ -47,8 +53,7 @@ class RestRRAuditEventAction
 
   override val getName: String = "ror-audit-event-collector-handler"
 
-  override def prepareRequest(request: RestRequest,
-                              client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
     private val rorAuditRequest = for {
       _ <- validateContentSize(request)
       json <- validateBodyJson(request)
@@ -90,8 +95,8 @@ class RestRRAuditEventAction
   private def isExactlyEmptyObject(bytes: BytesReference, t: XContentType): Boolean = {
     Using.resource(XContentFactory.xContent(t).createParser(strictParserConfig, bytes.streamInput())) { p =>
       (p.nextToken() == XContentParser.Token.START_OBJECT) &&
-        (p.nextToken() == XContentParser.Token.END_OBJECT) &&
-        p.nextToken() == null // no trailing data
+      (p.nextToken() == XContentParser.Token.END_OBJECT) &&
+      p.nextToken() == null // no trailing data
     }
   }
 
@@ -100,7 +105,7 @@ class RestRRAuditEventAction
   }
 
   private class AuditEventRequestPayloadTooLarge(maxContentSize: Information)
-    extends ElasticsearchException(s"Max request content allowed = ${maxContentSize.toKilobits}KB") {
+      extends ElasticsearchException(s"Max request content allowed = ${maxContentSize.toKilobits}KB") {
     override def status(): RestStatus = RestStatus.REQUEST_ENTITY_TOO_LARGE
   }
 

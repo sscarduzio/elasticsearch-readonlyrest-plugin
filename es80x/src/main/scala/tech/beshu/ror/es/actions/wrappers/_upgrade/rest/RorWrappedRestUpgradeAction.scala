@@ -20,7 +20,11 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.rest.action.RestActionListener
 import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
-import tech.beshu.ror.es.actions.wrappers._upgrade.{RorWrappedUpgradeActionType, RorWrappedUpgradeRequest, RorWrappedUpgradeResponse}
+import tech.beshu.ror.es.actions.wrappers._upgrade.{
+  RorWrappedUpgradeActionType,
+  RorWrappedUpgradeRequest,
+  RorWrappedUpgradeResponse
+}
 
 import java.util
 
@@ -42,4 +46,5 @@ class RorWrappedRestUpgradeAction(upgradeAction: RestUpgradeActionDeprecated) ex
         }
       )
   }
+
 }

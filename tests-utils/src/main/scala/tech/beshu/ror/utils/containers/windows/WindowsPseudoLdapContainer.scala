@@ -28,7 +28,8 @@ import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 
 class WindowsPseudoLdapContainer(service: InMemoryLdapService)
-  extends SingleContainer[GenericContainer[_]] with LdapContainer {
+    extends SingleContainer[GenericContainer[_]]
+    with LdapContainer {
 
   override val container: GenericContainer[_] =
     new WindowsPseudoGenericContainerLdap(service)
@@ -62,20 +63,25 @@ object WindowsPseudoLdapContainer {
       val organisation = "example"
       val adminName = "admin"
       val adminPassword = "password"
+
       val bindDn: Option[String] = {
         Option(
           defaults.ldap.domain
-            .split("\\.").toList
+            .split("\\.")
+            .toList
             .map(part => s"dc=$part")
-            .mkString(","))
+            .mkString(",")
+        )
           .filter(_.trim.nonEmpty)
           .map(dc => s"cn=${defaults.ldap.adminName},$dc")
       }
+
     }
+
   }
 
   private class WindowsPseudoGenericContainerLdap(startable: Startable)
-    extends GenericContainer[WindowsPseudoGenericContainerLdap]("noop:latest") {
+      extends GenericContainer[WindowsPseudoGenericContainerLdap]("noop:latest") {
 
     override def start(): Unit = {
       doStart()

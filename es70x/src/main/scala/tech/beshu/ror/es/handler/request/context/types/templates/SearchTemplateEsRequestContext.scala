@@ -34,15 +34,20 @@ import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
-                                             esContext: EsContext,
-                                             aclContext: AccessControlStaticContext,
-                                             nodeClient: NodeClient,
-                                             override implicit val threadPool: ThreadPool)
-                                            (implicit scheduler: Scheduler)
-  extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
-    actionRequest, esContext, aclContext, threadPool
-  ) {
+class SearchTemplateEsRequestContext private (
+    actionRequest: ActionRequest with CompositeIndicesRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    nodeClient: NodeClient,
+    override implicit val threadPool: ThreadPool
+)(
+    implicit scheduler: Scheduler
+) extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
+      actionRequest,
+      esContext,
+      aclContext,
+      threadPool
+    ) {
 
   private lazy val searchTemplateRequest = new ReflectionBasedSearchTemplateRequest(actionRequest)
   private lazy val searchRequest = searchTemplateRequest.getRequest
@@ -50,16 +55,19 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
   override protected def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage =
     searchTemplateRequest.getRequest.checkFieldsUsage()
 
-  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    searchRequest
-      .indices.asSafeSet
+  override protected def requestedIndicesFrom(
+      request: ActionRequest with CompositeIndicesRequest
+  ): Set[RequestedIndex[ClusterIndexName]] = {
+    searchRequest.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[Filter],
-                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest with CompositeIndicesRequest,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
     searchRequest.indices(filteredRequestedIndices.stringify: _*)
     if (searchTemplateRequest.isSimulate)
       ModificationResult.UpdateResponse.sync { resp =>
@@ -77,9 +85,11 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
    * final modifier, we are forced to do it in the other way - by calling search again when we get the response. This
    * solution is obviously less efficient, but at least it works.
    */
-  private def callSearchOnceAgain(filter: Option[Filter],
-                                  fieldLevelSecurity: Option[FieldLevelSecurity]): ActionResponse => Task[ActionResponse] = {
-    searchTemplateResponse => {
+  private def callSearchOnceAgain(
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ActionResponse => Task[ActionResponse] = { searchTemplateResponse =>
+    {
       val updatedSearchRequest = searchRequest
         .applyFilterToQuery(filter)
         .applyFieldLevelSecurity(fieldLevelSecurity)
@@ -92,8 +102,9 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
     }
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (response: ReflectionBasedSearchTemplateResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  )(response: ReflectionBasedSearchTemplateResponse): ActionResponse = {
     (response.getResponse, fieldLevelSecurity) match {
       case (Some(r), Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
         r.getHits.getHits
@@ -110,30 +121,38 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
 
   private def search(request: SearchRequest): Task[SearchResponse] = {
     val promise = CancelablePromise[SearchResponse]()
-    nodeClient.search(request, new ActionListener[SearchResponse]() {
-      override def onResponse(response: SearchResponse): Unit = promise.trySuccess(response)
-      override def onFailure(e: Exception): Unit = promise.tryFailure(e)
-    })
+    nodeClient.search(
+      request,
+      new ActionListener[SearchResponse]() {
+        override def onResponse(response: SearchResponse): Unit = promise.trySuccess(response)
+        override def onFailure(e: Exception): Unit = promise.tryFailure(e)
+      }
+    )
     Task.fromCancelablePromise(promise)
   }
 
 }
 
 object SearchTemplateEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest)
-             (implicit scheduler: Scheduler): Option[SearchTemplateEsRequestContext] = {
+
+  def unapply(arg: ReflectionBasedActionRequest)(
+      implicit scheduler: Scheduler
+  ): Option[SearchTemplateEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
-      Some(new SearchTemplateEsRequestContext(
-        arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
-        arg.esContext,
-        arg.aclContext,
-        arg.nodeClient,
-        arg.threadPool
-      ))
+      Some(
+        new SearchTemplateEsRequestContext(
+          arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
+          arg.esContext,
+          arg.aclContext,
+          arg.nodeClient,
+          arg.threadPool
+        )
+      )
     } else {
       None
     }
   }
+
 }
 
 final class ReflectionBasedSearchTemplateRequest(underlying: ActionRequest) {
@@ -145,11 +164,13 @@ final class ReflectionBasedSearchTemplateRequest(underlying: ActionRequest) {
   }
 
   def getRequest: SearchRequest = {
-    Option(on(underlying)
-      .call("getRequest")
-      .get[SearchRequest]) match {
+    Option(
+      on(underlying)
+        .call("getRequest")
+        .get[SearchRequest]
+    ) match {
       case Some(sr) => sr
-      case None =>
+      case None     =>
         val sr = new SearchRequest("*")
         setSearchRequest(sr)
         sr
@@ -177,4 +198,5 @@ final class ReflectionBasedSearchTemplateResponse(val underlying: ActionResponse
   def setResponse(response: SearchResponse): Unit = {
     on(underlying).call("setResponse", response)
   }
+
 }

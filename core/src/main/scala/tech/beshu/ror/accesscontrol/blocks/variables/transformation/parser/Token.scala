@@ -19,10 +19,12 @@ package tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser
 import cats.Show
 
 private[parser] sealed trait Token
+
 private[parser] object Token {
   final case class Text(value: String) extends Token
 
   abstract class Punctuator(val value: Char) extends Token
+
   object Punctuator {
     case object LeftParenthesis extends Punctuator('(')
     case object RightParenthesis extends Punctuator(')')
@@ -35,10 +37,12 @@ private[parser] object Token {
     def getFor(char: Char): Option[Punctuator] = {
       all.get(char)
     }
+
   }
 
   implicit val showToken: Show[Token] = Show.show {
-    case text: Text => text.value
+    case text: Text             => text.value
     case punctuator: Punctuator => punctuator.value.toString
   }
+
 }

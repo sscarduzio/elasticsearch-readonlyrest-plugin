@@ -33,7 +33,9 @@ object RuntimeResolvableGroupsLogic {
 
   type RESOLVABLE_GROUP_IDS = UniqueNonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]]
 
-  final class Simple[+GL <: GroupsLogic : GroupsLogic.Creator](val groupIds: RESOLVABLE_GROUP_IDS) extends RuntimeResolvableGroupsLogic[GL] {
+  final class Simple[+GL <: GroupsLogic: GroupsLogic.Creator](val groupIds: RESOLVABLE_GROUP_IDS)
+      extends RuntimeResolvableGroupsLogic[GL] {
+
     override def resolve[B <: BlockContext](blockContext: B): Option[GL] = {
       UniqueNonEmptyList
         .from(resolveAll(groupIds.toNonEmptyList, blockContext))
@@ -44,8 +46,11 @@ object RuntimeResolvableGroupsLogic {
     override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] = groupIds.toNonEmptyList
   }
 
-  final class Combined(val positive: RuntimeResolvableGroupsLogic[PositiveGroupsLogic],
-                       val negative: RuntimeResolvableGroupsLogic[NegativeGroupsLogic]) extends RuntimeResolvableGroupsLogic[GroupsLogic.Combined] {
+  final class Combined(
+      val positive: RuntimeResolvableGroupsLogic[PositiveGroupsLogic],
+      val negative: RuntimeResolvableGroupsLogic[NegativeGroupsLogic]
+  ) extends RuntimeResolvableGroupsLogic[GroupsLogic.Combined] {
+
     override def resolve[B <: BlockContext](blockContext: B): Option[GroupsLogic.Combined] = {
       for {
         permitted <- positive.resolve(blockContext)
@@ -56,4 +61,5 @@ object RuntimeResolvableGroupsLogic {
     override def usedVariables: NonEmptyList[RuntimeMultiResolvableVariable[GroupIdLike]] =
       positive.usedVariables ::: negative.usedVariables
   }
+
 }

@@ -30,8 +30,9 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.StringWiseSplitter.*
 
-class HeadersAndRuleDecoder(implicit ev: RuleName[HeadersAndRule])
-  extends RuleBaseDecoderWithoutAssociatedFields[HeadersAndRule] {
+class HeadersAndRuleDecoder(
+    implicit ev: RuleName[HeadersAndRule]
+) extends RuleBaseDecoderWithoutAssociatedFields[HeadersAndRule] {
 
   override protected def decoder: Decoder[RuleDefinition[HeadersAndRule]] = {
     DecoderHelpers
@@ -40,10 +41,10 @@ class HeadersAndRuleDecoder(implicit ev: RuleName[HeadersAndRule])
         RuleDefinition.create(new HeadersAndRule(BaseHeaderRule.Settings(requirements)))
       }
   }
+
 }
 
-object HeadersOrRuleDecoder
-  extends RuleBaseDecoderWithoutAssociatedFields[HeadersOrRule] {
+object HeadersOrRuleDecoder extends RuleBaseDecoderWithoutAssociatedFields[HeadersOrRule] {
 
   override protected def decoder: Decoder[RuleDefinition[HeadersOrRule]] = {
     DecoderHelpers
@@ -52,18 +53,19 @@ object HeadersOrRuleDecoder
         RuleDefinition.create(new HeadersOrRule(BaseHeaderRule.Settings(requirements)))
       }
   }
+
 }
 
 private object HeadersHelper {
+
   def headerAccessRequirementFromString(value: String): Either[String, AccessRequirement[Header]] =
-    value
-      .toNonEmptyStringsTuple
-      .left.map(_ => errorMessage(value))
+    value.toNonEmptyStringsTuple.left
+      .map(_ => errorMessage(value))
       .flatMap { case (first, second) =>
         if (first.value.startsWith("~")) {
           NonEmptyString.unapply(first.value.substring(1)) match {
             case Some(name) => Right(AccessRequirement.MustBeAbsent(new Header(Name(name), second)))
-            case None => Left(errorMessage(value))
+            case None       => Left(errorMessage(value))
           }
         } else {
           Right(AccessRequirement.MustBePresent(new Header(Name(first), second)))
@@ -73,4 +75,5 @@ private object HeadersHelper {
   private def errorMessage(rawValue: String) = {
     s"Cannot convert ${rawValue.show} to header access requirement (format: name:value_pattern or ~name:value_pattern - name and value_pattern cannot be empty)"
   }
+
 }

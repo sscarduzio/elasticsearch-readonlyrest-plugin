@@ -25,9 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Ite
 
 import java.security.PublicKey
 
-final case class RorKbnDef(override val id: Name,
-                           checkMethod: SignatureCheckMethod)
-  extends Item {
+final case class RorKbnDef(override val id: Name, checkMethod: SignatureCheckMethod) extends Item {
 
   override type Id = Name
   override val idShow: Show[Name] = Show.show(_.value.value)
@@ -39,10 +37,12 @@ final case class RorKbnDef(override val id: Name,
     case SignatureCheckMethod.Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
   }
 }
+
 object RorKbnDef {
   final case class Name(value: NonEmptyString)
 
   sealed trait SignatureCheckMethod
+
   object SignatureCheckMethod {
     final case class Hmac(key: Array[Byte]) extends SignatureCheckMethod
     final case class Rsa(pubKey: PublicKey) extends SignatureCheckMethod
