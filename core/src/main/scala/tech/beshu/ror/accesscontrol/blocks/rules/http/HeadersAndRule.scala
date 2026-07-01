@@ -30,12 +30,11 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 /**
   * We match headers in a way that the header name is case-insensitive, and the header value is case-sensitive
   **/
-class HeadersAndRule(settings: Settings)
-  extends BaseHeaderRule(settings) with RequestIdAwareLogging {
+class HeadersAndRule(settings: Settings) extends BaseHeaderRule(settings) with RequestIdAwareLogging {
 
   override val name: Rule.Name = HeadersAndRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
       when = {
         val requestHeaders = blockContext.requestContext.restRequest.allHeaders
@@ -48,12 +47,15 @@ class HeadersAndRule(settings: Settings)
     )
   }
 
-  private def logAccessRequirementNotFulfilled(requirement: CompiledHeaderRequirementMatcher,
-                                               requestContext: RequestContext): Unit = {
+  private def logAccessRequirementNotFulfilled(
+      requirement: CompiledHeaderRequirementMatcher,
+      requestContext: RequestContext
+  ): Unit = {
     implicit val headerShowImplicit: Show[Header] = headerShow
     implicit val requestContextImpl: RequestContext = requestContext
     logger.debug(s"Request headers don't fulfil given header access requirement: ${requirement.accessRequirement.show}")
   }
+
 }
 
 object HeadersAndRule {
@@ -65,4 +67,5 @@ object HeadersAndRule {
   case object DeprecatedName extends RuleName[HeadersAndRule] {
     override val name = Rule.Name("headers")
   }
+
 }

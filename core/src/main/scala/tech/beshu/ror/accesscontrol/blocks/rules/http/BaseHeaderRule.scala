@@ -25,29 +25,35 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
-abstract class BaseHeaderRule(val settings: Settings)
-  extends RegularRule
+abstract class BaseHeaderRule(val settings: Settings) extends RegularRule
 
 object BaseHeaderRule {
 
-  final class Settings private(val compiledRequirements: NonEmptyList[CompiledHeaderRequirementMatcher]) {
+  final class Settings private (val compiledRequirements: NonEmptyList[CompiledHeaderRequirementMatcher]) {
     def headerAccessRequirements: NonEmptyList[AccessRequirement[Header]] =
       compiledRequirements.map(_.accessRequirement)
   }
+
   object Settings {
     def apply(headerAccessRequirements: NonEmptySet[AccessRequirement[Header]]): Settings =
       new Settings(headerAccessRequirements.toNonEmptyList.map(CompiledHeaderRequirementMatcher.compile))
   }
 
-  private[http] final class CompiledHeaderRequirementMatcher private(val accessRequirement: AccessRequirement[Header],
-                                                                     matches: Header => Boolean) {
+  private[http] final class CompiledHeaderRequirementMatcher private (
+      val accessRequirement: AccessRequirement[Header],
+      matches: Header => Boolean
+  ) {
+
     def isFulfilledBy(requestHeaders: Set[Header]): Boolean =
       accessRequirement match {
         case AccessRequirement.MustBePresent(_) => requestHeaders.exists(matches)
-        case AccessRequirement.MustBeAbsent(_) => requestHeaders.forall(!matches(_))
+        case AccessRequirement.MustBeAbsent(_)  => requestHeaders.forall(!matches(_))
       }
+
   }
+
   private[http] object CompiledHeaderRequirementMatcher {
+
     def compile(accessRequirement: AccessRequirement[Header]): CompiledHeaderRequirementMatcher = {
       val pattern = accessRequirement.value
       implicit val matchable: Matchable[String] = Matchable.caseSensitiveStringMatchable
@@ -56,5 +62,7 @@ object BaseHeaderRule {
         header => header.name === pattern.name && valueMatcher.`match`(header.value.value)
       new CompiledHeaderRequirementMatcher(accessRequirement, matches)
     }
+
   }
+
 }

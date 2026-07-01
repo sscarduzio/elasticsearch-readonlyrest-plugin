@@ -126,6 +126,7 @@ object ScalaOps {
     def asSafeList: List[T] = Option(array).getOrElse(Array.empty[T]).toList
 
   extension [T](array: Array[T])
+
     // Allocation-free `exists` over an Array: a plain indexed `while` loop with an inlined
     // predicate, avoiding the iterator + closure that `Array.exists` allocates. Used on the
     // ACL glob-matching hot path.

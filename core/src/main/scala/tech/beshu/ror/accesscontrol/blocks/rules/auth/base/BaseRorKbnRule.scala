@@ -35,9 +35,9 @@ import scala.util.Try
 
 trait BaseRorKbnRule extends RequestIdAwareLogging {
 
-  protected def processUsingJwtToken[B <: BlockContext](blockContext: B,
-                                                        rorKbnDef: RorKbnDef)
-                                                       (operation: TokenData => Either[Cause, B]): Decision[B] = {
+  protected def processUsingJwtToken[B <: BlockContext](blockContext: B, rorKbnDef: RorKbnDef)(
+      operation: TokenData => Either[Cause, B]
+  ): Decision[B] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val result = for {
       token <- extractJwtTokenFromHeader(blockContext)
@@ -46,22 +46,25 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
     } yield claimProcessingResult
     result match {
       case Right(modifiedBlockContext) => Permitted(modifiedBlockContext)
-      case Left(cause) => Denied(cause)
+      case Left(cause)                 => Denied(cause)
     }
   }
 
   private def extractJwtTokenFromHeader(blockContext: BlockContext) = {
-    blockContext
-      .requestContext.bearerToken
+    blockContext.requestContext.bearerToken
       .map(t => Jwt.Token(t.value))
-      .left.map {
-        case AuthorizationTokenRetrievingError.MissingHeader => AuthenticationFailed("'Authorization' header is missing")
-        case AuthorizationTokenRetrievingError.InvalidValue => AuthenticationFailed("'Authorization' header does not contain a valid Bearer token")
+      .left
+      .map {
+        case AuthorizationTokenRetrievingError.MissingHeader =>
+          AuthenticationFailed("'Authorization' header is missing")
+        case AuthorizationTokenRetrievingError.InvalidValue =>
+          AuthenticationFailed("'Authorization' header does not contain a valid Bearer token")
       }
   }
 
-  private def jwtTokenDataFrom(token: Jwt.Token, rorKbn: RorKbnDef)
-                              (implicit requestId: RequestId) = {
+  private def jwtTokenDataFrom(token: Jwt.Token, rorKbn: RorKbnDef)(
+      implicit requestId: RequestId
+  ) = {
     claimsFrom(token, rorKbn)
       .map { tokenPayload =>
         TokenData(
@@ -71,25 +74,30 @@ trait BaseRorKbnRule extends RequestIdAwareLogging {
           tokenPayload.claims.headerNameClaim(Header.Name.xUserOrigin)
         )
       }
-      .left.map { case () => AuthenticationFailed("Invalid or expired ROR Kibana token") }
+      .left
+      .map { case () => AuthenticationFailed("Invalid or expired ROR Kibana token") }
   }
 
-  private def claimsFrom(token: Jwt.Token, rorKbn: RorKbnDef)
-                        (implicit requestId: RequestId) = {
-    Try(rorKbn.parser.parseSignedClaims(token.value.value).getPayload)
-      .toEither
+  private def claimsFrom(token: Jwt.Token, rorKbn: RorKbnDef)(
+      implicit requestId: RequestId
+  ) = {
+    Try(rorKbn.parser.parseSignedClaims(token.value.value).getPayload).toEither
       .map(Jwt.Payload.apply)
-      .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
+      .left
+      .map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
   }
+
 }
 
 object BaseRorKbnRule {
   private val userClaimName = Jwt.ClaimName(JsonPath("user").get)
   private val groupIdsClaimName = Jwt.ClaimName(JsonPath("groups").get)
 
-  protected final case class TokenData(payload: Jwt.Payload,
-                                       userId: ClaimSearchResult[User.Id],
-                                       groups: ClaimSearchResult[UniqueList[Group]],
-                                       userOrigin: ClaimSearchResult[Header])
+  protected final case class TokenData(
+      payload: Jwt.Payload,
+      userId: ClaimSearchResult[User.Id],
+      groups: ClaimSearchResult[UniqueList[Group]],
+      userOrigin: ClaimSearchResult[Header]
+  )
 
 }

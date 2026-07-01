@@ -444,9 +444,10 @@ trait IndicesRuleLocalIndexTests {
         assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("@{user}")),
           requestIndices = Set(requestedIndex("test1")),
-          modifyBlockContext = bc => bc.copy(
-            blockMetadata = bc.blockMetadata.withLoggedUser(DirectlyLoggedUser(User.Id("test1")))
-          ),
+          modifyBlockContext = bc =>
+            bc.copy(
+              blockMetadata = bc.blockMetadata.withLoggedUser(DirectlyLoggedUser(User.Id("test1")))
+            ),
           filteredRequestedIndices = Set(requestedIndex("test1")),
         )
       }
@@ -456,9 +457,10 @@ trait IndicesRuleLocalIndexTests {
         assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(indexNameVar("@{user}")),
           requestIndices = Set(requestedIndex("test2")),
-          modifyBlockContext = bc => bc.copy(
-            blockMetadata = bc.blockMetadata.withLoggedUser(DirectlyLoggedUser(User.Id("test1")))
-          ),
+          modifyBlockContext = bc =>
+            bc.copy(
+              blockMetadata = bc.blockMetadata.withLoggedUser(DirectlyLoggedUser(User.Id("test1")))
+            ),
         )
       }
     }

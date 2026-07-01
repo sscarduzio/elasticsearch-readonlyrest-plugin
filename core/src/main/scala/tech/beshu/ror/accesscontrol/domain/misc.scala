@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.domain
 
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.js.JsCompiler
 
 import java.util.regex
@@ -28,6 +28,7 @@ import scala.util.{Failure, Success, Try}
 final case class RequestId(value: String)
 
 sealed trait CaseSensitivity
+
 object CaseSensitivity {
   case object Enabled extends CaseSensitivity
   case object Disabled extends CaseSensitivity
@@ -40,37 +41,40 @@ object CaseSensitivity {
 sealed trait AccessRequirement[T] {
   def value: T
 }
+
 object AccessRequirement {
   final case class MustBePresent[T](override val value: T) extends AccessRequirement[T]
   final case class MustBeAbsent[T](override val value: T) extends AccessRequirement[T]
 }
 
-final case class JavaRegex private(value: String) {
+final case class JavaRegex private (value: String) {
   val pattern: regex.Pattern = regex.Pattern.compile(value)
 }
+
 object JavaRegex {
   private val specialChars = """<([{\^-=$!|]})?*+.>"""
 
   def compile(value: String): Try[JavaRegex] = Try(new JavaRegex(value))
 
   def buildFromLiteral(value: String): JavaRegex = {
-    val escapedValue = value
-      .map {
-        case c if specialChars.contains(c) => s"""\\$c"""
-        case c => c
-      }
-      .mkString
+    val escapedValue = value.map {
+      case c if specialChars.contains(c) => s"""\\$c"""
+      case c                             => c
+    }.mkString
     new JavaRegex(s"^$escapedValue$$")
   }
+
 }
 
-final case class JsRegex private(value: NonEmptyString)
+final case class JsRegex private (value: NonEmptyString)
+
 object JsRegex extends RequestIdAwareLogging {
   private val extractRawRegex = """\/(.*)\/""".r
 
-  def compile(str: NonEmptyString)
-             (implicit jsCompiler: JsCompiler): Either[CompilationResult, JsRegex] = {
-    if(validateInput(str)) {
+  def compile(str: NonEmptyString)(
+      implicit jsCompiler: JsCompiler
+  ): Either[CompilationResult, JsRegex] = {
+    if (validateInput(str)) {
       str.value match {
         case extractRawRegex(regex) =>
           jsCompiler.compile(s"new RegExp('$regex')") match {
@@ -96,10 +100,12 @@ object JsRegex extends RequestIdAwareLogging {
   private def isNotMultilineString(str: NonEmptyString) = !str.contains("\n")
 
   sealed trait CompilationResult
+
   object CompilationResult {
     case object NotRegex extends CompilationResult
     case object SyntaxError extends CompilationResult
   }
+
 }
 
 object Json {
@@ -108,6 +114,7 @@ object Json {
   type ResolvableJsonRepresentation = JsonTree[RuntimeSingleResolvableVariable[JsonValue]]
 
   sealed trait JsonTree[+T]
+
   object JsonTree {
     final case class Object[T](fields: Map[String, JsonTree[T]]) extends JsonTree[T]
     final case class Array[T](elements: List[JsonTree[T]]) extends JsonTree[T]
@@ -115,12 +122,14 @@ object Json {
   }
 
   sealed trait JsonValue
+
   object JsonValue {
     final case class StringValue(value: String) extends JsonValue
     final case class NumValue(value: Double) extends JsonValue
     final case class BooleanValue(value: Boolean) extends JsonValue
     case object NullValue extends JsonValue
   }
+
 }
 
 /**

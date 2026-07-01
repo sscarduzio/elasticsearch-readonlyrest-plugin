@@ -33,9 +33,10 @@ final case class RorKbnDef(override val id: Name, checkMethod: SignatureCheckMet
   // jjwt parsers are immutable and thread-safe, so build once per definition instead of per request.
   lazy val parser: JwtParser = checkMethod match {
     case SignatureCheckMethod.Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
-    case SignatureCheckMethod.Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
-    case SignatureCheckMethod.Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
+    case SignatureCheckMethod.Rsa(pubKey)  => Jwts.parser().verifyWith(pubKey).build()
+    case SignatureCheckMethod.Ec(pubKey)   => Jwts.parser().verifyWith(pubKey).build()
   }
+
 }
 
 object RorKbnDef {

@@ -22,8 +22,7 @@ import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.existsWith
 
-private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A])
-  extends PatternsMatcher[A] {
+private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A]) extends PatternsMatcher[A] {
 
   import GlobPatternsMatcher.*
 
@@ -41,10 +40,10 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
       val raw = matchable.show(value)
       val norm = if (ignoreCase) raw.toLowerCase else raw
       matchesExact(norm) ||
-        matchesPrefix(norm) ||
-        matchesSuffix(norm) ||
-        matchesInfix(norm) ||
-        matchesComplex(raw) // raw (not norm): the glob engine handles case-insensitivity via globFlags
+      matchesPrefix(norm) ||
+      matchesSuffix(norm) ||
+      matchesInfix(norm) ||
+      matchesComplex(raw) // raw (not norm): the glob engine handles case-insensitivity via globFlags
     }
   }
 
@@ -79,6 +78,7 @@ private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A
     case CaseSensitivity.Enabled  => 0
     case CaseSensitivity.Disabled => GlobPattern.CASE_INSENSITIVE
   }
+
 }
 
 private[matchers] object GlobPatternsMatcher {
@@ -90,26 +90,30 @@ private[matchers] object GlobPatternsMatcher {
   // case-class `equals`/`hashCode`/`copy` would use reference identity — a value-like façade
   // over reference semantics. It is created once per matcher and never compared or copied, so
   // a plain class keeps that intent explicit and avoids the latent trap.
-  private final class Compiled(val matchAll: Boolean,
-                               val exact: Set[String],
-                               val prefixes: Array[String],
-                               val suffixes: Array[String],
-                               val infixes: Array[String],
-                               val complex: Array[MatchingEngine])
+  private final class Compiled(
+      val matchAll: Boolean,
+      val exact: Set[String],
+      val prefixes: Array[String],
+      val suffixes: Array[String],
+      val infixes: Array[String],
+      val complex: Array[MatchingEngine]
+  )
 
   private object Compiled {
+
     def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
       def norm(s: String) = if (ignoreCase) s.toLowerCase else s
       val kinds = patterns.iterator.map(Kind.of).toVector
       new Compiled(
         matchAll = kinds.contains(Kind.All),
-        exact    = kinds.collect { case Kind.Exact(p)   => norm(p) }.toCovariantSet,
-        prefixes = kinds.collect { case Kind.Prefix(p)  => norm(p) }.toArray,
-        suffixes = kinds.collect { case Kind.Suffix(p)  => norm(p) }.toArray,
-        infixes  = kinds.collect { case Kind.Infix(p)   => norm(p) }.toArray,
-        complex  = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }.toArray
+        exact = kinds.collect { case Kind.Exact(p) => norm(p) }.toCovariantSet,
+        prefixes = kinds.collect { case Kind.Prefix(p) => norm(p) }.toArray,
+        suffixes = kinds.collect { case Kind.Suffix(p) => norm(p) }.toArray,
+        infixes = kinds.collect { case Kind.Infix(p) => norm(p) }.toArray,
+        complex = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }.toArray
       )
     }
+
   }
 
   // Structural classification of a glob pattern. Pure prefix/suffix/infix shapes
@@ -125,6 +129,7 @@ private[matchers] object GlobPatternsMatcher {
   }
 
   private object Kind {
+
     def of(p: String): Kind = p match {
       case "*" =>
         All
@@ -134,9 +139,10 @@ private[matchers] object GlobPatternsMatcher {
         Prefix(s.dropRight(1))
       case s if s.length > 1 && !s.contains('?') && s.charAt(0) == '*' && s.indexOf('*', 1) < 0 =>
         Suffix(s.tail)
-      case s if s.length > 2 && !s.contains('?')
-                && s.charAt(0) == '*' && s.charAt(s.length - 1) == '*'
-                && s.indexOf('*', 1) == s.length - 1 =>
+      case s
+          if s.length > 2 && !s.contains('?')
+            && s.charAt(0) == '*' && s.charAt(s.length - 1) == '*'
+            && s.indexOf('*', 1) == s.length - 1 =>
         Infix(s.substring(1, s.length - 1))
       case s =>
         Complex(s)
@@ -144,4 +150,5 @@ private[matchers] object GlobPatternsMatcher {
 
     private def hasWildcard(s: String): Boolean = s.contains('*') || s.contains('?')
   }
+
 }

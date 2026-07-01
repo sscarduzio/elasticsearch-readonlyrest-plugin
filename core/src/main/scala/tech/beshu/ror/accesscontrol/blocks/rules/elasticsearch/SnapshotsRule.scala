@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.accesscontrol.blocks.Decision.{Permitted, Denied}
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule.{AllowedSnapshots, Settings}
@@ -32,8 +32,7 @@ import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeMatc
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.{resolveAll, resolveAllIfPreResolved}
 import tech.beshu.ror.syntax.*
 
-class SnapshotsRule(val settings: Settings)
-  extends RegularRule {
+class SnapshotsRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = SnapshotsRule.Name.name
 
@@ -45,7 +44,7 @@ class SnapshotsRule(val settings: Settings)
     resolveAllIfPreResolved(settings.allowedSnapshots.toNonEmptyList)
       .map(snapshots => AllowedSnapshots.from(snapshots.toList.toCovariantSet))
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.UserMetadataRequestBlockContextUpdater =>
         Permitted(blockContext)
@@ -59,9 +58,12 @@ class SnapshotsRule(val settings: Settings)
     }
   }
 
-  private def checkAllowedSnapshots[B <: BlockContext](allowedSnapshots: AllowedSnapshots,
-                                                       blockContext: SnapshotRequestBlockContext)
-                                                      (implicit ev: SnapshotRequestBlockContext <:< B): Decision[B] = {
+  private def checkAllowedSnapshots[B <: BlockContext](
+      allowedSnapshots: AllowedSnapshots,
+      blockContext: SnapshotRequestBlockContext
+  )(
+      implicit ev: SnapshotRequestBlockContext <:< B
+  ): Decision[B] = {
     if (allowedSnapshots.hasWildcard) {
       Permitted(blockContext)
     } else {
@@ -71,13 +73,15 @@ class SnapshotsRule(val settings: Settings)
       ) match {
         case NotAltered() =>
           Permitted(blockContext)
-        case Altered(filteredSnapshots) if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
+        case Altered(filteredSnapshots)
+            if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
           Permitted(blockContext.withSnapshots(filteredSnapshots))
         case Altered(_) =>
           Denied(Cause.NotAuthorized)
       }
     }
   }
+
 }
 
 object SnapshotsRule {
@@ -89,13 +93,17 @@ object SnapshotsRule {
   final case class Settings(allowedSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]])
 
   // The matcher is lazy so the wildcard path (which short-circuits before matching) never builds it.
-  private final class AllowedSnapshots private(val hasWildcard: Boolean, allowedSnapshots: Set[SnapshotName]) {
+  private final class AllowedSnapshots private (val hasWildcard: Boolean, allowedSnapshots: Set[SnapshotName]) {
     lazy val matcher: PatternsMatcher[SnapshotName] = PatternsMatcher.create(allowedSnapshots)
   }
+
   private object AllowedSnapshots {
+
     def from(allowedSnapshots: Set[SnapshotName]): AllowedSnapshots = {
       val hasWildcard = allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)
       new AllowedSnapshots(hasWildcard, allowedSnapshots)
     }
+
   }
+
 }

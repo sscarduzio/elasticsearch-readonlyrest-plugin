@@ -20,18 +20,19 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
 
 object RuntimeMultiResolvableVariableOps {
 
-  def resolveAll[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]],
-                    blockContext: BlockContext): List[T] = {
-    variables
-      .toList
+  def resolveAll[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]], blockContext: BlockContext): List[T] = {
+    variables.toList
       .flatMap { variable =>
         variable.resolve(blockContext) match {
           case Right(values) => values.toList
-          case Left(_) => Nil
+          case Left(_)       => Nil
         }
       }
   }
@@ -43,7 +44,8 @@ object RuntimeMultiResolvableVariableOps {
     variables
       .traverse {
         case AlreadyResolved(values) => Some(values)
-        case ToBeResolved(_) => None
+        case ToBeResolved(_)         => None
       }
       .map(_.flatten)
+
 }

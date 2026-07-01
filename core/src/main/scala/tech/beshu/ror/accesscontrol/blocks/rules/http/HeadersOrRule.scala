@@ -30,12 +30,11 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 /**
   * We match headers in a way that the header name is case-insensitive, and the header value is case-sensitive
   **/
-class HeadersOrRule(settings: Settings)
-  extends BaseHeaderRule(settings) with RequestIdAwareLogging {
+class HeadersOrRule(settings: Settings) extends BaseHeaderRule(settings) with RequestIdAwareLogging {
 
   override val name: Rule.Name = HeadersOrRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     Decision.permit(`with` = blockContext)(
       when = {
         val requestHeaders = blockContext.requestContext.restRequest.allHeaders
@@ -52,6 +51,7 @@ class HeadersOrRule(settings: Settings)
     val requirements = settings.compiledRequirements.map(_.accessRequirement)
     logger.debug(s"Request headers don't fulfil any of header access requirements: ${requirements.show}")
   }
+
 }
 
 object HeadersOrRule {
@@ -59,4 +59,5 @@ object HeadersOrRule {
   implicit case object Name extends RuleName[HeadersOrRule] {
     override val name = Rule.Name("headers_or")
   }
+
 }

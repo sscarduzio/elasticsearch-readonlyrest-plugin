@@ -30,69 +30,72 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 sealed trait Template {
   def name: TemplateName
 }
+
 object Template {
-  final case class LegacyTemplate(override val name: TemplateName,
-                                  patterns: UniqueNonEmptyList[IndexPattern],
-                                  aliases: Set[ClusterIndexName])
-    extends Template
 
-  final case class IndexTemplate(override val name: TemplateName,
-                                 patterns: UniqueNonEmptyList[IndexPattern],
-                                 aliases: Set[ClusterIndexName])
-    extends Template
+  final case class LegacyTemplate(
+      override val name: TemplateName,
+      patterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[ClusterIndexName]
+  ) extends Template
 
-  final case class ComponentTemplate(override val name: TemplateName,
-                                     aliases: Set[ClusterIndexName])
-    extends Template
+  final case class IndexTemplate(
+      override val name: TemplateName,
+      patterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[ClusterIndexName]
+  ) extends Template
+
+  final case class ComponentTemplate(override val name: TemplateName, aliases: Set[ClusterIndexName]) extends Template
 }
 
 sealed trait TemplateOperation
+
 object TemplateOperation {
 
-  final case class GettingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
-    extends TemplateOperation
+  final case class GettingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern]) extends TemplateOperation
 
-  final case class AddingLegacyTemplate(name: TemplateName,
-                                        patterns: UniqueNonEmptyList[IndexPattern],
-                                        aliases: Set[RequestedIndex[ClusterIndexName]])
-    extends TemplateOperation
+  final case class AddingLegacyTemplate(
+      name: TemplateName,
+      patterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[RequestedIndex[ClusterIndexName]]
+  ) extends TemplateOperation
 
-  final case class DeletingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
-    extends TemplateOperation
+  final case class DeletingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern]) extends TemplateOperation
 
-  final case class GettingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
-    extends TemplateOperation
+  final case class GettingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern]) extends TemplateOperation
 
-  final case class AddingIndexTemplate(name: TemplateName,
-                                       patterns: UniqueNonEmptyList[IndexPattern],
-                                       aliases: Set[RequestedIndex[ClusterIndexName]])
-    extends TemplateOperation
+  final case class AddingIndexTemplate(
+      name: TemplateName,
+      patterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[RequestedIndex[ClusterIndexName]]
+  ) extends TemplateOperation
 
-  final case class AddingIndexTemplateAndGetAllowedOnes(name: TemplateName,
-                                                        patterns: UniqueNonEmptyList[IndexPattern],
-                                                        aliases: Set[RequestedIndex[ClusterIndexName]],
-                                                        allowedTemplates: List[TemplateNamePattern])
-    extends TemplateOperation
+  final case class AddingIndexTemplateAndGetAllowedOnes(
+      name: TemplateName,
+      patterns: UniqueNonEmptyList[IndexPattern],
+      aliases: Set[RequestedIndex[ClusterIndexName]],
+      allowedTemplates: List[TemplateNamePattern]
+  ) extends TemplateOperation
 
-  final case class DeletingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
-    extends TemplateOperation
+  final case class DeletingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern]) extends TemplateOperation
 
-  final case class GettingLegacyAndIndexTemplates(gettingLegacyTemplates: GettingLegacyTemplates,
-                                                  gettingIndexTemplates: GettingIndexTemplates)
-    extends TemplateOperation
+  final case class GettingLegacyAndIndexTemplates(
+      gettingLegacyTemplates: GettingLegacyTemplates,
+      gettingIndexTemplates: GettingIndexTemplates
+  ) extends TemplateOperation
 
-  final case class GettingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
-    extends TemplateOperation
+  final case class GettingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern]) extends TemplateOperation
 
   final case class AddingComponentTemplate(name: TemplateName, aliases: Set[RequestedIndex[ClusterIndexName]])
-    extends TemplateOperation
+      extends TemplateOperation
 
-  final case class DeletingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
-    extends TemplateOperation
+  final case class DeletingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern]) extends TemplateOperation
 }
 
 final case class TemplateName(value: NonEmptyString) extends EagerHashCode
+
 object TemplateName {
+
   def fromString(value: String): Option[TemplateName] = {
     NonEmptyString.from(value).map(TemplateName.apply).toOption
   }
@@ -106,21 +109,25 @@ final case class TemplateNamePattern(value: NonEmptyString) extends EagerHashCod
   def matches(templateName: TemplateName): Boolean = matcher.`match`(templateName)
 
 }
+
 object TemplateNamePattern {
   implicit val matchableTemplateNamePattern: Matchable[TemplateNamePattern] = Matchable.matchable(_.value.value)
   val wildcard: TemplateNamePattern = TemplateNamePattern(nes("*"))
 
   def fromString(value: String): Option[TemplateNamePattern] = {
     NonEmptyString
-      .from(value).toOption
+      .from(value)
+      .toOption
       .map(TemplateNamePattern.apply)
   }
 
   def from(templateName: TemplateName): TemplateNamePattern = TemplateNamePattern(templateName.value)
 
-  def generateNonExistentBasedOn(templateNamePattern: TemplateNamePattern)
-                                (implicit identifierGenerator: UniqueIdentifierGenerator): TemplateNamePattern = {
-    val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(positiveInt(10))}"
+  def generateNonExistentBasedOn(templateNamePattern: TemplateNamePattern)(
+      implicit identifierGenerator: UniqueIdentifierGenerator
+  ): TemplateNamePattern = {
+    val nonexistentTemplateNamePattern =
+      s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(positiveInt(10))}"
     TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
   }
 
@@ -132,7 +139,7 @@ object TemplateNamePattern {
     def minTemplateNameLength() = {
       in.foldLeft(Int.MaxValue) {
         case (minLength, elem) if elem.value.length < minLength => elem.value.length
-        case (minLength, _) => minLength
+        case (minLength, _)                                     => minLength
       }
     }
 
@@ -140,8 +147,8 @@ object TemplateNamePattern {
       TemplateNamePattern
         .fromString {
           val minLength = minTemplateNameLength()
-          in
-            .toList.map(_.value.value.substring(0, minLength).toCharArray)
+          in.toList
+            .map(_.value.value.substring(0, minLength).toCharArray)
             .transpose
             .foldLeft((false, new StringBuilder())) {
               case ((false, builder), letters) if allTheSame(letters) =>
@@ -154,7 +161,9 @@ object TemplateNamePattern {
             ._2
             .toString
         }
-        .getOrElse(throw new IllegalMonitorStateException(s"Cannot find the most generic template name patten in ${in.show}"))
+        .getOrElse(
+          throw new IllegalMonitorStateException(s"Cannot find the most generic template name patten in ${in.show}")
+        )
     } else {
       in.head
     }
@@ -162,4 +171,3 @@ object TemplateNamePattern {
 
   implicit val eqTemplateName: Eq[TemplateNamePattern] = Eq.fromUniversalEquals
 }
-

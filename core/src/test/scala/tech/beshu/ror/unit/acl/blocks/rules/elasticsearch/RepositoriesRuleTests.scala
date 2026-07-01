@@ -29,10 +29,16 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.RepositoriesRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.domain.{Action, LoggedUser, RepositoryName, User}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockRequestContext
@@ -117,8 +123,8 @@ class RepositoriesRuleTests extends AnyWordSpec with Inside with MockFactory {
           ),
           requestAction = Action("cluster:admin/repository/get"),
           requestRepositories = Set(RepositoryName.from("public-asd").get, RepositoryName.from("q").get)
-        ) {
-          blockContext => blockContext.repositories should be(Set(RepositoryName.from("public-asd").get))
+        ) { blockContext =>
+          blockContext.repositories should be(Set(RepositoryName.from("public-asd").get))
         }
       }
     }
@@ -186,31 +192,43 @@ class RepositoriesRuleTests extends AnyWordSpec with Inside with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
-                              requestAction: Action,
-                              requestRepositories: Set[RepositoryName],
-                              loggedUser: Option[LoggedUser.DirectlyLoggedUser] = None)
-                             (blockContextAssertion: RepositoryRequestBlockContext => Unit): Unit =
+  private def assertMatchRule(
+      configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
+      requestAction: Action,
+      requestRepositories: Set[RepositoryName],
+      loggedUser: Option[LoggedUser.DirectlyLoggedUser] = None
+  )(blockContextAssertion: RepositoryRequestBlockContext => Unit): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, loggedUser, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
-                                 requestAction: Action,
-                                 requestRepositories: Set[RepositoryName],
-                                 loggedUser: Option[LoggedUser.DirectlyLoggedUser] = None): Unit =
+  private def assertNotMatchRule(
+      configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
+      requestAction: Action,
+      requestRepositories: Set[RepositoryName],
+      loggedUser: Option[LoggedUser.DirectlyLoggedUser] = None
+  ): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, loggedUser, blockContextAssertion = None)
 
-  private def assertRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
-                         requestAction: Action,
-                         requestRepositories: Set[RepositoryName],
-                         loggedUser: Option[LoggedUser.DirectlyLoggedUser],
-                         blockContextAssertion: Option[RepositoryRequestBlockContext => Unit]) = {
+  private def assertRule(
+      configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
+      requestAction: Action,
+      requestRepositories: Set[RepositoryName],
+      loggedUser: Option[LoggedUser.DirectlyLoggedUser],
+      blockContextAssertion: Option[RepositoryRequestBlockContext => Unit]
+  ) = {
     val rule = new RepositoriesRule(RepositoriesRule.Settings(configuredRepositories))
     val requestContext = MockRequestContext.repositories.copy(
       repositories = requestRepositories,
       action = requestAction
     )
     val blockMetadata = loggedUser.foldLeft(BlockMetadata.empty)(_.withLoggedUser(_))
-    val blockContext = RepositoryRequestBlockContext(mock[Block], requestContext, blockMetadata, Set.empty, List.empty, requestRepositories)
+    val blockContext = RepositoryRequestBlockContext(
+      mock[Block],
+      requestContext,
+      blockMetadata,
+      Set.empty,
+      List.empty,
+      requestRepositories
+    )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
@@ -231,6 +249,8 @@ class RepositoriesRuleTests extends AnyWordSpec with Inside with MockFactory {
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
 
 }
