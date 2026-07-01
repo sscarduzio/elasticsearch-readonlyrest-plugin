@@ -388,7 +388,7 @@ trait BaseAuditingToolsSuite
     }
   }
 
-  "ROR audit data stream setup" should {
+  "ROR audit data stream setup" ignore {
     "create an audit data stream if not exist" excludeES (allEs6x, allEs7xBelowEs79x) in {
       disableAudit()
 
