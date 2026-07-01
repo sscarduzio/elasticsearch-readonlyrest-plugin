@@ -79,6 +79,13 @@ if [[ $ROR_TASK == "core_tests" ]]; then
   ./gradlew --no-daemon --stacktrace core:test audit:test
 fi
 
+if [[ $ROR_TASK == "perf_smoke" ]]; then
+  echo ">>> Running performance smoke benchmarks (advisory allocation gate).."
+  # jmhSmoke runs the ci-smoke.txt subset with -prof gc, then extract.py + compare.py
+  # (see benchmarks/README.md); compare.py exits non-zero on an allocation regression.
+  ./gradlew --no-daemon --stacktrace :benchmarks:jmhSmoke
+fi
+
 run_integration_tests() {
   if [ "$#" -ne 1 ]; then
     echo "What ES module should I run integration tests for?"
