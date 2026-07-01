@@ -28,37 +28,46 @@ import java.util.Optional;
 public class RorTaskFinder extends DefaultTask {
 
   @TaskAction
-  public void runRorPluginBuilder() {
-  }
+  public void runRorPluginBuilder() {}
 
   public Task findRorTaskForEsVersion(String taskName) {
     Project esModule = findEsModuleForEsVersionToBuild();
-    return (Task) esModule
-        .getTasksByName(taskName, false)
-        .stream()
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException(String.format("Cannot find '%s' task in %s module!", taskName, esModule.getName())));
+    return (Task)
+        esModule.getTasksByName(taskName, false).stream()
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            "Cannot find '%s' task in %s module!", taskName, esModule.getName())));
   }
 
   private Project findEsModuleForEsVersionToBuild() {
     VersionNumber esVersionToBuild = getEsVersionToBuild();
-    Optional<Project> foundEsModule = EsModuleResolver.findEsModuleFor(getProject(), esVersionToBuild);
+    Optional<Project> foundEsModule =
+        EsModuleResolver.findEsModuleFor(getProject(), esVersionToBuild);
     if (foundEsModule.isPresent()) {
       getLogger().info(String.format("Found es module: %s", foundEsModule.get().getName()));
       return foundEsModule.get();
     } else {
-      throw new IllegalArgumentException(String.format("Cannot find ES module to build plugin for ES %s", esVersionToBuild));
+      throw new IllegalArgumentException(
+          String.format("Cannot find ES module to build plugin for ES %s", esVersionToBuild));
     }
   }
 
   private VersionNumber getEsVersionToBuild() {
-    Optional<String> esVersionStr = Optional.ofNullable((String) getProject().findProperty("esVersion"));
+    Optional<String> esVersionStr =
+        Optional.ofNullable((String) getProject().findProperty("esVersion"));
     if (esVersionStr.isPresent()) {
       return EsModuleResolver.versionNumberFrom(esVersionStr.get());
     } else {
-      Optional<VersionNumber> theNewestSupportedEsVersion = EsModuleResolver.findTheNewestSupportedEsVersion(getProject());
+      Optional<VersionNumber> theNewestSupportedEsVersion =
+          EsModuleResolver.findTheNewestSupportedEsVersion(getProject());
       if (theNewestSupportedEsVersion.isPresent()) {
-        getLogger().warn("NO 'esVersion' was explicitly set!!! Using the newest found one: {}", theNewestSupportedEsVersion.get());
+        getLogger()
+            .warn(
+                "NO 'esVersion' was explicitly set!!! Using the newest found one: {}",
+                theNewestSupportedEsVersion.get());
         return theNewestSupportedEsVersion.get();
       } else {
         throw new IllegalArgumentException("No 'esVersion' property set. Cannot continue!");

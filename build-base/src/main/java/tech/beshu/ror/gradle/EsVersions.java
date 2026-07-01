@@ -17,14 +17,15 @@
 
 package tech.beshu.ror.gradle;
 
+import org.gradle.api.GradleException;
+import org.gradle.api.Project;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.gradle.api.GradleException;
-import org.gradle.api.Project;
 
 /**
  * Parses a module's {@code supportedEsVersions} gradle property (oldest-first CSV -- the single source of
@@ -55,13 +56,16 @@ public final class EsVersions {
     if (list.isEmpty()) {
       throw new GradleException("supportedEsVersions is empty for project " + project.getName());
     }
-    List<String> sorted = list.stream()
-        .sorted(EsVersionComparator.INSTANCE)
-        .collect(Collectors.toList());
+    List<String> sorted =
+        list.stream().sorted(EsVersionComparator.INSTANCE).collect(Collectors.toList());
     if (!sorted.equals(list)) {
       throw new GradleException(
-          "supportedEsVersions in " + project.getName() + " must be ordered oldest-first, but found: " + list
-          + "; expected order: " + sorted);
+          "supportedEsVersions in "
+              + project.getName()
+              + " must be ordered oldest-first, but found: "
+              + list
+              + "; expected order: "
+              + sorted);
     }
     return new EsVersions(list);
   }
@@ -96,7 +100,7 @@ public final class EsVersions {
       int baseCompare = compareBaseVersion(aParts[0], bParts[0]);
       if (baseCompare != 0) return baseCompare;
       if (aParts.length == 1 && bParts.length == 1) return 0;
-      if (aParts.length == 1) return 1;   // release sorts after pre-release
+      if (aParts.length == 1) return 1; // release sorts after pre-release
       if (bParts.length == 1) return -1;
       return compareQualifier(aParts[1], bParts[1]);
     }
@@ -110,7 +114,8 @@ public final class EsVersions {
           int bi = i < bParts.length ? Integer.parseInt(bParts[i]) : 0;
           if (ai != bi) return Integer.compare(ai, bi);
         } catch (NumberFormatException e) {
-          throw new GradleException("Cannot parse ES version segment in '" + a + "' or '" + b + "': " + e.getMessage());
+          throw new GradleException(
+              "Cannot parse ES version segment in '" + a + "' or '" + b + "': " + e.getMessage());
         }
       }
       return 0;

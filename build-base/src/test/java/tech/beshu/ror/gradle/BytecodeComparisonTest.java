@@ -17,6 +17,10 @@
 
 package tech.beshu.ror.gradle;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -28,10 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BytecodeComparisonTest {
 
@@ -66,16 +66,20 @@ class BytecodeComparisonTest {
 
   @Test
   void ignoredEntriesWithDifferentContentAreNotDiverging() throws IOException {
-    File a = jar("a.jar", Map.of(
-        "Foo.class", bytes("same"),
-        "ror-build-info.properties", bytes("es=8.18.0"),
-        "META-INF/MANIFEST.MF", bytes("Manifest-Version: 1.0\n")
-    ));
-    File b = jar("b.jar", Map.of(
-        "Foo.class", bytes("same"),
-        "ror-build-info.properties", bytes("es=8.19.0"),
-        "META-INF/MANIFEST.MF", bytes("Manifest-Version: 1.0\nBuild: 2\n")
-    ));
+    File a =
+        jar(
+            "a.jar",
+            Map.of(
+                "Foo.class", bytes("same"),
+                "ror-build-info.properties", bytes("es=8.18.0"),
+                "META-INF/MANIFEST.MF", bytes("Manifest-Version: 1.0\n")));
+    File b =
+        jar(
+            "b.jar",
+            Map.of(
+                "Foo.class", bytes("same"),
+                "ror-build-info.properties", bytes("es=8.19.0"),
+                "META-INF/MANIFEST.MF", bytes("Manifest-Version: 1.0\nBuild: 2\n")));
     BytecodeComparison.Result result = BytecodeComparison.compare(a, b);
     assertTrue(result.isIdentical());
   }
@@ -85,7 +89,7 @@ class BytecodeComparisonTest {
     File a = jar("a.jar", Map.of("Foo.class", bytes("x")));
     File b = tempDir.resolve("b.jar").toFile();
     try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(b))) {
-      zos.putNextEntry(new ZipEntry("tech/beshu/"));  // directory entry — name ends with /
+      zos.putNextEntry(new ZipEntry("tech/beshu/")); // directory entry — name ends with /
       zos.closeEntry();
       zos.putNextEntry(new ZipEntry("Foo.class"));
       zos.write(bytes("x"));

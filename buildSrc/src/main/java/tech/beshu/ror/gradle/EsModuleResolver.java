@@ -38,8 +38,7 @@ public final class EsModuleResolver {
 
   public static final VersionNumber OLDEST_ES_VERSION_SUPPORTED = VersionNumber.parse("6.7.0");
 
-  private EsModuleResolver() {
-  }
+  private EsModuleResolver() {}
 
   public static Optional<Project> findEsModuleFor(Project rootProject, String esVersion) {
     return findEsModuleFor(rootProject, versionNumberFrom(esVersion));
@@ -50,9 +49,11 @@ public final class EsModuleResolver {
 
     for (int i = 0; i < esModules.size(); i++) {
       VersionNumber newestForCurrentModule = newestEsVersionFor(esModules.get(i));
-      VersionNumber newestForPreviousModule = i > 0 ? newestEsVersionFor(esModules.get(i - 1)) : OLDEST_ES_VERSION_SUPPORTED;
+      VersionNumber newestForPreviousModule =
+          i > 0 ? newestEsVersionFor(esModules.get(i - 1)) : OLDEST_ES_VERSION_SUPPORTED;
 
-      if (esVersion.compareTo(newestForPreviousModule) >= 0 && esVersion.compareTo(newestForCurrentModule) <= 0) {
+      if (esVersion.compareTo(newestForPreviousModule) >= 0
+          && esVersion.compareTo(newestForCurrentModule) <= 0) {
         return Optional.of(esModules.get(i));
       }
     }
@@ -61,8 +62,7 @@ public final class EsModuleResolver {
   }
 
   public static Optional<VersionNumber> findTheNewestSupportedEsVersion(Project rootProject) {
-    return sortedEsModules(rootProject, newestEsVersionComparator().reversed())
-        .stream()
+    return sortedEsModules(rootProject, newestEsVersionComparator().reversed()).stream()
         .map(EsModuleResolver::newestEsVersionFor)
         .findFirst();
   }
@@ -71,8 +71,11 @@ public final class EsModuleResolver {
     return supportedEsVersionsFor(esModule).stream()
         .map(EsModuleResolver::versionNumberFrom)
         .max(Comparator.naturalOrder())
-        .orElseThrow(() -> new IllegalArgumentException(
-            String.format("Module %s has an empty 'supportedEsVersions'", esModule.getName())));
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format(
+                        "Module %s has an empty 'supportedEsVersions'", esModule.getName())));
   }
 
   /** The ES versions a module publishes, as declared (trimmed) in its {@code supportedEsVersions} property. */
@@ -80,7 +83,9 @@ public final class EsModuleResolver {
     Object raw = esModule.findProperty("supportedEsVersions");
     if (raw == null || ((String) raw).isBlank()) {
       throw new IllegalArgumentException(
-          String.format("Module %s is missing the 'supportedEsVersions' gradle property", esModule.getName()));
+          String.format(
+              "Module %s is missing the 'supportedEsVersions' gradle property",
+              esModule.getName()));
     }
     return Arrays.stream(((String) raw).split(","))
         .map(String::trim)
@@ -89,12 +94,10 @@ public final class EsModuleResolver {
   }
 
   public static List<Project> sortedEsModules(Project rootProject, Comparator<Project> comparator) {
-    List<Project> esModules = rootProject
-        .getChildProjects()
-        .values()
-        .stream()
-        .filter(EsModuleResolver::isEsModule)
-        .collect(Collectors.toList());
+    List<Project> esModules =
+        rootProject.getChildProjects().values().stream()
+            .filter(EsModuleResolver::isEsModule)
+            .collect(Collectors.toList());
     esModules.sort(comparator);
     return esModules;
   }
@@ -106,7 +109,8 @@ public final class EsModuleResolver {
   public static VersionNumber versionNumberFrom(String value) {
     VersionNumber parsedEsVersion = VersionNumber.parse(value);
     if (parsedEsVersion == VersionNumber.UNKNOWN) {
-      throw new IllegalArgumentException(String.format("Cannot parse %s to version number. Cannot continue!", value));
+      throw new IllegalArgumentException(
+          String.format("Cannot parse %s to version number. Cannot continue!", value));
     }
     return parsedEsVersion;
   }

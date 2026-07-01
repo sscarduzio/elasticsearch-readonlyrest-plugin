@@ -38,11 +38,12 @@ public class PrintEsModulesTask extends DefaultTask {
   public void printModules() {
     int esMajor = Integer.parseInt(requiredProperty("esMajor"));
 
-    List<Project> modules = EsModuleResolver
-        .sortedEsModules(getProject(), EsModuleResolver.newestEsVersionComparator().reversed())
-        .stream()
-        .filter(module -> EsModuleResolver.newestEsVersionFor(module).getMajor() == esMajor)
-        .collect(Collectors.toList());
+    List<Project> modules =
+        EsModuleResolver.sortedEsModules(
+                getProject(), EsModuleResolver.newestEsVersionComparator().reversed())
+            .stream()
+            .filter(module -> EsModuleResolver.newestEsVersionFor(module).getMajor() == esMajor)
+            .collect(Collectors.toList());
 
     for (Project module : modules) {
       System.out.println(module.getName());
@@ -52,7 +53,8 @@ public class PrintEsModulesTask extends DefaultTask {
   private String requiredProperty(String name) {
     Object value = getProject().findProperty(name);
     if (value == null) {
-      throw new IllegalArgumentException(String.format("Missing required '-P%s=<value>' property", name));
+      throw new IllegalArgumentException(
+          String.format("Missing required '-P%s=<value>' property", name));
     }
     return (String) value;
   }

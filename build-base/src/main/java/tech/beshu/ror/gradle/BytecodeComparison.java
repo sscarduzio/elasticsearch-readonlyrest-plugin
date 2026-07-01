@@ -65,8 +65,7 @@ public final class BytecodeComparison {
     }
   }
 
-  private BytecodeComparison() {
-  }
+  private BytecodeComparison() {}
 
   /**
    * Compares the two jars entry-by-entry (ignoring {@link #IGNORED_ENTRIES} and directory entries).
@@ -88,7 +87,8 @@ public final class BytecodeComparison {
     return new Result(diverging);
   }
 
-  private static java.util.TreeSet<String> union(TreeMap<String, String> a, TreeMap<String, String> b) {
+  private static java.util.TreeSet<String> union(
+      TreeMap<String, String> a, TreeMap<String, String> b) {
     java.util.TreeSet<String> all = new java.util.TreeSet<>(a.keySet());
     all.addAll(b.keySet());
     return all;

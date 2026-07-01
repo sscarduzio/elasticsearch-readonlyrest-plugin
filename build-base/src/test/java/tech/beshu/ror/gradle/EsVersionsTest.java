@@ -17,15 +17,15 @@
 
 package tech.beshu.ror.gradle;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EsVersionsTest {
 
@@ -88,7 +88,8 @@ class EsVersionsTest {
 
   @Test
   void misorderedQualifiersThrow() {
-    assertThrows(GradleException.class, () -> EsVersions.of(project("10.0.0-beta1, 10.0.0-alpha1, 10.0.0")));
+    assertThrows(
+        GradleException.class, () -> EsVersions.of(project("10.0.0-beta1, 10.0.0-alpha1, 10.0.0")));
   }
 
   // --- delivered() / baseline() ---
