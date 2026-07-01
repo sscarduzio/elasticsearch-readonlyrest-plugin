@@ -42,7 +42,7 @@ FROM eclipse-temurin:17-jdk AS base
 
 # apt tools the pipeline needs (was: `apt-get install -y git curl` on every run).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git curl ca-certificates unzip \
+ && apt-get install -y --no-install-recommends git curl ca-certificates unzip file \
  && rm -rf /var/lib/apt/lists/*
 
 # Docker CLIENT only: UPLOAD_PRE_ROR/RELEASE_ROR run `docker login` / `publishEsRorDockerImage`

@@ -14,23 +14,59 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import tech.beshu.ror.gradle.utils.EsVersions
+import tech.beshu.ror.gradle.utils.PluginArtifact
 
 plugins {
     id "readonlyrest.base-common-conventions"
+    id "readonlyrest.verify-repackage-bytecode"
+    id "readonlyrest.scala-compile-conventions"
+    id "readonlyrest.docker-image-conventions"
 }
 
 project.ext {
-    pluginName = rootProject.properties['pluginName']
-    publishedPluginVersion = rootProject.properties['pluginVersion']
-    pluginVersion = rootProject.properties['pluginVersion']
-    esVersion = project.hasProperty('esVersion') ? project.property('esVersion') : project.property('latestSupportedEsVersion')
+    pluginName = PluginArtifact.name(project)
+    publishedPluginVersion = PluginArtifact.version(project)
+    pluginVersion = PluginArtifact.version(project)
+    // esVersion = which version we DELIVER (and which module the RorTaskFinder selects). Default: newest.
+    esVersion = EsVersions.delivered(project)
+    // baselineEsVersion = which version we COMPILE against (the base). Always the oldest supported in normal
+    // builds, so the deliverable reuses one set of base bytecode. The -P override exists ONLY for the CI
+    // bytecode guard: it forces a recompile at a boundary version to prove that version's bytecode matches
+    // the base before trusting the repackage.
+    baselineEsVersion = EsVersions.baseline(project)
     s3BucketName = System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
     s3StoreAddress = System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
     s3LibsPathPrefix = (System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs').replaceAll('^/+', '').replaceAll('/+$', '')
 }
 
 group = 'org.elasticsearch.plugin'
-version = "${pluginVersion}_es${project.ext.esVersion}"
+
+ext.pluginFullNameFor = { esVer -> PluginArtifact.fullName(project, esVer) }
+ext.pluginFullName = pluginFullNameFor(project.ext.esVersion)
+ext.baselineFullName = pluginFullNameFor(project.ext.baselineEsVersion)
+ext.distributionsDir = PluginArtifact.distributionsDir(project)
+ext.writeRorBuildInfo = { File dir, esVer ->
+    def file = new File(dir, 'ror-build-info.properties')
+    file.text = "es_version=${esVer}\nplugin_version=${pluginVersion}"
+    return file
+}
+ext.writeSha512 = { File file ->
+    def md = java.security.MessageDigest.getInstance('SHA-512')
+    file.eachByte(64 * 1024) { byte[] buf, int n -> md.update(buf, 0, n) }
+    new File(file.parentFile, file.name + '.sha512').text = md.digest().collect { String.format('%02x', it) }.join('')
+}
+// Where the target's ES-versioned dependency jars are staged for repackaging. The batch CI pipeline passes
+// an explicit shared -PesJarsDir; a self-contained buildRorPlugin falls back to a per-module build dir.
+ext.resolveEsJarsDir = { project.findProperty('esJarsDir') ?: layout.buildDirectory.dir('es-versioned-jars').get().asFile.path }
+ext.assemblePluginZip = { File contentsDir, esVer, File outputDir = distributionsDir.get().asFile ->
+    outputDir.mkdirs()
+    def zip = new File(outputDir, "${pluginFullNameFor(esVer)}.zip")
+    zip.delete()
+    ant.zip(destfile: zip, basedir: contentsDir, modificationtime: '0')
+    writeSha512(zip)
+    return zip
+}
 
 repositories {
     maven {
@@ -41,50 +77,56 @@ repositories {
     }
 }
 
-configurations {
-    distJars {
-        extendsFrom runtimeClasspath
+// Each es module declares its target JDK via `ext.javaLanguageVersion` (an int); read lazily because the
+// module body that sets it runs after this convention plugin is applied. Shared by the toolchain below and
+// the jarHellCheck launcher.
+def javaLanguageVersionProvider = providers.provider {
+    JavaLanguageVersion.of(project.ext.javaLanguageVersion as int)
+}
+
+java {
+    toolchain {
+        languageVersion = javaLanguageVersionProvider
     }
 }
+
+configurations {
+    wagon
+    distJars {
+        extendsFrom runtimeClasspath
+        exclude group: 'org.elasticsearch'
+        exclude group: 'lucene-core'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
+        exclude group: 'lucene-analyzers-common'
+        exclude group: 'org.apache.commons'
+        exclude group: 'org.yaml'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+    }
+}
+
+// The deliverable always reuses base bytecode, so compile/package against baselineEsVersion regardless of the
+// ES version a module's dependencies request (modules pin org.elasticsearch.* to esVersion; we override that
+// to baselineEsVersion here so no module build.gradle needs to know about base-vs-target). We only rewrite ES
+// libs requested at esVersion -- ROR's own modules also live under org.elasticsearch.plugin but carry
+// pluginVersion, so the version check leaves them alone. Detached configs (downloadEsVersionedDependencyJars,
+// which fetches the TARGET jars) aren't in this container, so they're untouched.
+configurations
+        .matching {
+            it.name in ['compileClasspath', 'runtimeClasspath', 'distJars', 'testCompileClasspath', 'testRuntimeClasspath']
+        }
+        .configureEach {
+            resolutionStrategy.eachDependency { details ->
+                if (details.requested.group.startsWith('org.elasticsearch') && details.requested.version == project.ext.esVersion) {
+                    details.useVersion(project.ext.baselineEsVersion)
+                }
+            }
+        }
 
 dependencyCheck {
     // Override base convention: ES plugin modules should scan distJars configuration
     // which contains the actual dependencies that get packaged with the plugin
     scanConfigurations = ['distJars']
-}
-
-docker {
-    registryCredentials {
-        username = System.getenv('DOCKER_REGISTRY_USER')
-        password = System.getenv('DOCKER_REGISTRY_PASSWORD')
-    }
-}
-
-tasks.withType(ScalaCompile).configureEach {
-    scalaCompileOptions.additionalParameters = [
-            "-feature",
-            "-Xfatal-warnings",
-            "-Wunused:implicits",
-            "-Wunused:imports",
-            "-Wunused:explicits",
-            "-Wunused:strict-no-implicit-warn",
-            "-Wunused:locals",
-            "-Wunused:params",
-            "-Wunused:privates",
-            "-Wconf:cat=deprecation&msg=\\[ROR\\].*:i"
-            // There are multiple reports of issues with `-Wunused:nowarn` flag when using Scala 3.3.X
-            // It seems that this problem occurs in es{version}x modules when using deprecated `org.elasticsearch.index.query.CommonTermsQueryBuilder`
-            // - https://github.com/scala/scala3/issues/19992
-            // - https://github.com/scala/scala3/issues/18341
-            // - https://users.scala-lang.org/t/wunused-on-scala-3-3-0/9401
-            // "-Wunused:nowarn",
-    ]
-}
-
-tasks.withType(Zip).configureEach { task ->
-    task.doLast {
-        ant.checksum file: task.archiveFile.get().asFile, algorithm: 'sha1'
-    }
 }
 
 tasks.register('generateVersionsFile') {
@@ -93,51 +135,236 @@ tasks.register('generateVersionsFile') {
         def resourcesDir = sourceSets.main.output.resourcesDir
 
         resourcesDir.mkdirs()
-        def contents = "es_version=$project.ext.esVersion\nplugin_version=$pluginVersion"
-        new File(resourcesDir, "ror-build-info.properties").text = contents
+        writeRorBuildInfo(resourcesDir, project.ext.baselineEsVersion)
     }
 }
 
 tasks.register('toJar', Jar) {
     dependsOn generateVersionsFile
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    archiveBaseName = pluginName
+    // The base fat jar; packageRorPlugin reads it by this exact name (build/libs/<baselineFullName>.jar).
+    archiveFileName = "${baselineFullName}.jar"
     from sourceSets.main.getOutput()
 }
 
-tasks.register('prepareMultiplatformBuilder') {
-    group = 'docker'
+// Downloads, for one target ES version, the dependency jars whose content depends on the ES version.
+// These are the `org.elasticsearch.*` artifacts that distJars keeps (elasticsearch-rest-client, plus
+// transport-netty4-client on es6x/es7x). We don't hardcode them: we discover them from the resolved
+// distJars, so a module bundling a different ES-versioned jar just works. Everything else in the zip is the
+// same across patch versions and gets reused by repackageRorPluginForVersion.
+//
+// Usage: -PtargetVersion=9.2.1  -PesJarsDir=<dir>   ->   <dir>/9.2.1/<artifact>-9.2.1.jar
+tasks.register('downloadEsVersionedDependencyJars') {
+    outputs.upToDateWhen { false }
     doLast {
-        def execOps = project.services.get(ExecOperations)
-        def output = new ByteArrayOutputStream()
-        execOps.exec {
-            executable = 'docker'
-            args = ['buildx', 'inspect']
-            standardOutput = output
-            errorOutput = System.err
-        }
-        def supportedPlatforms = output.toString().find(/Platforms: ([^\n]+)/)?.replace("Platforms: ", "")?.split(',')
+        def target = project.findProperty('targetVersion') ?: project.ext.esVersion
+        def esJarsDirProp = resolveEsJarsDir()
 
-        if (supportedPlatforms == null || !(supportedPlatforms.contains('linux/amd64') && supportedPlatforms.contains('linux/arm64'))) {
-            try {
-                execOps.exec {
-                    executable = 'docker'
-                    args = ['buildx', 'inspect', 'ror_kbn_builder']
-                    errorOutput = new ByteArrayOutputStream()
+        // These jars carry the ES version (e.g. elasticsearch-rest-client-9.3.5). ROR's own modules also
+        // sit under `org.elasticsearch.plugin` but carry pluginVersion; distJars resolves to baselineEsVersion
+        // (the base we compiled), so matching on it picks the ES-versioned jars and skips ROR's own.
+        def esVersionedArtifacts = configurations.distJars.resolvedConfiguration.resolvedArtifacts
+                .findAll {
+                    it.moduleVersion.id.group.startsWith('org.elasticsearch') &&
+                            it.moduleVersion.id.version == project.ext.baselineEsVersion
                 }
-            } catch (Exception e) {
-                if (e.getMessage().contains("non-zero exit")) {
-                    execOps.exec {
-                        executable = 'docker'
-                        args = ['buildx', 'create', '--platform=linux/amd64,linux/arm64', '--name=ror_kbn_builder']
-                    }
-                }
-            }
+                .collect { [group: it.moduleVersion.id.group, name: it.moduleVersion.id.name] }
+                .unique()
 
-            execOps.exec {
-                executable = 'docker'
-                args = ['buildx', 'use', 'ror_kbn_builder']
+        logger.lifecycle("Downloading ES-versioned dependency jars {} for ES {} into {}",
+                esVersionedArtifacts.collect { it.name }, target, esJarsDirProp)
+
+        def destDir = file("${esJarsDirProp}/${target}")
+        destDir.mkdirs()
+        esVersionedArtifacts.each { art ->
+            def detached = configurations.detachedConfiguration(dependencies.create("${art.group}:${art.name}:${target}"))
+            detached.transitive = false
+            detached.resolve().each { jarFile ->
+                copy {
+                    from jarFile
+                    into destDir
+                }
             }
         }
     }
 }
+
+// Builds the plugin zip for one target ES patch version from the module's already-built BASE zip, WITHOUT
+// recompiling. The bytecode is the same across a module's patch range; only three things differ per version:
+//   * plugin-descriptor.properties -> elasticsearch.version (ES requires it to match the node version)
+//   * ror-build-info.properties    -> es_version (inside the fat ROR jar; only shows up in the boot log)
+//   * the ES-versioned dependency jars from downloadEsVersionedDependencyJars (<esJarsDir>/<target>/)
+// We copy the base zip, patch those three, and re-zip. Depends on downloadEsVersionedDependencyJars, so a
+// single invocation fetches the target's jars and then repackages with them.
+//
+// target defaults to esVersion (so buildRorPluginZip can drive it); the batch pipeline passes -PtargetVersion
+// explicitly to derive many versions from one compiled base. esJarsDir/outputDir default to per-module build
+// dirs. Usage: [-PtargetVersion=9.2.1] [-PesJarsDir=<dir>] [-PoutputDir=<dir>]
+//   -> <outputDir>/<pluginName>-<pluginVersion>_es<target>.zip (+ .sha512)
+// outputDir defaults to build/distributions, so derived zips land next to the full-build zip and `clean`
+// removes them -- a deliverable is a deliverable regardless of whether it was compiled or repackaged.
+tasks.register('repackageRorPluginForVersion') {
+    dependsOn 'downloadEsVersionedDependencyJars'
+    // When buildRorPluginZip drives the derive, the base zip must be built first; harmless otherwise.
+    mustRunAfter 'packageRorPlugin'
+    outputs.upToDateWhen { false }
+    doLast {
+        def target = project.findProperty('targetVersion') ?: project.ext.esVersion
+        def esJarsDirProp = resolveEsJarsDir()
+        def outputDirProp = project.findProperty('outputDir')
+
+        def baseEs = project.ext.baselineEsVersion
+        def baseZip = distributionsDir.get().file("${baselineFullName}.zip").asFile
+        if (!baseZip.exists()) {
+            throw new GradleException("base zip not found (build the module first): ${baseZip}")
+        }
+        def fatJarBaseName = "${baselineFullName}.jar"
+
+        def outputDir = outputDirProp != null ? file(outputDirProp) : distributionsDir.get().asFile
+        outputDir.mkdirs()
+
+        logger.lifecycle("Repackaging {} base ES {} -> ES {} (ROR {})", project.name, baseEs, target, pluginVersion)
+
+        def work = java.nio.file.Files.createTempDirectory("ror-repkg").toFile()
+        try {
+            // 1) Extract the base zip (entries at the archive root).
+            copy { from zipTree(baseZip); into work }
+
+            // 2) plugin-descriptor.properties: only elasticsearch.version changes per version (the
+            //    `version` field is the plugin version, same across patch versions).
+            def descriptor = new File(work, 'plugin-descriptor.properties')
+            descriptor.text = descriptor
+                    .readLines()
+                    .collect { it.startsWith('elasticsearch.version=') ? "elasticsearch.version=${target}" : it }
+                    .join('\n') + '\n'
+
+            // 3) ror-build-info.properties inside the fat ROR jar (boot-log only). Also rename the jar
+            //    to the target version -- cosmetic only, ES scans the dir and ignores the jar name.
+            def fatJarBase = new File(work, fatJarBaseName)
+            if (!fatJarBase.exists()) {
+                throw new GradleException("fat ROR jar not found in base zip: ${fatJarBaseName}")
+            }
+            def buildInfo = writeRorBuildInfo(work, target)
+            ant.zip(destfile: fatJarBase, update: true) {
+                fileset(dir: work, includes: buildInfo.name)
+            }
+            buildInfo.delete()
+            def fatJarTargetName = "${pluginFullNameFor(target)}.jar"
+            if (fatJarBaseName != fatJarTargetName) {
+                fatJarBase.renameTo(new File(work, fatJarTargetName))
+            }
+
+            // 4) Swap the ES-versioned dependency jars: downloaded <target> in, <base> out. Downloaded
+            //    jars are named "<artifact>-<target>.jar"; the base zip has "<artifact>-<base>.jar".
+            def targetJarsDir = new File("${esJarsDirProp}/${target}")
+            def downloadedJars = (targetJarsDir.listFiles() ?: []).findAll { it.name.endsWith('.jar') }
+            if (downloadedJars.isEmpty()) {
+                throw new GradleException("no ES jars for ES ${target} in ${targetJarsDir} (run downloadEsVersionedDependencyJars first)")
+            }
+            downloadedJars.each { jar ->
+                def jarName = jar.name
+                if (!jarName.endsWith("-${target}.jar")) {
+                    throw new GradleException("jar '${jarName}' does not match '<artifact>-${target}.jar'")
+                }
+                def artifact = jarName.substring(0, jarName.length() - "-${target}.jar".length())
+                new File(work, "${artifact}-${baseEs}.jar").delete()
+                copy { from jar; into work }
+            }
+
+            // 5) Re-zip flat + checksum (same assembler as the full build).
+            def outputZip = assemblePluginZip(work, target, outputDir)
+            logger.lifecycle("Wrote {} (+ .sha512)", outputZip)
+        } finally {
+            work.deleteDir()
+        }
+    }
+}
+
+tasks.register('cleanOldData') {
+    doLast {
+        delete 'build/tmp/' + baselineFullName
+    }
+}
+
+tasks.register('jarHellCheck', JavaExec) {
+    outputs.upToDateWhen { false }
+    // JarHell moved package across ES versions; each module declares the right one via `ext.jarHellMainClass`.
+    mainClass.set(providers.provider { project.ext.jarHellMainClass })
+    // compileClasspath is pinned to baselineEsVersion, so this checks the baseline only. That's representative
+    // of every derived target: the sole per-target difference is the swapped ES dep jars (same artifacts at
+    // adjacent patch versions), so their jar-hell characteristics match -- the same class-compatibility
+    // invariant that makes the repackage valid.
+    classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = javaLanguageVersionProvider
+    }
+}
+
+tasks.register('resolvePluginDescriptorTemplate', Copy) {
+    outputs.upToDateWhen { false }
+    from './plugin-metadata'
+    into 'build/tmp/' + baselineFullName
+    expand([
+            'descriptor': [
+                    'name'         : pluginName,
+                    'pluginVersion': pluginVersion,
+                    'esVersion'    : project.ext.baselineEsVersion
+            ]
+    ])
+}
+
+// The single entry point for producing a deliverable: packageRorPlugin compiles the module base  ONCE and
+// zips it; when the requested esVersion differs from the compiled base, the target zip is then DERIVED from
+// that base by repackageRorPluginForVersion (no second compile). When they're equal (the default, and the
+// CI base build), the base zip IS the deliverable, so there's nothing to repackage.
+tasks.register('buildRorPluginZip') {
+    dependsOn(packageRorPlugin)
+    if (project.ext.esVersion != project.ext.baselineEsVersion) {
+        dependsOn('repackageRorPluginForVersion')
+    }
+}
+
+// Compiles the module base (baselineEsVersion) and zips it into build/distributions/<baselineFullName>.zip.
+tasks.register('packageRorPlugin') {
+    dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
+    // distJars is accessed in doLast (not as a typed task input), so Gradle cannot auto-discover the artifact
+    // tasks (e.g. core:jar). buildDependencies makes them explicit so all dependency JARs exist at execution time.
+    dependsOn(configurations.distJars.buildDependencies)
+    outputs.upToDateWhen { false }
+    doLast {
+        def contentsDir = layout.buildDirectory.dir("plugin-contents/${baselineFullName}").get().asFile
+        sync {
+            it.into contentsDir
+            it.from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
+            it.from 'build/libs/' + baselineFullName + '.jar'
+            it.from 'build/tmp/' + baselineFullName
+        }
+        assemblePluginZip(contentsDir, project.ext.baselineEsVersion)
+    }
+}
+
+// Prints two lines to stdout: the base ES version (EsVersions.oldest) on line 1, then all supported
+// versions oldest-first space-separated on line 2. Invoke with --quiet to suppress Gradle noise.
+// Usage: ./gradlew :es818x:printEsVersionsForModule --quiet
+tasks.register('printEsVersionsForModule') {
+    group = 'help'
+    description = "Prints base version and all supported versions for ${project.name} to stdout"
+    outputs.upToDateWhen { false }
+    doLast {
+        def esVersions = EsVersions.of(project)
+        println esVersions.oldest
+        println esVersions.all.join(' ')
+    }
+}
+
+tasks.register('uploadRorPluginToS3', Exec) {
+    dependsOn(buildRorPluginZip)
+
+    def distributionsPath = distributionsDir.get().asFile.path
+    def pluginFileZip = distributionsPath + "/" + pluginFullName + ".zip"
+    def pluginSha512 = distributionsPath + "/" + pluginFullName + ".zip.sha512"
+    def targetS3Dir = pluginVersion + "/"
+
+    commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, targetS3Dir
+}
+
