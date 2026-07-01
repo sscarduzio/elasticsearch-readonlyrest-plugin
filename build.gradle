@@ -28,8 +28,8 @@ plugins {
 
 spotless {
     java {
-        // build-base and buildSrc are included builds — excluded from the main project task graph,
-        // so their Java sources are formatted here at the root level instead.
+        // build-base is an included build — excluded from the main project task graph,
+        // so its Java sources are formatted here at the root level instead.
         target 'build-base/src/**/*.java'
     }
 }

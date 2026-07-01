@@ -58,7 +58,12 @@ public class RorTaskFinder extends DefaultTask {
     Optional<String> esVersionStr =
         Optional.ofNullable((String) getProject().findProperty("esVersion"));
     if (esVersionStr.isPresent()) {
-      return esVersionStr.get();
+      String version = esVersionStr.get();
+      if (!version.matches("\\d+\\.\\d+\\.\\d+(-[a-zA-Z]+\\d*)?")) {
+        throw new IllegalArgumentException(
+            "Cannot parse '" + version + "' to ES version number. Cannot continue!");
+      }
+      return version;
     }
     Optional<String> newestSupportedVersion =
         EsModuleFinder.findTheNewestSupportedEsVersion(getProject());
