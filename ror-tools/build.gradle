@@ -124,59 +124,74 @@ tasks.withType(AbstractArchiveTask).configureEach {
     reproducibleFileOrder = true
 }
 
-def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
-def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
+def netty4TransportArtifactName = "transport-netty4-${esVersion}.jar"
+def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/${esVersion}/"
 
-tasks.register('uploadArtifactsFromEsBinaries', Exec) {
-    // This artifact (transport-netty4 jar) goes to the *libs* store, not the artifacts store.
-    // Select the LIBS store and provide its ROR_LIBS_STORE_* vars (falling back to sane defaults
-    // for local runs where the CI secrets are absent).
-    environment 'ROR_S3_TARGET_STORE', 'LIBS'
-    environment 'ROR_LIBS_STORE_ENDPOINT_URL', System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
-    environment 'ROR_LIBS_STORE_ACCESS_KEY_ID', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
-    environment 'ROR_LIBS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
-    environment 'ROR_LIBS_STORE_BUCKET', System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
-    environment 'ROR_LIBS_STORE_REGION', System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
-    environment 'ROR_LIBS_STORE_PATH_PREFIX', System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
+def elasticsearchArtifactName = "elasticsearch-${esVersion}.jar"
+def elasticsearchArtifactDestinationPath = "org/elasticsearch/elasticsearch/${esVersion}/"
 
-    commandLine '../ci/upload-files-to-s3.sh', layout.buildDirectory.get().asFile.path + "/" + netty4TransportArtifactName, netty4TransportArtifactDestinationPath
+def registerLibsStoreUpload = { String taskName, String artifactName, String destinationPath ->
+    tasks.register(taskName, Exec) {
+        dependsOn getArtifactsFromEsBinaries
+        environment 'ROR_S3_TARGET_STORE',              'LIBS'
+        environment 'ROR_LIBS_STORE_ENDPOINT_URL',      System.getenv('ROR_LIBS_STORE_ENDPOINT_URL') ?: 'https://dgp.serve.beshu.tech'
+        environment 'ROR_LIBS_STORE_ACCESS_KEY_ID',     System.getenv('ROR_LIBS_STORE_ACCESS_KEY_ID') ?: ''
+        environment 'ROR_LIBS_STORE_ACCESS_KEY_SECRET', System.getenv('ROR_LIBS_STORE_ACCESS_KEY_SECRET') ?: ''
+        environment 'ROR_LIBS_STORE_BUCKET',            System.getenv('ROR_LIBS_STORE_BUCKET') ?: 'beshu'
+        environment 'ROR_LIBS_STORE_REGION',            System.getenv('ROR_LIBS_STORE_REGION') ?: 'us-east-1'
+        environment 'ROR_LIBS_STORE_PATH_PREFIX',       System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
+        commandLine '../ci/upload-files-to-s3.sh',
+            "${layout.buildDirectory.get().asFile.path}/${artifactName}",
+            destinationPath
+    }
+}
+
+registerLibsStoreUpload('uploadNetty4TransportFromEsBinaries', netty4TransportArtifactName, netty4TransportArtifactDestinationPath)
+registerLibsStoreUpload('uploadElasticsearchFromEsBinaries', elasticsearchArtifactName, elasticsearchArtifactDestinationPath)
+
+tasks.register('uploadArtifactsFromEsBinaries') {
+    dependsOn 'uploadNetty4TransportFromEsBinaries', 'uploadElasticsearchFromEsBinaries'
 }
 
 tasks.register('getArtifactsFromEsBinaries') {
+    dependsOn downloadEsBinaries
     doLast {
-        def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
-        def netty4TransportArtifactPath = esDir.path + "/elasticsearch-" + esVersion + "/modules/transport-netty4/" + netty4TransportArtifactName
-        def netty4TransportDestPath = layout.buildDirectory
-        project.logger.info("Coping " + netty4TransportArtifactPath + " to " + netty4TransportDestPath.get().asFile.path + " ...")
+        def esExtractedDir = new File(layout.buildDirectory.asFile.get(), "es-${esVersion}").path + "/elasticsearch-${esVersion}"
+        def destPath = layout.buildDirectory
+
+        def netty4TransportArtifactPath = "${esExtractedDir}/modules/transport-netty4/${netty4TransportArtifactName}"
+        project.logger.info("Copying ${netty4TransportArtifactPath} to ${destPath.get().asFile.path} ...")
         copy {
             from netty4TransportArtifactPath
-            into netty4TransportDestPath
+            into destPath
+        }
+
+        def esArtifactPath = "${esExtractedDir}/lib/${elasticsearchArtifactName}"
+        project.logger.info("Copying ${esArtifactPath} to ${destPath.get().asFile.path} ...")
+        copy {
+            from esArtifactPath
+            into destPath
         }
     }
 }
 
-uploadArtifactsFromEsBinaries.dependsOn getArtifactsFromEsBinaries
-
 tasks.register('downloadEsBinaries') {
     doLast {
-        def esTar = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion + ".tar.gz")
+        def esTar = new File(layout.buildDirectory.asFile.get(), "es-${esVersion}.tar.gz")
         if (!esTar.exists()) {
             if (!layout.buildDirectory.asFile.get().exists()) {
                 project.mkdir(layout.buildDirectory.asFile.get())
             }
-            def esLinuxBinaries = "elasticsearch-" + esVersion + "-linux-x86_64.tar.gz"
-            project.logger.info("Downloading " + esLinuxBinaries + " ...")
-            new URL("https://artifacts.elastic.co/downloads/elasticsearch/" + esLinuxBinaries)
+            def esLinuxBinaries = "elasticsearch-${esVersion}-linux-x86_64.tar.gz"
+            project.logger.info("Downloading ${esLinuxBinaries} ...")
+            new URL("https://artifacts.elastic.co/downloads/elasticsearch/${esLinuxBinaries}")
                     .withInputStream { i -> esTar.withOutputStream { it << i } }
         }
-        def esDir = new File(layout.buildDirectory.asFile.get(), "es-" + esVersion)
-        project.logger.info("Extracting " + esTar.path + " to " + esDir.path + "...")
+        def esDir = new File(layout.buildDirectory.asFile.get(), "es-${esVersion}")
+        project.logger.info("Extracting ${esTar.path} to ${esDir.path} ...")
         copy {
             from tarTree(esTar)
             into esDir
         }
     }
 }
-
-getArtifactsFromEsBinaries.dependsOn downloadEsBinaries
-
