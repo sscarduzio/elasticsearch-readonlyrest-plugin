@@ -125,7 +125,7 @@ tasks.withType(AbstractArchiveTask).configureEach {
 }
 
 def netty4TransportArtifactName = "transport-netty4-" + esVersion + ".jar"
-def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/" + netty4TransportArtifactName
+def netty4TransportArtifactDestinationPath = "org/elasticsearch/plugin/transport-netty4/" + esVersion + "/"
 
 tasks.register('uploadArtifactsFromEsBinaries', Exec) {
     // This artifact (transport-netty4 jar) goes to the *libs* store, not the artifacts store.
