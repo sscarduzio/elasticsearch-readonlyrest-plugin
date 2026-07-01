@@ -146,11 +146,11 @@ tasks.register('uploadArtifactsFromEsBinaries') {
             'ROR_LIBS_STORE_PATH_PREFIX'      : System.getenv('ROR_LIBS_STORE_PATH_PREFIX') ?: 'ror/libs'
         ]
         def buildDir = layout.buildDirectory.get().asFile.path
-        exec {
+        project.exec {
             environment libsStoreEnv
             commandLine '../ci/upload-files-to-s3.sh', "${buildDir}/${netty4TransportArtifactName}", netty4TransportArtifactDestinationPath
         }
-        exec {
+        project.exec {
             environment libsStoreEnv
             commandLine '../ci/upload-files-to-s3.sh', "${buildDir}/${elasticsearchArtifactName}", elasticsearchArtifactDestinationPath
         }
