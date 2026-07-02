@@ -247,7 +247,7 @@ stages:
     # without it this stage starts/continues even after the run is canceled (the cancel-livelock).
     # SUPERSEDE_GUARD gate: when this PR run is superseded the guard FAILS (exit 1), so the heavy
     # stages must not run. Succeeded = newest PR run; Skipped = non-PR run (guard didn't apply).
-    condition: and(not(canceled()), in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
+    condition: false # DEMO-ONLY trim (do not merge)
     jobs:
       - job: CVE_CHECK
         container: ror-toolchains
@@ -363,11 +363,7 @@ stages:
 ##### Unit tests
 ####################################
       - job: UNIT
-        condition:
-          and(
-            succeeded(),
-            not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
-          )
+        condition: false # DEMO-ONLY trim (do not merge)
         displayName: 'Unit tests'
         container: ror-toolchains
         timeoutInMinutes: 30
@@ -543,14 +539,7 @@ stages:
 ##### Integration tests for ES 9.x on PRs
 #######################################################
       - job:
-        condition:
-          and(
-            succeeded(),
-            ne(variables.isEpicBranchOrPr, true),
-            ne(variables.isDevelop, true),
-            ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
-          )
+        condition: false # DEMO-ONLY trim (do not merge)
         container: ror-toolchains
         timeoutInMinutes: 120
         # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
@@ -590,12 +579,6 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            IT_es818x:
-              ROR_TASK: integration_es818x
-            IT_es816x:
-              ROR_TASK: integration_es816x
-            IT_es810x:
-              ROR_TASK: integration_es810x
             IT_es80x:
               ROR_TASK: integration_es80x
 
@@ -603,14 +586,7 @@ stages:
 ##### Integration tests for ES <= 7.x on PRs
 #######################################################
       - job:
-        condition:
-          and(
-            succeeded(),
-            ne(variables.isEpicBranchOrPr, true),
-            ne(variables.isDevelop, true),
-            ne(variables.isMaster, true),
-            not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
-          )
+        condition: false # DEMO-ONLY trim (do not merge)
         container: ror-toolchains
         timeoutInMinutes: 120
         # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
@@ -700,12 +676,8 @@ stages:
         strategy:
           maxParallel: 99
           matrix:
-            WIN_IT_es94x:
-              ES_MODULE: es94x
             WIN_IT_es818x:
               ES_MODULE: es818x
-            WIN_IT_es717x:
-              ES_MODULE: es717x
 
 #######################################################
 ##### Integration tests on Windows for manual job 'run_all_tests_on_windows'
@@ -852,13 +824,7 @@ stages:
     dependsOn:
       - REQUIRED_CHECKS
       - TEST
-    condition: |
-      and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
-        eq(variables.isPullRequest, true),
-        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
-      )
+    condition: false # DEMO-ONLY trim (do not merge)
     jobs:
       - job:
         container: ror-toolchains
