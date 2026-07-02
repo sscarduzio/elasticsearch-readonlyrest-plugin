@@ -23,7 +23,7 @@ import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
 import java.util.zip.ZipInputStream
 import scala.language.postfixOps
-import scala.util.Using
+import scala.util.{Failure, Success, Try, Using}
 
 object WindowsEsDirectoryManager extends LazyLogging {
 
@@ -55,11 +55,16 @@ object WindowsEsDirectoryManager extends LazyLogging {
     os.makeDir.all(downloadsPath)
     val dest = zipFilePath(esVersion)
     logger.info(s"Checking if ES $esVersion for Windows is already downloaded")
-    if (!dest.toIO.exists()) {
-      logger.info(s"ES $esVersion for Windows not yet downloaded, downloading")
-      doDownloadEsZipFileWithProgress(esVersion)
+    if (dest.toIO.exists() && sha512Matches(dest, expectedSha512(esVersion))) {
+      logger.info(s"ES $esVersion for Windows already downloaded (sha512 verified)")
     } else {
-      logger.info(s"ES $esVersion for Windows already downloaded")
+      // Verifying the cache too: the old exists()-only check reused a truncated download forever
+      // ("Unexpected end of ZLIB input stream" aborting whole legs).
+      if (dest.toIO.exists()) {
+        logger.warn(s"Cached ES $esVersion zip fails sha512 verification — deleting and re-downloading")
+        os.remove(dest)
+      }
+      downloadVerifiedWithRetry(esVersion, dest, attemptsLeft = 3)
     }
   }
 
@@ -68,36 +73,83 @@ object WindowsEsDirectoryManager extends LazyLogging {
     os.remove.all(downloadsPath)
   }
 
-  private def doDownloadEsZipFileWithProgress(esVersion: String): Unit = {
-    val url = downloadUrl(esVersion)
-    val dest = zipFilePath(esVersion)
+  @scala.annotation.tailrec
+  private def downloadVerifiedWithRetry(esVersion: String, dest: os.Path, attemptsLeft: Int): Unit = {
+    // Download to a temp name, sha512-verify, then move into place ATOMICALLY — a reader never sees
+    // a partial file and a failed attempt leaves no poisoned cache entry.
+    val tmp = dest / os.up / s"${dest.last}.part"
+    Try {
+      doDownloadEsZipFileWithProgress(downloadUrl(esVersion), tmp)
+      val expected = expectedSha512(esVersion)
+      if (!sha512Matches(tmp, expected)) {
+        throw new IllegalStateException(s"Downloaded ES $esVersion zip fails sha512 verification (expected $expected)")
+      }
+      os.move(tmp, dest, replaceExisting = true, atomicMove = true)
+      logger.info(s"ES $esVersion for Windows downloaded and sha512-verified")
+    } match {
+      case Success(())                     => ()
+      case Failure(ex) if attemptsLeft > 1 =>
+        logger.warn(s"ES $esVersion download failed (${ex.getMessage}) — retrying (${attemptsLeft - 1} attempts left)")
+        Try(os.remove(tmp))
+        Thread.sleep(5000)
+        downloadVerifiedWithRetry(esVersion, dest, attemptsLeft - 1)
+      case Failure(ex) =>
+        Try(os.remove(tmp))
+        throw ex
+    }
+  }
 
+  // Elastic publishes `<artifact-url>.sha512` ("<hash>  <filename>") for every artifact.
+  private def expectedSha512(esVersion: String): String = {
+    val connection = java.net.URI.create(s"${downloadUrl(esVersion)}.sha512").toURL.openConnection()
+    connection.setConnectTimeout(30_000)
+    connection.setReadTimeout(60_000)
+    Using.resource(scala.io.Source.fromInputStream(connection.getInputStream)) {
+      _.mkString.trim.split("\\s+").head.toLowerCase
+    }
+  }
+
+  private def sha512Matches(file: os.Path, expected: String): Boolean = {
+    val md = java.security.MessageDigest.getInstance("SHA-512")
+    Using.resource(Files.newInputStream(file.toNIO)) { in =>
+      val buffer = new Array[Byte](64 * 1024)
+      Iterator.continually(in.read(buffer)).takeWhile(_ != -1).foreach(md.update(buffer, 0, _))
+    }
+    md.digest().map("%02x".format(_)).mkString == expected
+  }
+
+  private def doDownloadEsZipFileWithProgress(url: String, dest: os.Path): Unit = {
     logger.info(s"Downloading ES for Windows from $url to $dest")
 
     val connection = java.net.URI.create(url).toURL.openConnection()
+    connection.setConnectTimeout(30_000)
+    connection.setReadTimeout(120_000)
     val fileSize = connection.getContentLength
-    val fileSizeMb = fileSize / 1024 / 1024
+    logger.info(s"Zip file size: ${fileSize / 1024 / 1024} MB")
 
-    logger.info(s"Zip file size: $fileSizeMb MB")
-
-    val buffer = new Array[Byte](fileSize)
-    Using.resources(
+    // Fixed 64KB buffer (the old whole-file-sized buffer also NPE'd on a missing Content-Length).
+    val buffer = new Array[Byte](64 * 1024)
+    val written = Using.resources(
       new BufferedInputStream(connection.getInputStream),
       new FileOutputStream(dest.toIO)
     ) { (in, out) =>
       Iterator
         .continually(in.read(buffer))
         .takeWhile(_ != -1)
-        .foldLeft(0) { (bytesRead, read) =>
+        .foldLeft(0L) { (bytesRead, read) =>
           out.write(buffer, 0, read)
           val total = bytesRead + read
           displayProgressBar(bytesRead, total, fileSize)
           total
         }
     }
+    // A silently-dropped connection ends the stream without error — catch truncation precisely.
+    if (fileSize > 0 && written != fileSize) {
+      throw new IllegalStateException(s"Truncated download: got $written of $fileSize bytes")
+    }
   }
 
-  private def displayProgressBar(previousBytesRead: Int, bytesRead: Int, fileSize: Int): Unit = {
+  private def displayProgressBar(previousBytesRead: Long, bytesRead: Long, fileSize: Int): Unit = {
     val previousPercent = (100.0 * previousBytesRead / fileSize).toInt
     val percent = (100.0 * bytesRead / fileSize).toInt
     if (previousPercent != percent && percent % 4 == 0) {

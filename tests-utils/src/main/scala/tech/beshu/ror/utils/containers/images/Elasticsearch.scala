@@ -324,21 +324,19 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
     (Version.greaterOrEqualThan(esVersion, 7, 17, 3) && Version.lowerThan(esVersion, 7, 17, 7)) ||
       (Version.greaterOrEqualThan(esVersion, 8, 2, 0) && Version.lowerThan(esVersion, 8, 5, 0))
 
-  // Replace the bundled JDK in-place with the cached custom JDK tarball.
+  // Swap the buggy bundled JDK (JDK-8287073) for Corretto, download+extract+delete in ONE RUN: the
+  // ~180MB tarball never commits to a layer (old COPY layer persisted it; classic builder has no
+  // BuildKit --mount). Corrupt downloads fail loudly via curl -f + tar's gzip CRC.
   private def replaceBundledJdk(image: DockerImageDescription): DockerImageDescription = {
-    // Swap the buggy bundled JDK (JDK-8287073): JDK-17 builds → Corretto 17.0.5, JDK-18 builds → Corretto
-    // 19.0.0. Tarball downloaded once per JVM process and reused across all container builds.
-    val tarball =
-      if (needsCorretto19) JDK.AmazonCorretto1900jdk.tarball
-      else JDK.AmazonCorretto1705jdk.tarball
-    image
-      .copyFile(destination = os.root / "tmp" / "custom-jdk.tar.gz", file = tarball)
-      .run(
-        "rm -rf /usr/share/elasticsearch/jdk",
-        "mkdir -p /usr/share/elasticsearch/jdk",
-        "tar xzf /tmp/custom-jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1",
-        "rm /tmp/custom-jdk.tar.gz"
-      )
+    val version = if (needsCorretto19) JDK.corretto19Version else JDK.corretto17Version
+    image.run(
+      """JDK_ARCH=$(case "$(uname -m)" in aarch64|arm64) echo aarch64 ;; *) echo x64 ;; esac)""" +
+        s""" && curl -fsSL --retry 5 -o /tmp/custom-jdk.tar.gz "${JDK.correttoDownloadUrlTemplate(version)}"""" +
+        " && rm -rf /usr/share/elasticsearch/jdk" +
+        " && mkdir -p /usr/share/elasticsearch/jdk" +
+        " && tar xzf /tmp/custom-jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1" +
+        " && rm /tmp/custom-jdk.tar.gz"
+    )
   }
 
   private def javaOptsBasedOn(withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {
