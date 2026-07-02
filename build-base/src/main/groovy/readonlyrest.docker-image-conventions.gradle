@@ -31,9 +31,9 @@ def dockerImageSourceZip = PluginArtifact.zip(project, esVersion)
 // Pin every build timestamp to a fixed value so rebuilds produce the same bytes and Docker can reuse the
 // shared fat layer instead of treating each build as new.
 def sourceDateEpoch = System.getenv('SOURCE_DATE_EPOCH') ?: '1704067200'
-def releaseDockerImageLatest = "beshultd/elasticsearch-readonlyrest:${esVersion}-ror-latest"
-def releaseDockerImageVersion = "beshultd/elasticsearch-readonlyrest:${esVersion}-ror-${pluginVersion}"
-def preBuildDockerImageVersion = "beshultd/elasticsearch-readonlyrest-dev:${esVersion}-ror-${pluginVersion}"
+def releaseDockerImageLatest = "coutopl/elasticsearch-readonlyrest:${esVersion}-ror-latest"
+def releaseDockerImageVersion = "coutopl/elasticsearch-readonlyrest:${esVersion}-ror-${pluginVersion}"
+def preBuildDockerImageVersion = "coutopl/elasticsearch-readonlyrest-dev:${esVersion}-ror-${pluginVersion}"
 
 // Shared docker CLI task setup + the multi-arch `buildx build ... --push` invocation (latest/version and dev
 // images differ only in their -t tags). Keeps the three buildx tasks below from repeating the platform list,

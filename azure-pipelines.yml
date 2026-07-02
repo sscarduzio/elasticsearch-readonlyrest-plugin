@@ -11,6 +11,7 @@ variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+  isImprovement2074: $[eq(variables['Build.SourceBranch'], 'refs/heads/improvement/RORDEV-2074')]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
   isEpicBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
@@ -851,7 +852,7 @@ stages:
     # In both cases EXTRACT_IS_RELEASE computes IsRelease, which the RELEASE_*/PUBLISH_MVN_* stages read.
     condition: |
       and(
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true), eq(variables.isImprovement2074, true)),
         or(
           and(
             notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
@@ -886,7 +887,7 @@ stages:
         succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true), eq(variables.isImprovement2074, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
@@ -963,7 +964,7 @@ stages:
         succeeded('DETERMINE_CI_TYPE'),
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true), eq(variables.isImprovement2074, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
@@ -1001,7 +1002,7 @@ stages:
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues'),
         eq(variables['Build.Reason'], 'Manual'),
         eq('${{ parameters.actionToPerform }}', 'release_without_testing'),
-        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true), eq(variables.isImprovement2074, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
       )
     jobs:

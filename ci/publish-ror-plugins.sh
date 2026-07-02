@@ -117,7 +117,6 @@ release_docker_and_tag() {
     echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
   fi
 
-  tag "$TAG"
 }
 
 # Publishes one already-derived version: S3 upload + (release) Docker image and git tag.
