@@ -1,16 +1,10 @@
 steps:
   - bash: |
-      echo ">>> reaping any leftover containers for THIS CI job id ($ROR_CI_JOB_ID) before start"
-      # Inline (not ci-lib.sh's reap_ci_job_containers) — runs BEFORE `checkout: self`, so ci-lib.sh
-      # isn't on disk yet. Same label-scoped logic; keep in sync with ci-lib.
       ids=$(docker ps -aq --filter "label=ror.ci-job=$ROR_CI_JOB_ID" 2>/dev/null)
-      [ -n "$ids" ] && docker rm -f $ids || echo "none"
-      # Leaked ror-it-es:<hash> images are TAGGED (dangling-prune misses them) and fill disk. Prune
-      # images unused + older than 180m (> longest CI job, so a sibling job's in-flight image is never removed).
+      [ -n "$ids" ] && docker rm -f $ids || true
       docker image prune -af --filter "until=180m" >/dev/null 2>&1 || true
       docker image prune -f >/dev/null 2>&1 || true
       docker builder prune -f >/dev/null 2>&1 || true
-      df -h /
     displayName: 'Pre-clean this CI job''s Docker leftovers (shared-daemon safe)'
     env:
       ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)
@@ -18,19 +12,7 @@ steps:
 
   # MUST run on the host (target: host), not in the container — else the `rm` runs in the container's
   # mount namespace and frees NOTHING on the VM disk (~16G of preinstalled toolchains). Hosted-only.
-  - bash: |
-      if [ "${AGENT_ISSELFHOSTED:-0}" != "1" ]; then
-        echo ">>> [host] freeing preinstalled toolchains to fit ES image builds"
-        df -h /
-        sudo rm -rf \
-          /usr/share/dotnet /usr/local/.ghcup /usr/share/swift \
-          /usr/local/share/powershell /usr/local/julia* \
-          /opt/microsoft /opt/az /usr/local/share/chromium \
-          /usr/local/lib/android /opt/ghc /usr/local/share/boost /opt/hostedtoolcache 2>/dev/null || true
-        echo ">>> [host] after reclaim:"; df -h /
-      else
-        echo ">>> self-hosted agent — skipping host toolchain reclaim (shared system dirs)"
-      fi
+  - bash: ci/free-host-disk.sh
     displayName: 'Free hosted-VM disk for ES image builds (HOST namespace)'
     target: host
     env:
