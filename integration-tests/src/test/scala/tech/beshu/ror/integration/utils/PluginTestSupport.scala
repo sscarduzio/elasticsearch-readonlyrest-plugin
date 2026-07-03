@@ -61,13 +61,13 @@ trait SingletonPluginTestSupport
       startedDependencies = DependencyRunner.startDependencies(clusterDependencies)
       // Bound the blocking ES cleanup: if ES is wedged this used to hang the worker JVM at suite
       // start; on timeout we throw, failing THIS suite fast instead of hanging the leg for hours.
-      runWithTimeout("cleanUpContainer", 2 minutes)(SingletonEsContainerWithRorSecurity.cleanUpContainer(own))
-      SingletonEsContainerWithRorSecurity.updateSettings(resolvedRorSettingsFile.contentAsString, own)
-      nodeDataInitializer.foreach(SingletonEsContainerWithRorSecurity.initNode(_, own))
+      runWithTimeout("cleanUpContainer", 2 minutes)(own.cleanUpContainer())
+      own.updateSettings(resolvedRorSettingsFile.contentAsString)
+      nodeDataInitializer.foreach(own.initNode(_))
       super.beforeAll()
     } catch {
       case NonFatal(e) =>
-        SingletonEsContainerWithRorSecurity.release(own)
+        own.release()
         ownership = None
         throw e
     }
@@ -82,7 +82,7 @@ trait SingletonPluginTestSupport
         bestEffort(s"stop-dependency-${started.name}", 1 minute)(started.container.stop())
       }
     } finally {
-      ownership.foreach(SingletonEsContainerWithRorSecurity.release)
+      ownership.foreach(_.release())
       ownership = None
     }
   }

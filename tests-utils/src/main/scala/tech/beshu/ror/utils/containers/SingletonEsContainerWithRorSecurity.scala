@@ -51,57 +51,65 @@ object SingletonEsContainerWithRorSecurity
   // Ensures only one suite uses the shared singleton ES at a time within this worker JVM. Ownership
   // is a VALUE: acquire() returns the sole token, every mutating op requires it and checks it is
   // still current — so a missed acquire or a stale owner fails at use time, not by convention.
-  final class Ownership private[containers] (private[containers] val owner: String)
+  final class Ownership private[containers] (private[containers] val owner: String) {
 
-  private val currentOwner = new AtomicReference[Ownership](null)
+    def cleanUpContainer(): Unit = {
+      requireCurrent()
+      logOnFailure(indexManager.removeAllIndices().force())
+      logOnFailure(templateManager.deleteAllTemplates().force())
+      logOnFailure(snapshotManager.deleteAllRepositories().force())
+    }
+
+    def updateSettings(rorSettings: String): Unit = {
+      requireCurrent()
+      rorApiManager
+        .updateRorInIndexSettings(rorSettings)
+        .forceOKStatusOrSettingsAlreadyLoaded()
+    }
+
+    def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
+      requireCurrent()
+      nodeDataInitializer.initialize(singleton.esVersion, adminClient)
+    }
+
+    def release(): Unit = {
+      // Only the current owner clears it; mismatches are logged (afterAll must not mask the real failure).
+      // Cannot use compareAndSet(Some(this), None) because Some(this) is a new allocation —
+      // the stored Some(ownership) from acquire() is a different instance, so the CAS would always fail.
+      currentOwner.get() match {
+        case Some(o) if o eq this =>
+          currentOwner.set(None)
+        case _ =>
+          logger.warn(
+            s"Singleton ES release by '${this.owner}' but current owner is " +
+              s"'${currentOwner.get().map(_.owner).getOrElse("<none>")}' — ignoring."
+          )
+      }
+    }
+
+    private def requireCurrent(): Unit = {
+      currentOwner.get() match {
+        case Some(o) if o eq this => () // ok
+        case other =>
+          throw new IllegalStateException(
+            s"Singleton ES mutation by '${this.owner}' without current ownership (current: " +
+              s"'${other.map(_.owner).getOrElse("<none>")}') — acquire() it first."
+          )
+      }
+    }
+  }
+
+  private val currentOwner = new AtomicReference[Option[Ownership]](None)
 
   def acquire(owner: String): Ownership = {
     val ownership = new Ownership(owner)
-    if (!currentOwner.compareAndSet(null, ownership)) {
+    if (!currentOwner.compareAndSet(None, Some(ownership))) {
       throw new IllegalStateException(
-        s"Singleton ES is already in use by suite '${currentOwner.get().owner}' — '$owner' cannot use " +
+        s"Singleton ES is already in use by suite '${currentOwner.get().map(_.owner).getOrElse("<none>")}' — '$owner' cannot use " +
           s"it concurrently. Suites sharing this singleton must run one at a time within a JVM."
       )
     }
     ownership
-  }
-
-  def release(ownership: Ownership): Unit = {
-    // Only the current owner clears it; mismatches are logged (afterAll must not mask the real failure).
-    if (!currentOwner.compareAndSet(ownership, null)) {
-      logger.warn(
-        s"Singleton ES release by '${ownership.owner}' but current owner is " +
-          s"'${Option(currentOwner.get()).map(_.owner).getOrElse("<none>")}' — ignoring."
-      )
-    }
-  }
-
-  def cleanUpContainer(ownership: Ownership): Unit = {
-    requireCurrent(ownership)
-    logOnFailure(indexManager.removeAllIndices().force())
-    logOnFailure(templateManager.deleteAllTemplates().force())
-    logOnFailure(snapshotManager.deleteAllRepositories().force())
-  }
-
-  def updateSettings(rorSettings: String, ownership: Ownership): Unit = {
-    requireCurrent(ownership)
-    rorApiManager
-      .updateRorInIndexSettings(rorSettings)
-      .forceOKStatusOrSettingsAlreadyLoaded()
-  }
-
-  def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer, ownership: Ownership): Unit = {
-    requireCurrent(ownership)
-    nodeDataInitializer.initialize(singleton.esVersion, adminClient)
-  }
-
-  private def requireCurrent(ownership: Ownership): Unit = {
-    if (currentOwner.get() ne ownership) {
-      throw new IllegalStateException(
-        s"Singleton ES mutation by '${ownership.owner}' without current ownership (current: " +
-          s"'${Option(currentOwner.get()).map(_.owner).getOrElse("<none>")}') — acquire() it first."
-      )
-    }
   }
 
   private def logOnFailure[A](action: => A): Unit = {
