@@ -30,19 +30,21 @@ import java.util.stream.Collectors;
 
 public class RorTaskFinder extends DefaultTask {
 
-  private final static VersionNumber oldestEsVersionSupported = VersionNumber.parse("6.7.0");
+  private static final VersionNumber oldestEsVersionSupported = VersionNumber.parse("6.7.0");
 
   @TaskAction
-  public void runRorPluginBuilder() {
-  }
+  public void runRorPluginBuilder() {}
 
   public Task findRorTaskForEsVersion(String taskName) {
     Project esModule = findEsModuleForEsVersionToBuild();
-    return (Task) esModule
-        .getTasksByName(taskName, false)
-        .stream()
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException(String.format("Cannot find '%s' task in %s module!", taskName, esModule.getName())));
+    return (Task)
+        esModule.getTasksByName(taskName, false).stream()
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            "Cannot find '%s' task in %s module!", taskName, esModule.getName())));
   }
 
   private Project findEsModuleForEsVersionToBuild() {
@@ -52,18 +54,23 @@ public class RorTaskFinder extends DefaultTask {
       getLogger().info(String.format("Found es module: %s", foundEsModule.get().getName()));
       return foundEsModule.get();
     } else {
-      throw new IllegalArgumentException(String.format("Cannot find ES module to build plugin for ES %s", esVersionToBuild));
+      throw new IllegalArgumentException(
+          String.format("Cannot find ES module to build plugin for ES %s", esVersionToBuild));
     }
   }
 
   private VersionNumber getEsVersionToBuild() {
-    Optional<String> esVersionStr = Optional.ofNullable((String) getProject().findProperty("esVersion"));
+    Optional<String> esVersionStr =
+        Optional.ofNullable((String) getProject().findProperty("esVersion"));
     if (esVersionStr.isPresent()) {
       return versionNumberFrom(esVersionStr.get());
     } else {
       Optional<VersionNumber> theNewestSupportedEsVersion = findTheNewestSupportedEsVersion();
       if (theNewestSupportedEsVersion.isPresent()) {
-        getLogger().warn("NO 'esVersion' was explicitly set!!! Using the newest found one: {}", theNewestSupportedEsVersion.get());
+        getLogger()
+            .warn(
+                "NO 'esVersion' was explicitly set!!! Using the newest found one: {}",
+                theNewestSupportedEsVersion.get());
         return theNewestSupportedEsVersion.get();
       } else {
         throw new IllegalArgumentException("No 'esVersion' property set. Cannot continue!");
@@ -72,8 +79,7 @@ public class RorTaskFinder extends DefaultTask {
   }
 
   private Optional<VersionNumber> findTheNewestSupportedEsVersion() {
-    return getAllSortedEsModules(new NewestEsVersionComparator().reversed())
-        .stream()
+    return getAllSortedEsModules(new NewestEsVersionComparator().reversed()).stream()
         .map(this::newestEsVersionFor)
         .findFirst();
   }
@@ -83,10 +89,11 @@ public class RorTaskFinder extends DefaultTask {
 
     for (int i = 0; i < esModules.size(); i++) {
       VersionNumber newestEsVersionForCurrentEsModule = newestEsVersionFor(esModules.get(i));
-      VersionNumber newestEsVersionForPreviousEsModule = i > 0 ? newestEsVersionFor(esModules.get(i - 1)) : oldestEsVersionSupported;
+      VersionNumber newestEsVersionForPreviousEsModule =
+          i > 0 ? newestEsVersionFor(esModules.get(i - 1)) : oldestEsVersionSupported;
 
-      if (isNewerThan(esVersion, newestEsVersionForPreviousEsModule) &&
-          isOlderOrEqual(esVersion, newestEsVersionForCurrentEsModule)) {
+      if (isNewerThan(esVersion, newestEsVersionForPreviousEsModule)
+          && isOlderOrEqual(esVersion, newestEsVersionForCurrentEsModule)) {
         return Optional.of(esModules.get(i));
       }
     }
@@ -101,12 +108,10 @@ public class RorTaskFinder extends DefaultTask {
   }
 
   private List<Project> getAllEsModules() {
-    return (List<Project>) getProject()
-        .getChildProjects()
-        .values()
-        .stream()
-        .filter(this::isEsModule)
-        .collect(Collectors.toList());
+    return (List<Project>)
+        getProject().getChildProjects().values().stream()
+            .filter(this::isEsModule)
+            .collect(Collectors.toList());
   }
 
   private boolean isEsModule(Project module) {
@@ -128,7 +133,8 @@ public class RorTaskFinder extends DefaultTask {
   private VersionNumber versionNumberFrom(String value) {
     VersionNumber parsedEsVersion = VersionNumber.parse(value);
     if (parsedEsVersion == VersionNumber.UNKNOWN) {
-      throw new IllegalArgumentException(String.format("Cannot parse %s to version number. Cannot continue!", value));
+      throw new IllegalArgumentException(
+          String.format("Cannot parse %s to version number. Cannot continue!", value));
     }
     return parsedEsVersion;
   }
