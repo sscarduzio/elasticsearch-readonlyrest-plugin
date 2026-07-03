@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.containers.images
 import better.files.File
 import os.Path
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.{Env, Instruction}
+import tech.beshu.ror.utils.misc.ScalaUtils
 
 import java.security.MessageDigest
 
@@ -102,7 +103,7 @@ final case class DockerImageDescription(
       case Instruction.Copy(destination, file) =>
         // destination + file CONTENT (so a changed source yields a new tag)
         md.update(destination.toString.getBytes("UTF-8"))
-        if (file.exists) md.update(file.sha256.getBytes("UTF-8"))
+        if (file.exists) md.update(ScalaUtils.sha256(file).getBytes("UTF-8"))
     }
     // envs is a Set — sort so iteration order can't vary the digest (order-dependent hash → spurious
     // cache misses → redundant concurrent rebuilds).

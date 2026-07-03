@@ -21,6 +21,9 @@ import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
+import better.files.{File => BetterFile}
+import java.io.InputStream
+import java.security.MessageDigest
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
@@ -29,6 +32,7 @@ import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 import scala.util.control.NonFatal
+import scala.util.Using
 
 object ScalaUtils extends LazyLogging {
 
@@ -134,6 +138,45 @@ object ScalaUtils extends LazyLogging {
         )
       )
       .runSyncUnsafe()(timeoutScheduler, implicitly)
+  }
+
+  /**
+   * Best-effort execution: runs `step` with a timeout, logs and swallows any failure so teardown
+   * continues. Use for cleanup steps where a failure must not abort the rest of the teardown sequence.
+   */
+  def bestEffort(name: String, timeout: FiniteDuration)(step: => Unit): Unit = {
+    try runWithTimeout(name, timeout)(step)
+    catch {
+      case NonFatal(e) =>
+        logger.error(s"'$name' failed/timed out — continuing cleanup", e)
+    }
+  }
+
+  /**
+   * SHA-256 hex digest of a file's content. Returns lowercase hex string (no prefix).
+   * Byte-identical to `better.files.File#sha256` — safe to replace it anywhere.
+   */
+  def sha256(file: BetterFile): String = {
+    val md = MessageDigest.getInstance("SHA-256")
+    updateDigestFromFile(md, file.newInputStream)
+    md.digest().map("%02x".format(_)).mkString
+  }
+
+  /**
+   * SHA-512 hex digest of a file's content. Returns lowercase hex string (no prefix).
+   * Used for download integrity verification against Elastic's published `.sha512` checksums.
+   */
+  def sha512(file: BetterFile): String = {
+    val md = MessageDigest.getInstance("SHA-512")
+    updateDigestFromFile(md, file.newInputStream)
+    md.digest().map("%02x".format(_)).mkString
+  }
+
+  private def updateDigestFromFile(md: MessageDigest, inputStream: => InputStream): Unit = {
+    Using.resource(inputStream) { in =>
+      val buffer = new Array[Byte](64 * 1024)
+      Iterator.continually(in.read(buffer)).takeWhile(_ != -1).foreach(md.update(buffer, 0, _))
+    }
   }
 
   def retryBackoff[A](source: Task[A], maxRetries: Int, firstDelay: FiniteDuration, backOffScaler: Int): Task[A] = {

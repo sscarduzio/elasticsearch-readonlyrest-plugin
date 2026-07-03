@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers.windows
 
 import com.typesafe.scalalogging.LazyLogging
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Config
+import tech.beshu.ror.utils.misc.ScalaUtils
 
 import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
@@ -110,12 +111,7 @@ object WindowsEsDirectoryManager extends LazyLogging {
   }
 
   private def sha512Matches(file: os.Path, expected: String): Boolean = {
-    val md = java.security.MessageDigest.getInstance("SHA-512")
-    Using.resource(Files.newInputStream(file.toNIO)) { in =>
-      val buffer = new Array[Byte](64 * 1024)
-      Iterator.continually(in.read(buffer)).takeWhile(_ != -1).foreach(md.update(buffer, 0, _))
-    }
-    md.digest().map("%02x".format(_)).mkString == expected
+    ScalaUtils.sha512(better.files.File(file.toIO)) == expected
   }
 
   private def doDownloadEsZipFileWithProgress(url: String, dest: os.Path): Unit = {

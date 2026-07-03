@@ -17,13 +17,12 @@
 package tech.beshu.ror.integration.utils
 
 import better.files.File
-import com.typesafe.scalalogging.Logger
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.*
 import tech.beshu.ror.utils.containers.providers.*
 import tech.beshu.ror.utils.misc.Resources.getResourcePath
-import tech.beshu.ror.utils.misc.ScalaUtils.runWithTimeout
+import tech.beshu.ror.utils.misc.ScalaUtils.{bestEffort, runWithTimeout}
 
 import scala.concurrent.duration.*
 import scala.language.postfixOps
@@ -39,10 +38,6 @@ trait SingletonPluginTestSupport
     with BeforeAndAfterAll
     with ResolvedRorSettingsFileProvider {
   this: Suite & BaseSingleNodeEsClusterTest =>
-
-  // Own logger (not a LazyLogging mixin): some suites already mix in LazyLogging, so a distinct name
-  // avoids the `logger` override conflict.
-  private val teardownLogger = Logger(classOf[SingletonPluginTestSupport])
 
   override lazy val targetEs: EsContainer = SingletonEsContainerWithRorSecurity.singleton.nodes.head
 
@@ -80,20 +75,11 @@ trait SingletonPluginTestSupport
 
   override protected def afterAll(): Unit = {
     // release MUST run even if teardown throws -> try/finally, outermost; else the singleton stays
-    // latched and every later suite fails at acquire(). Steps are time-bounded (ScalaUtils.runWithTimeout).
+    // latched and every later suite fails at acquire(). Steps are time-bounded (ScalaUtils.bestEffort).
     try {
-      try {
-        runWithTimeout("afterAll", 3 minutes)(super.afterAll())
-      } catch {
-        case NonFatal(e) => teardownLogger.error("afterAll teardown failed/timed out — continuing cleanup", e)
-      } finally {
-        startedDependencies.values.foreach { started =>
-          try runWithTimeout(s"stop-dependency-${started.name}", 1 minute)(started.container.stop())
-          catch {
-            case NonFatal(e) =>
-              teardownLogger.error(s"Dependency '${started.name}' stop failed/timed out — continuing", e)
-          }
-        }
+      bestEffort("afterAll", 3 minutes)(super.afterAll())
+      startedDependencies.values.foreach { started =>
+        bestEffort(s"stop-dependency-${started.name}", 1 minute)(started.container.stop())
       }
     } finally {
       ownership.foreach(SingletonEsContainerWithRorSecurity.release)
