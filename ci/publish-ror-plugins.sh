@@ -59,6 +59,9 @@ publish_module_versions() {
     return 1
   fi
 
+  # Publish newest-to-oldest so the most recent version is available first.
+  mapfile -t versions < <(printf '%s\n' "${versions[@]}" | tac)
+
   local version
   for version in "${versions[@]}"; do
     if [ "$version" != "$base_version" ]; then
@@ -125,7 +128,6 @@ release_docker_and_tag() {
   else
     echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
   fi
-
 }
 
 # Publishes one already-derived version: S3 upload + (release) Docker image and git tag.

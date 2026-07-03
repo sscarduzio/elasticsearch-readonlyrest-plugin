@@ -45,7 +45,8 @@ def dockerCliDefaults = { Exec t ->
 }
 def commonBuildArgs = ['--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', 'ES_VERSION=' + esVersion]
 def buildxPushArgs = { List<String> tags ->
-    def cmd = ['buildx', 'build', '--platform', 'linux/amd64,linux/arm64'] + commonBuildArgs
+    def platforms = project.hasProperty('dockerPlatforms') ? project.property('dockerPlatforms') : 'linux/amd64,linux/arm64'
+    def cmd = ['buildx', 'build', '--platform', platforms] + commonBuildArgs
     tags.each { cmd += ['-t', it] }
     cmd + ['--output', 'type=image,push=true,rewrite-timestamp=true', '.']
 }

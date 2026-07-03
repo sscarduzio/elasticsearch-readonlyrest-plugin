@@ -20,6 +20,7 @@ plugins {
 
 ext.javaLanguageVersion = 11
 ext.jarHellMainClass = 'org.elasticsearch.bootstrap.JarHell'
+ext.dockerPlatforms = 'linux/amd64'
 
 def moduleEsVersion = project.ext.esVersion
 
