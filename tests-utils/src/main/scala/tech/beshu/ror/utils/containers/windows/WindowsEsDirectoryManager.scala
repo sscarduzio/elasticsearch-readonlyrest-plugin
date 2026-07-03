@@ -24,7 +24,9 @@ import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
 import java.util.zip.ZipInputStream
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try, Using}
+import scala.concurrent.duration.*
+import scala.util.{Try, Using}
+import scala.util.control.NonFatal
 
 object WindowsEsDirectoryManager extends LazyLogging {
 
@@ -65,7 +67,7 @@ object WindowsEsDirectoryManager extends LazyLogging {
         logger.warn(s"Cached ES $esVersion zip fails sha512 verification — deleting and re-downloading")
         os.remove(dest)
       }
-      downloadVerifiedWithRetry(esVersion, dest, attemptsLeft = 3)
+      downloadVerifiedWithRetry(esVersion, dest, attempts = 3)
     }
   }
 
@@ -74,29 +76,29 @@ object WindowsEsDirectoryManager extends LazyLogging {
     os.remove.all(downloadsPath)
   }
 
-  @scala.annotation.tailrec
-  private def downloadVerifiedWithRetry(esVersion: String, dest: os.Path, attemptsLeft: Int): Unit = {
+  private def downloadVerifiedWithRetry(esVersion: String, dest: os.Path, attempts: Int): Unit = {
     // Download to a temp name, sha512-verify, then move into place ATOMICALLY — a reader never sees
     // a partial file and a failed attempt leaves no poisoned cache entry.
     val tmp = dest / os.up / s"${dest.last}.part"
-    Try {
-      doDownloadEsZipFileWithProgress(downloadUrl(esVersion), tmp)
-      val expected = expectedSha512(esVersion)
-      if (!sha512Matches(tmp, expected)) {
-        throw new IllegalStateException(s"Downloaded ES $esVersion zip fails sha512 verification (expected $expected)")
+    try {
+      ScalaUtils.retry(
+        times = attempts,
+        cleanBeforeRetrying = Try(os.remove(tmp)),
+        delayBetweenRetries = 5.seconds
+      ) {
+        doDownloadEsZipFileWithProgress(downloadUrl(esVersion), tmp)
+        val expected = expectedSha512(esVersion)
+        if (!sha512Matches(tmp, expected)) {
+          throw new IllegalStateException(s"Downloaded ES $esVersion zip fails sha512 verification (expected $expected)")
+        }
+        os.move(tmp, dest, replaceExisting = true, atomicMove = true)
+        logger.info(s"ES $esVersion for Windows downloaded and sha512-verified")
       }
-      os.move(tmp, dest, replaceExisting = true, atomicMove = true)
-      logger.info(s"ES $esVersion for Windows downloaded and sha512-verified")
-    } match {
-      case Success(())                     => ()
-      case Failure(ex) if attemptsLeft > 1 =>
-        logger.warn(s"ES $esVersion download failed (${ex.getMessage}) — retrying (${attemptsLeft - 1} attempts left)")
+    } catch {
+      case NonFatal(_) =>
+        // Clean up the .part file on final failure — retry() only cleans before retries, not on exhaustion.
         Try(os.remove(tmp))
-        Thread.sleep(5000)
-        downloadVerifiedWithRetry(esVersion, dest, attemptsLeft - 1)
-      case Failure(ex) =>
-        Try(os.remove(tmp))
-        throw ex
+        throw
     }
   }
 

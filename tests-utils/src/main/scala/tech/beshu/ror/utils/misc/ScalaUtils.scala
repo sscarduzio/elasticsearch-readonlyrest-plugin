@@ -94,7 +94,7 @@ object ScalaUtils extends LazyLogging {
   implicit def javaDurationToFiniteDuration(interval: Duration): FiniteDuration =
     FiniteDuration(interval.toMillis, TimeUnit.MILLISECONDS)
 
-  def retry(times: Int, cleanBeforeRetrying: => Unit = ())(action: => Unit): Unit = {
+  def retry(times: Int, cleanBeforeRetrying: => Unit = (), delayBetweenRetries: FiniteDuration = 0.seconds)(action: => Unit): Unit = {
     @tailrec
     def loop(attempt: Int): Unit = {
       try {
@@ -109,6 +109,10 @@ object ScalaUtils extends LazyLogging {
             logger.error(s"Attempt $attempt failed: ${e.getMessage}", e)
             logger.warn(s"Starting cleaning after failed attempt")
             cleanBeforeRetrying
+            if (delayBetweenRetries.toMillis > 0) {
+              logger.warn(s"Waiting ${delayBetweenRetries.toSeconds}s before retry...")
+              Thread.sleep(delayBetweenRetries.toMillis)
+            }
             logger.warn(s"Retrying...")
             loop(nextAttempt)
           }
