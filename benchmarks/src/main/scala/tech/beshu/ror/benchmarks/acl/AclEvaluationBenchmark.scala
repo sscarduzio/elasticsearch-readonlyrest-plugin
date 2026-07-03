@@ -74,7 +74,8 @@ class AclEvaluationBenchmark {
         AccessRequirement.MustBePresent(Header(Header.Name(nes("X-Custom-1")), nes("value-1")))
       )))
     )
-    new Block(Block.Name(s"block$i"), Block.Policy.Allow, Block.Verbosity.Info, Block.Audit.Enabled, rules)
+    // .sorted = production RuleOrdering (what Block.createFrom applies); validation is config-time-only.
+    new Block(Block.Name(s"block$i"), Block.Policy.Allow, Block.Verbosity.Info, Block.Audit.Enabled, rules.sorted)
   }
 
   @Setup(Level.Trial)

@@ -97,10 +97,12 @@ object BenchmarkSupport {
   }
 
   final class IndexRequestContext(headers: Set[Header],
-                                  requested: Set[RequestedIndex[ClusterIndexName]])
+                                  requested: Set[RequestedIndex[ClusterIndexName]],
+                                  services: EsServices = emptyEsServices)
     extends BaseBenchRequestContext(headers, searchAction) {
     override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
     override val requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some(requested)
+    override val esServices: EsServices = services
 
     override def initialBlockContext(block: Block): GeneralIndexRequestBlockContext =
       GeneralIndexRequestBlockContext(block, this, BlockMetadata.from(this), Set.empty, List.empty, requested, Set.empty, Set.empty)
@@ -110,9 +112,14 @@ object BenchmarkSupport {
   // The two nulls are serviceAccountTokenService and apiKeyService — not invoked by any rule on the
   // measured ACL path (only the auth_account_token / api_key rules touch them, none of which the KPI
   // benchmarks exercise), so they are left unstubbed rather than carrying empty fakes.
-  lazy val emptyEsServices: EsServices = new EsServices(emptyClusterService, null, null)
+  lazy val emptyEsServices: EsServices = new EsServices(new StubClusterService(Set.empty), null, null)
 
-  private lazy val emptyClusterService: EsClusterService = new EsClusterService {
+  // Cluster stub with N local indices: feeds the wildcard-expansion path of the indices rule
+  // (allIndicesAndAliases is what a requested `logs-*` expands against).
+  def esServicesWithIndices(indices: Set[FullLocalIndexWithAliases]): EsServices =
+    new EsServices(new StubClusterService(indices), null, null)
+
+  private class StubClusterService(localIndices: Set[FullLocalIndexWithAliases]) extends EsClusterService {
     override def remoteClustersConfigured(implicit id: RequestId): Boolean = false
     override def allRemoteClusterNames(implicit id: RequestId): Set[ClusterName.Full] = Set.empty
     override def indexOrAliasUuids(indexOrAlias: IndexOrAlias)(implicit id: RequestId): Set[IndexUuid] = Set.empty
@@ -130,7 +137,7 @@ object BenchmarkSupport {
     override def verifyDocumentsAccessibility(documents: NonEmptyList[Document], filter: Filter)
                                              (implicit id: RequestId): Task[DocumentsAccessibility] =
       Task.raiseError(new UnsupportedOperationException("not used by benchmarks"))
-    override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = Set.empty
+    override def allIndicesAndAliases(implicit id: RequestId): Set[FullLocalIndexWithAliases] = localIndices
     override def allDataStreamsAndAliases(implicit id: RequestId): Set[FullLocalDataStreamWithAliases] = Set.empty
   }
 }

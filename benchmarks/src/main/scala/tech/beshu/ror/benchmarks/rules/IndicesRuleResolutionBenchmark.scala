@@ -81,4 +81,37 @@ class IndicesRuleResolutionBenchmark {
   @Benchmark
   def matchPath(bh: Blackhole): Unit =
     bh.consume(rule.check(blockContext).runSyncUnsafe())
+
+  // Wildcard variant: requested `logs-app-*` must EXPAND against the cluster's real index list —
+  // the production hot path for wildcard requests (the concrete-name variant above never touches it).
+  private var wildcardBlockContext: GeneralIndexRequestBlockContext = scala.compiletime.uninitialized
+
+  @Setup(Level.Trial)
+  def setupWildcard(): Unit = {
+    val clusterIndices = (0 until 200)
+      .map { j =>
+        new FullLocalIndexWithAliases(
+          IndexName.Full(nes(s"logs-app-${j % patterns}-day-$j")),
+          IndexAttribute.Opened,
+          Set.empty
+        )
+      }
+      .toCovariantSet
+    val wildcardRequested =
+      Set(RequestedIndex(ClusterIndexName.fromString("logs-app-*").get, excluded = false))
+    val context = new IndexRequestContext(
+      realisticHeaders(Credentials(User.Id(nes("user1")), PlainTextSecret(nes("pass1")))),
+      wildcardRequested,
+      esServicesWithIndices(clusterIndices)
+    )
+    wildcardBlockContext = context.initialBlockContext(noBlock)
+    require(
+      rule.check(wildcardBlockContext).runSyncUnsafe().isInstanceOf[Decision.Permitted[?]],
+      "expected the indices rule to permit the wildcard request after expansion"
+    )
+  }
+
+  @Benchmark
+  def wildcardExpansionPath(bh: Blackhole): Unit =
+    bh.consume(rule.check(wildcardBlockContext).runSyncUnsafe())
 }

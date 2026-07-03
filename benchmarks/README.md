@@ -1,13 +1,15 @@
 # benchmarks
 
-JMH micro-benchmarks for `core` ACL hot paths, plus the performance-regression CI tooling
-(KPI manifest, PR allocation gate, nightly time series, dashboard).
+JMH micro-benchmarks for `core` ACL hot paths, with a reviewed KPI manifest (`kpis.yml`).
 
 The benchmarks run against the **real** production entry points (`EnabledAccessControlList
 .handleRegularRequest`, `rule.check`, `PatternsMatcher.create`, ...), so the numbers reflect the
 actual code, not a re-implementation. They are **absolute KPI benchmarks**: they measure whatever
-the current code does, which is exactly what makes optimizations (and regressions) visible as a
-step in the time series.
+the current code does, which is exactly what makes optimizations (and regressions) visible when
+runs are compared.
+
+This module is **manually-run tooling** — it is not wired into any CI gate. (A PR gate + nightly
+time-series design was prototyped and parked; see *Parked CI legs* below.)
 
 ## Running
 
@@ -21,7 +23,8 @@ step in the time series.
 # include the GC profiler to see allocation rate (B/op)
 ./gradlew :benchmarks:jmh -PjmhArgs="ActionsRule -prof gc"
 
-# the PR smoke subset + allocation gate (what CI runs on PRs touching core/ or benchmarks/)
+# the smoke subset (ci-smoke.txt regexes at canonical KPI sizes, with -prof gc):
+# the recommended quick before/after check for a perf-relevant PR (~5-8 min)
 ./gradlew :benchmarks:jmhSmoke
 ```
 
@@ -29,28 +32,27 @@ step in the time series.
 regex, `-f` forks, `-wi`/`-i` warmup/measurement iterations, `-prof gc|stack|...`,
 `-rf json -rff out.json`, `-p param=value`, etc.
 
+**Comparing runs:** run `jmhSmoke` (or `jmh` with `-rf json`) on the base branch and on your
+branch, and diff the reported score / `gc.alloc.rate.norm` (B/op) columns. B/op is the most
+stable metric across machines; wall-clock time is only comparable on the same quiet machine.
+
 ## Module layout
 
 ```
 benchmarks/
 ├── src/main/scala/tech/beshu/ror/benchmarks/
 │   ├── acl/       AclEvaluationBenchmark (blocks @Param), EnterpriseScenarioBenchmark
-│   ├── rules/     IndicesRuleResolution (patterns/requestedIndices @Param), GroupsRule,
-│   │              ActionsRule, RuleStaticResolution, HeaderRuleMatch, JwtVerification
+│   ├── rules/     IndicesRuleResolution (patterns/requestedIndices @Param + wildcard-expansion
+│   │              variant), GroupsRule, ActionsRule, RuleStaticResolution, HeaderRuleMatch,
+│   │              JwtVerification
 │   ├── matchers/  GlobPatternsMatcher
-│   ├── domain/    HeaderNameEq, BasicAuthDecode
+│   ├── domain/    HeaderNameEq (production Set[Header].find), BasicAuthDecode
 │   └── support/   BenchmarkSupport (request/ES-stub scaffolding, production types only)
-├── kpis.yml                      # the elected KPIs — reviewed contract for the CI gates
-├── baselines/alloc-baseline.json # committed B/op reference — the PR-level ratchet
-├── ci-smoke.txt                  # JMH include regexes for the PR smoke subset (~5-8 min)
-└── tools/
-    ├── extract.py                # raw JMH JSON → reduced run record (~5-10 KB)
-    ├── compare.py                # record vs alloc-baseline.json → pass/warn/fail + markdown
-    ├── nightly_judge.py          # record vs rolling median of last 7 history records (MAD)
-    └── render_dashboard.py       # history glob → static index.html (uPlot) or CSV
+├── kpis.yml       # the elected KPIs — the reviewed contract of what we track (21 KPI ids)
+└── ci-smoke.txt   # JMH include regexes for the smoke subset
 ```
 
-## The KPI system
+## The KPI manifest
 
 `kpis.yml` elects the tracked KPIs in two tiers:
 
@@ -60,59 +62,31 @@ benchmarks/
 - **Tier 2 (micro KPIs)**: glob matching, header-name Eq, header rules, basic-auth decode,
   static resolution, actions rule — they explain tier-1 inflections.
 
-Two gates use them:
-
-1. **PR smoke (allocations, advisory)** — the `PERF_SMOKE` job runs `jmhSmoke` on PRs touching
-   `core/` or `benchmarks/` and compares B/op against `baselines/alloc-baseline.json`.
-   Allocations are deterministic on shared agents; time is not judged here. The job is
-   currently **advisory** (`continueOnError: true` in `azure-pipelines.yml`); after the burn-in
-   period flip it to blocking by removing that line. **Baseline policy**: a PR that knowingly
-   changes allocation behavior regenerates the baseline in the same PR
-   (`python3 tools/compare.py --record <record> --baseline baselines/alloc-baseline.json
-   --write-baseline`) and the diff is reviewed like code. `compare.py` gates on **every** key in
-   `alloc-baseline.json` and fails if a baselined benchmark is missing from the run (a rename can't
-   silently escape). Every alloc-baseline key has a matching `metric: b_op` / `gate: alloc-baseline`
-   entry in `kpis.yml`, so kpis.yml stays the single reviewed contract for what is gated — keep the
-   two in sync when adding or removing an allocation gate. While the baseline is still `provisional`
-   and its `source.env` (currently arm64/Darwin seed) differs from the run's, `compare.py` emits the
-   env-mismatch warning and **skips** the comparison entirely (explicit no-op, exit 0) rather than
-   comparing wrong-platform numbers; the gate activates on the first `--write-baseline` re-seed on
-   the CI agent.
-
-   **Enterprise deny-path alloc — deferred to the re-seed.** `EnterpriseScenarioBenchmark.denyPath`
-   (the heaviest path, ~30 MB/op) is in `ci-smoke.txt` so the smoke run measures its allocations,
-   but it is intentionally **not yet** in `alloc-baseline.json` or `kpis.yml` as an alloc gate — its
-   B/op must be measured on the CI agent, not seeded from the arm64 dev box. Until the authoritative
-   `--write-baseline` runs there it shows as `NEW (not in baseline)` (informational, non-gating);
-   add the `acl.enterprise.deny.alloc` KPI entry alongside the baseline key in that same re-seed PR.
-2. **Nightly time series (time, single writer)** — `ci/azure-nightly-perf.yml` runs the full
-   suite on ONE pinned self-hosted agent (one hardware fingerprint), commits a reduced run
-   record per night to the `benchmark-history` orphan branch (one file per run, append-only,
-   no merge conflicts), judges the new record against the rolling median of the last 7
-   comparable records (same env fingerprint + same `benchSuiteSha`), and re-renders the static
-   dashboard. PR smoke results are ephemeral pipeline artifacts — only the nightly writes.
-
-`benchSuiteSha` (the git tree-hash of `benchmarks/src`) segments the series whenever the
-benchmarks themselves change, so a suite change never masquerades as a code regression.
-
-Rebuilding the whole series from git alone:
-
-```bash
-git clone --single-branch -b benchmark-history <repo> history
-python3 benchmarks/tools/render_dashboard.py --history 'history/results/**/*.json' \
-        --kpis benchmarks/kpis.yml --csv kpis.csv
-```
+New benchmarks should be added to `kpis.yml` so the manifest stays the single reviewed list of
+what matters.
 
 ## Conventions
 
 - **Old-path replicas live only while their PR is open.** A PR that optimizes a hot path may
-  add `oldPath_*` replica methods as review evidence, but they are pruned when the PR merges —
-  from then on the committed baseline and the nightly series are the guard. (The #1260
-  old-vs-new evidence classes are intentionally not part of this suite.)
+  add `oldPath_*` replica methods as review evidence, but they are pruned when the PR merges.
 - KPI benchmarks pin the canonical size at field max (~100 blocks / ~100 groups); `@Param`
-  axes around it make scaling curvature visible on the dashboard without exponent series.
-- New benchmarks must be wired into `kpis.yml` to be tracked; un-elected benchmarks still run
-  in the nightly and land in the history records, so they can be elected retroactively.
+  axes around it make scaling curvature visible without exponent series.
+- Blocks are built with the production `RuleOrdering` (`rules.sorted`), and the indices KPI has
+  both a concrete-name variant and a wildcard-expansion variant (the wildcard path is the
+  production hot path for `logs-*`-style requests).
+
+## Parked CI legs
+
+A full perf-regression CI design (PR-level advisory allocation gate, nightly full runs on a
+pinned self-hosted agent, git-orphan-branch time series, MAD judge, static dashboard) was
+implemented and then **parked** on the `parked/perf-nightly-tools` branch: it depends on a
+pinned self-hosted agent that does not currently exist, and an adversarial design review found
+the judge/baseline mechanics need rework (rolling-median self-normalization, series-reset
+laundering, silent alert chain) before the signal is trustworthy.
+
+Before reviving it: seed a pinned agent, fix the judge findings on that branch, and first
+evaluate pushing the KPI series into the existing Grafana/Prometheus stack instead of the
+bespoke git-DB + dashboard.
 
 ## How it is wired
 
@@ -122,8 +96,8 @@ JMH Gradle plugin:
 1. `jmhGenerate` runs JMH's ASM bytecode generator over the compiled `@Benchmark` classes
    (works with Scala bytecode) to produce the JMH infrastructure.
 2. `jmhCompileGenerated` compiles the generated Java.
-3. `jmh` runs `org.openjdk.jmh.Main`; `jmhSmoke` runs the `ci-smoke.txt` subset and is
-   finalized by `jmhCompare` (extract + allocation gate).
+3. `jmh` runs `org.openjdk.jmh.Main`; `jmhSmoke` runs the `ci-smoke.txt` subset with `-prof gc`
+   and writes raw JSON to `build/jmh/smoke-raw.json`.
 
 Because nothing here applies a Gradle plugin, having this module in the build cannot affect
 configuration of the rest of the project — any issue only surfaces when the tasks are run.

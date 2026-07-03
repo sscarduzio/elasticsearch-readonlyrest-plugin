@@ -120,7 +120,8 @@ class EnterpriseScenarioBenchmark {
 
   private def blockOf(i: Int): Block = {
     val rules = NonEmptyList.of[Rule](groupsRuleOf(i), actionsRule(), indicesRule(), headersRule())
-    new Block(Block.Name(s"block$i"), Block.Policy.Allow, Block.Verbosity.Info, Block.Audit.Enabled, rules)
+    // .sorted = production RuleOrdering (what Block.createFrom applies); validation is config-time-only.
+    new Block(Block.Name(s"block$i"), Block.Policy.Allow, Block.Verbosity.Info, Block.Audit.Enabled, rules.sorted)
   }
 
   private def contextOf(credentials: Credentials): IndexRequestContext = {
