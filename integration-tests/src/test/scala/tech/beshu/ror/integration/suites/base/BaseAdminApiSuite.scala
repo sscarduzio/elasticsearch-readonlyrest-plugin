@@ -1235,7 +1235,7 @@ trait BaseAdminApiSuite
       ujson.read(
         """
           |{
-          |  "status": "ko",
+          |  "status": "empty",
           |  "message": "Cannot found document with ReadonlyREST settings"
           |}
           |""".stripMargin
