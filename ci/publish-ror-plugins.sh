@@ -119,6 +119,9 @@ release_docker_and_tag() {
       echo "Failed to publish plugin Docker image for ES $es_version"
       return 4
     fi
+    # Reclaim the ES base image layers pulled by BuildKit — each version is ~1.5 GB and
+    # they don't share layers, so keeping them in the cache has no benefit and exhausts disk.
+    docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-1GB}" >/dev/null 2>&1 || true
   else
     echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
   fi
