@@ -9,10 +9,6 @@ tmp/*
 *.log
 */bin
 
-// python tool caches (benchmarks/tools)
-__pycache__/
-*.pyc
-*.pyo
 
 // ignore the downloaded model files in git
 src/test/resources/models/

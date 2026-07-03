@@ -1,15 +1,12 @@
-# Elected performance KPIs — the reviewed contract between the benchmarks and the CI gates.
+# Elected performance KPIs — the reviewed contract of WHAT we track on the ACL hot paths.
 #
-# Each entry binds a KPI id to one benchmark method (with pinned @Param values), a metric
-# (us_op = microseconds/op from JMH avgt; b_op = allocated bytes/op from `-prof gc`) and a gate:
-#   - alloc-baseline : PR smoke compares b_op against baselines/alloc-baseline.json (deterministic)
-#   - nightly-median : nightly run compares us_op against the rolling median of the last 7
-#                      records on the pinned agent (MAD-based threshold, see tools/nightly_judge.py)
+# Each entry binds a KPI id to one benchmark method (with pinned @Param values) and a metric
+# (us_op = microseconds/op from JMH avgt; b_op = allocated bytes/op from `-prof gc`). The `gate`
+# field documents which gate WOULD enforce the KPI if the parked CI tooling is revived (branch
+# parked/perf-nightly-tools, see benchmarks/README.md) — no gate is live today; this file is
+# currently documentation for humans, not parsed by any tooling.
 # Field calibration: realistic worst case is ~100 blocks / ~100 groups, so tier-1 KPIs pin the
-# canonical size at field max; the @Param axes around them make curvature visible on the dashboard.
-#
-# This file is parsed by tools/nightly_judge.py and tools/render_dashboard.py with a minimal
-# YAML-subset reader: keep the flat `- key: value` item structure below.
+# canonical size at field max; the @Param axes around them make scaling curvature visible.
 
 kpis:
   # --- Tier 1: product KPIs ---------------------------------------------------------------
@@ -76,6 +73,20 @@ kpis:
     gate: alloc-baseline
     rationale: Per-request allocation of indices resolution + matching.
 
+  - id: indices.rule.wildcardExpansion.time
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.wildcardExpansionPath{patterns=100,requestedIndices=50}
+    metric: us_op
+    gate: nightly-median
+    rationale: Wildcard request expanded against the cluster index list — the production hot path for `logs-*`-style requests.
+
+  - id: indices.rule.wildcardExpansion.alloc
+    tier: 1
+    benchmark: tech.beshu.ror.benchmarks.rules.IndicesRuleResolutionBenchmark.wildcardExpansionPath{patterns=100,requestedIndices=50}
+    metric: b_op
+    gate: alloc-baseline
+    rationale: Per-request allocation of wildcard expansion + narrowing.
+
   - id: groups.rule.eval.time
     tier: 1
     benchmark: tech.beshu.ror.benchmarks.rules.GroupsRuleBenchmark.matchPath{configuredGroups=100,userGroups=100}
@@ -121,10 +132,10 @@ kpis:
 
   - id: header.name.eq.time
     tier: 2
-    benchmark: tech.beshu.ror.benchmarks.domain.HeaderNameEqBenchmark.findHeaderScan
+    benchmark: tech.beshu.ror.benchmarks.domain.HeaderNameEqBenchmark.findHeader
     metric: us_op
     gate: nightly-median
-    rationale: Case-insensitive header-name Eq paid per findHeader scan.
+    rationale: Case-insensitive header-name Eq paid per production Set[Header].find lookup.
 
   - id: header.rule.match.time
     tier: 2
