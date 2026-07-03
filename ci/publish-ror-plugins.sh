@@ -87,8 +87,14 @@ publish_module_versions() {
       return 1
     fi
 
-    rm -f "$zip" "${zip}.sha512"
+    # Skip deleting the base zip — later iterations need it for repackaging.
+    if [ "$version" != "$base_version" ]; then
+      rm -f "$zip" "${zip}.sha512"
+    fi
   done
+  # Safe to delete the base zip now that all repackaging is done.
+  local base_zip="${dist_dir}/readonlyrest-${ror_version}_es${base_version}.zip"
+  rm -f "$base_zip" "${base_zip}.sha512"
 
   rm -rf "$es_jars_dir"
   if [ "$mode" = "release" ]; then
