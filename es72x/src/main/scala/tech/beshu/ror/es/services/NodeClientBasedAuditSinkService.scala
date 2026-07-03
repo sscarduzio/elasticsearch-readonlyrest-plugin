@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.services
 
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
@@ -24,10 +23,16 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
-import tech.beshu.ror.constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_SINK_MAX_RETRIES, AUDIT_SINK_MAX_SECONDS}
+import tech.beshu.ror.constants.{
+  AUDIT_SINK_MAX_ITEMS,
+  AUDIT_SINK_MAX_KB,
+  AUDIT_SINK_MAX_RETRIES,
+  AUDIT_SINK_MAX_SECONDS
+}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 final class NodeClientBasedAuditSinkService(client: NodeClient)
-  extends IndexBasedAuditSinkService
+    extends IndexBasedAuditSinkService
     with RequestIdAwareLogging {
 
   private val bulkProcessor =
@@ -40,8 +45,9 @@ final class NodeClientBasedAuditSinkService(client: NodeClient)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
       .build
 
-  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)
-                     (implicit requestId: RequestId): Unit = {
+  override def submit(indexName: IndexName.Full, documentId: String, jsonRecord: String)(
+      implicit requestId: RequestId
+  ): Unit = {
     submitDocument(indexName.name.value, documentId, jsonRecord)
   }
 
@@ -59,6 +65,7 @@ final class NodeClientBasedAuditSinkService(client: NodeClient)
   }
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {
+
     override def beforeBulk(executionId: Long, request: BulkRequest): Unit = {
       noRequestIdLogger.debug(s"Flushing ${request.numberOfActions} bulk actions ...")
     }
@@ -66,8 +73,8 @@ final class NodeClientBasedAuditSinkService(client: NodeClient)
     override def afterBulk(executionId: Long, request: BulkRequest, response: BulkResponse): Unit = {
       if (response.hasFailures) {
         noRequestIdLogger.error("Some failures flushing the BulkProcessor: ")
-        response
-          .getItems.to(LazyList)
+        response.getItems
+          .to(LazyList)
           .filter(_.isFailed)
           .map(_.getFailureMessage)
           .groupBy(identity)
@@ -80,6 +87,7 @@ final class NodeClientBasedAuditSinkService(client: NodeClient)
     override def afterBulk(executionId: Long, request: BulkRequest, failure: Throwable): Unit = {
       noRequestIdLogger.error(s"Failed flushing the BulkProcessor: ${failure.getMessage}", failure)
     }
+
   }
 
 }

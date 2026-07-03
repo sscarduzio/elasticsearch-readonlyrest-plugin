@@ -22,9 +22,9 @@ import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Information, Kilobytes}
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
 import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MaxBodyLengthRule
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
@@ -82,9 +82,10 @@ class MaxBodyLengthRuleTests extends AnyWordSpec with MockFactory {
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
-    rule.check(blockContext).runSyncStep shouldBe Right{
+    rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Permitted(blockContext)
       else Denied(NotAuthorized)
     }
   }
+
 }

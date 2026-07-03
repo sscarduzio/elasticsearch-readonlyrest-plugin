@@ -34,11 +34,12 @@ import tech.beshu.ror.utils.ScalaOps.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRequest,
-                                                         dataStreams: Set[DataStreamName],
-                                                         esContext: EsContext,
-                                                         override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
+private[datastreams] class GetDataStreamEsRequestContext(
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -62,7 +63,9 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
           r
       }
     } else {
-      logger.error(s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      logger.error(
+        s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue."
+      )
       ModificationResult.ShouldBeInterrupted
     }
   }
@@ -83,20 +86,27 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
     r.getClass.getCanonicalName == "org.elasticsearch.xpack.core.action.GetDataStreamAction.Response"
   }
 
-  private def updateActionResponse(response: ActionResponse,
-                                   allAllowedIndices: Iterable[ClusterIndexName]): ActionResponse = {
+  private def updateActionResponse(
+      response: ActionResponse,
+      allAllowedIndices: Iterable[ClusterIndexName]
+  ): ActionResponse = {
     val allowedIndicesMatcher = PatternsMatcher.create(allAllowedIndices)
-    val filteredDataStreams = on(response).call("getDataStreams").get[java.util.List[Object]]()
-        .asScala
-        .filter { dataStreamInfo =>
-          backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
-        }
+    val filteredDataStreams = on(response)
+      .call("getDataStreams")
+      .get[java.util.List[Object]]()
+      .asScala
+      .filter { dataStreamInfo =>
+        backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
+      }
 
     on(response).set("dataStreams", filteredDataStreams.asJava)
     response
   }
 
-  private def backingIndiesMatchesAllowedIndices(info: Object, allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]): Boolean = {
+  private def backingIndiesMatchesAllowedIndices(
+      info: Object,
+      allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]
+  ): Boolean = {
     val dataStreamIndices = indicesFromDataStreamInfo(info).get
     val allowedBackingIndices = allowedIndicesMatcher.filter(dataStreamIndices)
     dataStreamIndices.diff(allowedBackingIndices).isEmpty
@@ -105,7 +115,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
   private def indicesFromDataStreamInfo(info: Object): Try[Set[ClusterIndexName]] = {
     for {
       dataStream <- Try(on(info).call("getDataStream").get[AnyVal]())
-      backingIndices <- Try (on(dataStream).call("getIndices").get[java.util.List[Object]]().asSafeList)
+      backingIndices <- Try(on(dataStream).call("getIndices").get[java.util.List[Object]]().asSafeList)
       indices <- Try {
         backingIndices
           .flatMap(backingIndex => Option(on(backingIndex).call("getName").get[String]))
@@ -115,6 +125,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
     } yield indices
 
   }
+
 }
 
 object GetDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
@@ -133,4 +144,5 @@ object GetDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContext
         None
     }
   }
+
 }

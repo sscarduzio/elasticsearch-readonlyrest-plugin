@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.ActionsRule.Settings
@@ -27,15 +26,15 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, D
 import tech.beshu.ror.accesscontrol.domain.{Action, RequestId}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
-class ActionsRule(val settings: Settings)
-  extends RegularRule with RequestIdAwareLogging {
+class ActionsRule(val settings: Settings) extends RegularRule with RequestIdAwareLogging {
 
   override val name: Rule.Name = ActionsRule.Name.name
 
   private val matcher: PatternsMatcher[Action] = PatternsMatcher.create(settings.actions.toSortedSet)
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     val requestContext = blockContext.requestContext
     if (matcher.`match`(requestContext.action)) {
       Decision.Permitted(blockContext)
@@ -45,6 +44,7 @@ class ActionsRule(val settings: Settings)
       Decision.Denied(Cause.NotAuthorized)
     }
   }
+
 }
 
 object ActionsRule {

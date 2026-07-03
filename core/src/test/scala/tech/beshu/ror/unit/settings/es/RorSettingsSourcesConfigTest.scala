@@ -29,8 +29,8 @@ import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
 import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError.MalformedSettings
 import tech.beshu.ror.settings.es.RorSettingsSourcesConfig
 import tech.beshu.ror.utils.RefinedUtils.nes
-import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 import tech.beshu.ror.utils.TestsUtils.{unsafeNes, withEsEnv}
+import tech.beshu.ror.utils.{TestsEnvVarsProvider, TestsPropertiesProvider}
 
 class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
 
@@ -44,11 +44,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
             |""".stripMargin
         )
 
-        result should be(Right(RorSettingsSourcesConfig(
-          settingsIndex = RorSettingsIndex.default,
-          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
-          settingsMaxSize = Megabytes(3)
-        )))
+        result should be(
+          Right(
+            RorSettingsSourcesConfig(
+              settingsIndex = RorSettingsIndex.default,
+              settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
+              settingsMaxSize = Megabytes(3)
+            )
+          )
+        )
       }
     }
     "load all settings from elasticsearch config" in {
@@ -62,11 +66,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           |""".stripMargin
       )
 
-      result should be(Right(RorSettingsSourcesConfig(
-        settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
-        settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
-        settingsMaxSize = Megabytes(10)
-      )))
+      result should be(
+        Right(
+          RorSettingsSourcesConfig(
+            settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
+            settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
+            settingsMaxSize = Megabytes(10)
+          )
+        )
+      )
     }
     "load all settings from elasticsearch config using flat dot syntax" in {
       val (_, result) = load(
@@ -77,11 +85,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           |""".stripMargin
       )
 
-      result should be(Right(RorSettingsSourcesConfig(
-        settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
-        settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
-        settingsMaxSize = Megabytes(10)
-      )))
+      result should be(
+        Right(
+          RorSettingsSourcesConfig(
+            settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
+            settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
+            settingsMaxSize = Megabytes(10)
+          )
+        )
+      )
     }
     "load all settings from JVM properties" in {
       val (_, result) = load(
@@ -90,16 +102,20 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           |""".stripMargin,
         properties = Map(
           nes("readonlyrest.settings.index_name") -> ".my-ror-index",
-          nes("readonlyrest.settings.file_path")  -> "/custom/path/readonlyrest.yml",
-          nes("readonlyrest.settings.max_size")   -> "10 MB"
+          nes("readonlyrest.settings.file_path") -> "/custom/path/readonlyrest.yml",
+          nes("readonlyrest.settings.max_size") -> "10 MB"
         )
       )
 
-      result should be(Right(RorSettingsSourcesConfig(
-        settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
-        settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
-        settingsMaxSize = Megabytes(10)
-      )))
+      result should be(
+        Right(
+          RorSettingsSourcesConfig(
+            settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
+            settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
+            settingsMaxSize = Megabytes(10)
+          )
+        )
+      )
     }
     "load index name from legacy YAML key" when {
       "readonlyrest.settings_index is defined" in {
@@ -110,11 +126,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
             |""".stripMargin
         )
 
-        result should be(Right(RorSettingsSourcesConfig(
-          settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-legacy-ror-index"))),
-          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
-          settingsMaxSize = Megabytes(3)
-        )))
+        result should be(
+          Right(
+            RorSettingsSourcesConfig(
+              settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-legacy-ror-index"))),
+              settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
+              settingsMaxSize = Megabytes(3)
+            )
+          )
+        )
       }
     }
     "load index name from JVM property" when {
@@ -126,11 +146,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           properties = Map(nes("readonlyrest.settings.index_name") -> ".my-ror-index")
         )
 
-        result should be(Right(RorSettingsSourcesConfig(
-          settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
-          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
-          settingsMaxSize = Megabytes(3)
-        )))
+        result should be(
+          Right(
+            RorSettingsSourcesConfig(
+              settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
+              settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
+              settingsMaxSize = Megabytes(3)
+            )
+          )
+        )
       }
     }
     "load file path from JVM property" when {
@@ -142,11 +166,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           properties = Map(nes("readonlyrest.settings.file_path") -> "/my/path/readonlyrest.yml")
         )
 
-        result should be(Right(RorSettingsSourcesConfig(
-          settingsIndex = RorSettingsIndex.default,
-          settingsFile = RorSettingsFile(File("/my/path/readonlyrest.yml")),
-          settingsMaxSize = Megabytes(3)
-        )))
+        result should be(
+          Right(
+            RorSettingsSourcesConfig(
+              settingsIndex = RorSettingsIndex.default,
+              settingsFile = RorSettingsFile(File("/my/path/readonlyrest.yml")),
+              settingsMaxSize = Megabytes(3)
+            )
+          )
+        )
       }
     }
     "load max size from JVM property" when {
@@ -158,11 +186,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           properties = Map(nes("readonlyrest.settings.max_size") -> "10 MB")
         )
 
-        result should be(Right(RorSettingsSourcesConfig(
-          settingsIndex = RorSettingsIndex.default,
-          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
-          settingsMaxSize = Megabytes(10)
-        )))
+        result should be(
+          Right(
+            RorSettingsSourcesConfig(
+              settingsIndex = RorSettingsIndex.default,
+              settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
+              settingsMaxSize = Megabytes(10)
+            )
+          )
+        )
       }
     }
     "load file path from legacy JVM property" when {
@@ -176,11 +208,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           properties
         )
 
-        result should be(Right(RorSettingsSourcesConfig(
-          settingsIndex = RorSettingsIndex.default,
-          settingsFile = RorSettingsFile(File("/legacy/path/readonlyrest.yml")),
-          settingsMaxSize = Megabytes(3)
-        )))
+        result should be(
+          Right(
+            RorSettingsSourcesConfig(
+              settingsIndex = RorSettingsIndex.default,
+              settingsFile = RorSettingsFile(File("/legacy/path/readonlyrest.yml")),
+              settingsMaxSize = Megabytes(3)
+            )
+          )
+        )
       }
     }
     "load max size from legacy JVM property" when {
@@ -194,11 +230,15 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           properties
         )
 
-        result should be(Right(RorSettingsSourcesConfig(
-          settingsIndex = RorSettingsIndex.default,
-          settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
-          settingsMaxSize = Megabytes(5)
-        )))
+        result should be(
+          Right(
+            RorSettingsSourcesConfig(
+              settingsIndex = RorSettingsIndex.default,
+              settingsFile = RorSettingsFile(configDir / "readonlyrest.yml"),
+              settingsMaxSize = Megabytes(5)
+            )
+          )
+        )
       }
     }
     "load all settings from OS environment variables" in {
@@ -208,46 +248,54 @@ class RorSettingsSourcesConfigTest extends AnyWordSpec with Inside {
           |""".stripMargin,
         envVars = Map(
           nes("ES_SETTING_READONLYREST_SETTINGS_INDEX__NAME") -> ".my-ror-index",
-          nes("ES_SETTING_READONLYREST_SETTINGS_FILE__PATH")  -> "/custom/path/readonlyrest.yml",
-          nes("ES_SETTING_READONLYREST_SETTINGS_MAX__SIZE")   -> "10 MB"
+          nes("ES_SETTING_READONLYREST_SETTINGS_FILE__PATH") -> "/custom/path/readonlyrest.yml",
+          nes("ES_SETTING_READONLYREST_SETTINGS_MAX__SIZE") -> "10 MB"
         )
       )
 
-      result should be(Right(RorSettingsSourcesConfig(
-        settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
-        settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
-        settingsMaxSize = Megabytes(10)
-      )))
+      result should be(
+        Right(
+          RorSettingsSourcesConfig(
+            settingsIndex = RorSettingsIndex(IndexName.Full(nes(".my-ror-index"))),
+            settingsFile = RorSettingsFile(File("/custom/path/readonlyrest.yml")),
+            settingsMaxSize = Megabytes(10)
+          )
+        )
+      )
     }
     "fail to load" when {
       "max_size has an invalid value" in {
-        inside(load(
-          """
-            |readonlyrest:
-            |  settings:
-            |    max_size: not-a-size
-            |""".stripMargin
-        )._2) {
-          case Left(MalformedSettings(_, message)) =>
-            message should include(
-              "Invalid value at '.readonlyrest.settings.max_size': " +
-                "Cannot parse 'not-a-size' as a data size. Expected format like '1 MB', '512 KB'"
-            )
+        inside(
+          load(
+            """
+              |readonlyrest:
+              |  settings:
+              |    max_size: not-a-size
+              |""".stripMargin
+          )._2
+        ) { case Left(MalformedSettings(_, message)) =>
+          message should include(
+            "Invalid value at '.readonlyrest.settings.max_size': " +
+              "Cannot parse 'not-a-size' as a data size. Expected format like '1 MB', '512 KB'"
+          )
         }
       }
     }
   }
 
-  private def load(yaml: String,
-                   properties: Map[NonEmptyString, String] = Map.empty,
-                   envVars: Map[NonEmptyString, String] = Map.empty): (File, Either[LoadingError, RorSettingsSourcesConfig]) = {
+  private def load(
+      yaml: String,
+      properties: Map[NonEmptyString, String] = Map.empty,
+      envVars: Map[NonEmptyString, String] = Map.empty
+  ): (File, Either[LoadingError, RorSettingsSourcesConfig]) = {
     implicit val systemContext: SystemContext = new SystemContext(
       propertiesProvider = TestsPropertiesProvider.usingMap(properties),
-      envVarsProvider    = TestsEnvVarsProvider.usingMap(envVars)
+      envVarsProvider = TestsEnvVarsProvider.usingMap(envVars)
     )
     withEsEnv(yaml) { (esEnv, configDir) =>
       val result = RorSettingsSourcesConfig.from(esEnv).runSyncUnsafe()
       (configDir, result)
     }
   }
+
 }

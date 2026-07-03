@@ -18,15 +18,19 @@ package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.{ApiKey, ServiceToken, StaticToken}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.TokenAuthenticationRule.Settings.TokenType.{
+  ApiKey,
+  ServiceToken,
+  StaticToken
+}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
 import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenPrefix.{api, bearer}
@@ -39,8 +43,7 @@ import tech.beshu.ror.utils.TestsUtils.*
 
 import scala.language.postfixOps
 
-class TokenAuthenticationRuleTests
-  extends AnyWordSpec with BlockContextAssertion {
+class TokenAuthenticationRuleTests extends AnyWordSpec with BlockContextAssertion {
 
   "A TokenAuthenticationRule" should {
     "match" when {
@@ -153,14 +156,18 @@ class TokenAuthenticationRuleTests
                 )
               ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              )),
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userA")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
             )(
               blockContextAssertion = impersonatedUserOutputBlockContextAssertion(
                 user = User.Id("userA"),
@@ -280,14 +287,18 @@ class TokenAuthenticationRuleTests
                 )
               ),
               headers = Set(basicAuthHeader("admin:wrong_pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              )),
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userA")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
               denialCause = ImpersonationNotAllowed
             )
           }
@@ -301,14 +312,18 @@ class TokenAuthenticationRuleTests
                 )
               ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userB")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              )),
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userB")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
               denialCause = ImpersonationNotAllowed
             )
           }
@@ -322,14 +337,18 @@ class TokenAuthenticationRuleTests
                 )
               ),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              )),
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userA")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
               denialCause = AuthenticationFailed("Impersonated user does not exist")
             )
           }
@@ -338,25 +357,30 @@ class TokenAuthenticationRuleTests
     }
   }
 
-  private def assertMatchRule(settings: TokenAuthenticationRule.Settings,
-                              impersonation: Impersonation = Impersonation.Disabled,
-                              headers: Set[Header],
-                              esServices: EsServices = MockEsServices.dummy)
-                             (blockContextAssertion: BlockContext => Unit): Unit =
+  private def assertMatchRule(
+      settings: TokenAuthenticationRule.Settings,
+      impersonation: Impersonation = Impersonation.Disabled,
+      headers: Set[Header],
+      esServices: EsServices = MockEsServices.dummy
+  )(blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(settings, impersonation, headers, esServices, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
-  private def assertNotMatchRule(settings: TokenAuthenticationRule.Settings,
-                                 impersonation: Impersonation,
-                                 headers: Set[Header],
-                                 denialCause: Cause,
-                                 esServices: EsServices = MockEsServices.dummy): Unit =
+  private def assertNotMatchRule(
+      settings: TokenAuthenticationRule.Settings,
+      impersonation: Impersonation,
+      headers: Set[Header],
+      denialCause: Cause,
+      esServices: EsServices = MockEsServices.dummy
+  ): Unit =
     assertRule(settings, impersonation, headers, esServices, RuleCheckAssertion.RuleDenied(denialCause))
 
-  private def assertRule(settings: TokenAuthenticationRule.Settings,
-                         impersonation: Impersonation,
-                         headers: Set[Header],
-                         esServices: EsServices,
-                         assertion: RuleCheckAssertion): Unit = {
+  private def assertRule(
+      settings: TokenAuthenticationRule.Settings,
+      impersonation: Impersonation,
+      headers: Set[Header],
+      esServices: EsServices,
+      assertion: RuleCheckAssertion
+  ): Unit = {
     val rule = new TokenAuthenticationRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers).withEsServices(esServices)
     val blockContext = UserMetadataRequestBlockContext(
@@ -376,11 +400,11 @@ class TokenAuthenticationRuleTests
       )
     }
 
-  private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
-                                                          impersonator: User.Id): BlockContext => Unit =
+  private def impersonatedUserOutputBlockContextAssertion(user: User.Id, impersonator: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(blockContext)(
         loggedUser = Some(ImpersonatedUser(user, impersonator))
       )
     }
+
 }

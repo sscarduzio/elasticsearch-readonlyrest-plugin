@@ -27,6 +27,7 @@ object NonEmptyStringOps {
   import Token.*
 
   extension (nes: NonEmptyString)
+
     def replaceDateTimePatternWithWildcard: Either[DateTimePatternReplacementError, NonEmptyString] = {
       val tokenized = tokenize(nes.toNel)
       val collapsed = collapse(tokenized)
@@ -85,7 +86,7 @@ object NonEmptyStringOps {
     @tailrec
     def loop(remaining: List[Token], acc: NonEmptyList[Token], inDateSegment: Boolean): NonEmptyList[Token] =
       remaining match {
-        case Nil => acc.reverse
+        case Nil          => acc.reverse
         case head :: rest =>
           val (maybeToken, nextInDateSegment) = nextToken(head, inDateSegment)
           val newAcc = maybeToken.fold(acc)(acc.prepend)
@@ -100,17 +101,18 @@ object NonEmptyStringOps {
   }
 
   private def render(tokens: NonEmptyList[Token]): Either[DateTimePatternReplacementError, NonEmptyString] = {
-    val resolvedPattern = tokens.toList.foldLeft(Right(""): Either[DateTimePatternReplacementError, String]) { (acc, token) =>
-      for {
-        s <- acc
-        t <- token match {
-          case QuotedText(text) => Right(text.value)
-          case DatePart => Right("*")
-          case Literal(ch) => Right(ch.toString)
-          case Empty => Right("")
-          case IncompleteStringLiteral => Left(DateTimePatternReplacementError.IncompleteStringLiteralPresent)
-        }
-      } yield s + t
+    val resolvedPattern = tokens.toList.foldLeft(Right(""): Either[DateTimePatternReplacementError, String]) {
+      (acc, token) =>
+        for {
+          s <- acc
+          t <- token match {
+            case QuotedText(text)        => Right(text.value)
+            case DatePart                => Right("*")
+            case Literal(ch)             => Right(ch.toString)
+            case Empty                   => Right("")
+            case IncompleteStringLiteral => Left(DateTimePatternReplacementError.IncompleteStringLiteralPresent)
+          }
+        } yield s + t
     }
     resolvedPattern.flatMap { str =>
       NonEmptyString.from(str).toOption match {

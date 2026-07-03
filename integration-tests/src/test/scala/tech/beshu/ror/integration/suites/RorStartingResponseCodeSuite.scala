@@ -63,8 +63,9 @@ class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForA
     }
   }
 
-  private def withTestEsContainerManager(additionalEsYamlEntries: Map[String, String])
-                                        (testCode: TestEsContainerManager => Task[Unit]): Unit = {
+  private def withTestEsContainerManager(
+      additionalEsYamlEntries: Map[String, String]
+  )(testCode: TestEsContainerManager => Task[Unit]): Unit = {
     val esContainer = new TestEsContainerManager(
       rorSettingsFile = validRorSettingsFile,
       additionalEsYamlEntries = additionalEsYamlEntries
@@ -96,16 +97,22 @@ class RorStartingResponseCodeSuite extends AnyWordSpec with ESVersionSupportForA
     val isResponseErrorOk = result
       .responseJson("error")
       .obj("root_cause")
-      .arr.exists { json =>
+      .arr
+      .exists { json =>
         json("reason").str == "Forbidden by ReadonlyREST" &&
-          json("due_to").str == "READONLYREST_NOT_READY_YET"
+        json("due_to").str == "READONLYREST_NOT_READY_YET"
       }
     if (isResponseCodeOk && isResponseErrorOk) {
       Task.unit
     } else {
-      Task.raiseError(new IllegalStateException(s"Test failed. Expected success response and ROR failed to start response but was: [$result]"))
+      Task.raiseError(
+        new IllegalStateException(
+          s"Test failed. Expected success response and ROR failed to start response but was: [$result]"
+        )
+      )
     }
   }
+
 }
 
 private object RorStartingResponseCodeSuite extends EsModulePatterns {
@@ -113,8 +120,8 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
 
   private val uniqueClusterId: AtomicInt = AtomicInt(1)
 
-  final class TestEsContainerManager(rorSettingsFile: String,
-                                     additionalEsYamlEntries: Map[String, String]) extends EsContainerCreator {
+  final class TestEsContainerManager(rorSettingsFile: String, additionalEsYamlEntries: Map[String, String])
+      extends EsContainerCreator {
 
     private val esContainer = createEsContainer
 
@@ -129,9 +136,7 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
     }
 
     private def createAdminClient = {
-      Try(esContainer.adminClient)
-        .toEither
-        .left.map(_ => ())
+      Try(esContainer.adminClient).toEither.left.map(_ => ())
     }
 
     private def createEsContainer: EsContainer = {
@@ -159,5 +164,7 @@ private object RorStartingResponseCodeSuite extends EsModulePatterns {
         awaitingReadyStrategy = WaitForEsRestApiResponsive
       )
     }
+
   }
+
 }

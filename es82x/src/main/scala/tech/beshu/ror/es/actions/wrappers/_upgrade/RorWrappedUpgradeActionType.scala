@@ -20,14 +20,17 @@ import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
 import org.elasticsearch.rest.action.admin.indices.RestUpgradeActionDeprecated
 
-class RorWrappedUpgradeActionType extends ActionType[RorWrappedUpgradeResponse](
-  RorWrappedUpgradeActionType.name, RorWrappedUpgradeActionType.exceptionReader
-)
+class RorWrappedUpgradeActionType
+    extends ActionType[RorWrappedUpgradeResponse](
+      RorWrappedUpgradeActionType.name,
+      RorWrappedUpgradeActionType.exceptionReader
+    )
+
 object RorWrappedUpgradeActionType {
   val name = new RestUpgradeActionDeprecated().getName
   val instance = new RorWrappedUpgradeActionType()
 
   case object ArtificialUpgradeActionCannotBeTransported extends Exception
 
-  private [_upgrade] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialUpgradeActionCannotBeTransported
+  private[_upgrade] def exceptionReader[A]: Writeable.Reader[A] = _ => throw ArtificialUpgradeActionCannotBeTransported
 }

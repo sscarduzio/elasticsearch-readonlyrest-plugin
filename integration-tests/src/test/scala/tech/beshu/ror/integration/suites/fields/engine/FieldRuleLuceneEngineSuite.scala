@@ -19,9 +19,7 @@ package tech.beshu.ror.integration.suites.fields.engine
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 
-class FieldRuleLuceneEngineSuite
-  extends FieldRuleEngineSuite
-    with SingletonPluginTestSupport {
+class FieldRuleLuceneEngineSuite extends FieldRuleEngineSuite with SingletonPluginTestSupport {
 
   override implicit val rorSettingsFileName: String = "/field_level_security_engine/readonlyrest_fls_engine_lucene.yml"
 
@@ -29,4 +27,5 @@ class FieldRuleLuceneEngineSuite
     result should have statusCode 200
     result.searchHits.isEmpty shouldBe true
   }
+
 }

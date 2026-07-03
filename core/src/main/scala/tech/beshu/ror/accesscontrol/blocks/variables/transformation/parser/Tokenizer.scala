@@ -39,14 +39,14 @@ private[parser] object Tokenizer {
     }
 
     val lastToken = pState.state match {
-      case State.ReadingText("") => None
-      case s@State.ReadingText(_) => Some(s.toToken)
+      case State.ReadingText("")        => None
+      case s @ State.ReadingText(_)     => Some(s.toToken)
       case State.ReadingQuotedText(acc) => Some(Token.Text(s"\"$acc"))
     }
 
     lastToken match {
       case Some(value) => pState.tokens :+ value
-      case None => pState.tokens
+      case None        => pState.tokens
     }
   }
 
@@ -87,12 +87,14 @@ private[parser] object Tokenizer {
   }
 
   private final case class TokenizerState(tokens: List[Token], state: State) {
+
     def plus(newTokens: List[Token], newState: State): TokenizerState = {
       this.copy(
         tokens = tokens ++ newTokens,
         state = newState
       )
     }
+
     def plus(token: Token, newState: State): TokenizerState = plus(List(token), newState)
 
     def plus(newState: State): TokenizerState = {
@@ -100,6 +102,7 @@ private[parser] object Tokenizer {
         state = newState
       )
     }
+
   }
 
   private object TokenizerState {
@@ -107,6 +110,7 @@ private[parser] object Tokenizer {
   }
 
   private sealed trait State
+
   private object State {
     val empty: State = ReadingText("")
 
@@ -123,5 +127,7 @@ private[parser] object Tokenizer {
 
       private val escapeChar = '\\'
     }
+
   }
+
 }

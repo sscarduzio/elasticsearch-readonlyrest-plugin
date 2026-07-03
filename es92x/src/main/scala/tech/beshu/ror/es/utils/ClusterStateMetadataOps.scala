@@ -36,7 +36,9 @@ class ClusterStateMetadataOps(val metadata: Metadata) {
   def allComponentTemplatesMetadata: Map[String, ComponentTemplate] = {
     allProjects.flatMap(_.componentTemplates().asScala).toMap
   }
+
 }
+
 object ClusterStateMetadataOps {
   implicit def toOps(metadata: Metadata): ClusterStateMetadataOps = new ClusterStateMetadataOps(metadata)
 }

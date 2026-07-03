@@ -40,9 +40,9 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         action = (key, _) => provider.getBy(key)
       )
 
-      cache.call("key1") should be (1)
-      cache.call("key1") should be (1)
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
+      cache.call("key1") should be(1)
+      cache.call("key1") should be(1)
     }
     "cache different keys independently" in {
       val provider = mock[SyncDataProvider]
@@ -53,10 +53,10 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         action = (key, _) => provider.getBy(key)
       )
 
-      cache.call("key1") should be (1)
-      cache.call("key2") should be (2)
-      cache.call("key1") should be (1)
-      cache.call("key2") should be (2)
+      cache.call("key1") should be(1)
+      cache.call("key2") should be(2)
+      cache.call("key1") should be(1)
+      cache.call("key2") should be(2)
     }
     "invalidate cached results" in {
       val provider = mock[SyncDataProvider]
@@ -66,9 +66,9 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         action = (key, _) => provider.getBy(key)
       )
 
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
       cache.invalidateAll()
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
     }
     "invalidate cached result after TTL expiration" in {
       val provider = mock[SyncDataProvider]
@@ -79,9 +79,9 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         action = (key, _) => provider.getBy(key)
       )
 
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
       Thread.sleep(500)
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
     }
   }
 
@@ -95,8 +95,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         keyMap = _.length
       )
 
-      cache.call("key1") should be (1)
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
+      cache.call("key1") should be(1)
     }
     "use mapped key for caching - different keys with same mapped key share cache" in {
       val provider = mock[SyncDataProvider]
@@ -107,8 +107,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         keyMap = _.length
       )
 
-      cache.call("aaa") should be (1)
-      cache.call("bbb") should be (1)
+      cache.call("aaa") should be(1)
+      cache.call("bbb") should be(1)
     }
     "invalidate cached results" in {
       val provider = mock[SyncDataProvider]
@@ -119,9 +119,9 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         keyMap = _.length
       )
 
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
       cache.invalidateAll()
-      cache.call("key1") should be (1)
+      cache.call("key1") should be(1)
     }
   }
 
@@ -139,9 +139,9 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         r2 <- cache.call("key1")
         r3 <- cache.call("key1")
       } yield {
-        r1 should be (1)
-        r2 should be (1)
-        r3 should be (1)
+        r1 should be(1)
+        r2 should be(1)
+        r3 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -161,10 +161,10 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         r3 <- cache.call("key1")
         r4 <- cache.call("key2")
       } yield {
-        r1 should be (1)
-        r2 should be (2)
-        r3 should be (1)
-        r4 should be (2)
+        r1 should be(1)
+        r2 should be(2)
+        r3 should be(1)
+        r4 should be(2)
       }
 
       result.runSyncUnsafe()
@@ -182,8 +182,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         _ <- Task.delay(cache.invalidateAll())
         r2 <- cache.call("key1")
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -202,8 +202,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         _ <- Task.sleep(500 milliseconds)
         r2 <- cache.call("key1")
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -224,7 +224,7 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
           List.fill(100)(cache.call("key1"))
         )
       } yield {
-        results.foreach(_ should be (1))
+        results.foreach(_ should be(1))
       }
 
       result.runSyncUnsafe()
@@ -245,8 +245,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         r1 <- cache.call("key1")
         r2 <- cache.call("key1")
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -264,8 +264,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         r1 <- cache.call("aaa")
         r2 <- cache.call("bbb")
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -284,8 +284,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         _ <- Task.delay(cache.invalidateAll())
         r2 <- cache.call("key1")
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -308,8 +308,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         r1 <- cache.call("key1", timeout)
         r2 <- cache.call("key1", timeout)
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -329,7 +329,7 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       val shortTimeout = positiveFiniteDuration(200, TimeUnit.MILLISECONDS)
 
       val result = cache.call("key1", shortTimeout).attempt.map { r =>
-        r.isLeft should be (true)
+        r.isLeft should be(true)
       }
 
       result.runSyncUnsafe()
@@ -354,9 +354,9 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         r2 <- cache.call("key1", timeout)
         r3 <- cache.call("key1", timeout)
       } yield {
-        r1 should be (1)
-        r2 should be (1)
-        r3 should be (1)
+        r1 should be(1)
+        r2 should be(1)
+        r3 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -378,8 +378,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         _ <- Task.sleep(500 milliseconds)
         r2 <- cache.call("key1", timeout)
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -404,7 +404,7 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
           List.fill(100)(cache.call("key1", timeout))
         )
       } yield {
-        results.foreach(_ should be (1))
+        results.foreach(_ should be(1))
       }
 
       result.runSyncUnsafe()
@@ -425,7 +425,7 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
       val shortTimeout = positiveFiniteDuration(200, TimeUnit.MILLISECONDS)
 
       val result = cache.call("key1", shortTimeout).attempt.map { r =>
-        r.isLeft should be (true)
+        r.isLeft should be(true)
       }
 
       result.runSyncUnsafe()
@@ -446,8 +446,8 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
         r1 <- cache.call("aaa", timeout)
         r2 <- cache.call("bbb", timeout)
       } yield {
-        r1 should be (1)
-        r2 should be (1)
+        r1 should be(1)
+        r2 should be(1)
       }
 
       result.runSyncUnsafe()
@@ -461,4 +461,5 @@ class CacheableActionsTests extends AnyWordSpec with MockFactory with WithDummyR
   trait AsyncDataProvider {
     def getBy(key: String): Task[Int]
   }
+
 }

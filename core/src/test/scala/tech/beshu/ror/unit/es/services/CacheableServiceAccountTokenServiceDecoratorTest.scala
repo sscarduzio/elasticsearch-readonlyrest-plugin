@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.RefinedUtils.nes
 import tech.beshu.ror.utils.WithDummyRequestIdSupport
 
 class CacheableServiceAccountTokenServiceDecoratorTest
-  extends AnyWordSpec
+    extends AnyWordSpec
     with MockFactory
     with WithDummyRequestIdSupport {
 
@@ -76,7 +76,8 @@ class CacheableServiceAccountTokenServiceDecoratorTest
   private def mockFor(expectations: (AuthorizationToken, Boolean)*): ServiceAccountTokenService = {
     val service = mock[ServiceAccountTokenService]
     expectations.foreach { case (token, result) =>
-      (service.validateToken(_: AuthorizationToken)(_: RequestId))
+      (service
+        .validateToken(_: AuthorizationToken)(_: RequestId))
         .expects(token, *)
         .returning(Task.now(result))
         .once()

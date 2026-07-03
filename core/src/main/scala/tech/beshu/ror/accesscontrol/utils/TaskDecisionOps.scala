@@ -21,11 +21,15 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision
 
 object TaskDecisionOps {
+
   extension [B](result: Task[Decision[B]]) {
+
     def flatMapT[C <: BlockContext](f: B => Task[Decision[C]]): Task[Decision[C]] =
       result.flatMap {
-        case Decision.Permitted(b) => f(b)
+        case Decision.Permitted(b)  => f(b)
         case Decision.Denied(cause) => Task.pure(Decision.Denied(cause))
       }
+
   }
+
 }

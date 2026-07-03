@@ -24,11 +24,17 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.JwtAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Jwt.ClaimName
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  DefinitionsLevelCreationError,
+  RulesLevelCreationError
+}
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
+import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.json.JsonPath
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -36,9 +42,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import java.security.KeyPairGenerator
 import java.util.Base64
 
-class JwtAuthorizationRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[JwtAuthorizationRule]
-    with MockFactory {
+class JwtAuthorizationRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthorizationRule] with MockFactory {
 
   "A JwtAuthorizationRule" should {
     "be able to be loaded from config" when {
@@ -69,9 +73,13 @@ class JwtAuthorizationRuleSettingsTests
               rule.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
               rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
-              rule.settings.groupsLogic should be(GroupsLogic.AnyOf(GroupIds(
-                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-              )))
+              rule.settings.groupsLogic should be(
+                GroupsLogic.AnyOf(
+                  GroupIds(
+                    UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+                  )
+                )
+              )
             }
           )
         }
@@ -103,9 +111,13 @@ class JwtAuthorizationRuleSettingsTests
               rule.settings.jwt.authorizationTokenDef should be(strictlyDefinedBearerTokenDef)
               rule.settings.jwt.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.settings.jwt.groupsConfig should be(GroupsConfig(ClaimName(JsonPath("groups").get), None))
-              rule.settings.groupsLogic should be(GroupsLogic.AllOf(GroupIds(
-                UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-              )))
+              rule.settings.groupsLogic should be(
+                GroupsLogic.AllOf(
+                  GroupIds(
+                    UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+                  )
+                )
+              )
             }
           )
         }
@@ -132,10 +144,14 @@ class JwtAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """jwt_authorization: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """jwt_authorization: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -165,15 +181,14 @@ class JwtAuthorizationRuleSettingsTests
       }
       "no JWT definition is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    jwt_authorization: jwt1
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    jwt_authorization: jwt1
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find `jwt` definition with name: jwt1")))
@@ -201,13 +216,17 @@ class JwtAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """jwt_authorization:
-                |  roles:
-                |  - "group1"
-                |  - "group2"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """jwt_authorization:
+                    |  roles:
+                    |  - "group1"
+                    |  - "group2"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -239,9 +258,13 @@ class JwtAuthorizationRuleSettingsTests
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
-                errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_authorization` rule 'jwt1'"
-                )))
+                errors.head should be(
+                  RulesLevelCreationError(
+                    Message(
+                      s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_authorization` rule 'jwt1'"
+                    )
+                  )
+                )
               }
             )
           }
@@ -264,10 +287,14 @@ class JwtAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                MalformedValue.fromString(
+                  """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -297,9 +324,13 @@ class JwtAuthorizationRuleSettingsTests
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
-                errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_authorization` rule 'jwt1'")
-                ))
+                errors.head should be(
+                  RulesLevelCreationError(
+                    Message(
+                      s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `jwt_authorization` rule 'jwt1'"
+                    )
+                  )
+                )
               }
             )
           }
@@ -330,15 +361,22 @@ class JwtAuthorizationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("jwt definitions must have unique identifiers. Duplicates: jwt1")))
+            errors.head should be(
+              DefinitionsLevelCreationError(Message("jwt definitions must have unique identifiers. Duplicates: jwt1"))
+            )
           }
         )
       }
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider =
-    TestsEnvVarsProvider.usingMap(Map(
-      nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded)
-    ))
+  override protected implicit def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(
+      Map(
+        nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(
+          KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded
+        )
+      )
+    )
+
 }

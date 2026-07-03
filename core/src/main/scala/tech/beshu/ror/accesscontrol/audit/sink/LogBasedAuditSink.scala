@@ -22,13 +22,14 @@ import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditLoggerName}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer,
-                                             loggerName: RorAuditLoggerName) extends BaseAuditSink(serializer) {
+private[audit] final class LogBasedAuditSink(serializer: AuditLogSerializer, loggerName: RorAuditLoggerName)
+    extends BaseAuditSink(serializer) {
 
   private val logger: Logger = LogManager.getLogger(loggerName.value.value)
 
-  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)
-                               (implicit requestId: RequestId): Task[Unit] = Task {
+  override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
+      implicit requestId: RequestId
+  ): Task[Unit] = Task {
     logger.info(serializedEvent.toString)
   }
 

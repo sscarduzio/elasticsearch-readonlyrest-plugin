@@ -18,9 +18,12 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
-import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.{FilterableBlockContextWithFilterUpdater, FilterableMultiRequestBlockContextWithFilterUpdater}
-import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
+import tech.beshu.ror.accesscontrol.blocks.BlockContextWithFilterUpdater.{
+  FilterableBlockContextWithFilterUpdater,
+  FilterableMultiRequestBlockContextWithFilterUpdater
+}
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Permitted
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.FilterRule.Settings
@@ -32,40 +35,38 @@ import tech.beshu.ror.accesscontrol.domain.Filter
 /**
   * Document level security (DLS) rule.
   */
-class FilterRule(val settings: Settings)
-  extends RegularRule {
+class FilterRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = FilterRule.Name.name
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     blockContext.requestContext match {
-      case r if !r.isAllowedForDLS => reject()
+      case r if !r.isAllowedForDLS   => reject()
       case r if r.action.isRorAction => reject()
-      case _ =>
+      case _                         =>
         settings.filter.resolve(blockContext) match {
           case Left(_: Unresolvable) =>
             reject()
           case Right(filter) =>
             BlockContextUpdater[B] match {
-              case UserMetadataRequestBlockContextUpdater => Permitted(blockContext)
+              case UserMetadataRequestBlockContextUpdater    => Permitted(blockContext)
               case GeneralNonIndexRequestBlockContextUpdater => Permitted(blockContext)
-              case RepositoryRequestBlockContextUpdater => Permitted(blockContext)
-              case SnapshotRequestBlockContextUpdater => Permitted(blockContext)
-              case DataStreamRequestBlockContextUpdater => Permitted(blockContext)
-              case TemplateRequestBlockContextUpdater => Permitted(blockContext)
-              case GeneralIndexRequestBlockContextUpdater => Permitted(blockContext)
-              case AliasRequestBlockContextUpdater => Permitted(blockContext)
-              case MultiIndexRequestBlockContextUpdater => Permitted(blockContext)
-              case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
+              case RepositoryRequestBlockContextUpdater      => Permitted(blockContext)
+              case SnapshotRequestBlockContextUpdater        => Permitted(blockContext)
+              case DataStreamRequestBlockContextUpdater      => Permitted(blockContext)
+              case TemplateRequestBlockContextUpdater        => Permitted(blockContext)
+              case GeneralIndexRequestBlockContextUpdater    => Permitted(blockContext)
+              case AliasRequestBlockContextUpdater           => Permitted(blockContext)
+              case MultiIndexRequestBlockContextUpdater      => Permitted(blockContext)
+              case FilterableRequestBlockContextUpdater      => addFilter(blockContext, filter)
               case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
-              case RorApiRequestBlockContextUpdater => Decision.Permitted(blockContext)
+              case RorApiRequestBlockContextUpdater          => Decision.Permitted(blockContext)
             }
         }
     }
   }
 
-  private def addFilter[B <: BlockContext : BlockContextWithFilterUpdater](blockContext: B,
-                                                                           filter: Filter) = {
+  private def addFilter[B <: BlockContext: BlockContextWithFilterUpdater](blockContext: B, filter: Filter) = {
     Permitted(blockContext.withFilter(filter))
   }
 

@@ -18,7 +18,6 @@ package tech.beshu.ror.es.actions.wrappers._upgrade
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 
-class RorWrappedUpgradeRequest(val sendResponse: () => Unit)
-  extends ActionRequest {
+class RorWrappedUpgradeRequest(val sendResponse: () => Unit) extends ActionRequest {
   override def validate(): ActionRequestValidationException = null
 }

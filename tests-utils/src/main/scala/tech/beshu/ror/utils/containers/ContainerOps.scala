@@ -28,11 +28,9 @@ object ContainerOps {
 
     def ipAddressFromFirstNetwork: Option[String] =
       Try(container.containerInfo)
-        .map(_
-          .getNetworkSettings
-          .getNetworks.asScala
-          .head._2
-          .getIpAddress
-        ).toOption
+        .map(_.getNetworkSettings.getNetworks.asScala.head._2.getIpAddress)
+        .toOption
+
   }
+
 }

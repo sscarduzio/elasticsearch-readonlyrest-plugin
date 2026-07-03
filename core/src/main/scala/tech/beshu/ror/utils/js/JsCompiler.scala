@@ -22,7 +22,8 @@ import scala.util.Try
 
 trait JsCompiler {
 
-  def compile(jsCodeString: String)
-             (implicit timeout: FiniteDuration = 10 seconds): Try[Unit]
-}
+  def compile(jsCodeString: String)(
+      implicit timeout: FiniteDuration = 10 seconds
+  ): Try[Unit]
 
+}

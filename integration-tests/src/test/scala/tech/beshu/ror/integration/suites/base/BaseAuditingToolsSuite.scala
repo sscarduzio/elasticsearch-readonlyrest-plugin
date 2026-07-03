@@ -37,7 +37,7 @@ import java.util.UUID
 import scala.collection.immutable.ListMap
 
 trait BaseAuditingToolsSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with ESVersionSupportForAnyWordSpecLike
     with SingleClientSupport
     with BeforeAndAfterEach
@@ -64,11 +64,13 @@ trait BaseAuditingToolsSuite
     ListMap.from(
       (List(baseAuditIndexName) ++ baseAuditDataStreamName.toList)
         .map { indexName =>
-          (indexName, destNodesClientProviders.map(_.adminClient).map(new AuditIndexManager(_, esVersionUsed, indexName)))
+          (
+            indexName,
+            destNodesClientProviders.map(_.adminClient).map(new AuditIndexManager(_, esVersionUsed, indexName))
+          )
         }
     )
   }
-
 
   override def beforeEach(): Unit = {
     super.beforeEach()
@@ -84,7 +86,7 @@ trait BaseAuditingToolsSuite
       }
     }
 
-  implicit override val patienceConfig: PatienceConfig =
+  override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   "Regular ES request" should {
@@ -108,7 +110,8 @@ trait BaseAuditingToolsSuite
       }
       "no rule is matched with username from auth header" in {
         val indexManager = new IndexManager(
-          basicAuthClient("username", "wrong"), esVersionUsed
+          basicAuthClient("username", "wrong"),
+          esVersionUsed
         )
         val response = indexManager.getIndex("twitter")
         response should have statusCode 403
@@ -283,7 +286,8 @@ trait BaseAuditingToolsSuite
         "new JSON key attribute from request body as a JSON value" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event_obj": { "field1": 1, "fields2": "f2" } }"""))
+          val response =
+            rorApiManager.sendAuditEvent(ujson.read("""{ "event_obj": { "field1": 1, "fields2": "f2" } }"""))
 
           response should have statusCode 204
 
@@ -316,21 +320,20 @@ trait BaseAuditingToolsSuite
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
         response should have statusCode 400
-        response.responseJson should be(ujson.read(
-          """
-            |{
-            |  "error":{
-            |    "root_cause":[
-            |      {
-            |        "type":"audit_event_bad_request",
-            |        "reason":"Content malformed"
-            |      }
-            |    ],
-            |    "type":"audit_event_bad_request",
-            |    "reason":"Content malformed"
-            |  },
-            |  "status":400
-            |}
+        response.responseJson should be(ujson.read("""
+                                                     |{
+                                                     |  "error":{
+                                                     |    "root_cause":[
+                                                     |      {
+                                                     |        "type":"audit_event_bad_request",
+                                                     |        "reason":"Content malformed"
+                                                     |      }
+                                                     |    ],
+                                                     |    "type":"audit_event_bad_request",
+                                                     |    "reason":"Content malformed"
+                                                     |  },
+                                                     |  "status":400
+                                                     |}
           """.stripMargin))
 
         forEachAuditManager { adminAuditManager =>
@@ -342,23 +345,24 @@ trait BaseAuditingToolsSuite
       "request JSON is too large (>5KB)" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"), esVersionUsed)
 
-        val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }"""))
+        val response = rorApiManager.sendAuditEvent(
+          ujson.read(s"""{ "event": "${LazyList.continually("!").take(5000).mkString}" }""")
+        )
         response should have statusCode 413
-        response.responseJson should be(ujson.read(
-          """
-            |{
-            |  "error":{
-            |    "root_cause":[
-            |      {
-            |        "type":"audit_event_request_payload_too_large",
-            |        "reason":"Max request content allowed = 40.0KB"
-            |      }
-            |    ],
-            |    "type":"audit_event_request_payload_too_large",
-            |    "reason":"Max request content allowed = 40.0KB"
-            |  },
-            |  "status":413
-            |}
+        response.responseJson should be(ujson.read("""
+                                                     |{
+                                                     |  "error":{
+                                                     |    "root_cause":[
+                                                     |      {
+                                                     |        "type":"audit_event_request_payload_too_large",
+                                                     |        "reason":"Max request content allowed = 40.0KB"
+                                                     |      }
+                                                     |    ],
+                                                     |    "type":"audit_event_request_payload_too_large",
+                                                     |    "reason":"Max request content allowed = 40.0KB"
+                                                     |  },
+                                                     |  "status":413
+                                                     |}
           """.stripMargin))
 
         forEachAuditManager { adminAuditManager =>
@@ -385,7 +389,7 @@ trait BaseAuditingToolsSuite
   }
 
   "ROR audit data stream setup" should {
-    "create an audit data stream if not exist" excludeES(allEs6x, allEs7xBelowEs79x) in {
+    "create an audit data stream if not exist" excludeES (allEs6x, allEs7xBelowEs79x) in {
       disableAudit()
 
       val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
@@ -398,13 +402,14 @@ trait BaseAuditingToolsSuite
         val response = dataStreamManager.getAllDataStreams()
         response.force().allDataStreams should contain(newDataStream)
       }
-      val adminAuditManager = new AuditIndexManager(destNodesClientProviders.head.adminClient, esVersionUsed, newDataStream)
+      val adminAuditManager =
+        new AuditIndexManager(destNodesClientProviders.head.adminClient, esVersionUsed, newDataStream)
       auditEventAssertion(adminAuditManager)
 
       assertAuditDataStreamSettings(newDataStream)
     }
     "create an audit data stream" when {
-      "index lifecycle policy already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      "index lifecycle policy already exists" excludeES (allEs6x, allEs7xBelowEs79x) in {
         disableAudit()
 
         val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
@@ -436,7 +441,7 @@ trait BaseAuditingToolsSuite
         val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
         auditEventAssertion(adminAuditManager)
       }
-      "component mapping already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      "component mapping already exists" excludeES (allEs6x, allEs7xBelowEs79x) in {
         disableAudit()
 
         val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
@@ -471,7 +476,7 @@ trait BaseAuditingToolsSuite
         val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
         auditEventAssertion(adminAuditManager)
       }
-      "component settings already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      "component settings already exists" excludeES (allEs6x, allEs7xBelowEs79x) in {
         disableAudit()
 
         val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
@@ -499,7 +504,7 @@ trait BaseAuditingToolsSuite
         val adminAuditManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, newDataStream)
         auditEventAssertion(adminAuditManager)
       }
-      "index template already exists" excludeES(allEs6x, allEs7xBelowEs79x) in {
+      "index template already exists" excludeES (allEs6x, allEs7xBelowEs79x) in {
         disableAudit()
 
         val newDataStream = s"audit-ds-${UUID.randomUUID().toString}"
@@ -529,7 +534,7 @@ trait BaseAuditingToolsSuite
         auditEventAssertion(adminAuditManager)
       }
     }
-    "use existing data stream" excludeES(allEs6x, allEs7xBelowEs79x) in {
+    "use existing data stream" excludeES (allEs6x, allEs7xBelowEs79x) in {
       disableAudit()
 
       val dataStreamName = s"audit-ds-${UUID.randomUUID().toString}"
@@ -583,35 +588,39 @@ trait BaseAuditingToolsSuite
 
   private def rorSettingsWithDataStreamAudit(dataStreamName: String) = {
     baseRorSettingsYaml.replace(
-      baseAuditDataStreamName.getOrElse(throw new IllegalStateException("Data stream name should be set for Data Stream audit test")),
+      baseAuditDataStreamName.getOrElse(
+        throw new IllegalStateException("Data stream name should be set for Data Stream audit test")
+      ),
       dataStreamName
     )
   }
 
   private def createAuditDataStream(dataStreamName: String) = {
     val templateManager = new IndexTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
-    templateManager.createTemplate(
-      templateName = s"$dataStreamName-template",
-      body = ujson.read(
-        s"""
-           |{
-           |  "index_patterns": ["$dataStreamName*"],
-           |  "data_stream": { },
-           |  "priority": 500,
-           |  "template": {
-           |    "mappings": {
-           |      "properties": {
-           |        "@timestamp": {
-           |          "type": "date",
-           |          "format": "date_optional_time||epoch_millis"
-           |        }
-           |      }
-           |    }
-           |  }
-           |}
-           |""".stripMargin
+    templateManager
+      .createTemplate(
+        templateName = s"$dataStreamName-template",
+        body = ujson.read(
+          s"""
+             |{
+             |  "index_patterns": ["$dataStreamName*"],
+             |  "data_stream": { },
+             |  "priority": 500,
+             |  "template": {
+             |    "mappings": {
+             |      "properties": {
+             |        "@timestamp": {
+             |          "type": "date",
+             |          "format": "date_optional_time||epoch_millis"
+             |        }
+             |      }
+             |    }
+             |  }
+             |}
+             |""".stripMargin
+        )
       )
-    ).force()
+      .force()
 
     dataStreamManager.createDataStream(dataStreamName).force()
   }
@@ -707,8 +716,7 @@ trait BaseAuditingToolsSuite
            |
            |""".stripMargin
       )
-    }
-    else {
+    } else {
       ujson.read(
         s"""
            |{
@@ -759,7 +767,9 @@ trait BaseAuditingToolsSuite
 
     val templateManager = new IndexTemplateManager(destNodeClientProvider.adminClient, esVersionUsed)
     val templateResponse = templateManager.getTemplate(indexTemplateName)
-    templateResponse.templates.headOption shouldBe Some(Template(indexTemplateName, patterns = Set(dataStreamName), aliases = Set.empty))
+    templateResponse.templates.headOption shouldBe Some(
+      Template(indexTemplateName, patterns = Set(dataStreamName), aliases = Set.empty)
+    )
 
     val dataStreamResponse = dataStreamManager.getDataStream(dataStreamName)
     dataStreamResponse.indexTemplateByDataStream(dataStreamName) shouldBe indexTemplateName
@@ -773,9 +783,26 @@ trait BaseAuditingToolsSuite
   private def assertDynamicIndexMappings(indexName: String) = {
     val indexManager = new IndexManager(destNodesClientProviders.head.adminClient, esVersionUsed)
     val expectedProperties = List(
-      "@timestamp", "acl_history", "action", "block", "content_len", "content_len_kb",
-      "correlation_id", "destination", "final_state", "headers", "id", "indices", "match",
-      "origin", "path", "processingMillis", "req_method", "task_id", "type", "user"
+      "@timestamp",
+      "acl_history",
+      "action",
+      "block",
+      "content_len",
+      "content_len_kb",
+      "correlation_id",
+      "destination",
+      "final_state",
+      "headers",
+      "id",
+      "indices",
+      "match",
+      "origin",
+      "path",
+      "processingMillis",
+      "req_method",
+      "task_id",
+      "type",
+      "user"
     )
     val mappings = indexManager.getMappings(indexName).responseJson(indexName)("mappings").obj
     val properties = {
@@ -788,4 +815,5 @@ trait BaseAuditingToolsSuite
 
     properties should contain allElementsOf (expectedProperties)
   }
+
 }

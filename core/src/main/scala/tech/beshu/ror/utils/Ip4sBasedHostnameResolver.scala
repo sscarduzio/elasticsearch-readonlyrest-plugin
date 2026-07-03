@@ -34,4 +34,5 @@ class Ip4sBasedHostnameResolver extends HostnameResolver {
         .map(NonEmptyList.fromList(_).map(_.map(ip => Ip(Cidr(ip, 32)))))
     }
   }
+
 }

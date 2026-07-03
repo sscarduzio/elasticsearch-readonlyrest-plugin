@@ -18,7 +18,6 @@ package tech.beshu.ror.es.actions.wrappers._cat
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 
-class RorWrappedCatRequest(val sendResponse: () => Unit)
-  extends ActionRequest {
+class RorWrappedCatRequest(val sendResponse: () => Unit) extends ActionRequest {
   override def validate(): ActionRequestValidationException = null
 }

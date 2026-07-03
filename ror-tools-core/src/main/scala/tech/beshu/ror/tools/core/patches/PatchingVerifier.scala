@@ -41,9 +41,9 @@ object PatchingVerifier {
   }
 
   private def createEsPatchExecutor(esHome: String) = {
-    Try(EsPatchExecutor.create(EsDirectory.from(os.Path(esHome)))(ConsoleInOut))
-      .toEither
-      .left.map { e => CannotVerifyIfPatched(e.getMessage) }
+    Try(EsPatchExecutor.create(EsDirectory.from(os.Path(esHome)))(ConsoleInOut)).toEither.left.map { e =>
+      CannotVerifyIfPatched(e.getMessage)
+    }
   }
 
   sealed trait Error {
@@ -56,7 +56,7 @@ object PatchingVerifier {
     final case class CannotVerifyIfPatched(errorCause: String) extends Error {
       override val message: String = s"Cannot verify if the ES was patched. $errorCause"
     }
+
   }
 
 }
-

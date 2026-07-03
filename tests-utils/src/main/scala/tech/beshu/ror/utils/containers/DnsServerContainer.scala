@@ -25,17 +25,19 @@ import scala.jdk.CollectionConverters.*
 
 @nowarn("cat=deprecation")
 class DnsServerContainer(srvServiceHost: String, srvServicePort: Int)
-  extends GenericContainer(
-    dockerImage = new ImageFromDockerfile()
-      .withFileFromClasspath("Dockerfile", "coredns-image/Dockerfile")
-      .withFileFromClasspath("Corefile", "coredns-image/Corefile")
-      .withFileFromString("conf",
-      s"""
-          |$$ORIGIN example.org.
-          |@	3600	IN	SOA someorg.org.  someorg.com.  (2017042745 7200 3600 1209600 3600)
-          |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	$srvServiceHost.
-          |""".stripMargin),
-  ) {
+    extends GenericContainer(
+      dockerImage = new ImageFromDockerfile()
+        .withFileFromClasspath("Dockerfile", "coredns-image/Dockerfile")
+        .withFileFromClasspath("Corefile", "coredns-image/Corefile")
+        .withFileFromString(
+          "conf",
+          s"""
+             |$$ORIGIN example.org.
+             |@	3600	IN	SOA someorg.org.  someorg.com.  (2017042745 7200 3600 1209600 3600)
+             |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	$srvServiceHost.
+             |""".stripMargin
+        ),
+    ) {
 
   this.underlyingUnsafeContainer.withCreateContainerCmdModifier { cmd =>
     cmd.withExposedPorts(
@@ -54,12 +56,11 @@ class DnsServerContainer(srvServiceHost: String, srvServicePort: Int)
     // although it is mapping each port exposed by container(even UDP).
     // Wait a bit to ensure port binding is ready
     Thread.sleep(500)
-    this.containerInfo
-      .getNetworkSettings
-      .getPorts
-      .getBindings
-      .asScala
-      .getOrElse(new ExposedPort(53, InternetProtocol.UDP), throw new Exception("Couldn't get value of docker mapped port 53/udp"))
+    this.containerInfo.getNetworkSettings.getPorts.getBindings.asScala
+      .getOrElse(
+        new ExposedPort(53, InternetProtocol.UDP),
+        throw new Exception("Couldn't get value of docker mapped port 53/udp")
+      )
       .headOption
       .getOrElse(throw new Exception("Couldn't get first value of docker mapped port 53/udp"))
       .getHostPortSpec

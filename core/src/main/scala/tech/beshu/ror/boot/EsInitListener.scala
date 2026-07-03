@@ -33,4 +33,5 @@ class EsInitListener extends RequestIdAwareLogging {
     noRequestIdLogger.info("Elasticsearch fully initiated. ReadonlyREST can continue ...")
     readyPromise.trySuccess(())
   }
+
 }

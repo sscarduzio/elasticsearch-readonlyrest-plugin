@@ -18,7 +18,10 @@ package tech.beshu.ror.accesscontrol.request
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.{Header, RorKbnLicenseType}
-import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.DetailsCreationError.{NoRequestedHeaderValue, RorKbnLicenseTypeInvalidValue}
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.DetailsCreationError.{
+  NoRequestedHeaderValue,
+  RorKbnLicenseTypeInvalidValue
+}
 
 import scala.language.implicitConversions
 
@@ -34,22 +37,26 @@ trait UserMetadataRequestContext extends RequestContext {
 
 object UserMetadataRequestContext {
 
-  type Aux[B <: UserMetadataRequestBlockContext] = UserMetadataRequestContext {type BLOCK_CONTEXT = B}
+  type Aux[B <: UserMetadataRequestBlockContext] = UserMetadataRequestContext { type BLOCK_CONTEXT = B }
 
   final case class Details(licenseType: RorKbnLicenseType)
 
   object Details {
+
     def from(licenseTypeHeader: Option[Header]): Either[DetailsCreationError, Details] = {
       for {
         header <- licenseTypeHeader.toRight(left = NoRequestedHeaderValue)
         licenseType <- RorKbnLicenseType.from(header.value.value).left.map { case () => RorKbnLicenseTypeInvalidValue }
       } yield Details(licenseType)
     }
+
   }
 
   sealed trait DetailsCreationError
+
   object DetailsCreationError {
     case object NoRequestedHeaderValue extends DetailsCreationError
     case object RorKbnLicenseTypeInvalidValue extends DetailsCreationError
   }
+
 }

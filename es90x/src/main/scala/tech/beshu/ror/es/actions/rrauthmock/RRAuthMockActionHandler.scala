@@ -30,22 +30,23 @@ class RRAuthMockActionHandler extends RequestIdAwareLogging {
 
   def handle(request: RRAuthMockRequest, listener: ActionListener[RRAuthMockResponse]): Unit = {
     getApi match {
-      case Some(api) => doPrivileged {
-        implicit val requestId: RequestId = request.requestContextId
-        api
-          .call(request.getAuthMockRequest)
-          .runAsync { response =>
-            handle(response, listener)
-          }
-      }
+      case Some(api) =>
+        doPrivileged {
+          implicit val requestId: RequestId = request.requestContextId
+          api
+            .call(request.getAuthMockRequest)
+            .runAsync { response =>
+              handle(response, listener)
+            }
+        }
       case None =>
         listener.onFailure(new Exception("AuthMock API is not available"))
     }
   }
 
-  private def handle(result: Either[Throwable, AuthMockResponse],
-                     listener: ActionListener[RRAuthMockResponse])
-                    (implicit requestId: RequestId): Unit = {
+  private def handle(result: Either[Throwable, AuthMockResponse], listener: ActionListener[RRAuthMockResponse])(
+      implicit requestId: RequestId
+  ): Unit = {
     result match {
       case Right(response) =>
         listener.onResponse(new RRAuthMockResponse(response))

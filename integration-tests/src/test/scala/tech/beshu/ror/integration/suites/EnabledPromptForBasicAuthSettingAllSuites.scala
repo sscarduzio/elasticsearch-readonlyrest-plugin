@@ -19,6 +19,6 @@ package tech.beshu.ror.integration.suites
 import tech.beshu.ror.integration.suites.base.EnabledPromptForBasicAuthSettingSuite
 
 class EnabledPromptForBasicAuthSettingAllSuites
-  extends EnabledPromptForBasicAuthSettingSuite
+    extends EnabledPromptForBasicAuthSettingSuite
     with IndexApiWithFreeKibanaSupportSuite
     with UserMetadataEndpointWithFreeKibanaSupportSuite

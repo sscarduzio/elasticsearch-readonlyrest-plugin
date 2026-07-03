@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import java.time.Instant
 import cats.data.NonEmptyList
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.scalatest.concurrent.Eventually
@@ -25,19 +24,20 @@ import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupportForAnyWordSpecLike
 import tech.beshu.ror.utils.TestUjson.ujson
+import tech.beshu.ror.utils.TestUjson.ujson.Value
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterProvider}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, RorApiManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
-import ujson.Value
 import tech.beshu.ror.utils.misc.ScalaUtils.StringDateTimeOps
+import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
+import java.time.Instant
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
 trait BaseAdminApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
     with ESVersionSupportForAnyWordSpecLike
     with MultipleClientsSupport
@@ -60,8 +60,10 @@ trait BaseAdminApiSuite
   private lazy val ror1WithIndexSettingsAdminActionManager = new RorApiManager(clients.head.adminClient, esVersionUsed)
   private lazy val rorWithNoIndexSettingsAdminActionManager = new RorApiManager(clients.last.adminClient, esVersionUsed)
 
-  private lazy val adminSearchManager = new SearchManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
-  private lazy val adminIndexManager = new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
+  private lazy val adminSearchManager =
+    new SearchManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
+  private lazy val adminIndexManager =
+    new IndexManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
   private val testSettingsEsDocumentId = "2"
   protected val settingsReloadInterval: FiniteDuration = 5 seconds
 
@@ -81,14 +83,16 @@ trait BaseAdminApiSuite
 
           val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ok",
-              |  "message": "ReadonlyREST settings were reloaded with success!"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ok",
+                |  "message": "ReadonlyREST settings were reloaded with success!"
+                |}
+                |""".stripMargin
+            )
+          )
         }
       }
       "return info that settings are up to date" when {
@@ -102,28 +106,32 @@ trait BaseAdminApiSuite
 
           val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ko",
-              |  "message": "Current settings are already loaded"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ko",
+                |  "message": "Current settings are already loaded"
+                |}
+                |""".stripMargin
+            )
+          )
         }
       }
       "return info that in-index settings do not exist" when {
         "there is no in-index settings configured yet" in {
           val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            s"""
-               |{
-               |  "status": "ko",
-               |  "message": "Cannot find ReadonlyREST settings index"
-               |}
-               |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              s"""
+                 |{
+                 |  "status": "ko",
+                 |  "message": "Cannot find ReadonlyREST settings index"
+                 |}
+                 |""".stripMargin
+            )
+          )
         }
       }
       "return info that cannot reload settings" when {
@@ -137,14 +145,16 @@ trait BaseAdminApiSuite
 
           val result = rorWithNoIndexSettingsAdminActionManager.reloadRorSettings()
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ko",
-              |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ko",
+                |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
+                |}
+                |""".stripMargin
+            )
+          )
         }
       }
     }
@@ -152,24 +162,31 @@ trait BaseAdminApiSuite
       "is going to reload ROR core and store new in-index settings" when {
         "settings are new and correct" in {
           def forceReload(rorSettingsResource: String) = {
-            val result = ror1WithIndexSettingsAdminActionManager.updateRorInIndexSettings(getResourceContent(rorSettingsResource))
+            val result =
+              ror1WithIndexSettingsAdminActionManager.updateRorInIndexSettings(getResourceContent(rorSettingsResource))
             result should have statusCode 200
-            result.responseJson should be(ujson.read(
-              """
-                |{
-                |  "status": "ok",
-                |  "message": "updated settings"
-                |}
-                |""".stripMargin
-            ))
+            result.responseJson should be(
+              ujson.read(
+                """
+                  |{
+                  |  "status": "ok",
+                  |  "message": "updated settings"
+                  |}
+                  |""".stripMargin
+              )
+            )
 
             assertSettingsInIndex(getResourceContent(rorSettingsResource))
           }
 
-          val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev1", "test"), esVersionUsed)
-          val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev2", "test"), esVersionUsed)
-          val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev1", "test"), esVersionUsed)
-          val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev2", "test"), esVersionUsed)
+          val dev1Ror1stInstanceSearchManager =
+            new SearchManager(clients.head.basicAuthClient("dev1", "test"), esVersionUsed)
+          val dev2Ror1stInstanceSearchManager =
+            new SearchManager(clients.head.basicAuthClient("dev2", "test"), esVersionUsed)
+          val dev1Ror2ndInstanceSearchManager =
+            new SearchManager(clients.tail.head.basicAuthClient("dev1", "test"), esVersionUsed)
+          val dev2Ror2ndInstanceSearchManager =
+            new SearchManager(clients.tail.head.basicAuthClient("dev2", "test"), esVersionUsed)
 
           // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("test1_index")
@@ -185,7 +202,9 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_first_update.yml")
 
           // after first reload only dev1 can access indices
-          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance settings reload
+          Thread.sleep(
+            settingsReloadInterval.plus(10 second).toMillis
+          ) // have to wait for ROR1_2 instance settings reload
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After1stReloadResults should have statusCode 200
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -199,7 +218,9 @@ trait BaseAdminApiSuite
           forceReload("/admin_api/readonlyrest_second_update.yml")
 
           // after second reload dev1 & dev2 can access indices
-          Thread.sleep(settingsReloadInterval.plus(10 second).toMillis) // have to wait for ROR1_2 instance settings reload
+          Thread.sleep(
+            settingsReloadInterval.plus(10 second).toMillis
+          ) // have to wait for ROR1_2 instance settings reload
           val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("test1_index")
           dev1ror1After2ndReloadResults should have statusCode 200
           val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("test2_index")
@@ -218,14 +239,16 @@ trait BaseAdminApiSuite
           assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_index.yml"))
 
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ko",
-              |  "message": "Current settings are already loaded"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ko",
+                |  "message": "Current settings are already loaded"
+                |}
+                |""".stripMargin
+            )
+          )
         }
       }
       "return info that settings are malformed" when {
@@ -244,14 +267,16 @@ trait BaseAdminApiSuite
             .updateRorInIndexSettingsRaw(rawRequestBody = "{}")
 
           result should have statusCode 400
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ko",
-              |  "message": "JSON body malformed: [Could not parse at .settings: [DecodingFailure at .settings: Missing required field]]"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ko",
+                |  "message": "JSON body malformed: [Could not parse at .settings: [DecodingFailure at .settings: Missing required field]]"
+                |}
+                |""".stripMargin
+            )
+          )
         }
       }
       "return info that cannot reload" when {
@@ -260,14 +285,16 @@ trait BaseAdminApiSuite
             .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ko",
-              |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ko",
+                |  "message": "Cannot reload new settings: Errors:\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
+                |}
+                |""".stripMargin
+            )
+          )
         }
       }
     }
@@ -278,14 +305,16 @@ trait BaseAdminApiSuite
             .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ok",
-              |  "message": "updated settings"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ok",
+                |  "message": "updated settings"
+                |}
+                |""".stripMargin
+            )
+          )
 
           assertSettingsInIndex(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
@@ -306,16 +335,19 @@ trait BaseAdminApiSuite
             .updateRorInIndexSettings(getResourceContent("/admin_api/readonlyrest_first_update.yml"))
 
           result should have statusCode 200
-          result.responseJson should be(ujson.read(
-            """
-              |{
-              |  "status": "ok",
-              |  "message": "updated settings"
-              |}
-              |""".stripMargin
-          ))
+          result.responseJson should be(
+            ujson.read(
+              """
+                |{
+                |  "status": "ok",
+                |  "message": "updated settings"
+                |}
+                |""".stripMargin
+            )
+          )
 
-          val adminDocumentManager = new DocumentManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
+          val adminDocumentManager =
+            new DocumentManager(clients.head.basicAuthClient("admin", "container"), esVersionUsed)
           val matchAllQuery = ujson.read("""{"query" : {"match_all" : {}}}""".stripMargin)
           val deleteResponse = adminDocumentManager.deleteByQuery(readonlyrestIndexName, matchAllQuery)
           deleteResponse should have statusCode 200
@@ -343,14 +375,16 @@ trait BaseAdminApiSuite
           rorClients.foreach { rorApiManager =>
             val response = rorApiManager.currentRorLocalUsers
             response should have statusCode 200
-            response.responseJson should be(ujson.read(
-              """
-                |{
-                |  "status": "TEST_SETTINGS_NOT_CONFIGURED",
-                |  "message": "ROR Test settings are not configured"
-                |}
-                |""".stripMargin
-            ))
+            response.responseJson should be(
+              ujson.read(
+                """
+                  |{
+                  |  "status": "TEST_SETTINGS_NOT_CONFIGURED",
+                  |  "message": "ROR Test settings are not configured"
+                  |}
+                  |""".stripMargin
+              )
+            )
           }
         }
       }
@@ -374,14 +408,16 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"), esVersionUsed,
+              client.basicAuthClient("admin1", "pass"),
+              esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
 
           val dev2SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"), esVersionUsed,
+              client.basicAuthClient("admin1", "pass"),
+              esVersionUsed,
               Map("x-ror-impersonating" -> "dev2")
             )
           }
@@ -433,14 +469,16 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"), esVersionUsed,
+              client.basicAuthClient("admin1", "pass"),
+              esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
 
           val dev2SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"), esVersionUsed,
+              client.basicAuthClient("admin1", "pass"),
+              esVersionUsed,
               Map("x-ror-impersonating" -> "dev2")
             )
           }
@@ -504,7 +542,8 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"), esVersionUsed,
+              client.basicAuthClient("admin1", "pass"),
+              esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
@@ -567,14 +606,16 @@ trait BaseAdminApiSuite
 
         val dev1SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"), esVersionUsed,
+            client.basicAuthClient("admin1", "pass"),
+            esVersionUsed,
             Map("x-ror-impersonating" -> "dev1")
           )
         }
 
         val dev2SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"), esVersionUsed,
+            client.basicAuthClient("admin1", "pass"),
+            esVersionUsed,
             Map("x-ror-impersonating" -> "dev2")
           )
         }
@@ -648,14 +689,16 @@ trait BaseAdminApiSuite
 
           val dev1SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"), esVersionUsed,
+              client.basicAuthClient("admin1", "pass"),
+              esVersionUsed,
               Map("x-ror-impersonating" -> "dev1")
             )
           }
 
           val dev2SearchManagers = testClients.map { client =>
             new SearchManager(
-              client.basicAuthClient("admin1", "pass"), esVersionUsed,
+              client.basicAuthClient("admin1", "pass"),
+              esVersionUsed,
               Map("x-ror-impersonating" -> "dev2")
             )
           }
@@ -740,7 +783,8 @@ trait BaseAdminApiSuite
           val timestamps =
             rorClients
               .map(_.currentRorTestSettings.responseJson("valid_to").str)
-              .map(Instant.parse).toSet
+              .map(Instant.parse)
+              .toSet
 
           timestamps.size should be(1)
 
@@ -776,14 +820,16 @@ trait BaseAdminApiSuite
               .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
-            result.responseJson should be(ujson.read(
-              """
-                |{
-                |  "status": "FAILED",
-                |  "message": "JSON body malformed: [Could not parse at .ttl: [DecodingFailure at .ttl: Missing required field]]"
-                |}
-                |""".stripMargin
-            ))
+            result.responseJson should be(
+              ujson.read(
+                """
+                  |{
+                  |  "status": "FAILED",
+                  |  "message": "JSON body malformed: [Could not parse at .ttl: [DecodingFailure at .ttl: Missing required field]]"
+                  |}
+                  |""".stripMargin
+              )
+            )
           }
         }
         "settings key missing" in {
@@ -793,14 +839,16 @@ trait BaseAdminApiSuite
               .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
-            result.responseJson should be(ujson.read(
-              """
-                |{
-                |  "status": "FAILED",
-                |  "message": "JSON body malformed: [Could not parse at .settings: [DecodingFailure at .settings: Missing required field]]"
-                |}
-                |""".stripMargin
-            ))
+            result.responseJson should be(
+              ujson.read(
+                """
+                  |{
+                  |  "status": "FAILED",
+                  |  "message": "JSON body malformed: [Could not parse at .settings: [DecodingFailure at .settings: Missing required field]]"
+                  |}
+                  |""".stripMargin
+              )
+            )
           }
         }
         "ttl value in invalid format" in {
@@ -812,14 +860,16 @@ trait BaseAdminApiSuite
               .updateRorTestSettingsRaw(rawRequestBody = requestBody)
 
             result should have statusCode 400
-            result.responseJson should be(ujson.read(
-              """
-                |{
-                |  "status": "FAILED",
-                |  "message": "JSON body malformed: [Could not parse at .ttl: [DecodingFailure at .ttl: Cannot parse '30 units' as duration.]]"
-                |}
-                |""".stripMargin
-            ))
+            result.responseJson should be(
+              ujson.read(
+                """
+                  |{
+                  |  "status": "FAILED",
+                  |  "message": "JSON body malformed: [Could not parse at .ttl: [DecodingFailure at .ttl: Cannot parse '30 units' as duration.]]"
+                  |}
+                  |""".stripMargin
+              )
+            )
           }
         }
       }
@@ -842,14 +892,16 @@ trait BaseAdminApiSuite
               .updateRorTestSettings(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))
 
             result should have statusCode 200
-            result.responseJson should be(ujson.read(
-              s"""
-                 |{
-                 |  "status": "FAILED",
-                 |  "message": "Cannot reload new settings: Errors:\\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
-                 |}
-                 |""".stripMargin
-            ))
+            result.responseJson should be(
+              ujson.read(
+                s"""
+                   |{
+                   |  "status": "FAILED",
+                   |  "message": "Cannot reload new settings: Errors:\\nThere was a problem with 'ldap1' LDAP connection to: ldap://localhost:389"
+                   |}
+                   |""".stripMargin
+              )
+            )
           }
         }
       }
@@ -875,14 +927,16 @@ trait BaseAdminApiSuite
 
         val dev1SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"), esVersionUsed,
+            client.basicAuthClient("admin1", "pass"),
+            esVersionUsed,
             Map("x-ror-impersonating" -> "dev1")
           )
         }
 
         val dev2SearchManagers = testClients.map { client =>
           new SearchManager(
-            client.basicAuthClient("admin1", "pass"), esVersionUsed,
+            client.basicAuthClient("admin1", "pass"),
+            esVersionUsed,
             Map("x-ror-impersonating" -> "dev2")
           )
         }
@@ -971,7 +1025,10 @@ trait BaseAdminApiSuite
           }
         }
         "return index settings" when {
-          "only main settings in the index, audit is configured (with data stream audit)" excludeES(allEs6x, allEs7xBelowEs79x) in {
+          "only main settings in the index, audit is configured (with data stream audit)" excludeES (
+            allEs6x,
+            allEs7xBelowEs79x
+          ) in {
             def forceReloadMainSettings(mainSettingsYaml: String) = {
               updateRorMainSettings(rorClients.head, mainSettingsYaml)
               assertSettingsInIndex(expectedSettings = mainSettingsYaml)
@@ -984,7 +1041,8 @@ trait BaseAdminApiSuite
               assertTestSettingsNotConfigured(rorApiManager)
             }
 
-            val settings = getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation_and_data_stream_audit.yml")
+            val settings =
+              getResourceContent("/admin_api/readonlyrest_first_update_with_impersonation_and_data_stream_audit.yml")
             forceReloadMainSettings(settings)
 
             eventually {
@@ -993,20 +1051,20 @@ trait BaseAdminApiSuite
                 assertAuditConfig(
                   rorApiManager,
                   expectedAuditConfig = """
-                    |{
-                    |  "status":"ok",
-                    |  "local_audit_indexes": [
-                    |    {"index_pattern": "custom_template_*", "schema":"rorDefault"},
-                    |    {"index_pattern": "readonlyrest_audit-*", "schema":"ecsV1"}
-                    |  ],
-                    |  "local_data_streams": [
-                    |    {"name": "custom_audit_data_stream", "schema":"ecsV1"}
-                    |  ],
-                    |  "other_audit_outputs": [
-                    |    {"description": "Logger with name [readonlyrest_audit]"}
-                    |  ]
-                    |}
-                    |""".stripMargin
+                                          |{
+                                          |  "status":"ok",
+                                          |  "local_audit_indexes": [
+                                          |    {"index_pattern": "custom_template_*", "schema":"rorDefault"},
+                                          |    {"index_pattern": "readonlyrest_audit-*", "schema":"ecsV1"}
+                                          |  ],
+                                          |  "local_data_streams": [
+                                          |    {"name": "custom_audit_data_stream", "schema":"ecsV1"}
+                                          |  ],
+                                          |  "other_audit_outputs": [
+                                          |    {"description": "Logger with name [readonlyrest_audit]"}
+                                          |  ]
+                                          |}
+                                          |""".stripMargin
                 )
                 assertTestSettingsNotConfigured(rorApiManager)
               }
@@ -1033,20 +1091,19 @@ trait BaseAdminApiSuite
                 assertInIndexSettingsPresent(rorApiManager, settings)
                 assertAuditConfig(
                   rorApiManager,
-                  expectedAuditConfig =
-                    """
-                      |{
-                      |  "status":"ok",
-                      |  "local_audit_indexes": [
-                      |    {"index_pattern": "custom_template_*", "schema":"rorDefault"},
-                      |    {"index_pattern": "readonlyrest_audit-*", "schema":"ecsV1"}
-                      |  ],
-                      |  "local_data_streams": [],
-                      |  "other_audit_outputs": [
-                      |    {"description": "Logger with name [readonlyrest_audit]"}
-                      |  ]
-                      |}
-                      |""".stripMargin
+                  expectedAuditConfig = """
+                                          |{
+                                          |  "status":"ok",
+                                          |  "local_audit_indexes": [
+                                          |    {"index_pattern": "custom_template_*", "schema":"rorDefault"},
+                                          |    {"index_pattern": "readonlyrest_audit-*", "schema":"ecsV1"}
+                                          |  ],
+                                          |  "local_data_streams": [],
+                                          |  "other_audit_outputs": [
+                                          |    {"description": "Logger with name [readonlyrest_audit]"}
+                                          |  ]
+                                          |}
+                                          |""".stripMargin
                 )
                 assertTestSettingsNotConfigured(rorApiManager)
               }
@@ -1111,15 +1168,16 @@ trait BaseAdminApiSuite
     PatienceConfig(timeout = settingsReloadInterval.plus(10 seconds), interval = 1 second)
 
   protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
-    (esVersion: String, adminRestClient: RestClient) => {
-      val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager
-        .createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
-        .force()
-      documentManager
-        .createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
-        .force()
-    }
+    (esVersion: String, adminRestClient: RestClient) =>
+      {
+        val documentManager = new DocumentManager(adminRestClient, esVersion)
+        documentManager
+          .createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
+          .force()
+        documentManager
+          .createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+          .force()
+      }
   }
 
   private def assertSettingsInIndex(expectedSettings: String) = {
@@ -1140,11 +1198,9 @@ trait BaseAdminApiSuite
     indexSearchResponse should have statusCode 200
     val indexSearchHits = indexSearchResponse.responseJson("hits")("hits").arr.toList
     indexSearchHits.size should be >= 1 // at least main document or test document should be present
-    val testSettingsDocumentHit = indexSearchHits
-      .find { searchResult =>
-        (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
-      }
-      .value
+    val testSettingsDocumentHit = indexSearchHits.find { searchResult =>
+      (searchResult("_index").str, searchResult("_id").str) === (readonlyrestIndexName, testSettingsEsDocumentId)
+    }.value
 
     val testSettingsDocumentContent = testSettingsDocumentHit("_source")
     testSettingsDocumentContent("settings").str should be(expectedSettings)
@@ -1160,27 +1216,31 @@ trait BaseAdminApiSuite
   private def assertNoRorSettingsInIndex(rorApiManager: RorApiManager) = {
     val result = rorApiManager.getRorInIndexSettings
     result should have statusCode 200
-    result.responseJson should be(ujson.read(
-      """
-        |{
-        |  "status": "empty",
-        |  "message": "Cannot find ReadonlyREST settings index"
-        |}
-        |""".stripMargin
-    ))
+    result.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "status": "empty",
+          |  "message": "Cannot find ReadonlyREST settings index"
+          |}
+          |""".stripMargin
+      )
+    )
   }
 
   private def assertNoDocumentWithMainRorSettingsInIndex(rorApiManager: RorApiManager) = {
     val result = rorApiManager.getRorInIndexSettings
     result should have statusCode 200
-    result.responseJson should be(ujson.read(
-      """
-        |{
-        |  "status": "ko",
-        |  "message": "Cannot found document with ReadonlyREST settings"
-        |}
-        |""".stripMargin
-    ))
+    result.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "status": "empty",
+          |  "message": "Cannot found document with ReadonlyREST settings"
+          |}
+          |""".stripMargin
+      )
+    )
   }
 
   private def assertInIndexSettingsPresent(rorApiManager: RorApiManager, settings: String) = {
@@ -1199,20 +1259,24 @@ trait BaseAdminApiSuite
   private def assertTestSettingsNotConfigured(rorApiManager: RorApiManager) = {
     val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
-    response.responseJson should be(ujson.read(
-      """
-        |{
-        |  "status": "TEST_SETTINGS_NOT_CONFIGURED",
-        |  "message": "ROR Test settings are not configured"
-        |}
-        |""".stripMargin
-    ))
+    response.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "status": "TEST_SETTINGS_NOT_CONFIGURED",
+          |  "message": "ROR Test settings are not configured"
+          |}
+          |""".stripMargin
+      )
+    )
   }
 
-  private def assertTestSettingsPresent(rorApiManager: RorApiManager,
-                                        testSettings: String,
-                                        expectedTtl: String,
-                                        expectedWarningsJson: Value = ujson.read("[]")) = {
+  private def assertTestSettingsPresent(
+      rorApiManager: RorApiManager,
+      testSettings: String,
+      expectedTtl: String,
+      expectedWarningsJson: Value = ujson.read("[]")
+  ) = {
     val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be("TEST_SETTINGS_PRESENT")
@@ -1222,9 +1286,11 @@ trait BaseAdminApiSuite
     response.responseJson("warnings") should be(expectedWarningsJson)
   }
 
-  private def assertTestSettingsInvalidated(rorApiManager: RorApiManager,
-                                            testSettingsYaml: String,
-                                            expectedTtl: String) = {
+  private def assertTestSettingsInvalidated(
+      rorApiManager: RorApiManager,
+      testSettingsYaml: String,
+      expectedTtl: String
+  ) = {
     val response = rorApiManager.currentRorTestSettings
     response should have statusCode 200
     response.responseJson("status").str should be("TEST_SETTINGS_INVALIDATED")
@@ -1233,10 +1299,12 @@ trait BaseAdminApiSuite
     response.responseJson("ttl").str should be(expectedTtl)
   }
 
-  private def updateRorTestSettings(rorApiManager: RorApiManager,
-                                    testSettingsYaml: String,
-                                    settingsTtl: FiniteDuration,
-                                    expectedWarningsJson: Value = ujson.read("[]")) = {
+  private def updateRorTestSettings(
+      rorApiManager: RorApiManager,
+      testSettingsYaml: String,
+      settingsTtl: FiniteDuration,
+      expectedWarningsJson: Value = ujson.read("[]")
+  ) = {
     val response = rorApiManager.updateRorTestSettings(testSettingsYaml, settingsTtl)
     response should have statusCode 200
     response.responseJson("status").str should be("OK")
@@ -1248,51 +1316,57 @@ trait BaseAdminApiSuite
   private def updateRorMainSettings(rorApiManager: RorApiManager, mainSettingsYaml: String) = {
     val result = rorApiManager.updateRorInIndexSettings(mainSettingsYaml)
     result should have statusCode 200
-    result.responseJson should be(ujson.read(
-      """
-        |{
-        |  "status": "ok",
-        |  "message": "updated settings"
-        |}
-        |""".stripMargin
-    ))
+    result.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "status": "ok",
+          |  "message": "updated settings"
+          |}
+          |""".stripMargin
+      )
+    )
   }
 
   private def invalidateRorTestSettings(rorApiManager: RorApiManager) = {
     val response = rorApiManager.invalidateRorTestSettings()
     response should have statusCode 200
-    response.responseJson should be(ujson.read(
-      """
-        |{
-        |  "status": "OK",
-        |  "message": "ROR Test settings are invalidated"
-        |}
-        |""".stripMargin
-    ))
+    response.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "status": "OK",
+          |  "message": "ROR Test settings are invalidated"
+          |}
+          |""".stripMargin
+      )
+    )
   }
 
   private def assertTestSettingsNotConfigured(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 403
-    results.responseJson should be(ujson.read(
-      """
-        |{
-        |  "error":{
-        |    "root_cause":[
-        |      {
-        |        "type":"forbidden_response",
-        |        "reason":"Forbidden by ReadonlyREST",
-        |        "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
-        |      }
-        |    ],
-        |    "type":"forbidden_response",
-        |    "reason":"Forbidden by ReadonlyREST",
-        |    "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
-        |  },
-        |  "status":403
-        |}
-        |""".stripMargin
-    ))
+    results.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "error":{
+          |    "root_cause":[
+          |      {
+          |        "type":"forbidden_response",
+          |        "reason":"Forbidden by ReadonlyREST",
+          |        "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+          |      }
+          |    ],
+          |    "type":"forbidden_response",
+          |    "reason":"Forbidden by ReadonlyREST",
+          |    "due_to":"TEST_SETTINGS_NOT_CONFIGURED"
+          |  },
+          |  "status":403
+          |}
+          |""".stripMargin
+      )
+    )
   }
 
   private def assertAllowedSearch(sm: SearchManager, indexName: String) = {
@@ -1314,76 +1388,82 @@ trait BaseAdminApiSuite
         "no such index"
       }
 
-    results.responseJson should be(ujson.read(
-      s"""
-         |{
-         |  "error":{
-         |    "root_cause":[
-         |      {
-         |        "type":"index_not_found_exception",
-         |        "reason":"$reason",
-         |        "resource.type":"index_or_alias",
-         |        "resource.id":"$generatedIndex",
-         |        "index_uuid":"_na_",
-         |        "index":"$generatedIndex"
-         |      }
-         |    ],
-         |    "type":"index_not_found_exception",
-         |    "reason":"$reason",
-         |    "resource.type":"index_or_alias",
-         |    "resource.id":"$generatedIndex",
-         |    "index_uuid":"_na_",
-         |    "index":"$generatedIndex"
-         |  },
-         |  "status":404
-         |}""".stripMargin
-    ))
+    results.responseJson should be(
+      ujson.read(
+        s"""
+           |{
+           |  "error":{
+           |    "root_cause":[
+           |      {
+           |        "type":"index_not_found_exception",
+           |        "reason":"$reason",
+           |        "resource.type":"index_or_alias",
+           |        "resource.id":"$generatedIndex",
+           |        "index_uuid":"_na_",
+           |        "index":"$generatedIndex"
+           |      }
+           |    ],
+           |    "type":"index_not_found_exception",
+           |    "reason":"$reason",
+           |    "resource.type":"index_or_alias",
+           |    "resource.id":"$generatedIndex",
+           |    "index_uuid":"_na_",
+           |    "index":"$generatedIndex"
+           |  },
+           |  "status":404
+           |}""".stripMargin
+      )
+    )
   }
 
   private def assertOperationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 403
-    results.responseJson should be(ujson.read(
-      """
-        |{
-        |  "error":{
-        |    "root_cause":[
-        |      {
-        |        "type":"forbidden_response",
-        |        "reason":"Forbidden by ReadonlyREST",
-        |        "due_to":"OPERATION_NOT_ALLOWED"
-        |      }
-        |    ],
-        |  "type":"forbidden_response",
-        |  "reason":"Forbidden by ReadonlyREST",
-        |  "due_to":"OPERATION_NOT_ALLOWED"
-        |  },
-        |  "status":403
-        |}""".stripMargin
-    ))
+    results.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "error":{
+          |    "root_cause":[
+          |      {
+          |        "type":"forbidden_response",
+          |        "reason":"Forbidden by ReadonlyREST",
+          |        "due_to":"OPERATION_NOT_ALLOWED"
+          |      }
+          |    ],
+          |  "type":"forbidden_response",
+          |  "reason":"Forbidden by ReadonlyREST",
+          |  "due_to":"OPERATION_NOT_ALLOWED"
+          |  },
+          |  "status":403
+          |}""".stripMargin
+      )
+    )
   }
 
   private def assertImpersonationNotAllowed(sm: SearchManager, indexName: String) = {
     val results = sm.search(indexName)
     results should have statusCode 403
-    results.responseJson should be(ujson.read(
-      """
-        |{
-        |  "error":{
-        |    "root_cause":[
-        |      {
-        |        "type":"forbidden_response",
-        |        "reason":"Forbidden by ReadonlyREST",
-        |        "due_to":"IMPERSONATION_NOT_ALLOWED"
-        |      }
-        |    ],
-        |  "type":"forbidden_response",
-        |  "reason":"Forbidden by ReadonlyREST",
-        |  "due_to":"IMPERSONATION_NOT_ALLOWED"
-        |  },
-        |  "status":403
-        |}""".stripMargin
-    ))
+    results.responseJson should be(
+      ujson.read(
+        """
+          |{
+          |  "error":{
+          |    "root_cause":[
+          |      {
+          |        "type":"forbidden_response",
+          |        "reason":"Forbidden by ReadonlyREST",
+          |        "due_to":"IMPERSONATION_NOT_ALLOWED"
+          |      }
+          |    ],
+          |  "type":"forbidden_response",
+          |  "reason":"Forbidden by ReadonlyREST",
+          |  "due_to":"IMPERSONATION_NOT_ALLOWED"
+          |  },
+          |  "status":403
+          |}""".stripMargin
+      )
+    )
   }
 
   private def rorClients = {
@@ -1393,8 +1473,8 @@ trait BaseAdminApiSuite
   }
 
   private def testClients = {
-    clients
-      .toList
+    clients.toList
       .dropRight(1)
   }
+
 }

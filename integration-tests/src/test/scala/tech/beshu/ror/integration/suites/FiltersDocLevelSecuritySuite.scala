@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 //TODO change test names. Current names are copies from old java integration tests
 class FiltersDocLevelSecuritySuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -40,7 +40,8 @@ class FiltersDocLevelSecuritySuite
 
   "testDirectSingleIdxa" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfiltera")
@@ -56,7 +57,8 @@ class FiltersDocLevelSecuritySuite
 
   "testHeaderReplacement" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "put-the-header", "x-randomheader" -> "value")
     )
     val response = searchManager.search("testfiltera")
@@ -72,7 +74,8 @@ class FiltersDocLevelSecuritySuite
 
   "testStar" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "star")
     )
     val response = searchManager.search("testfiltera")
@@ -88,7 +91,8 @@ class FiltersDocLevelSecuritySuite
 
   "testDirectMultipleIdxbandc" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterbandc")
@@ -104,7 +108,8 @@ class FiltersDocLevelSecuritySuite
 
   "testDirectSingleIdxd" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
     val response = searchManager.search("testfilterd")
@@ -125,14 +130,16 @@ class FiltersDocLevelSecuritySuite
 
   "tesANoCache" in {
     val searchManager = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "a_nofilter")
     )
     val firstResponse = searchManager.search("testfiltera")
     firstResponse should have statusCode 200
 
     val searchManager2 = new SearchManager(
-      adminClient, esVersionUsed,
+      adminClient,
+      esVersionUsed,
       Map("x-api-key" -> "g")
     )
 
@@ -146,9 +153,11 @@ class FiltersDocLevelSecuritySuite
     response.body.contains("c1") shouldBe false
     response.body.contains("c2") shouldBe false
   }
+
 }
 
 object FiltersDocLevelSecuritySuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val docId = AtomicInt(0)
@@ -173,4 +182,5 @@ object FiltersDocLevelSecuritySuite {
         .force()
     }
   }
+
 }

@@ -163,17 +163,20 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]],
-                              requestHeaders: Set[Header]) =
+  private def assertMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]], requestHeaders: Set[Header]) =
     assertRule(configuredHeaders, requestHeaders, isMatched = true)
 
-  private def assertNotMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]],
-                                 requestHeaders: Set[Header]) =
+  private def assertNotMatchRule(
+      configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+      requestHeaders: Set[Header]
+  ) =
     assertRule(configuredHeaders, requestHeaders, isMatched = false)
 
-  private def assertRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]],
-                         requestHeaders: Set[Header],
-                         isMatched: Boolean) = {
+  private def assertRule(
+      configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+      requestHeaders: Set[Header],
+      isMatched: Boolean
+  ) = {
     val rule = new HeadersOrRule(HeadersOrRule.Settings(configuredHeaders))
     val restRequest = mock[RestRequest]
     (() => restRequest.allHeaders).expects().returning(requestHeaders)
@@ -193,4 +196,5 @@ class HeaderOrRuleTests extends AnyWordSpec with MockFactory {
       else Denied(NotAuthorized)
     }
   }
+
 }

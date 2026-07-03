@@ -27,10 +27,10 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class MiscSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
-    with ESVersionSupportForAnyWordSpecLike 
+    with ESVersionSupportForAnyWordSpecLike
     with CustomScalaTestMatchers {
 
   override implicit val rorSettingsFileName: String = "/misc/readonlyrest.yml"
@@ -60,8 +60,9 @@ class MiscSuite
       response should have statusCode 200
     }
   }
+
   "Warning response header" should {
-    "be exposed in ror response" excludeES(allEs6x, allEs8x, allEs9x) in {
+    "be exposed in ror response" excludeES (allEs6x, allEs8x, allEs9x) in {
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       val indexResponse = adminIndexManager.createIndex(
         index = "typed_index",
@@ -69,17 +70,21 @@ class MiscSuite
           "master_timeout" -> "30s",
           "include_type_name" -> "true",
           "timeout" -> "30s",
-        ))
+        )
+      )
 
       indexResponse should have statusCode 200
       val warningHeader = indexResponse.headers.collectFirst { case SimpleHeader("Warning", value) => value }.get
-      warningHeader should include("[types removal] Using include_type_name in create index requests is deprecated. The parameter will be removed in the next major version.")
+      warningHeader should include(
+        "[types removal] Using include_type_name in create index requests is deprecated. The parameter will be removed in the next major version."
+      )
     }
   }
+
   "JWT auth and filter variable case" in {
     val searchManager = new SearchManager(
       tokenAuthClient(
-      """Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwidXNlcklkIjoidXNlcjUiLCJ1c2VyX2lkX2xpc3QiOlsiYWxpY2UiLCJib2IiXX0.aPtoDBPTVhtLPmwSKO6g41NEs7qhEeDG53e4aeHMQ66avoBblkUuDYBB2nFlQCxi90lfwXRzdkFYvjhtqijBP98uz6-bs8HmlfOG6_DoZRlWy5FLtdAS7F7UReqKtQ36KjNI7-YJtSTyaiDwymXPxiP44e4jJ3kJy1yx7r3ALmX7wbys1JGrUTddWQW0GWY8p2bf-hpmUmuu8AUGjfIOqYBBFWLT-NyuTYTMGUZlF8yxoBlp8twMVrqqT6ejLRQwgVxIoFL1g04uMwXUDit2dCzk5qTMAim3U-8Cgol7gi_yR-23BPY_pOejK9QPseXhpKQ9sW7v_jnLMuaI86jLhA"""
+        """Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwidXNlcklkIjoidXNlcjUiLCJ1c2VyX2lkX2xpc3QiOlsiYWxpY2UiLCJib2IiXX0.aPtoDBPTVhtLPmwSKO6g41NEs7qhEeDG53e4aeHMQ66avoBblkUuDYBB2nFlQCxi90lfwXRzdkFYvjhtqijBP98uz6-bs8HmlfOG6_DoZRlWy5FLtdAS7F7UReqKtQ36KjNI7-YJtSTyaiDwymXPxiP44e4jJ3kJy1yx7r3ALmX7wbys1JGrUTddWQW0GWY8p2bf-hpmUmuu8AUGjfIOqYBBFWLT-NyuTYTMGUZlF8yxoBlp8twMVrqqT6ejLRQwgVxIoFL1g04uMwXUDit2dCzk5qTMAim3U-8Cgol7gi_yR-23BPY_pOejK9QPseXhpKQ9sW7v_jnLMuaI86jLhA"""
       ),
       esVersionUsed
     )
@@ -91,6 +96,7 @@ class MiscSuite
     result.searchHits.size should be(1)
     result.searchHits(0)("_source")("user_id").str should be("alice")
   }
+
   "Main endpoint" should {
     "be protected" in {
       val unknownUserCatManager = new CatManager(basicAuthClient("unknown", "unknown"), esVersion = esVersionUsed)
@@ -98,12 +104,15 @@ class MiscSuite
       response should have statusCode 403
     }
   }
+
 }
 
 object MiscSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createDoc("index1", 1, ujson.read("""{"user_id":"ivan"}""")).force()
     documentManager.createDoc("index1", 2, ujson.read("""{"user_id":"alice"}""")).force()
   }
+
 }

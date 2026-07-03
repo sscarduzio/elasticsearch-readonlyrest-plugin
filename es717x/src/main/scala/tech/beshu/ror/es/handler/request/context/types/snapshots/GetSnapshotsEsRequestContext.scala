@@ -34,20 +34,23 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.jdk.CollectionConverters.*
 
-class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
-                                   esContext: EsContext,
-                                   override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, threadPool) {
+class GetSnapshotsEsRequestContext(
+    actionRequest: GetSnapshotsRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request
-      .snapshots().asSafeSet
+      .snapshots()
+      .asSafeSet
       .flatMap(SnapshotName.from)
   }
 
   override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = {
     request
-      .repositories().asSafeSet
+      .repositories()
+      .asSafeSet
       .flatMap(RepositoryName.from)
   }
 
@@ -63,10 +66,12 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       case Right(_) =>
         ModificationResult.UpdateResponse.sync {
           case r: GetSnapshotsResponse => updateGetSnapshotResponse(r, blockContext.allAllowedIndices)
-          case r => r
+          case r                       => r
         }
       case Left(_) =>
-        logger.error(s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(
+          s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible."
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -74,29 +79,32 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
     UniqueNonEmptyList.from(blockContext.snapshots) match {
       case Some(list) => Right(list)
-      case None => Left(())
+      case None       => Left(())
     }
   }
 
   private def repositoriesFrom(blockContext: SnapshotRequestBlockContext) = {
     UniqueNonEmptyList.from(blockContext.repositories) match {
       case Some(list) => Right(list)
-      case None => Left(())
+      case None       => Left(())
     }
   }
 
-  private def update(actionRequest: GetSnapshotsRequest,
-                     snapshots: UniqueNonEmptyList[SnapshotName],
-                     repositories: UniqueNonEmptyList[RepositoryName]) = {
+  private def update(
+      actionRequest: GetSnapshotsRequest,
+      snapshots: UniqueNonEmptyList[SnapshotName],
+      repositories: UniqueNonEmptyList[RepositoryName]
+  ) = {
     actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
     actionRequest.repositories(repositories.toList.map(RepositoryName.toString).toArray: _*)
   }
 
-  private def updateGetSnapshotResponse(response: GetSnapshotsResponse,
-                                        allAllowedIndices: Set[ClusterIndexName]): GetSnapshotsResponse = {
+  private def updateGetSnapshotResponse(
+      response: GetSnapshotsResponse,
+      allAllowedIndices: Set[ClusterIndexName]
+  ): GetSnapshotsResponse = {
     val matcher = PatternsMatcher.create(allAllowedIndices)
-    response
-      .getSnapshots.asSafeList
+    response.getSnapshots.asSafeList
       .foreach { snapshot =>
         val snapshotIndices = snapshot.indices().asSafeList.flatMap(ClusterIndexName.fromString)
         val filteredSnapshotIndices = matcher.filter(snapshotIndices)
@@ -105,4 +113,5 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       }
     response
   }
+
 }

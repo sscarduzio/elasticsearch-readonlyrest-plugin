@@ -24,16 +24,25 @@ class IndexAttributeFilterTests extends AnyWordSpec {
 
   "IndexAttributeFilter.from" should {
     "expand to all attributes when both wildcards are expanded" in {
-      IndexAttributeFilter.from(expandWildcardsOpen = true, expandWildcardsClosed = true) should be(IndexAttributeFilter.All)
+      IndexAttributeFilter.from(expandWildcardsOpen = true, expandWildcardsClosed = true) should be(
+        IndexAttributeFilter.All
+      )
     }
     "expand to all attributes when no wildcards are expanded (no attribute restriction)" in {
-      IndexAttributeFilter.from(expandWildcardsOpen = false, expandWildcardsClosed = false) should be(IndexAttributeFilter.All)
+      IndexAttributeFilter.from(expandWildcardsOpen = false, expandWildcardsClosed = false) should be(
+        IndexAttributeFilter.All
+      )
     }
     "restrict to opened indices when only the open wildcard is expanded" in {
-      IndexAttributeFilter.from(expandWildcardsOpen = true, expandWildcardsClosed = false) should be(IndexAttributeFilter.Opened)
+      IndexAttributeFilter.from(expandWildcardsOpen = true, expandWildcardsClosed = false) should be(
+        IndexAttributeFilter.Opened
+      )
     }
     "restrict to closed indices when only the closed wildcard is expanded" in {
-      IndexAttributeFilter.from(expandWildcardsOpen = false, expandWildcardsClosed = true) should be(IndexAttributeFilter.Closed)
+      IndexAttributeFilter.from(expandWildcardsOpen = false, expandWildcardsClosed = true) should be(
+        IndexAttributeFilter.Closed
+      )
     }
   }
+
 }

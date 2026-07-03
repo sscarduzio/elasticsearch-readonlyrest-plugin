@@ -20,5 +20,4 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
-final case class CircuitBreakerConfig(maxFailures: Int Refined Positive,
-                                      resetDuration: PositiveFiniteDuration)
+final case class CircuitBreakerConfig(maxFailures: Int Refined Positive, resetDuration: PositiveFiniteDuration)

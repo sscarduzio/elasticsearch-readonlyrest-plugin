@@ -14,8 +14,8 @@ variables:
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
   isEpicBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
-  dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
-  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
+  dependencyCheckCacheKey: $[format('dependency-check-v2-{0:yyyyMM}', pipeline.startTime)]
+  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v2'
   # Use the Gradle home baked into the CI image (ci/toolchains/JdkToolchains.Dockerfile): it already contains the
   # Gradle distribution + resolved plugins/dependencies, so in the common (warm-cache) case builds make
   # no network calls to flaky external CDNs. Cache misses (e.g. a dep bumped since the last image
@@ -86,46 +86,77 @@ parameters:
       - 'run_all_tests_on_linux'
       - 'run_all_tests_on_windows'
       - 'build_toolchains_image'
+      - 'release_without_testing'
 
 pool:
   vmImage: 'ubuntu-24.04'
 
 stages:
 
+  # Cancels stale Azure Pipelines runs for the same PR: closes Azure's at-queue-time autoCancel race
+  # by cancelling older in-progress runs of the same PR (and self-cancelling if a newer run already
+  # exists). Runs FIRST so no agent time / container pull is wasted on a stale run. Only affects
+  # PullRequest runs; branch runs rely on `trigger.batch` and are skipped by the script.
+  - stage: SUPERSEDE_GUARD
+    displayName: 'Cancel stale PR runs'
+    dependsOn: [ ]
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job:
+        displayName: 'Cancel stale PR runs'
+        timeoutInMinutes: 5   # belt-and-suspenders: never let this step itself stall the pipeline
+        steps:
+          - checkout: self
+            fetchDepth: 1
+          - script: ci/stale-azure-pipeline-runs-canceler.sh
+            displayName: 'Cancel older runs for this PR'
+            env:
+              AZURE_BUILDS_API_TOKEN: $(System.AccessToken)
+
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
-    dependsOn: [ ]
-    condition: and(succeeded(), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
+    dependsOn: [ SUPERSEDE_GUARD ]
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
     jobs:
       - job:
         steps:
           - script: |
-              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
+              export ROR_ARTIFACTS_STORE_ENDPOINT_URL=$VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL
+              export ROR_ARTIFACTS_STORE_REGION=$VAR_ROR_ARTIFACTS_STORE_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
               export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
               export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
-              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
               export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               ci/upload-es-artifacts.sh
             continueOnError: true
             env:
-              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
+              VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL: $(ROR_ARTIFACTS_STORE_ENDPOINT_URL)
+              VAR_ROR_ARTIFACTS_STORE_REGION: $(ROR_ARTIFACTS_STORE_REGION)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
               VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
-              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
 
   # Builds & pushes the CI toolchains image (ci/toolchains/JdkToolchains.Dockerfile). Runs on the
   # weekly schedule (cache refresh) or manually with actionToPerform=build_toolchains_image after a
   # JDK/Gradle change (then bump the image tag in the `resources.containers` block above).
   - stage: BUILD_TOOLCHAINS_IMAGE
     displayName: 'Build & push CI toolchains image'
+    # Deliberately NOT gated on SUPERSEDE_GUARD: this stage only fires on Schedule/Manual (never a
+    # PR run, per the condition below), so it can never race a PR supersede — by design.
     dependsOn: [ ]
     condition:
       or(
@@ -159,13 +190,14 @@ stages:
 
   - stage: TOOLCHAINS_VERIFY
     displayName: 'Verify toolchains image'
-    dependsOn: [ ]
+    dependsOn: [ SUPERSEDE_GUARD ]
     condition:
       and(
-        succeeded(),
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         or(
           notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
-          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
+          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')),
+          and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'release_without_testing'))
         )
       )
     jobs:
@@ -190,8 +222,10 @@ stages:
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
+    # SUPERSEDE_GUARD gate: when this PR run is superseded the guard FAILS (exit 1), so the heavy
+    # stages must not run. Succeeded = newest PR run; Skipped = non-PR run (guard didn't apply).
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
         container: ror-toolchains
@@ -205,7 +239,7 @@ stages:
             inputs:
               key: '$(dependencyCheckCacheKey)'
               # prefix fallback to any prior cache entry
-              restoreKeys: dependency-check-v1-
+              restoreKeys: dependency-check-v2-
               path: $(dependencyCheckDataDir)
           - script: |
               echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
@@ -241,9 +275,10 @@ stages:
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
@@ -257,17 +292,23 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
-              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
               export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
         strategy:
           maxParallel: 99
           matrix:
@@ -277,12 +318,15 @@ stages:
               ROR_TASK: compile_codebase_check
             AUDIT_BUILD_CHECK:
               ROR_TASK: audit_build_check
+            FORMAT_CODE_CHECK:
+              ROR_TASK: format_code_check
 
   - stage: TEST
     displayName: 'Run all tests'
-    dependsOn: [ ES_S3_UP, TOOLCHAINS_VERIFY ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
@@ -309,11 +353,15 @@ stages:
             clean: false
             persistCredentials: true
           - script: |
+              # core_tests starts testcontainers too (LDAP/WireMock) — same Docker Hub rate limit as IT.
+              source ci/docker-hub-auth.sh
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: core_tests
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+              DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -855,12 +903,25 @@ stages:
     dependsOn:
       - REQUIRED_CHECKS
       - TEST
+    # Runs in two cases:
+    #  - auto release: a develop/master push where REQUIRED_CHECKS + TEST passed (the original gate);
+    #  - manual release-without-testing: REQUIRED_CHECKS/TEST are intentionally skipped, so we do NOT
+    #    require them — just the manual action on develop/master.
+    # In both cases EXTRACT_IS_RELEASE computes IsRelease, which the RELEASE_*/PUBLISH_MVN_* stages read.
     condition: |
       and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
+        or(
+          and(
+            notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
+            succeeded('REQUIRED_CHECKS'),
+            succeeded('TEST')
+          ),
+          and(
+            eq(variables['Build.Reason'], 'Manual'),
+            eq('${{ parameters.actionToPerform }}', 'release_without_testing')
+          )
+        )
       )
     jobs:
       - job: EXTRACT_IS_RELEASE
@@ -890,11 +951,6 @@ stages:
       )
     jobs:
       - job:
-        # Self-hosted Default pool + toolchains container: agents sit next to the
-        # artifact storage (fast uploads) and the container has all 4 JDKs + baked
-        # cache, removing the bare-agent JDK-discovery / lost-cache risks (review).
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 600
         steps:
@@ -905,14 +961,18 @@ stages:
           - script: |
               set -e
 
-              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
+              export ROR_ARTIFACTS_STORE_ENDPOINT_URL=$VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL
+              export ROR_ARTIFACTS_STORE_REGION=$VAR_ROR_ARTIFACTS_STORE_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
               export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
               export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
-              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
               export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
               export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
@@ -923,14 +983,18 @@ stages:
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
             env:
-              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
+              VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL: $(ROR_ARTIFACTS_STORE_ENDPOINT_URL)
+              VAR_ROR_ARTIFACTS_STORE_REGION: $(ROR_ARTIFACTS_STORE_REGION)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
               VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
               VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
-              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
               VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
@@ -964,48 +1028,49 @@ stages:
       )
     jobs:
       - job:
-        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
-        pool:
-          name: 'Default'
         container: ror-toolchains
         timeoutInMinutes: 180
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-            timeoutInMinutes: 180
-          - script: |
-              set -e
+          - template: ci/azure-templates/release-ror-steps.yml
 
-              export ROR_ARTIFACTS_STORE_URL_OR_REGION=$VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION
-              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
-              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
-              export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
-              export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
-              export ROR_LIBS_STORE_URL=$VAR_ROR_LIBS_STORE_URL
-              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
-              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+        strategy:
+          maxParallel: 99
+          matrix:
+            RELEASE_ES_9xx:
+              ROR_TASK: release_es9xx
+            RELEASE_ES_8xx:
+              ROR_TASK: release_es8xx
+            RELEASE_ES_7xx:
+              ROR_TASK: release_es7xx
+            RELEASE_ES_6xx:
+              ROR_TASK: release_es6xx
 
-              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
-                echo "Error: Failed to login to Docker registry"
-                exit 1
-              fi
-
-              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
-            env:
-              VAR_ROR_ARTIFACTS_STORE_URL_OR_REGION: $(ROR_ARTIFACTS_STORE_URL_OR_REGION)
-              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
-              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
-              VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
-              VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
-              VAR_ROR_LIBS_STORE_URL: $(ROR_LIBS_STORE_URL)
-              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
-              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+  # Runs the full release flow (build + S3 upload + Docker publish + git tag) identical to
+  # RELEASE_ROR but skips the test suite. Use when the code is already validated and you
+  # need to ship immediately (e.g. after a failed release that only needs a re-run, or when
+  # tests have already passed on a prior run). Triggered manually only.
+  - stage: RELEASE_ROR_WITHOUT_TESTING
+    displayName: 'Release ROR plugins (without testing)'
+    dependsOn:
+      - DETERMINE_CI_TYPE
+      - TOOLCHAINS_VERIFY
+    condition: |
+      and(
+        succeeded('DETERMINE_CI_TYPE'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues'),
+        eq(variables['Build.Reason'], 'Manual'),
+        eq('${{ parameters.actionToPerform }}', 'release_without_testing'),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+      )
+    jobs:
+      - job:
+        container: ror-toolchains
+        timeoutInMinutes: 180
+        steps:
+          - template: ci/azure-templates/release-ror-steps.yml
+            parameters:
+              phase: RELEASE_ROR_WITHOUT_TESTING
 
         strategy:
           maxParallel: 99
@@ -1034,53 +1099,31 @@ stages:
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
         notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
+
     jobs:
       - job:
-        # Self-hosted "Default" pool + toolchains container (see UPLOAD_PRE_ROR).
-        # Maven publish compiles :audit (JDK 8) / :core (JDK 11); the container
-        # supplies those toolchains + the baked Gradle cache.
-        pool:
-          name: 'Default'
         container: ror-toolchains
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          # NOTE: the old pre-check here probed the decommissioned oss.sonatype.org endpoint; it
-          # returned neither 200 nor 404, so every gated step silently SKIPPED and releases could
-          # ship without Maven artifacts while the stage stayed green. Removed: run-pipeline.sh's
-          # publish_maven_artifacts already does the artifact-existence check correctly (against
-          # repo1.maven.org) and skips/publishes accordingly.
-          - task: DownloadSecureFile@1
-            name: pgp
-            displayName: 'Download secret.pgp secret file'
-            inputs:
-              secureFile: 'secret.pgp'
+          - template: ci/azure-templates/publish-mvn-steps.yml
 
-          - script: |
-              # Runs inside the toolchains container as root, so no sudo needed (and the image
-              # does not ship sudo). Previously this stage ran on a bare agent where sudo existed.
-              echo Installing $(pgp.secureFilePath) to directory...
-              chown root:root $(pgp.secureFilePath)
-              chmod a+r $(pgp.secureFilePath)
-              mkdir .travis
-              ln -s -t .travis/ $(pgp.secureFilePath)
-              echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
-
-          - script: |
-              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
-              export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
-              export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
-              export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
-              export GPG_KEY_ID=$VAR_GPG_KEY_ID
-              export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
-              echo ">>> ($ROR_TASK) Publishing MVN artifacts" && ci/run-pipeline.sh
-            env:
-              ROR_TASK: publish_maven_artifacts
-              VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
-              VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
-              VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
-              VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
-              VAR_GPG_KEY_ID: $(GPG_KEY_ID)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+  - stage: PUBLISH_MVN_ARTIFACTS_WITHOUT_TESTING
+    displayName: 'Publish Maven artifacts (without testing)'
+    dependsOn:
+      - DETERMINE_CI_TYPE
+      - TOOLCHAINS_VERIFY
+    condition: |
+      and(
+        succeeded('DETERMINE_CI_TYPE'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues'),
+        eq(variables['Build.Reason'], 'Manual'),
+        eq('${{ parameters.actionToPerform }}', 'release_without_testing'),
+        eq(variables.isMaster, true),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+      )
+    jobs:
+      - job:
+        container: ror-toolchains
+        steps:
+          - template: ci/azure-templates/publish-mvn-steps.yml
+            parameters:
+              phase: MVN_PUBLISH_WITHOUT_TESTING

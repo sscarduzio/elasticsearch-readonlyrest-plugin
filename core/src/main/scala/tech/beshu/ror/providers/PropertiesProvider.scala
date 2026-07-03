@@ -38,6 +38,5 @@ object JvmPropertiesProvider extends PropertiesProvider {
   override def hasPropertyWithPrefix(prefix: String): Boolean = {
     Try(System.getProperties.stringPropertyNames().stream().anyMatch(_.startsWith(prefix))).getOrElse(false)
   }
+
 }
-
-
