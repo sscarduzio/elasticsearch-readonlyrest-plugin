@@ -26,7 +26,7 @@ public class Tuple<A, B> {
     this.v2 = v2;
   }
 
-  public static <A, B>  Tuple<A, B> from(A v1, B v2) {
+  public static <A, B> Tuple<A, B> from(A v1, B v2) {
     return new Tuple<>(v1, v2);
   }
 

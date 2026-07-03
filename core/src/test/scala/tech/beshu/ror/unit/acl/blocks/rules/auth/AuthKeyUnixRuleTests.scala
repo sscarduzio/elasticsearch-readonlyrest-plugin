@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
 class AuthKeyUnixRuleTests
-  extends BasicAuthenticationTestTemplate(supportingImpersonation = true, isUsernameMaskedByRule = false) {
+    extends BasicAuthenticationTestTemplate(supportingImpersonation = true, isUsernameMaskedByRule = false) {
 
   override protected def ruleName: String = classOf[AuthKeyUnixRuleTests].getSimpleName
 
@@ -33,8 +33,10 @@ class AuthKeyUnixRuleTests
         AuthKeyUnixRule.UnixHashedCredentials(
           User.Id("logstash"),
           "$6$rounds=65535$d07dnv4N$jh8an.nDSXG6PZlfVh5ehigYL8.5gtV.9yoXAOYFHTQvwPWhBdEIOxnS8tpbuIAk86shjJiqxeap5o0A1PoFI/"
-        )),
+        )
+      ),
       CaseSensitivity.Enabled,
       impersonation
     )
+
 }

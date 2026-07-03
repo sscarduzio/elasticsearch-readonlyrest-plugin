@@ -29,10 +29,11 @@ import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsReques
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionRequest: R,
-                                                                    esContext: EsContext,
-                                                                    override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[RepositoryRequestBlockContext](esContext)
+abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](
+    actionRequest: R,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[RepositoryRequestBlockContext](esContext)
     with EsRequest[RepositoryRequestBlockContext] {
 
   override def initialBlockContext(block: Block): RepositoryRequestBlockContext = RepositoryRequestBlockContext(
@@ -60,4 +61,3 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
 
   protected def update(request: R, repositories: NonEmptyList[RepositoryName]): ModificationResult
 }
-

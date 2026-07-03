@@ -39,30 +39,36 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, basicAuthHeader, impersonationHeader, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
-                                               isUsernameMaskedByRule: Boolean)
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean, isUsernameMaskedByRule: Boolean)
+    extends AnyWordSpec
+    with Inside
+    with BlockContextAssertion {
 
   protected def ruleName: String
 
   protected def ruleCreator: Impersonation => BasicAuthenticationRule[_]
 
   private lazy val ruleWithoutImpersonation = ruleCreator(Impersonation.Disabled)
-  private lazy val ruleWithImpersonation = ruleCreator(Impersonation.Enabled(ImpersonationSettings(
-    impersonators = List(
-      ImpersonatorDef(
-        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))),
-        authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin"), PlainTextSecret("admin"))),
-        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("logstash")))))
-      ),
-      ImpersonatorDef(
-        usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin2")))),
-        authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin2"), PlainTextSecret("admin2"))),
-        users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("test")))))
+
+  private lazy val ruleWithImpersonation = ruleCreator(
+    Impersonation.Enabled(
+      ImpersonationSettings(
+        impersonators = List(
+          ImpersonatorDef(
+            usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin")))),
+            authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin"), PlainTextSecret("admin"))),
+            users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("logstash")))))
+          ),
+          ImpersonatorDef(
+            usernames = UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("admin2")))),
+            authenticationRule = adminAuthenticationRule(Credentials(User.Id("admin2"), PlainTextSecret("admin2"))),
+            users = ImpersonatedUsers(UserIdPatterns(UniqueNonEmptyList.of(UserIdPattern(User.Id("test")))))
+          )
+        ),
+        mocksProvider = NoOpMocksProvider
       )
-    ),
-    mocksProvider = NoOpMocksProvider
-  )))
+    )
+  )
 
   s"An $ruleName" when {
     "impersonation is not configured" should {
@@ -73,15 +79,15 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-          val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+          val blockContext =
+            GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
           val result = ruleWithoutImpersonation.check(blockContext).runSyncUnsafe()
 
-          inside(result) {
-            case Permitted(blockContext) =>
-              assertBlockContext(blockContext)(
-                loggedUser = Some(DirectlyLoggedUser(Id("logstash")))
-              )
+          inside(result) { case Permitted(blockContext) =>
+            assertBlockContext(blockContext)(
+              loggedUser = Some(DirectlyLoggedUser(Id("logstash")))
+            )
           }
         }
       }
@@ -92,7 +98,8 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-          val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+          val blockContext =
+            GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
           ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(Denied {
             if (isUsernameMaskedByRule) AuthenticationFailed("Invalid username or/and password")
             else AuthenticationFailed("Invalid password")
@@ -104,8 +111,11 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
           val requestContext = mock[RequestContext]
           (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
           (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-          val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
-          ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(Denied(AuthenticationFailed("No basic auth credentials provided")))
+          val blockContext =
+            GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+          ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(
+            Denied(AuthenticationFailed("No basic auth credentials provided"))
+          )
         }
       }
     }
@@ -122,15 +132,20 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+              val blockContext = GeneralNonIndexRequestBlockContext(
+                mock[Block],
+                requestContext,
+                BlockMetadata.empty,
+                Set.empty,
+                List.empty
+              )
 
               val result = ruleWithImpersonation.check(blockContext).runSyncUnsafe()
 
-              inside(result) {
-                case Permitted(blockContext) =>
-                  assertBlockContext(blockContext)(
-                    loggedUser = Some(ImpersonatedUser(Id("logstash"), Id("admin")))
-                  )
+              inside(result) { case Permitted(blockContext) =>
+                assertBlockContext(blockContext)(
+                  loggedUser = Some(ImpersonatedUser(Id("logstash"), Id("admin")))
+                )
               }
             }
           }
@@ -144,8 +159,16 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
-              ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(Denied(AuthenticationFailed("Username mismatch")))
+              val blockContext = GeneralNonIndexRequestBlockContext(
+                mock[Block],
+                requestContext,
+                BlockMetadata.empty,
+                Set.empty,
+                List.empty
+              )
+              ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(
+                Denied(AuthenticationFailed("Username mismatch"))
+              )
             }
             "there is no such impersonator" in {
               val restRequest = mock[RestRequest]
@@ -156,8 +179,16 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
-              ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(Denied(AuthenticationFailed("Username mismatch")))
+              val blockContext = GeneralNonIndexRequestBlockContext(
+                mock[Block],
+                requestContext,
+                BlockMetadata.empty,
+                Set.empty,
+                List.empty
+              )
+              ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(
+                Denied(AuthenticationFailed("Username mismatch"))
+              )
             }
             "impersonator cannot impersonate the given user" in {
               val restRequest = mock[RestRequest]
@@ -168,8 +199,16 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
               val requestContext = mock[RequestContext]
               (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
               (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-              val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
-              ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(Denied(AuthenticationFailed("Username mismatch")))
+              val blockContext = GeneralNonIndexRequestBlockContext(
+                mock[Block],
+                requestContext,
+                BlockMetadata.empty,
+                Set.empty,
+                List.empty
+              )
+              ruleWithoutImpersonation.check(blockContext).runSyncUnsafe() should be(
+                Denied(AuthenticationFailed("Username mismatch"))
+              )
             }
           }
         }
@@ -184,7 +223,8 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
         val requestContext = mock[RequestContext]
         (() => requestContext.restRequest).expects().returning(restRequest).anyNumberOfTimes()
         (() => requestContext.id).expects().returning(RequestContext.Id.fromString("1")).anyNumberOfTimes()
-        val blockContext = GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+        val blockContext =
+          GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
 
         val result = ruleWithImpersonation.check(blockContext).runSyncUnsafe()
 
@@ -198,4 +238,5 @@ abstract class BasicAuthenticationTestTemplate(supportingImpersonation: Boolean,
     CaseSensitivity.Enabled,
     Impersonation.Disabled
   )
+
 }

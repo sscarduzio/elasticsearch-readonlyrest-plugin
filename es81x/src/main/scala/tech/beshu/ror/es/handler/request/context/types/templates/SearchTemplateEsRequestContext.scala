@@ -33,13 +33,17 @@ import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
-                                             esContext: EsContext,
-                                             aclContext: AccessControlStaticContext,
-                                             override implicit val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
-    actionRequest, esContext, aclContext, threadPool
-  ) {
+class SearchTemplateEsRequestContext private (
+    actionRequest: ActionRequest with CompositeIndicesRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override implicit val threadPool: ThreadPool
+) extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](
+      actionRequest,
+      esContext,
+      aclContext,
+      threadPool
+    ) {
 
   private lazy val searchTemplateRequest = new ReflectionBasedSearchTemplateRequest(actionRequest)
   private lazy val searchRequest = searchTemplateRequest.getRequest
@@ -47,24 +51,31 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
   override protected def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage =
     searchTemplateRequest.getRequest.checkFieldsUsage()
 
-  override protected def requestedIndicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    searchRequest
-      .indices.asSafeSet
+  override protected def requestedIndicesFrom(
+      request: ActionRequest with CompositeIndicesRequest
+  ): Set[RequestedIndex[ClusterIndexName]] = {
+    searchRequest.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[Filter],
-                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest with CompositeIndicesRequest,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
     searchTemplateRequest.setRequest(
-      searchRequest, filteredRequestedIndices, filter, fieldLevelSecurity
+      searchRequest,
+      filteredRequestedIndices,
+      filter,
+      fieldLevelSecurity
     )
     ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  )(actionResponse: ActionResponse): ActionResponse = {
     val searchTemplateResponse = new ReflectionBasedSearchTemplateResponse(actionResponse)
     (searchTemplateResponse.getResponse, fieldLevelSecurity) match {
       case (Some(response), Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
@@ -79,45 +90,55 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
         actionResponse
     }
   }
+
 }
 
 object SearchTemplateEsRequestContext {
+
   def unapply(arg: ReflectionBasedActionRequest): Option[SearchTemplateEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
-      Some(new SearchTemplateEsRequestContext(
-        arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
-        arg.esContext,
-        arg.aclContext,
-        arg.threadPool
-      ))
+      Some(
+        new SearchTemplateEsRequestContext(
+          arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
+          arg.esContext,
+          arg.aclContext,
+          arg.threadPool
+        )
+      )
     } else {
       None
     }
   }
+
 }
 
-final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
-                                                (implicit threadPool: ThreadPool,
-                                                 requestId: RequestContext.Id) {
+final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)(
+    implicit threadPool: ThreadPool,
+    requestId: RequestContext.Id
+) {
 
   import org.joor.Reflect.on
 
   def getRequest: SearchRequest = {
-    Option(on(actionRequest)
-      .call("getRequest")
-      .get[SearchRequest]) match {
+    Option(
+      on(actionRequest)
+        .call("getRequest")
+        .get[SearchRequest]
+    ) match {
       case Some(sr) => sr
-      case None =>
+      case None     =>
         val sr = new SearchRequest("*")
         setSearchRequest(sr)
         sr
     }
   }
 
-  def setRequest(searchRequest: SearchRequest,
-                 indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                 filter: Option[Filter],
-                 fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
+  def setRequest(
+      searchRequest: SearchRequest,
+      indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): Unit = {
     setSearchRequest(new EnhancedSearchRequest(searchRequest, indices, filter, fieldLevelSecurity))
   }
 
@@ -125,13 +146,15 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
     on(actionRequest).call("setRequest", searchRequest)
   }
 
-  private class EnhancedSearchRequest(request: SearchRequest,
-                                      indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                      filter: Option[Filter],
-                                      fieldLevelSecurity: Option[FieldLevelSecurity])
-                                     (implicit threadPool: ThreadPool,
-                                      requestId: RequestContext.Id)
-    extends SearchRequest(request) {
+  private class EnhancedSearchRequest(
+      request: SearchRequest,
+      indices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  )(
+      implicit threadPool: ThreadPool,
+      requestId: RequestContext.Id
+  ) extends SearchRequest(request) {
 
     this.indices(indices.stringify: _*)
 
@@ -141,7 +164,9 @@ final class ReflectionBasedSearchTemplateRequest(actionRequest: ActionRequest)
         .applyFilterToQuery(filter)
         .applyFieldLevelSecurity(fieldLevelSecurity)
     }
+
   }
+
 }
 
 final class ReflectionBasedSearchTemplateResponse(actionResponse: ActionResponse) {
@@ -155,4 +180,5 @@ final class ReflectionBasedSearchTemplateResponse(actionResponse: ActionResponse
         .get[SearchResponse]
     )
   }
+
 }

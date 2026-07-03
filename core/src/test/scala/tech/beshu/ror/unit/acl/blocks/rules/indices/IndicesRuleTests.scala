@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 class IndicesRuleTests
-  extends BaseIndicesRuleTests
+    extends BaseIndicesRuleTests
     with IndicesRuleLocalIndexTests
     with IndicesRuleRemoteIndexTests
     with IndicesRuleDataStreamTests

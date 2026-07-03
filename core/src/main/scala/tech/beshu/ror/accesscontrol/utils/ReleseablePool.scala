@@ -20,7 +20,7 @@ import cats.Monad
 import cats.implicits.*
 import monix.execution.atomic.Atomic
 
-final class ReleseablePool[M[_] : Monad, A, B](acquire: B => M[A])(release: A => M[Unit]) {
+final class ReleseablePool[M[_]: Monad, A, B](acquire: B => M[A])(release: A => M[Unit]) {
 
   import ReleseablePool.*
 
@@ -50,10 +50,13 @@ final class ReleseablePool[M[_] : Monad, A, B](acquire: B => M[A])(release: A =>
     activeList.copy(list = activeList.list :+ resource)
 
   def close: M[Unit] =
-    pool.transformAndGet(_.copy(isActive = false))
-      .list.map(release)
+    pool
+      .transformAndGet(_.copy(isActive = false))
+      .list
+      .map(release)
       .sequence
       .map(_ => ())
+
 }
 
 object ReleseablePool {

@@ -25,15 +25,24 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import java.util.function.Consumer
 
-class EsContainerWithRorSecurity private(esVersion: String,
-                                         esConfig: Elasticsearch.Config,
-                                         startedClusterDependencies: StartedClusterDependencies,
-                                         elasticsearch: Elasticsearch,
-                                         override val sslEnabled: Boolean,
-                                         initializer: ElasticsearchNodeDataInitializer,
-                                         additionalLogConsumer: Option[Consumer[OutputFrame]],
-                                         awaitingReadyStrategy: AwaitingReadyStrategy)
-  extends EsContainer(esVersion, esConfig, startedClusterDependencies, elasticsearch, initializer, additionalLogConsumer, awaitingReadyStrategy) {
+class EsContainerWithRorSecurity private (
+    esVersion: String,
+    esConfig: Elasticsearch.Config,
+    startedClusterDependencies: StartedClusterDependencies,
+    elasticsearch: Elasticsearch,
+    override val sslEnabled: Boolean,
+    initializer: ElasticsearchNodeDataInitializer,
+    additionalLogConsumer: Option[Consumer[OutputFrame]],
+    awaitingReadyStrategy: AwaitingReadyStrategy
+) extends EsContainer(
+      esVersion,
+      esConfig,
+      startedClusterDependencies,
+      elasticsearch,
+      initializer,
+      additionalLogConsumer,
+      awaitingReadyStrategy
+    ) {
 
   logger.info(s"[${esConfig.nodeName}] Creating ES with ROR plugin installed container ...")
 
@@ -41,19 +50,22 @@ class EsContainerWithRorSecurity private(esVersion: String,
     import EsContainerWithRorSecurity.rorAdminCredentials
     basicAuthClient(rorAdminCredentials._1, rorAdminCredentials._2)
   }
+
 }
 
 object EsContainerWithRorSecurity extends StrictLogging {
 
   val rorAdminCredentials: (String, String) = ("admin", "container")
 
-  def create(esVersion: String,
-             esConfig: Elasticsearch.Config,
-             rorConfig: ReadonlyRestPlugin.Config,
-             initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies,
-             additionalLogConsumer: Option[Consumer[OutputFrame]],
-             awaitingReadyStrategy: AwaitingReadyStrategy): EsContainer = {
+  def create(
+      esVersion: String,
+      esConfig: Elasticsearch.Config,
+      rorConfig: ReadonlyRestPlugin.Config,
+      initializer: ElasticsearchNodeDataInitializer,
+      startedClusterDependencies: StartedClusterDependencies,
+      additionalLogConsumer: Option[Consumer[OutputFrame]],
+      awaitingReadyStrategy: AwaitingReadyStrategy
+  ): EsContainer = {
     new EsContainerWithRorSecurity(
       esVersion,
       esConfig,
@@ -61,7 +73,7 @@ object EsContainerWithRorSecurity extends StrictLogging {
       esImageWithRorFromDockerfile(esVersion, esConfig, rorConfig),
       rorConfig.attributes.restSsl match {
         case Enabled.Yes(_) => true
-        case Enabled.No => false
+        case Enabled.No     => false
       },
       initializer,
       additionalLogConsumer,
@@ -69,10 +81,14 @@ object EsContainerWithRorSecurity extends StrictLogging {
     )
   }
 
-  private def esImageWithRorFromDockerfile(esVersion: String,
-                                           esConfig: Elasticsearch.Config,
-                                           rorConfig: ReadonlyRestPlugin.Config) = {
-    Elasticsearch.create(esVersion, esConfig)
+  private def esImageWithRorFromDockerfile(
+      esVersion: String,
+      esConfig: Elasticsearch.Config,
+      rorConfig: ReadonlyRestPlugin.Config
+  ) = {
+    Elasticsearch
+      .create(esVersion, esConfig)
       .install(new ReadonlyRestPlugin(esVersion, rorConfig, performPatching = true))
   }
+
 }

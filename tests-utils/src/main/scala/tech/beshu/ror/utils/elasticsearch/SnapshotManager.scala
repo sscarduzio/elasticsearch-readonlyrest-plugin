@@ -24,11 +24,10 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class SnapshotManager(client: RestClient, esVersion: String)
-  extends BaseManager(client, esVersion, esNativeApi = true)
+    extends BaseManager(client, esVersion, esNativeApi = true)
     with LazyLogging {
 
-  def getRepository(repositoryNamePattern: String,
-                    otherRepositoryNamePatterns: String*): RepositoriesResult = {
+  def getRepository(repositoryNamePattern: String, otherRepositoryNamePatterns: String*): RepositoriesResult = {
     call(
       createGetRepositoriesRequest(repositoryNamePattern :: otherRepositoryNamePatterns.toList),
       new RepositoriesResult(_)
@@ -84,7 +83,12 @@ class SnapshotManager(client: RestClient, esVersion: String)
     call(request, new JsonResponse(_, Some(request)))
   }
 
-  def putSnapshot(repositoryName: String, snapshotName: String, indices: List[String], features: List[String]): JsonResponse = {
+  def putSnapshot(
+      repositoryName: String,
+      snapshotName: String,
+      indices: List[String],
+      features: List[String]
+  ): JsonResponse = {
     val request = createNewSnapshotRequest(repositoryName, snapshotName, indices, features)
     call(request, new JsonResponse(_, Some(request)))
   }
@@ -103,8 +107,7 @@ class SnapshotManager(client: RestClient, esVersion: String)
     repositoriesResult.repositories.foreach { case (repository, _) =>
       val snapshotsResult = getAllSnapshotsOf(repository)
       snapshotsResult.force()
-      snapshotsResult
-        .snapshots
+      snapshotsResult.snapshots
         .map { json => json("snapshot").str }
         .foreach { snapshot =>
           deleteSnapshotsOf(repository, snapshot).force()
@@ -117,7 +120,12 @@ class SnapshotManager(client: RestClient, esVersion: String)
     call(request, new JsonResponse(_, Some(request)))
   }
 
-  def restoreSnapshot(repositoryName: String, snapshotName: String, indices: List[String], features: List[String]): JsonResponse = {
+  def restoreSnapshot(
+      repositoryName: String,
+      snapshotName: String,
+      indices: List[String],
+      features: List[String]
+  ): JsonResponse = {
     val request = createRestoreSnapshotRequest(repositoryName, snapshotName, indices, features)
     call(request, new JsonResponse(_, Some(request)))
   }
@@ -125,15 +133,17 @@ class SnapshotManager(client: RestClient, esVersion: String)
   private def createNewRepositoryRequest(name: String) = {
     val request = new HttpPut(client.from(s"/_snapshot/$name"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  "type": "fs",
-         |  "settings": {
-         |    "location": "/tmp"
-         |  }
-         |}""".stripMargin
-    ))
+    request.setEntity(
+      new StringEntity(
+        s"""
+           |{
+           |  "type": "fs",
+           |  "settings": {
+           |    "location": "/tmp"
+           |  }
+           |}""".stripMargin
+      )
+    )
     request
   }
 
@@ -155,19 +165,17 @@ class SnapshotManager(client: RestClient, esVersion: String)
 
   private def createGetRepositoriesRequest(repositoriesPatterns: List[String]) = {
     val endpoint = repositoriesPatterns match {
-      case Nil => "/_snapshot"
+      case Nil  => "/_snapshot"
       case list => s"/_snapshot/${stringifyOrAll(list)}"
     }
     new HttpGet(client.from(endpoint))
   }
 
-  private def createGetSnapshotsRequest(repositoryName: String,
-                                        snapshotsPatterns: List[String]) = {
+  private def createGetSnapshotsRequest(repositoryName: String, snapshotsPatterns: List[String]) = {
     new HttpGet(client.from(s"/_snapshot/$repositoryName/${stringifyOrAll(snapshotsPatterns)}"))
   }
 
-  private def createGetSnapshotStatusesRequest(repositoryName: String,
-                                               snapshotsPatterns: List[String]) = {
+  private def createGetSnapshotStatusesRequest(repositoryName: String, snapshotsPatterns: List[String]) = {
     new HttpGet(client.from(s"/_snapshot/$repositoryName/${stringifyOrAll(snapshotsPatterns)}/_status"))
   }
 
@@ -179,22 +187,28 @@ class SnapshotManager(client: RestClient, esVersion: String)
     new HttpGet(client.from(s"/_snapshot/$repositoryName/_status"))
   }
 
-  private def createNewSnapshotRequest(repositoryName: String,
-                                       snapshotName: String,
-                                       indices: List[String],
-                                       features: List[String]) = {
-    val request = new HttpPut(client.from(
-      s"/_snapshot/$repositoryName/$snapshotName",
-      Map("wait_for_completion" -> "true")
-    ))
+  private def createNewSnapshotRequest(
+      repositoryName: String,
+      snapshotName: String,
+      indices: List[String],
+      features: List[String]
+  ) = {
+    val request = new HttpPut(
+      client.from(
+        s"/_snapshot/$repositoryName/$snapshotName",
+        Map("wait_for_completion" -> "true")
+      )
+    )
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  "indices": [ ${indices.mkString("\"", "\",\"", "\"")} ],
-         |  "feature_states": [ ${features.mkString("\"", "\",\"", "\"")} ]
-         |}""".stripMargin
-    ))
+    request.setEntity(
+      new StringEntity(
+        s"""
+           |{
+           |  "indices": [ ${indices.mkString("\"", "\",\"", "\"")} ],
+           |  "feature_states": [ ${features.mkString("\"", "\",\"", "\"")} ]
+           |}""".stripMargin
+      )
+    )
     request
   }
 
@@ -202,27 +216,33 @@ class SnapshotManager(client: RestClient, esVersion: String)
     new HttpDelete(client.from(s"/_snapshot/$repositoryName/${stringifyOrWildcard(snapshots)}"))
   }
 
-  private def createRestoreSnapshotRequest(repositoryName: String,
-                                           snapshotName: String,
-                                           indices: List[String],
-                                           features: List[String]) = {
-    val request = new HttpPost(client.from(
-      s"/_snapshot/$repositoryName/$snapshotName/_restore",
-      Map("wait_for_completion" -> "true")
-    ))
+  private def createRestoreSnapshotRequest(
+      repositoryName: String,
+      snapshotName: String,
+      indices: List[String],
+      features: List[String]
+  ) = {
+    val request = new HttpPost(
+      client.from(
+        s"/_snapshot/$repositoryName/$snapshotName/_restore",
+        Map("wait_for_completion" -> "true")
+      )
+    )
     val optionalFeatureStates = features match
       case Nil => ""
-      case f => s""""feature_states": [ ${f.mkString("\"", "\",\"", "\"")} ],"""
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  $optionalFeatureStates
-         |  "indices": [ ${indices.mkString("\"", "\",\"", "\"")} ],
-         |  "rename_pattern": "(.+)",
-         |  "rename_replacement": "restored_$$1",
-         |  "include_global_state": false
-         |}""".stripMargin
-    ))
+      case f   => s""""feature_states": [ ${f.mkString("\"", "\",\"", "\"")} ],"""
+    request.setEntity(
+      new StringEntity(
+        s"""
+           |{
+           |  $optionalFeatureStates
+           |  "indices": [ ${indices.mkString("\"", "\",\"", "\"")} ],
+           |  "rename_pattern": "(.+)",
+           |  "rename_replacement": "restored_$$1",
+           |  "include_global_state": false
+           |}""".stripMargin
+      )
+    )
     request.addHeader("Content-Type", "application/json")
     request
   }
@@ -245,4 +265,5 @@ class SnapshotManager(client: RestClient, esVersion: String)
   class SnapshotsResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val snapshots: List[JSON] = responseJson.obj("snapshots").arr.toList
   }
+
 }

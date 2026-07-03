@@ -26,11 +26,12 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 
 class FilterRuleDecoder(variableCreator: RuntimeResolvableVariableCreator)
-  extends RuleBaseDecoderWithoutAssociatedFields[FilterRule] {
+    extends RuleBaseDecoderWithoutAssociatedFields[FilterRule] {
 
   override protected def decoder: Decoder[RuleDefinition[FilterRule]] = {
     DecoderHelpers
       .alwaysRightSingleVariableDecoder(variableCreator)(AlwaysRightConvertible.from(Filter.apply))
       .map(filter => RuleDefinition.create(new FilterRule(FilterRule.Settings(filter))))
   }
+
 }

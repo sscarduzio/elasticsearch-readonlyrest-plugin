@@ -22,6 +22,15 @@ plugins {
     id 'io.github.gradle-nexus.publish-plugin'      version '2.0.0-rc-1'
     id 'org.gradle.crypto.checksum'                 version '1.4.0'
     id "idea"
+    id "readonlyrest.format-conventions"
+}
+
+spotless {
+    java {
+        // build-base and buildSrc are included builds — excluded from the main project task graph,
+        // so their Java sources are formatted here at the root level instead.
+        target 'build-base/src/**/*.java', 'buildSrc/src/**/*.java'
+    }
 }
 
 idea {

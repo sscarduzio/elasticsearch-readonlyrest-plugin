@@ -21,12 +21,19 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.ExpressionCompiler.*
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.FunctionDefinition.FunctionArg
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{Function, FunctionAlias, FunctionDefinition, FunctionName}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.{
+  Function,
+  FunctionAlias,
+  FunctionDefinition,
+  FunctionName
+}
 import tech.beshu.ror.accesscontrol.blocks.variables.transformation.parser.Parser.Expression
 import tech.beshu.ror.implicits.*
 
-private[transformation] class ExpressionCompiler private(functions: Iterable[FunctionDefinition],
-                                                         aliasedFunctions: Iterable[FunctionAlias]) {
+private[transformation] class ExpressionCompiler private (
+    functions: Iterable[FunctionDefinition],
+    aliasedFunctions: Iterable[FunctionAlias]
+) {
 
   import ExpressionCompiler.CompilationResult.*
 
@@ -66,8 +73,8 @@ private[transformation] class ExpressionCompiler private(functions: Iterable[Fun
   private def asFunctionName(expression: Expression): Result[FunctionName] = {
     expression match {
       case Expression.Name(value) => toFunctionName(value)
-      case _: Expression.Call => Left(toError("Expected function name but was function call"))
-      case _: Expression.Chain => Left(toError("Expected function name but was function call chain"))
+      case _: Expression.Call     => Left(toError("Expected function name but was function call"))
+      case _: Expression.Chain    => Left(toError("Expected function name but was function call chain"))
     }
   }
 
@@ -79,19 +86,17 @@ private[transformation] class ExpressionCompiler private(functions: Iterable[Fun
   }
 
   private def getArgs(args: List[Expression]): Result[List[FunctionArg]] = {
-    args
-      .map {
-        case Expression.Name(value) => Right(FunctionArg(value))
-        case _: Expression.Call => Left(toError("Functions nesting is not supported"))
-        case _: Expression.Chain => Left(toError("Functions nesting is not supported"))
-      }
-      .sequence
+    args.map {
+      case Expression.Name(value) => Right(FunctionArg(value))
+      case _: Expression.Call     => Left(toError("Functions nesting is not supported"))
+      case _: Expression.Chain    => Left(toError("Functions nesting is not supported"))
+    }.sequence
   }
 
   private def combine(left: CompilationResult, right: CompilationResult): CompilationResult = (left, right) match {
-    case (l: Call, r: Call) => Chain(NonEmptyList.of(l, r))
-    case (l: Chain, r: Call) => Chain(l.value.append(r))
-    case (l: Call, r: Chain) => Chain(r.value.prepend(l))
+    case (l: Call, r: Call)   => Chain(NonEmptyList.of(l, r))
+    case (l: Chain, r: Call)  => Chain(l.value.append(r))
+    case (l: Call, r: Chain)  => Chain(r.value.prepend(l))
     case (l: Chain, r: Chain) => Chain(l.value.concatNel(r.value))
   }
 
@@ -102,7 +107,7 @@ private[transformation] class ExpressionCompiler private(functions: Iterable[Fun
           _ <- Either.cond(useAlias, (), toError("Function aliases cannot be applied in this context"))
           firstArg <- call.args match {
             case arg :: Nil => Right(arg)
-            case other => Left(toError(s"One argument is required, but was ${other.size.show}"))
+            case other      => Left(toError(s"One argument is required, but was ${other.size.show}"))
           }
           aliasName <-
             NonEmptyString
@@ -134,13 +139,13 @@ private[transformation] class ExpressionCompiler private(functions: Iterable[Fun
 
 private[transformation] object ExpressionCompiler {
 
-  def create(functions: Seq[FunctionDefinition],
-             aliases: Seq[FunctionAlias]): ExpressionCompiler = {
+  def create(functions: Seq[FunctionDefinition], aliases: Seq[FunctionAlias]): ExpressionCompiler = {
     new ExpressionCompiler(functions, aliases)
   }
 
   final case class CompilationError(message: String)
   sealed trait CompilationResult
+
   object CompilationResult {
     final case class Chain(value: NonEmptyList[Call]) extends CompilationResult
     final case class Call(name: FunctionName, args: List[FunctionArg]) extends CompilationResult

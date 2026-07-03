@@ -26,10 +26,15 @@ class RRAdminActionType extends Action[RRAdminRequest, RRAdminResponse, RRAdminR
 
   override def newResponse(): RRAdminResponse = new RRAdminResponse
 }
+
 object RRAdminActionType {
   val name: String = RorAction.RorRefreshSettingsAction.value
   val instance = new RRAdminActionType()
 }
 
 class RRAdminRequestBuilder(client: ElasticsearchClient, action: RRAdminActionType)
-  extends ActionRequestBuilder[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](client, action, new RRAdminRequest)
+    extends ActionRequestBuilder[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](
+      client,
+      action,
+      new RRAdminRequest
+    )

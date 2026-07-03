@@ -28,8 +28,7 @@ import tech.beshu.ror.es.{EsServices, RorRestRequest}
 import java.time.Instant
 import scala.jdk.CollectionConverters.*
 
-abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
-  extends RequestContext {
+abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext) extends RequestContext {
 
   override type BLOCK_CONTEXT = B
 
@@ -41,7 +40,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy implicit val id: RequestContext.Id = RequestContext.Id.from(esContext)
+  override implicit lazy val id: RequestContext.Id = RequestContext.Id.from(esContext)
 
   override lazy val action: Action = esContext.action
 
@@ -50,13 +49,13 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
     val simpleName = requestClazz.getSimpleName
     simpleName.toLowerCase match {
       case "request" => requestClazz.getName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
-      case _ => simpleName
+      case _         => simpleName
     }
   }
 
   override lazy val indexAttributes: IndexAttributeFilter = esContext.actionRequest match {
     case req: IndicesRequest => indexAttributesFrom(req)
-    case _ => IndexAttributeFilter.All
+    case _                   => IndexAttributeFilter.All
   }
 
   override val esServices: EsServices = esContext.esServices
@@ -65,9 +64,11 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
 
   override lazy val isAllowedForDLS: Boolean = {
     esContext.actionRequest match {
-      case _ if !isReadOnlyRequest => false
+      case _ if !isReadOnlyRequest                  => false
       case sr: SearchRequest if sr.source() == null => true
-      case sr: SearchRequest if sr.source.profile || (sr.source.suggest != null && !sr.source.suggest.getSuggestions.isEmpty) => false
+      case sr: SearchRequest
+          if sr.source.profile || (sr.source.suggest != null && !sr.source.suggest.getSuggestions.isEmpty) =>
+        false
       case _ => true
     }
   }
@@ -79,4 +80,5 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext)
       wildcards.contains(WildcardStates.CLOSED)
     )
   }
+
 }

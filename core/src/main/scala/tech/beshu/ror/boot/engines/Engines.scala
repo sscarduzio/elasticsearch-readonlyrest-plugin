@@ -18,5 +18,4 @@ package tech.beshu.ror.boot.engines
 
 import tech.beshu.ror.boot.ReadonlyRest
 
-final case class Engines(mainEngine: ReadonlyRest.Engine,
-                         impersonatorsEngine: Option[ReadonlyRest.Engine])
+final case class Engines(mainEngine: ReadonlyRest.Engine, impersonatorsEngine: Option[ReadonlyRest.Engine])

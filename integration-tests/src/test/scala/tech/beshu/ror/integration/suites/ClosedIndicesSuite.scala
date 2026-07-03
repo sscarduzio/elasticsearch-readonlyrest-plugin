@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class ClosedIndicesSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -33,8 +33,8 @@ class ClosedIndicesSuite
 
   override implicit val rorSettingsFileName: String = "/closed_indices/readonlyrest.yml"
 
-  override val nodeDataInitializer = Some {
-    (esVersion, adminRestClient: RestClient) => {
+  override val nodeDataInitializer = Some { (esVersion, adminRestClient: RestClient) =>
+    {
       val indexManager = new IndexManager(adminRestClient, esVersionUsed)
       val documentManager = new DocumentManager(adminRestClient, esVersion)
 
@@ -87,4 +87,5 @@ class ClosedIndicesSuite
       }
     }
   }
+
 }

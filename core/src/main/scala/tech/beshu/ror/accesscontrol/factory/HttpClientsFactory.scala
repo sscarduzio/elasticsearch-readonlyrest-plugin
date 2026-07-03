@@ -36,25 +36,22 @@ object HttpClientsFactory {
 
   object HttpClient {
     sealed trait Method
+
     object Method {
       case object Get extends Method
       case object Post extends Method
     }
 
-    final case class Request(method: Method,
-                             url: Url,
-                             headers: Map[String, String])
+    final case class Request(method: Method, url: Url, headers: Map[String, String])
 
-    final case class Response(status: Int,
-                              body: String)
+    final case class Response(status: Int, body: String)
   }
 
   def default() = new HttpClientsFactory(new ApacheBasedSimpleHttpClientCreator[Task])
 
 }
 
-class HttpClientsFactory(httpClientCreator: SimpleHttpClientCreator[Task, HttpClient])
-  extends RequestIdAwareLogging {
+class HttpClientsFactory(httpClientCreator: SimpleHttpClientCreator[Task, HttpClient]) extends RequestIdAwareLogging {
 
   private object lock
   private val existingClients = new CopyOnWriteArrayList[SimpleHttpClient[Task]]()
@@ -81,11 +78,13 @@ class HttpClientsFactory(httpClientCreator: SimpleHttpClientCreator[Task, HttpCl
 
 }
 
-private class LoggingSimpleHttpClient[F[_] : Async](delegate: SimpleHttpClient[F])
-  extends SimpleHttpClient[F] with RequestIdAwareLogging {
+private class LoggingSimpleHttpClient[F[_]: Async](delegate: SimpleHttpClient[F])
+    extends SimpleHttpClient[F]
+    with RequestIdAwareLogging {
 
-  override def send(request: HttpClient.Request)
-                   (implicit requestId: RequestId): F[HttpClient.Response] = {
+  override def send(request: HttpClient.Request)(
+      implicit requestId: RequestId
+  ): F[HttpClient.Response] = {
     delegate
       .send(request)
       .recoverWith { case e: Throwable =>

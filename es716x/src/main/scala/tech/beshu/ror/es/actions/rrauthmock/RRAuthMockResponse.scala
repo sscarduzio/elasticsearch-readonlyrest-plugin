@@ -24,9 +24,7 @@ import org.elasticsearch.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.api.AuthMockApi
 import tech.beshu.ror.es.utils.XContentBuilderOps.*
 
-
-class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse)
-  extends ActionResponse with StatusToXContentObject {
+class RRAuthMockResponse(response: AuthMockApi.AuthMockResponse) extends ActionResponse with StatusToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     builder.json(response.body)

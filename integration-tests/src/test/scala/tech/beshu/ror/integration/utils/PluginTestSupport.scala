@@ -28,7 +28,7 @@ trait PluginTestSupport extends EsClusterProvider with CallingEsDirectly {
 }
 
 trait SingletonPluginTestSupport
-  extends PluginTestSupport
+    extends PluginTestSupport
     with EsClusterProvider
     with BeforeAndAfterAll
     with ResolvedRorSettingsFileProvider {
@@ -67,4 +67,5 @@ trait SingletonPluginTestSupport
     val settingsFile = File.apply(getResourcePath(rorSettingsFileName))
     RorSettingsAdjuster.adjustUsingDependencies(settingsFile, startedDependencies)
   }
+
 }

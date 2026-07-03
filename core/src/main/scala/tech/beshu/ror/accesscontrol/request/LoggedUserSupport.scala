@@ -27,4 +27,5 @@ trait LoggedUserSupport {
   def setLoggedUser(loggedUser: LoggedUser): Unit = {
     currentLoggedUser.set(Some(loggedUser))
   }
+
 }

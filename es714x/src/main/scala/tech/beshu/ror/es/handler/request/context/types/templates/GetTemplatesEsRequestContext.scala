@@ -18,7 +18,6 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 
 import cats.data.NonEmptyList
 import cats.implicits.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
 import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexTemplateMetadata}
 import org.elasticsearch.common.collect.ImmutableOpenMap
@@ -36,23 +35,29 @@ import tech.beshu.ror.es.utils.EsCollectionsScalaUtils.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.jdk.CollectionConverters.*
 
-class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
-                                   esContext: EsContext,
-                                   override val threadPool: ThreadPool)
-                                  (implicit generator: UniqueIdentifierGenerator)
-  extends BaseTemplatesEsRequestContext[GetIndexTemplatesRequest, GettingLegacyTemplates](
-    actionRequest, esContext, threadPool
-  ) {
+class GetTemplatesEsRequestContext(
+    actionRequest: GetIndexTemplatesRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+)(
+    implicit generator: UniqueIdentifierGenerator
+) extends BaseTemplatesEsRequestContext[GetIndexTemplatesRequest, GettingLegacyTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList
     .fromList(
       actionRequest
-        .names().asSafeSet
+        .names()
+        .asSafeSet
         .flatMap(TemplateNamePattern.fromString)
         .toList
     )
@@ -62,7 +67,8 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
     GettingLegacyTemplates(requestTemplateNamePatterns)
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
-    val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
+    val nonExistentTemplateNamePattern =
+      TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
     actionRequest.names(nonExistentTemplateNamePattern.value.value)
     ModificationResult.Modified
   }
@@ -75,7 +81,8 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -100,38 +107,35 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
 
 private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLogging {
 
-  def filter(templates: Iterable[IndexTemplateMetadata],
-             usingTemplate: Set[Template] => Set[Template])
-            (implicit requestContextId: RequestContext.Id): List[IndexTemplateMetadata] = {
-    val templatesMap = templates
-      .flatMap { metadata =>
-        toLegacyTemplate(metadata) match {
-          case Right(template) =>
-            Some((template, metadata))
-          case Left(msg) =>
-            logger.error(
-              s"""[${requestContextId.show}] Template response filtering issue: ${msg.show}. For security reasons template
-                 | [${metadata.name().show}] will be skipped.""".oneLiner)
+  def filter(templates: Iterable[IndexTemplateMetadata], usingTemplate: Set[Template] => Set[Template])(
+      implicit requestContextId: RequestContext.Id
+  ): List[IndexTemplateMetadata] = {
+    val templatesMap = templates.flatMap { metadata =>
+      toLegacyTemplate(metadata) match {
+        case Right(template) =>
+          Some((template, metadata))
+        case Left(msg) =>
+          logger.error(
+            s"""[${requestContextId.show}] Template response filtering issue: ${msg.show}. For security reasons template
+                 | [${metadata.name().show}] will be skipped.""".oneLiner
+          )
+          None
+      }
+    }.toMap
+    val filteredTemplates = usingTemplate(templatesMap.keys.toCovariantSet)
+    templatesMap.flatMap { case (template, metadata) =>
+      filteredTemplates
+        .find(_.name == template.name)
+        .flatMap {
+          case t: LegacyTemplate if t == template =>
+            Some(metadata)
+          case t: LegacyTemplate =>
+            Some(filterMetadataData(metadata, t))
+          case t =>
+            logger.error(s"""[${requestContextId.show}] Expected IndexTemplate, but got: ${t.show}. Skipping""")
             None
         }
-      }
-      .toMap
-    val filteredTemplates = usingTemplate(templatesMap.keys.toCovariantSet)
-    templatesMap
-      .flatMap { case (template, metadata) =>
-        filteredTemplates
-          .find(_.name == template.name)
-          .flatMap {
-            case t: LegacyTemplate if t == template =>
-              Some(metadata)
-            case t: LegacyTemplate =>
-              Some(filterMetadataData(metadata, t))
-            case t =>
-              logger.error(s"""[${requestContextId.show}] Expected IndexTemplate, but got: ${t.show}. Skipping""")
-              None
-          }
-      }
-      .toList
+    }.toList
   }
 
   private def filterMetadataData(metadata: IndexTemplateMetadata, basedOn: LegacyTemplate) = {
@@ -150,7 +154,8 @@ private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLog
     val aliasesStrings = template.aliases.stringify
     val filteredAliasesMap =
       metadata
-        .aliases().asSafeValues
+        .aliases()
+        .asSafeValues
         .filter { a => aliasesStrings.contains(a.alias()) }
         .map(a => (a.alias(), a))
         .toMap
@@ -170,4 +175,5 @@ private[templates] object GetTemplatesEsRequestContext extends RequestIdAwareLog
       aliases = metadata.aliases().asSafeKeys.flatMap(ClusterIndexName.fromString)
     } yield LegacyTemplate(name, patterns, aliases)
   }
+
 }

@@ -22,15 +22,14 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 
 object RuntimeMultiResolvableVariableOps {
 
-  def resolveAll[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]],
-                    blockContext: BlockContext): List[T] = {
-    variables
-      .toList
+  def resolveAll[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]], blockContext: BlockContext): List[T] = {
+    variables.toList
       .flatMap { variable =>
         variable.resolve(blockContext) match {
           case Right(values) => values.toList
-          case Left(_) => Nil
+          case Left(_)       => Nil
         }
       }
   }
+
 }

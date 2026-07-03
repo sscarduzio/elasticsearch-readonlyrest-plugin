@@ -28,26 +28,34 @@ import java.util.concurrent.TimeUnit
 import scala.language.postfixOps
 
 trait SimpleHttpClient[F[_]] {
-  def send(request: HttpClient.Request)
-          (implicit requestId: RequestId): F[HttpClient.Response]
+
+  def send(request: HttpClient.Request)(
+      implicit requestId: RequestId
+  ): F[HttpClient.Response]
 
   def close(): F[Unit]
 }
 
 object SimpleHttpClient {
-  final case class Config(connectionTimeout: PositiveFiniteDuration,
-                          requestTimeout: PositiveFiniteDuration,
-                          connectionPoolSize: Int Refined Positive,
-                          validate: Boolean)
+
+  final case class Config(
+      connectionTimeout: PositiveFiniteDuration,
+      requestTimeout: PositiveFiniteDuration,
+      connectionPoolSize: Int Refined Positive,
+      validate: Boolean
+  )
 
   object Config {
+
     val default: Config = Config(
       connectionTimeout = positiveFiniteDuration(2, TimeUnit.SECONDS),
       requestTimeout = positiveFiniteDuration(5, TimeUnit.SECONDS),
       connectionPoolSize = positiveInt(30),
       validate = true
     )
+
   }
+
 }
 
 trait SimpleHttpClientCreator[F[_], +C <: SimpleHttpClient[F]] {

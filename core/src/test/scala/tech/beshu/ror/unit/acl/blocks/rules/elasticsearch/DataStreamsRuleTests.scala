@@ -20,14 +20,14 @@ import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
-import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.DataStreamsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.{Action, DataStreamName}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockRequestContext
@@ -45,8 +45,8 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.Wildcard.nel)),
           requestAction = Action("indices:admin/data_stream/get"),
           requestDataStreams = Set(DataStreamName.fromString("data_stream1").get)
-        ) {
-          blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("data_stream1").get))
+        ) { blockContext =>
+          blockContext.dataStreams should be(Set(DataStreamName.fromString("data_stream1").get))
         }
       }
       "allowed data streams set contains _all" in {
@@ -54,8 +54,8 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.All.nel)),
           requestAction = Action("indices:admin/data_stream/get"),
           requestDataStreams = Set(DataStreamName.fromString("data_stream1").get)
-        ) {
-          blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("data_stream1").get))
+        ) { blockContext =>
+          blockContext.dataStreams should be(Set(DataStreamName.fromString("data_stream1").get))
         }
       }
       "readonly request with configured simple data stream" in {
@@ -63,8 +63,8 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-asd").get.nel)),
           requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
-        ) {
-          blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
+        ) { blockContext =>
+          blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
       }
       "readonly request with configured data stream with wildcard" in {
@@ -72,8 +72,8 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-*").get.nel)),
           requestAction = Action("indices:admin/data_stream/get"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
-        ) {
-          blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
+        ) { blockContext =>
+          blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
       }
       "write request with configured simple data stream" in {
@@ -81,8 +81,8 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-asd").get.nel)),
           requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
-        ) {
-          blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
+        ) { blockContext =>
+          blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
       }
       "write request with configured data stream with wildcard" in {
@@ -90,8 +90,8 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
           configuredDataStreams = NonEmptySet.one(AlreadyResolved(DataStreamName.fromString("public-*").get.nel)),
           requestAction = Action("indices:admin/data_stream/create"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get)
-        ) {
-          blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
+        ) { blockContext =>
+          blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
       }
       "readonly request with configured several data streams and several data streams in request" in {
@@ -102,8 +102,8 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
           ),
           requestAction = Action("indices:admin/data_stream/get"),
           requestDataStreams = Set(DataStreamName.fromString("public-asd").get, DataStreamName.fromString("q").get)
-        ) {
-          blockContext => blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
+        ) { blockContext =>
+          blockContext.dataStreams should be(Set(DataStreamName.fromString("public-asd").get))
         }
       }
     }
@@ -149,28 +149,44 @@ class DataStreamsRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
-                              requestAction: Action,
-                              requestDataStreams: Set[DataStreamName])
-                             (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredDataStreams, requestAction, requestDataStreams, RuleCheckAssertion.RulePermitted(blockContextAssertion))
+  private def assertMatchRule(
+      configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
+      requestAction: Action,
+      requestDataStreams: Set[DataStreamName]
+  )(blockContextAssertion: BlockContext => Unit): Unit =
+    assertRule(
+      configuredDataStreams,
+      requestAction,
+      requestDataStreams,
+      RuleCheckAssertion.RulePermitted(blockContextAssertion)
+    )
 
-  private def assertNotMatchRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
-                                 requestAction: Action,
-                                 requestDataStreams: Set[DataStreamName]): Unit =
+  private def assertNotMatchRule(
+      configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
+      requestAction: Action,
+      requestDataStreams: Set[DataStreamName]
+  ): Unit =
     assertRule(configuredDataStreams, requestAction, requestDataStreams, RuleCheckAssertion.RuleDenied(NotAuthorized))
 
-  private def assertRule(configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
-                         requestAction: Action,
-                         requestDataStreams: Set[DataStreamName],
-                         assertion: RuleCheckAssertion): Unit = {
+  private def assertRule(
+      configuredDataStreams: NonEmptySet[RuntimeMultiResolvableVariable[DataStreamName]],
+      requestAction: Action,
+      requestDataStreams: Set[DataStreamName],
+      assertion: RuleCheckAssertion
+  ): Unit = {
     val rule = new DataStreamsRule(DataStreamsRule.Settings(configuredDataStreams))
     val requestContext = MockRequestContext.dataStreams.copy(
       dataStreams = requestDataStreams,
       action = requestAction
     )
     val blockContext = DataStreamRequestBlockContext(
-      mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty, requestDataStreams, BackingIndices.IndicesNotInvolved
+      mock[Block],
+      requestContext,
+      BlockMetadata.empty,
+      Set.empty,
+      List.empty,
+      requestDataStreams,
+      BackingIndices.IndicesNotInvolved
     )
     rule.checkAndAssert(blockContext, assertion)
   }

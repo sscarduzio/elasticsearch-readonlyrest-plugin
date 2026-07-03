@@ -31,7 +31,9 @@ import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 
 class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
-  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+    extends AnyWordSpec
+    with BaseYamlLoadedAccessControlTest
+    with Inside {
 
   override protected def settingsYaml: String =
     """
@@ -84,7 +86,9 @@ class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
       "allow to proceed" when {
         "JWT token is defined" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
@@ -103,4 +107,5 @@ class RorKbnAuthnAndAuthzYamlLoadedAccessControlTests
       }
     }
   }
+
 }

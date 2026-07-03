@@ -29,17 +29,19 @@ import tech.beshu.ror.providers.UuidProvider
 
 import java.time.Clock
 
-class SessionMaxIdleRuleDecoder(globalSettings: GlobalSettings)
-                               (implicit clock: Clock,
-                                uuidProvider: UuidProvider)
-  extends RuleBaseDecoderWithoutAssociatedFields[SessionMaxIdleRule] {
+class SessionMaxIdleRuleDecoder(globalSettings: GlobalSettings)(
+    implicit clock: Clock,
+    uuidProvider: UuidProvider
+) extends RuleBaseDecoderWithoutAssociatedFields[SessionMaxIdleRule] {
 
   override protected def decoder: Decoder[RuleDefinition[SessionMaxIdleRule]] = {
-    common
-      .positiveFiniteDurationDecoder
-      .map(maxIdle => RuleDefinition.create(new SessionMaxIdleRule(Settings(maxIdle), globalSettings.userIdCaseSensitivity)))
+    common.positiveFiniteDurationDecoder
+      .map(maxIdle =>
+        RuleDefinition.create(new SessionMaxIdleRule(Settings(maxIdle), globalSettings.userIdCaseSensitivity))
+      )
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .decoder
   }
+
 }

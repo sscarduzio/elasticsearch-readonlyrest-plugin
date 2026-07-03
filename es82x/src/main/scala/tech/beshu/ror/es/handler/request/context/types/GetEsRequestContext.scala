@@ -34,12 +34,14 @@ import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi
 import tech.beshu.ror.es.handler.response.DocumentApiOps.GetApi.*
 import tech.beshu.ror.syntax.*
 
-class GetEsRequestContext(actionRequest: GetRequest,
-                          esContext: EsContext,
-                          aclContext: AccessControlStaticContext,
-                          override val threadPool: ThreadPool)
-                         (implicit scheduler: Scheduler)
-  extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, threadPool) {
+class GetEsRequestContext(
+    actionRequest: GetRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+)(
+    implicit scheduler: Scheduler
+) extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
@@ -50,24 +52,25 @@ class GetEsRequestContext(actionRequest: GetRequest,
     Set(indexName)
   }
 
-  override protected def update(request: GetRequest,
-                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[Filter],
-                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+  override protected def update(
+      request: GetRequest,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
     val indexName = filteredRequestedIndices.head
     request.index(indexName.stringify)
     ModificationResult.UpdateResponse.async(updateFunction(filter, fieldLevelSecurity))
   }
 
-  private def updateFunction(filter: Option[Filter],
-                             fieldLevelSecurity: Option[FieldLevelSecurity])
-                            (actionResponse: ActionResponse): Task[ActionResponse] = {
+  private def updateFunction(filter: Option[Filter], fieldLevelSecurity: Option[FieldLevelSecurity])(
+      actionResponse: ActionResponse
+  ): Task[ActionResponse] = {
     filterResponse(filter, actionResponse)
       .map(response => filterFieldsFromResponse(fieldLevelSecurity, response))
   }
 
-  private def filterResponse(filter: Option[Filter],
-                             actionResponse: ActionResponse): Task[ActionResponse] = {
+  private def filterResponse(filter: Option[Filter], actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, filter) match {
       case (response: GetResponse, Some(definedFilter)) if response.isExists =>
         handleExistingResponse(response, definedFilter)
@@ -75,18 +78,19 @@ class GetEsRequestContext(actionRequest: GetRequest,
     }
   }
 
-  private def handleExistingResponse(response: GetResponse,
-                                     definedFilter: Filter) = {
+  private def handleExistingResponse(response: GetResponse, definedFilter: Filter) = {
     esContext.esServices.clusterService
       .verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter)
       .map {
         case Inaccessible => GetApi.doesNotExistResponse(response)
-        case Accessible => response
+        case Accessible   => response
       }
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity],
-                                       actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity],
+      actionResponse: ActionResponse
+  ): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
       case (response: GetResponse, Some(definedFieldLevelSecurity)) if response.isExists =>
         response.filterFieldsUsing(definedFieldLevelSecurity.restrictions)
@@ -94,4 +98,5 @@ class GetEsRequestContext(actionRequest: GetRequest,
         actionResponse
     }
   }
+
 }

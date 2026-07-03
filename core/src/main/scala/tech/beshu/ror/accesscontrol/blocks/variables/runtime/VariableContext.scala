@@ -44,32 +44,50 @@ object VariableContext {
   sealed trait VariableUsage[T <: Rule]
 
   object VariableUsage {
+
     trait UsingVariable[T <: Rule] extends VariableUsage[T] {
       def usedVariablesBy(rule: T): NonEmptyList[RuntimeResolvableVariable[_]]
     }
+
     object UsingVariable {
       def apply[T <: Rule](f: T => NonEmptyList[RuntimeResolvableVariable[_]]): UsingVariable[T] = f(_)
     }
 
     final case class NotUsingVariable[T <: Rule]() extends VariableUsage[T]
 
-    implicit val dataStreamsRule: VariableUsage[DataStreamsRule] = UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
-    implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit def groupsRule[GL <: GroupsLogic]: VariableUsage[BaseGroupsRule[GL]] = UsingVariable[BaseGroupsRule[GL]](rule => rule.settings.permittedGroupsLogic.usedVariables)
-    implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
-    implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
+    implicit val dataStreamsRule: VariableUsage[DataStreamsRule] =
+      UsingVariable[DataStreamsRule](rule => rule.settings.allowedDataStreams.toNonEmptyList)
+    implicit val filterRule: VariableUsage[FilterRule] =
+      UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
+    implicit def groupsRule[GL <: GroupsLogic]: VariableUsage[BaseGroupsRule[GL]] =
+      UsingVariable[BaseGroupsRule[GL]](rule => rule.settings.permittedGroupsLogic.usedVariables)
+    implicit val hostsRule: VariableUsage[HostsRule] =
+      UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
+    implicit val indicesRule: VariableUsage[IndicesRule] =
+      UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
+
     implicit val kibanaUserDataRule: VariableUsage[KibanaUserDataRule] = UsingVariable[KibanaUserDataRule](rule =>
       NonEmptyList.of(rule.settings.kibanaIndex, rule.settings.kibanaTemplateIndex.toList: _*)
     )
-    implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
-    implicit val kibanaTemplateIndexRule: VariableUsage[KibanaTemplateIndexRule] = UsingVariable[KibanaTemplateIndexRule](rule => NonEmptyList.one(rule.settings.kibanaTemplateIndex))
-    implicit val localHostsRule: VariableUsage[LocalHostsRule] = UsingVariable[LocalHostsRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
-    implicit val repositoriesRule: VariableUsage[RepositoriesRule] = UsingVariable[RepositoriesRule](rule => rule.settings.allowedRepositories.toNonEmptyList)
-    implicit val snapshotsRule: VariableUsage[SnapshotsRule] = UsingVariable[SnapshotsRule](rule => rule.settings.allowedSnapshots.toNonEmptyList)
-    implicit val uriRegexRule: VariableUsage[UriRegexRule] = UsingVariable[UriRegexRule](rule => rule.settings.uriPatterns.toNonEmptyList)
-    implicit val usersRule: VariableUsage[UsersRule] = UsingVariable[UsersRule](rule => rule.settings.userIds.toNonEmptyList)
-    implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
-    implicit val responseFieldsRule: VariableUsage[ResponseFieldsRule] = UsingVariable[ResponseFieldsRule](rule => rule.settings.responseFields.toNonEmptyList)
+
+    implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] =
+      UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
+    implicit val kibanaTemplateIndexRule: VariableUsage[KibanaTemplateIndexRule] =
+      UsingVariable[KibanaTemplateIndexRule](rule => NonEmptyList.one(rule.settings.kibanaTemplateIndex))
+    implicit val localHostsRule: VariableUsage[LocalHostsRule] =
+      UsingVariable[LocalHostsRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
+    implicit val repositoriesRule: VariableUsage[RepositoriesRule] =
+      UsingVariable[RepositoriesRule](rule => rule.settings.allowedRepositories.toNonEmptyList)
+    implicit val snapshotsRule: VariableUsage[SnapshotsRule] =
+      UsingVariable[SnapshotsRule](rule => rule.settings.allowedSnapshots.toNonEmptyList)
+    implicit val uriRegexRule: VariableUsage[UriRegexRule] =
+      UsingVariable[UriRegexRule](rule => rule.settings.uriPatterns.toNonEmptyList)
+    implicit val usersRule: VariableUsage[UsersRule] =
+      UsingVariable[UsersRule](rule => rule.settings.userIds.toNonEmptyList)
+    implicit val xForwarderForRule: VariableUsage[XForwardedForRule] =
+      UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
+    implicit val responseFieldsRule: VariableUsage[ResponseFieldsRule] =
+      UsingVariable[ResponseFieldsRule](rule => rule.settings.responseFields.toNonEmptyList)
 
     implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = NotUsingVariable()
     implicit val actionsRule: VariableUsage[ActionsRule] = NotUsingVariable()
@@ -102,8 +120,7 @@ object VariableContext {
     implicit val tokenAuthenticationRule: VariableUsage[TokenAuthenticationRule] = NotUsingVariable()
   }
 
-  final case class Context(currentRule: Rule,
-                           rulesBefore: List[Rule])
+  final case class Context(currentRule: Rule, rulesBefore: List[Rule])
 
   sealed trait UsageRequirement {
     def checkIfComplies(context: Context): UsageRequirement.ComplianceResult
@@ -112,6 +129,7 @@ object VariableContext {
   object UsageRequirement {
 
     sealed trait ComplianceResult
+
     object ComplianceResult {
       case object Compliant extends ComplianceResult
       final case class NonCompliantWith(usageRequirement: UsageRequirement) extends ComplianceResult
@@ -119,45 +137,51 @@ object VariableContext {
 
     def definedFor(variableType: VariableType): Option[UsageRequirement] = {
       variableType match {
-        case v: VariableType.User => Some(UsageRequirement.OneOfRuleBeforeMustBeAuthenticationRule(v))
-        case _: VariableType.CurrentGroup => None
+        case v: VariableType.User            => Some(UsageRequirement.OneOfRuleBeforeMustBeAuthenticationRule(v))
+        case _: VariableType.CurrentGroup    => None
         case _: VariableType.AvailableGroups => None
-        case _: VariableType.Header => None
+        case _: VariableType.Header          => None
         case _: VariableType.Jwt => Some(JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier)
       }
     }
 
     final case class OneOfRuleBeforeMustBeAuthenticationRule(requiredBy: VariableType) extends UsageRequirement {
+
       override def checkIfComplies(context: Context): ComplianceResult =
         context.rulesBefore.collect { case rule: Rule.AuthenticationRule => rule } match {
           case Nil => ComplianceResult.NonCompliantWith(this)
-          case _ => ComplianceResult.Compliant
+          case _   => ComplianceResult.Compliant
         }
+
     }
 
     case object JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier extends UsageRequirement {
+
       override def checkIfComplies(context: Context): ComplianceResult =
         if (ruleWithJwtTokenWasAlreadyProcessed(context.rulesBefore)) ComplianceResult.Compliant
         else ComplianceResult.NonCompliantWith(this)
 
       private def ruleWithJwtTokenWasAlreadyProcessed(rulesBefore: List[Rule]) =
-        rulesBefore
-          .collect {
-            case rule: JwtAuthRule => rule
-            case rule: JwtAuthenticationRule => rule
-            case rule: JwtAuthorizationRule => rule
-            case rule: RorKbnAuthRule => rule
-            case rule: RorKbnAuthenticationRule => rule
-            case rule: RorKbnAuthorizationRule => rule
-          }
-          .nonEmpty
+        rulesBefore.collect {
+          case rule: JwtAuthRule              => rule
+          case rule: JwtAuthenticationRule    => rule
+          case rule: JwtAuthorizationRule     => rule
+          case rule: RorKbnAuthRule           => rule
+          case rule: RorKbnAuthenticationRule => rule
+          case rule: RorKbnAuthorizationRule  => rule
+        }.nonEmpty
+
     }
 
   }
 
   object RequirementVerifier {
 
-    def verify[A <: Rule](verifiedRule: A, usingVariable: UsingVariable[A], otherRules: NonEmptyList[Rule]): List[UsageRequirement.ComplianceResult] = {
+    def verify[A <: Rule](
+        verifiedRule: A,
+        usingVariable: UsingVariable[A],
+        otherRules: NonEmptyList[Rule]
+    ): List[UsageRequirement.ComplianceResult] = {
       val rulesBefore = findRulesListedBeforeGivenRule(verifiedRule, otherRules)
       val usedVariables = usingVariable.usedVariablesBy(verifiedRule)
       extractVariablesTypesFromExtractables(usedVariables)
@@ -168,16 +192,19 @@ object VariableContext {
       otherRules.toList.takeWhile(_ != rule)
 
     private def checkSingleVariableBasedOn(context: Context)(usedVariable: VariableType) = {
-      UsageRequirement.definedFor(usedVariable)
+      UsageRequirement
+        .definedFor(usedVariable)
         .map(_.checkIfComplies(context))
     }
 
-    private def extractVariablesTypesFromExtractables(usedVariables: NonEmptyList[RuntimeResolvableVariable[_]]): List[VariableType] = {
+    private def extractVariablesTypesFromExtractables(
+        usedVariables: NonEmptyList[RuntimeResolvableVariable[_]]
+    ): List[VariableType] = {
       usedVariables.toList
         .flatMap {
           case RuntimeSingleResolvableVariable.ToBeResolved(extractables) => extractSingle(extractables)
-          case RuntimeMultiResolvableVariable.ToBeResolved(extractables) => extractMulti(extractables)
-          case _ => List.empty
+          case RuntimeMultiResolvableVariable.ToBeResolved(extractables)  => extractMulti(extractables)
+          case _                                                          => List.empty
         }
     }
 
@@ -187,7 +214,9 @@ object VariableContext {
     private def extractMulti(extractables: NonEmptyList[MultiExtractable]) =
       extractables.collect {
         case SingleExtractableWrapper(extractable: VariableContext.VariableType) => extractable
-        case e: VariableContext.VariableType => e
+        case e: VariableContext.VariableType                                     => e
       }
+
   }
+
 }

@@ -29,12 +29,16 @@ import tech.beshu.ror.utils.ScalaOps.*
 trait StartingRorSettingsLoader {
   this: RequestIdAwareLogging =>
 
-  def load()
-          (implicit requestId: RequestId): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]]
+  def load()(
+      implicit requestId: RequestId
+  ): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]]
 
-  protected def loadSettingsFromSource[S: Show, E: Show](source: ReadOnlySettingsSource[S, E],
-                                                         settingsDescription: String)
-                                                        (implicit requestId: RequestId): EitherT[Task, LoadingError, S] = {
+  protected def loadSettingsFromSource[S: Show, E: Show](
+      source: ReadOnlySettingsSource[S, E],
+      settingsDescription: String
+  )(
+      implicit requestId: RequestId
+  ): EitherT[Task, LoadingError, S] = {
     for {
       _ <- EitherT.liftTask(logger.info(s"Loading ReadonlyREST $settingsDescription ..."))
       loadedSettings <- EitherT(source.load())

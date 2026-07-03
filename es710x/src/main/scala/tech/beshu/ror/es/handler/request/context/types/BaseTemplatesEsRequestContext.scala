@@ -26,10 +26,11 @@ import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest}
 import tech.beshu.ror.syntax.*
 
-abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOperation](actionRequest: R,
-                                                                                         esContext: EsContext,
-                                                                                         override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[TemplateRequestBlockContext](esContext)
+abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOperation](
+    actionRequest: R,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[TemplateRequestBlockContext](esContext)
     with EsRequest[TemplateRequestBlockContext] {
 
   protected def templateOperationFrom(actionRequest: R): T

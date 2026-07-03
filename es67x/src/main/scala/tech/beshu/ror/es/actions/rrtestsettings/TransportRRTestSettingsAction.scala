@@ -26,22 +26,31 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRTestSettingsAction(settings: Settings,
-                                    threadPool: ThreadPool,
-                                    transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    indexNameExpressionResolver: IndexNameExpressionResolver,
-                                    @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
-    settings, RRTestSettingsActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRTestSettingsRequest()
-  ) {
+class TransportRRTestSettingsAction(
+    settings: Settings,
+    threadPool: ThreadPool,
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    indexNameExpressionResolver: IndexNameExpressionResolver,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRTestSettingsRequest, RRTestSettingsResponse](
+      settings,
+      RRTestSettingsActionType.name,
+      threadPool,
+      transportService,
+      actionFilters,
+      indexNameExpressionResolver,
+      () => new RRTestSettingsRequest()
+    ) {
 
   @Inject
-  def this(settings: Settings,
-           threadPool: ThreadPool,
-           transportService: TransportService,
-           indexNameExpressionResolver: IndexNameExpressionResolver,
-           actionFilters: ActionFilters) = {
+  def this(
+      settings: Settings,
+      threadPool: ThreadPool,
+      transportService: TransportService,
+      indexNameExpressionResolver: IndexNameExpressionResolver,
+      actionFilters: ActionFilters
+  ) = {
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
   }
 
@@ -50,4 +59,5 @@ class TransportRRTestSettingsAction(settings: Settings,
   override def doExecute(request: RRTestSettingsRequest, listener: ActionListener[RRTestSettingsResponse]): Unit = {
     handler.handle(request, listener)
   }
+
 }

@@ -31,11 +31,12 @@ import tech.beshu.ror.es.handler.response.SearchHitOps.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class SearchEsRequestContext(actionRequest: SearchRequest,
-                             esContext: EsContext,
-                             aclContext: AccessControlStaticContext,
-                             override implicit val threadPool: ThreadPool)
-  extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool) {
+class SearchEsRequestContext(
+    actionRequest: SearchRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override implicit val threadPool: ThreadPool
+) extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
 
@@ -43,10 +44,12 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
     request.indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: SearchRequest,
-                                filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                filter: Option[Filter],
-                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
+  override protected def update(
+      request: SearchRequest,
+      filteredRequestedIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): ModificationResult = {
     request
       .applyFilterToQuery(filter)
       .applyFieldLevelSecurity(fieldLevelSecurity)
@@ -55,8 +58,9 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
     ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  )(actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
       case (response: SearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
         response.getHits.getHits
@@ -70,4 +74,5 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
         actionResponse
     }
   }
+
 }

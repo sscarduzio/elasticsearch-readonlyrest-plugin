@@ -46,17 +46,21 @@ import tech.beshu.ror.utils.ScalaOps.*
 import scala.collection.View
 import scala.collection.immutable.ListMap
 
-class EnabledAccessControlList(val blocks: NonEmptyList[Block],
-                               override val staticContext: AccessControlListStaticContext)
-                              (implicit scheduler: Scheduler)
-  extends AccessControlList with RequestIdAwareLogging {
+class EnabledAccessControlList(
+    val blocks: NonEmptyList[Block],
+    override val staticContext: AccessControlListStaticContext
+)(
+    implicit scheduler: Scheduler
+) extends AccessControlList
+    with RequestIdAwareLogging {
 
   override val description: String = "Enabled ROR ACL"
 
-  override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[(RegularRequestResult[B], History[B])] =
+  override def handleRegularRequest[B <: BlockContext: BlockContextUpdater](
+      context: RequestContext.Aux[B]
+  ): Task[(RegularRequestResult[B], History[B])] =
     doPrivileged {
-      blocks
-        .tail
+      blocks.tail
         .foldLeft(executeBlocksForRegularRequest(blocks.head, context)) { case (currentResult, block) =>
           for {
             prevBlocksExecutionResult <- currentResult
@@ -71,10 +75,11 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         .run
         .map { case (blocksHistory, result) =>
           val handlingResult: RegularRequestResult[B] = result match {
-            case Decision.Permitted(blockContext) => blockContext.block.policy match {
-              case Policy.Allow => RegularRequestResult.Allowed(blockContext)
-              case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
-            }
+            case Decision.Permitted(blockContext) =>
+              blockContext.block.policy match {
+                case Policy.Allow     => RegularRequestResult.Allowed(blockContext)
+                case Policy.Forbid(_) => RegularRequestResult.Forbidden(blockContext)
+              }
             case Decision.Denied(_) => deniedResultFrom(blocksHistory)
           }
           handlingResult -> History(blocksHistory)
@@ -84,7 +89,9 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         }
     }
 
-  override def handleMetadataRequest(context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] =
+  override def handleMetadataRequest(
+      context: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
+  ): Task[(UserMetadataRequestResult, History[UserMetadataRequestBlockContext])] =
     doPrivileged {
       if (staticContext.doesRequirePassword) {
         Task.delay((UserMetadataRequestResult.RorKbnPluginNotSupported, History.empty))
@@ -125,48 +132,57 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       RegularRequestResult.ForbiddenByMismatched(denyCausesPerBlockFrom(blocksHistory))
   }
 
-  private def determineUserMetadataWithoutTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
-                                                                  history: History[UserMetadataRequestBlockContext]) = {
+  private def determineUserMetadataWithoutTenancyHandling(
+      matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
+      history: History[UserMetadataRequestBlockContext]
+  ) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = true)
   }
 
-  private def determineUserMetadataWithTenancyHandling(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
-                                                       history: History[UserMetadataRequestBlockContext]) = {
+  private def determineUserMetadataWithTenancyHandling(
+      matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
+      history: History[UserMetadataRequestBlockContext]
+  ) = {
     determineUserMetadata(matched, history, ignoreGroupsHandling = false) match {
-      case allow@Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
+      case allow @ Allowed(UserMetadata.WithoutGroups(_, _, _, MetadataOrigin(blockContext))) =>
         blockContext.block.policy match {
-          case Policy.Allow => allow
+          case Policy.Allow     => allow
           case Policy.Forbid(_) => Forbidden(blockContext)
         }
-      case Allowed(withGroups@UserMetadata.WithGroups(groupsMetadata)) =>
+      case Allowed(withGroups @ UserMetadata.WithGroups(groupsMetadata)) =>
         determineUserMetadataForFirstAllowedGroup(withGroups, history)
       case result =>
         result
     }
   }
 
-  private def determineUserMetadataForFirstAllowedGroup(userMetadata: WithGroups,
-                                                        history: History[UserMetadataRequestBlockContext]) = {
+  private def determineUserMetadataForFirstAllowedGroup(
+      userMetadata: WithGroups,
+      history: History[UserMetadataRequestBlockContext]
+  ) = {
     userMetadata.groupsMetadata.values.find(_.isAllowed) match {
       case Some(groupMetadata) =>
         userMetadata
-          .excludeOtherThanAllowTypeGroups().map(Allowed.apply)
+          .excludeOtherThanAllowTypeGroups()
+          .map(Allowed.apply)
           .getOrElse(createForbiddenByMismatchedResult(history))
       case None =>
         createForbiddenBy(userMetadata.groupsMetadata.values.head)
     }
   }
 
-  private def determineUserMetadata(matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
-                                    history: History[UserMetadataRequestBlockContext],
-                                    ignoreGroupsHandling: Boolean): UserMetadataRequestResult = {
+  private def determineUserMetadata(
+      matched: Iterable[Permitted[UserMetadataRequestBlockContext]],
+      history: History[UserMetadataRequestBlockContext],
+      ignoreGroupsHandling: Boolean
+  ): UserMetadataRequestResult = {
     val withLoggedUsers = matched.view.onlyLoggedUsers()
     lazy val withGroups = withLoggedUsers.onlyWithAvailableGroups()
 
     if (ignoreGroupsHandling || withGroups.isEmpty) {
       val firstFittingMatch = withLoggedUsers
         .allowedThroughFirstForbidden()
-        .firstAllowedWithKibanaIndexOrHead()
+        .firstAllowedWithKibanaPolicyOrHead()
 
       firstFittingMatch match {
         case Some(m) if m.result.context._1.policy == Policy.Allow =>
@@ -181,7 +197,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
         .flatMap { case (group, metadataCollection) =>
           metadataCollection
             .allowedThroughFirstForbidden()
-            .firstAllowedWithKibanaIndexOrHead()
+            .firstAllowedWithKibanaPolicyOrHead()
             .map(group -> _)
         }
         .values
@@ -189,7 +205,7 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
 
       NonEmptyList.fromList(groupsMetadata) match {
         case Some(nel) => createAllowResult(nel)
-        case None => createForbiddenResult(matched, history)
+        case None      => createForbiddenResult(matched, history)
       }
     }
   }
@@ -197,19 +213,20 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   extension (blockResults: View[Decision[UserMetadataRequestBlockContext]]) {
 
     private def onlyMatched(): View[Permitted[UserMetadataRequestBlockContext]] = {
-      blockResults.collect { case m@Permitted(blockContext) => m }
+      blockResults.collect { case m @ Permitted(blockContext) => m }
     }
+
   }
 
   extension (blockResults: View[Permitted[UserMetadataRequestBlockContext]]) {
 
     private def onlyLoggedUsers(): View[PermittedWithUser[UserMetadataRequestBlockContext]] = {
       blockResults.flatMap { r =>
-        r.context
-          .blockMetadata.loggedUser
+        r.context.blockMetadata.loggedUser
           .map(user => PermittedWithUser(r, user))
       }
     }
+
   }
 
   extension (blockResults: View[PermittedWithUser[UserMetadataRequestBlockContext]]) {
@@ -220,23 +237,23 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
 
     private def gatherGroupMetadataPreservingOrder(): Seq[GroupMetadata] = {
-      blockResults
-        .flatMap { matched =>
-          val blockMetadata = matched.result.context.blockMetadata
-          blockMetadata.currentGroupId match {
-            case None =>
-              blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)).toSeq
-            case Some(currentGroupId) =>
-              blockMetadata.availableGroups.find(_.id == currentGroupId) match {
-                case Some(group) => Seq(groupMetadataFrom(group, matched))
-                case None =>
-                  implicit val requestId: RequestId = matched.result.context.requestContext.id.toRequestId
-                  logger.warn(s"currentGroupId ${currentGroupId.show} not found in availableGroups for block ${matched.result.context.block.name.show} - this should not happen")
-                  Seq.empty
-              }
-          }
+      blockResults.flatMap { matched =>
+        val blockMetadata = matched.result.context.blockMetadata
+        blockMetadata.currentGroupId match {
+          case None =>
+            blockMetadata.availableGroups.map(groupMetadataFrom(_, matched)).toSeq
+          case Some(currentGroupId) =>
+            blockMetadata.availableGroups.find(_.id == currentGroupId) match {
+              case Some(group) => Seq(groupMetadataFrom(group, matched))
+              case None        =>
+                implicit val requestId: RequestId = matched.result.context.requestContext.id.toRequestId
+                logger.warn(
+                  s"currentGroupId ${currentGroupId.show} not found in availableGroups for block ${matched.result.context.block.name.show} - this should not happen"
+                )
+                Seq.empty
+            }
         }
-        .toSeq
+      }.toSeq
     }
 
     private def allowedThroughFirstForbidden(): View[PermittedWithUser[UserMetadataRequestBlockContext]] = {
@@ -244,27 +261,30 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       allowed ++ rest.headOption.toList
     }
 
-    private def firstAllowedWithKibanaIndexOrHead(): Option[PermittedWithUser[UserMetadataRequestBlockContext]] = {
+    private def firstAllowedWithKibanaPolicyOrHead(): Option[PermittedWithUser[UserMetadataRequestBlockContext]] = {
       blockResults
         .find { m =>
           val context = m.result.context
-          context.block.policy == Policy.Allow && context.blockMetadata.kibanaPolicy.flatMap(_.index).isDefined
+          context.block.policy == Policy.Allow && context.blockMetadata.kibanaPolicy.isDefined
         }
         .orElse(blockResults.headOption)
     }
+
   }
 
   extension (metadata: Iterable[GroupMetadata]) {
+
     private def allowedThroughFirstForbidden(): Iterable[GroupMetadata] = {
       val (allowed, rest) = metadata.span(_.metadataOrigin.blockContext.block.policy == Policy.Allow)
       allowed ++ rest.headOption.toList
     }
 
-    private def firstAllowedWithKibanaIndexOrHead(): Option[GroupMetadata] = {
+    private def firstAllowedWithKibanaPolicyOrHead(): Option[GroupMetadata] = {
       metadata
-        .find(m => m.metadataOrigin.blockContext.block.policy == Policy.Allow && m.kibanaPolicy.flatMap(_.index).isDefined)
+        .find(m => m.metadataOrigin.blockContext.block.policy == Policy.Allow && m.kibanaPolicy.isDefined)
         .orElse(metadata.headOption)
     }
+
   }
 
   private final case class PermittedWithUser[T <: BlockContext](result: Permitted[T], loggedUser: LoggedUser)
@@ -298,18 +318,21 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
     }
   }
 
-  private def createForbiddenResult(blockResults: Iterable[Decision[UserMetadataRequestBlockContext]],
-                                    history: History[UserMetadataRequestBlockContext]) = {
+  private def createForbiddenResult(
+      blockResults: Iterable[Decision[UserMetadataRequestBlockContext]],
+      history: History[UserMetadataRequestBlockContext]
+  ) = {
     val matchedForbidBlock = blockResults.toList.collectFirstSome {
-      case m@Permitted(blockContext) => blockContext.block.policy match {
-        case Policy.Allow => None
-        case Policy.Forbid(_) => Some(m)
-      }
+      case m @ Permitted(blockContext) =>
+        blockContext.block.policy match {
+          case Policy.Allow     => None
+          case Policy.Forbid(_) => Some(m)
+        }
       case Denied(_) => None
     }
     matchedForbidBlock match {
       case Some(Permitted(blockContext)) => Forbidden(blockContext)
-      case None => createForbiddenByMismatchedResult(history)
+      case None                          => createForbiddenByMismatchedResult(history)
     }
   }
 
@@ -327,8 +350,10 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       }
     }
 
-  private def executeBlocksForUserMetadata(block: Block,
-                                           requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]) = {
+  private def executeBlocksForUserMetadata(
+      block: Block,
+      requestContext: UserMetadataRequestContext.Aux[UserMetadataRequestBlockContext]
+  ) = {
     block
       .evaluateForMetadataRequest(requestContext)
       .map(_.toList)
@@ -339,8 +364,10 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
       }
   }
 
-  private def executeBlocksForRegularRequest[B <: BlockContext : BlockContextUpdater](block: Block,
-                                                                                      requestContext: RequestContext.Aux[B]): WriterT[Task, Vector[BlockHistory[B]], Decision[B]] = {
+  private def executeBlocksForRegularRequest[B <: BlockContext: BlockContextUpdater](
+      block: Block,
+      requestContext: RequestContext.Aux[B]
+  ): WriterT[Task, Vector[BlockHistory[B]], Decision[B]] = {
     for {
       blockEvalDecision <- WriterT.liftF(block.evaluateForRegularRequest(requestContext))
       (decision, history) = blockEvalDecision
@@ -355,93 +382,95 @@ class EnabledAccessControlList(val blocks: NonEmptyList[Block],
   private def denyCausesPerBlockFrom(history: Iterable[BlockHistory[_]]): ListMap[Block.Name, Denied.Cause] = {
     ListMap.from {
       history.flatMap {
-        case BlockHistory.Permitted(_, _, _) => None
+        case BlockHistory.Permitted(_, _, _)         => None
         case BlockHistory.Denied(block, decision, _) => Some(block.name -> decision.cause)
       }
     }
   }
 
   private def indexNotFoundCauseExists(causes: Set[Denied.Cause]): Option[Denied.Cause.IndexNotFound] = {
-    causes.collectFirst {
-      case cause@Denied.Cause.IndexNotFound(_) => cause
+    causes.collectFirst { case cause @ Denied.Cause.IndexNotFound(_) =>
+      cause
     }
   }
 
   private def aliasNotFoundCauseExists(causes: Set[Denied.Cause]) = {
     causes.exists {
-      case Denied.Cause.AliasNotFound => true
-      case _: Denied.Cause.OtherFailure => false
+      case Denied.Cause.AliasNotFound            => true
+      case _: Denied.Cause.OtherFailure          => false
       case _: Denied.Cause.AuthenticationFailure => false
-      case _: Denied.Cause.AuthorizationFailure => false
+      case _: Denied.Cause.AuthorizationFailure  => false
     }
   }
 
   private def templateNotFoundCauseExists(causes: Set[Denied.Cause]) = {
     causes.exists {
-      case Denied.Cause.TemplateNotFound => true
-      case _: Denied.Cause.OtherFailure => false
+      case Denied.Cause.TemplateNotFound         => true
+      case _: Denied.Cause.OtherFailure          => false
       case _: Denied.Cause.AuthenticationFailure => false
-      case _: Denied.Cause.AuthorizationFailure => false
+      case _: Denied.Cause.AuthorizationFailure  => false
     }
   }
 
   private def impersonationRelatedCauseExists(causes: Set[Denied.Cause]) = {
     causes.exists {
-      case Denied.Cause.ImpersonationNotAllowed => true
+      case Denied.Cause.ImpersonationNotAllowed   => true
       case Denied.Cause.ImpersonationNotSupported => true
-      case _: Denied.Cause.OtherFailure => false
-      case _: Denied.Cause.AuthenticationFailure => false
-      case _: Denied.Cause.AuthorizationFailure => false
+      case _: Denied.Cause.OtherFailure           => false
+      case _: Denied.Cause.AuthenticationFailure  => false
+      case _: Denied.Cause.AuthorizationFailure   => false
     }
   }
 
   private def denialCausesFrom[B <: BlockContext](history: Iterable[BlockHistory[B]]): Set[Denied.Cause] = {
-    history
-      .flatMap {
-        case BlockHistory.Permitted(_, _, _) =>
-          Iterable.empty
-        case BlockHistory.Denied(_, _, history) =>
-          history.flatMap {
-            _.decision match {
-              case Decision.Permitted(_) => None
-              case Denied(cause) => Some(cause)
-            }
+    history.flatMap {
+      case BlockHistory.Permitted(_, _, _) =>
+        Iterable.empty
+      case BlockHistory.Denied(_, _, history) =>
+        history.flatMap {
+          _.decision match {
+            case Decision.Permitted(_) => None
+            case Denied(cause)         => Some(cause)
           }
-      }
-      .toCovariantSet
+        }
+    }.toCovariantSet
   }
+
 }
 
 object EnabledAccessControlList {
 
-  final class AccessControlListStaticContext(blocks: NonEmptyList[Block],
-                                             globalSettings: GlobalSettings,
-                                             override val obfuscatedHeaders: Set[Header.Name])
-    extends AccessControlStaticContext {
+  final class AccessControlListStaticContext(
+      blocks: NonEmptyList[Block],
+      globalSettings: GlobalSettings,
+      override val obfuscatedHeaders: Set[Header.Name]
+  ) extends AccessControlStaticContext {
 
     override val forbiddenRequestMessage: String = globalSettings.forbiddenRequestMessage
 
     val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = {
       blocks
         .flatMap(_.rules)
-        .collect {
-          case rule: FieldsRule => rule.settings.flsEngine
+        .collect { case rule: FieldsRule =>
+          rule.settings.flsEngine
         }
         .headOption
     }
 
     val doesRequirePassword: Boolean = {
       globalSettings.showBasicAuthPrompt &&
-        blocks
-          .find(_
-            .rules
+      blocks
+        .find(
+          _.rules
             .collect {
               case _: AuthenticationRule => true
-              case _: AuthorizationRule => true
+              case _: AuthorizationRule  => true
             }
             .nonEmpty
-          )
-          .isDefined
+        )
+        .isDefined
     }
+
   }
+
 }

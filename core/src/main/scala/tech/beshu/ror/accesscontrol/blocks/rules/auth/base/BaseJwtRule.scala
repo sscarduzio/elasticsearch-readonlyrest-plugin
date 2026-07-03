@@ -37,7 +37,8 @@ import scala.util.Try
 trait BaseJwtRule extends RequestIdAwareLogging {
 
   protected def doPostAuthAction[
-    B <: BlockContext, JWT_DEF <: JwtDef
+      B <: BlockContext,
+      JWT_DEF <: JwtDef
   ](blockContext: B, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause): Task[Decision[B]] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     jwt.checkMethod match {
@@ -46,11 +47,10 @@ trait BaseJwtRule extends RequestIdAwareLogging {
           token <- EitherT.fromEither[Task](extractJwtTokenFromHeader(blockContext, jwt, failedJwtCauseCreator))
           _ <- checkAuthenticationTokenValidity(service, token, failedJwtCauseCreator)
         } yield blockContext
-        result
-          .value
+        result.value
           .map {
             case Right(blockContext) => Permitted(blockContext)
-            case Left(cause) => Denied(cause)
+            case Left(cause)         => Denied(cause)
           }
       case _ =>
         Task.now(Permitted(blockContext))
@@ -58,9 +58,11 @@ trait BaseJwtRule extends RequestIdAwareLogging {
   }
 
   protected def processUsingJwtToken[
-    B <: BlockContext, JWT_DEF <: JwtDef
-  ](blockContext: B, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)
-   (operation: Jwt.Payload => Either[Cause, B]): Task[Decision[B]] = Task.delay {
+      B <: BlockContext,
+      JWT_DEF <: JwtDef
+  ](blockContext: B, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)(
+      operation: Jwt.Payload => Either[Cause, B]
+  ): Task[Decision[B]] = Task.delay {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val result = for {
       token <- extractJwtTokenFromHeader(blockContext, jwt, failedJwtCauseCreator)
@@ -69,39 +71,49 @@ trait BaseJwtRule extends RequestIdAwareLogging {
     } yield claimProcessingResult
     result match {
       case Right(modifiedBlockContext) => Permitted(modifiedBlockContext)
-      case Left(cause) => Denied(cause)
+      case Left(cause)                 => Denied(cause)
     }
   }
 
-  private def checkAuthenticationTokenValidity(service: ExternalAuthenticationService,
-                                               token: Jwt.Token,
-                                               failedJwtCauseCreator: String => Cause)
-                                              (implicit requestId: RequestId) = EitherT {
+  private def checkAuthenticationTokenValidity(
+      service: ExternalAuthenticationService,
+      token: Jwt.Token,
+      failedJwtCauseCreator: String => Cause
+  )(
+      implicit requestId: RequestId
+  ) = EitherT {
     service
       .authenticate(Credentials(User.Id(nes("jwt")), PlainTextSecret(token.value)))
       .map(_.left.map(c => failedJwtCauseCreator(c.details)))
   }
 
-  private def extractJwtTokenFromHeader[JWT_DEF <: JwtDef](blockContext: BlockContext,
-                                                           jwt: JWT_DEF,
-                                                           failedJwtCauseCreator: String => Cause) = {
-    blockContext
-      .requestContext
+  private def extractJwtTokenFromHeader[JWT_DEF <: JwtDef](
+      blockContext: BlockContext,
+      jwt: JWT_DEF,
+      failedJwtCauseCreator: String => Cause
+  ) = {
+    blockContext.requestContext
       .authorizationTokenBy(jwt.authorizationTokenDef)
       .map(h => Jwt.Token(h.value))
-      .left.map {
-        case AuthorizationTokenRetrievingError.MissingHeader => failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' is missing")
-        case AuthorizationTokenRetrievingError.InvalidValue => failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' has an invalid or unrecognized token format")
+      .left
+      .map {
+        case AuthorizationTokenRetrievingError.MissingHeader =>
+          failedJwtCauseCreator(s"JWT header '${jwt.authorizationTokenDef.headerName.show}' is missing")
+        case AuthorizationTokenRetrievingError.InvalidValue =>
+          failedJwtCauseCreator(
+            s"JWT header '${jwt.authorizationTokenDef.headerName.show}' has an invalid or unrecognized token format"
+          )
       }
   }
 
-  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)
-                                           (implicit requestId: RequestId) = {
+  private def claimsFrom[JWT_DEF <: JwtDef](token: Jwt.Token, jwt: JWT_DEF, failedJwtCauseCreator: String => Cause)(
+      implicit requestId: RequestId
+  ) = {
     val parser = jwt.checkMethod match {
-      case NoCheck(_) => Jwts.parser().unsecured().build()
+      case NoCheck(_)   => Jwts.parser().unsecured().build()
       case Hmac(rawKey) => Jwts.parser().verifyWith(Keys.hmacShaKeyFor(rawKey)).build()
-      case Rsa(pubKey) => Jwts.parser().verifyWith(pubKey).build()
-      case Ec(pubKey) => Jwts.parser().verifyWith(pubKey).build()
+      case Rsa(pubKey)  => Jwts.parser().verifyWith(pubKey).build()
+      case Ec(pubKey)   => Jwts.parser().verifyWith(pubKey).build()
     }
 
     def causeFrom(ex: Throwable): Cause = {
@@ -113,31 +125,31 @@ trait BaseJwtRule extends RequestIdAwareLogging {
       case NoCheck(_) =>
         token.value.value.split("\\.").toList match {
           case fst :: snd :: _ =>
-            Try(parser.parseUnsecuredClaims(s"$fst.$snd.").getPayload)
-              .toEither
+            Try(parser.parseUnsecuredClaims(s"$fst.$snd.").getPayload).toEither
               .fold(ex => Left(causeFrom(ex)), claims => Right(Jwt.Payload(claims)))
           case _ =>
             Left(failedJwtCauseCreator("Malformed JWT token structure"))
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
-        Try(parser.parseSignedClaims(token.value.value).getPayload)
-          .toEither
+        Try(parser.parseSignedClaims(token.value.value).getPayload).toEither
           .map(Jwt.Payload.apply)
           .fold(ex => Left(causeFrom(ex)), Right(_))
     }
   }
 
-  private def logBadToken(ex: Throwable, token: Jwt.Token)
-                         (implicit requestId: RequestId): Unit = {
+  private def logBadToken(ex: Throwable, token: Jwt.Token)(
+      implicit requestId: RequestId
+  ): Unit = {
     val tokenParts = token.show.split("\\.")
     val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length === 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
       s"${tokenParts(0)}.${tokenParts(1)} (omitted digest)"
-    }
-    else {
+    } else {
       token.show
     }
-    logger.debug(s"JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}")
+    logger.debug(
+      s"JWT token '${printableToken.show}' parsing error: ${ex.getClass.getSimpleName.show} ${ex.getMessage.show}"
+    )
   }
 
 }

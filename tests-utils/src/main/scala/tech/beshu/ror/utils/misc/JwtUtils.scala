@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.utils.misc
 
-
 import cats.data.NonEmptyList
+import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.{Keys, MacAlgorithm}
-import io.jsonwebtoken.Jwts
 import tech.beshu.ror.utils.misc.JwtUtils.Jwt.Secret
 
 import scala.jdk.CollectionConverters.*
@@ -32,8 +31,8 @@ object JwtUtils {
 
     def stringify(): String = {
       val builder = secret match {
-        case Secret.NotPresent => Jwts.builder
-        case Secret.Key(value) => Jwts.builder.signWith(value)
+        case Secret.NotPresent           => Jwts.builder
+        case Secret.Key(value)           => Jwts.builder.signWith(value)
         case Secret.KeyWithAlg(alg, key) => Jwts.builder.signWith(Keys.hmacShaKeyFor(key.getBytes()), alg)
       }
       builder
@@ -45,13 +44,12 @@ object JwtUtils {
     def defaultClaims(): DefaultClaims = {
       val initialClaimsMap = Map[String, AnyRef]("sub" -> "test")
       val fullMapOfClaims = claims
-        .foldLeft(initialClaimsMap) {
-          case (acc, claim) =>
-            val claimValue = claim.name.tail match {
-              case Nil => claim.value
-              case nonEmptyTail => claimValueFrom(nonEmptyTail, claim.value)
-            }
-            acc + (claim.name.head.value -> claimValue)
+        .foldLeft(initialClaimsMap) { case (acc, claim) =>
+          val claimValue = claim.name.tail match {
+            case Nil          => claim.value
+            case nonEmptyTail => claimValueFrom(nonEmptyTail, claim.value)
+          }
+          acc + (claim.name.head.value -> claimValue)
         }
         .asJava
       new DefaultClaims(fullMapOfClaims)
@@ -60,14 +58,17 @@ object JwtUtils {
     private def claimValueFrom(notEmptyTailOfClaimKeys: List[ClaimKey], value: AnyRef) = {
       val reversedListOfClaimKeys = notEmptyTailOfClaimKeys.reverse
       val theDeepestElement: AnyRef = Map(reversedListOfClaimKeys.head.value -> value).asJava
-      val claimValue = reversedListOfClaimKeys.tail.foldLeft(theDeepestElement) {
-        case (innerElement, claimKey) => Map(claimKey.value -> innerElement).asJava
+      val claimValue = reversedListOfClaimKeys.tail.foldLeft(theDeepestElement) { case (innerElement, claimKey) =>
+        Map(claimKey.value -> innerElement).asJava
       }
       claimValue
     }
+
   }
+
   object Jwt {
     sealed trait Secret
+
     object Secret {
       case object NotPresent extends Secret
       final case class Key(value: java.security.Key) extends Secret
@@ -85,8 +86,9 @@ object JwtUtils {
   final case class Claim(name: NonEmptyList[ClaimKey], value: AnyRef)
   final case class ClaimKey(value: String) extends AnyVal
 
-  implicit class NonEmptyListOfClaimKeysOps[T](val list: T)
-                                              (implicit f: T => NonEmptyList[ClaimKey]) {
+  implicit class NonEmptyListOfClaimKeysOps[T](val list: T)(
+      implicit f: T => NonEmptyList[ClaimKey]
+  ) {
     def :=(value: String): Claim = Claim(list, value)
 
     def :=(value: List[String]): Claim = Claim(list, value.asJava)
@@ -94,8 +96,9 @@ object JwtUtils {
     def :->(nextKey: ClaimKey): NonEmptyList[ClaimKey] = list :+ nextKey
   }
 
-  implicit class ClaimKeyOps[T](key: T)
-                               (implicit f: T => ClaimKey) {
+  implicit class ClaimKeyOps[T](key: T)(
+      implicit f: T => ClaimKey
+  ) {
     def :=(value: String): Claim = Claim(NonEmptyList.one(key), value)
 
     def :=(value: List[String]): Claim = Claim(NonEmptyList.one(key), value.asJava)
@@ -105,5 +108,8 @@ object JwtUtils {
 
   implicit def string2ClaimKey(value: String): ClaimKey = ClaimKey(value)
 
-  private implicit def a2B[A, B](value: A)(implicit f: A => B): B = f(value)
+  private implicit def a2B[A, B](value: A)(
+      implicit f: A => B
+  ): B = f(value)
+
 }

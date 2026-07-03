@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, Version}
 
 class LocalClusterAuditingToolsSuite
-  extends BaseAuditingToolsSuite
+    extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with CustomScalaTestMatchers {
@@ -54,8 +54,8 @@ class LocalClusterAuditingToolsSuite
 
   // Adding the ES cluster fields is disabled in the /enabled_auditing_tools/readonlyrest.yml settings file (`DefaultAuditLogSerializerV1` is used)
   override def assertForEveryAuditEntry(entry: JSON): Unit = {
-    entry.obj.get("es_node_name") should be (None)
-    entry.obj.get("es_cluster_name") should be (None)
+    entry.obj.get("es_node_name") should be(None)
+    entry.obj.get("es_cluster_name") should be(None)
   }
 
   "ES" should {
@@ -109,7 +109,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedV1Entry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedV1Entry)
 
             val expectedV2Entry = ujson.read(
               """{
@@ -144,7 +153,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedV2Entry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedV2Entry)
           }
         }
         updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
@@ -193,7 +211,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedMainEntry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedMainEntry)
 
             val expectedRefreshConfigEntry = ujson.read(
               """{
@@ -223,7 +250,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedRefreshConfigEntry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedRefreshConfigEntry)
 
             val expectedSearchEntry = ujson.read(
               """{
@@ -253,7 +289,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedSearchEntry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedSearchEntry)
           }
         }
         updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
@@ -305,7 +350,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedMainEntry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedMainEntry)
 
             val expectedRefreshConfigEntry = ujson.read(
               """{
@@ -336,7 +390,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedRefreshConfigEntry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedRefreshConfigEntry)
 
             val expectedSearchEntry = ujson.read(
               """{
@@ -367,7 +430,16 @@ class LocalClusterAuditingToolsSuite
                 |  "@timestamp": "ignored"
                 |}""".stripMargin
             )
-            auditEntries should containJsonMatching("@timestamp", "task_id", "processingMillis", "correlation_id", "id", "origin", "destination", "headers")(expectedSearchEntry)
+            auditEntries should containJsonMatching(
+              "@timestamp",
+              "task_id",
+              "processingMillis",
+              "correlation_id",
+              "id",
+              "origin",
+              "destination",
+              "headers"
+            )(expectedSearchEntry)
           }
         }
         updateRorSettingsToUseSerializer("tech.beshu.ror.audit.instances.DefaultAuditLogSerializerV1")
@@ -388,7 +460,7 @@ class LocalClusterAuditingToolsSuite
         forEachAuditManager { adminAuditManager =>
           eventually {
             val auditEntries = adminAuditManager.getEntries.force().jsons
-            auditEntries.size should be (1)
+            auditEntries.size should be(1)
 
             val expectedEntry = ujson.read(
               """{
@@ -416,7 +488,7 @@ class LocalClusterAuditingToolsSuite
         Thread.sleep(2000)
         forEachAuditManager { adminAuditManager =>
           val auditEntries = adminAuditManager.getEntries.force().jsons
-          auditEntries.size should be (0)
+          auditEntries.size should be(0)
         }
 
         // Restore the default settings
@@ -437,7 +509,8 @@ class LocalClusterAuditingToolsSuite
             "audit_index" -> ecsAuditIndexName,
           )
         )
-        val auditIndexManager = new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, ecsAuditIndexName)
+        val auditIndexManager =
+          new AuditIndexManager(destNodeClientProvider.adminClient, esVersionUsed, ecsAuditIndexName)
         performAndAssertExampleSearchRequest(indexManager)
         eventually {
           val auditEntries = auditIndexManager.getEntries.force().jsons
@@ -518,4 +591,5 @@ class LocalClusterAuditingToolsSuite
     rorApiManager.updateRorInIndexSettings(modifiedSettings).forceOKStatusOrSettingsAlreadyLoaded()
     rorApiManager.reloadRorSettings().force()
   }
+
 }

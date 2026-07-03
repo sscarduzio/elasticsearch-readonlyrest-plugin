@@ -20,9 +20,10 @@ import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRAuthMockActionType extends Action[RRAuthMockRequest, RRAuthMockResponse, RRAuthMockActionType.RequestBuilder](
-  RRAuthMockActionType.name
-) {
+class RRAuthMockActionType
+    extends Action[RRAuthMockRequest, RRAuthMockResponse, RRAuthMockActionType.RequestBuilder](
+      RRAuthMockActionType.name
+    ) {
 
   override def newResponse(): RRAuthMockResponse =
     new RRAuthMockResponse()
@@ -33,7 +34,7 @@ class RRAuthMockActionType extends Action[RRAuthMockRequest, RRAuthMockResponse,
 
 object RRAuthMockActionType {
   class RequestBuilder(client: ElasticsearchClient, actionType: RRAuthMockActionType, request: RRAuthMockRequest)
-    extends ActionRequestBuilder[RRAuthMockRequest, RRAuthMockResponse, RequestBuilder](client, actionType, request)
+      extends ActionRequestBuilder[RRAuthMockRequest, RRAuthMockResponse, RequestBuilder](client, actionType, request)
 
   val name: String = RorAction.RorAuthMockAction.value
   val instance = new RRAuthMockActionType()
