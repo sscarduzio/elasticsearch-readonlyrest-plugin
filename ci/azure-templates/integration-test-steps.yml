@@ -58,6 +58,16 @@ steps:
       testResultsFiles: "**/TEST*xml"
       mergeTestResults: true
 
+  # Publish per-shard logs so they're downloadable from the Azure build page (not garbled in the
+  # console stream when shardCount > 1). Each shard writes to build/sharded-logs/shard-<i>.log.
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      PathtoPublish: "$(Build.SourcesDirectory)/integration-tests/build/sharded-logs"
+      ArtifactName: sharded-logs
+      publishLocation: Container
+    displayName: 'Publish per-shard test logs'
+
   # Reap THIS CI job's containers however the job ended (always() runs in the cancel grace period);
   # the Abandoned case is covered by the host timer. Scoped by label -> never touches a sibling CI job.
   - bash: |

@@ -178,41 +178,10 @@ tasks.register('prebuildEsImage', JavaExec) {
 
 // Sharded-IT orchestrator: runs K parallel `./gradlew integration-tests:test -PshardIndex=i`
 // JVMs (one ES container each). Usage: ./gradlew integration-tests:shardedTest -PshardCount=2 -PesModule=es94x
-tasks.register('shardedTest') {
+tasks.register('shardedTest', tech.beshu.ror.buildbase.ShardedGradlewTest) {
     dependsOn 'prebuildEsImage', 'testClasses'
-    doLast {
-        int shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
-        def module = project.findProperty('esModule') ?: defaultEsModule
-        def baseCmd = [new File(rootProject.projectDir, 'gradlew').absolutePath, '--no-daemon',
-                       'integration-tests:test', "-PesModule=${module}".toString()]
-        def esVersion = project.gradle.startParameter.projectProperties['esVersion']
-        if (esVersion != null) { baseCmd << "-PesVersion=${esVersion}".toString() }
-
-        List<Process> children = [].asSynchronized()
-        def killAll = {
-            children.each { p ->
-                p.descendants().forEach { d -> d.destroyForcibly() }
-                p.destroyForcibly()
-            }
-        }
-        def hook = new Thread(killAll as Runnable, 'shardedTest-kill-children')
-        Runtime.runtime.addShutdownHook(hook)
-        try {
-            (0..<shardCount).each { idx ->
-                def cmd = baseCmd + ["-PshardCount=${shardCount}".toString(), "-PshardIndex=${idx}".toString()]
-                def p = new ProcessBuilder(cmd).directory(rootProject.projectDir).redirectErrorStream(true).start()
-                children << p
-                // Pump through System.out (not inheritIO): reaches the build console under a daemon too.
-                Thread.startDaemon("shard-${idx}-output") { p.inputStream.transferTo(System.out) }
-            }
-            def exitCodes = children.collect { it.waitFor() }   // wait ALL (no fail-fast), like `wait`
-            if (exitCodes.any { it != 0 }) {
-                throw new GradleException("Sharded integration tests failed — per-shard exit codes: ${exitCodes}")
-            }
-        } finally {
-            killAll()
-            try { Runtime.runtime.removeShutdownHook(hook) } catch (IllegalStateException ignored) { /* already shutting down */ }
-        }
-    }
+    shardCount = (project.findProperty('shardCount') ?: '1') as int
+    esModule = project.findProperty('esModule') ?: defaultEsModule
+    esVersion = project.gradle.startParameter.projectProperties['esVersion']
 }
 
