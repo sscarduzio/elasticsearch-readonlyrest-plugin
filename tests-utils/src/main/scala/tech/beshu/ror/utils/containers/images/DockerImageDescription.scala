@@ -110,6 +110,8 @@ final case class DockerImageDescription(
     envs.toList.sortBy(e => (e.name, e.value)).foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
     // entrypoint/command also define the image — fold them in so images differing only there can't
     // collide to the same tag (false cache hit running the wrong launcher).
+    // Note: entrypoint is an in-container os.Path (e.g. /usr/share/elasticsearch/bin/es-readonlyrest),
+    // not a host File — its content is pinned by the baseImage hash above, not copied from the host.
     entrypoint.foreach(p => md.update(p.toString.getBytes("UTF-8")))
     command.foreach(c => md.update(c.getBytes("UTF-8")))
     md.digest().take(10).map("%02x".format(_)).mkString
