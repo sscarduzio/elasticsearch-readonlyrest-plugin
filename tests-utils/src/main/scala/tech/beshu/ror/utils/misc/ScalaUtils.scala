@@ -31,8 +31,8 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
-import scala.util.control.NonFatal
 import scala.util.Using
+import scala.util.control.NonFatal
 
 object ScalaUtils extends LazyLogging {
 
@@ -94,7 +94,11 @@ object ScalaUtils extends LazyLogging {
   implicit def javaDurationToFiniteDuration(interval: Duration): FiniteDuration =
     FiniteDuration(interval.toMillis, TimeUnit.MILLISECONDS)
 
-  def retry(times: Int, cleanBeforeRetrying: => Unit = (), delayBetweenRetries: FiniteDuration = 0.seconds)(action: => Unit): Unit = {
+  def retry(
+      times: Int,
+      cleanBeforeRetrying: => Unit = (),
+      delayBetweenRetries: FiniteDuration = 0.seconds
+  )(action: => Unit): Unit = {
     @tailrec
     def loop(attempt: Int): Unit = {
       try {

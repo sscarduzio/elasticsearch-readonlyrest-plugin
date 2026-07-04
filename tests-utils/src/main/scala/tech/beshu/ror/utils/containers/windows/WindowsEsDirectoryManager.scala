@@ -95,10 +95,10 @@ object WindowsEsDirectoryManager extends LazyLogging {
         logger.info(s"ES $esVersion for Windows downloaded and sha512-verified")
       }
     } catch {
-      case NonFatal(_) =>
+      case NonFatal(e) =>
         // Clean up the .part file on final failure — retry() only cleans before retries, not on exhaustion.
         Try(os.remove(tmp))
-        throw
+        throw e
     }
   }
 

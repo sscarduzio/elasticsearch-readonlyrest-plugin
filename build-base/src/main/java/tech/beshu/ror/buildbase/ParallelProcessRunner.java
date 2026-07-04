@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Runs a list of external commands in parallel, waits for ALL of them (no fail-fast), and returns
@@ -68,7 +69,9 @@ public final class ParallelProcessRunner {
      * @throws ExecutionException if a process fails abnormally (not via exit code)
      */
     public List<Integer> run() throws InterruptedException, ExecutionException {
-        List<Process> processes = new ArrayList<>();
+        // CopyOnWriteArrayList: the shutdown hook iterates this list from another thread (SIGTERM);
+        // ArrayList would throw ConcurrentModificationException if the hook fires mid-spawn.
+        List<Process> processes = new CopyOnWriteArrayList<>();
         List<CompletableFuture<Process>> futures = new ArrayList<>();
 
         Thread shutdownHook = new Thread(() -> killAll(processes), "parallel-process-runner-shutdown");
