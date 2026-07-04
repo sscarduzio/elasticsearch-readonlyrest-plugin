@@ -115,7 +115,7 @@ object WindowsEsDirectoryManager extends LazyLogging {
   }
 
   private def sha512Matches(file: os.Path, expected: String): Boolean = {
-    ScalaUtils.sha512(better.files.File(file.toIO)) == expected
+    ScalaUtils.sha512(better.files.File(file.toNIO)) == expected
   }
 
   private def doDownloadEsZipFileWithProgress(url: String, dest: os.Path): Unit = {
