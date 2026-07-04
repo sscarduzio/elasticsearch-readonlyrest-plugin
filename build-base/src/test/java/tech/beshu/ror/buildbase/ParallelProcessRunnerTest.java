@@ -19,94 +19,100 @@ package tech.beshu.ror.buildbase;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
 class ParallelProcessRunnerTest {
 
-    @TempDir
-    File tempDir;
+  @TempDir File tempDir;
 
-    @Test
-    void runSingleCommandReturnsExitCode() throws Exception {
-        File logFile = new File(tempDir, "out.log");
-        ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
-        runner.addCommand(Arrays.asList("true"), logFile);
+  @Test
+  void runSingleCommandReturnsExitCode()
+      throws IOException, InterruptedException, ExecutionException {
+    File logFile = new File(tempDir, "out.log");
+    ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
+    runner.addCommand(Arrays.asList("true"), logFile);
 
-        List<Integer> exitCodes = runner.run();
+    List<Integer> exitCodes = runner.run();
 
-        assertEquals(1, exitCodes.size());
-        assertEquals(0, exitCodes.get(0));
-        assertTrue(logFile.exists());
-    }
+    assertEquals(1, exitCodes.size());
+    assertEquals(0, exitCodes.get(0));
+    assertTrue(logFile.exists());
+  }
 
-    @Test
-    void runMultipleCommandsInParallel() throws Exception {
-        File log1 = new File(tempDir, "shard-0.log");
-        File log2 = new File(tempDir, "shard-1.log");
-        ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
-        runner.addCommand(Arrays.asList("true"), log1);
-        runner.addCommand(Arrays.asList("true"), log2);
+  @Test
+  void runMultipleCommandsInParallel()
+      throws IOException, InterruptedException, ExecutionException {
+    File log1 = new File(tempDir, "shard-0.log");
+    File log2 = new File(tempDir, "shard-1.log");
+    ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
+    runner.addCommand(Arrays.asList("true"), log1);
+    runner.addCommand(Arrays.asList("true"), log2);
 
-        List<Integer> exitCodes = runner.run();
+    List<Integer> exitCodes = runner.run();
 
-        assertEquals(2, exitCodes.size());
-        assertEquals(0, exitCodes.get(0));
-        assertEquals(0, exitCodes.get(1));
-    }
+    assertEquals(2, exitCodes.size());
+    assertEquals(0, exitCodes.get(0));
+    assertEquals(0, exitCodes.get(1));
+  }
 
-    @Test
-    void runFailingCommandReturnsNonZeroExitCode() throws Exception {
-        File logFile = new File(tempDir, "out.log");
-        ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
-        runner.addCommand(Arrays.asList("false"), logFile);
+  @Test
+  void runFailingCommandReturnsNonZeroExitCode()
+      throws IOException, InterruptedException, ExecutionException {
+    File logFile = new File(tempDir, "out.log");
+    ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
+    runner.addCommand(Arrays.asList("false"), logFile);
 
-        List<Integer> exitCodes = runner.run();
+    List<Integer> exitCodes = runner.run();
 
-        assertEquals(1, exitCodes.size());
-        assertTrue(exitCodes.get(0) != 0);
-    }
+    assertEquals(1, exitCodes.size());
+    assertTrue(exitCodes.get(0) != 0);
+  }
 
-    @Test
-    void runWaitsForAllCommandsNoFailFast() throws Exception {
-        File log1 = new File(tempDir, "shard-0.log");
-        File log2 = new File(tempDir, "shard-1.log");
-        ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
-        // One succeeds, one fails — runner should still return both exit codes, not throw
-        runner.addCommand(Arrays.asList("true"), log1);
-        runner.addCommand(Arrays.asList("false"), log2);
+  @Test
+  void runWaitsForAllCommandsNoFailFast()
+      throws IOException, InterruptedException, ExecutionException {
+    File log1 = new File(tempDir, "shard-0.log");
+    File log2 = new File(tempDir, "shard-1.log");
+    ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
+    // One succeeds, one fails -- runner should still return both exit codes, not throw
+    runner.addCommand(Arrays.asList("true"), log1);
+    runner.addCommand(Arrays.asList("false"), log2);
 
-        List<Integer> exitCodes = runner.run();
+    List<Integer> exitCodes = runner.run();
 
-        assertEquals(2, exitCodes.size());
-        assertEquals(0, exitCodes.get(0));
-        assertTrue(exitCodes.get(1) != 0);
-    }
+    assertEquals(2, exitCodes.size());
+    assertEquals(0, exitCodes.get(0));
+    assertTrue(exitCodes.get(1) != 0);
+  }
 
-    @Test
-    void runRedirectsOutputToFile() throws Exception {
-        File logFile = new File(tempDir, "out.log");
-        ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
-        runner.addCommand(Arrays.asList("echo", "hello-from-shard"), logFile);
+  @Test
+  void runRedirectsOutputToFile() throws IOException, InterruptedException, ExecutionException {
+    File logFile = new File(tempDir, "out.log");
+    ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
+    runner.addCommand(Arrays.asList("echo", "hello-from-shard"), logFile);
 
-        runner.run();
+    runner.run();
 
-        String content = Files.readString(logFile.toPath());
-        assertTrue(content.contains("hello-from-shard"));
-    }
+    String content = Files.readString(logFile.toPath());
+    assertTrue(content.contains("hello-from-shard"));
+  }
 
-    @Test
-    void runCreatesOutputDirIfMissing() throws Exception {
-        File logFile = new File(tempDir, "nested/deep/out.log");
-        ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
-        runner.addCommand(Arrays.asList("true"), logFile);
+  @Test
+  void runCreatesOutputDirIfMissing() throws IOException, InterruptedException, ExecutionException {
+    File logFile = new File(tempDir, "nested/deep/out.log");
+    ParallelProcessRunner runner = new ParallelProcessRunner(tempDir);
+    runner.addCommand(Arrays.asList("true"), logFile);
 
-        runner.run();
+    runner.run();
 
-        assertTrue(logFile.exists());
-    }
+    assertTrue(logFile.exists());
+  }
 }
