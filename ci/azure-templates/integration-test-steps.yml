@@ -60,10 +60,18 @@ steps:
 
   # Publish per-shard logs so they're downloadable from the Azure build page (not garbled in the
   # console stream when shardCount > 1). Each shard writes to build/sharded-logs/shard-<i>.log.
-  - task: PublishBuildArtifacts@1
+  # Guard: sharded-logs/ only exists if shardedTest actually spawned processes — skip on early exit.
+  - bash: |
+      d="$(Build.SourcesDirectory)/integration-tests/build/sharded-logs"
+      if [ -d "$d" ] && [ "$(ls -A "$d" 2>/dev/null)" ]; then
+        echo "##vso[task.setvariable variable=SHARDED_LOGS_DIR]$d"
+      fi
+    displayName: 'Check sharded-logs exists'
     condition: always()
+  - task: PublishBuildArtifacts@1
+    condition: and(always(), ne(variables['SHARDED_LOGS_DIR'], ''))
     inputs:
-      PathtoPublish: "$(Build.SourcesDirectory)/integration-tests/build/sharded-logs"
+      PathtoPublish: "$(SHARDED_LOGS_DIR)"
       ArtifactName: sharded-logs
       publishLocation: Container
     displayName: 'Publish per-shard test logs'

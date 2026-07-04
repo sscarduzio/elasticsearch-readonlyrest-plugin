@@ -47,10 +47,11 @@ public abstract class ShardedGradlewTest extends DefaultTask {
      */
     @TaskAction
     public void runShards() {
-        int shardCount = getShardCount();
+        int shardCount = shardCountValue();
         File projectDir = getProject().getRootProject().getProjectDir();
         File gradlew = new File(projectDir, "gradlew");
-        File logDir = new File(getProject().getBuildDir(), "sharded-logs");
+        File logDir = new File(
+                getProject().getLayout().getBuildDirectory().getAsFile().get(), "sharded-logs");
 
         ParallelProcessRunner runner = new ParallelProcessRunner(projectDir);
 
@@ -59,9 +60,10 @@ public abstract class ShardedGradlewTest extends DefaultTask {
             cmd.add(gradlew.getAbsolutePath());
             cmd.add("--no-daemon"); // mandatory for descendant-tree integrity (see class javadoc)
             cmd.add("integration-tests:test");
-            cmd.add("-PesModule=" + getEsModule());
-            if (getEsVersion() != null && !getEsVersion().isEmpty()) {
-                cmd.add("-PesVersion=" + getEsVersion());
+            cmd.add("-PesModule=" + esModuleValue());
+            String esVer = esVersionValue();
+            if (esVer != null && !esVer.isEmpty()) {
+                cmd.add("-PesVersion=" + esVer);
             }
             cmd.add("-PshardCount=" + shardCount);
             cmd.add("-PshardIndex=" + i);
@@ -99,15 +101,15 @@ public abstract class ShardedGradlewTest extends DefaultTask {
      */
     public abstract org.gradle.api.provider.Property<String> getEsVersion();
 
-    private int getShardCount() {
+    private int shardCountValue() {
         return getShardCount().getOrElse(1);
     }
 
-    private String getEsModule() {
+    private String esModuleValue() {
         return getEsModule().getOrElse("es94x");
     }
 
-    private String getEsVersion() {
+    private String esVersionValue() {
         return getEsVersion().getOrElse((String) null);
     }
 }

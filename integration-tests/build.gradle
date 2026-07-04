@@ -180,8 +180,8 @@ tasks.register('prebuildEsImage', JavaExec) {
 // JVMs (one ES container each). Usage: ./gradlew integration-tests:shardedTest -PshardCount=2 -PesModule=es94x
 tasks.register('shardedTest', tech.beshu.ror.buildbase.ShardedGradlewTest) {
     dependsOn 'prebuildEsImage', 'testClasses'
-    shardCount = (project.findProperty('shardCount') ?: '1') as int
-    esModule = project.findProperty('esModule') ?: defaultEsModule
-    esVersion = project.gradle.startParameter.projectProperties['esVersion']
+    getShardCount().set((project.findProperty('shardCount') ?: '1') as int)
+    getEsModule().set(project.findProperty('esModule') ?: defaultEsModule)
+    getEsVersion().set(project.gradle.startParameter.projectProperties['esVersion'] as String)
 }
 
