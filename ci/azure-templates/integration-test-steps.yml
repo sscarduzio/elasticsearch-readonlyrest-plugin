@@ -10,6 +10,11 @@ steps:
       ROR_CI_JOB_ID: $(Build.BuildId)-$(System.JobId)
       AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
 
+  - checkout: self
+    fetchDepth: 1
+    clean: false
+    persistCredentials: true
+
   # MUST run on the host (target: host), not in the container — else the `rm` runs in the container's
   # mount namespace and frees NOTHING on the VM disk (~16G of preinstalled toolchains). Hosted-only.
   - bash: ci/free-host-disk.sh
@@ -17,10 +22,6 @@ steps:
     target: host
     env:
       AGENT_ISSELFHOSTED: $(Agent.IsSelfHosted)
-  - checkout: self
-    fetchDepth: 1
-    clean: false
-    persistCredentials: true
   - script: |
       export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
       export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION

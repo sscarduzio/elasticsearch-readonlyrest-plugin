@@ -23,10 +23,10 @@ import tech.beshu.ror.utils.misc.ScalaUtils
 import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
 import java.util.zip.ZipInputStream
-import scala.language.postfixOps
 import scala.concurrent.duration.*
-import scala.util.{Try, Using}
+import scala.language.postfixOps
 import scala.util.control.NonFatal
+import scala.util.{Try, Using}
 
 object WindowsEsDirectoryManager extends LazyLogging {
 

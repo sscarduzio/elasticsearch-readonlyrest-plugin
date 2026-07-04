@@ -74,11 +74,15 @@ object SingletonEsContainerWithRorSecurity
 
     def release(): Unit = {
       // Only the current owner clears it; mismatches are logged (afterAll must not mask the real failure).
-      // Cannot use compareAndSet(Some(this), None) because Some(this) is a new allocation —
-      // the stored Some(ownership) from acquire() is a different instance, so the CAS would always fail.
-      currentOwner.get() match {
+      // CAS against the observed Option — atomic, so a racing acquire() can't sneak in between read and write.
+      val seen = currentOwner.get()
+      seen match {
         case Some(o) if o eq this =>
-          currentOwner.set(None)
+          if (!currentOwner.compareAndSet(seen, None))
+            logger.warn(
+              s"Singleton ES release by '${this.owner}' lost the race — current owner is " +
+                s"'${currentOwner.get().map(_.owner).getOrElse("<none>")}' — ignoring."
+            )
         case _ =>
           logger.warn(
             s"Singleton ES release by '${this.owner}' but current owner is " +

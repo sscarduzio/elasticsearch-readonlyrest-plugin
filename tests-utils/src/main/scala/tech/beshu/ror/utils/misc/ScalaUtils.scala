@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.utils.misc
 
+import better.files.{File => BetterFile}
 import cats.Functor
 import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
-import better.files.{File => BetterFile}
 import java.io.InputStream
 import java.security.MessageDigest
 import java.time.Duration
@@ -157,13 +157,13 @@ object ScalaUtils extends LazyLogging {
   }
 
   /**
-   * SHA-256 hex digest of a file's content. Returns lowercase hex string (no prefix).
+   * SHA-256 hex digest of a file's content. Returns uppercase hex string (no prefix).
    * Byte-identical to `better.files.File#sha256` — safe to replace it anywhere.
    */
   def sha256(file: BetterFile): String = {
     val md = MessageDigest.getInstance("SHA-256")
     updateDigestFromFile(md, file.newInputStream)
-    md.digest().map("%02x".format(_)).mkString
+    md.digest().map("%02X".format(_)).mkString
   }
 
   /**
