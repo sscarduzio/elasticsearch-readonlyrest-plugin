@@ -18,6 +18,7 @@ package tech.beshu.ror.buildbase;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;
@@ -92,16 +93,19 @@ public abstract class ShardedGradlewTest extends DefaultTask {
   /**
    * Number of parallel shards to run. Maps to {@code -PshardCount} on the command line.
    */
+  @Internal
   public abstract org.gradle.api.provider.Property<Integer> getShardCount();
 
   /**
    * ES module to test (e.g. {@code es94x}). Maps to {@code -PesModule}.
    */
+  @Internal
   public abstract org.gradle.api.provider.Property<String> getEsModule();
 
   /**
    * Explicit ES version override (e.g. {@code 8.19.11}), or null if not specified.
    */
+  @Internal
   public abstract org.gradle.api.provider.Property<String> getEsVersion();
 
   private int shardCountValue() {
