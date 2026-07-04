@@ -94,13 +94,14 @@ object SingletonEsContainerWithRorSecurity
     private def requireCurrent(): Unit = {
       currentOwner.get() match {
         case Some(o) if o eq this => () // ok
-        case other =>
+        case other                =>
           throw new IllegalStateException(
             s"Singleton ES mutation by '${this.owner}' without current ownership (current: " +
               s"'${other.map(_.owner).getOrElse("<none>")}') — acquire() it first."
           )
       }
     }
+
   }
 
   private val currentOwner = new AtomicReference[Option[Ownership]](None)

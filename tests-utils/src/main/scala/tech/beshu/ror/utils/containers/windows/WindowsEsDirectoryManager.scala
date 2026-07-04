@@ -89,7 +89,9 @@ object WindowsEsDirectoryManager extends LazyLogging {
         doDownloadEsZipFileWithProgress(downloadUrl(esVersion), tmp)
         val expected = expectedSha512(esVersion)
         if (!sha512Matches(tmp, expected)) {
-          throw new IllegalStateException(s"Downloaded ES $esVersion zip fails sha512 verification (expected $expected)")
+          throw new IllegalStateException(
+            s"Downloaded ES $esVersion zip fails sha512 verification (expected $expected)"
+          )
         }
         os.move(tmp, dest, replaceExisting = true, atomicMove = true)
         logger.info(s"ES $esVersion for Windows downloaded and sha512-verified")
