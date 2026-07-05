@@ -8,7 +8,7 @@ function docker_image_exists {
 
 # Repo of the ROR ES pre-build dev image. Must match each module's `preBuildDockerImageVersion` repo in
 # es<ver>x/build.gradle (that is where Gradle actually pushes the canonical <esVersion>-ror-<pluginVersion>).
-ES_DEV_IMAGE_REPO="coutopl/elasticsearch-readonlyrest-dev"
+ES_DEV_IMAGE_REPO="beshultd/elasticsearch-readonlyrest-dev"
 
 # Copies a registry image manifest to a new tag without pulling/rebuilding (multi-platform safe).
 function retag_dev_image {
