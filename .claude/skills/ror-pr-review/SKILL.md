@@ -51,19 +51,17 @@ Hunt for these categories on **every** PR, not just security-flagged ones:
 
 ## Output format
 
-Structure the review as:
+**BE CONCISE.** The review is read by a busy maintainer. Every finding = what to do + why. Nothing else.
 
-1. **What I checked** — a short list (3–8 bullets) of the actual files, lines, and call sites you examined. This is your audit trail.
-2. **Findings** — issues found, ordered by severity (`🚨 Critical` → `⚠️ Warning` → `Nit`). Each finding has:
-   - File and line number(s)
-   - One-sentence summary
-   - Reproduction or evidence (a regex test, a grep result, a call site, a benchmark)
-   - Concrete suggestion (with code where helpful)
-3. **What looks good** — one or two sentences crediting the parts that are notably well done (good test coverage, nice refactor, useful ADR). Genuine, not boilerplate.
-4. **Open questions** — anything you couldn't determine from the diff alone, phrased as a question to the contributor.
-
-**Do not** post `"No issues found"` without backing. If after thorough investigation there genuinely are no issues, the response must enumerate what you checked and *why* each area passed.
+- **Findings only**, ordered by severity (`🚨 Critical` → `⚠️ Warning` → `Nit`). Each finding, max 4 lines:
+  - `file:line` — imperative one-liner: what to change.
+  - Why, in 1–2 sentences, with the single strongest piece of evidence (a grep hit, a failing input, a call site) — not the full investigation.
+  - A code snippet ONLY when the fix isn't obvious from the one-liner.
+- NO "What I checked" narrative, NO "What looks good" section, NO methodology recap, NO restating the PR description. Do the investigation; don't serialize it.
+- **Open questions**: only if the answer would change a finding; max 2.
+- Genuinely no issues? One line: `No issues found — verified <the 3–5 highest-risk things you checked>.` That line IS the required backing; never a bare "No issues found".
+- **Hard cap: ~30 lines / ~350 words total.** With many findings, keep every Critical/Warning full and compress Nits to one line each.
 
 ## When the PR is small / docs-only
 
-A 2-line README change does not need a full audit. But the **"What I checked"** section must still appear (even if it's one bullet) so a maintainer can see your scope. The threshold for the canned "No issues found" response is: only when the diff is purely additive prose and you have read it in full.
+Same rules, shorter: the no-issues one-liner (with what you verified) is a complete review for a docs-only diff you read in full.
