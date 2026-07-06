@@ -17,10 +17,10 @@ grant {
   permission java.security.SecurityPermission "putProviderProperty.BCJSSE";
   permission java.security.SecurityPermission "removeProvider.SunJSSE";
   permission java.security.SecurityPermission "removeProvider.SunRsaSign";
-  permission org.bouncycastle.crypto.CryptoServicesPermission "exportSecretKey";
-  permission org.bouncycastle.crypto.CryptoServicesPermission "exportPrivateKey";
-  permission org.bouncycastle.crypto.CryptoServicesPermission "defaultRandomConfig";
   permission jdk.net.NetworkPermission "setOption.TCP_KEEPIDLE";
   permission jdk.net.NetworkPermission "setOption.TCP_KEEPINTERVAL";
   permission jdk.net.NetworkPermission "setOption.TCP_KEEPCOUNT";
+  permission org.bouncycastle.crypto.CryptoServicesPermission "exportSecretKey";
+  permission org.bouncycastle.crypto.CryptoServicesPermission "exportPrivateKey";
+  permission org.bouncycastle.crypto.CryptoServicesPermission "defaultRandomConfig";
 };
