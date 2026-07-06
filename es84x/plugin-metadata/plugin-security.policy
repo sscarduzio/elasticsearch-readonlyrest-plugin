@@ -11,4 +11,7 @@ grant {
   permission java.security.SecurityPermission "putProviderProperty.BCFIPS";
   permission java.security.SecurityPermission "putProviderProperty.BCJSSE";
   permission java.util.PropertyPermission "*", "read,write";
+  permission jdk.net.NetworkPermission "setOption.TCP_KEEPIDLE";
+  permission jdk.net.NetworkPermission "setOption.TCP_KEEPINTERVAL";
+  permission jdk.net.NetworkPermission "setOption.TCP_KEEPCOUNT";
 };
