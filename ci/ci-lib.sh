@@ -108,7 +108,7 @@ function checkTagNotExist {
 function tag {
   GIT_TAG="$1"
 
-  checkTagNotExist "$GIT_TAG"
+  checkTagNotExist "$GIT_TAG" || return 0
 
   echo "Tagging as $GIT_TAG"
   git config --global push.default matching

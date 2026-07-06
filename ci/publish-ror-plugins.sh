@@ -102,7 +102,7 @@ publish_module_versions() {
   rm -rf "$es_jars_dir"
   if [ "$mode" = "release" ]; then
     find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
-    docker buildx prune -f ${BUILDX_KEEP_STORAGE:+--keep-storage "${BUILDX_KEEP_STORAGE}"} >/dev/null 2>&1 || true
+    docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" >/dev/null 2>&1 || true
   fi
 
   return 0
@@ -124,7 +124,7 @@ release_docker_and_tag() {
     fi
     # Reclaim the ES base image layers pulled by BuildKit — each version is ~1.5 GB and
     # they don't share layers, so keeping them in the cache has no benefit and exhausts disk.
-    docker buildx prune -f ${BUILDX_KEEP_STORAGE:+--keep-storage "${BUILDX_KEEP_STORAGE}"} >/dev/null 2>&1 || true
+    docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-1GB}" >/dev/null 2>&1 || true
   else
     echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
   fi
