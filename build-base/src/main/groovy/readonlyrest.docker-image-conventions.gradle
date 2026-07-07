@@ -109,6 +109,30 @@ tasks.register('prepareDockerFatLayer', Sync) {
         exclude 'readonlyrest-*_es*.jar'
     }
     into layout.buildDirectory.dir("docker-image/payload")
+
+    doLast {
+        // Guard the fat layer's defining invariant: it must be identical across every ES version of the
+        // module, so the registry stores it once and every per-version image shares it. The excludes above
+        // are a hardcoded list of the known per-version files; if a future ES-versioned dependency ships
+        // under a name they don't match, it would land here silently and the "shared" layer would diverge
+        // per version (breaking dedup) with no signal. Every per-version file carries the ES version in its
+        // name ("<artifact>-<esVersion>.jar" or the ROR jar's "_es<esVersion>"), so fail loudly if any such
+        // file reached the fat layer -- the fix is to add a matching glob to BOTH fat (exclude) and thin
+        // (include) below.
+        def payload = layout.buildDirectory.dir("docker-image/payload").get().asFile
+        def leaked = []
+        payload.eachFileRecurse { f ->
+            if (f.isFile() && (f.name.endsWith("-${esVersion}.jar") || f.name.contains("_es${esVersion}"))) {
+                leaked << f.name
+            }
+        }
+        if (!leaked.isEmpty()) {
+            throw new GradleException("fat (version-independent) Docker layer for ${project.name} contains " +
+                    "ES ${esVersion}-stamped file(s): ${leaked}. These vary per patch version, so the shared " +
+                    "fat layer would silently diverge across ES versions. Exclude them from prepareDockerFatLayer " +
+                    "and include them in prepareDockerThinLayer (add a matching glob to both).")
+        }
+    }
 }
 
 // The files that change between patch versions: the descriptor and the jars tied to the ES
