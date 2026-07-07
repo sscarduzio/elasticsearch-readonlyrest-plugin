@@ -40,6 +40,8 @@ publish_module_versions() {
   local es_jars_dir
   es_jars_dir=$(mktemp -d)
 
+  trap 'if [ -n "${es_jars_dir:-}" ]; then rm -rf "$es_jars_dir"; fi' RETURN
+
   local base_version versions
   { read -r base_version; read -r -a versions; } < <(list_es_module_versions "$module")
   if [ -z "$base_version" ]; then
@@ -99,7 +101,6 @@ publish_module_versions() {
   local base_zip="${dist_dir}/readonlyrest-${ror_version}_es${base_version}.zip"
   rm -f "$base_zip" "${base_zip}.sha512"
 
-  rm -rf "$es_jars_dir"
   if [ "$mode" = "release" ]; then
     find "$module" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
     docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-5GB}" >/dev/null 2>&1 || true
