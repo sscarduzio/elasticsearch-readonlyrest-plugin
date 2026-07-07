@@ -9,6 +9,8 @@ FROM tianon/gosu:1.17@sha256:5591f02c16be4ca3530ac4b517be8fa3bbdb256b13429eea2cc
 
 # Amazon Corretto JDKs that carry the JDK-8287073 fix, pulled digest-pinned from the official images (same
 # integrity model as the gosu image above: registry-verified content, no download/verify step of our own).
+# Both digests are multi-arch manifest lists (linux/amd64 + linux/arm64), so buildx resolves each to the
+# target platform's JDK -- important because the binaries are only copied here, never run at build time.
 # patch-es-jdk.sh copies the matching one over the buggy JDK some ES releases bundle -- Corretto 17.0.5 for
 # the JDK-17 builds, Corretto 19.0.0 for the JDK-18 builds. Bind-mounted below, so only the selected JDK is
 # copied into the image; neither Corretto layer ships.

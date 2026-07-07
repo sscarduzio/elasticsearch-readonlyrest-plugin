@@ -109,8 +109,8 @@ publish_module_versions() {
   return 0
 }
 
-# Pushes the ES+ROR Docker image for one version and creates the git tag. Skips if already tagged.
-release_docker_and_tag() {
+# Pushes the ES+ROR Docker image for one version
+release_ror_docker_image() {
   local es_version=$1 module=$2
 
   if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
@@ -122,6 +122,8 @@ release_docker_and_tag() {
     # they don't share layers, so keeping them in the cache has no benefit and exhausts disk.
     docker buildx prune -f --keep-storage "${BUILDX_KEEP_STORAGE:-1GB}" >/dev/null 2>&1 || true
   else
+    # Some ES patch versions have no image in docker.elastic.co (Elastic never published one for them), so
+    # there is no base to build a ROR image on -- skipping here is expected, not a failure.
     echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
   fi
 }
@@ -138,13 +140,14 @@ publish_one_version() {
     fi
   fi
 
+  # publish always - even if this is not a release
   if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
     echo "ERROR: S3 upload failed for $module ES $es_version"
     return 1
   fi
 
   if [ "$mode" = "release" ]; then
-    if ! release_docker_and_tag "$es_version" "$module"; then
+    if ! release_ror_docker_image "$es_version" "$module"; then
       echo "ERROR: docker release failed for $module ES $es_version"
       return 1
     fi
