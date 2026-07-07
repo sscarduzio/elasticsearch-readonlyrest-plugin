@@ -74,7 +74,7 @@ dependencies {
     api group: 'org.jooq',                          name: 'joor',                                version: '0.9.15'
     api(group: 'org.apache.logging.log4j',          name: 'log4j-slf4j-impl',                    version: '2.11.2') {
         exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
-    }                                               
+    }
     api group: 'io.monix',                          name: 'monix_3',                             version: '3.4.1'
     api group: 'io.netty',                          name: 'netty-codec-http2',                   version: '4.1.135.Final'
     api group: 'io.netty',                          name: 'netty-handler',                       version: '4.1.135.Final'
