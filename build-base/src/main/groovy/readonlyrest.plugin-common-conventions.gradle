@@ -267,7 +267,18 @@ tasks.register('repackageRorPluginForVersion') {
                     throw new GradleException("jar '${jarName}' does not match '<artifact>-${target}.jar'")
                 }
                 def artifact = jarName.substring(0, jarName.length() - "-${target}.jar".length())
-                new File(work, "${artifact}-${baseEs}.jar").delete()
+                // Remove the base-version jar this target jar replaces. If it isn't there, the artifact set
+                // differs between base and target (e.g. a dependency was renamed), so the swap-out would
+                // silently leave the base jar in place and the zip would ship BOTH -> jar-hell at runtime.
+                // Fail loudly instead: this invariant (same ES dep artifacts across the patch range, only
+                // the version differs) is what makes repackaging safe in the first place.
+                def baseJar = new File(work, "${artifact}-${baseEs}.jar")
+                if (!baseJar.delete()) {
+                    throw new GradleException("expected base ES jar '${artifact}-${baseEs}.jar' to swap out " +
+                            "for '${jarName}', but it was not present in the base zip. The ES dependency " +
+                            "artifact set changed between ES ${baseEs} and ${target}; repackaging is unsafe " +
+                            "(both jars would ship, risking jar-hell).")
+                }
                 copy { from jar; into work }
             }
 
