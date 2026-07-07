@@ -111,12 +111,7 @@ publish_module_versions() {
 
 # Pushes the ES+ROR Docker image for one version and creates the git tag. Skips if already tagged.
 release_docker_and_tag() {
-  local ror_version=$1 es_version=$2 module=$3
-  local TAG="v${ror_version}_es${es_version}"
-
-  if ! checkTagNotExist "$TAG"; then
-    return 0
-  fi
+  local es_version=$1 module=$2
 
   if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${es_version}" >/dev/null 2>&1; then
     if ! ./gradlew ":${module}:pushRorDockerImage" "-PesVersion=$es_version" "-PreusePackagedZip" </dev/null; then
@@ -129,24 +124,32 @@ release_docker_and_tag() {
   else
     echo "WARN: Skipping ES+ROR image for $es_version (no Elasticsearch base image in registry)"
   fi
-
-  tag "$TAG"
 }
 
 # Publishes one already-derived version: S3 upload + (release) Docker image and git tag.
 publish_one_version() {
-  local mode=$1 ror_version=$2 module=$3 version=$4 zip=$5
+  local mode=$1 ror_version=$2 module=$3 es_version=$4 zip=$5
+
+  local TAG="v${ror_version}_es${es_version}"
+
+  if [ "$mode" = "release" ]; then
+    if ! checkTagNotExist "$TAG"; then
+      return 0
+    fi
+  fi
 
   if ! ci/upload-files-to-s3.sh "$zip" "${zip}.sha512" "${ror_version}/"; then
-    echo "ERROR: S3 upload failed for $module ES $version"
+    echo "ERROR: S3 upload failed for $module ES $es_version"
     return 1
   fi
 
   if [ "$mode" = "release" ]; then
-    if ! release_docker_and_tag "$ror_version" "$version" "$module"; then
-      echo "ERROR: docker release failed for $module ES $version"
+    if ! release_docker_and_tag "$es_version" "$module"; then
+      echo "ERROR: docker release failed for $module ES $es_version"
       return 1
     fi
+
+    tag "$TAG"
   fi
 
   return 0

@@ -9,12 +9,15 @@ set -eu
 # JDK 17.0.5+ (backport JDK-8288308) and JDK 19+. We swap the bundled JDK for an Amazon Corretto build
 # that carries the fix: Corretto 17.0.5 for the JDK-17 releases, Corretto 19.0.0 for the JDK-18 releases.
 #
-# The script self-gates on $ES_VERSION and is a NO-OP for any unaffected version, so a Dockerfile can run
-# it unconditionally. The version-range logic is the single source of truth shared with the test images in
+# The replacement JDKs are supplied by the caller as on-disk directories via CORRETTO17_DIR / CORRETTO19_DIR.
+# In the Docker build these are the JAVA_HOME dirs of the digest-pinned amazoncorretto:17.0.5 / :19.0.0
+# images, bind-mounted read-only into the RUN. Nothing is downloaded here, so integrity comes from the
+# pinned image digests (registry-verified) rather than from this script.
+#
+# Self-gates on $ES_VERSION and is a NO-OP for any unaffected version. Must run as root (rewrites the ES
+# install dir). The version-range logic is the single source of truth shared with the test images in
 # tests-utils/.../images/Elasticsearch.scala (hasBuggyBundledJdk / needsCorretto19) and the e2e-tests repo
 # (environments/common/images/es-jdk-patch/patch-es-jdk.sh) -- keep the three in sync.
-#
-# Requires $ES_VERSION (X.Y.Z) in the environment and must run as root (rewrites the ES install dir).
 
 if [ -z "${ES_VERSION:-}" ]; then
   echo "patch-es-jdk: ES_VERSION not set" >&2
@@ -48,19 +51,22 @@ if [ "$HAS_BUGGY" -eq 0 ]; then
 fi
 
 if [ "$NEEDS_19" -eq 1 ]; then
-  CORRETTO_VERSION="19.0.0.36.1"
+  SRC="${CORRETTO19_DIR:-}"
+  LABEL="Amazon Corretto 19"
 else
-  CORRETTO_VERSION="17.0.5.8.1"
+  SRC="${CORRETTO17_DIR:-}"
+  LABEL="Amazon Corretto 17"
 fi
 
-ARCH=$(uname -m | sed 's/x86_64/x64/' | sed 's/arm64/aarch64/')
-echo "patch-es-jdk: ES $ES_VERSION bundles a JDK affected by JDK-8287073; replacing with Amazon Corretto ${CORRETTO_VERSION} (${ARCH})."
+if [ -z "$SRC" ] || [ ! -x "$SRC/bin/java" ]; then
+  echo "patch-es-jdk: no valid replacement JDK for ES $ES_VERSION (expected a JDK at '$SRC')" >&2
+  exit 1
+fi
 
-curl -fsSLk "https://corretto.aws/downloads/resources/${CORRETTO_VERSION}/amazon-corretto-${CORRETTO_VERSION}-linux-${ARCH}.tar.gz" -o /tmp/jdk.tar.gz
+echo "patch-es-jdk: ES $ES_VERSION bundles a JDK affected by JDK-8287073; replacing with $LABEL from $SRC."
 rm -rf /usr/share/elasticsearch/jdk
 mkdir -p /usr/share/elasticsearch/jdk
-tar xzf /tmp/jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1
-rm /tmp/jdk.tar.gz
+cp -a "$SRC/." /usr/share/elasticsearch/jdk/
 
 # Corretto 19 replaces bundled Oracle JDK 18, whose jdk.net module is otherwise unavailable. Apache
 # HttpClient 5's ReflectionUtils accesses jdk.net.Sockets and throws NoClassDefFoundError (not caught by

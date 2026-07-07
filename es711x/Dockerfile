@@ -22,12 +22,6 @@ RUN chmod +x /usr/local/bin/gosu \
     && gosu --version \
     && gosu nobody true
 
-# JDK-8287073 workaround: some ES 7.15.1-7.17.6 / 8.0-8.4 releases bundle a JDK (17.0.0-17.0.4 or 18) that
-# NPEs at JVM start on cgroup v2 hosts, so ES never boots. Swap the affected bundled JDK for a fixed Amazon
-# Corretto build. The script self-gates on $ES_VERSION and is a no-op for unaffected versions in this family.
-COPY patch-es-jdk.sh /tmp/patch-es-jdk.sh
-RUN ES_VERSION="${ES_VERSION}" sh /tmp/patch-es-jdk.sh && rm /tmp/patch-es-jdk.sh
-
 USER elasticsearch
 
 # ROR is installed by laying the plugin straight onto disk (equivalent to `elasticsearch-plugin install
