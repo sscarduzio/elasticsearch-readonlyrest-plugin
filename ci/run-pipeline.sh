@@ -27,6 +27,10 @@ log_disk_usage() {
   echo "=== End disk usage ==="
 }
 
+cleanup_build_dirs() {
+  find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+}
+
 cleanup_docker_and_build() {
   # Exclude the container this script is running inside (prevents self-removal in DinD setups).
   # In Azure Pipelines container jobs, `hostname` is the short container ID used by `docker ps -aq`.
@@ -41,7 +45,7 @@ cleanup_docker_and_build() {
   [ -n "$containers_to_remove" ] && echo "$containers_to_remove" | xargs docker rm -f || true
   docker builder prune -af || true
   docker system prune -af --volumes || true
-  find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+  cleanup_build_dirs
 }
 
 echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
@@ -239,6 +243,10 @@ build_ror_plugins() {
 
   while IFS= read -r version || [[ -n "$version" ]]; do
     time build_ror_plugin "$version"
+    # Clean up build dirs after every version to prevent disk space exhaustion.
+    # No Docker cleanup here: buildRorPlugin never creates containers/images (unlike release_ror_plugin).
+    log_disk_usage "after build of ES $version"
+    cleanup_build_dirs
   done <"$ROR_VERSIONS_FILE"
 }
 
