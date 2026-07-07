@@ -131,6 +131,20 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
     </suppress>
     <suppress>
         <notes><![CDATA[
+   False positive: CVE-2026-54399 and CVE-2026-54428 affect the HTTP/1.1 and HTTP/2 parsers in the
+   rewritten Apache HttpComponents Core 5.x line (org.apache.httpcomponents.core5:httpcore5 / httpcore5-h2,
+   package org.apache.hc.core5). The CVEs' CPE match criteria (cpe:2.3:a:apache:httpcomponents_core:*,
+   versionEndIncluding 5.4.2, no versionStartIncluding) has no lower bound, so it also matches the
+   unrelated legacy 4.x line (org.apache.httpcomponents:httpcore / httpcore-nio, package org.apache.http),
+   which is a completely different, unaffected codebase used by httpclient:4.5.14 and elasticsearch-rest-client
+   in the es*x modules.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.httpcomponents/httpcore(-nio)?@.*$</packageUrl>
+        <cve>CVE-2026-54399</cve>
+        <cve>CVE-2026-54428</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
    file name: log4j-api-2.11.2.jar
     - CVE-2021-44228 (Log4Shell):  requires log4j-core's JNDI lookup; log4j-core is provided by Elasticsearch at runtime — must be fixed by Elasticsearch upgrading to log4j-core:2.25.4+
     - CVE-2021-45046 (Log4Shell):  requires log4j-core's JNDI lookup; same as above
