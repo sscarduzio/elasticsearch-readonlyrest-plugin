@@ -164,20 +164,21 @@ object ScalaUtils extends LazyLogging {
    * SHA-256 hex digest of a file's content. Returns uppercase hex string (no prefix).
    * Byte-identical to `better.files.File#sha256` — safe to replace it anywhere.
    */
-  def sha256(file: BetterFile): String = {
-    val md = MessageDigest.getInstance("SHA-256")
-    updateDigestFromFile(md, file.newInputStream)
-    md.digest().map("%02X".format(_)).mkString
-  }
+  def sha256(file: BetterFile): String =
+    digestHex(file, "SHA-256", uppercase = true)
 
   /**
    * SHA-512 hex digest of a file's content. Returns lowercase hex string (no prefix).
    * Used for download integrity verification against Elastic's published `.sha512` checksums.
    */
-  def sha512(file: BetterFile): String = {
-    val md = MessageDigest.getInstance("SHA-512")
+  def sha512(file: BetterFile): String =
+    digestHex(file, "SHA-512", uppercase = false)
+
+  private def digestHex(file: BetterFile, algorithm: String, uppercase: Boolean): String = {
+    val md = MessageDigest.getInstance(algorithm)
     updateDigestFromFile(md, file.newInputStream)
-    md.digest().map("%02x".format(_)).mkString
+    val format = if (uppercase) "%02X" else "%02x"
+    md.digest().map(format.format(_)).mkString
   }
 
   private def updateDigestFromFile(md: MessageDigest, inputStream: => InputStream): Unit = {
