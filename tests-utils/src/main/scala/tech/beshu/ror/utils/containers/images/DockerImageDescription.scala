@@ -18,23 +18,30 @@ package tech.beshu.ror.utils.containers.images
 
 import better.files.File
 import os.Path
-import tech.beshu.ror.utils.containers.images.DockerImageDescription.{Command, CopyFile, Env}
+import tech.beshu.ror.utils.containers.images.DockerImageDescription.{Env, Instruction}
+import tech.beshu.ror.utils.misc.ScalaUtils
 
+import java.security.MessageDigest
+
+// `steps` is ORDERED (COPY/RUN/USER in declaration order) for Docker layer caching: per-config files
+// COPY *after* the heavy config-independent RUNs so those ~140MB layers stay byte-identical and shared.
 final case class DockerImageDescription(
     baseImage: String,
-    runCommands: Seq[Command],
-    copyFiles: Set[CopyFile],
+    steps: Seq[Instruction],
     envs: Set[Env],
     entrypoint: Option[Path],
     command: Option[String]
 ) {
 
+  // Copies in declaration order — used by the image-context streamer and the content-hash tag.
+  def copyFiles: Seq[Instruction.Copy] = steps.collect { case c: Instruction.Copy => c }
+
   def run(command: String): DockerImageDescription = {
-    this.copy(runCommands = this.runCommands :+ Command.Run(command))
+    this.copy(steps = this.steps :+ Instruction.Run(command))
   }
 
   def run(command: String, otherCommands: String*): DockerImageDescription = {
-    this.copy(runCommands = (this.runCommands :+ Command.Run(command)) ++ otherCommands.map(Command.Run.apply))
+    this.copy(steps = (this.steps :+ Instruction.Run(command)) ++ otherCommands.map(Instruction.Run.apply))
   }
 
   def runWhen(condition: Boolean, command: => String): DockerImageDescription = {
@@ -53,11 +60,16 @@ final case class DockerImageDescription(
   }
 
   def user(name: String): DockerImageDescription = {
-    this.copy(runCommands = this.runCommands :+ Command.ChangeUser(name))
+    this.copy(steps = this.steps :+ Instruction.ChangeUser(name))
   }
 
   def copyFile(destination: Path, file: File): DockerImageDescription = {
-    this.copy(copyFiles = copyFiles + CopyFile(destination, file))
+    // Dedup by destination, last-wins. NOT a mistake to guard against: the combined
+    // ReadonlyRest+XpackSecurity plugin legitimately copies the same cert files (elastic-certificates*)
+    // to the same config dir from both plugins, so a fail-loud `require` here breaks every xpack-security
+    // suite. Last-wins collapses the duplicates harmlessly (same content anyway).
+    val deduped = steps.filterNot { case Instruction.Copy(d, _) => d == destination; case _ => false }
+    this.copy(steps = deduped :+ Instruction.Copy(destination, file))
   }
 
   def addEnv(name: String, value: String): DockerImageDescription = {
@@ -76,23 +88,51 @@ final case class DockerImageDescription(
     this.copy(command = Some(cmd))
   }
 
+  // Short hex digest over everything that defines the image (base, instructions, envs, copied-file
+  // CONTENT) so a changed plugin zip / cert / settings yields a new tag. Stable across parallel
+  // workers: identical inputs → identical tag → cache hit (no redundant concurrent rebuilds).
+  def imageTag: String = {
+    val md = MessageDigest.getInstance("SHA-1")
+    md.update(baseImage.getBytes("UTF-8"))
+    // Hash each instruction's defining FIELDS directly (not toString — an impl-detail format; not
+    // hashCode — only 32 bits, risks a false cache hit). A `RUN`/`USER` prefix keeps the two kinds
+    // from colliding on equal payloads.
+    steps.foreach {
+      case Instruction.Run(command)            => md.update(s"RUN:$command".getBytes("UTF-8"))
+      case Instruction.ChangeUser(user)        => md.update(s"USER:$user".getBytes("UTF-8"))
+      case Instruction.Copy(destination, file) =>
+        // destination + file CONTENT (so a changed source yields a new tag)
+        md.update(destination.toString.getBytes("UTF-8"))
+        if (file.exists) md.update(ScalaUtils.sha256(file).getBytes("UTF-8"))
+    }
+    // envs is a Set — sort so iteration order can't vary the digest (order-dependent hash → spurious
+    // cache misses → redundant concurrent rebuilds).
+    envs.toList.sortBy(e => (e.name, e.value)).foreach(e => md.update(s"${e.name}=${e.value}".getBytes("UTF-8")))
+    // entrypoint/command also define the image — fold them in so images differing only there can't
+    // collide to the same tag (false cache hit running the wrong launcher).
+    // Note: entrypoint is an in-container os.Path (e.g. /usr/share/elasticsearch/bin/es-readonlyrest),
+    // not a host File — its content is pinned by the baseImage hash above, not copied from the host.
+    entrypoint.foreach(p => md.update(p.toString.getBytes("UTF-8")))
+    command.foreach(c => md.update(c.getBytes("UTF-8")))
+    md.digest().take(10).map("%02x".format(_)).mkString
+  }
+
 }
 
 object DockerImageDescription {
-  sealed trait Command
+  sealed trait Instruction
 
-  object Command {
-    final case class Run(command: String) extends Command
-    final case class ChangeUser(user: String) extends Command
+  object Instruction {
+    final case class Run(command: String) extends Instruction
+    final case class ChangeUser(user: String) extends Instruction
+    final case class Copy(destination: Path, file: File) extends Instruction
   }
 
-  final case class CopyFile(destination: Path, file: File)
   final case class Env(name: String, value: String)
 
   def create(image: String, customEntrypoint: Option[Path] = None): DockerImageDescription = DockerImageDescription(
     baseImage = image,
-    runCommands = Seq.empty,
-    copyFiles = Set.empty,
+    steps = Seq.empty,
     envs = Set.empty,
     entrypoint = customEntrypoint,
     command = None,

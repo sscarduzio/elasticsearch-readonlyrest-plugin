@@ -21,6 +21,7 @@ plugins {
 
 repositories {
     gradlePluginPortal()
+    mavenCentral()
 }
 
 dependencies {
@@ -28,4 +29,10 @@ dependencies {
     implementation "com.star-zero.gradle:githook:1.2.1"
     implementation "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1"
     implementation "org.owasp.dependencycheck:org.owasp.dependencycheck.gradle.plugin:12.2.2"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

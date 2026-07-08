@@ -16,39 +16,15 @@
  */
 package tech.beshu.ror.utils.misc
 
-import better.files.*
-import com.typesafe.scalalogging.LazyLogging
+// Corretto versions replacing ES's buggy bundled JDKs (JDK-8287073); downloaded INSIDE the docker
+// build (single RUN, no persisted tarball layer) — see Elasticsearch.replaceBundledJdk.
+object JDK {
 
-object JDK extends LazyLogging {
+  val corretto17Version = "17.0.5.8.1"
+  val corretto19Version = "19.0.0.36.1"
 
-  object AmazonCorretto1705jdk {
-    lazy val tarball: File = downloadCorretto("17.0.5.8.1")
-  }
-
-  object AmazonCorretto1900jdk {
-    lazy val tarball: File = downloadCorretto("19.0.0.36.1")
-  }
-
-  private def downloadCorretto(version: String): File = {
-    val majorVersion = version.takeWhile(_ != '.')
-    val arch = System.getProperty("os.arch") match {
-      case a if a == "aarch64" || a == "arm64" => "aarch64"
-      case _                                   => "x64"
-    }
-    val targetFile = File.newTemporaryFile(s"amazon-corretto-$majorVersion-jdk", ".tar.gz")
-    logger.info(s"Downloading Amazon Corretto $majorVersion JDK (one-time, for replacing buggy bundled JDK)...")
-    val url = new java.net.URI(
-      s"https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz"
-    ).toURL
-    val connection = url.openConnection()
-    connection.setConnectTimeout(30_000)
-    connection.setReadTimeout(120_000)
-    for {
-      in <- connection.getInputStream.autoClosed
-      out <- targetFile.newOutputStream.autoClosed
-    } in.pipeTo(out)
-    logger.info(s"Downloaded Amazon Corretto $majorVersion JDK to ${targetFile.pathAsString}")
-    targetFile
-  }
+  // ${JDK_ARCH} is left for the RUN's shell to expand (aarch64|x64 from `uname -m` in-container).
+  def correttoDownloadUrlTemplate(version: String): String =
+    s"https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$${JDK_ARCH}.tar.gz"
 
 }

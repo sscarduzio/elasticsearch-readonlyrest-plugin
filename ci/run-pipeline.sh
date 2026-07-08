@@ -2,7 +2,22 @@
 
 source "$(dirname "$0")/ci-lib.sh"
 
-trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
+# On cancel/timeout (SIGTERM) kill the gradle process group + reap this CI job's containers, else they
+# orphan (scoped by ror.ci-job=$ROR_CI_JOB_ID so a sibling CI job on the shared daemon is untouched).
+
+# PIDs of gradle group leaders (1 per shard); an ARRAY not a string (find-replace pruning could
+# corrupt `123` vs `1234`). Never pruned — kill on a dead PID is a no-op.
+GRADLE_PIDS=()
+terminate() {
+  echo ">>> Termination signal received — killing gradle tree(s) + reaping this CI job's containers..."
+  # Negative PID = signal the whole process group (gradle + its worker JVMs).
+  for pid in "${GRADLE_PIDS[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
+  sleep 5
+  for pid in "${GRADLE_PIDS[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
+  reap_ci_job_containers
+  exit 1
+}
+trap terminate SIGTERM SIGINT
 
 log_disk_usage() {
   local label="${1:-}"
@@ -90,11 +105,31 @@ run_integration_tests() {
   fi
 
   ES_MODULE=$1
-  local gradleArgs=("--no-daemon" "ror-tools:test" "integration-tests:test" "-PesModule=$ES_MODULE")
-  [ -n "$ES_VERSION" ] && gradleArgs+=("-PesVersion=$ES_VERSION")
+  # IT_PARALLELISM (the user-facing knob) = the gradle -PshardCount it feeds: K parallel shards.
+  local parallelism="${IT_PARALLELISM:-1}"
+  local esArgs=("-PesModule=$ES_MODULE")
+  [ -n "$ES_VERSION" ] && esArgs+=("-PesVersion=$ES_VERSION")
 
-  echo ">>> $ES_MODULE => Running integration tests.."
-  ./gradlew "${gradleArgs[@]}" || (find . | grep hs_err | xargs cat && exit 1)
+  echo ">>> $ES_MODULE => ror-tools:test (serial gate) + integration-tests:shardedTest (${parallelism} shard(s)).."
+
+  # Each gradle invocation runs in its OWN process group (setsid) so the trap can reap the whole tree;
+  # appends the leader PID to GRADLE_PIDS (never pruned) and sets LAST_PID for the caller.
+  LAST_PID=""
+  run_one() {  # args: <gradle args...>
+    setsid ./gradlew --no-daemon "$@" &
+    LAST_PID=$!; GRADLE_PIDS+=("$LAST_PID")
+  }
+
+  # 1) ror-tools:test ONCE, serially (cheap, no ES; gates the CI job). Also warms :build-base/:buildSrc.
+  run_one ror-tools:test
+  wait "$LAST_PID"; local rc=$?
+  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
+
+  # 2) All sharding orchestration lives in integration-tests:shardedTest (see its build.gradle):
+  #    prebuild barrier via task deps, K child ./gradlew spawn/wait, ProcessHandle kill on cancel.
+  run_one integration-tests:shardedTest "${esArgs[@]}" -PshardCount="$parallelism"
+  wait "$LAST_PID"; rc=$?
+  if [ "$rc" -ne 0 ]; then find . | grep hs_err | xargs cat 2>/dev/null || true; return "$rc"; fi
 }
 
 if [[ $ROR_TASK == "integration_es94x" ]]; then
