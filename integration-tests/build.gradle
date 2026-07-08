@@ -133,8 +133,9 @@ test {
     // maxParallelForks=1 always — forks can't split the scalatest engine (gradle#8632), so a 2nd fork
     // gets no work. Parallelism = sharding (multiple -PshardCount invocations), not forks.
     maxParallelForks = 1
-    // Logged loud (quiet() survives -q) so the per-JVM fork count is never a mystery.
-    logger.quiet(">>> integration-tests maxParallelForks=${maxParallelForks} (1 ES/JVM; parallelism via -PshardCount)")
+    // lifecycle, NOT quiet(): this runs at configuration time, so quiet() pollutes the stdout that
+    // list_es_modules (publish-ror-plugins.sh) parses from `printEsModules --quiet`.
+    logger.lifecycle(">>> integration-tests maxParallelForks=${maxParallelForks} (1 ES/JVM; parallelism via -PshardCount)")
     // Per worker JVM. The JVM only orchestrates (streams small HTTP to ES, no bulk data); measured peak
     // live heap is ~50MB, so 512m is ~10x headroom. Overridable via -PitTestHeap for outlier suites.
     maxHeapSize = project.findProperty('itTestHeap') ?: '512m'
