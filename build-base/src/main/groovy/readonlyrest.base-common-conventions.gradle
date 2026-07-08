@@ -91,7 +91,13 @@ dependencyCheck {
         // Use bulk NVD data feeds instead of the NVD REST API. Static .gz files are downloaded
         // directly — no rate limits, no API key required, resilient to NVD API instability.
         // {0} is replaced with the year (e.g. 2026).
-        datafeedUrl = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz'
+        // Two supported choices (https://github.com/dependency-check/DependencyCheck/discussions/8633#discussioncomment-17406436):
+        //   ODC's own feed built from the API (updated once a day, may be slightly stale but resilient to NVD outages):
+        //      https://dependency-check.github.io/DependencyCheck_Builder/nvd_cache/nvdcve-{0}.json.gz
+        //   NVD's official 2.0 data feeds (authoritative but prone to instability):
+        //      https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz
+        // Using ODC's feed as NVD tends to be unreliable.
+        datafeedUrl = 'https://dependency-check.github.io/DependencyCheck_Builder/nvd_cache/nvdcve-{0}.json.gz'
         validForHours = 12
     }
 }
