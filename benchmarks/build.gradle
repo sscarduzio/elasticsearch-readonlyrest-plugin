@@ -125,13 +125,47 @@ tasks.register('jmh', JavaExec) {
     }
 }
 
+// Drift guard: every benchmark named in kpis.yml / ci-smoke.txt must resolve to a real
+// compiled @Benchmark class+method, so a rename can't silently rot the manifests.
+tasks.register('verifyKpis') {
+    group = 'benchmark'
+    description = 'Verifies kpis.yml and ci-smoke.txt entries resolve to existing benchmark methods'
+    dependsOn tasks.named('classes'), sourceSets.main.runtimeClasspath
+    doLast {
+        def targets = [] as Set  // list of [fqcn, method, source-file]
+        file('kpis.yml').readLines().each { line ->
+            def m = line =~ /^\s*benchmark:\s*([\w.]+)\.(\w+)/
+            if (m) targets << [m[0][1], m[0][2], 'kpis.yml']
+        }
+        file('ci-smoke.txt').readLines()*.trim().findAll { it && !it.startsWith('#') }.each { rx ->
+            def literal = rx.replace('\\.', '.')
+            def cut = literal.lastIndexOf('.')
+            targets << [literal.take(cut), literal.drop(cut + 1), 'ci-smoke.txt']
+        }
+        def loader = new URLClassLoader(sourceSets.main.runtimeClasspath.files.collect { it.toURI().toURL() } as URL[], (ClassLoader) null)
+        def missing = targets.findAll { fqcn, method, src ->
+            try {
+                !Class.forName(fqcn, false, loader).declaredMethods.any { it.name == method }
+            } catch (ClassNotFoundException ignored) {
+                true
+            }
+        }
+        loader.close()
+        if (missing) {
+            throw new GradleException("Stale benchmark reference(s):\n" +
+                    missing.collect { fqcn, method, src -> "  $src -> $fqcn.$method" }.join('\n'))
+        }
+        println "verifyKpis: ${targets.size()} manifest entries resolve OK"
+    }
+}
+
 def smokeRaw    = layout.buildDirectory.file("jmh/smoke-raw.json")
 
 // 4) PR smoke subset: ci-smoke.txt regexes at the kpis.yml canonical @Param sizes, with -prof gc.
 tasks.register('jmhSmoke', JavaExec) {
     group = 'benchmark'
     description = 'Runs the smoke benchmark subset (ci-smoke.txt) with -prof gc, JSON to build/jmh'
-    dependsOn 'jmhCompileGenerated'
+    dependsOn 'jmhCompileGenerated', 'verifyKpis'
     mainClass = 'org.openjdk.jmh.Main'
     classpath = files(jmhGenClasses, jmhGenRes) + sourceSets.main.runtimeClasspath
     // Read ci-smoke.txt and assemble args at EXECUTION time (doFirst), not configuration time —

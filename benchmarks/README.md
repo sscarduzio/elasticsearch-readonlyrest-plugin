@@ -65,6 +65,38 @@ benchmarks/
 New benchmarks should be added to `kpis.yml` so the manifest stays the single reviewed list of
 what matters.
 
+## Development process
+
+How this module plugs into day-to-day work (deliberately lightweight — no CI gate, a habit
+plus one guard task):
+
+1. **When a PR touches a `core` ACL hot path** (rules, matchers, ACL evaluation, request
+   context) — or claims a perf win — run the smoke subset on both sides:
+
+   ```bash
+   git checkout develop        && ./gradlew :benchmarks:jmhSmoke   # save the table
+   git checkout <your-branch>  && ./gradlew :benchmarks:jmhSmoke
+   ```
+
+   Paste the before/after `score` and `gc.alloc.rate.norm` (B/op) columns into the PR
+   description. B/op is deterministic enough to compare across machines; time (us/op) only on
+   the same quiet machine.
+
+2. **Reviewer side:** on a perf-relevant PR with no numbers, ask for them. That ask is the
+   entire enforcement mechanism today.
+
+3. **Adding/renaming a benchmark:** update `kpis.yml` (and `ci-smoke.txt` if it's a tier-1
+   smoke KPI) in the same commit. `./gradlew :benchmarks:verifyKpis` (also run automatically
+   by `jmhSmoke`) fails on any manifest entry that no longer resolves to a compiled
+   `@Benchmark` method — the manifests can't silently rot.
+
+4. **Optimization PRs** may carry `oldPath_*` replica methods as review evidence; prune them
+   at merge (see Conventions).
+
+5. **Escalation:** if perf-relevant PRs become frequent enough that the manual habit strains,
+   revive the parked CI legs (see below) — preferring the existing Grafana/Prometheus stack
+   over the bespoke git-DB time series.
+
 ## Conventions
 
 - **Old-path replicas live only while their PR is open.** A PR that optimizes a hot path may

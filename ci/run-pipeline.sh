@@ -79,7 +79,6 @@ if [[ $ROR_TASK == "core_tests" ]]; then
   ./gradlew --no-daemon --stacktrace core:test audit:test
 fi
 
-
 run_integration_tests() {
   if [ "$#" -ne 1 ]; then
     echo "What ES module should I run integration tests for?"

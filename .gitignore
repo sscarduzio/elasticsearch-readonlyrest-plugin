@@ -9,7 +9,6 @@ tmp/*
 *.log
 */bin
 
-
 // ignore the downloaded model files in git
 src/test/resources/models/
 
