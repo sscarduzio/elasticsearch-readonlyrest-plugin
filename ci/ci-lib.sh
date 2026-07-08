@@ -108,7 +108,7 @@ function checkTagNotExist {
 function tag {
   GIT_TAG="$1"
 
-  checkTagNotExist "$GIT_TAG"
+  checkTagNotExist "$GIT_TAG" || return 0
 
   echo "Tagging as $GIT_TAG"
   git config --global push.default matching
@@ -157,4 +157,27 @@ function upload_using_aws_s3_uploader {
     "$CI_DIR"/s3-uploader.sh \
       "$AK" "$SK" \
       "$BUCKET@${REGION:-us-east-1}" "$LOCAL_FILE" "${PATH_PREFIX}${S3_PATH}/"
+}
+
+function log_disk_usage {
+  local label="${1:-}"
+  echo "=== Disk usage ($label) ==="
+  df -h / || true
+  df -i / || true
+
+  echo "--- Docker ---"
+  docker system df || true
+  docker ps -a || true
+  docker volume ls || true
+
+  echo "--- Workspace build dirs ---"
+  du -sh */build 2>/dev/null || true
+
+  echo "--- Temp dirs ---"
+  du -sh /tmp 2>/dev/null || true
+
+  echo "--- Gradle ---"
+  du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
+
+  echo "=== End disk usage ==="
 }

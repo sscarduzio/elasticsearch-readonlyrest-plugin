@@ -44,7 +44,7 @@ object RorPluginGradleProject {
     RorPluginGradleProject.getRootProject.toScala.children
       .filter { f => f.isDirectory }
       .map(_.name)
-      .filter(_.matches("^es\\d{2,3}x$"))
+      .filter(_.matches("^es\\d+x$"))
       .toList
 
 }
@@ -64,7 +64,7 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   def assemble: Option[JFile] = {
     logger.info(s"Assembling ROR in module $moduleName")
-    runTask(moduleName + ":packageRorPlugin")
+    runTask(moduleName + ":buildRorPluginZip")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
     logger.info(s"Finished assembling ROR in module $moduleName")
     if (!plugin.exists) None
@@ -74,7 +74,15 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   def getModuleESVersion: String =
     Option(System.getProperty("esVersion"))
       .filter(_ => isExplicitlyTargetedModule)
-      .getOrElse(esProjectProperties.getProperty("latestSupportedEsVersion"))
+      .getOrElse(newestSupportedEsVersion)
+
+  private def newestSupportedEsVersion: String =
+    esProjectProperties
+      .getProperty("supportedEsVersions")
+      .split(",")
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .last
 
   private def isExplicitlyTargetedModule: Boolean =
     moduleName == System.getProperty("esModule")
