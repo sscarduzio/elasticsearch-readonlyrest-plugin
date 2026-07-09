@@ -64,6 +64,14 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   def assemble: Option[JFile] = {
     logger.info(s"Assembling ROR in module $moduleName")
+    // The deliverable for a non-baseline ES version is DERIVED from the base-compiled bytecode without
+    // recompiling (see readonlyrest.plugin-common-conventions `buildRorPluginZip`). That reuse is only sound
+    // when base-compiled and target-compiled bytecode are identical; when they diverge (e.g. an ES API that
+    // changed from a class to an interface across the module's version range) the repackaged zip fails at
+    // class-load time in the container. Prove the repackage is safe for the exact version we assemble BEFORE
+    // packaging, so a broken module fails here with the guard's diagnostic instead of a container crash.
+    logger.info(s"Verifying repackage bytecode safety for module $moduleName (ES $getModuleESVersion)")
+    runTask(moduleName + ":verifyRepackageBytecode", List(s"-PverifyEsVersion=$getModuleESVersion"))
     runTask(moduleName + ":buildRorPluginZip")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
     logger.info(s"Finished assembling ROR in module $moduleName")
@@ -92,7 +100,7 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   private def pluginName =
     s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion.zip"
 
-  private def runTask(task: String): Unit = {
+  private def runTask(task: String, extraArgs: List[String] = Nil): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
     // On CI the toolchains image bakes the Gradle distribution + dependency cache into GRADLE_USER_HOME
     // and marks it with a `.ror-ci-baked` sentinel (written by ci/toolchains/JdkToolchains.Dockerfile only after the
@@ -108,8 +116,8 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     val connect = Try(connector.connect())
     val result = connect.map { c =>
       val args =
-        if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
-        else Nil
+        (if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
+         else Nil) ++ extraArgs
       val build = c.newBuild().forTasks(task)
       (if (args.nonEmpty) build.withArguments(args*) else build).run()
     }

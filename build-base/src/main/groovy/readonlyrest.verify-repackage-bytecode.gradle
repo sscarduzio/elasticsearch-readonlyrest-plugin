@@ -48,11 +48,37 @@ def verifyRequest = { ->
 
 def gradlew = new File(rootDir, 'gradlew').path
 
+// Each version is compiled in its OWN nested `./gradlew` invocation, with `clean` first and `--no-build-cache`,
+// then its jar is stashed OUTSIDE the module build dir. All of this is load-bearing because the Scala
+// incremental compiler (Zinc) does NOT recompile a source whose text is unchanged even when a classpath type
+// changes shape (e.g. BytesReference going from a class to an interface across a module's ES range) -- it keeps
+// the previously-emitted .class, so a naive "recompile at the target version" silently reuses base bytecode:
+//   * `clean` empties build/classes so Zinc has no stale .class to reuse and must do a full compile;
+//   * `--no-build-cache` is still needed on top of clean, because a once-stale compile gets stored in the build
+//     cache under the CORRECT target-version key (poisoning it); a later build would otherwise restore that
+//     poisoned output into build/classes and Zinc would treat it as up-to-date. (The keys DO differ per ES
+//     version -- the classpath fingerprint includes the ES jar -- so this is cache poisoning, not a key clash.)
+//   * nested invocations do NOT inherit the outer build's `--no-build-cache`, so it must be passed here;
+//   * stashing the jar outside build/ keeps the base jar from being deleted by the target compile's `clean`.
+// Get any of these wrong and the guard silently passes a genuinely-unsafe repackage (e.g. es74x's 7.4->7.6
+// range, where BytesReference changed from a class to an interface).
+def stashDir = project.rootProject.layout.buildDirectory.dir("repackage-bytecode-check/${project.name}")
+def stashedJar = { String ver -> stashDir.get().file("${PluginArtifact.fullName(project, ver)}.jar").asFile }
+def buildLibsJar = { String ver -> layout.buildDirectory.file("libs/${PluginArtifact.fullName(project, ver)}.jar").get().asFile }
+
 def compileBaseTask = tasks.register("repackageCheckCompileBase_es${esTag(moduleBaselineEsVersion)}", Exec) {
     group = 'verification'
     description = "Compiles ${project.name} at its base ES ${moduleBaselineEsVersion} (for the repackage bytecode check)"
     workingDir = rootDir
-    commandLine gradlew, ":${project.name}:toJar", "-PbaselineEsVersion=${moduleBaselineEsVersion}"
+    commandLine gradlew, ":${project.name}:clean", ":${project.name}:toJar",
+            "--no-build-cache", "-PbaselineEsVersion=${moduleBaselineEsVersion}"
+    doLast {
+        def produced = buildLibsJar(moduleBaselineEsVersion)
+        if (!produced.exists()) throw new GradleException("expected jar not produced: ${produced}")
+        def dest = stashedJar(moduleBaselineEsVersion)
+        dest.parentFile.mkdirs()
+        java.nio.file.Files.copy(produced.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
 }
 
 def verifyDiffTask = verifyRequest instanceof FullVerification ? { ->
@@ -60,26 +86,32 @@ def verifyDiffTask = verifyRequest instanceof FullVerification ? { ->
         group = 'verification'
         description = "Recompiles ${project.name} at ES ${verifyRequest.targetVersion} to compare its bytecode against the base"
         workingDir = rootDir
-        commandLine gradlew, ":${project.name}:toJar", "-PbaselineEsVersion=${verifyRequest.targetVersion}"
-        // Runs after the base: each compile overwrites build/classes, so they must run one at a time.
+        commandLine gradlew, ":${project.name}:clean", ":${project.name}:toJar",
+                "--no-build-cache", "-PbaselineEsVersion=${verifyRequest.targetVersion}"
+        // Runs after the base compile has stashed its jar, so this compile's `clean` can't remove it.
         dependsOn compileBaseTask
+        doLast {
+            def produced = buildLibsJar(verifyRequest.targetVersion)
+            if (!produced.exists()) throw new GradleException("expected jar not produced: ${produced}")
+            def dest = stashedJar(verifyRequest.targetVersion)
+            dest.parentFile.mkdirs()
+            java.nio.file.Files.copy(produced.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
     }
-    def baseJar = layout.buildDirectory.file("libs/${PluginArtifact.fullName(project, verifyRequest.baseVersion)}.jar")
-    def cmpJar = layout.buildDirectory.file("libs/${PluginArtifact.fullName(project, verifyRequest.targetVersion)}.jar")
+    def baseJar = stashedJar(verifyRequest.baseVersion)
+    def cmpJar = stashedJar(verifyRequest.targetVersion)
     tasks.register("repackageCheckDiff_es${esTag(verifyRequest.targetVersion)}") {
         group = 'verification'
         description = "Diffs ${project.name} ES ${verifyRequest.targetVersion} bytecode against the base"
         dependsOn compileTask
         doLast {
-            def base = baseJar.get().asFile
-            def cmp = cmpJar.get().asFile
-            [base, cmp].each { if (!it.exists()) throw new GradleException("jar not found: ${it}") }
-            def result = BytecodeComparison.compare(base, cmp)
+            [baseJar, cmpJar].each { if (!it.exists()) throw new GradleException("jar not found: ${it}") }
+            def result = BytecodeComparison.compare(baseJar, cmpJar)
             if (result.identical) {
-                logger.lifecycle("OK: bytecode identical to base -- reuse safe ({} vs {})", base.name, cmp.name)
+                logger.lifecycle("OK: bytecode identical to base -- reuse safe ({} vs {})", baseJar.name, cmpJar.name)
             } else {
-                throw new GradleException("Bytecode reuse guard FAILED: ${cmp.name} differs from base " +
-                        "${base.name}. Diverging entries: ${result.divergingEntries}. Repackaging is unsafe " +
+                throw new GradleException("Bytecode reuse guard FAILED: ${cmpJar.name} differs from base " +
+                        "${baseJar.name}. Diverging entries: ${result.divergingEntries}. Repackaging is unsafe " +
                         "for this range; revert to per-version compilation.")
             }
         }
