@@ -22,6 +22,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.ScalaOps.{EitherTOps, LoggerOps}
 
@@ -30,8 +31,12 @@ trait StartingRorSettingsLoader {
 
   def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]]
 
+  /**
+   * Keeps the source-specific error, so that a caller can tell apart the reasons of the failure - eg. "there are no
+   * settings in the index" from "the settings index could not be read".
+   */
   protected def loadSettingsFromSource[S: Show, E: Show](source: ReadOnlySettingsSource[S, E],
-                                                         settingsDescription: String): EitherT[Task, LoadingError, S] = {
+                                                         settingsDescription: String): EitherT[Task, SettingsLoadingError[E], S] = {
     for {
       _ <- EitherT.liftTask(logger.info(s"Loading ReadonlyREST $settingsDescription ..."))
       loadedSettings <- EitherT(source.load())
@@ -39,7 +44,6 @@ trait StartingRorSettingsLoader {
           error => logger.dInfo(s"Loading ReadonlyREST $settingsDescription failed: ${error.show}"),
           settings => logger.dDebug(s"Loaded ReadonlyREST $settingsDescription:\n${settings.show}")
         )
-        .leftMap(error => error.show)
     } yield loadedSettings
   }
 

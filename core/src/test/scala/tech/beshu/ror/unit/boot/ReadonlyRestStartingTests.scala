@@ -119,6 +119,42 @@ class ReadonlyRestStartingTests
           acl shouldBe a[AccessControlListLoggingDecorator]
           acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
         }
+        "index settings document does not exist and file settings is provided" in withReadonlyRest({
+          val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
+          val mockedIndexDocumentManager = mock[IndexDocumentManager]
+          mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
+          mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
+          val coreFactory = mockCoreFactory(mock[CoreFactory], s"$resourcePath/readonlyrest.yml")
+
+          implicit val systemContext: SystemContext = createSystemContext()
+          (
+            readonlyRestBoot(coreFactory, mockedIndexDocumentManager),
+            forceCreateEsConfigBasedRorSettings(resourcePath)
+          )
+        }) { rorInstance =>
+          rorInstance.engines.value.mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
+        }
+      }
+      "not be loaded from file" when {
+        "the index settings cannot be read (eg. the cluster has no master node yet)" in {
+          // the settings may well be in the index - we just could not read them. Falling back to the file settings
+          // could make this node enforce an ACL different from the one used by the rest of the cluster.
+          val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
+          val mockedIndexDocumentManager = mock[IndexDocumentManager]
+          mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = DocumentUnreachable)
+
+          implicit val systemContext: SystemContext = createSystemContext()
+          // the core factory is never used, because the file settings must not be loaded
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
+          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcePath)
+
+          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+
+          inside(result) { case Left(StartingFailure(message, _)) =>
+            message should include("Cannot read ReadonlyREST settings from index '.readonlyrest'")
+            message should include("will NOT be used as a fallback")
+          }
+        }
       }
       "be loaded from index" when {
         "index is available and file settings is provided" in withReadonlyRest({
