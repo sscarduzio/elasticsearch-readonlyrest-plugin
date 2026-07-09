@@ -69,17 +69,8 @@ object IndexSettingsSource {
 
   sealed trait LoadingError
   object LoadingError {
-    /** The settings index does not exist. */
     case object IndexNotFound extends LoadingError
-
-    /** The settings index exists, but there is no settings document in it. */
     case object DocumentNotFound extends LoadingError
-
-    /**
-     * The settings index could not be read - eg. the cluster has no master node yet, or the index shards are not
-     * allocated yet. Unlike the two errors above, this one says nothing about whether the settings exist. It is
-     * transient and the load should be attempted again.
-     */
     case object DocumentUnreachable extends LoadingError
   }
 

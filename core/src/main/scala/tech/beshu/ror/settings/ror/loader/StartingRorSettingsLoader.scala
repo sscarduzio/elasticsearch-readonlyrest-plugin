@@ -31,10 +31,6 @@ trait StartingRorSettingsLoader {
 
   def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]]
 
-  /**
-   * Keeps the source-specific error, so that a caller can tell apart the reasons of the failure - eg. "there are no
-   * settings in the index" from "the settings index could not be read".
-   */
   protected def loadSettingsFromSource[S: Show, E: Show](source: ReadOnlySettingsSource[S, E],
                                                          settingsDescription: String): EitherT[Task, SettingsLoadingError[E], S] = {
     for {

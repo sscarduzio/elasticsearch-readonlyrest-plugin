@@ -29,8 +29,8 @@ class ForceLoadRorSettingsFromFileLoader(mainSettingsFileSource: FileSettingsSou
     val result = loadSettingsFromSource(
       source = mainSettingsFileSource,
       settingsDescription = s"main settings from file '${mainSettingsFileSource.settingsFile.show}''"
-    ).leftMap(_.show)
-    result.map((_, None)).value
+    )
+    result.leftMap(_.show).map((_, None)).value
   }
 
 }

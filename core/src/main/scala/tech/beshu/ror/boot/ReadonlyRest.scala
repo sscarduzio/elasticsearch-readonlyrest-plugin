@@ -39,6 +39,7 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.es.*
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.ScalaOps.{RetryPolicy, retryUntilSuccessful}
 
 import java.time.Instant
 import scala.concurrent.duration.*
@@ -53,11 +54,7 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private[boot] val authServicesMocksProvider = new MutableMocksProviderWithCachePerRequest(AuthServicesMocks.empty)
 
-  /**
-   * A single starting attempt. Not meant to be used outside of the `boot` package - a caller which gives up after
-   * the first failure leaves the ES node permanently unable to serve any request. Use [[startWithRetry]] instead.
-   */
-  private[boot] def start(esConfigBasedRorSettings: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
+  def start(esConfigBasedRorSettings: EsConfigBasedRorSettings): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       creatorsAndLoaders <- lift(SettingsRelatedCreatorsAndLoaders.create(esConfigBasedRorSettings, indexDocumentManager))
       loadedSettings <- EitherT(creatorsAndLoaders.startingRorSettingsLoader.load()).leftMap(StartingFailure(_))
@@ -67,58 +64,25 @@ class ReadonlyRest(coreFactory: CoreFactory,
   }
 
   /**
-   * Starts ROR, retrying indefinitely (with a capped exponential backoff) until it succeeds.
-   *
-   * A starting attempt may fail for reasons which are transient from the ROR point of view - eg. the ES node has
-   * no elected master yet, so neither the ROR settings index nor the audit data stream can be reached. Such a node
-   * has to be able to recover on its own; otherwise the only way to bring ROR up again is an ES node restart.
-   * Permanent failures (eg. malformed settings) are retried too - they become transient as soon as an admin fixes
-   * the settings.
-   *
-   * `onFailedAttempt` is called after each failed attempt, so that the caller can keep rejecting requests
-   * (ROR fails closed) while the next attempt is pending.
+   * Starts ROR, retrying indefinitely until it succeeds. Every starting failure is transient from the ES node point of
+   * view - the settings index may not be readable yet, the master node may not be elected yet - so there is nothing to
+   * be gained by giving up.
    */
   def startWithRetry(esConfigBasedRorSettings: EsConfigBasedRorSettings,
-                     retryPolicy: StartingRetryPolicy = StartingRetryPolicy.default)
+                     retryPolicy: RetryPolicy = defaultStartingRetryPolicy)
                     (onFailedAttempt: StartingFailure => Unit): Task[RorInstance] = {
-    def notifyAboutFailedAttempt(failure: StartingFailure, nextAttemptDelay: FiniteDuration): Task[Unit] = {
-      Task
-        .delay {
-          onFailedAttempt(failure)
-          logger.warn(s"ReadonlyREST will try to start again in $nextAttemptDelay ...")
-        }
-        .onErrorHandle { ex =>
-          // a misbehaving listener must not break the retrying, because that would leave the ES node
-          // permanently unable to serve any request
-          logger.error("Could not report the failed ReadonlyREST starting attempt", ex)
-        }
+    retryUntilSuccessful[StartingFailure, RorInstance](
+      policy = retryPolicy,
+      onFailedAttempt = (failure, nextAttemptDelay) => Task.delay {
+        onFailedAttempt(failure)
+        logger.warn(s"ReadonlyREST will try to start again in $nextAttemptDelay ...")
+      }
+    ) {
+      start(esConfigBasedRorSettings)
+        .onErrorHandle(ex => Left(StartingFailure("Cannot start ReadonlyREST", Some(ex))))
     }
-
-    def startingAttemptWithRetry(delay: FiniteDuration): Task[RorInstance] = {
-      singleStartingAttempt(esConfigBasedRorSettings)
-        .flatMap {
-          case Right(rorInstance) =>
-            Task.now(rorInstance)
-          case Left(failure) =>
-            for {
-              _ <- notifyAboutFailedAttempt(failure, delay)
-              rorInstance <- startingAttemptWithRetry(retryPolicy.nextDelay(delay)).delayExecution(delay)
-            } yield rorInstance
-        }
-    }
-
-    startingAttemptWithRetry(retryPolicy.initialDelay)
   }
 
-  /**
-   * `start` reports an expected failure as a `Left`, but an unexpected one (eg. `MasterNotDiscoveredException` thrown
-   * when the audit data stream cannot be set up) escapes as a raised error. Both mean the same thing here, so the
-   * raised error is turned into a `StartingFailure` and both are retried the same way.
-   */
-  private def singleStartingAttempt(esConfigBasedRorSettings: EsConfigBasedRorSettings) = {
-    start(esConfigBasedRorSettings)
-      .onErrorHandle(ex => Left(StartingFailure("Cannot start ReadonlyREST", Some(ex))))
-  }
 
   private def startRor(esConfigBasedRorSettings: EsConfigBasedRorSettings,
                        creators: SettingsRelatedCreators,
@@ -186,37 +150,31 @@ class ReadonlyRest(coreFactory: CoreFactory,
 
   private[ror] def loadRorEngine(settings: RawRorSettings,
                                  settingsIndex: RorSettingsIndex): Task[Either[StartingFailure, Engine]] = {
-    val httpClientsFactory = new AsyncHttpClientsFactory
-    val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
-
-    def releaseResources() = Task
-      .delay(httpClientsFactory.shutdown())
-      .flatMap(_ => ldapConnectionPoolProvider.close())
+    val engineResources = EngineResources.create()
 
     EitherT(
       coreFactory
-        .createCoreFrom(settings, settingsIndex, httpClientsFactory, ldapConnectionPoolProvider, authServicesMocksProvider)
+        .createCoreFrom(settings, settingsIndex, engineResources.httpClientsFactory, engineResources.ldapConnectionPoolProvider, authServicesMocksProvider)
     )
-      .flatMap(core => createEngine(httpClientsFactory, ldapConnectionPoolProvider, core))
+      .flatMap(core => createEngine(engineResources, core))
       .semiflatTap { engine =>
         Task(inspectFlsEngine(engine))
       }
       .leftMap(handleLoadingCoreErrors)
       .value
-      // when no engine is created, nobody takes over the ownership of the resources below, so they have to be
-      // released here - otherwise each starting attempt would leak an HTTP client and an LDAP connection pool
+      // when no engine is created, nobody takes over the ownership of the resources, so they have to be released here -
+      // otherwise each starting attempt would leak an HTTP client and an LDAP connection pool
       .flatMap {
         case result@Right(_) => Task.now(result)
-        case result@Left(_) => releaseResources().map(_ => result)
+        case result@Left(_) => engineResources.release().map(_ => result)
       }
       .onErrorHandleWith { ex =>
-        releaseResources().flatMap(_ => Task.raiseError(ex))
+        engineResources.release().flatMap(_ => Task.raiseError(ex))
       }
-      .doOnCancel(releaseResources())
+      .doOnCancel(engineResources.release())
   }
 
-  private def createEngine(httpClientsFactory: AsyncHttpClientsFactory,
-                           ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
+  private def createEngine(engineResources: EngineResources,
                            core: Core): EitherT[Task, NonEmptyList[CoreCreationError], Engine] = {
     implicit val loggingContext: LoggingContext = LoggingContext(core.accessControl.staticContext.obfuscatedHeaders)
     EitherT(createAuditingTool(core.auditingSettings))
@@ -231,9 +189,8 @@ class ReadonlyRest(coreFactory: CoreFactory,
         )
         new Engine(
           core = decoratedCore,
-          httpClientsFactory = httpClientsFactory,
-          ldapConnectionPoolProvider,
-          auditingTool
+          engineResources = engineResources,
+          auditingTool = auditingTool
         )
       }
   }
@@ -300,33 +257,36 @@ object ReadonlyRest {
     final case class Expiration(ttl: PositiveFiniteDuration, validTo: Instant)
   }
 
-  final class Engine(val core: Core,
-                     httpClientsFactory: AsyncHttpClientsFactory,
-                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                     auditingTool: Option[AuditingTool])
-                    (implicit scheduler: Scheduler) {
+  private[boot] final class EngineResources private(val httpClientsFactory: AsyncHttpClientsFactory,
+                                                    val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) {
+
+    def release(): Task[Unit] = {
+      Task
+        .delay(httpClientsFactory.shutdown())
+        .flatMap(_ => ldapConnectionPoolProvider.close())
+    }
+  }
+  private[boot] object EngineResources {
+    def create(): EngineResources = new EngineResources(
+      httpClientsFactory = new AsyncHttpClientsFactory,
+      ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+    )
+  }
+
+  final class Engine private[boot](val core: Core,
+                                   engineResources: EngineResources,
+                                   auditingTool: Option[AuditingTool])
+                                  (implicit scheduler: Scheduler) {
 
     private[ror] def shutdown(): Unit = {
-      httpClientsFactory.shutdown()
-      ldapConnectionPoolProvider.close().runAsyncAndForget
+      engineResources.release().runAsyncAndForget
       auditingTool.foreach(_.close().runAsyncAndForget)
     }
   }
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-  final case class StartingRetryPolicy(initialDelay: FiniteDuration,
-                                       maxDelay: FiniteDuration) {
-
-    def nextDelay(currentDelay: FiniteDuration): FiniteDuration = {
-      val doubledDelay = currentDelay * 2
-      if (doubledDelay >= maxDelay) maxDelay else doubledDelay
-    }
-  }
-
-  object StartingRetryPolicy {
-    val default: StartingRetryPolicy = StartingRetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
-  }
+  val defaultStartingRetryPolicy: RetryPolicy = RetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
 
   def create(indexContentService: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator,

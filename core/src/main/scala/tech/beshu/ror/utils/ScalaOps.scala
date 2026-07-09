@@ -164,6 +164,60 @@ object ScalaOps {
       }
   }
 
+  /**
+   * Says how long to wait between the attempts, nothing else. The delay grows exponentially, but never exceeds
+   * `maxDelay`, so an operation which is retried indefinitely keeps being retried at a predictable pace.
+   */
+  final case class RetryPolicy(initialDelay: FiniteDuration,
+                               maxDelay: FiniteDuration,
+                               backOffScaler: Int = 2) {
+
+    require(initialDelay > Duration.Zero, "The initial delay has to be positive")
+    require(maxDelay >= initialDelay, "The max delay cannot be shorter than the initial delay")
+    require(backOffScaler >= 1, "The backoff scaler cannot shrink the delay")
+
+    def nextDelay(currentDelay: FiniteDuration): FiniteDuration = {
+      val scaledDelay = currentDelay * backOffScaler.toLong
+      if (scaledDelay >= maxDelay) maxDelay else scaledDelay
+    }
+  }
+
+  /**
+   * Runs the `operation` until it succeeds, waiting between the attempts according to the `policy`. Every failed
+   * attempt is reported to `onFailedAttempt`, together with the delay after which the next attempt will be made.
+   *
+   * Only the failures modelled as `Left` are retried - an exception raised by the `operation` is passed through. It is
+   * up to the caller to decide which errors are worth another attempt, and to represent them in the error channel.
+   *
+   * A failure of `onFailedAttempt` never breaks the retrying, because a broken reporting is not a reason to give up on
+   * an operation which the caller asked to be run until it succeeds. It is up to `onFailedAttempt` to report its own
+   * problems.
+   */
+  def retryUntilSuccessful[ERROR, RESULT](policy: RetryPolicy,
+                                          onFailedAttempt: (ERROR, FiniteDuration) => Task[Unit])
+                                         (operation: Task[Either[ERROR, RESULT]]): Task[RESULT] = {
+    def notifyAboutFailedAttempt(error: ERROR, nextAttemptDelay: FiniteDuration): Task[Unit] = {
+      Task
+        .defer(onFailedAttempt(error, nextAttemptDelay))
+        .onErrorHandle(_ => ())
+    }
+
+    def attemptWithRetry(delay: FiniteDuration): Task[RESULT] = {
+      operation
+        .flatMap {
+          case Right(result) =>
+            Task.now(result)
+          case Left(error) =>
+            for {
+              _ <- notifyAboutFailedAttempt(error, delay)
+              result <- attemptWithRetry(policy.nextDelay(delay)).delayExecution(delay)
+            } yield result
+        }
+    }
+
+    attemptWithRetry(policy.initialDelay)
+  }
+
   def repeat[A](maxRetries: Int, delay: FiniteDuration)(source: Task[A]): Task[Unit] = {
     source
       .delayExecution(delay)

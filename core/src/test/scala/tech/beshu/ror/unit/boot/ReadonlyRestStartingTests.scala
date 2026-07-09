@@ -49,8 +49,7 @@ import tech.beshu.ror.accesscontrol.factory.RorDependencies.NoOpImpersonationWar
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.boot.ReadonlyRest.{StartingFailure, StartingRetryPolicy}
-import tech.beshu.ror.boot.ReadonlyRestSingleStartAttempt.startOnce
+import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSettings}
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
@@ -64,6 +63,7 @@ import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSaving
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
 import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.ScalaOps.RetryPolicy
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
@@ -148,7 +148,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcePath)
 
-          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(StartingFailure(message, _)) =>
             message should include("Cannot read ReadonlyREST settings from index '.readonlyrest'")
@@ -339,7 +339,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager])
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -357,7 +357,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -375,7 +375,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcePath)
 
-          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -396,7 +396,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -415,7 +415,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -1410,7 +1410,7 @@ class ReadonlyRestStartingTests
           settings.copy(settingsSource = settings.settingsSource.copy(settingsMaxSize = Bytes(1)))
         }
 
-        val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
         inside(result) {
           case Left(StartingFailure(message, _)) =>
             message should include("ROR settings are malformed")
@@ -1456,7 +1456,7 @@ class ReadonlyRestStartingTests
         val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager], auditSinkServiceCreator)
         val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
 
-        val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
+        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
         inside(result) {
           case Left(StartingFailure(message, _)) =>
             val expectedMessage =
@@ -1496,7 +1496,7 @@ class ReadonlyRestStartingTests
         )
 
         val instance = readonlyRest
-          .startWithRetry(esConfigBasedRorSettings, StartingRetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)) { _ =>
+          .startWithRetry(esConfigBasedRorSettings, RetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)) { _ =>
             throw new RuntimeException("the listener is broken")
           }
           .runSyncUnsafe()
@@ -1545,7 +1545,7 @@ class ReadonlyRestStartingTests
     val instance = readonlyRest
       .startWithRetry(
         esConfigBasedRorSettings,
-        StartingRetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)
+        RetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)
       ) { failure =>
         reportedFailures.updateAndGet(_ :+ failure)
       }
