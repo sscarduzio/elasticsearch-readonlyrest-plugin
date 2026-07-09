@@ -49,7 +49,8 @@ import tech.beshu.ror.accesscontrol.factory.RorDependencies.NoOpImpersonationWar
 import tech.beshu.ror.accesscontrol.factory.{Core, CoreFactory, RorDependencies}
 import tech.beshu.ror.accesscontrol.logging.AccessControlListLoggingDecorator
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
+import tech.beshu.ror.boot.ReadonlyRest.{StartingFailure, StartingRetryPolicy}
+import tech.beshu.ror.boot.ReadonlyRestSingleStartAttempt.startOnce
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsInvalidationError, TestSettings}
 import tech.beshu.ror.es.DataStreamService.CreationResult.{Acknowledged, NotAcknowledged}
 import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
@@ -70,6 +71,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.time.Clock
 import java.util.UUID
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -301,7 +303,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager])
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -319,7 +321,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -337,7 +339,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcePath)
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -358,7 +360,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -377,7 +379,7 @@ class ReadonlyRestStartingTests
           val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+          val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
 
           inside(result) { case Left(failure) =>
             failure.message shouldBe "Errors:\nfailed"
@@ -1372,7 +1374,7 @@ class ReadonlyRestStartingTests
           settings.copy(settingsSource = settings.settingsSource.copy(settingsMaxSize = Bytes(1)))
         }
 
-        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+        val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
         inside(result) {
           case Left(StartingFailure(message, _)) =>
             message should include("ROR settings are malformed")
@@ -1418,7 +1420,7 @@ class ReadonlyRestStartingTests
         val readonlyRest = readonlyRestBoot(coreFactory, mock[IndexDocumentManager], auditSinkServiceCreator)
         val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings("/boot_tests/forced_file_loading_with_audit/")
 
-        val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+        val result = readonlyRest.startOnce(esConfigBasedRorSettings).runSyncUnsafe()
         inside(result) {
           case Left(StartingFailure(message, _)) =>
             val expectedMessage =
@@ -1429,6 +1431,91 @@ class ReadonlyRestStartingTests
         }
       }
     }
+    "be started with a retry" when {
+      "the first starting attempts fail, but the core can be eventually created" in {
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 2,
+          failure = Task.now(Left(NonEmptyList.one(CoreCreationError.GeneralReadonlyrestSettingsError(Message("failed")))))
+        )
+
+        val reportedFailures = startWithRetryCollectingFailures(readonlyRest, esConfigBasedRorSettings)
+
+        reportedFailures.map(_.message) should be(List("Errors:\nfailed", "Errors:\nfailed"))
+      }
+      "the first starting attempt fails with an unexpected exception (eg. no master node in the cluster)" in {
+        val noMasterNodeException = new Exception("MasterNotDiscoveredException")
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 1,
+          failure = Task.raiseError(noMasterNodeException)
+        )
+
+        val reportedFailures = startWithRetryCollectingFailures(readonlyRest, esConfigBasedRorSettings)
+
+        reportedFailures should be(List(StartingFailure("Cannot start ReadonlyREST", Some(noMasterNodeException))))
+      }
+      "the onFailedAttempt listener throws an exception" in {
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 1,
+          failure = Task.now(Left(NonEmptyList.one(CoreCreationError.GeneralReadonlyrestSettingsError(Message("failed")))))
+        )
+
+        val instance = readonlyRest
+          .startWithRetry(esConfigBasedRorSettings, StartingRetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)) { _ =>
+            throw new RuntimeException("the listener is broken")
+          }
+          .runSyncUnsafe()
+
+        instance should not be null
+        instance.stop().runSyncUnsafe()
+      }
+      "no starting attempt fails" in {
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 0,
+          failure = Task.raiseError(new Exception("should not be used"))
+        )
+
+        val reportedFailures = startWithRetryCollectingFailures(readonlyRest, esConfigBasedRorSettings)
+
+        reportedFailures should be(List.empty)
+      }
+    }
+  }
+
+  private def readonlyRestWithCoreFactoryFailing(failingAttemptsCount: Int,
+                                                 failure: Task[Either[NonEmptyList[CoreCreationError], Core]]) = {
+    val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
+    val mockedIndexDocumentManager = mock[IndexDocumentManager]
+    mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, IndexNotFound, AttemptCount.AnyNumberOfTimes)
+    mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, IndexNotFound, AttemptCount.AnyNumberOfTimes)
+
+    val accessControl = mockEnabledAccessControl
+    val startedAttempts = new AtomicInteger(0)
+    val coreFactory = mock[CoreFactory]
+    (coreFactory.createCoreFrom _)
+      .expects(*, *, *, *, *)
+      .anyNumberOfTimes()
+      .onCall { (_, _, _, _, _) =>
+        if (startedAttempts.getAndIncrement() < failingAttemptsCount) failure
+        else Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingSettings = None)))
+      }
+
+    implicit val systemContext: SystemContext = createSystemContext()
+    (readonlyRestBoot(coreFactory, mockedIndexDocumentManager), forceCreateEsConfigBasedRorSettings(resourcePath))
+  }
+
+  private def startWithRetryCollectingFailures(readonlyRest: ReadonlyRest,
+                                               esConfigBasedRorSettings: EsConfigBasedRorSettings) = {
+    val reportedFailures = new AtomicReference[Vector[StartingFailure]](Vector.empty)
+    val instance = readonlyRest
+      .startWithRetry(
+        esConfigBasedRorSettings,
+        StartingRetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)
+      ) { failure =>
+        reportedFailures.updateAndGet(_ :+ failure)
+      }
+      .runSyncUnsafe()
+    instance.stop().runSyncUnsafe()
+    reportedFailures.get().toList
   }
 
   private def forceCreateEsConfigBasedRorSettings(resourceEsConfigDir: String)

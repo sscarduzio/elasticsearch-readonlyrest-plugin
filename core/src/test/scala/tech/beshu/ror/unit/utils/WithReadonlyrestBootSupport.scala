@@ -20,6 +20,7 @@ import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Suite
+import tech.beshu.ror.boot.ReadonlyRestSingleStartAttempt.startOnce
 import tech.beshu.ror.boot.{ReadonlyRest, RorInstance}
 import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 
@@ -38,7 +39,7 @@ trait WithReadonlyrestBootSupport {
     Resource
       .make(
         acquire = readonlyRest
-          .start(esConfigBasedRorSettings)
+          .startOnce(esConfigBasedRorSettings)
           .flatMap {
             case Right(startedInstance) => Task.now(startedInstance)
             case Left(startingFailure) => Task.raiseError(new Exception(s"$startingFailure"))
