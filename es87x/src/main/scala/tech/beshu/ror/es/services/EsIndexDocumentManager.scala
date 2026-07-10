@@ -32,6 +32,7 @@ import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.es.services.IndexDocumentManager.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.annotation.unused
 
