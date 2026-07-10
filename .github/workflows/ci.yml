@@ -1,30 +1,35 @@
 # ReadonlyREST CI — ported from azure-pipelines.yml to GitHub Actions.
 # Linux jobs run on Ubicloud (16 GB = ubicloud-standard-4) inside the same toolchains image;
-# Windows jobs run on Blacksmith (blacksmith-4vcpu-windows-2025).
+# Windows jobs run on GitHub-hosted windows-2025 (free for public repos, same VM family Azure used).
 #
-# Design notes (see ci/github/SECRETS.md for the secret map):
+# Design notes (see ci/github/PORT.md for the stage map and ci/github/SECRETS.md for secrets):
 #  - The build logic is unchanged: every Linux job calls ci/run-pipeline.sh with a ROR_TASK, exactly
 #    as Azure did. This file only ports the orchestration (stages -> jobs, matrix, conditions, secrets).
-#  - Azure's SUPERSEDE_GUARD stage is replaced by GitHub-native `concurrency` (auto-cancel stale PR runs).
-#  - Azure "secure files" (secret.pgp, gh_deploy_key) become base64 repo secrets, decoded in-step.
-#  - Fork PRs: GitHub withholds secrets automatically; cve/publish steps degrade rather than fail.
+#  - Azure's SUPERSEDE_GUARD stage is replaced by GitHub-native `concurrency` (auto-cancel stale PR
+#    runs; branch pushes are NEVER cancelled — a push during a release run must not kill the release).
+#  - IT matrices are computed in the `setup` job (PR subset vs full set) so skipped legs never boot a VM.
+#  - Release-path jobs use `!cancelled()` + explicit needs.<job>.result checks: GitHub skips a
+#    dependent job when a needed job was skipped (implicit success()), which would break the manual
+#    release_without_testing path where the test jobs are intentionally skipped.
+#  - Azure "secure files" (secret.pgp) become base64 repo secrets, decoded in-step.
+#  - Fork PRs: GitHub withholds secrets automatically; cve/docker-auth steps degrade rather than fail.
 name: CI
 
 on:
   push:
-    branches: [ master, develop, 'epic/**' ]
+    branches: [ master, develop, 'epic/**', '**/epic/**' ]
     paths-ignore:
       - 'docs/**'
       - '.claude/**'
       - '**/*.md'
   pull_request:
-    branches: [ master, develop, 'epic/**' ]
+    branches: [ master, develop, 'epic/**', '**/epic/**' ]
     paths-ignore:
       - 'docs/**'
       - '.claude/**'
       - '**/*.md'
   schedule:
-    - cron: '0 3 * * 1'   # weekly toolchains-image rebuild (BUILD_TOOLCHAINS_IMAGE only)
+    - cron: '0 3 * * 1'   # weekly toolchains-image rebuild (build_toolchains_image only)
   workflow_dispatch:
     inputs:
       actionToPerform:
@@ -37,43 +42,77 @@ on:
           - build_toolchains_image
           - release_without_testing
 
-# Replaces SUPERSEDE_GUARD: a new commit on a PR/branch cancels the older in-progress run.
+# Replaces SUPERSEDE_GUARD. cancel-in-progress ONLY for PRs (Azure pr.autoCancel); branch pushes
+# queue behind the running build (Azure trigger.batch) so an in-flight release is never cancelled.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 env:
-  # The single source of truth for the toolchains image (bump on a JDK/Gradle change).
+  # The single source of truth for the toolchains image tag is the `container:` lines below —
+  # bump them together with this env (used by build_toolchains_image) on a JDK/Gradle change.
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
   IT_PARALLELISM: '1'
-  # Ubicloud runners are self-hosted VMs without Azure's preinstalled bloat: make free-host-disk.sh a no-op.
+  # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
 jobs:
 
   # ── Gate helpers ──────────────────────────────────────────────────────────
-  # Compute branch/reason booleans once (Azure computed these as pipeline variables).
+  # Branch/reason booleans + the IT matrices (Azure computed these as pipeline variables and
+  # encoded the PR-vs-branch split as three separate matrix jobs; here one job emits the right
+  # matrix JSON so skipped legs never boot a runner).
   setup:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest   # trivial job; GH-hosted so it runs even if the Ubicloud app is down
     outputs:
       is_master:  ${{ steps.f.outputs.is_master }}
       is_develop: ${{ steps.f.outputs.is_develop }}
-      is_pr:      ${{ github.event_name == 'pull_request' }}
       is_epic:    ${{ steps.f.outputs.is_epic }}
       is_newes:   ${{ steps.f.outputs.is_newes }}
       action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
+      it_linux_matrix:   ${{ steps.m.outputs.linux }}
+      it_windows_matrix: ${{ steps.m.outputs.windows }}
     steps:
       - id: f
         env:
           REF: ${{ github.head_ref || github.ref_name }}
         run: |
-          ref="$REF"
           echo "is_master=${{ github.ref == 'refs/heads/master' }}"   >> "$GITHUB_OUTPUT"
           echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
-          case "$ref" in *epic/*) echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
-          case "$ref" in newes/*) echo "is_newes=true" >> "$GITHUB_OUTPUT";; *) echo "is_newes=false" >> "$GITHUB_OUTPUT";; esac
+          # contains() semantics, matching Azure's isEpicBranchOrPr / isNewEsBranchOrPr
+          case "$REF" in *epic/*)  echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
+          case "$REF" in *newes/*) echo "is_newes=true" >> "$GITHUB_OUTPUT";; *) echo "is_newes=false" >> "$GITHUB_OUTPUT";; esac
+      - id: m
+        env:
+          IS_FULL: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master' || contains(github.head_ref || github.ref_name, 'epic/') }}
+          IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          ACTION: ${{ github.event.inputs.actionToPerform || '' }}
+        run: |
+          # ES-version sets — keep in sync with azure-pipelines.yml until Azure is deleted.
+          LINUX_FULL='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
+          LINUX_PR='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
+          WIN_FULL='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
+          WIN_BRANCH='["es94x","es92x","es90x","es818x","es80x","es717x","es70x"]'
+          WIN_PR='["es94x","es818x","es717x"]'
+
+          if [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
+            echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
+          else
+            echo "linux=$LINUX_PR" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$IS_DISPATCH" = "true" ] && [ "$ACTION" = "run_all_tests_on_windows" ]; then
+            echo "windows=$WIN_FULL" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_FULL" = "true" ]; then
+            echo "windows=$WIN_BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "windows=$WIN_PR" >> "$GITHUB_OUTPUT"
+          fi
 
   # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
   build_toolchains_image:
@@ -115,8 +154,9 @@ jobs:
           ./gradlew --no-daemon -q help
 
   # ── ES_S3_UP (newes/* only) ───────────────────────────────────────────────
+  # Uploads new ES-version artifacts BEFORE any test job runs (they fetch from the libs store).
   es_s3_up:
-    needs: [ setup, toolchains_verify ]
+    needs: setup
     if: >-
       needs.setup.outputs.is_newes == 'true' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
@@ -144,19 +184,27 @@ jobs:
 
   # ── OPTIONAL_CHECKS: CVE (non-blocking) ───────────────────────────────────
   cve_check:
-    needs: [ setup, toolchains_verify ]
-    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    needs: [ setup, toolchains_verify, es_s3_up ]
+    if: >-
+      !cancelled() &&
+      needs.toolchains_verify.result == 'success' &&
+      needs.es_s3_up.result != 'cancelled' &&
+      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1 }
+      - name: Compute monthly cache key
+        id: month
+        run: echo "ym=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
       - name: Restore CVE DB cache
         uses: actions/cache@v4
         with:
           path: .dependency-check-data
-          key: dependency-check-v2-${{ github.run_id }}
+          # Immutable entries; a fresh key appears once a month (Azure Cache@2 semantics)
+          key: dependency-check-v2-${{ steps.month.outputs.ym }}
           restore-keys: dependency-check-v2-
       - name: cve_check
         env:
@@ -170,8 +218,12 @@ jobs:
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
-    needs: [ setup, toolchains_verify ]
-    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    needs: [ setup, toolchains_verify, es_s3_up ]
+    if: >-
+      !cancelled() &&
+      needs.toolchains_verify.result == 'success' &&
+      needs.es_s3_up.result != 'cancelled' &&
+      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     strategy:
@@ -192,13 +244,15 @@ jobs:
           ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
         run: ci/run-pipeline.sh
 
-  # ── TEST: unit ────────────────────────────────────────────────────────────
+  # ── TEST: unit (Linux) ────────────────────────────────────────────────────
   unit_tests:
-    needs: [ setup, toolchains_verify ]
+    needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
+      !cancelled() &&
+      needs.toolchains_verify.result == 'success' &&
+      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
-      (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests')) &&
-      needs.setup.outputs.action != 'run_all_tests_on_windows'
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 30
@@ -216,15 +270,20 @@ jobs:
       - name: Publish test results
         if: failure()
         uses: actions/upload-artifact@v4
-        with: { name: unit-test-results, path: '**/TEST*.xml', if-no-files-found: ignore }
+        with:
+          name: unit-test-results
+          path: '**/TEST*.xml'
+          if-no-files-found: ignore
 
-  # ── TEST: Linux integration tests ─────────────────────────────────────────
-  # One job with a full ES-version matrix. Azure split "on PR" vs "on develop/master" subsets;
-  # here a single matrix runs the full set on develop/master/epic + manual run_all_tests_on_linux,
-  # and a reduced set on plain PRs (see `it_matrix` output computed in setup-it).
+  # ── TEST: Linux integration tests (Ubicloud) ──────────────────────────────
+  # Matrix comes from setup: full 34-version set on develop/master/epic + manual run, the
+  # 10-version representative subset on plain PRs (same split Azure encoded as separate jobs).
   it_linux:
-    needs: [ setup, toolchains_verify ]
+    needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
+      !cancelled() &&
+      needs.toolchains_verify.result == 'success' &&
+      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
     runs-on: ubicloud-standard-4
@@ -234,64 +293,13 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        # Full set for develop/master/epic + manual; PRs get the reduced set via the exclude below.
-        ROR_TASK:
-          - integration_es94x
-          - integration_es92x
-          - integration_es91x
-          - integration_es90x
-          - integration_es818x
-          - integration_es816x
-          - integration_es815x
-          - integration_es814x
-          - integration_es813x
-          - integration_es812x
-          - integration_es811x
-          - integration_es810x
-          - integration_es89x
-          - integration_es88x
-          - integration_es87x
-          - integration_es85x
-          - integration_es84x
-          - integration_es83x
-          - integration_es82x
-          - integration_es81x
-          - integration_es80x
-          - integration_es717x
-          - integration_es716x
-          - integration_es714x
-          - integration_es711x
-          - integration_es710x
-          - integration_es79x
-          - integration_es78x
-          - integration_es77x
-          - integration_es74x
-          - integration_es73x
-          - integration_es72x
-          - integration_es70x
-          - integration_es67x
+        ROR_TASK: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
-      # On plain PRs, run only the representative subset Azure used (es94x, es90x, es818x, es816x,
-      # es810x, es80x, es717x, es710x, es70x, es67x); skip the rest fast. On develop/master/epic/manual,
-      # run everything. This keeps PR feedback fast without a second matrix definition.
-      - name: Decide if this leg runs
-        id: gate
-        run: |
-          full="${{ needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true' || needs.setup.outputs.is_epic == 'true' || github.event_name == 'workflow_dispatch' }}"
-          pr_subset=" integration_es94x integration_es90x integration_es818x integration_es816x integration_es810x integration_es80x integration_es717x integration_es710x integration_es70x integration_es67x "
-          if [ "$full" = "true" ] || [[ "$pr_subset" == *" ${{ matrix.ROR_TASK }} "* ]]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
       - uses: actions/checkout@v4
-        if: steps.gate.outputs.run == 'true'
         with: { fetch-depth: 1 }
       - name: Free host disk (no-op on self-hosted)
-        if: steps.gate.outputs.run == 'true'
         run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
-        if: steps.gate.outputs.run == 'true'
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
           ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
@@ -307,85 +315,41 @@ jobs:
           source ci/docker-hub-auth.sh
           ci/run-pipeline.sh
       - name: Publish test results
-        if: steps.gate.outputs.run == 'true' && failure()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: it-${{ matrix.ROR_TASK }}-results
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
-  # ── TEST: Windows integration tests (Blacksmith) ──────────────────────────
+  # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
+  # Matrix from setup: 7-version subset on develop/master/epic, 3 on PRs, full 33 on manual
+  # run_all_tests_on_windows — exactly Azure's three Windows IT jobs collapsed into one.
   it_windows:
-    needs: [ setup ]
+    needs: [ setup, es_s3_up ]
     if: >-
+      !cancelled() &&
+      needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
-    runs-on: blacksmith-4vcpu-windows-2025
+    runs-on: windows-2025
     timeout-minutes: 150
+    # Clear the Linux toolchains-image Gradle settings at JOB scope (Azure did the same): the
+    # workflow-level GRADLE_USER_HOME=/opt/gradle-home would otherwise leak into gradlew here.
+    env:
+      GRADLE_USER_HOME: ''
+      GRADLE_OPTS: ''
     strategy:
       fail-fast: false
       max-parallel: 10
       matrix:
-        # Full 33-version set (matches Azure's manual run_all_tests_on_windows). Legs outside the
-        # develop/master subset are skipped fast on plain PRs via the gate step below — same approach
-        # as it_linux, one matrix definition instead of three.
-        ES_MODULE:
-          - es94x
-          - es92x
-          - es91x
-          - es90x
-          - es818x
-          - es816x
-          - es815x
-          - es814x
-          - es813x
-          - es812x
-          - es811x
-          - es810x
-          - es89x
-          - es88x
-          - es87x
-          - es85x
-          - es84x
-          - es83x
-          - es82x
-          - es81x
-          - es80x
-          - es717x
-          - es716x
-          - es714x
-          - es711x
-          - es710x
-          - es79x
-          - es78x
-          - es77x
-          - es74x
-          - es73x
-          - es72x
-          - es70x
+        ES_MODULE: ${{ fromJSON(needs.setup.outputs.it_windows_matrix) }}
     steps:
-      - name: Decide if this leg runs
-        id: gate
-        shell: bash
-        run: |
-          # develop/master/epic subset = {es94x,es92x,es90x,es818x,es80x,es717x,es70x};
-          # PR subset = {es94x,es818x,es717x}; full set only on manual run_all_tests_on_windows.
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          branch_full=" es94x es92x es90x es818x es80x es717x es70x "
-          pr_subset=" es94x es818x es717x "
-          full="${{ needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true' || needs.setup.outputs.is_epic == 'true' }}"
-          if [ "$full" = "true" ]; then set="$branch_full"; else set="$pr_subset"; fi
-          if [[ "$set" == *" ${{ matrix.ES_MODULE }} "* ]]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v4
-        if: steps.gate.outputs.run == 'true'
         with: { fetch-depth: 1 }
       - uses: actions/setup-java@v4
-        if: steps.gate.outputs.run == 'true'
         with: { distribution: temurin, java-version: '21' }
       - name: ${{ matrix.ES_MODULE }}
-        if: steps.gate.outputs.run == 'true'
         shell: pwsh
         env:
           ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
@@ -396,9 +360,7 @@ jobs:
           ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
           ES_MODULE: ${{ matrix.ES_MODULE }}
         run: |
-          # GRADLE_USER_HOME/GRADLE_OPTS from the Linux image must NOT leak here; unset at step scope.
-          $env:GRADLE_USER_HOME = ""
-          $env:GRADLE_OPTS = ""
+          # Override the Linux gradle.properties installations.paths and let Windows auto-provision JDKs.
           $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE",
             "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
           .\gradlew @gradleArgs
@@ -407,19 +369,57 @@ jobs:
             exit 1
           }
       - name: Publish test results
-        if: steps.gate.outputs.run == 'true' && failure()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: win-it-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
           if-no-files-found: ignore
 
+  # ── TEST: unit tests on Windows (manual run_all_tests_on_windows only) ────
+  unit_tests_windows:
+    needs: setup
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      needs.setup.outputs.action == 'run_all_tests_on_windows'
+    runs-on: windows-2025
+    timeout-minutes: 150
+    env:
+      GRADLE_USER_HOME: ''
+      GRADLE_OPTS: ''
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: core:test on Windows
+        shell: pwsh
+        run: |
+          .\gradlew --no-daemon core:test `
+            "-Dorg.gradle.java.installations.paths=" `
+            "-Dorg.gradle.java.installations.auto-download=true"
+          if ($LASTEXITCODE -ne 0) {
+            Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object { Get-Content $_.FullName }
+            exit 1
+          }
+      - name: Publish test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-unit-test-results
+          path: '**/TEST*.xml'
+          if-no-files-found: ignore
+
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
   build_ror:
-    needs: [ setup, required_checks, unit_tests, it_linux ]
+    needs: [ setup, required_checks, unit_tests, it_linux, it_windows ]
     if: >-
+      !cancelled() &&
       github.event_name == 'pull_request' &&
-      github.event_name != 'workflow_dispatch'
+      needs.required_checks.result == 'success' &&
+      needs.unit_tests.result == 'success' &&
+      needs.it_linux.result == 'success' &&
+      needs.it_windows.result == 'success'
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 180
@@ -436,12 +436,27 @@ jobs:
         run: ci/run-pipeline.sh
 
   # ── DETERMINE_CI_TYPE (develop/master) ────────────────────────────────────
+  # Two arms, like Azure: auto (push with all tests green) OR manual release_without_testing
+  # (tests intentionally skipped — hence the explicit result checks instead of implicit success()).
   determine_ci_type:
-    needs: [ setup, required_checks, unit_tests, it_linux ]
+    needs: [ setup, required_checks, unit_tests, it_linux, it_windows ]
     if: >-
+      !cancelled() &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'release_without_testing')
-    runs-on: ubicloud-standard-2
+      (
+        (
+          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          needs.required_checks.result == 'success' &&
+          needs.unit_tests.result == 'success' &&
+          needs.it_linux.result == 'success' &&
+          needs.it_windows.result == 'success'
+        ) ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          needs.setup.outputs.action == 'release_without_testing'
+        )
+      )
+    runs-on: ubuntu-latest
     outputs:
       is_release: ${{ steps.r.outputs.is_release }}
     steps:
@@ -455,13 +470,15 @@ jobs:
           fi
           echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
 
-  # ── UPLOAD_PRE_ROR (pre-release develop/master) ───────────────────────────
+  # ── UPLOAD_PRE_ROR (pre-release develop/master, auto only) ────────────────
   upload_pre_ror:
     needs: [ setup, determine_ci_type ]
     if: >-
+      !cancelled() &&
+      needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'false' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      github.event_name != 'workflow_dispatch'
+      github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 600
@@ -494,13 +511,30 @@ jobs:
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
           ci/run-pipeline.sh
 
-  # ── RELEASE_ROR (release develop/master) ──────────────────────────────────
+  # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
   release_ror:
-    needs: [ setup, determine_ci_type ]
+    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests, it_linux, it_windows ]
+    permissions:
+      contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
     if: >-
+      !cancelled() &&
+      needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'true' &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'release_without_testing')
+      (
+        (
+          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          needs.required_checks.result == 'success' &&
+          needs.unit_tests.result == 'success' &&
+          needs.it_linux.result == 'success' &&
+          needs.it_windows.result == 'success'
+        ) ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          needs.setup.outputs.action == 'release_without_testing' &&
+          needs.toolchains_verify.result == 'success'
+        )
+      )
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 180
@@ -528,23 +562,40 @@ jobs:
           ROR_TASK: ${{ matrix.ROR_TASK }}
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          # ci-lib.sh interpolates this into the tag message (was the Azure/Travis build number)
+          TRAVIS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -e
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
           ci/run-pipeline.sh
 
-  # ── PUBLISH_MVN_ARTIFACTS (release on master) ─────────────────────────────
+  # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
   publish_mvn:
-    needs: [ setup, determine_ci_type ]
+    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests, it_linux, it_windows ]
     if: >-
+      !cancelled() &&
+      needs.determine_ci_type.result == 'success' &&
       needs.determine_ci_type.outputs.is_release == 'true' &&
       needs.setup.outputs.is_master == 'true' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'release_without_testing')
+      (
+        (
+          github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
+          needs.required_checks.result == 'success' &&
+          needs.unit_tests.result == 'success' &&
+          needs.it_linux.result == 'success' &&
+          needs.it_windows.result == 'success'
+        ) ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          needs.setup.outputs.action == 'release_without_testing' &&
+          needs.toolchains_verify.result == 'success'
+        )
+      )
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1, persist-credentials: true }
+        with: { fetch-depth: 1 }
       - name: Install PGP signing key
         env:
           PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}

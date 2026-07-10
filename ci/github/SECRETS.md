@@ -83,17 +83,15 @@ store the **base64 of the file contents** in a secret and decode in the step.
 | Secret | Was | Purpose | Stages |
 |---|---|---|---|
 | `PGP_SECRET_KEY_B64` | `secret.pgp` | GPG private key for signing Maven artifacts | PUBLISH_MVN_ARTIFACTS* |
-| `GH_DEPLOY_KEY_B64` | `gh_deploy_key.priv` | SSH deploy key for `git push` of release tags | RELEASE_ROR* (via run-pipeline release) |
 
 Create with: `base64 -w0 secret.pgp | gh secret set PGP_SECRET_KEY_B64 -R <repo>`
 The workflow step writes it back: `echo "$PGP_SECRET_KEY_B64" | base64 -d > .travis/secret.pgp`
+(`audit/build.gradle` reads `.travis/secret.pgp` — path verified.)
 
-> ⚠️ `gh_deploy_key.priv` was referenced in the OLD (2022) pipeline's S3_UP stage
-> but does **not** appear in the current `azure-pipelines.yml` secret refs — the
-> current release path uses `persistCredentials: true` (the checkout token) for
-> git operations. **Confirm** whether release tagging still needs a dedicated
-> deploy key before creating `GH_DEPLOY_KEY_B64`. If `persistCredentials` +
-> `GITHUB_TOKEN` covers the push, skip this one. (Flagged, not assumed.)
+> ✅ RESOLVED: no SSH deploy key is needed. `ci/ci-lib.sh` pushes release tags via
+> `git push origin` — i.e. the checkout credential. The workflow grants the
+> `release_ror` job `permissions: contents: write`, so `GITHUB_TOKEN` covers it.
+> (The old 2022 pipeline's `gh_deploy_key.priv` is obsolete.)
 
 ### Already present in the repo (no action)
 
@@ -121,7 +119,7 @@ they're readable in the UI and don't clutter the secret list.
 
 ## Count
 
-- **17 repository secrets** (2+2 S3 keys, 4 docker, 3 CVE, 5 maven, 1 pgp file; +1 conditional `GH_DEPLOY_KEY_B64`)
+- **17 repository secrets** (2+2 S3 keys, 4 docker, 3 CVE, 5 maven, 1 pgp file)
 - **8 repository variables** (S3 store config)
 - **0 to create** for `GITHUB_TOKEN` (auto)
 

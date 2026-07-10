@@ -39,11 +39,10 @@ set_secret MAVEN_STAGING_PROFILE_ID   ""
 set_secret GPG_KEY_ID                 ""
 set_secret GPG_PASSPHRASE             ""
 
-# Secure files (base64 the file, then set). Examples:
+# Secure file (base64 the file, then set):
 #   PGP_B64=$(base64 -w0 secret.pgp)
-#   GH_DEPLOY_KEY_B64=$(base64 -w0 gh_deploy_key.priv)   # only if release still needs a dedicated key
+# (No SSH deploy key needed — release tags push via GITHUB_TOKEN, see SECRETS.md.)
 set_secret PGP_SECRET_KEY_B64  "${PGP_B64:-}"
-set_secret GH_DEPLOY_KEY_B64   "${GH_DEPLOY_KEY_B64:-}"   # OPTIONAL — see SECRETS.md caveat
 
 ############################################
 # VARIABLES  (non-secret config — fill these in)
