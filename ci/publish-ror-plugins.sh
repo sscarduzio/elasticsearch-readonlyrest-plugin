@@ -20,10 +20,12 @@ cleanup_docker_and_build() {
 }
 
 # Emits one ES module name per line for the given generation (newest module first).
-# grep guards against configuration-time build-script output leaking into --quiet stdout.
+# The task writes the list to build/es-modules/es<major>x.txt; read THAT, never gradle stdout
+# (configuration-time build-script logging can pollute it even under --quiet).
 list_es_modules() {
   local es_major=$1
-  ./gradlew printEsModules "-PesMajor=$es_major" --quiet </dev/null | grep -E '^es[0-9]+x$'
+  ./gradlew printEsModules "-PesMajor=$es_major" --quiet </dev/null >&2
+  cat "build/es-modules/es${es_major}x.txt"
 }
 
 # Emits two lines: the base ES version on line 1, all supported versions space-separated on line 2.
