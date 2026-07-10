@@ -51,10 +51,10 @@ class ConfigurableRetryStrategy(config: LoadingRetryStrategySettings)
         case Right(value) =>
           Task.now(Right(value))
         case Left(error) if shouldRetry(currentAttempt, maxAttempts) =>
-          logger.debug(s"$operationDescription - retry attempt $currentAttempt/$maxAttempts failed. Retrying in ${config.attemptsInterval.show}...")
+          logger.info(s"$operationDescription - retry attempt $currentAttempt/$maxAttempts failed. Retrying in ${config.attemptsInterval.show}...")
           attemptWithRetry(operation, currentAttempt + 1, maxAttempts, operationDescription)
         case Left(error) =>
-          logger.debug(s"$operationDescription - failed permanently after $currentAttempt attempts: ${error.show}")
+          logger.info(s"$operationDescription - failed permanently after $currentAttempt attempts: ${error.show}")
           Task.now(Left(error))
       }
     } yield finalResult

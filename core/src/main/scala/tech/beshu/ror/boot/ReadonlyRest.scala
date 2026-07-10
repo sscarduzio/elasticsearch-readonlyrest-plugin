@@ -19,6 +19,7 @@ package tech.beshu.ror.boot
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.atomic.AtomicBoolean
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
@@ -73,9 +74,12 @@ class ReadonlyRest(coreFactory: CoreFactory,
                     (onFailedAttempt: StartingFailure => Unit): Task[RorInstance] = {
     retryUntilSuccessful[StartingFailure, RorInstance](
       policy = retryPolicy,
-      onFailedAttempt = (failure, nextAttemptDelay) => Task.delay {
+      onFailedAttempt = (failure, attempt) => Task.delay {
         onFailedAttempt(failure)
-        logger.warn(s"ReadonlyREST will try to start again in $nextAttemptDelay ...")
+        logger.warn(
+          s"ReadonlyREST starting attempt ${attempt.number} failed (ReadonlyREST has not been able to start for " +
+            s"${attempt.elapsed.toCoarsest}). It will try to start again in ${attempt.nextAttemptDelay} ..."
+        )
       }
     ) {
       start(esConfigBasedRorSettings)
@@ -260,10 +264,16 @@ object ReadonlyRest {
   private[boot] final class EngineResources private(val httpClientsFactory: AsyncHttpClientsFactory,
                                                     val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) {
 
-    def release(): Task[Unit] = {
-      Task
-        .delay(httpClientsFactory.shutdown())
-        .flatMap(_ => ldapConnectionPoolProvider.close())
+    private val released = AtomicBoolean(false)
+
+    def release(): Task[Unit] = Task.defer {
+      if (released.compareAndSet(expect = false, update = true)) {
+        Task
+          .delay(httpClientsFactory.shutdown())
+          .flatMap(_ => ldapConnectionPoolProvider.close())
+      } else {
+        Task.unit
+      }
     }
   }
   private[boot] object EngineResources {
@@ -286,7 +296,7 @@ object ReadonlyRest {
 
   final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-  val defaultStartingRetryPolicy: RetryPolicy = RetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
+  private val defaultStartingRetryPolicy: RetryPolicy = RetryPolicy(initialDelay = 5 seconds, maxDelay = 1 minute)
 
   def create(indexContentService: IndexDocumentManager,
              auditSinkServiceCreator: AuditSinkServiceCreator,
