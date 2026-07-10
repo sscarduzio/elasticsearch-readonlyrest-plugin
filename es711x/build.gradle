@@ -14,14 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+import org.gradle.crypto.checksum.Checksum
+
 plugins {
+    id 'org.gradle.crypto.checksum'
     id "readonlyrest.plugin-common-conventions"
 }
 
-ext.javaLanguageVersion = 11
-ext.jarHellMainClass = 'org.elasticsearch.bootstrap.JarHell'
+def pluginFullName = pluginName + '-' + version
+def projectJavaLanguageVersion = JavaLanguageVersion.of(11)
+def moduleEsVersion = project.property('esVersion') != null ? project.property('esVersion') : project.property('latestSupportedEsVersion')
+def releaseDockerImageLatest = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-latest'
+def releaseDockerImageVersion = 'beshultd/elasticsearch-readonlyrest:' + moduleEsVersion + '-ror-' + pluginVersion
+def preBuildDockerImageVersion = 'beshultd/elasticsearch-readonlyrest-dev:' + moduleEsVersion + '-ror-' + pluginVersion
 
-def moduleEsVersion = project.ext.esVersion
+java {
+    toolchain {
+        languageVersion = projectJavaLanguageVersion
+    }
+}
 
 dependencies {
     implementation  project(path: ':core')
@@ -35,4 +46,134 @@ dependencies {
     implementation  group: 'org.apache.httpcomponents',         name: 'httpclient',                             version: '4.5.14'
     compileOnly     group: 'org.locationtech.spatial4j',        name: 'spatial4j',                              version: '0.7'
     implementation  group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',                version: moduleEsVersion
+}
+
+configurations {
+    wagon
+    distJars {
+        exclude group: 'org.elasticsearch'
+        exclude group: 'lucene-core'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
+        exclude group: 'lucene-analyzers-common'
+        exclude group: 'org.apache.commons'
+        exclude group: 'org.yaml'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+    }
+}
+
+tasks.register('cleanOldData') {
+    doLast {
+        delete 'build/tmp/' + pluginFullName
+    }
+}
+
+tasks.register('jarHellCheck', JavaExec) {
+    outputs.upToDateWhen { false }
+    mainClass.set("org.elasticsearch.bootstrap.JarHell")
+    classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = projectJavaLanguageVersion
+    }
+}
+
+tasks.register('resolvePluginDescriptorTemplate', Copy) {
+    outputs.upToDateWhen { false }
+    from './plugin-metadata'
+    into 'build/tmp/' + pluginFullName
+    expand([
+            'descriptor': [
+                    'name'         : pluginName,
+                    'pluginVersion': pluginVersion,
+                    'esVersion'    : moduleEsVersion
+            ]
+    ])
+}
+
+tasks.register('buildRorPluginZip') {
+    dependsOn(packageRorPlugin, createRorPluginChecksums)
+}
+
+tasks.register('packageRorPlugin', Zip) {
+    dependsOn(cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate)
+    outputs.upToDateWhen { false }
+    archiveBaseName = pluginName
+    into('.') {
+        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
+        from 'build/libs/' + pluginFullName + '.jar'
+        from 'build/tmp/' + pluginFullName
+    }
+}
+
+tasks.register('createRorPluginChecksums', Checksum) {
+    dependsOn(packageRorPlugin)
+    def distributionsDir = layout.buildDirectory.dir("distributions")
+
+    outputs.upToDateWhen { false }
+    inputFiles.setFrom(packageRorPlugin.archiveFile)
+    outputDirectory.set(distributionsDir)
+    checksumAlgorithm.set(Checksum.Algorithm.SHA512)
+}
+
+tasks.register('uploadRorPluginToS3', Exec) {
+    dependsOn(packageRorPlugin, createRorPluginChecksums)
+
+    def distributionsDir = layout.buildDirectory.get().asFile.path + "/distributions"
+    def pluginFileZip = distributionsDir + "/" + pluginFullName + ".zip"
+    def pluginSha1 = distributionsDir + "/" + pluginFullName + ".zip.sha1"
+    def pluginSha512 = distributionsDir + "/" + pluginFullName + ".zip.sha512"
+    def targetS3Dir = pluginVersion + "/"
+
+    commandLine '../ci/upload-files-to-s3.sh', pluginFileZip, pluginSha512, pluginSha1, targetS3Dir
+}
+
+tasks.register('prepareDockerImageFiles', Copy) {
+    dependsOn packageRorPlugin
+    outputs.upToDateWhen { false }
+
+    from layout.projectDirectory.file("Dockerfile")
+    from layout.buildDirectory.file("distributions/" + pluginFullName + ".zip")
+    from rootProject.files("docker-image")
+
+    into layout.buildDirectory.dir("docker-image")
+}
+
+tasks.register('pushRorDockerImage', Exec) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles', 'prepareMultiplatformBuilder')
+    group 'docker'
+    executable 'docker'
+    workingDir 'build/docker-image'
+    args = [
+            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            '-t', releaseDockerImageLatest, '-t', releaseDockerImageVersion,
+            '--push', '.'
+    ]
+}
+
+tasks.register('pushRorPreBuildDockerImage', Exec) {
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles', 'prepareMultiplatformBuilder')
+    group 'docker'
+    executable 'docker'
+    workingDir 'build/docker-image'
+    args = [
+            'buildx', 'build', '--platform', 'linux/amd64,linux/arm64',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            '-t', preBuildDockerImageVersion,
+            '--push', '.'
+    ]
+}
+
+tasks.register('localRorDockerImage', Exec) {
+    // we prepare docker image for local architecture - the image is loaded to local registry
+    dependsOn('packageRorPlugin', 'prepareDockerImageFiles')
+    group 'docker'
+    executable 'docker'
+    workingDir 'build/docker-image'
+    args = [
+            'buildx', 'build',
+            '--build-arg', 'ROR_VERSION=' + pluginVersion, '--build-arg', "ES_VERSION=" + project.properties['esVersion'],
+            '-t', releaseDockerImageVersion,
+            '--load', '.'
+    ]
 }
