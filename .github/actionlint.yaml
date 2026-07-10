@@ -1,0 +1,7 @@
+# Custom self-hosted runner labels used by CI (Ubicloud for Linux, Blacksmith for Windows).
+# Registering them here silences actionlint's "unknown label" false positives.
+self-hosted-runner:
+  labels:
+    - ubicloud-standard-2       # 2 vCPU /  8 GB
+    - ubicloud-standard-4       # 4 vCPU / 16 GB  ← the "16GB runtime" target
+    - blacksmith-4vcpu-windows-2025

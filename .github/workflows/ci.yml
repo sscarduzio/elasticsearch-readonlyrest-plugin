@@ -1,0 +1,562 @@
+# ReadonlyREST CI — ported from azure-pipelines.yml to GitHub Actions.
+# Linux jobs run on Ubicloud (16 GB = ubicloud-standard-4) inside the same toolchains image;
+# Windows jobs run on Blacksmith (blacksmith-4vcpu-windows-2025).
+#
+# Design notes (see ci/github/SECRETS.md for the secret map):
+#  - The build logic is unchanged: every Linux job calls ci/run-pipeline.sh with a ROR_TASK, exactly
+#    as Azure did. This file only ports the orchestration (stages -> jobs, matrix, conditions, secrets).
+#  - Azure's SUPERSEDE_GUARD stage is replaced by GitHub-native `concurrency` (auto-cancel stale PR runs).
+#  - Azure "secure files" (secret.pgp, gh_deploy_key) become base64 repo secrets, decoded in-step.
+#  - Fork PRs: GitHub withholds secrets automatically; cve/publish steps degrade rather than fail.
+name: CI
+
+on:
+  push:
+    branches: [ master, develop, 'epic/**' ]
+    paths-ignore:
+      - 'docs/**'
+      - '.claude/**'
+      - '**/*.md'
+  pull_request:
+    branches: [ master, develop, 'epic/**' ]
+    paths-ignore:
+      - 'docs/**'
+      - '.claude/**'
+      - '**/*.md'
+  schedule:
+    - cron: '0 3 * * 1'   # weekly toolchains-image rebuild (BUILD_TOOLCHAINS_IMAGE only)
+  workflow_dispatch:
+    inputs:
+      actionToPerform:
+        description: '(Manual) action to perform'
+        type: choice
+        default: run_all_tests_on_linux
+        options:
+          - run_all_tests_on_linux
+          - run_all_tests_on_windows
+          - build_toolchains_image
+          - release_without_testing
+
+# Replaces SUPERSEDE_GUARD: a new commit on a PR/branch cancels the older in-progress run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The single source of truth for the toolchains image (bump on a JDK/Gradle change).
+  TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+  GRADLE_USER_HOME: /opt/gradle-home
+  GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
+  IT_PARALLELISM: '1'
+  # Ubicloud runners are self-hosted VMs without Azure's preinstalled bloat: make free-host-disk.sh a no-op.
+  AGENT_ISSELFHOSTED: '1'
+
+jobs:
+
+  # ── Gate helpers ──────────────────────────────────────────────────────────
+  # Compute branch/reason booleans once (Azure computed these as pipeline variables).
+  setup:
+    runs-on: ubicloud-standard-2
+    outputs:
+      is_master:  ${{ steps.f.outputs.is_master }}
+      is_develop: ${{ steps.f.outputs.is_develop }}
+      is_pr:      ${{ github.event_name == 'pull_request' }}
+      is_epic:    ${{ steps.f.outputs.is_epic }}
+      is_newes:   ${{ steps.f.outputs.is_newes }}
+      action:     ${{ github.event.inputs.actionToPerform || 'run_all_tests_on_linux' }}
+    steps:
+      - id: f
+        env:
+          REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          ref="$REF"
+          echo "is_master=${{ github.ref == 'refs/heads/master' }}"   >> "$GITHUB_OUTPUT"
+          echo "is_develop=${{ github.ref == 'refs/heads/develop' }}" >> "$GITHUB_OUTPUT"
+          case "$ref" in *epic/*) echo "is_epic=true"  >> "$GITHUB_OUTPUT";; *) echo "is_epic=false"  >> "$GITHUB_OUTPUT";; esac
+          case "$ref" in newes/*) echo "is_newes=true" >> "$GITHUB_OUTPUT";; *) echo "is_newes=false" >> "$GITHUB_OUTPUT";; esac
+
+  # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
+  build_toolchains_image:
+    needs: setup
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && needs.setup.outputs.action == 'build_toolchains_image')
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: docker build & push
+        env:
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        run: |
+          set -e
+          echo ">>> Building $TOOLCHAINS_IMAGE"
+          docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
+          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          docker push "$TOOLCHAINS_IMAGE"
+
+  # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
+  toolchains_verify:
+    needs: setup
+    if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: Verify baked Gradle home
+        run: |
+          set -e
+          echo "Baked GRADLE_USER_HOME=$GRADLE_USER_HOME"
+          ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "No baked Gradle dist in image"; exit 1; }
+          ./gradlew --no-daemon -q help
+
+  # ── ES_S3_UP (newes/* only) ───────────────────────────────────────────────
+  es_s3_up:
+    needs: [ setup, toolchains_verify ]
+    if: >-
+      needs.setup.outputs.is_newes == 'true' &&
+      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: Upload missing ROR ES dependencies
+        env:
+          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
+          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
+          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
+          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
+          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
+          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+        run: ci/upload-es-artifacts.sh
+
+  # ── OPTIONAL_CHECKS: CVE (non-blocking) ───────────────────────────────────
+  cve_check:
+    needs: [ setup, toolchains_verify ]
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: Restore CVE DB cache
+        uses: actions/cache@v4
+        with:
+          path: .dependency-check-data
+          key: dependency-check-v2-${{ github.run_id }}
+          restore-keys: dependency-check-v2-
+      - name: cve_check
+        env:
+          ROR_TASK: cve_check
+          DEPENDENCY_CHECK_DATA_DIR: .dependency-check-data
+          # Secrets are absent on fork PRs (GitHub withholds them) — the check degrades, not fails.
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          OSS_INDEX_USERNAME: ${{ secrets.OSS_INDEX_USERNAME }}
+          OSS_INDEX_PASSWORD: ${{ secrets.OSS_INDEX_PASSWORD }}
+        run: ci/run-pipeline.sh
+
+  # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
+  required_checks:
+    needs: [ setup, toolchains_verify ]
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    strategy:
+      fail-fast: false
+      matrix:
+        ROR_TASK: [ license_check, compile_codebase_check, audit_build_check, format_code_check ]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: ${{ matrix.ROR_TASK }}
+        env:
+          ROR_TASK: ${{ matrix.ROR_TASK }}
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+        run: ci/run-pipeline.sh
+
+  # ── TEST: unit ────────────────────────────────────────────────────────────
+  unit_tests:
+    needs: [ setup, toolchains_verify ]
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || startsWith(needs.setup.outputs.action, 'run_all_tests')) &&
+      needs.setup.outputs.action != 'run_all_tests_on_windows'
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: core_tests
+        env:
+          ROR_TASK: core_tests
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+        run: |
+          source ci/docker-hub-auth.sh
+          ci/run-pipeline.sh
+      - name: Publish test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: unit-test-results, path: '**/TEST*.xml', if-no-files-found: ignore }
+
+  # ── TEST: Linux integration tests ─────────────────────────────────────────
+  # One job with a full ES-version matrix. Azure split "on PR" vs "on develop/master" subsets;
+  # here a single matrix runs the full set on develop/master/epic + manual run_all_tests_on_linux,
+  # and a reduced set on plain PRs (see `it_matrix` output computed in setup-it).
+  it_linux:
+    needs: [ setup, toolchains_verify ]
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        # Full set for develop/master/epic + manual; PRs get the reduced set via the exclude below.
+        ROR_TASK:
+          - integration_es94x
+          - integration_es92x
+          - integration_es91x
+          - integration_es90x
+          - integration_es818x
+          - integration_es816x
+          - integration_es815x
+          - integration_es814x
+          - integration_es813x
+          - integration_es812x
+          - integration_es811x
+          - integration_es810x
+          - integration_es89x
+          - integration_es88x
+          - integration_es87x
+          - integration_es85x
+          - integration_es84x
+          - integration_es83x
+          - integration_es82x
+          - integration_es81x
+          - integration_es80x
+          - integration_es717x
+          - integration_es716x
+          - integration_es714x
+          - integration_es711x
+          - integration_es710x
+          - integration_es79x
+          - integration_es78x
+          - integration_es77x
+          - integration_es74x
+          - integration_es73x
+          - integration_es72x
+          - integration_es70x
+          - integration_es67x
+    steps:
+      # On plain PRs, run only the representative subset Azure used (es94x, es90x, es818x, es816x,
+      # es810x, es80x, es717x, es710x, es70x, es67x); skip the rest fast. On develop/master/epic/manual,
+      # run everything. This keeps PR feedback fast without a second matrix definition.
+      - name: Decide if this leg runs
+        id: gate
+        run: |
+          full="${{ needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true' || needs.setup.outputs.is_epic == 'true' || github.event_name == 'workflow_dispatch' }}"
+          pr_subset=" integration_es94x integration_es90x integration_es818x integration_es816x integration_es810x integration_es80x integration_es717x integration_es710x integration_es70x integration_es67x "
+          if [ "$full" = "true" ] || [[ "$pr_subset" == *" ${{ matrix.ROR_TASK }} "* ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+        with: { fetch-depth: 1 }
+      - name: Free host disk (no-op on self-hosted)
+        if: steps.gate.outputs.run == 'true'
+        run: ci/free-host-disk.sh
+      - name: ${{ matrix.ROR_TASK }}
+        if: steps.gate.outputs.run == 'true'
+        env:
+          ROR_TASK: ${{ matrix.ROR_TASK }}
+          ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+        run: |
+          source ci/docker-hub-auth.sh
+          ci/run-pipeline.sh
+      - name: Publish test results
+        if: steps.gate.outputs.run == 'true' && failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: it-${{ matrix.ROR_TASK }}-results
+          path: '**/TEST*.xml'
+          if-no-files-found: ignore
+
+  # ── TEST: Windows integration tests (Blacksmith) ──────────────────────────
+  it_windows:
+    needs: [ setup ]
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')
+    runs-on: blacksmith-4vcpu-windows-2025
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        # Full 33-version set (matches Azure's manual run_all_tests_on_windows). Legs outside the
+        # develop/master subset are skipped fast on plain PRs via the gate step below — same approach
+        # as it_linux, one matrix definition instead of three.
+        ES_MODULE:
+          - es94x
+          - es92x
+          - es91x
+          - es90x
+          - es818x
+          - es816x
+          - es815x
+          - es814x
+          - es813x
+          - es812x
+          - es811x
+          - es810x
+          - es89x
+          - es88x
+          - es87x
+          - es85x
+          - es84x
+          - es83x
+          - es82x
+          - es81x
+          - es80x
+          - es717x
+          - es716x
+          - es714x
+          - es711x
+          - es710x
+          - es79x
+          - es78x
+          - es77x
+          - es74x
+          - es73x
+          - es72x
+          - es70x
+    steps:
+      - name: Decide if this leg runs
+        id: gate
+        shell: bash
+        run: |
+          # develop/master/epic subset = {es94x,es92x,es90x,es818x,es80x,es717x,es70x};
+          # PR subset = {es94x,es818x,es717x}; full set only on manual run_all_tests_on_windows.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          branch_full=" es94x es92x es90x es818x es80x es717x es70x "
+          pr_subset=" es94x es818x es717x "
+          full="${{ needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true' || needs.setup.outputs.is_epic == 'true' }}"
+          if [ "$full" = "true" ]; then set="$branch_full"; else set="$pr_subset"; fi
+          if [[ "$set" == *" ${{ matrix.ES_MODULE }} "* ]]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+        with: { fetch-depth: 1 }
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.run == 'true'
+        with: { distribution: temurin, java-version: '21' }
+      - name: ${{ matrix.ES_MODULE }}
+        if: steps.gate.outputs.run == 'true'
+        shell: pwsh
+        env:
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ES_MODULE: ${{ matrix.ES_MODULE }}
+        run: |
+          # GRADLE_USER_HOME/GRADLE_OPTS from the Linux image must NOT leak here; unset at step scope.
+          $env:GRADLE_USER_HOME = ""
+          $env:GRADLE_OPTS = ""
+          $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE",
+            "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
+          .\gradlew @gradleArgs
+          if ($LASTEXITCODE -ne 0) {
+            Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object { Get-Content $_.FullName }
+            exit 1
+          }
+      - name: Publish test results
+        if: steps.gate.outputs.run == 'true' && failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-it-${{ matrix.ES_MODULE }}-results
+          path: '**/TEST*.xml'
+          if-no-files-found: ignore
+
+  # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
+  build_ror:
+    needs: [ setup, required_checks, unit_tests, it_linux ]
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event_name != 'workflow_dispatch'
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        ROR_TASK: [ build_es9xx, build_es8xx, build_es7xx, build_es6xx ]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: ${{ matrix.ROR_TASK }}
+        env:
+          ROR_TASK: ${{ matrix.ROR_TASK }}
+        run: ci/run-pipeline.sh
+
+  # ── DETERMINE_CI_TYPE (develop/master) ────────────────────────────────────
+  determine_ci_type:
+    needs: [ setup, required_checks, unit_tests, it_linux ]
+    if: >-
+      (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'release_without_testing')
+    runs-on: ubicloud-standard-2
+    outputs:
+      is_release: ${{ steps.r.outputs.is_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - id: r
+        run: |
+          IS_RELEASE=true
+          if grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}' | grep -- '-pre'; then
+            IS_RELEASE=false
+          fi
+          echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
+
+  # ── UPLOAD_PRE_ROR (pre-release develop/master) ───────────────────────────
+  upload_pre_ror:
+    needs: [ setup, determine_ci_type ]
+    if: >-
+      needs.determine_ci_type.outputs.is_release == 'false' &&
+      (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
+      github.event_name != 'workflow_dispatch'
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    timeout-minutes: 600
+    strategy:
+      fail-fast: false
+      matrix:
+        ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: ${{ matrix.ROR_TASK }}
+        env:
+          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
+          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
+          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
+          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
+          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
+          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_TASK: ${{ matrix.ROR_TASK }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        run: |
+          set -e
+          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          ci/run-pipeline.sh
+
+  # ── RELEASE_ROR (release develop/master) ──────────────────────────────────
+  release_ror:
+    needs: [ setup, determine_ci_type ]
+    if: >-
+      needs.determine_ci_type.outputs.is_release == 'true' &&
+      (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'release_without_testing')
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        ROR_TASK: [ release_es9xx, release_es8xx, release_es7xx, release_es6xx ]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1, persist-credentials: true }
+      - name: ${{ matrix.ROR_TASK }}
+        env:
+          ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
+          ROR_ARTIFACTS_STORE_REGION: ${{ vars.ROR_ARTIFACTS_STORE_REGION }}
+          ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_ID }}
+          ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET }}
+          ROR_ARTIFACTS_STORE_BUCKET: ${{ vars.ROR_ARTIFACTS_STORE_BUCKET }}
+          ROR_ARTIFACTS_STORE_PATH_PREFIX: ${{ vars.ROR_ARTIFACTS_STORE_PATH_PREFIX }}
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ROR_TASK: ${{ matrix.ROR_TASK }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        run: |
+          set -e
+          echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
+          ci/run-pipeline.sh
+
+  # ── PUBLISH_MVN_ARTIFACTS (release on master) ─────────────────────────────
+  publish_mvn:
+    needs: [ setup, determine_ci_type ]
+    if: >-
+      needs.determine_ci_type.outputs.is_release == 'true' &&
+      needs.setup.outputs.is_master == 'true' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'release_without_testing')
+    runs-on: ubicloud-standard-4
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1, persist-credentials: true }
+      - name: Install PGP signing key
+        env:
+          PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}
+        run: |
+          mkdir -p .travis
+          echo "$PGP_SECRET_KEY_B64" | base64 -d > .travis/secret.pgp
+      - name: publish_maven_artifacts
+        env:
+          ROR_TASK: publish_maven_artifacts
+          MAVEN_REPO_USER: ${{ secrets.MAVEN_REPO_USER }}
+          MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
+          MAVEN_STAGING_PROFILE_ID: ${{ secrets.MAVEN_STAGING_PROFILE_ID }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: ci/run-pipeline.sh
