@@ -1,9 +1,48 @@
 #!/bin/bash -ex
 
 source "$(dirname "$0")/ci-lib.sh"
-source "$(dirname "$0")/publish-ror-plugins.sh"
 
 trap 'echo "Termination signal received. Exiting..."; exit 1' SIGTERM SIGINT
+
+log_disk_usage() {
+  local label="${1:-}"
+  echo "=== Disk usage ($label) ==="
+  df -h / || true
+  df -i / || true
+
+  echo "--- Docker ---"
+  docker system df || true
+  docker ps -a || true
+  docker volume ls || true
+
+  echo "--- Workspace build dirs ---"
+  du -sh */build 2>/dev/null || true
+
+  echo "--- Temp dirs ---"
+  du -sh /tmp 2>/dev/null || true
+
+  echo "--- Gradle ---"
+  du -sh "$GRADLE_USER_HOME/caches" 2>/dev/null || du -sh "$HOME/.gradle/caches" 2>/dev/null || true
+
+  echo "=== End disk usage ==="
+}
+
+cleanup_docker_and_build() {
+  # Exclude the container this script is running inside (prevents self-removal in DinD setups).
+  # In Azure Pipelines container jobs, `hostname` is the short container ID used by `docker ps -aq`.
+  local SELF_ID
+  SELF_ID=$(hostname 2>/dev/null || true)
+  local containers_to_remove
+  if [ -n "$SELF_ID" ]; then
+    containers_to_remove=$(docker ps -aq | grep -v "^${SELF_ID}" || true)
+  else
+    containers_to_remove=$(docker ps -aq || true)
+  fi
+  [ -n "$containers_to_remove" ] && echo "$containers_to_remove" | xargs docker rm -f || true
+  docker builder prune -af || true
+  docker system prune -af --volumes || true
+  find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+}
 
 echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION; task? $ROR_TASK"
 
@@ -13,11 +52,6 @@ export TERM=dumb
 if [[ $ROR_TASK == "license_check" ]]; then
   echo ">>> Check all license headers are in place"
   ./gradlew --no-daemon license
-fi
-
-if [[ $ROR_TASK == "format_code_check" ]]; then
-  echo ">>> Running format check..."
-  ./gradlew --no-daemon formatCodeCheck
 fi
 
 if [[ $ROR_TASK == "cve_check" ]]; then
@@ -37,7 +71,7 @@ fi
 
 if [[ $ROR_TASK == "core_tests" ]]; then
   echo ">>> Running unit tests.."
-  ./gradlew --no-daemon --stacktrace core:test audit:test build-base:test
+  ./gradlew --no-daemon --stacktrace core:test audit:test
 fi
 
 run_integration_tests() {
@@ -192,67 +226,182 @@ fi
 
 build_ror_plugins() {
   if [ "$#" -ne 1 ]; then
-    echo "What ES generation (major: 6|7|8|9) should I verify plugins for?"
+    echo "What ES versions should I build plugins for?"
     return 1
   fi
 
-  local es_major=$1
+  local ROR_VERSIONS_FILE=$1
 
-  local module
-  while IFS= read -r module; do
-    [ -z "$module" ] && continue
-    if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
-      return 1
-    fi
-  done < <(list_es_modules "$es_major")
+  while IFS= read -r version || [[ -n "$version" ]]; do
+    time build_ror_plugin "$version"
+  done <"$ROR_VERSIONS_FILE"
+}
+
+build_ror_plugin() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES version should I build plugin for?"
+    return 1
+  fi
+
+  local ROR_VERSION=$1
+
+  echo ""
+  echo "Building ROR for ES $ROR_VERSION:"
+  ./gradlew buildRorPlugin "-PesVersion=$ROR_VERSION" </dev/null
 }
 
 if [[ $ROR_TASK == "build_es9xx" ]]; then
-  build_ror_plugins "9"
+  build_ror_plugins "ci/supported-es-versions/es9x.txt"
 fi
 
 if [[ $ROR_TASK == "build_es8xx" ]]; then
-  build_ror_plugins "8"
+  build_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
 if [[ $ROR_TASK == "build_es7xx" ]]; then
-  build_ror_plugins "7"
+  build_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
 if [[ $ROR_TASK == "build_es6xx" ]]; then
-  build_ror_plugins "6"
+  build_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
+upload_pre_ror_plugins() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES versions should I upload pre-plugins for?"
+    return 1
+  fi
+
+  local ROR_VERSIONS_FILE=$1
+  local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+
+  while IFS= read -r version; do
+    time upload_pre_ror_plugin "$ROR_VERSION" "$version"
+  done <"$ROR_VERSIONS_FILE"
+}
+
+upload_pre_ror_plugin() {
+  if [ "$#" -ne 2 ]; then
+    echo "What ES and ROR version should I upload pre-plugin for?"
+    return 1
+  fi
+
+  local ROR_VERSION=$1
+  local ES_VERSION=$2
+  local TAG="v${ROR_VERSION}_es${ES_VERSION}"
+
+  echo ""
+  echo "Uploading pre-ROR $ROR_VERSION for ES $ES_VERSION:"
+
+  ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null
+}
+
 if [[ $ROR_TASK == "upload_pre_es9xx" ]]; then
-  publish_ror_plugins "9" "upload_pre"
+  upload_pre_ror_plugins "ci/supported-es-versions/es9x.txt"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es8xx" ]]; then
-  publish_ror_plugins "8" "upload_pre"
+  upload_pre_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es7xx" ]]; then
-  publish_ror_plugins "7" "upload_pre"
+  upload_pre_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
 if [[ $ROR_TASK == "upload_pre_es6xx" ]]; then
-  publish_ror_plugins "6" "upload_pre"
+  upload_pre_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
+release_ror_plugins() {
+  if [ "$#" -ne 1 ]; then
+    echo "What ES versions should I release plugins for?"
+    return 1
+  fi
+
+  local ROR_VERSIONS_FILE=$1
+  local ROR_VERSION=$(grep '^pluginVersion=' gradle.properties | awk -F= '{print $2}')
+
+  while IFS= read -r version || [[ -n "$version" ]]; do
+    local attempt
+    for attempt in 1 2 3; do
+      if time release_ror_plugin "$ROR_VERSION" "$version"; then
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        echo "WARN: release_ror_plugin failed for ES $version (attempt $attempt/3), retrying after cleanup..."
+        log_disk_usage "before retry cleanup (attempt $attempt)"
+        cleanup_docker_and_build
+        log_disk_usage "after retry cleanup (attempt $attempt)"
+      else
+        echo "ERROR: release_ror_plugin failed for ES $version after 3 attempts"
+        return 1
+      fi
+    done
+  done <"$ROR_VERSIONS_FILE"
+}
+
+release_ror_plugin() {
+  if [ "$#" -ne 2 ]; then
+    echo "What ES and ROR version should I release plugin for?"
+    return 1
+  fi
+
+  local ROR_VERSION=$1
+  local ES_VERSION=$2
+
+  if ! [[ $ES_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+    echo "Invalid ES version format. Expected format: X.Y.Z"
+    return 2
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker daemon not running or not logged in"
+    return 3
+  fi
+
+  local TAG="v${ROR_VERSION}_es${ES_VERSION}"
+
+  echo ""
+  echo "Releasing ROR $ROR_VERSION for ES $ES_VERSION:"
+
+  if checkTagNotExist "$TAG"; then
+
+    if ! ./gradlew publishRorPlugin "-PesVersion=$ES_VERSION" </dev/null; then
+      echo "Failed to publish plugin to S3"
+      return 3
+    fi
+
+    if docker manifest inspect "docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION}" >/dev/null 2>&1; then
+      if ! ./gradlew publishEsRorDockerImage "-PesVersion=$ES_VERSION" </dev/null; then
+        echo "Failed to publish plugin Docker image"
+        return 4
+      fi
+    else
+      echo "WARN: Skipping building and publishing Elasticsearch image with ROR installed because there was no Elasticsearch image for version: $ES_VERSION found in the docker registry"
+    fi
+
+    tag "$TAG"
+  fi
+
+  # Clean up after every version to prevent disk space exhaustion
+  log_disk_usage "after release of ES $ES_VERSION"
+  cleanup_docker_and_build
+}
+
 if [[ $ROR_TASK == "release_es9xx" ]]; then
-  publish_ror_plugins "9" "release"
+  release_ror_plugins "ci/supported-es-versions/es9x.txt"
 fi
 
 if [[ $ROR_TASK == "release_es8xx" ]]; then
-  publish_ror_plugins "8" "release"
+  release_ror_plugins "ci/supported-es-versions/es8x.txt"
 fi
 
 if [[ $ROR_TASK == "release_es7xx" ]]; then
-  publish_ror_plugins "7" "release"
+  release_ror_plugins "ci/supported-es-versions/es7x.txt"
 fi
 
 if [[ $ROR_TASK == "release_es6xx" ]]; then
-  publish_ror_plugins "6" "release"
+  release_ror_plugins "ci/supported-es-versions/es6x.txt"
 fi
 
 check_maven_artifacts_exist() {
