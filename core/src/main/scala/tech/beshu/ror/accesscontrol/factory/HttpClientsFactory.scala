@@ -67,12 +67,14 @@ class HttpClientsFactory(httpClientCreator: SimpleHttpClientCreator[Task, HttpCl
     }
   }
 
-  def shutdown(): Task[Unit] = lock.synchronized {
-    if (isWorking.getAndSet(false)) {
-      val clients = existingClients.iterator().asScala.toList
-      Task.parSequenceUnordered(clients.map(_.close())).void
-    } else {
-      Task.unit
+  def shutdown(): Task[Unit] = Task.defer {
+    lock.synchronized {
+      if (isWorking.getAndSet(false)) {
+        val clients = existingClients.iterator().asScala.toList
+        Task.parSequenceUnordered(clients.map(_.close())).void
+      } else {
+        Task.unit
+      }
     }
   }
 
