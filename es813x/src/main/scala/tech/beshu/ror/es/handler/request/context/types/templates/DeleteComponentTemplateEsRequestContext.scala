@@ -19,13 +19,15 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.Version
-import org.elasticsearch.action.admin.indices.template.delete.{DeleteIndexTemplateRequest, TransportDeleteComponentTemplateAction}
+import org.elasticsearch.action.admin.indices.template.delete.{
+  DeleteIndexTemplateRequest,
+  TransportDeleteComponentTemplateAction
+}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.DeletingComponentTemplates
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -33,15 +35,19 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComponentTemplateAction.Request,
-                                              esContext: EsContext,
-                                              clusterService: RorClusterService,
-                                              override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[TransportDeleteComponentTemplateAction.Request, DeletingComponentTemplates](
-    actionRequest, esContext, clusterService, threadPool
-  ) {
+class DeleteComponentTemplateEsRequestContext(
+    actionRequest: TransportDeleteComponentTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[TransportDeleteComponentTemplateAction.Request, DeletingComponentTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
-  override protected def templateOperationFrom(request: TransportDeleteComponentTemplateAction.Request): DeletingComponentTemplates = {
+  override protected def templateOperationFrom(
+      request: TransportDeleteComponentTemplateAction.Request
+  ): DeletingComponentTemplates = {
     NonEmptyList.fromList(request.getNames) match {
       case Some(patterns) => DeletingComponentTemplates(patterns)
       case None => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
@@ -56,19 +62,20 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComp
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
 
-  implicit class TransportDeleteComponentTemplateActionRequestOps(request: TransportDeleteComponentTemplateAction.Request) {
+  extension (request: TransportDeleteComponentTemplateAction.Request)
 
-    def getNames: List[TemplateNamePattern] = {
+    private def getNames: List[TemplateNamePattern] = {
       if (isEsNewerThan712) getNamesForEsPost12
       else getNamesForEsPre13
     }
 
-    def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
+    private def updateNames(names: NonEmptyList[TemplateNamePattern]): Unit = {
       if (isEsNewerThan712) updateNamesForEsPost12(names)
       else updateNamesForEsPre13(names)
     }
@@ -83,19 +90,15 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComp
     }
 
     private def getNamesForEsPost12 = {
-      on(request)
-        .call("names")
-        .get[Array[String]]
-        .asSafeList
-        .flatMap(TemplateNamePattern.fromString)
+      val names: Array[String] = on(request).call("names").get[Array[String]]
+      names.asSafeList.flatMap(TemplateNamePattern.fromString)
     }
 
     private def updateNamesForEsPre13(names: NonEmptyList[TemplateNamePattern]) = {
       names.tail match {
         case Nil =>
-        case _ =>
-          logger.warn(
-            s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
+        case _   =>
+          logger.warn(s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
                | The whole set of patterns [${names.show}]""".oneLiner)
       }
       on(request).call("name", names.head.value.value)
@@ -104,5 +107,5 @@ class DeleteComponentTemplateEsRequestContext(actionRequest: TransportDeleteComp
     private def updateNamesForEsPost12(names: NonEmptyList[TemplateNamePattern]): Unit = {
       on(request).set("names", names.toList.map(_.value.value).toArray)
     }
-  }
+
 }

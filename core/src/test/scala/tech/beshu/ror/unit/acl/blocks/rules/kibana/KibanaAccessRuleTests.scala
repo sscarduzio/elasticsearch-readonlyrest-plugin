@@ -17,33 +17,36 @@
 package tech.beshu.ror.unit.acl.blocks.rules.kibana
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.KibanaPolicy
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.KibanaAccessRule.*
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
-class KibanaAccessRuleTests
-  extends BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {
+class KibanaAccessRuleTests extends BaseKibanaAccessBasedTests[KibanaAccessRule, KibanaAccessRule.Settings] {
 
   override protected def createRuleFrom(settings: Settings): KibanaAccessRule = new KibanaAccessRule(settings)
 
-  override protected def settingsOf(access: KibanaAccess,
-                                    customKibanaIndex: Option[KibanaIndexName] = None): Settings =
+  override protected def settingsOf(access: KibanaAccess, customKibanaIndex: Option[KibanaIndexName] = None): Settings =
     Settings(access, RorSettingsIndex(rorIndex))
 
-  override protected def defaultOutputBlockContextAssertion(settings: Settings,
-                                                            indices: Set[RequestedIndex[ClusterIndexName]],
-                                                            dataStreams: Set[DataStreamName],
-                                                            customKibanaIndex: Option[KibanaIndexName]): BlockContext => Unit =
+  override protected def defaultOutputBlockContextAssertion(
+      settings: Settings,
+      indices: Set[RequestedIndex[ClusterIndexName]],
+      dataStreams: Set[DataStreamName],
+      customKibanaIndex: Option[KibanaIndexName]
+  ): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
-        kibanaAccess = Some(settings.access),
-        kibanaIndex = Some(kibanaIndexFrom(customKibanaIndex)),
+      assertBlockContext(blockContext)(
         indices = indices,
-        dataStreams = dataStreams
-      )(
-        blockContext
+        dataStreams = dataStreams,
+        kibanaPolicy = Some(
+          KibanaPolicy.default.copy(
+            access = settings.access,
+            index = Some(kibanaIndexFrom(customKibanaIndex)),
+          )
+        ),
       )
     }
+
 }

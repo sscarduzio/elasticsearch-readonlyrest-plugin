@@ -19,15 +19,24 @@ package tech.beshu.ror.unit.acl.blocks.rules.http
 import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.{MockRequestContext, MockRestRequest}
@@ -37,7 +46,7 @@ import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class HostsRuleTests extends AnyWordSpec {
+class HostsRuleTests extends AnyWordSpec with MockFactory {
 
   "A HostsRule" should {
     "match" when {
@@ -88,13 +97,23 @@ class HostsRuleTests extends AnyWordSpec {
     }
   }
 
-  private def assertMatchRule(configuredHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]], remoteHost: Address) =
+  private def assertMatchRule(
+      configuredHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
+      remoteHost: Address
+  ) =
     assertRule(configuredHosts, Some(remoteHost), isMatched = true)
 
-  private def assertNotMatchRule(configuredHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]], remoteHost: Option[Address]) =
+  private def assertNotMatchRule(
+      configuredHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
+      remoteHost: Option[Address]
+  ) =
     assertRule(configuredHosts, remoteHost, isMatched = false)
 
-  private def assertRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[Address]], address: Option[Address], isMatched: Boolean) = {
+  private def assertRule(
+      configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
+      address: Option[Address],
+      isMatched: Boolean
+  ) = {
     val rule = new HostsRule(
       HostsRule.Settings(configuredValues, acceptXForwardedForHeader = false),
       new Ip4sBasedHostnameResolver
@@ -102,23 +121,29 @@ class HostsRuleTests extends AnyWordSpec {
     val requestContext = MockRequestContext.metadata.copy(
       restRequest = MockRestRequest(allHeaders = Set.empty, remoteAddress = address)
     )
-    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    val blockContext =
+      GeneralNonIndexRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
-      if (isMatched) Fulfilled(blockContext)
-      else Rejected()
+      if (isMatched) Permitted(blockContext)
+      else Denied(NotAuthorized)
     }
   }
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     variableCreator
       .createMultiResolvableVariableFrom[Address](NonEmptyString.unsafeFrom(value))(
-        AlwaysRightConvertible.from(extracted => Address.from(extracted.value)
-          .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
+        AlwaysRightConvertible.from(extracted =>
+          Address
+            .from(extracted.value)
+            .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
         )
       )
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
+
 }

@@ -23,43 +23,48 @@ import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.syntax.*
 
-class GetRollupIndexCapsEsRequestContext private(actionRequest: ActionRequest,
-                                                 esContext: EsContext,
-                                                 aclContext: AccessControlStaticContext,
-                                                 clusterService: RorClusterService,
-                                                 override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+class GetRollupIndexCapsEsRequestContext private (
+    actionRequest: ActionRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val indicesName = on(request).call("indices").get[Array[String]]()
     indicesName.flatMap(RequestedIndex.fromString).toCovariantSet
   }
 
-  override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     on(request).call("indices", filteredIndices.stringify.toArray)
     Modified
   }
+
 }
 
 object GetRollupIndexCapsEsRequestContext {
-  def from(actionRequest: ActionRequest,
-           esContext: EsContext,
-           aclContext: AccessControlStaticContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[GetRollupIndexCapsEsRequestContext] = {
+
+  def from(
+      actionRequest: ActionRequest,
+      esContext: EsContext,
+      aclContext: AccessControlStaticContext,
+      threadPool: ThreadPool
+  ): Option[GetRollupIndexCapsEsRequestContext] = {
     if (actionRequest.getClass.getName.endsWith("GetRollupIndexCapsAction$Request")) {
-      Some(new GetRollupIndexCapsEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool))
+      Some(new GetRollupIndexCapsEsRequestContext(actionRequest, esContext, aclContext, threadPool))
     } else {
       None
     }
   }
+
 }

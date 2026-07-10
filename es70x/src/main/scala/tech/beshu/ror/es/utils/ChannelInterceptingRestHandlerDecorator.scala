@@ -18,7 +18,6 @@ package tech.beshu.ror.es.utils
 
 import cats.Show
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.settings.Settings
@@ -28,15 +27,16 @@ import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.wrappers._cat.rest.RorWrappedRestCatAction
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
+import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.util.Try
 
-class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandler,
-                                                      settings: Settings)
-  extends RestHandler with Logging {
+class ChannelInterceptingRestHandlerDecorator private (val underlying: RestHandler, settings: Settings)
+    extends RestHandler
+    with RequestIdAwareLogging {
 
   private val wrapped = doPrivileged {
     wrapSomeActions(underlying)
@@ -52,7 +52,9 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
       case Left(error) =>
         logError(error)
         implicit val show: Show[AuthorizationValueError] = authorizationValueErrorSanitizedShow
-        channel.sendResponse(new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show)))
+        channel.sendResponse(
+          new BytesRestResponse(channel, RestStatus.BAD_REQUEST, new ElasticsearchException(error.show))
+        )
     }
   }
 
@@ -63,7 +65,7 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   private def wrapSomeActions(ofHandler: RestHandler) = {
     unwrapWithSecurityRestFilterIfNeeded(ofHandler) match {
       case action: RestCatAction => new RorWrappedRestCatAction(settings, action)
-      case action => action
+      case action                => action
     }
   }
 
@@ -77,16 +79,18 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
     }
   }
 
-  private def tryToGetUnderlyingRestHandler(restHandler: RestHandler,
-                                            fieldName: String) = {
+  private def tryToGetUnderlyingRestHandler(restHandler: RestHandler, fieldName: String) = {
     Try(on(restHandler).get[RestHandler](fieldName))
   }
 
-  private def addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(request: RestRequest,
-                                                                         client: NodeClient): Unit = {
+  private def addXpackUserAuthenticationHeaderForInCaseOfSecurityRequest(
+      request: RestRequest,
+      client: NodeClient
+  ): Unit = {
     if (request.path().contains("/_security") || request.path().contains("/_xpack/security")) {
       client
-        .threadPool().getThreadContext
+        .threadPool()
+        .getThreadContext
         .addXpackUserAuthenticationHeader(client.getLocalNodeId)
     }
   }
@@ -94,20 +98,22 @@ class ChannelInterceptingRestHandlerDecorator private(val underlying: RestHandle
   private def logError(error: AuthorizationValueError): Unit = {
     {
       implicit val show: Show[AuthorizationValueError] = authorizationValueErrorSanitizedShow
-      logger.warn(s"The incoming request was malformed. Cause: ${error.show}")
+      noRequestIdLogger.warn(s"The incoming request was malformed. Cause: ${error.show}")
     }
     if (logger.delegate.isDebugEnabled()) {
       implicit val show: Show[AuthorizationValueError] = authorizationValueErrorWithDetailsShow
-      logger.debug(s"Malformed request detailed cause: ${error.show}")
+      noRequestIdLogger.debug(s"Malformed request detailed cause: ${error.show}")
     }
   }
 
 }
 
 object ChannelInterceptingRestHandlerDecorator {
-  def create(restHandler: RestHandler,
-             settings: Settings): ChannelInterceptingRestHandlerDecorator = restHandler match {
-    case alreadyDecoratedHandler: ChannelInterceptingRestHandlerDecorator => alreadyDecoratedHandler
-    case handler => new ChannelInterceptingRestHandlerDecorator(handler, settings)
-  }
+
+  def create(restHandler: RestHandler, settings: Settings): ChannelInterceptingRestHandlerDecorator =
+    restHandler match {
+      case alreadyDecoratedHandler: ChannelInterceptingRestHandlerDecorator => alreadyDecoratedHandler
+      case handler => new ChannelInterceptingRestHandlerDecorator(handler, settings)
+    }
+
 }

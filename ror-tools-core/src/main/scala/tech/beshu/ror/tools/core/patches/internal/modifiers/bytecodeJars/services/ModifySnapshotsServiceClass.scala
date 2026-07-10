@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.es780
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   SnapshotsService is not updated with cluster events for certain type of nodes. ROR needs the up-to-date
   SnapshotsService to handle snapshots. In this bytecode modifier we remove the conditional check
   which was responsible for disabling cluster events update on SnapshotsService instance.
  */
-private[patches] class ModifySnapshotsServiceClass private(esVersion: SemVer)
-  extends BytecodeJarModifier {
+private[patches] class ModifySnapshotsServiceClass private (esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -46,19 +46,22 @@ private[patches] class ModifySnapshotsServiceClass private(esVersion: SemVer)
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "<init>" =>
           esVersion match {
             case v if v < es780 =>
-              new ConstructorWithAlwaysAddingLogPriorityApplier(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new ConstructorWithAlwaysAddingLogPriorityApplier(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
@@ -66,20 +69,29 @@ private[patches] class ModifySnapshotsServiceClass private(esVersion: SemVer)
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
   private class ConstructorWithAlwaysAddingLogPriorityApplier(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9, underlying) {
+      extends MethodVisitor(Opcodes.ASM9, underlying) {
 
     override def visitInsn(opcode: Int): Unit = {
       if (opcode == Opcodes.RETURN) {
         underlying.visitVarInsn(Opcodes.ALOAD, 2)
         underlying.visitVarInsn(Opcodes.ALOAD, 0)
-        underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/cluster/service/ClusterService", "addLowPriorityApplier", "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V", false);
+        underlying.visitMethodInsn(
+          Opcodes.INVOKEVIRTUAL,
+          "org/elasticsearch/cluster/service/ClusterService",
+          "addLowPriorityApplier",
+          "(Lorg/elasticsearch/cluster/ClusterStateApplier;)V",
+          false
+        );
       }
       underlying.visitInsn(opcode)
     }
+
   }
+
 }
 
 object ModifySnapshotsServiceClass {

@@ -20,19 +20,24 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthenticationRule
-
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  DefinitionsLevelCreationError,
+  GeneralReadonlyrestSettingsError,
+  RulesLevelCreationError
+}
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsEnvVarsProvider
+import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes}
 
 import java.security.KeyPairGenerator
 import java.util.Base64
 
-class RorKbnAuthenticationRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[RorKbnAuthenticationRule] {
+class RorKbnAuthenticationRuleSettingsTests extends BaseRuleSettingsDecoderTest[RorKbnAuthenticationRule] {
 
   "A RorKbnAuthenticationRule" should {
     "be able to be loaded from settings" when {
@@ -88,22 +93,21 @@ class RorKbnAuthenticationRuleSettingsTests
       "RSA family algorithm can be used in token signature" in {
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ror_kbn_authentication: kbn1
-               |
-               |  ror_kbn:
-               |
-               |  - name: kbn1
-               |    signature_algo: "RSA"
-               |    signature_key: "${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
-               |
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ror_kbn_authentication: kbn1
+                    |
+                    |  ror_kbn:
+                    |
+                    |  - name: kbn1
+                    |    signature_algo: "RSA"
+                    |    signature_key: "${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Rsa]
@@ -112,22 +116,21 @@ class RorKbnAuthenticationRuleSettingsTests
       }
       "RSA family algorithm can be used in token signature and key is being read from system env in old format" in {
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ror_kbn_authentication: kbn1
-               |
-               |  ror_kbn:
-               |
-               |  - name: kbn1
-               |    signature_algo: "RSA"
-               |    signature_key: "env:SECRET_RSA"
-               |
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ror_kbn_authentication: kbn1
+                    |
+                    |  ror_kbn:
+                    |
+                    |  - name: kbn1
+                    |    signature_algo: "RSA"
+                    |    signature_key: "env:SECRET_RSA"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Rsa]
@@ -138,23 +141,22 @@ class RorKbnAuthenticationRuleSettingsTests
         val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
         System.setProperty("SECRET_KEY", Base64.getEncoder.encodeToString(pkey.getEncoded))
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ror_kbn_authentication: kbn1
-               |
-               |  ror_kbn:
-               |
-               |  - name: kbn1
-               |    roles_claim: groups
-               |    signature_algo: "RSA"
-               |    signature_key: "@{env:SECRET_RSA}"
-               |
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ror_kbn_authentication: kbn1
+                    |
+                    |  ror_kbn:
+                    |
+                    |  - name: kbn1
+                    |    roles_claim: groups
+                    |    signature_algo: "RSA"
+                    |    signature_key: "@{env:SECRET_RSA}"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Rsa]
@@ -164,22 +166,21 @@ class RorKbnAuthenticationRuleSettingsTests
       "EC family algorithm can be used in token signature" in {
         val pkey = KeyPairGenerator.getInstance("EC").generateKeyPair().getPublic
         assertDecodingSuccess(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ror_kbn_authentication: kbn1
-               |
-               |  ror_kbn:
-               |
-               |  - name: kbn1
-               |    signature_algo: "EC"
-               |    signature_key: "text: ${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
-               |
-               |""".stripMargin,
+          yaml = s"""
+                    |readonlyrest:
+                    |
+                    |  access_control_rules:
+                    |
+                    |  - name: test_block1
+                    |    ror_kbn_authentication: kbn1
+                    |
+                    |  ror_kbn:
+                    |
+                    |  - name: kbn1
+                    |    signature_algo: "EC"
+                    |    signature_key: "text: ${Base64.getEncoder.encodeToString(pkey.getEncoded)}"
+                    |
+                    |""".stripMargin,
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
             rule.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Ec]
@@ -210,7 +211,13 @@ class RorKbnAuthenticationRuleSettingsTests
                  |""".stripMargin,
             assertion = errors => {
               errors should have size 1
-              errors.head should be(RulesLevelCreationError(Message("""Cannot create ror_kbn_authentication, because there are superfluous groups settings. Remove the groups settings, or use ror_kbn_authorization or ror_kbn_auth rule, if group settings are required.""".stripMargin)))
+              errors.head should be(
+                RulesLevelCreationError(
+                  Message(
+                    """Cannot create ror_kbn_authentication, because there are superfluous groups settings. Remove the groups settings, or use ror_kbn_authorization or ror_kbn_auth rule, if group settings are required.""".stripMargin
+                  )
+                )
+              )
             }
           )
         }
@@ -234,10 +241,14 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """ror_kbn_authentication: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """ror_kbn_authentication: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -266,15 +277,14 @@ class RorKbnAuthenticationRuleSettingsTests
       }
       "no ROR kbn definition is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_authentication: kbn1
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_authentication: kbn1
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
@@ -301,13 +311,17 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """ror_kbn_authentication:
-                |  roles:
-                |  - "group1"
-                |  - "group2"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """ror_kbn_authentication:
+                    |  roles:
+                    |  - "group1"
+                    |  - "group2"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -329,10 +343,14 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                MalformedValue.fromString(
+                  """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -362,9 +380,13 @@ class RorKbnAuthenticationRuleSettingsTests
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
-                errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `ror_kbn_authentication` rule 'kbn1'")
-                ))
+                errors.head should be(
+                  RulesLevelCreationError(
+                    Message(
+                      s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `ror_kbn_authentication` rule 'kbn1'"
+                    )
+                  )
+                )
               }
             )
           }
@@ -391,7 +413,11 @@ class RorKbnAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("ror_kbn definitions must have unique identifiers. Duplicates: kbn1")))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message("ror_kbn definitions must have unique identifiers. Duplicates: kbn1")
+              )
+            )
           }
         )
       }
@@ -399,97 +425,105 @@ class RorKbnAuthenticationRuleSettingsTests
     "not be able to be loaded from config (token-related)" when {
       "no signature key is defined for default HMAC algorithm" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_authentication: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_authentication: kbn1
+                   |
+                   |  ror_kbn:
+                   |
+                   |  - name: kbn1
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- name: "kbn1"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                MalformedValue.fromString(
+                  """- name: "kbn1"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
       "RSA algorithm is defined but no signature key" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_authentication: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "RSA"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_authentication: kbn1
+                   |
+                   |  ror_kbn:
+                   |
+                   |  - name: kbn1
+                   |    signature_algo: "RSA"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- name: "kbn1"
-                |  signature_algo: "RSA"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                MalformedValue.fromString(
+                  """- name: "kbn1"
+                    |  signature_algo: "RSA"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
       "unrecognized algorithm is used" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_authentication: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "UNKNOWN"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_authentication: kbn1
+                   |
+                   |  ror_kbn:
+                   |
+                   |  - name: kbn1
+                   |    signature_algo: "UNKNOWN"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Unrecognised algorithm family 'UNKNOWN'. Should be either of: HMAC, EC, RSA, NONE")))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message("Unrecognised algorithm family 'UNKNOWN'. Should be either of: HMAC, EC, RSA, NONE")
+              )
+            )
           }
         )
       }
       "RSA signature key is malformed" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_authentication: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "RSA"
-              |    signature_key: "malformed_key"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_authentication: kbn1
+                   |
+                   |  ror_kbn:
+                   |
+                   |  - name: kbn1
+                   |    signature_algo: "RSA"
+                   |    signature_key: "malformed_key"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
@@ -498,22 +532,21 @@ class RorKbnAuthenticationRuleSettingsTests
       }
       "RSA signature key cannot be read from system env" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_authentication: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "RSA"
-              |    signature_key: "@{env:SECRET}"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_authentication: kbn1
+                   |
+                   |  ror_kbn:
+                   |
+                   |  - name: kbn1
+                   |    signature_algo: "RSA"
+                   |    signature_key: "@{env:SECRET}"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
@@ -522,22 +555,21 @@ class RorKbnAuthenticationRuleSettingsTests
       }
       "EC signature key is malformed" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_authentication: kbn1
-              |
-              |  ror_kbn:
-              |
-              |  - name: kbn1
-              |    signature_algo: "EC"
-              |    signature_key: "malformed_key"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_authentication: kbn1
+                   |
+                   |  ror_kbn:
+                   |
+                   |  - name: kbn1
+                   |    signature_algo: "EC"
+                   |    signature_key: "malformed_key"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
@@ -547,11 +579,13 @@ class RorKbnAuthenticationRuleSettingsTests
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(env) if env.value == "SECRET_RSA" =>
-      val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-      Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
-    case _ =>
-      None
-  }
+  override protected implicit def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(
+      Map(
+        nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(
+          KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded
+        )
+      )
+    )
+
 }

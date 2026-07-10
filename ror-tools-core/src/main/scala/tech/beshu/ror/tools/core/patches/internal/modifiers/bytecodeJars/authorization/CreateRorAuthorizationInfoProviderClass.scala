@@ -16,12 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es670, es800, es810, es820, es830}
-
-import java.io.File
 
 /**
  * Adds a new `org.elasticsearch.xpack.security.authz.RorAuthorizationInfoProvider` class.
@@ -32,8 +31,7 @@ import java.io.File
  * (built from a role equivalent to “superuser”, with cluster privilege "all" and broad index
  * permissions on "*", plus application privileges where supported by the ES version).
  */
-private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion: SemVer)
-  extends BytecodeJarModifier {
+private[patches] class CreateRorAuthorizationInfoProviderClass private (esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     addNewFileToJar(
@@ -125,7 +123,7 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
       case v if v >= es810 => emitRorCreateArtificialAuthorizationInfoForEsGE810(cw)
       case v if v >= es800 => emitRorCreateArtificialAuthorizationInfoForEsGE800(cw)
       case v if v >= es670 => emitRorCreateArtificialAuthorizationInfoForEsGE670(cw)
-      case _ => emitRorCreateArtificialAuthorizationInfoStub(cw) // return null
+      case _               => emitRorCreateArtificialAuthorizationInfoStub(cw) // return null
     }
 
     cw.visitEnd()
@@ -192,7 +190,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
     )
 
     mv.visitLdcInsn("all")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "emptyList", "()Ljava/util/List;", false)
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
@@ -291,7 +295,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
     )
 
     mv.visitLdcInsn("all")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "emptyList", "()Ljava/util/List;", false)
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
@@ -335,7 +345,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
       false
     )
     mv.visitLdcInsn("*")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
       "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder",
@@ -401,7 +417,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
     )
 
     mv.visitLdcInsn("all")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "emptyList", "()Ljava/util/List;", false)
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
@@ -445,7 +467,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
       false
     )
     mv.visitLdcInsn("*")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
       "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder",
@@ -511,7 +539,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
     )
 
     mv.visitLdcInsn("all")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "emptyList", "()Ljava/util/List;", false)
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
@@ -555,7 +589,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
       false
     )
     mv.visitLdcInsn("*")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
       "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder",
@@ -615,7 +655,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
     )
 
     mv.visitLdcInsn("all")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "emptyList", "()Ljava/util/List;", false)
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
@@ -659,7 +705,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
       false
     )
     mv.visitLdcInsn("*")
-    mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/util/Collections", "singleton", "(Ljava/lang/Object;)Ljava/util/Set;", false)
+    mv.visitMethodInsn(
+      Opcodes.INVOKESTATIC,
+      "java/util/Collections",
+      "singleton",
+      "(Ljava/lang/Object;)Ljava/util/Set;",
+      false
+    )
     mv.visitMethodInsn(
       Opcodes.INVOKEVIRTUAL,
       "org/elasticsearch/xpack/core/security/authz/permission/Role$Builder",
@@ -693,8 +745,13 @@ private[patches] class CreateRorAuthorizationInfoProviderClass private(esVersion
     mv.visitMaxs(6, 1)
     mv.visitEnd()
   }
+
 }
 
 object CreateRorAuthorizationInfoProviderClass {
-  def apply(esVersion: SemVer): CreateRorAuthorizationInfoProviderClass = new CreateRorAuthorizationInfoProviderClass(esVersion)
+
+  def apply(esVersion: SemVer): CreateRorAuthorizationInfoProviderClass = new CreateRorAuthorizationInfoProviderClass(
+    esVersion
+  )
+
 }

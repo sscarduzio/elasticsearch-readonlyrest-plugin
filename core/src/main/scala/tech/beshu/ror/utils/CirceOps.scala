@@ -17,14 +17,18 @@
 package tech.beshu.ror.utils
 
 import io.circe.*
+import io.circe.Json.Folder
 import io.circe.generic.semiauto.*
 import io.circe.syntax.EncoderOps
 import tech.beshu.ror.implicits.*
 
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
 object CirceOps {
+
   implicit class CirceErrorOps(val error: io.circe.Error) extends AnyVal {
+
     def getPrettyMessage: String = {
       error match {
         case _: ParsingFailure =>
@@ -33,15 +37,20 @@ object CirceOps {
           s"Could not parse at ${CursorOp.opsToPath(ex.history).show}: [${ex.getMessage.show}]"
       }
     }
+
   }
 
   implicit def toCirceErrorOps(error: io.circe.Error): CirceErrorOps = new CirceErrorOps(error)
 
-  inline def derivedEncoderWithType[T](typeValue: String)(using inline t: scala.deriving.Mirror.Of[T]): Encoder[T] = {
+  inline def derivedEncoderWithType[T](typeValue: String)(
+      using inline t: scala.deriving.Mirror.Of[T]
+  ): Encoder[T] = {
     deriveEncoder[T].mapJson(_.deepMerge(Json.obj(("type", typeValue.asJson))))
   }
 
-  inline def derivedDecoderOfSubtype[T, TT <: T](using inline t: scala.deriving.Mirror.Of[TT]): Decoder[T] = {
+  inline def derivedDecoderOfSubtype[T, TT <: T](
+      using inline t: scala.deriving.Mirror.Of[TT]
+  ): Decoder[T] = {
     Decoder.instance[T](c => deriveDecoder[TT].decodeJson(c.value))
   }
 
@@ -49,13 +58,35 @@ object CirceOps {
     Codec.from[T](
       Decoder.instance { c =>
         c.downField("type").as[String] match
-          case Right(typeValue) => decoders.get(typeValue) match
-            case Some(decoder) => decoder.decodeJson(c.value)
-            case None => Left(DecodingFailure(s"Missing decoder for type ${typeValue.show}", Nil))
+          case Right(typeValue) =>
+            decoders.get(typeValue) match
+              case Some(decoder) => decoder.decodeJson(c.value)
+              case None          => Left(DecodingFailure(s"Missing decoder for type ${typeValue.show}", Nil))
           case Left(error) => Left(error)
       },
       Encoder.instance(encode)
     )
+  }
+
+  extension (json: Json) {
+    def toJava: Any = json.foldWith(JsonToJavaFolder)
+  }
+
+  private object JsonToJavaFolder extends Folder[Any] {
+    override def onNull: Any = null
+
+    override def onBoolean(value: Boolean): Any = Boolean.box(value)
+
+    override def onNumber(value: JsonNumber): Any =
+      value.toLong.map(Long.box).getOrElse(Double.box(value.toDouble))
+
+    override def onString(value: String): Any = value
+
+    override def onArray(value: Vector[Json]): Any =
+      value.map(_.foldWith(this)).toArray
+
+    override def onObject(value: JsonObject): Any =
+      value.toMap.view.mapValues(_.foldWith(this)).toMap.asJava
   }
 
 }

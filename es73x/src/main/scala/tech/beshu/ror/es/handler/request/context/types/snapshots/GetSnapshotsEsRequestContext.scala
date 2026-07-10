@@ -22,9 +22,8 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestId, RequestedIndex, SnapshotName}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -36,15 +35,16 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.jdk.CollectionConverters.*
 
-class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
-                                   esContext: EsContext,
-                                   clusterService: RorClusterService,
-                                   override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, clusterService, threadPool) {
+class GetSnapshotsEsRequestContext(
+    actionRequest: GetSnapshotsRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, threadPool) {
 
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request
-      .snapshots().asSafeSet
+      .snapshots()
+      .asSafeSet
       .flatMap(SnapshotName.from)
   }
 
@@ -66,10 +66,12 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       case Right(_) =>
         ModificationResult.UpdateResponse.sync {
           case r: GetSnapshotsResponse => updateGetSnapshotResponse(r, blockContext.allAllowedIndices)
-          case r => r
+          case r                       => r
         }
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(
+          s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible."
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -77,35 +79,43 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
     UniqueNonEmptyList.from(blockContext.snapshots) match {
       case Some(list) => Right(list)
-      case None => Left(())
+      case None       => Left(())
     }
   }
 
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def repositoryFrom(
+      implicit blockContext: SnapshotRequestBlockContext
+  ) = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val repositories = blockContext.repositories.toList
     repositories match {
       case Nil =>
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
+          logger.warn(
+            s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]"
+          )
         }
         Right(repository)
     }
   }
 
-  private def update(actionRequest: GetSnapshotsRequest,
-                     snapshots: UniqueNonEmptyList[SnapshotName],
-                     repository: RepositoryName) = {
+  private def update(
+      actionRequest: GetSnapshotsRequest,
+      snapshots: UniqueNonEmptyList[SnapshotName],
+      repository: RepositoryName
+  ) = {
     actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
     actionRequest.repository(RepositoryName.toString(repository))
   }
 
-  private def updateGetSnapshotResponse(response: GetSnapshotsResponse,
-                                        allAllowedIndices: Set[ClusterIndexName]): GetSnapshotsResponse = {
+  private def updateGetSnapshotResponse(
+      response: GetSnapshotsResponse,
+      allAllowedIndices: Set[ClusterIndexName]
+  ): GetSnapshotsResponse = {
     val matcher = PatternsMatcher.create(allAllowedIndices)
-    response
-      .getSnapshots.asSafeList
+    response.getSnapshots.asSafeList
       .foreach { snapshot =>
         val snapshotIndices = snapshot.indices().asSafeList.flatMap(ClusterIndexName.fromString)
         val filteredSnapshotIndices = matcher.filter(snapshotIndices)
@@ -114,4 +124,5 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       }
     response
   }
+
 }

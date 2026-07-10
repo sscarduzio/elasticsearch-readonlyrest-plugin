@@ -54,14 +54,6 @@ import scala.reflect.ClassTag
 
 class AuditSettingsTests extends AnyWordSpec with Inside {
 
-  private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
-    implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, testEsNodeSettings)
-    new RawRorSettingsBasedCoreFactory(esEnv)
-  }
-
-  private val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-
   "Audit settings" when {
     "audit is not configured" should {
       "be disabled by default" in {
@@ -84,10 +76,15 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     "audit is disabled" should {
       "be disabled" when {
         "one line audit format" in {
-          val settings = rorSettingsWithAuditUnsafe(
+          val settings = rorSettingsFromUnsafe(
             """
+              |readonlyrest.audit.enabled: false
               |readonlyrest:
-              |  audit.enabled: false
+              |  access_control_rules:
+              |
+              |  - name: test_block
+              |    type: allow
+              |    auth_key: admin:container
             """.stripMargin
           )
 
@@ -96,7 +93,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "multi line audit format" in {
           val settings = rorSettingsWithAuditUnsafe(
             """
-              |readonlyrest:
               |  audit:
               |    enabled: false
             """.stripMargin
@@ -104,6 +100,30 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
           assertSettingsNoPresent(settings)
         }
+        "flat dot-notation audit.enabled key inside readonlyrest block" in {
+          val settings = rorSettingsWithAuditUnsafe(
+            "audit.enabled: false"
+          )
+
+          assertSettingsNoPresent(settings)
+        }
+      }
+    }
+    "audit settings contain conflicting keys" should {
+      "be rejected when both nested 'audit: enabled' block and flat 'audit.enabled' key are present inside readonlyrest" in {
+        val settings = rorSettingsWithAuditUnsafe(
+          """
+            |  audit:
+            |    enabled: true
+            |  audit.enabled: true
+          """.stripMargin
+        )
+
+        assertInvalidSettings(
+          settings,
+          expectedErrorMessage =
+            "Duplicated audit 'enabled' setting: use either the nested form 'audit: {enabled: ...}' or the flat form 'audit.enabled', not both"
+        )
       }
     }
     "audit is enabled" should {
@@ -111,11 +131,16 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "no outputs defined" should {
           "fallback to default index based audit sink" when {
             "one line audit format" in {
-              val settings = rorSettingsWithAuditUnsafe(
+              val settings = rorSettingsFromUnsafe(
                 """
+                  |readonlyrest.audit.enabled: true
                   |readonlyrest:
-                  |  audit.enabled: true
-                """.stripMargin
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block
+                  |    type: allow
+                  |    auth_key: admin:container
+                  |""".stripMargin
               )
 
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
@@ -127,10 +152,20 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "multi line audit format" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                 """.stripMargin
+              )
+
+              assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
+                settings,
+                expectedIndexName = "readonlyrest_audit-2018-12-31",
+                expectedAuditCluster = LocalAuditCluster
+              )
+            }
+            "flat dot-notation audit.enabled key inside readonlyrest block" in {
+              val settings = rorSettingsWithAuditUnsafe(
+                "audit.enabled: true"
               )
 
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
@@ -144,7 +179,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "simple format is used" in {
           val settings = rorSettingsWithAuditUnsafe(
             """
-              |readonlyrest:
               |  audit:
               |    enabled: true
               |    outputs: [index, log, data_stream]
@@ -168,7 +202,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
-            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
+            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
+              indexName("readonlyrest_audit-2018-12-31")
+            )
             sink1Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
@@ -194,7 +230,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "only type is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -211,7 +246,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "set to true" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -228,7 +262,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "set to false" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -246,7 +279,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "custom logger name is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -263,7 +295,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "custom serializer is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -280,7 +311,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "deprecated custom serializer is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -297,7 +327,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "all custom settings are set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -315,7 +344,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "configurable serializer is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -334,6 +362,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 |                triple_nested_next: "tnt"
                 |          node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
                 |          another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+                |          matched_blocks: "{MATCHED_BLOCK_NAMES}"
                 |          tid: "{TASK_ID}"
                 |          bytes: "{CONTENT_LENGTH_IN_BYTES}"
               """.stripMargin
@@ -361,8 +390,17 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   ),
                 ),
               ),
-              AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))),
-              AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(List(AuditFieldValueDescriptor.EsClusterName, AuditFieldValueDescriptor.StaticText(" "), AuditFieldValueDescriptor.HttpMethod)),
+              AuditFieldPath("node_name_with_static_suffix") -> AuditFieldValueDescriptor.Combined(
+                List(AuditFieldValueDescriptor.EsNodeName, AuditFieldValueDescriptor.StaticText(" with suffix"))
+              ),
+              AuditFieldPath("another_field") -> AuditFieldValueDescriptor.Combined(
+                List(
+                  AuditFieldValueDescriptor.EsClusterName,
+                  AuditFieldValueDescriptor.StaticText(" "),
+                  AuditFieldValueDescriptor.HttpMethod
+                )
+              ),
+              AuditFieldPath("matched_blocks") -> AuditFieldValueDescriptor.MatchedBlockNames,
               AuditFieldPath("tid") -> AuditFieldValueDescriptor.TaskId,
               AuditFieldPath("bytes") -> AuditFieldValueDescriptor.ContentLengthInBytes,
             )
@@ -372,7 +410,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "only type is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -390,7 +427,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "set to true" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -408,7 +444,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "set to false" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -426,7 +461,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "custom audit index name is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -445,7 +479,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "QueryAuditLogSerializer serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -463,7 +496,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "QueryAuditLogSerializer serializer is set and correctly serializes event without logged user" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -479,7 +511,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               )
               val createdSerializer = serializer(settings)
               val serializedResponse = createdSerializer.onResponse(
-                AuditResponseContext.Forbidden(new DummyAuditRequestContext(loggedInUserName = None, attemptedUserName = None))
+                AuditResponseContext.Forbidden(
+                  new DummyAuditRequestContext(loggedInUserName = None, attemptedUserName = None)
+                )
               )
 
               serializedResponse shouldBe defined
@@ -490,7 +524,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "QueryAuditLogSerializer serializer is set and correctly serializes event with logged user" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -517,7 +550,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom environment-aware serializer is set and correctly serializes events" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -532,7 +564,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               serializedResponse shouldBe defined
               serializedResponse.get.get("custom_field_for_es_node_name") shouldBe "testEsNode"
@@ -541,7 +574,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "ECS serializer is set (including request content)" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -559,7 +591,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               val expectedJsonStr =
                 """{
@@ -607,9 +640,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "presented_identity" : "basic auth user",
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -619,7 +654,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "ECS serializer is set (not including request content)" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -637,7 +671,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               val expectedJsonStr =
                 """{
@@ -684,9 +719,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "presented_identity" : "basic auth user",
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -696,7 +733,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "ECS serializer is set (not including request content by default)" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -713,7 +749,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                 expectedAuditCluster = LocalAuditCluster
               )
               val createdSerializer = serializer(settings)
-              val serializedResponse = createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
+              val serializedResponse =
+                createdSerializer.onResponse(AuditResponseContext.Forbidden(new DummyAuditRequestContext))
 
               val expectedJsonStr =
                 """{
@@ -760,9 +797,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
                   |    "es_task_id" : 123,
                   |    "es_node_name" : "testEsNode",
                   |    "ror_acl_history" : "historyEntry1, historyEntry2",
-                  |    "ror_detailed_reason" : "default",
+                  |    "ror_detailed_reason" : "mismatched",
                   |    "ror_involved_indices" : [],
-                  |    "ror_final_state" : "FORBIDDEN"
+                  |    "presented_identity" : "basic auth user",
+                  |    "ror_final_state" : "FORBIDDEN",
+                  |    "ror_matched_block_names" : ["block1", "block2"]
                   |  }
                   |}""".stripMargin
               val actualJson = serializedResponse.flatMap(circeJsonWithIgnoredTimestamp)
@@ -772,7 +811,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "deprecated custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -792,7 +830,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "array syntax for cluster" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -813,7 +850,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "array syntax for cluster with credentials" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -837,7 +873,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "extended syntax for cluster with round-robin mode" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -860,7 +895,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "extended syntax for cluster with credentials" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -890,7 +924,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "all audit settings are custom" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -916,7 +949,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "only type is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -934,7 +966,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "set to true" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -952,7 +983,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "set to false" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -970,7 +1000,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "custom audit data stream name is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -989,7 +1018,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1007,7 +1035,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "deprecated custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1027,7 +1054,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "array syntax for cluster" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1048,7 +1074,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "array syntax for cluster with credentials" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1069,7 +1094,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "extended syntax for cluster with round-robin mode" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1092,7 +1116,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "extended syntax for cluster with credentials" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1122,7 +1145,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "all audit settings are custom" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -1164,7 +1186,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -1193,7 +1214,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "all output types defined" in {
           val settings = rorSettingsWithAuditUnsafe(
             """
-              |readonlyrest:
               |  audit:
               |    enabled: true
               |    outputs:
@@ -1221,7 +1241,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             val enabledSink1 = sink1.asInstanceOf[AuditSink.Enabled].config
             enabledSink1 shouldBe a[Config.EsIndexBasedSink]
             val sink1Config = enabledSink1.asInstanceOf[Config.EsIndexBasedSink]
-            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(indexName("readonlyrest_audit-2018-12-31"))
+            sink1Config.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(
+              indexName("readonlyrest_audit-2018-12-31")
+            )
             sink1Config.logSerializer shouldBe a[BlockVerbosityAwareAuditLogSerializer]
             sink1Config.auditCluster shouldBe AuditCluster.LocalAuditCluster
 
@@ -1246,7 +1268,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "one of outputs is disabled" in {
           val settings = rorSettingsWithAuditUnsafe(
             """
-              |readonlyrest:
               |  audit:
               |    enabled: true
               |    outputs:
@@ -1286,7 +1307,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1297,13 +1317,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "logger name is empty" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1322,7 +1342,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1333,13 +1352,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "custom audit index name pattern is invalid" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1350,13 +1369,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage =
+                  "Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list (array syntax)" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1381,7 +1400,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               tests.foreach { auditNodes =>
                 val settings = rorSettingsWithAuditUnsafe(
                   s"""
-                     |readonlyrest:
                      |  audit:
                      |    enabled: true
                      |    outputs:
@@ -1394,14 +1412,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
+                  expectedErrorMessage =
+                    s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
                 )
               }
 
               tests.foreach { auditNodes =>
                 val settings = rorSettingsWithAuditUnsafe(
                   s"""
-                     |readonlyrest:
                      |  audit:
                      |    enabled: true
                      |    outputs:
@@ -1412,7 +1430,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
+                  expectedErrorMessage =
+                    s"One or more audit cluster nodes have inconsistent credentials. Please configure the same credentials. Nodes: ${auditNodes.mkString(", ")}"
                 )
               }
             }
@@ -1420,7 +1439,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "remote cluster is empty list (extended syntax)" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1439,7 +1457,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "remote cluster has invalid mode" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1452,14 +1469,14 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
+                expectedErrorMessage =
+                  "Error for field 'mode': Unknown cluster mode [not-existing-mode], allowed values are: [round-robin]"
               )
             }
             "remote cluster credentials malformed" when {
               "password not provided" in {
                 val settings = rorSettingsWithAuditUnsafe(
                   """
-                    |readonlyrest:
                     |  audit:
                     |    enabled: true
                     |    outputs:
@@ -1479,7 +1496,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               "username not provided" in {
                 val settings = rorSettingsWithAuditUnsafe(
                   """
-                    |readonlyrest:
                     |  audit:
                     |    enabled: true
                     |    outputs:
@@ -1502,7 +1518,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1513,13 +1528,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "data stream name is invalid" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1530,17 +1545,16 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'data_stream': Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
-                  "name must be lowercase, " +
-                  "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' ', " +
-                  "name must not start with '-', '_', '+', '.ds-'."
-
+                expectedErrorMessage =
+                  "Error for field 'data_stream': Illegal format for ROR audit 'data_stream' name - Data stream '.ds-INVALID-data-stream-name#' has an invalid format. Cause: " +
+                    "name must be lowercase, " +
+                    "name must not contain forbidden characters '\\', '/', '*', '?', '\"', '<', '>', '|', ',', '#', ':', ' ', " +
+                    "name must not start with '-', '_', '+', '.ds-'."
               )
             }
             "remote cluster is empty list" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1568,7 +1582,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    enabled: true
                   |    outputs:
@@ -1579,8 +1592,9 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
               esVersions.foreach { esVersion =>
                 assertInvalidSettings(
                   settings,
-                  expectedErrorMessage = s"Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0, " +
-                    s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
+                  expectedErrorMessage =
+                    s"Error for field 'type': Data stream audit output is supported from Elasticsearch version 7.9.0, " +
+                      s"but your version is ${esVersion.major}.${esVersion.minor}.${esVersion.revision}. Use 'index' type or upgrade to 7.9.0 or later.",
                   esVersion = esVersion
                 )
               }
@@ -1589,7 +1603,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "unknown output type is set" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -1599,13 +1612,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Error for field 'type': Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
+              expectedErrorMessage =
+                "Error for field 'type': Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
             )
           }
           "unknown output type is set when using simple format" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs: [ custom_type ]
@@ -1614,7 +1627,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
+              expectedErrorMessage =
+                "Unsupported type of audit output: custom_type. Supported types: [data_stream, index, log]"
             )
 
             assertInvalidSettings(
@@ -1626,7 +1640,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "'outputs' array is empty" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs: []
@@ -1641,7 +1654,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "configurable serializer is set with invalid value descriptor" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -1659,13 +1671,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Configurable serializer is used, but the 'fields' setting is missing or invalid: There are invalid placeholder values: HTTP_METHOD2"
+              expectedErrorMessage =
+                "Configurable serializer is used, but the 'fields' setting is missing or invalid: There are invalid placeholder values: HTTP_METHOD2"
             )
           }
           "configurable serializer is set, but without fields setting" in {
             val settings = rorSettingsWithAuditUnsafe(
               """
-                |readonlyrest:
                 |  audit:
                 |    enabled: true
                 |    outputs:
@@ -1678,7 +1690,8 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
             assertInvalidSettings(
               settings,
-              expectedErrorMessage = "Configurable serializer is used, but the 'fields' setting is missing or invalid: Missing required field"
+              expectedErrorMessage =
+                "Configurable serializer is used, but the 'fields' setting is missing or invalid: Missing required field"
             )
           }
         }
@@ -1687,7 +1700,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
         "ignore deprecated fields when both formats are used at once" in {
           val settings = rorSettingsWithAuditUnsafe(
             """
-              |readonlyrest:
               |  audit:
               |    enabled: true
               |    outputs:
@@ -1709,7 +1721,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "'audit' section is defined" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: false
                 """.stripMargin
@@ -1719,10 +1730,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             }
             "'audit' section is not defined" in {
               val settings = rorSettingsWithAuditUnsafe(
-                """
-                  |readonlyrest:
-                  |  audit_collector: false
-                """.stripMargin
+                "audit_collector: false"
               )
 
               assertSettingsNoPresent(settings)
@@ -1734,7 +1742,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "audit collector is enabled" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                 """.stripMargin
@@ -1749,7 +1756,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom audit index name is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                   |    index_template: "'custom_template_'yyyyMMdd"
@@ -1765,7 +1771,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                   |    serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
@@ -1781,7 +1786,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "deprecated custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                   |    serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
@@ -1797,7 +1801,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom audit cluster is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                   |    cluster: ["1.1.1.1"]
@@ -1817,7 +1820,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "all audit settings are custom" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                   |    index_template: "'custom_template_'yyyyMMdd"
@@ -1840,10 +1842,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "'audit' section is not defined" when {
             "audit collector is enabled" in {
               val settings = rorSettingsWithAuditUnsafe(
-                """
-                  |readonlyrest:
-                  |  audit_collector: true
-                """.stripMargin
+                "audit_collector: true"
               )
 
               assertIndexBasedAuditSinkSettingsPresent[BlockVerbosityAwareAuditLogSerializer](
@@ -1855,7 +1854,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom audit index name is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit_collector: true
                   |  audit_index_template: "'custom_template_'yyyyMMdd"
                 """.stripMargin
@@ -1870,7 +1868,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit_collector: true
                   |  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
                 """.stripMargin
@@ -1885,7 +1882,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "deprecated custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit_collector: true
                   |  audit_serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
                 """.stripMargin
@@ -1900,7 +1896,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "custom audit cluster is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit_collector: true
                   |  audit_cluster: ["http://user:test@1.1.1.1"]
                 """.stripMargin
@@ -1919,7 +1914,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "all audit settings are custom" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit_collector: true
                   |  audit_index_template: "'custom_template_'yyyyMMdd"
                   |  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
@@ -1945,7 +1939,6 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                   |    serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
@@ -1954,13 +1947,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "custom audit index name pattern is invalid" in {
               val settings = rorSettingsWithAuditUnsafe(
                 """
-                  |readonlyrest:
                   |  audit:
                   |    collector: true
                   |    index_template: "invalid pattern"
@@ -1969,12 +1962,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage =
+                  "Error for field 'index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
               val settings = rorSettingsWithAuditUnsafe(
-                """readonlyrest:
+                """
                   |  audit:
                   |    collector: true
                   |    cluster: []
@@ -1990,7 +1984,7 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
           "'audit' section is not defined" when {
             "not supported custom serializer is set" in {
               val settings = rorSettingsWithAuditUnsafe(
-                """readonlyrest:
+                """
                   |  audit_collector: true
                   |  audit_serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
                 """.stripMargin
@@ -1998,12 +1992,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+                expectedErrorMessage =
+                  "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
               )
             }
             "custom audit index name pattern is invalid" in {
               val settings = rorSettingsWithAuditUnsafe(
-                """readonlyrest:
+                """
                   |  audit_collector: true
                   |  audit_index_template: "invalid pattern"
                 """.stripMargin
@@ -2011,12 +2006,13 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
 
               assertInvalidSettings(
                 settings,
-                expectedErrorMessage = "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
+                expectedErrorMessage =
+                  "Error for field 'audit_index_template': Illegal pattern specified for audit index template. Have you misplaced quotes? See https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html to learn the syntax. Pattern was: invalid pattern error: Unknown pattern letter: i"
               )
             }
             "remote cluster is empty list" in {
               val settings = rorSettingsWithAuditUnsafe(
-                """readonlyrest:
+                """
                   |  audit_collector: true
                   |  audit_cluster: []
                 """.stripMargin
@@ -2033,9 +2029,20 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
+  private lazy val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
+
+  private def factory(esVersion: EsVersion = defaultEsVersionForTests) = {
+    implicit val systemContext: SystemContext = SystemContext.default
+    val esEnv = EsEnv(File("/config"), File("/modules"), esVersion, defaultTestEsNodeSettings)
+    new RawRorSettingsBasedCoreFactory(esEnv)
+  }
+
   private def rorSettingsWithAuditUnsafe(auditSection: String) = {
     val rawSettings =
-      s"""$auditSection
+      s"""
+         |readonlyrest:
+         |  $auditSection
+         |
          |  access_control_rules:
          |
          |  - name: test_block
@@ -2073,10 +2080,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-
-  private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
-                                                                                      expectedIndexName: NonEmptyString,
-                                                                                      expectedAuditCluster: AuditCluster) = {
+  private def assertIndexBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](
+      settings: RawRorSettings,
+      expectedIndexName: NonEmptyString,
+      expectedAuditCluster: AuditCluster
+  ) = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2102,10 +2110,12 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
-                                                                                      expectedDataStreamName: NonEmptyString,
-                                                                                      expectedAuditCluster: AuditCluster,
-                                                                                      esVersion: EsVersion = defaultEsVersionForTests) = {
+  private def assertDataStreamAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](
+      settings: RawRorSettings,
+      expectedDataStreamName: NonEmptyString,
+      expectedAuditCluster: AuditCluster,
+      esVersion: EsVersion = defaultEsVersionForTests
+  ) = {
     val core = factory(esVersion)
       .createCoreFrom(
         settings,
@@ -2131,8 +2141,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def serializer(settings: RawRorSettings,
-                         esVersion: EsVersion = defaultEsVersionForTests): AuditLogSerializer = {
+  private def serializer(
+      settings: RawRorSettings,
+      esVersion: EsVersion = defaultEsVersionForTests
+  ): AuditLogSerializer = {
     val core = factory(esVersion)
       .createCoreFrom(
         settings,
@@ -2153,8 +2165,10 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](settings: RawRorSettings,
-                                                                                    expectedLoggerName: NonEmptyString) = {
+  private def assertLogBasedAuditSinkSettingsPresent[EXPECTED_SERIALIZER: ClassTag](
+      settings: RawRorSettings,
+      expectedLoggerName: NonEmptyString
+  ) = {
     val core = factory()
       .createCoreFrom(
         settings,
@@ -2179,9 +2193,11 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
     }
   }
 
-  private def assertInvalidSettings(settings: RawRorSettings,
-                                    expectedErrorMessage: String,
-                                    esVersion: EsVersion = defaultEsVersionForTests): Unit = {
+  private def assertInvalidSettings(
+      settings: RawRorSettings,
+      expectedErrorMessage: String,
+      esVersion: EsVersion = defaultEsVersionForTests
+  ): Unit = {
     val core = factory(esVersion)
       .createCoreFrom(
         settings,
@@ -2205,20 +2221,23 @@ class AuditSettingsTests extends AnyWordSpec with Inside {
   }
 
   extension (jsonObject: JSONObject) {
+
     private def withTimestampValue(value: String): JSONObject = {
       jsonObject.put("@timestamp", value)
     }
+
     private def circeJsonE: Either[String, Json] =
       parser.parse(jsonObject.toString(0)).left.map(_.getMessage)
   }
-
 
 }
 
 private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAuditLogSerializer {
 
-  def onResponse(responseContext: AuditResponseContext,
-                 environmentContext: AuditEnvironmentContext): Option[JSONObject] = Some(
+  def onResponse(
+      responseContext: AuditResponseContext,
+      environmentContext: AuditEnvironmentContext
+  ): Option[JSONObject] = Some(
     new JSONObject()
       .put("custom_field_for_es_node_name", environmentContext.esNodeName)
       .put("custom_field_for_es_cluster_name", environmentContext.esClusterName)
@@ -2226,8 +2245,10 @@ private class TestEnvironmentAwareAuditLogSerializer extends EnvironmentAwareAud
 
 }
 
-private class DummyAuditRequestContext(override val loggedInUserName: Option[String] = Some("logged_user"),
-                                       override val attemptedUserName: Option[String] = Some("basic auth user")) extends AuditRequestContext {
+private class DummyAuditRequestContext(
+    override val loggedInUserName: Option[String] = Some("logged_user"),
+    override val attemptedUserName: Option[String] = Some("basic auth user")
+) extends AuditRequestContext {
   override def timestamp: Instant = Instant.now().minusSeconds(5)
 
   override def id: String = "trace_id_123"
@@ -2268,5 +2289,9 @@ private class DummyAuditRequestContext(override val loggedInUserName: Option[Str
 
   override def generalAuditEvents: JSONObject = new JSONObject
 
-  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(testEsNodeSettings)
+  override def auditEnvironmentContext: AuditEnvironmentContext = new AuditEnvironmentContextBasedOnEsNodeSettings(
+    defaultTestEsNodeSettings
+  )
+
+  override def matchedBlockNames: Option[List[String]] = Some(List("block1", "block2"))
 }

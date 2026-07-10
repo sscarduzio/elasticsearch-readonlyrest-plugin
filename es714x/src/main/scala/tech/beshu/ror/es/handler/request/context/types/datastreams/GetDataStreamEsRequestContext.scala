@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
@@ -35,12 +34,12 @@ import tech.beshu.ror.utils.ScalaOps.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRequest,
-                                                         dataStreams: Set[DataStreamName],
-                                                         esContext: EsContext,
-                                                         clusterService: RorClusterService,
-                                                         override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+private[datastreams] class GetDataStreamEsRequestContext(
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -64,7 +63,9 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
           r
       }
     } else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      logger.error(
+        s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue."
+      )
       ModificationResult.ShouldBeInterrupted
     }
   }
@@ -85,20 +86,27 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
     r.getClass.getCanonicalName == "org.elasticsearch.xpack.core.action.GetDataStreamAction.Response"
   }
 
-  private def updateActionResponse(response: ActionResponse,
-                                   allAllowedIndices: Iterable[ClusterIndexName]): ActionResponse = {
+  private def updateActionResponse(
+      response: ActionResponse,
+      allAllowedIndices: Iterable[ClusterIndexName]
+  ): ActionResponse = {
     val allowedIndicesMatcher = PatternsMatcher.create(allAllowedIndices)
-    val filteredDataStreams = on(response).call("getDataStreams").get[java.util.List[Object]]()
-        .asScala
-        .filter { dataStreamInfo =>
-          backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
-        }
+    val filteredDataStreams = on(response)
+      .call("getDataStreams")
+      .get[java.util.List[Object]]()
+      .asScala
+      .filter { dataStreamInfo =>
+        backingIndiesMatchesAllowedIndices(dataStreamInfo, allowedIndicesMatcher)
+      }
 
     on(response).set("dataStreams", filteredDataStreams.asJava)
     response
   }
 
-  private def backingIndiesMatchesAllowedIndices(info: Object, allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]): Boolean = {
+  private def backingIndiesMatchesAllowedIndices(
+      info: Object,
+      allowedIndicesMatcher: PatternsMatcher[ClusterIndexName]
+  ): Boolean = {
     val dataStreamIndices = indicesFromDataStreamInfo(info).get
     val allowedBackingIndices = allowedIndicesMatcher.filter(dataStreamIndices)
     dataStreamIndices.diff(allowedBackingIndices).isEmpty
@@ -107,7 +115,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
   private def indicesFromDataStreamInfo(info: Object): Try[Set[ClusterIndexName]] = {
     for {
       dataStream <- Try(on(info).call("getDataStream").get[AnyVal]())
-      backingIndices <- Try (on(dataStream).call("getIndices").get[java.util.List[Object]]().asSafeList)
+      backingIndices <- Try(on(dataStream).call("getIndices").get[java.util.List[Object]]().asSafeList)
       indices <- Try {
         backingIndices
           .flatMap(backingIndex => Option(on(backingIndex).call("getName").get[String]))
@@ -117,6 +125,7 @@ private[datastreams] class GetDataStreamEsRequestContext(actionRequest: ActionRe
     } yield indices
 
   }
+
 }
 
 object GetDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
@@ -130,9 +139,10 @@ object GetDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContext
       getDataStreamsMethodName = "getNames"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new GetDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
+        Some(new GetDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool))
       case MatchResult.NotMatched() =>
         None
     }
   }
+
 }

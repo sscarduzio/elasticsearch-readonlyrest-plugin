@@ -17,18 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.http
 
 import cats.implicits.*
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
-private[http] abstract class BaseHeaderRule
-  extends RegularRule with Logging {
+private[http] abstract class BaseHeaderRule extends RegularRule {
 
-  protected def isFulfilled(accessRequirement: AccessRequirement[Header],
-                            requestHeaders: Set[Header]): Boolean = {
+  protected def isFulfilled(accessRequirement: AccessRequirement[Header], requestHeaders: Set[Header]): Boolean = {
     accessRequirement match {
       case AccessRequirement.MustBePresent(requiredHeader) =>
         requestHeaders.exists(matches(requiredHeader, _))
@@ -47,4 +44,5 @@ private[http] abstract class BaseHeaderRule
       false
     }
   }
+
 }

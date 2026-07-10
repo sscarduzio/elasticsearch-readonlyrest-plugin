@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 import tech.beshu.ror.gradle.RorTaskFinder
+import tech.beshu.ror.gradle.PrintEsModulesTask
 
 plugins {
     id 'base'
@@ -22,6 +23,15 @@ plugins {
     id 'io.github.gradle-nexus.publish-plugin'      version '2.0.0-rc-1'
     id 'org.gradle.crypto.checksum'                 version '1.4.0'
     id "idea"
+    id "readonlyrest.format-conventions"
+}
+
+spotless {
+    java {
+        // build-base is an included build — excluded from the main project task graph,
+        // so its Java sources are formatted here at the root level instead.
+        target 'build-base/src/**/*.java'
+    }
 }
 
 idea {
@@ -49,6 +59,9 @@ tasks.register("publishEsRorDockerImage", RorTaskFinder) {
 tasks.register("publishEsRorPreBuildDockerImage", RorTaskFinder) {
     dependsOn it.findRorTaskForEsVersion('pushRorPreBuildDockerImage')
 }
+
+// Usage: ./gradlew printEsModules -PesMajor=8 --quiet
+tasks.register("printEsModules", PrintEsModulesTask)
 
 group = 'tech.beshu.ror'
 version = pluginVersion

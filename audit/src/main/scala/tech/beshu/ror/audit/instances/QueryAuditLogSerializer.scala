@@ -20,7 +20,11 @@ import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext.Verbosity
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.AllowedEventMode.Include
-import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup.{CommonFields, EsEnvironmentFields, FullRequestContentFields}
+import tech.beshu.ror.audit.utils.AuditSerializationHelper.AuditFieldGroup.{
+  CommonFields,
+  EsEnvironmentFields,
+  FullRequestContentFields
+}
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 /**

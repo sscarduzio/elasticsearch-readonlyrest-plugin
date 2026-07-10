@@ -21,17 +21,27 @@ import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
 class RRUserMetadataActionType
-  extends Action[RRUserMetadataRequest, RRUserMetadataResponse, RRUserMetadataActionType.RequestBuilder](RRUserMetadataActionType.name) {
+    extends Action[RRUserMetadataRequest, RRUserMetadataResponse, RRUserMetadataActionType.RequestBuilder](
+      RRUserMetadataActionType.name
+    ) {
 
   override def newResponse(): RRUserMetadataResponse = new RRUserMetadataResponse()
 
   override def newRequestBuilder(client: ElasticsearchClient): RRUserMetadataActionType.RequestBuilder =
-    new RRUserMetadataActionType.RequestBuilder(client, this, new RRUserMetadataRequest())
+    new RRUserMetadataActionType.RequestBuilder(client, this, new RRUserMetadataRequest(None))
 }
 
 object RRUserMetadataActionType {
-  class RequestBuilder(client: ElasticsearchClient, actionType: RRUserMetadataActionType, request: RRUserMetadataRequest)
-    extends ActionRequestBuilder[RRUserMetadataRequest, RRUserMetadataResponse, RequestBuilder](client, actionType, request)
+
+  class RequestBuilder(
+      client: ElasticsearchClient,
+      actionType: RRUserMetadataActionType,
+      request: RRUserMetadataRequest
+  ) extends ActionRequestBuilder[RRUserMetadataRequest, RRUserMetadataResponse, RequestBuilder](
+        client,
+        actionType,
+        request
+      )
 
   val name: String = RorAction.RorUserMetadataAction.value
   val instance = new RRUserMetadataActionType()

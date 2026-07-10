@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
-import better.files.File
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -25,13 +24,12 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.blocks.mocks.{MocksProvider, NoOpMocksProvider}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.{Block, ImpersonationWarning}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId, RorSettingsIndex}
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, HttpClientsFactory, RawRorSettingsBasedCoreFactory}
-import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.settings.ror.RawRorSettings
 import tech.beshu.ror.syntax.*
@@ -135,7 +133,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
       }
       "external authorization service is mocked" in {
         val mocksProvider = mocksProviderForExternalAuthzServiceFrom(
-          Map(ExternalAuthorizationService.Name("GroupsService1") -> Map.empty)
+          Map(ExternalGroupsProviderService.Name("GroupsService1") -> Map.empty)
         )
 
         val settings =
@@ -182,12 +180,14 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
              |    auth_key: admin:container
              |""".stripMargin
 
-        impersonationWarningsReader(settings).read() should be(List(
-          fullyHashedCredentialsWarning("test_block1", "auth_key_sha1"),
-          fullyHashedCredentialsWarning("test_block2", "auth_key_sha256"),
-          fullyHashedCredentialsWarning("test_block3", "auth_key_sha512"),
-          fullyHashedCredentialsWarning("test_block4", "auth_key_pbkdf2"),
-        ))
+        impersonationWarningsReader(settings).read() should be(
+          List(
+            fullyHashedCredentialsWarning("test_block1", "auth_key_sha1"),
+            fullyHashedCredentialsWarning("test_block2", "auth_key_sha256"),
+            fullyHashedCredentialsWarning("test_block3", "auth_key_sha512"),
+            fullyHashedCredentialsWarning("test_block4", "auth_key_pbkdf2"),
+          )
+        )
       }
       "ldap service is not mocked" in {
         val settings =
@@ -224,11 +224,13 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
         val hint = "Configure a mock of an LDAP service with ID [ldap1]"
 
-        impersonationWarningsReader(settings).read() should be(List(
-          notMockedServiceWarning("test_block1", "ldap_auth", "ldap1", hint),
-          notMockedServiceWarning("test_block2", "ldap_authentication", "ldap1", hint),
-          notMockedServiceWarning("test_block3", "ldap_authorization", "ldap1", hint),
-        ))
+        impersonationWarningsReader(settings).read() should be(
+          List(
+            notMockedServiceWarning("test_block1", "ldap_auth", "ldap1", hint),
+            notMockedServiceWarning("test_block2", "ldap_authentication", "ldap1", hint),
+            notMockedServiceWarning("test_block3", "ldap_authorization", "ldap1", hint),
+          )
+        )
       }
       "external authentication service is not mocked" in {
         val settings =
@@ -247,9 +249,11 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
              |""".stripMargin
 
         val hint = "Configure a mock of an external authentication service with ID [ext1]"
-        impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(List(
-          notMockedServiceWarning("test_block1", "external_authentication", "ext1", hint)
-        ))
+        impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
+          List(
+            notMockedServiceWarning("test_block1", "external_authentication", "ext1", hint)
+          )
+        )
       }
       "external authorization service is not mocked" in {
         val settings =
@@ -276,9 +280,11 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
             |""".stripMargin
 
         val hint = "Configure a mock of an external authorization service with ID [GroupsService1]"
-        impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(List(
-          notMockedServiceWarning("test_block1", "groups_provider_authorization", "GroupsService1", hint)
-        ))
+        impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
+          List(
+            notMockedServiceWarning("test_block1", "groups_provider_authorization", "GroupsService1", hint)
+          )
+        )
       }
       "impersonation not supported by rule" when {
         "jwt rule" in {
@@ -300,9 +306,11 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
               |
               |""".stripMargin
 
-          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(List(
-            impersonationNotSupportedWarning("test_block1", "jwt_auth")
-          ))
+          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
+            List(
+              impersonationNotSupportedWarning("test_block1", "jwt_auth")
+            )
+          )
         }
         "ror kbn auth rule" in {
           val settings =
@@ -323,9 +331,11 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
               |
               |""".stripMargin
 
-          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(List(
-            impersonationNotSupportedWarning("test_block1", "ror_kbn_auth")
-          ))
+          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
+            List(
+              impersonationNotSupportedWarning("test_block1", "ror_kbn_auth")
+            )
+          )
         }
         "ror kbn auth rule (configured without groups)" in {
           val settings =
@@ -344,9 +354,11 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
               |
               |""".stripMargin
 
-          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(List(
-            impersonationNotSupportedWarning("test_block1", "ror_kbn_auth")
-          ))
+          impersonationWarningsReader(settings, NoOpMocksProvider).read() should be(
+            List(
+              impersonationNotSupportedWarning("test_block1", "ror_kbn_auth")
+            )
+          )
         }
       }
     }
@@ -358,8 +370,10 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     warning(
       blockName,
       ruleName,
-      message = "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
-      hint = s"You can use second version of the rule and use not hashed username. Like that: `$ruleName: USER_NAME:hash(PASSWORD)"
+      message =
+        "The rule contains fully hashed username and password. It doesn't support impersonation in this use case.",
+      hint =
+        s"You can use second version of the rule and use not hashed username. Like that: `$ruleName: USER_NAME:hash(PASSWORD)"
     )
   }
 
@@ -367,7 +381,8 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
     warning(
       blockName,
       ruleName,
-      message = s"The rule '$ruleName' will fail to match the impersonating request when the mock of the service '$serviceId' is not configured",
+      message =
+        s"The rule '$ruleName' will fail to match the impersonating request when the mock of the service '$serviceId' is not configured",
       hint = hint
     )
   }
@@ -392,16 +407,18 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
   private def impersonationWarningsReader(settingsString: String, mocksProvider: MocksProvider = NoOpMocksProvider) = {
     val settings = rorSettingsFromUnsafe(settingsString)
-    inside(createCore(settings, mocksProvider = mocksProvider)) {
-      case Right(core) => core.dependencies.impersonationWarningsReader
+    inside(createCore(settings, mocksProvider = mocksProvider)) { case Right(core) =>
+      core.dependencies.impersonationWarningsReader
     }
   }
 
   private implicit val dummyRequestID: RequestId = RequestId("dummy")
 
-  private def createCore(settings: RawRorSettings,
-                         clientsFactory: HttpClientsFactory = MockHttpClientsFactory,
-                         mocksProvider: MocksProvider) = {
+  private def createCore(
+      settings: RawRorSettings,
+      clientsFactory: HttpClientsFactory = MockHttpClientsFactory,
+      mocksProvider: MocksProvider
+  ) = {
     factory
       .createCoreFrom(
         settings,
@@ -415,7 +432,7 @@ class ImpersonationWarningsTests extends AnyWordSpec with Inside {
 
   private val factory: CoreFactory = {
     implicit val systemContext: SystemContext = SystemContext.default
-    val esEnv = EsEnv(File("/config"), File("/modules"), defaultEsVersionForTests, testEsNodeSettings)
-    new RawRorSettingsBasedCoreFactory(esEnv)
+    new RawRorSettingsBasedCoreFactory(defaultEsEnv())
   }
+
 }

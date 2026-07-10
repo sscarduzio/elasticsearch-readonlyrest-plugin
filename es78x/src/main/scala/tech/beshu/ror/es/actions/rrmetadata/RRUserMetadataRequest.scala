@@ -16,9 +16,42 @@
  */
 package tech.beshu.ror.es.actions.rrmetadata
 
+import cats.implicits.*
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext
+import tech.beshu.ror.accesscontrol.request.UserMetadataRequestContext.DetailsCreationError
 import tech.beshu.ror.es.actions.RorActionRequest
+import tech.beshu.ror.implicits.*
 
-class RRUserMetadataRequest extends ActionRequest with RorActionRequest {
-  override def validate(): ActionRequestValidationException = null
+class RRUserMetadataRequest(licenseTypeHeader: Option[Header]) extends ActionRequest with RorActionRequest {
+
+  lazy val details: UserMetadataRequestContext.Details = {
+    UserMetadataRequestContext.Details
+      .from(licenseTypeHeader)
+      .getOrElse(throw ShouldAlreadyBeValidatedIllegalState)
+  }
+
+  override def validate(): ActionRequestValidationException = {
+    UserMetadataRequestContext.Details.from(licenseTypeHeader) match {
+      case Left(DetailsCreationError.NoRequestedHeaderValue) =>
+        wrongRorLicenseHeaderValidationException(cause = "missing")
+      case Left(DetailsCreationError.RorKbnLicenseTypeInvalidValue) =>
+        wrongRorLicenseHeaderValidationException(cause = "invalid")
+      case Right(_) =>
+        null
+    }
+  }
+
+  private def wrongRorLicenseHeaderValidationException(cause: String) = {
+    val e = new ActionRequestValidationException()
+    e.addValidationError(s"${Header.Name.rorKbnLicenseType.show} header is $cause")
+    e
+  }
+
+  private object ShouldAlreadyBeValidatedIllegalState
+      extends IllegalStateException(
+        "Cannot prepare Api Version object. It's invalid state. Should be already validated in the RRUserMetadataRequest#validate() method!"
+      )
+
 }

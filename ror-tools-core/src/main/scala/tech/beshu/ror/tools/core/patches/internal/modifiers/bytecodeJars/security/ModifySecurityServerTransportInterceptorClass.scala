@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security
 
+import better.files.File
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /**
  * Modifies the SecurityServerTransportInterceptor class to effectively disable X-Pack Security’s
@@ -33,7 +34,7 @@ import java.io.{File, InputStream}
  * modified by the Security interceptor layer, preventing X-Pack Security from injecting its
  * transport-level authentication/authorization handling that can conflict with ReadonlyREST.
  */
-private [patches] object ModifySecurityServerTransportInterceptorClass extends BytecodeJarModifier {
+private[patches] object ModifySecurityServerTransportInterceptorClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -50,27 +51,32 @@ private [patches] object ModifySecurityServerTransportInterceptorClass extends B
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "interceptSender" =>
-          new InterceptSenderReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
+          new InterceptSenderReturningSenderFromParam(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
         case "interceptHandler" =>
-          new InterceptHandlerReturningSenderFromParam(super.visitMethod(access, name, descriptor, signature, exceptions))
+          new InterceptHandlerReturningSenderFromParam(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
-  private class InterceptSenderReturningSenderFromParam(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class InterceptSenderReturningSenderFromParam(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -79,10 +85,11 @@ private [patches] object ModifySecurityServerTransportInterceptorClass extends B
       underlying.visitMaxs(1, 2)
       underlying.visitEnd()
     }
+
   }
 
   private class InterceptHandlerReturningSenderFromParam(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+      extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -91,5 +98,7 @@ private [patches] object ModifySecurityServerTransportInterceptorClass extends B
       underlying.visitMaxs(1, 5)
       underlying.visitEnd()
     }
+
   }
+
 }

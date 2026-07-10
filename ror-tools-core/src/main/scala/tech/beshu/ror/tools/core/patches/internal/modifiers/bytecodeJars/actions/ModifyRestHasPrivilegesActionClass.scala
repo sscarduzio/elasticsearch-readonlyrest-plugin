@@ -16,17 +16,18 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions
 
+import better.files.File
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   It replaces the implementation of the getUsername(...) method so that it always returns the constant string "_xpack",
   forcing the “has privileges” REST action to execute as if it were requested in the context of the internal X-Pack user,
   regardless of the actual incoming request/user.
-*/
-private [patches] object ModifyRestHasPrivilegesActionClass extends BytecodeJarModifier {
+ */
+private[patches] object ModifyRestHasPrivilegesActionClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -43,25 +44,28 @@ private [patches] object ModifyRestHasPrivilegesActionClass extends BytecodeJarM
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "getUsername" =>
-          new GetUsernameMethodReturningXpackUsername(super.visitMethod(access, name, descriptor, signature, exceptions))
+          new GetUsernameMethodReturningXpackUsername(
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+          )
         case _ =>
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
-  private class GetUsernameMethodReturningXpackUsername(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class GetUsernameMethodReturningXpackUsername(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -71,10 +75,19 @@ private [patches] object ModifyRestHasPrivilegesActionClass extends BytecodeJarM
       underlying.visitInsn(Opcodes.ARETURN)
       val label1 = new Label()
       underlying.visitLabel(label1)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/rest/action/user/RestHasPrivilegesAction;", null, label0, label1, 0)
+      underlying.visitLocalVariable(
+        "this",
+        "Lorg/elasticsearch/xpack/security/rest/action/user/RestHasPrivilegesAction;",
+        null,
+        label0,
+        label1,
+        0
+      )
       underlying.visitLocalVariable("request", "Lorg/elasticsearch/rest/RestRequest;", null, label0, label1, 1)
       underlying.visitMaxs(1, 2)
       underlying.visitEnd()
     }
+
   }
+
 }

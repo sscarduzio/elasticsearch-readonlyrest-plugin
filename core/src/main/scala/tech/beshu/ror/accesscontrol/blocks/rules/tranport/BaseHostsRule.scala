@@ -21,67 +21,72 @@ import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Host.*
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
 import tech.beshu.ror.accesscontrol.domain.{Address, RequestId}
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.TaskOps.*
 
 import scala.util.Success
 
-private[rules] abstract class BaseHostsRule(resolver: HostnameResolver)
-  extends RegularRule with Logging {
+private[rules] abstract class BaseHostsRule(resolver: HostnameResolver) extends RegularRule with RequestIdAwareLogging {
 
-  protected def checkAllowedAddresses(blockContext: BlockContext)
-                                     (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
-                                      addressToCheck: Address): Task[Boolean] = {
+  protected def checkAllowedAddresses(
+      blockContext: BlockContext
+  )(allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]], addressToCheck: Address): Task[Boolean] = {
     implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     allowedAddresses
-      .foldLeft(Task.now(false)) {
-        case (result, host) =>
-          result
-            .flatMap {
-              case true =>
-                Task.now(true)
-              case false =>
-                host
-                  .resolve(blockContext).toOption
-                  .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck, blockContext)))
-            }
+      .foldLeft(Task.now(false)) { case (result, host) =>
+        result
+          .flatMap {
+            case true =>
+              Task.now(true)
+            case false =>
+              host
+                .resolve(blockContext)
+                .toOption
+                .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck)))
+          }
       }
   }
 
-  private def ipMatchesAddress(allowedHost: Address,
-                               address: Address,
-                               blockContext: BlockContext)
-                              (implicit requestId: RequestId)= {
+  private def ipMatchesAddress(allowedHost: Address, address: Address)(
+      implicit requestId: RequestId
+  ) = {
     val parallelyResolved = Task.parMap2(resolveToIps(allowedHost), resolveToIps(address))(ParallellyResolvedIps.apply)
     val result = for {
       allowedHostIps <- OptionT(parallelyResolved.map(_.allowedHost))
       addressIps <- OptionT(parallelyResolved.map(_.address))
       isMatching = addressIps.exists(ip => allowedHostIps.exists(_.contains(ip)))
-      _ = logger.debug(s"[${blockContext.requestContext.id.show}] address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=${isMatching.show}")
+      _ = logger.debug(
+        s"address IPs [${address.show}] resolved to [${addressIps.show}], allowed addresses [${allowedHost.show}] resolved to [${allowedHostIps.show}], isMatching=${isMatching.show}"
+      )
     } yield isMatching
     result.value.map(_.getOrElse(false))
   }
 
-  private sealed case class ParallellyResolvedIps(allowedHost: Option[NonEmptyList[Ip]], address: Option[NonEmptyList[Ip]])
+  private sealed case class ParallellyResolvedIps(
+      allowedHost: Option[NonEmptyList[Ip]],
+      address: Option[NonEmptyList[Ip]]
+  )
 
-  private def resolveToIps(address: Address)
-                          (implicit requestId: RequestId)=
+  private def resolveToIps(address: Address)(
+      implicit requestId: RequestId
+  ) =
     address match {
       case address: Address.Ip =>
         Task.now(Some(NonEmptyList.one(address)))
       case address: Address.Name =>
         resolver
           .resolve(address)
-          .andThen {
-            case Success(None) => logger.warn(s"[${requestId.show}] Cannot resolve hostname: ${Show[Host].show(address.value)}")
+          .andThen { case Success(None) =>
+            logger.warn(s"Cannot resolve hostname: ${Show[Host].show(address.value)}")
           }
     }
+
 }
 
 trait HostnameResolver {

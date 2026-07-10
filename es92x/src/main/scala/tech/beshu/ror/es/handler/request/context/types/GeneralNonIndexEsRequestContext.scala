@@ -18,9 +18,10 @@ package tech.beshu.ror.es.handler.request.context.types
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -28,19 +29,23 @@ import tech.beshu.ror.syntax.*
 
 import scala.annotation.unused
 
-class GeneralNonIndexEsRequestContext(@unused actionRequest: ActionRequest,
-                                      esContext: EsContext,
-                                      clusterService: RorClusterService,
-                                      override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
+class GeneralNonIndexEsRequestContext(
+    @unused actionRequest: ActionRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
-  override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
-    requestContext = this,
-    userMetadata = UserMetadata.from(this),
-    responseHeaders = Set.empty,
-    responseTransformations = List.empty
-  )
+  override def initialBlockContext(block: Block): GeneralNonIndexRequestBlockContext =
+    GeneralNonIndexRequestBlockContext(
+      block = block,
+      requestContext = this,
+      blockMetadata = BlockMetadata.from(this),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
+    )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = None
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified
 }

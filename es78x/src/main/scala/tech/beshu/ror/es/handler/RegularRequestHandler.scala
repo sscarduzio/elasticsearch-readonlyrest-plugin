@@ -17,62 +17,65 @@
 package tech.beshu.ror.es.handler
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.*
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.*
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
+import tech.beshu.ror.accesscontrol.blocks.{
+  BlockContext,
+  BlockContextUpdater,
+  FilteredResponseFields,
+  ResponseTransformation
+}
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.Cause.fromMismatchedCause
 import tech.beshu.ror.accesscontrol.response.ForbiddenResponseContext.{ForbiddenBlockMatch, OperationNotAllowed}
 import tech.beshu.ror.boot.ReadonlyRest.Engine
-import tech.beshu.ror.es.{RorActionListener, AtEsLevelUpdateActionResponseListener}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.handler.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse
 import tech.beshu.ror.es.utils.ThreadContextOps.*
-import tech.beshu.ror.implicits.*
+import tech.beshu.ror.es.{AtEsLevelUpdateActionResponseListener, RorActionListener}
 import tech.beshu.ror.syntax.Set
-import tech.beshu.ror.utils.LoggerOps.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.time.{Duration, Instant}
 import scala.util.{Failure, Success, Try}
 
-class RegularRequestHandler(engine: Engine,
-                            esContext: EsContext,
-                            threadPool: ThreadPool)
-                           (implicit scheduler: Scheduler)
-  extends Logging {
+class RegularRequestHandler(engine: Engine, esContext: EsContext, threadPool: ThreadPool)(
+    implicit scheduler: Scheduler
+) extends RequestIdAwareLogging {
 
-  def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
+  def handle[B <: BlockContext: BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.core.accessControl
       .handleRegularRequest(request)
-      .map { r =>
-        threadPool.getThreadContext.stashPreservingSomeHeaders(esContext).bracket { _ =>
-          commitResult(r.result, request)
+      .map { case (result, _) =>
+        doPrivileged {
+          commitResult(result, request)
         }
       }
   }
 
-  private def commitResult[B <: BlockContext : BlockContextUpdater](result: RegularRequestResult[B],
-                                                                    request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
+  private def commitResult[B <: BlockContext: BlockContextUpdater](
+      result: RegularRequestResult[B],
+      request: EsRequest[B] with RequestContext.Aux[B]
+  ): Unit = {
     Try {
       result match {
-        case allow: RegularRequestResult.Allow[B] =>
-          onAllow(request, allow.blockContext)
-        case RegularRequestResult.ForbiddenBy(_, block) =>
-          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(block)))
-        case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(request, causes.toNonEmptyList.map(fromMismatchedCause))
+        case allow: RegularRequestResult.Allowed[B] =>
+          onAllow(request, allow.matchedBlockContext)
+        case RegularRequestResult.Forbidden(blockContext) =>
+          onForbidden(request, NonEmptyList.one(ForbiddenBlockMatch(blockContext.block)))
+        case r @ RegularRequestResult.ForbiddenByMismatched(_) =>
+          onForbidden(request, r.causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound(allowedClusters) =>
           onIndexNotFound(request, allowedClusters)
         case RegularRequestResult.AliasNotFound() =>
@@ -85,15 +88,15 @@ class RegularRequestHandler(engine: Engine,
           proceed(request, esContext.listener)
       }
     } match {
-      case Success(_) =>
+      case Success(_)  =>
       case Failure(ex) =>
-        logger.errorEx(s"[${request.id.toRequestId.show}] ACL committing result failure", ex)
+        implicit val requestContextImpl: RequestContext.Aux[B] = request
+        logger.errorEx(s"ACL committing result failure", ex)
         esContext.listener.onFailure(new Exception(ex))
     }
   }
 
-  private def onAllow[B <: BlockContext](request: EsRequest[B] with RequestContext.Aux[B],
-                                         blockContext: B): Unit = {
+  private def onAllow[B <: BlockContext](request: EsRequest[B] with RequestContext.Aux[B], blockContext: B): Unit = {
     configureResponseTransformations(blockContext.responseTransformations)
     request.modifyUsing(blockContext) match {
       case ModificationResult.Modified =>
@@ -101,7 +104,9 @@ class RegularRequestHandler(engine: Engine,
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
-        logger.error(s"[${request.id.toRequestId.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        noRequestIdLogger.error(
+          s"Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can."
+        )
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
       case response: CustomResponse =>
         respond(request, response)
@@ -110,15 +115,22 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def onForbidden(requestContext: RequestContext, causes: NonEmptyList[ForbiddenResponseContext.Cause]): Unit = {
+  private def onForbidden(
+      requestContext: RequestContext,
+      causes: NonEmptyList[ForbiddenResponseContext.Cause]
+  ): Unit = {
     logRequestProcessingTime(requestContext)
-    esContext.listener.onFailure(ForbiddenResponse.create(
-      ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext)
-    ))
+    esContext.listener.onFailure(
+      ForbiddenResponse.create(
+        ForbiddenResponseContext.from(causes, engine.core.accessControl.staticContext)
+      )
+    )
   }
 
-  private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B],
-                                                                       allowedClusters: Set[ClusterName.Full]): Unit = {
+  private def onIndexNotFound[B <: BlockContext: BlockContextUpdater](
+      request: EsRequest[B] with RequestContext.Aux[B],
+      allowedClusters: Set[ClusterName.Full]
+  ): Unit = {
     BlockContextUpdater[B] match {
       case GeneralIndexRequestBlockContextUpdater =>
         handleIndexNotFoundForGeneralIndexRequest(request, allowedClusters)
@@ -128,86 +140,88 @@ class RegularRequestHandler(engine: Engine,
         handleIndexNotFoundForMultiSearchRequest(request, allowedClusters)
       case AliasRequestBlockContextUpdater =>
         handleIndexNotFoundForAliasRequest(request, allowedClusters)
-      case CurrentUserMetadataRequestBlockContextUpdater |
-           GeneralNonIndexRequestBlockContextUpdater |
-           RepositoryRequestBlockContextUpdater |
-           SnapshotRequestBlockContextUpdater |
-           DataStreamRequestBlockContextUpdater |
-           TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater |
-           RorApiRequestBlockContextUpdater =>
+      case UserMetadataRequestBlockContextUpdater | GeneralNonIndexRequestBlockContextUpdater |
+          RepositoryRequestBlockContextUpdater | SnapshotRequestBlockContextUpdater |
+          DataStreamRequestBlockContextUpdater | TemplateRequestBlockContextUpdater |
+          MultiIndexRequestBlockContextUpdater | RorApiRequestBlockContextUpdater =>
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
     }
   }
 
-  private def onAliasNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
+  private def onAliasNotFound[B <: BlockContext: BlockContextUpdater](
+      request: EsRequest[B] with RequestContext.Aux[B]
+  ): Unit = {
     BlockContextUpdater[B] match {
       case AliasRequestBlockContextUpdater =>
         handleAliasNotFoundForAliasRequest(request)
-      case FilterableMultiRequestBlockContextUpdater |
-           FilterableRequestBlockContextUpdater |
-           GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
-           GeneralNonIndexRequestBlockContextUpdater |
-           RepositoryRequestBlockContextUpdater |
-           SnapshotRequestBlockContextUpdater |
-           DataStreamRequestBlockContextUpdater |
-           TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater |
-           RorApiRequestBlockContextUpdater =>
+      case FilterableMultiRequestBlockContextUpdater | FilterableRequestBlockContextUpdater |
+          GeneralIndexRequestBlockContextUpdater | UserMetadataRequestBlockContextUpdater |
+          GeneralNonIndexRequestBlockContextUpdater | RepositoryRequestBlockContextUpdater |
+          SnapshotRequestBlockContextUpdater | DataStreamRequestBlockContextUpdater |
+          TemplateRequestBlockContextUpdater | MultiIndexRequestBlockContextUpdater |
+          RorApiRequestBlockContextUpdater =>
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
     }
   }
 
-  private def onTemplateNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
+  private def onTemplateNotFound[B <: BlockContext: BlockContextUpdater](
+      request: EsRequest[B] with RequestContext.Aux[B]
+  ): Unit = {
     BlockContextUpdater[B] match {
       case TemplateRequestBlockContextUpdater =>
         handleTemplateNotFoundForTemplateRequest(request)
-      case FilterableMultiRequestBlockContextUpdater |
-           FilterableRequestBlockContextUpdater |
-           GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
-           GeneralNonIndexRequestBlockContextUpdater |
-           RepositoryRequestBlockContextUpdater |
-           SnapshotRequestBlockContextUpdater |
-           DataStreamRequestBlockContextUpdater |
-           AliasRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater |
-           RorApiRequestBlockContextUpdater =>
+      case FilterableMultiRequestBlockContextUpdater | FilterableRequestBlockContextUpdater |
+          GeneralIndexRequestBlockContextUpdater | UserMetadataRequestBlockContextUpdater |
+          GeneralNonIndexRequestBlockContextUpdater | RepositoryRequestBlockContextUpdater |
+          SnapshotRequestBlockContextUpdater | DataStreamRequestBlockContextUpdater | AliasRequestBlockContextUpdater |
+          MultiIndexRequestBlockContextUpdater | RorApiRequestBlockContextUpdater =>
         onForbidden(request, NonEmptyList.one(OperationNotAllowed))
     }
   }
 
-  private def handleIndexNotFoundForGeneralIndexRequest(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext],
-                                                        allowedClusters: Set[ClusterName.Full]): Unit = {
+  private def handleIndexNotFoundForGeneralIndexRequest(
+      request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext],
+      allowedClusters: Set[ClusterName.Full]
+  ): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleIndexNotFoundForSearchRequest(request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext],
-                                                  allowedClusters: Set[ClusterName.Full]): Unit = {
+  private def handleIndexNotFoundForSearchRequest(
+      request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext],
+      allowedClusters: Set[ClusterName.Full]
+  ): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleIndexNotFoundForMultiSearchRequest(request: EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext],
-                                                       allowedClusters: Set[ClusterName.Full]): Unit = {
+  private def handleIndexNotFoundForMultiSearchRequest(
+      request: EsRequest[FilterableMultiRequestBlockContext]
+        with RequestContext.Aux[FilterableMultiRequestBlockContext],
+      allowedClusters: Set[ClusterName.Full]
+  ): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleIndexNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext],
-                                                 allowedClusters: Set[ClusterName.Full]): Unit = {
+  private def handleIndexNotFoundForAliasRequest(
+      request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext],
+      allowedClusters: Set[ClusterName.Full]
+  ): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound(allowedClusters)
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleAliasNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]): Unit = {
+  private def handleAliasNotFoundForAliasRequest(
+      request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]
+  ): Unit = {
     val modificationResult = request.modifyWhenAliasNotFound
     handleModificationResult(request, modificationResult)
   }
 
-  private def handleTemplateNotFoundForTemplateRequest(request: EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]): Unit = {
+  private def handleTemplateNotFoundForTemplateRequest(
+      request: EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]
+  ): Unit = {
     val modificationResult = request.modifyWhenTemplateNotFound
     handleModificationResult(request, modificationResult)
   }
@@ -228,9 +242,8 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def configureResponseTransformations(responseTransformations: List[ResponseTransformation]): Unit = {
-    responseTransformations.foreach {
-      case FilteredResponseFields(responseFieldsRestrictions) =>
-        esContext.channel.setResponseFieldRestrictions(responseFieldsRestrictions)
+    responseTransformations.foreach { case FilteredResponseFields(responseFieldsRestrictions) =>
+      esContext.channel.setResponseFieldRestrictions(responseFieldsRestrictions)
     }
   }
 
@@ -242,20 +255,23 @@ class RegularRequestHandler(engine: Engine,
 
   private def addProperHeader(): Unit = {
     if (esContext.action.isFieldCapsAction || esContext.action.isRollupAction || esContext.action.isGetSettingsAction)
-      threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.nodeName)
+      threadPool.getThreadContext.addSystemAuthenticationHeader(esContext.esNodeSettings.nodeName)
     else
-      threadPool.getThreadContext.addXpackUserAuthenticationHeader(esContext.nodeName)
+      threadPool.getThreadContext.addXpackUserAuthenticationHeader(esContext.esNodeSettings.nodeName)
   }
 
   private def respond(requestContext: RequestContext, response: CustomResponse): Unit = {
     logRequestProcessingTime(requestContext)
     response match {
-      case CustomResponse.Success(response) => esContext.listener.onResponse(response)
+      case CustomResponse.Success(response)  => esContext.listener.onResponse(response)
       case CustomResponse.Failure(exception) => esContext.listener.onFailure(exception)
     }
   }
 
-  private def logRequestProcessingTime(requestContext: RequestContext): Unit = {
-    logger.debug(s"[${requestContext.id.toRequestId.show}] Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
+  private def logRequestProcessingTime(
+      implicit requestContext: RequestContext
+  ): Unit = {
+    logger.debug(s"Request processing time: ${Duration.between(requestContext.timestamp, Instant.now()).toMillis}ms")
   }
+
 }

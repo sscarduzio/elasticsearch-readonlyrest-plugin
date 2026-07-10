@@ -22,9 +22,10 @@ import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, Res
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventResponse
 
 class RestRRAuditEventActionResponseBuilder(channel: RestChannel)
-  extends RestBuilderListener[RRAuditEventResponse](channel) {
+    extends RestBuilderListener[RRAuditEventResponse](channel) {
 
   override def buildResponse(response: RRAuditEventResponse, builder: XContentBuilder): RestResponse = {
     new BytesRestResponse(RestStatus.NO_CONTENT, "")
   }
+
 }

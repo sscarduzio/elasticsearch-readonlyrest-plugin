@@ -1,0 +1,46 @@
+steps:
+  - checkout: self
+    fetchDepth: 1
+    clean: false
+    persistCredentials: true
+  - task: JavaToolInstaller@0
+    displayName: Switch to Java 21
+    inputs:
+      versionSpec: '21'
+      jdkArchitectureOption: 'x64'
+      jdkSourceOption: 'PreInstalled'
+  - powershell: |
+      $env:ROR_LIBS_STORE_ENDPOINT_URL = $env:VAR_ROR_LIBS_STORE_ENDPOINT_URL
+      $env:ROR_LIBS_STORE_REGION = $env:VAR_ROR_LIBS_STORE_REGION
+      $env:ROR_LIBS_STORE_ACCESS_KEY_ID = $env:VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+      $env:ROR_LIBS_STORE_ACCESS_KEY_SECRET = $env:VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+      $env:ROR_LIBS_STORE_BUCKET = $env:VAR_ROR_LIBS_STORE_BUCKET
+      $env:ROR_LIBS_STORE_PATH_PREFIX = $env:VAR_ROR_LIBS_STORE_PATH_PREFIX
+
+      Write-Host ">>> $env:ES_MODULE"
+      # GRADLE_USER_HOME / GRADLE_OPTS are cleared at JOB scope (see azure-pipelines.yml) so the Linux
+      # image paths don't leak here. Also override gradle.properties' Linux installations.paths on the
+      # command line and let Windows auto-detect/provision JDKs (JavaToolInstaller above).
+      $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE",
+        "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
+      if ($env:ES_VERSION) { $gradleArgs += "-PesVersion=$env:ES_VERSION" }
+      .\gradlew @gradleArgs
+      if ($LASTEXITCODE -ne 0) {
+        Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
+          Get-Content $_.FullName
+        }
+        exit 1
+      }
+    env:
+      VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+      VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
+      VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+      VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+      VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+      VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
+  - task: PublishTestResults@2
+    condition: failed()
+    inputs:
+      testRunTitle: "Windows $(ES_MODULE) results"
+      testResultsFiles: "**/TEST*xml"
+      mergeTestResults: true

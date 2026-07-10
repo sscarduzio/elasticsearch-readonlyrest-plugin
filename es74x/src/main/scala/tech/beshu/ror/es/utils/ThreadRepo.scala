@@ -28,7 +28,7 @@ object ThreadRepo {
   def safeSetRestChannel(restChannel: RorRestChannel)(code: => Unit): Unit = {
     threadLocalChannel.set(restChannel)
     Try(code) match {
-      case Success(_) =>
+      case Success(_)  =>
       case Failure(ex) =>
         removeRestChannel(restChannel)
         throw ex
@@ -44,7 +44,7 @@ object ThreadRepo {
       channel <- Option(threadLocalChannel.get)
       request <- Option(channel.request())
     } yield {
-      if(!shouldRemovingRestChannelBePostponedFor(request)) threadLocalChannel.remove()
+      if (!shouldRemovingRestChannelBePostponedFor(request)) threadLocalChannel.remove()
       channel
     }
   }
@@ -57,4 +57,5 @@ object ThreadRepo {
       .from(request.uri())
       .exists(_.isCatTemplatePath)
   }
+
 }

@@ -21,7 +21,6 @@ import cats.instances.either.*
 import cats.instances.list.*
 import cats.syntax.traverse.*
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.accesscontrol.blocks.variables.Tokenizer.Token.Transformation
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
@@ -33,50 +32,59 @@ import tech.beshu.ror.accesscontrol.blocks.variables.transformation.domain.Funct
 import tech.beshu.ror.accesscontrol.blocks.variables.{Tokenizer, runtime}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.json.JsonPath
 
 import scala.util.matching.Regex
 import scala.util.{Failure, Success}
 
-class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCompiler) extends Logging {
+class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCompiler) extends RequestIdAwareLogging {
 
-  def createSingleResolvableVariableFrom[T: Convertible](text: NonEmptyString): Either[CreationError, RuntimeSingleResolvableVariable[T]] = {
+  def createSingleResolvableVariableFrom[T: Convertible](
+      text: NonEmptyString
+  ): Either[CreationError, RuntimeSingleResolvableVariable[T]] = {
     singleExtactablesFrom(Tokenizer.tokenize(text))
       .flatMap(variableFromSingleExtractables[T])
   }
 
-  def createMultiResolvableVariableFrom[T: Convertible](text: NonEmptyString): Either[CreationError, RuntimeMultiResolvableVariable[T]] = {
+  def createMultiResolvableVariableFrom[T: Convertible](
+      text: NonEmptyString
+  ): Either[CreationError, RuntimeMultiResolvableVariable[T]] = {
     multiExtractablesFrom(Tokenizer.tokenize(text))
       .flatMap(variableFromMultiExtractables[T])
   }
 
-  private def singleExtactablesFrom(tokens: NonEmptyList[Token]): Either[CreationError, NonEmptyList[SingleExtractable]] = {
-    tokens
-      .map {
-        case Token.Text(value) =>
-          Right(ExtractableType.Single.createConstExtractable(value))
-        case Token.Placeholder(name, _, transformation) =>
-          createExtractableWithTransformation(name, transformation, ExtractableType.Single)
-        case Token.ExplodablePlaceholder(_, _, _) =>
-          Left(CreationError.CannotUserMultiVariableInSingleVariableContext)
-      }
-      .sequence
+  private def singleExtactablesFrom(
+      tokens: NonEmptyList[Token]
+  ): Either[CreationError, NonEmptyList[SingleExtractable]] = {
+    tokens.map {
+      case Token.Text(value) =>
+        Right(ExtractableType.Single.createConstExtractable(value))
+      case Token.Placeholder(name, _, transformation) =>
+        createExtractableWithTransformation(name, transformation, ExtractableType.Single)
+      case Token.ExplodablePlaceholder(_, _, _) =>
+        Left(CreationError.CannotUserMultiVariableInSingleVariableContext)
+    }.sequence
   }
 
   private def variableFromSingleExtractables[T: Convertible](extractables: NonEmptyList[SingleExtractable]) = {
     val alreadyResolved = extractables.collect { case c: SingleExtractable.Const => c }
     if (alreadyResolved.length == extractables.length) {
-      implicitly[Convertible[T]].convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
+      implicitly[Convertible[T]]
+        .convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
         .map(value => RuntimeSingleResolvableVariable.AlreadyResolved(value))
-        .left.map(e => CreationError.VariableConversionError(e.msg))
+        .left
+        .map(e => CreationError.VariableConversionError(e.msg))
     } else {
       Right(RuntimeSingleResolvableVariable.ToBeResolved[T](extractables))
     }
   }
 
-  private def multiExtractablesFrom(tokens: NonEmptyList[Token]): Either[CreationError, NonEmptyList[MultiExtractable]] = {
-    val acc = tokens.foldLeft(Acc(Vector.empty, 0)) {
-      case (Acc(results, multiExtractableCount), token) => token match {
+  private def multiExtractablesFrom(
+      tokens: NonEmptyList[Token]
+  ): Either[CreationError, NonEmptyList[MultiExtractable]] = {
+    val acc = tokens.foldLeft(Acc(Vector.empty, 0)) { case (Acc(results, multiExtractableCount), token) =>
+      token match {
         case Token.Text(value) =>
           Acc(results :+ Right(ExtractableType.Multi.createConstExtractable(value)), multiExtractableCount)
         case Token.Placeholder(name, _, transformation) =>
@@ -98,26 +106,32 @@ class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCom
   private def variableFromMultiExtractables[T: Convertible](extractables: NonEmptyList[MultiExtractable]) = {
     val alreadyResolved = extractables.collect { case c: runtime.MultiExtractable.Const => c }
     if (alreadyResolved.length == extractables.length) {
-      implicitly[Convertible[T]].convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
+      implicitly[Convertible[T]]
+        .convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
         .map(value => RuntimeMultiResolvableVariable.AlreadyResolved(NonEmptyList.one(value)))
-        .left.map(e => CreationError.VariableConversionError(e.msg))
+        .left
+        .map(e => CreationError.VariableConversionError(e.msg))
     } else {
       Right(RuntimeMultiResolvableVariable.ToBeResolved[T](extractables))
     }
   }
 
-  private def createExtractableWithTransformation(value: String,
-                                                  maybeTransformation: Option[Transformation],
-                                                  `type`: ExtractableType): Either[CreationError, `type`.TYPE] = {
+  private def createExtractableWithTransformation(
+      value: String,
+      maybeTransformation: Option[Transformation],
+      `type`: ExtractableType
+  ): Either[CreationError, `type`.TYPE] = {
     for {
       transformation <- maybeTransformation.map(compile(_).map(Some.apply)).getOrElse(Right(None))
       extractable <- createExtractableFromToken(value, transformation, `type`)
     } yield extractable
   }
 
-  private def createExtractableFromToken(value: String,
-                                         maybeTransformation: Option[Function],
-                                         `type`: ExtractableType): Either[CreationError, `type`.TYPE] = {
+  private def createExtractableFromToken(
+      value: String,
+      maybeTransformation: Option[Function],
+      `type`: ExtractableType
+  ): Either[CreationError, `type`.TYPE] = {
     value match {
       case regexes.userVar() =>
         Right(`type`.createUserIdExtractable(maybeTransformation))
@@ -136,19 +150,25 @@ class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCom
     }
   }
 
-  private def createJwtExtractable(jsonPathStr: String, maybeTransformation: Option[Function], `type`: ExtractableType): Either[CreationError, `type`.TYPE] = {
+  private def createJwtExtractable(
+      jsonPathStr: String,
+      maybeTransformation: Option[Function],
+      `type`: ExtractableType
+  ): Either[CreationError, `type`.TYPE] = {
     JsonPath(jsonPathStr) match {
       case Success(compiledPath) =>
         Right(`type`.createJwtVariableExtractable(compiledPath, maybeTransformation))
       case Failure(ex) =>
-        logger.debug("Compiling JSON path failed", ex)
+        noRequestIdLogger.debug("Compiling JSON path failed", ex)
         Left(CreationError.InvalidVariableDefinition(s"cannot compile '${jsonPathStr.show}' to JsonPath"))
     }
   }
 
-  private def createHeaderExtractable(headerNameStr: String,
-                                      maybeTransformation: Option[Function],
-                                      `type`: ExtractableType): Either[CreationError, `type`.TYPE] = {
+  private def createHeaderExtractable(
+      headerNameStr: String,
+      maybeTransformation: Option[Function],
+      `type`: ExtractableType
+  ): Either[CreationError, `type`.TYPE] = {
     NonEmptyString.unapply(headerNameStr) match {
       case Some(nes) =>
         Right(`type`.createHeaderVariableExtractable(Header.Name(nes), maybeTransformation))
@@ -160,21 +180,30 @@ class RuntimeResolvableVariableCreator(transformationCompiler: TransformationCom
   private def compile(transformation: Token.Transformation) = {
     transformationCompiler
       .compile(transformation.name)
-      .left.map(toCreationError(transformation.name, _))
+      .left
+      .map(toCreationError(transformation.name, _))
   }
 
-  private def toCreationError(transformationStr: String,
-                              error: TransformationCompiler.CompilationError): CreationError = error match {
+  private def toCreationError(
+      transformationStr: String,
+      error: TransformationCompiler.CompilationError
+  ): CreationError = error match {
     case CompilationError.UnableToParseTransformation(message) =>
-      CreationError.InvalidVariableDefinition(s"Unable to parse transformation string: [${transformationStr.show}]. Cause: ${message.show}")
+      CreationError.InvalidVariableDefinition(
+        s"Unable to parse transformation string: [${transformationStr.show}]. Cause: ${message.show}"
+      )
     case CompilationError.UnableToCompileTransformation(message) =>
-      CreationError.InvalidVariableDefinition(s"Unable to compile transformation string: [${transformationStr.show}]. Cause: ${message.show}")
+      CreationError.InvalidVariableDefinition(
+        s"Unable to compile transformation string: [${transformationStr.show}]. Cause: ${message.show}"
+      )
   }
+
 }
 
 object RuntimeResolvableVariableCreator {
 
   sealed trait CreationError
+
   object CreationError {
     case object CannotUserMultiVariableInSingleVariableContext extends CreationError
     case object OnlyOneMultiVariableCanBeUsedInVariableDefinition extends CreationError
@@ -202,6 +231,7 @@ object RuntimeResolvableVariableCreator {
   }
 
   private object ExtractableType {
+
     case object Single extends ExtractableType {
       override type TYPE = SingleExtractable
       override def createConstExtractable(value: String): TYPE = SingleExtractable.Const(value)
@@ -231,8 +261,8 @@ object RuntimeResolvableVariableCreator {
       override def createAvailableGroupsExtractable(transformation: Option[Function]): TYPE =
         new MultiExtractable.AvailableGroupsVar(transformation)
     }
+
   }
 
-  private final case class Acc(results: Vector[Either[CreationError, MultiExtractable]],
-                               multiExtractableCount: Int)
+  private final case class Acc(results: Vector[Either[CreationError, MultiExtractable]], multiExtractableCount: Int)
 }

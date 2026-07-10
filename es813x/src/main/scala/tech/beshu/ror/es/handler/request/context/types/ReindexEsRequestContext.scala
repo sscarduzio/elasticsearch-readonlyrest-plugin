@@ -23,7 +23,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -31,12 +30,12 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class ReindexEsRequestContext(actionRequest: ReindexRequest,
-                              esContext: EsContext,
-                              aclContext: AccessControlStaticContext,
-                              clusterService: RorClusterService,
-                              override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+class ReindexEsRequestContext(
+    actionRequest: ReindexRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ReindexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     val searchRequestIndices = request.getSearchRequest.indices.asSafeSet
@@ -46,26 +45,30 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
       .flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: ReindexRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ReindexRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(RequestedIndex.fromString)
     val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty
 
     val indexOfIndexRequest = actionRequest.getDestination.index()
-    val isDestinationIndexOnFilteredIndicesList = RequestedIndex.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
+    val isDestinationIndexOnFilteredIndicesList =
+      RequestedIndex.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
 
     if (isDestinationIndexOnFilteredIndicesList && isSearchRequestComposedOnlyOfAllowedIndices) {
       Modified
     } else {
       if (!isDestinationIndexOnFilteredIndicesList) {
-        logger.info(s"[${id.show}] Destination index of _reindex request is forbidden")
+        logger.info(s"Destination index of _reindex request is forbidden")
       }
       if (!isSearchRequestComposedOnlyOfAllowedIndices) {
-        logger.info(s"[${id.show}] At least one index from sources indices list of _reindex request is forbidden")
+        logger.info(s"At least one index from sources indices list of _reindex request is forbidden")
       }
       ShouldBeInterrupted
     }
   }
+
 }

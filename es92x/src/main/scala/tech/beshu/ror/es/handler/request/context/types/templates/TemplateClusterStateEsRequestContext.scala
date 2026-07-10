@@ -25,10 +25,13 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{GettingIndexTemplates, GettingLegacyAndIndexTemplates, GettingLegacyTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{
+  GettingIndexTemplates,
+  GettingLegacyAndIndexTemplates,
+  GettingLegacyTemplates
+}
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
@@ -42,28 +45,32 @@ import scala.jdk.CollectionConverters.*
 
 object TemplateClusterStateEsRequestContext {
 
-  def from(actionRequest: ClusterStateRequest,
-           esContext: EsContext,
-           clusterService: RorClusterService,
-           settings: Settings,
-           threadPool: ThreadPool): Option[TemplateClusterStateEsRequestContext] = {
+  def from(
+      actionRequest: ClusterStateRequest,
+      esContext: EsContext,
+      settings: Settings,
+      threadPool: ThreadPool
+  ): Option[TemplateClusterStateEsRequestContext] = {
     esContext.channel.restRequest.path match {
       case TemplatePath(_) | CatTemplatePath(_) =>
-        Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, settings, threadPool))
+        Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, settings, threadPool))
       case _ =>
         None
     }
   }
+
 }
 
-class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRequest,
-                                                   esContext: EsContext,
-                                                   clusterService: RorClusterService,
-                                                   settings: Settings,
-                                                   override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyAndIndexTemplates](
-    actionRequest, esContext, clusterService, threadPool
-  ) {
+class TemplateClusterStateEsRequestContext private (
+    actionRequest: ClusterStateRequest,
+    esContext: EsContext,
+    settings: Settings,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyAndIndexTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
   private lazy val allTemplatesNamePattern = TemplateNamePattern(nes("*"))
 
@@ -82,8 +89,16 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
     blockContext.templateOperation match {
       case GettingLegacyAndIndexTemplates(legacyTemplatesOperation, indexTemplatesOperation) =>
         updateResponse {
-          val func1 = modifyLegacyTemplatesOfResponse(_, legacyTemplatesOperation.namePatterns.toIterable, blockContext.responseTemplateTransformation)
-          val func2 = modifyIndexTemplatesOfResponse(_, indexTemplatesOperation.namePatterns.toIterable, blockContext.responseTemplateTransformation)
+          val func1 = modifyLegacyTemplatesOfResponse(
+            _,
+            legacyTemplatesOperation.namePatterns.toIterable,
+            blockContext.responseTemplateTransformation
+          )
+          val func2 = modifyIndexTemplatesOfResponse(
+            _,
+            indexTemplatesOperation.namePatterns.toIterable,
+            blockContext.responseTemplateTransformation
+          )
           func1 andThen func2
         }
       case GettingLegacyTemplates(namePatterns) =>
@@ -97,7 +112,8 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -105,13 +121,15 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   private def updateResponse(func: ClusterStateResponse => ClusterStateResponse) = {
     ModificationResult.UpdateResponse.sync {
       case response: ClusterStateResponse => func(response)
-      case other => other
+      case other                          => other
     }
   }
 
-  private def modifyLegacyTemplatesOfResponse(response: ClusterStateResponse,
-                                              allowedTemplates: Iterable[TemplateNamePattern],
-                                              transformation: TemplatesTransformation) = {
+  private def modifyLegacyTemplatesOfResponse(
+      response: ClusterStateResponse,
+      allowedTemplates: Iterable[TemplateNamePattern],
+      transformation: TemplatesTransformation
+  ) = {
     val oldMetadata = response.getState.metadata()
     val filteredTemplates = GetTemplatesEsRequestContext
       .filter(oldMetadata.allTemplatesMetadata.values, transformation)
@@ -125,16 +143,19 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
       .map(_.name())
 
     val newMetadataWithFilteredTemplates = oldMetadata
-      .projects().values().asScala
+      .projects()
+      .values()
+      .asScala
       .foldLeft(oldMetadata) { case (clusterMetadata, projectMetadata) =>
         clusterMetadata.copyAndUpdateProject(
           projectMetadata.id(),
           (builder: ProjectMetadata.Builder) => {
             projectMetadata.templates().keySet().asScala.foreach {
               case templateName if filteredTemplates.contains(templateName) => // nothing to do
-              case templateName => builder.removeTemplate(templateName)
+              case templateName                                             => builder.removeTemplate(templateName)
             }
-          })
+          }
+        )
       }
 
     val modifiedClusterState =
@@ -150,9 +171,11 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
     )
   }
 
-  private def modifyIndexTemplatesOfResponse(response: ClusterStateResponse,
-                                             allowedTemplates: Iterable[TemplateNamePattern],
-                                             transformation: TemplatesTransformation) = {
+  private def modifyIndexTemplatesOfResponse(
+      response: ClusterStateResponse,
+      allowedTemplates: Iterable[TemplateNamePattern],
+      transformation: TemplatesTransformation
+  ) = {
     val oldMetadata = response.getState.metadata()
 
     val filteredTemplatesV2 =
@@ -169,7 +192,9 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         .toCovariantSet
 
     val newMetadataWithFilteredTemplatesV2 = oldMetadata
-      .projects().values().asScala
+      .projects()
+      .values()
+      .asScala
       .foldLeft(oldMetadata) { case (metadata, project) =>
         metadata.copyAndUpdateProject(
           project.id(),
@@ -178,7 +203,8 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
               case templateName if filteredTemplatesV2.contains(templateName) => // nothing to do
               case templateName => builder.removeIndexTemplate(templateName)
             }
-          })
+          }
+        )
       }
 
     val modifiedClusterState =
@@ -196,7 +222,10 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
 
   private lazy val emptyClusterResponse = {
     new ClusterStateResponse(
-      ClusterName.CLUSTER_NAME_SETTING.get(settings), ClusterState.EMPTY_STATE, false
+      ClusterName.CLUSTER_NAME_SETTING.get(settings),
+      ClusterState.EMPTY_STATE,
+      false
     )
   }
+
 }

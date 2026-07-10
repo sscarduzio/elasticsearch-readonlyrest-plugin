@@ -17,17 +17,15 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import io.jsonwebtoken.Jwts
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -39,79 +37,86 @@ import tech.beshu.ror.utils.misc.JwtUtils.*
 import tech.beshu.ror.utils.misc.Random
 
 import java.security.Key
-import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class RorKbnAuthenticationRuleTests
-  extends AnyWordSpec with Inside with BlockContextAssertion {
+class RorKbnAuthenticationRuleTests extends AnyWordSpec with BlockContextAssertion {
 
   "A RorKbnAuthenticationRule" should {
     "match" when {
       "token has valid HS256 signature" in {
         val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "user" := "user1",
-          "groups" := List("group1", "group2")
-        ))
+        val jwt = Jwt(
+          key,
+          claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2")
+          )
+        )
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+        ) { blockContext =>
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+          )
         }
       }
       "token has valid RS256 signature" in {
         val (pub, secret) = Random.generateRsaRandomKeys
-        val jwt = Jwt(secret, claims = List(
-          "user" := "user1",
-          "groups" := List("group1", "group2")
-        ))
+        val jwt = Jwt(
+          secret,
+          claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2")
+          )
+        )
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
           tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+        ) { blockContext =>
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+          )
         }
       }
       "groups claim name is defined and no groups field is passed in token claim" in {
         val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "user" := "user1",
-        ))
+        val jwt = Jwt(
+          key,
+          claims = List(
+            "user" := "user1",
+          )
+        )
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           tokenHeader = bearerHeader(jwt)
-        ) {
-          blockContext =>
-            assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
-            )(blockContext)
+        ) { blockContext =>
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims()))
+          )
         }
       }
       "preferred group is not on the groups list from JWT" in {
         val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "user" := "user1",
-          "groups" := List("group1", "group2")
-        ))
+        val jwt = Jwt(
+          key,
+          claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2")
+          )
+        )
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
@@ -119,13 +124,12 @@ class RorKbnAuthenticationRuleTests
           ),
           tokenHeader = bearerHeader(jwt),
           preferredGroupId = Some(GroupId("group5"))
-        ) {
-          blockContext =>
-            assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
-              jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
-              currentGroup = Some(GroupId("group5"))
-            )(blockContext)
+        ) { blockContext =>
+          assertBlockContext(blockContext)(
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+            jwt = Some(domain.Jwt.Payload(jwt.defaultClaims())),
+            currentGroup = Some(GroupId("group5"))
+          )
         }
       }
     }
@@ -133,86 +137,104 @@ class RorKbnAuthenticationRuleTests
       "token has invalid HS256 signature" in {
         val key1: Key = Jwts.SIG.HS256.key().build()
         val key2: Key = Jwts.SIG.HS256.key().build()
-        val jwt2 = Jwt(key2, claims = List(
-          "user" := "user1",
-          "groups" := List("group1", "group2")
-        ))
+        val jwt2 = Jwt(
+          key2,
+          claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2")
+          )
+        )
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
-          tokenHeader = bearerHeader(jwt2)
+          tokenHeader = bearerHeader(jwt2),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "token has invalid RS256 signature" in {
         val (pub, _) = Random.generateRsaRandomKeys
         val (_, secret) = Random.generateRsaRandomKeys
-        val jwt = Jwt(secret, claims = List(
-          "user" := "user1",
-          "groups" := List("group1", "group2")
-        ))
+        val jwt = Jwt(
+          secret,
+          claims = List(
+            "user" := "user1",
+            "groups" := List("group1", "group2")
+          )
+        )
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("Invalid or expired ROR Kibana token")
         )
       }
       "userId isn't passed in JWT token claim" in {
         val key: Key = Jwts.SIG.HS256.key().build()
-        val jwt = Jwt(key, claims = List(
-          "userId" := "user1",
-          "groups" := List("group1", "group2")
-        ))
+        val jwt = Jwt(
+          key,
+          claims = List(
+            "userId" := "user1",
+            "groups" := List("group1", "group2")
+          )
+        )
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = bearerHeader(jwt)
+          tokenHeader = bearerHeader(jwt),
+          denialCause = AuthenticationFailed("User claim not found in ROR Kibana token")
         )
       }
     }
   }
 
-  private def assertMatchRule(configuredRorKbnDef: RorKbnDef,
-                              tokenHeader: Header,
-                              preferredGroupId: Option[GroupId] = None)
-                             (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, Some(blockContextAssertion))
+  private def assertMatchRule(
+      configuredRorKbnDef: RorKbnDef,
+      tokenHeader: Header,
+      preferredGroupId: Option[GroupId] = None
+  )(blockContextAssertion: BlockContext => Unit): Unit =
+    assertRule(
+      configuredRorKbnDef,
+      tokenHeader,
+      preferredGroupId,
+      RuleCheckAssertion.RulePermitted(blockContextAssertion)
+    )
 
-  private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
-                                 tokenHeader: Header,
-                                 preferredGroupId: Option[GroupId] = None): Unit =
-    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, blockContextAssertion = None)
+  private def assertNotMatchRule(
+      configuredRorKbnDef: RorKbnDef,
+      tokenHeader: Header,
+      preferredGroupId: Option[GroupId] = None,
+      denialCause: Cause
+  ): Unit =
+    assertRule(configuredRorKbnDef, tokenHeader, preferredGroupId, RuleCheckAssertion.RuleDenied(denialCause))
 
-  private def assertRule(configuredRorKbnDef: RorKbnDef,
-                         tokenHeader: Header,
-                         preferredGroupId: Option[GroupId],
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled)
+  private def assertRule(
+      configuredRorKbnDef: RorKbnDef,
+      tokenHeader: Header,
+      preferredGroupId: Option[GroupId],
+      assertion: RuleCheckAssertion
+  ): Unit = {
+    val rule =
+      new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(configuredRorKbnDef), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.indices.withHeaders(
       preferredGroupId.map(_.toCurrentGroupHeader).toSeq :+ tokenHeader
     )
     val blockContext = GeneralIndexRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.from(requestContext),
+      blockMetadata = BlockMetadata.from(requestContext),
       responseHeaders = Set.empty,
       responseTransformations = List.empty,
       filteredIndices = Set.empty,
       allAllowedIndices = Set.empty,
       allAllowedClusters = Set.empty
     )
-    val result = rule.check(blockContext).runSyncUnsafe(1 second)
-    blockContextAssertion match {
-      case Some(assertOutputBlockContext) =>
-        inside(result) { case Fulfilled(outBlockContext) =>
-          assertOutputBlockContext(outBlockContext)
-        }
-      case None =>
-        result should be(Rejected())
-    }
+    rule.checkAndAssert(blockContext, assertion)
   }
+
 }

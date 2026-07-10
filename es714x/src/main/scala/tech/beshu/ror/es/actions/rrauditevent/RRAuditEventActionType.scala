@@ -20,9 +20,11 @@ import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRAuditEventActionType extends ActionType[RRAuditEventResponse](
-  RRAuditEventActionType.name, RRAuditEventActionType.exceptionReader
-)
+class RRAuditEventActionType
+    extends ActionType[RRAuditEventResponse](
+      RRAuditEventActionType.name,
+      RRAuditEventActionType.exceptionReader
+    )
 
 object RRAuditEventActionType {
   val name: String = RorAction.RorAuditEventAction.value
@@ -30,5 +32,5 @@ object RRAuditEventActionType {
 
   case object RRAuditEventActionTypeBeTransported extends Exception
 
-  private [rrauditevent] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuditEventActionTypeBeTransported
+  private[rrauditevent] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuditEventActionTypeBeTransported
 }

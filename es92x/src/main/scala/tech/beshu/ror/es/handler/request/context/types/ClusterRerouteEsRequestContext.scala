@@ -24,7 +24,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -32,46 +31,54 @@ import tech.beshu.ror.syntax.*
 
 import scala.jdk.CollectionConverters.*
 
-class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
-                                     esContext: EsContext,
-                                     aclContext: AccessControlStaticContext,
-                                     clusterService: RorClusterService,
-                                     override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ClusterRerouteRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+class ClusterRerouteEsRequestContext(
+    actionRequest: ClusterRerouteRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ClusterRerouteRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: ClusterRerouteRequest): Set[RequestedIndex[ClusterIndexName]] = {
-    request
-      .getCommands.commands().asScala
+    request.getCommands
+      .commands()
+      .asScala
       .flatMap(indexFrom)
       .toCovariantSet
   }
 
-  override protected def update(request: ClusterRerouteRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    val modifiedCommands = request
-      .getCommands.commands().asScala.toSeq
+  override protected def update(
+      request: ClusterRerouteRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
+    val modifiedCommands = request.getCommands
+      .commands()
+      .asScala
+      .toSeq
       .map(modifiedCommand(_, filteredIndices))
     request.commands(new AllocationCommands(modifiedCommands: _*))
     Modified
   }
 
-  private def modifiedCommand(command: AllocationCommand, filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
+  private def modifiedCommand(
+      command: AllocationCommand,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ) = {
     val indexFromCommand = indexFrom(command)
     indexFromCommand match {
-      case None => command
+      case None                                               => command
       case Some(index) if filteredIndices.exists(_ === index) => command
-      case Some(_) => setNonExistentIndexFor(command)
+      case Some(_)                                            => setNonExistentIndexFor(command)
     }
   }
 
   private def indexFrom(command: AllocationCommand): Option[RequestedIndex[ClusterIndexName]] = {
     val indexNameStr = command match {
-      case c: CancelAllocationCommand => c.index()
-      case c: MoveAllocationCommand => c.index()
+      case c: CancelAllocationCommand               => c.index()
+      case c: MoveAllocationCommand                 => c.index()
       case c: AllocateEmptyPrimaryAllocationCommand => c.index()
-      case c: AllocateReplicaAllocationCommand => c.index()
+      case c: AllocateReplicaAllocationCommand      => c.index()
       case c: AllocateStalePrimaryAllocationCommand => c.index()
     }
     RequestedIndex.fromString(indexNameStr)
@@ -79,19 +86,32 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
 
   private def setNonExistentIndexFor(command: AllocationCommand) = {
     val randomIndex = indexFrom(command)
-        .map(_.name.randomNonexistentLocalIndex())
-        .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
+      .map(_.name.randomNonexistentLocalIndex())
+      .getOrElse(ClusterIndexName.Local.randomNonexistentIndex())
     command match {
       case c: CancelAllocationCommand =>
         new CancelAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.allowPrimary(), c.projectId())
       case c: MoveAllocationCommand =>
         new MoveAllocationCommand(randomIndex.stringify, c.shardId(), c.fromNode(), c.toNode, c.projectId())
       case c: AllocateEmptyPrimaryAllocationCommand =>
-        new AllocateEmptyPrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss(), c.projectId())
+        new AllocateEmptyPrimaryAllocationCommand(
+          randomIndex.stringify,
+          c.shardId(),
+          c.node(),
+          c.acceptDataLoss(),
+          c.projectId()
+        )
       case c: AllocateReplicaAllocationCommand =>
         new AllocateReplicaAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.projectId())
       case c: AllocateStalePrimaryAllocationCommand =>
-        new AllocateStalePrimaryAllocationCommand(randomIndex.stringify, c.shardId(), c.node(), c.acceptDataLoss(), c.projectId())
+        new AllocateStalePrimaryAllocationCommand(
+          randomIndex.stringify,
+          c.shardId(),
+          c.node(),
+          c.acceptDataLoss(),
+          c.projectId()
+        )
     }
   }
+
 }

@@ -1,0 +1,71 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+plugins {
+    id "readonlyrest.base-common-conventions"
+
+    id "com.gradleup.shadow"        version "9.3.0"
+    id "java-library"
+    id "maven-publish"
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+    maven { url 'https://jitpack.io' }
+}
+
+configurations {
+    shadowCompile
+    compile.extendsFrom(shadowCompile)
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+dependencies {
+    shadowCompile group: 'com.fasterxml.jackson.dataformat',    name: 'jackson-dataformat-yaml',    version: '2.20.1'
+    shadowCompile group: 'com.fasterxml.jackson.core',          name: 'jackson-databind',           version: '2.20.1'
+    shadowCompile group: 'org.yaml',                            name: 'snakeyaml',                  version: '2.5'
+    shadowCompile group: 'com.jayway.jsonpath',                 name: 'json-path',                  version: '2.10.0'
+
+    api(group: 'org.apache.logging.log4j',      name: 'log4j-slf4j-impl',                    version: '2.11.2') {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-core'
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowCompile]
+    exclude('META-INF/versions/9/module-info.class')
+    
+    // Relocate ALL dependencies to avoid jar hell - comprehensive approach
+    relocate('com.fasterxml', 'tech.beshu.ror.com.fasterxml')
+    relocate('org.yaml', 'tech.beshu.ror.org.yaml')
+    relocate('com.jayway', 'tech.beshu.ror.com.jayway')
+    relocate('net.minidev', 'tech.beshu.ror.net.minidev')
+    relocate('org.objectweb.asm', 'tech.beshu.ror.org.objectweb.asm')
+    relocate('org.ow2.asm', 'tech.beshu.ror.org.ow2.asm')
+    relocate('org.slf4j', 'tech.beshu.ror.org.slf4j')
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

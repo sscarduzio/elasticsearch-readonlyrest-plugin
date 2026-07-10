@@ -45,8 +45,7 @@ class RestControllerOps(val restController: RestController) {
       pathTrie
     }
 
-    private def update(trieNode: pathTrie.TrieNode,
-                       restHandlerDecorator: RestHandler => RestHandler): Unit = {
+    private def update(trieNode: pathTrie.TrieNode, restHandlerDecorator: RestHandler => RestHandler): Unit = {
       Option(on(trieNode).get[Any]("value")).foreach { value =>
         MethodHandlersWrapper.updateWithWrapper(value, restHandlerDecorator)
       }
@@ -58,25 +57,27 @@ class RestControllerOps(val restController: RestController) {
         update(trieNode, restHandlerDecorator)
       }
     }
+
   }
 
   private object MethodHandlersWrapper {
+
     def updateWithWrapper(value: Any, restHandlerDecorator: RestHandler => RestHandler): Any = {
       val methodHandlers = on(value).get[java.util.Map[RestRequest.Method, RestHandler]]("methodHandlers").asScala.toMap
-      val newMethodHandlers = methodHandlers
-        .map { case (key, handler) =>
-          val newHandlersMap = restHandlerDecorator(handler)
-          (key, newHandlersMap)
-        }
-        .asJava
+      val newMethodHandlers = methodHandlers.map { case (key, handler) =>
+        val newHandlersMap = restHandlerDecorator(handler)
+        (key, newHandlersMap)
+      }.asJava
       on(value).set("methodHandlers", newMethodHandlers)
       value
     }
+
   }
 
-  private class NewUnaryOperatorRestHandler(wrapper: UnaryOperator[RestHandler],
-                                            restHandlerDecorator: RestHandler => RestHandler)
-    extends UnaryOperator[RestHandler] {
+  private class NewUnaryOperatorRestHandler(
+      wrapper: UnaryOperator[RestHandler],
+      restHandlerDecorator: RestHandler => RestHandler
+  ) extends UnaryOperator[RestHandler] {
 
     override def apply(restHandler: RestHandler): RestHandler = restHandlerDecorator(wrapper.apply(restHandler))
   }

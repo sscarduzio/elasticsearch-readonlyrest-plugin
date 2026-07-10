@@ -16,13 +16,14 @@
  */
 package tech.beshu.ror.utils.containers;
 
+import static tech.beshu.ror.utils.containers.ContainerUtils.checkTimeout;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
+
 import java.time.Duration;
 import java.time.Instant;
-
-import static tech.beshu.ror.utils.containers.ContainerUtils.checkTimeout;
 
 public abstract class WaitWithRetriesStrategy extends AbstractWaitStrategy {
 

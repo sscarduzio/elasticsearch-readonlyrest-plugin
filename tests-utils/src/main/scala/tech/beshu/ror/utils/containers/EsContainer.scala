@@ -40,14 +40,15 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 
-abstract class EsContainer(val esVersion: String,
-                           val esConfig: Elasticsearch.Config,
-                           val startedClusterDependencies: StartedClusterDependencies,
-                           val elasticsearch: Elasticsearch,
-                           val initializer: ElasticsearchNodeDataInitializer,
-                           val additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
-                           val awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness)
-  extends SingleContainer[GenericContainer[_]]
+abstract class EsContainer(
+    val esVersion: String,
+    val esConfig: Elasticsearch.Config,
+    val startedClusterDependencies: StartedClusterDependencies,
+    val elasticsearch: Elasticsearch,
+    val initializer: ElasticsearchNodeDataInitializer,
+    val additionalLogConsumer: Option[Consumer[OutputFrame]] = scala.None,
+    val awaitingReadyStrategy: AwaitingReadyStrategy = AwaitingReadyStrategy.WaitForEsReadiness
+) extends SingleContainer[GenericContainer[_]]
     with ClientProvider
     with StrictLogging {
 
@@ -73,7 +74,7 @@ abstract class EsContainer(val esVersion: String,
         val slf4jConsumer = new Slf4jLogConsumer(logger.underlying)
         val logConsumer: Consumer[OutputFrame] = additionalLogConsumer match {
           case Some(additional) => new CompositeLogConsumer(slf4jConsumer, additional)
-          case scala.None => slf4jConsumer
+          case scala.None       => slf4jConsumer
         }
         val waitStrategy = new ElasticsearchNodeWaitingStrategy(
           esVersion = esVersion,
@@ -90,6 +91,10 @@ abstract class EsContainer(val esVersion: String,
         container.setWaitStrategy(waitStrategy.withStartupTimeout(5 minutes))
         container.setNetwork(Network.SHARED)
         container.setNetworkAliases((esConfig.nodeName :: Nil).asJava)
+        // Share host's cgroup namespace to avoid JDK cgroup v2 NPE in nested Docker containers on CI
+        container.withCreateContainerCmdModifier { cmd =>
+          cmd.getHostConfig.withCgroupnsMode("host")
+        }
         EsContainerImplementation.Linux(
           esImage = esImage,
           container = container
@@ -98,7 +103,7 @@ abstract class EsContainer(val esVersion: String,
   }
 
   override implicit val container: GenericContainer[_] = containerImplementation match {
-    case EsContainerImplementation.Windows(container) => container
+    case EsContainerImplementation.Windows(container)        => container
     case EsContainerImplementation.Linux(esImage, container) => container
   }
 
@@ -114,12 +119,12 @@ abstract class EsContainer(val esVersion: String,
   def sslEnabled: Boolean
 
   def ip: String = containerImplementation match {
-    case EsContainerImplementation.Windows(_) => "localhost"
+    case EsContainerImplementation.Windows(_)          => "localhost"
     case EsContainerImplementation.Linux(_, container) => container.getHost
   }
 
   def port: Integer = containerImplementation match {
-    case EsContainerImplementation.Windows(container) => container.getPort
+    case EsContainerImplementation.Windows(container)  => container.getPort
     case EsContainerImplementation.Linux(_, container) => container.getMappedPort(9200)
   }
 
@@ -134,7 +139,7 @@ abstract class EsContainer(val esVersion: String,
     case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Some(user, password))
     case Token(token) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader("Authorization", token))
     case Header(name, value) => new RestClient(sslEnabled, ip, port, Option.empty, new BasicHeader(name, value))
-    case None => new RestClient(sslEnabled, ip, port, Option.empty)
+    case None                => new RestClient(sslEnabled, ip, port, Option.empty)
   }
 
   override def start(): Unit = {
@@ -146,6 +151,7 @@ abstract class EsContainer(val esVersion: String,
         throw ex
     }
   }
+
 }
 
 object EsContainer {
@@ -166,7 +172,8 @@ object EsContainer {
   object EsContainerImplementation {
     final case class Windows(container: WindowsPseudoEsContainer) extends EsContainerImplementation
 
-    final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_]) extends EsContainerImplementation
+    final case class Linux(esImage: ImageFromDockerfile, container: GenericContainer[_])
+        extends EsContainerImplementation
   }
 
 }

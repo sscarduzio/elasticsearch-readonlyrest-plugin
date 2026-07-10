@@ -21,46 +21,56 @@ import cats.implicits.*
 import org.elasticsearch.action.search.MultiSearchResponse
 import org.elasticsearch.action.{ActionRequest, ActionResponse, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, RequestedIndex}
+import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, FieldLevelSecurity, Filter, RequestedIndex}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RequestedIndicesOps.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.SearchRequestOps.*
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.types.ReflectionBasedActionRequest
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.es.handler.response.SearchHitOps.*
-import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
-                                                  esContext: EsContext,
-                                                  clusterService: RorClusterService,
-                                                  override implicit val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
+class MultiSearchTemplateEsRequestContext private (
+    actionRequest: ActionRequest with CompositeIndicesRequest,
+    esContext: EsContext,
+    override implicit val threadPool: ThreadPool
+) extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
-    requestContext = this,
-    userMetadata = UserMetadata.from(this),
-    responseHeaders = Set.empty,
-    responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(multiSearchTemplateRequest),
-    filter = None,
-    fieldLevelSecurity = None,
-    requestFieldsUsage = requestFieldsUsage
-  )
+  override def initialBlockContext(block: Block): FilterableMultiRequestBlockContext =
+    FilterableMultiRequestBlockContext(
+      block = block,
+      requestContext = this,
+      blockMetadata = BlockMetadata.from(this),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty,
+      indexPacks = discoveredIndexPacks,
+      filter = None,
+      fieldLevelSecurity = None,
+      requestFieldsUsage = requestFieldsUsage
+    )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks.flatMap {
+      case Indices.Found(indices) => indices
+      case Indices.NotFound       => Set.empty
+    }.toCovariantSet
+  }
 
   private lazy val multiSearchTemplateRequest = new ReflectionBasedMultiSearchTemplateRequest(actionRequest)
+
+  private lazy val discoveredIndexPacks = indexPacksFrom(multiSearchTemplateRequest)
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
@@ -73,8 +83,10 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
         }
       ModificationResult.UpdateResponse.sync(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
-      logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
-        s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
+      logger.error(
+        s"Cannot alter MultiSearchRequest request, because origin request contained different number of" +
+          s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request"
+      )
       ShouldBeInterrupted
     }
   }
@@ -90,8 +102,9 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
     }
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  )(actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
       case (response: MultiSearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
         response.getResponses
@@ -114,15 +127,16 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
   }
 
   private def indexPacksFrom(request: ReflectionBasedMultiSearchTemplateRequest): List[Indices] = {
-    request
-      .requests
+    request.requests
       .map { request => Indices.Found(indicesFrom(request)) }
   }
 
-  private def updateRequest(request: ReflectionBasedSearchTemplateRequest,
-                            indexPack: Indices,
-                            filter: Option[Filter],
-                            fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
+  private def updateRequest(
+      request: ReflectionBasedSearchTemplateRequest,
+      indexPack: Indices,
+      filter: Option[Filter],
+      fieldLevelSecurity: Option[FieldLevelSecurity]
+  ): Unit = {
     val nonEmptyIndicesList = indexPack match {
       case Indices.Found(indices) =>
         NonEmptyList
@@ -132,13 +146,19 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
         NonEmptyList.one(randomNonexistentIndex(request))
     }
     request.setRequest(
-      request.getRequest, nonEmptyIndicesList, filter, fieldLevelSecurity
+      request.getRequest,
+      nonEmptyIndicesList,
+      filter,
+      fieldLevelSecurity
     )
   }
 
   private def updateRequestWithNonExistingIndex(request: ReflectionBasedSearchTemplateRequest): Unit = {
     request.setRequest(
-      request.getRequest, NonEmptyList.one(randomNonexistentIndex(request)), None, None
+      request.getRequest,
+      NonEmptyList.one(randomNonexistentIndex(request)),
+      None,
+      None
     )
   }
 
@@ -146,39 +166,41 @@ class MultiSearchTemplateEsRequestContext private(actionRequest: ActionRequest w
     indicesFrom(request).toList.randomNonexistentLocalIndex()
 
   private def indicesFrom(request: ReflectionBasedSearchTemplateRequest) = {
-    request
-      .getRequest.indices.asSafeSet
+    request.getRequest.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
+
 }
 
 object MultiSearchTemplateEsRequestContext {
+
   def unapply(arg: ReflectionBasedActionRequest): Option[MultiSearchTemplateEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("MultiSearchTemplateRequest")) {
-      Some(new MultiSearchTemplateEsRequestContext(
-        arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
-        arg.esContext,
-        arg.clusterService,
-        arg.threadPool
-      ))
+      Some(
+        new MultiSearchTemplateEsRequestContext(
+          arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
+          arg.esContext,
+          arg.threadPool
+        )
+      )
     } else {
       None
     }
   }
+
 }
 
-private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: ActionRequest)
-                                                       (implicit val requestContext: RequestContext.Id,
-                                                        threadPool: ThreadPool) {
+private class ReflectionBasedMultiSearchTemplateRequest(val actionRequest: ActionRequest)(
+    implicit val requestContext: RequestContext.Id,
+    threadPool: ThreadPool
+) {
 
   import org.joor.Reflect.on
 
   def requests: List[ReflectionBasedSearchTemplateRequest] = {
-    on(actionRequest)
-      .call("requests")
-      .get[java.util.List[ActionRequest]]
-      .asSafeList
-      .map(new ReflectionBasedSearchTemplateRequest(_))
+    val reqs: java.util.List[ActionRequest] = on(actionRequest).call("requests").get[java.util.List[ActionRequest]]
+    reqs.asSafeList.map(new ReflectionBasedSearchTemplateRequest(_))
   }
+
 }

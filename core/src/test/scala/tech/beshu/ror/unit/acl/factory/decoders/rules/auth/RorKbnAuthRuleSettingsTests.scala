@@ -22,19 +22,24 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckM
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.{GroupIdLike, GroupIds, GroupsLogic}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  DefinitionsLevelCreationError,
+  RulesLevelCreationError
+}
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.TestsUtils.unsafeNes
+import tech.beshu.ror.utils.TestsEnvVarsProvider
+import tech.beshu.ror.utils.TestsUtils.{nes, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import java.security.KeyPairGenerator
 import java.util.Base64
 
-class RorKbnAuthRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] {
+class RorKbnAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] {
 
   "A RorKbnAuthRule" should {
     "be able to be loaded from settings" when {
@@ -65,9 +70,11 @@ class RorKbnAuthRuleSettingsTests
               rule.authorization.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
               rule.authorization.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.authorization.settings.groupsLogic should be(
-                GroupsLogic.AnyOf(GroupIds(
-                  UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-                ))
+                GroupsLogic.AnyOf(
+                  GroupIds(
+                    UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+                  )
+                )
               )
             }
           )
@@ -99,9 +106,11 @@ class RorKbnAuthRuleSettingsTests
               rule.authorization.settings.rorKbn.id should be(RorKbnDef.Name("kbn1"))
               rule.authorization.settings.rorKbn.checkMethod shouldBe a[SignatureCheckMethod.Hmac]
               rule.authorization.settings.groupsLogic should be(
-                GroupsLogic.AllOf(GroupIds(
-                  UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
-                ))
+                GroupsLogic.AllOf(
+                  GroupIds(
+                    UniqueNonEmptyList.of(GroupIdLike.from("group1*"), GroupId("group2"))
+                  )
+                )
               )
             }
           )
@@ -128,10 +137,14 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """ror_kbn_auth: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """ror_kbn_auth: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -160,15 +173,14 @@ class RorKbnAuthRuleSettingsTests
       }
       "no ROR kbn definition is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    ror_kbn_auth: kbn1
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    ror_kbn_auth: kbn1
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find `ror_kbn` definition with name: kbn1")))
@@ -195,13 +207,17 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue.fromString(
-              """ror_kbn_auth:
-                |  roles:
-                |  - "group1"
-                |  - "group2"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """ror_kbn_auth:
+                    |  roles:
+                    |  - "group1"
+                    |  - "group2"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -223,10 +239,14 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(MalformedValue.fromString(
-              """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-                |""".stripMargin
-            )))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                MalformedValue.fromString(
+                  """- signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
@@ -256,9 +276,13 @@ class RorKbnAuthRuleSettingsTests
                    |""".stripMargin,
               assertion = errors => {
                 errors should have size 1
-                errors.head should be(RulesLevelCreationError(Message(
-                  s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `ror_kbn_auth` rule 'kbn1'")
-                ))
+                errors.head should be(
+                  RulesLevelCreationError(
+                    Message(
+                      s"Please specify either '$groupsAnyOfKey' or '$groupsAllOfKey' for `ror_kbn_auth` rule 'kbn1'"
+                    )
+                  )
+                )
               }
             )
           }
@@ -285,18 +309,24 @@ class RorKbnAuthRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("ror_kbn definitions must have unique identifiers. Duplicates: kbn1")))
+            errors.head should be(
+              DefinitionsLevelCreationError(
+                Message("ror_kbn definitions must have unique identifiers. Duplicates: kbn1")
+              )
+            )
           }
         )
       }
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(env) if env.value == "SECRET_RSA" =>
-      val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-      Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
-    case _ =>
-      None
-  }
+  override protected implicit def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(
+      Map(
+        nes("SECRET_RSA") -> Base64.getEncoder.encodeToString(
+          KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic.getEncoded
+        )
+      )
+    )
+
 }

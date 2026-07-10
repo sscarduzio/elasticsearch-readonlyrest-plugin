@@ -17,9 +17,13 @@
 package tech.beshu.ror.unit.acl.blocks.rules.indices
 
 import cats.data.{NonEmptyList, NonEmptySet}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingLegacyTemplate, DeletingLegacyTemplates, GettingLegacyTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{
+  AddingLegacyTemplate,
+  DeletingLegacyTemplates,
+  GettingLegacyTemplates
+}
 import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.orders.custerIndexNameOrder
 import tech.beshu.ror.mocks.MockRequestContext
@@ -27,7 +31,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.{clusterIndexName, indexPattern, requestedIndex, unsafeNes}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-private [indices] trait IndicesRuleLegacyTemplateTests {
+private[indices] trait IndicesRuleLegacyTemplateTests {
   this: BaseIndicesRuleTests =>
 
   "An IndicesRule for legacy template context" when {
@@ -52,9 +56,10 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val gettingTemplateOperation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("*")),
-              requestContext = MockRequestContext
-                .template(gettingTemplateOperation)
-                .addExistingTemplates(existingTemplate),
+              requestContext = MockRequestContext.template(
+                operation = gettingTemplateOperation,
+                templates = existingTemplate
+              ),
               templateOperationAfterProcessing = gettingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("*")),
               additionalAssertions = blockContext =>
@@ -79,20 +84,24 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("t*1*")),
-              requestContext = MockRequestContext
-                .template(GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
-                .addExistingTemplates(existingTemplate1, existingTemplate2, existingTemplate3),
-              templateOperationAfterProcessing =
-                GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
+              requestContext = MockRequestContext.template(
+                operation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+                templates = existingTemplate1,
+                existingTemplate2,
+                existingTemplate3
+              ),
+              templateOperationAfterProcessing = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
               allAllowedIndices = Set(clusterIndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(Set(
-                  LegacyTemplate(
-                    name = TemplateName("t1"),
-                    patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                    aliases = Set.empty
+                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(
+                  Set(
+                    LegacyTemplate(
+                      name = TemplateName("t1"),
+                      patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
+                      aliases = Set.empty
+                    )
                   )
-                ))
+                )
             )
           }
           "rule allows access not to all indices, but there is at least one matching template with at least one index pattern allowed and one alias allowed" in {
@@ -113,20 +122,24 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("t*1*")),
-              requestContext = MockRequestContext
-                .template(GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
-                .addExistingTemplates(existingTemplate1, existingTemplate2, existingTemplate3),
-              templateOperationAfterProcessing =
-                GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
+              requestContext = MockRequestContext.template(
+                operation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+                templates = existingTemplate1,
+                existingTemplate2,
+                existingTemplate3
+              ),
+              templateOperationAfterProcessing = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
               allAllowedIndices = Set(clusterIndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(Set(
-                  LegacyTemplate(
-                    name = TemplateName("t1"),
-                    patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                    aliases = Set(clusterIndexName("test1_alias"))
+                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(
+                  Set(
+                    LegacyTemplate(
+                      name = TemplateName("t1"),
+                      patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
+                      aliases = Set(clusterIndexName("test1_alias"))
+                    )
                   )
-                ))
+                )
             )
           }
         }
@@ -146,10 +159,12 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
               val gettingTemplateOperation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
               assertNotMatchRuleForTemplateRequest(
                 configured = NonEmptySet.of(indexNameVar("test3")),
-                requestContext = MockRequestContext
-                  .template(gettingTemplateOperation)
-                  .addExistingTemplates(existingTemplate1, existingTemplate2),
-                specialCause = Some(Cause.TemplateNotFound)
+                requestContext = MockRequestContext.template(
+                  operation = gettingTemplateOperation,
+                  templates = existingTemplate1,
+                  existingTemplate2
+                ),
+                specialCause = Cause.TemplateNotFound
               )
             }
           }
@@ -170,8 +185,8 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("*")),
-              additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set.empty) should be(Set.empty)
+              additionalAssertions =
+                blockContext => blockContext.responseTemplateTransformation(Set.empty) should be(Set.empty)
             )
           }
           "rule allows access to index name which is used in template's pattern list" in {
@@ -254,9 +269,10 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("*")),
-              requestContext = MockRequestContext
-                .template(addingTemplateOperation)
-                .addExistingTemplates(existingTemplate),
+              requestContext = MockRequestContext.template(
+                operation = addingTemplateOperation,
+                templates = existingTemplate
+              ),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("*"))
             )
@@ -267,12 +283,14 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
               patterns = UniqueNonEmptyList.of(indexPattern("test1")),
               aliases = Set.empty
             )
-            val addingTemplateOperation = AddingLegacyTemplate(existingTemplate.name, existingTemplate.patterns, Set.empty)
+            val addingTemplateOperation =
+              AddingLegacyTemplate(existingTemplate.name, existingTemplate.patterns, Set.empty)
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
-              requestContext = MockRequestContext
-                .template(addingTemplateOperation)
-                .addExistingTemplates(existingTemplate),
+              requestContext = MockRequestContext.template(
+                operation = addingTemplateOperation,
+                templates = existingTemplate
+              ),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("test1"))
             )
@@ -290,9 +308,10 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext
-                .template(addingTemplateOperation)
-                .addExistingTemplates(existingTemplate),
+              requestContext = MockRequestContext.template(
+                operation = addingTemplateOperation,
+                templates = existingTemplate
+              ),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("test*"))
             )
@@ -310,9 +329,10 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext
-                .template(addingTemplateOperation)
-                .addExistingTemplates(existingTemplate),
+              requestContext = MockRequestContext.template(
+                operation = addingTemplateOperation,
+                templates = existingTemplate
+              ),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("test*"))
             )
@@ -330,9 +350,10 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext
-                .template(addingTemplateOperation)
-                .addExistingTemplates(existingTemplate),
+              requestContext = MockRequestContext.template(
+                operation = addingTemplateOperation,
+                templates = existingTemplate
+              ),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("test*"))
             )
@@ -350,9 +371,10 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext
-                .template(addingTemplateOperation)
-                .addExistingTemplates(existingTemplate),
+              requestContext = MockRequestContext.template(
+                operation = addingTemplateOperation,
+                templates = existingTemplate
+              ),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("test*"))
             )
@@ -365,66 +387,78 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
               requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
-                  name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(indexPattern("test2")),
-                  aliases = Set.empty
-                ))
+                .template(
+                  AddingLegacyTemplate(
+                    name = TemplateName("t1"),
+                    patterns = UniqueNonEmptyList.of(indexPattern("test2")),
+                    aliases = Set.empty
+                  )
+                )
             )
           }
           "rule allows access to index name which matches the pattern in template's pattern list" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
               requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
-                  name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(indexPattern("test*")),
-                  aliases = Set.empty
-                ))
+                .template(
+                  AddingLegacyTemplate(
+                    name = TemplateName("t1"),
+                    patterns = UniqueNonEmptyList.of(indexPattern("test*")),
+                    aliases = Set.empty
+                  )
+                )
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in template's pattern list" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1*")),
               requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
-                  name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(indexPattern("test*")),
-                  aliases = Set.empty
-                ))
+                .template(
+                  AddingLegacyTemplate(
+                    name = TemplateName("t1"),
+                    patterns = UniqueNonEmptyList.of(indexPattern("test*")),
+                    aliases = Set.empty
+                  )
+                )
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in template's pattern list" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
               requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
-                  name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(indexPattern("test1*"), indexPattern("index1*")),
-                  aliases = Set.empty
-                ))
+                .template(
+                  AddingLegacyTemplate(
+                    name = TemplateName("t1"),
+                    patterns = UniqueNonEmptyList.of(indexPattern("test1*"), indexPattern("index1*")),
+                    aliases = Set.empty
+                  )
+                )
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (without index placeholder)" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
               requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
-                  name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(requestedIndex("test1_alias"), requestedIndex("alias_test1"))
-                ))
+                .template(
+                  AddingLegacyTemplate(
+                    name = TemplateName("t1"),
+                    patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
+                    aliases = Set(requestedIndex("test1_alias"), requestedIndex("alias_test1"))
+                  )
+                )
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (with index placeholder)" in {
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
               requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
-                  name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
-                  aliases = Set(requestedIndex("{index}_alias"), requestedIndex("alias_{index}"))
-                ))
+                .template(
+                  AddingLegacyTemplate(
+                    name = TemplateName("t1"),
+                    patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
+                    aliases = Set(requestedIndex("{index}_alias"), requestedIndex("alias_{index}"))
+                  )
+                )
             )
           }
         }
@@ -437,13 +471,14 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
-              requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
+              requestContext = MockRequestContext.template(
+                operation = AddingLegacyTemplate(
                   name = existingTemplate.name,
                   patterns = UniqueNonEmptyList.of(indexPattern("test1")),
                   aliases = Set.empty
-                ))
-                .addExistingTemplates(existingTemplate)
+                ),
+                templates = existingTemplate
+              ),
             )
           }
           "rule allows access to index name which matches the pattern in existing template's pattern list" in {
@@ -454,13 +489,14 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1")),
-              requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
+              requestContext = MockRequestContext.template(
+                operation = AddingLegacyTemplate(
                   name = existingTemplate.name,
                   patterns = UniqueNonEmptyList.of(indexPattern("test1")),
                   aliases = Set.empty
-                ))
-                .addExistingTemplates(existingTemplate)
+                ),
+                templates = existingTemplate
+              ),
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in existing template's pattern list" in {
@@ -471,13 +507,14 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test1*")),
-              requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
+              requestContext = MockRequestContext.template(
+                operation = AddingLegacyTemplate(
                   name = existingTemplate.name,
                   patterns = UniqueNonEmptyList.of(indexPattern("test*")),
                   aliases = Set.empty
-                ))
-                .addExistingTemplates(existingTemplate)
+                ),
+                templates = existingTemplate
+              ),
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in existing template's pattern list" in {
@@ -488,13 +525,14 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
+              requestContext = MockRequestContext.template(
+                operation = AddingLegacyTemplate(
                   name = existingTemplate.name,
                   patterns = UniqueNonEmptyList.of(indexPattern("test*")),
                   aliases = Set.empty
-                ))
-                .addExistingTemplates(existingTemplate)
+                ),
+                templates = existingTemplate
+              ),
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (without index placeholder)" in {
@@ -505,13 +543,14 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
+              requestContext = MockRequestContext.template(
+                operation = AddingLegacyTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
                   aliases = Set(requestedIndex("test1_alias"), requestedIndex("alias_test1"))
-                ))
-                .addExistingTemplates(existingTemplate)
+                ),
+                templates = existingTemplate
+              ),
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (with index placeholder)" in {
@@ -522,13 +561,14 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("test*")),
-              requestContext = MockRequestContext
-                .template(AddingLegacyTemplate(
+              requestContext = MockRequestContext.template(
+                operation = AddingLegacyTemplate(
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(indexPattern("test1*")),
                   aliases = Set(requestedIndex("{index}_alias"), requestedIndex("alias_{index}"))
-                ))
-                .addExistingTemplates(existingTemplate)
+                ),
+                templates = existingTemplate
+              ),
             )
           }
         }
@@ -573,9 +613,11 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("*")),
-              requestContext = MockRequestContext
-                .template(deletingTemplateOperation)
-                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              requestContext = MockRequestContext.template(
+                operation = deletingTemplateOperation,
+                templates = existingTemplate1,
+                existingTemplate2
+              ),
               templateOperationAfterProcessing = deletingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("*"))
             )
@@ -594,9 +636,11 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("index1"), indexNameVar("index2")),
-              requestContext = MockRequestContext
-                .template(deletingTemplateOperation)
-                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              requestContext = MockRequestContext.template(
+                operation = deletingTemplateOperation,
+                templates = existingTemplate1,
+                existingTemplate2
+              ),
               templateOperationAfterProcessing = deletingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("index1"), clusterIndexName("index2"))
             )
@@ -615,9 +659,11 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("a*")),
-              requestContext = MockRequestContext
-                .template(deletingTemplateOperation)
-                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              requestContext = MockRequestContext.template(
+                operation = deletingTemplateOperation,
+                templates = existingTemplate1,
+                existingTemplate2
+              ),
               templateOperationAfterProcessing = deletingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("a*"))
             )
@@ -636,9 +682,11 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
             assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("a*")),
-              requestContext = MockRequestContext
-                .template(deletingTemplateOperation)
-                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              requestContext = MockRequestContext.template(
+                operation = deletingTemplateOperation,
+                templates = existingTemplate1,
+                existingTemplate2
+              ),
               templateOperationAfterProcessing = deletingTemplateOperation,
               allAllowedIndices = Set(clusterIndexName("a*"))
             )
@@ -660,9 +708,11 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("index1")),
-              requestContext = MockRequestContext
-                .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
-                .addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext.template(
+                operation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+                templates = existingTemplate1,
+                existingTemplate2
+              ),
             )
           }
           "one of existing requested templates has index pattern which is forbidden" in {
@@ -678,9 +728,11 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("index1*")),
-              requestContext = MockRequestContext
-                .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
-                .addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext.template(
+                operation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+                templates = existingTemplate1,
+                existingTemplate2
+              ),
             )
           }
           "one of existing requested templates has alias which is forbidden" in {
@@ -696,9 +748,11 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("index1*")),
-              requestContext = MockRequestContext
-                .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
-                .addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext.template(
+                operation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+                templates = existingTemplate1,
+                existingTemplate2
+              ),
             )
           }
           "requested existing template has pattern which values form a superset of set of configured index pattern values" in {
@@ -709,13 +763,15 @@ private [indices] trait IndicesRuleLegacyTemplateTests {
             )
             assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(indexNameVar("index*")),
-              requestContext = MockRequestContext
-                .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
-                .addExistingTemplates(existingTemplate1)
+              requestContext = MockRequestContext.template(
+                operation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+                templates = existingTemplate1
+              ),
             )
           }
         }
       }
     }
   }
+
 }

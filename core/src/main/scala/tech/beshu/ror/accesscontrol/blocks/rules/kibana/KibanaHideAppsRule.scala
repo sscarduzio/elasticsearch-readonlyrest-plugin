@@ -25,14 +25,14 @@ import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 @deprecated("[ROR] This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
-class KibanaHideAppsRule(val settings: Settings)
-  extends MatchingAlwaysRule with KibanaRelatedRule {
+class KibanaHideAppsRule(val settings: Settings) extends MatchingAlwaysRule with KibanaRelatedRule {
 
   override val name: Rule.Name = KibanaHideAppsRule.Name.name
 
-  override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
-    blockContext.withUserMetadata(_.withHiddenKibanaApps(settings.kibanaAppsToHide))
+  override def process[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[B] = Task {
+    blockContext.withBlockMetadata(_.withHiddenKibanaApps(settings.kibanaAppsToHide))
   }
+
 }
 
 object KibanaHideAppsRule {

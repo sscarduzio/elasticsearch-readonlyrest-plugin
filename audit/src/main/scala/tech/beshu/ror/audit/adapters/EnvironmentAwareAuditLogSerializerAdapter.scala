@@ -19,7 +19,8 @@ package tech.beshu.ror.audit.adapters
 import org.json.JSONObject
 import tech.beshu.ror.audit._
 
-class EnvironmentAwareAuditLogSerializerAdapter(underlying: EnvironmentAwareAuditLogSerializer) extends AuditLogSerializer {
+class EnvironmentAwareAuditLogSerializerAdapter(underlying: EnvironmentAwareAuditLogSerializer)
+    extends AuditLogSerializer {
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
     underlying.onResponse(responseContext, responseContext.requestContext.auditEnvironmentContext)

@@ -19,23 +19,30 @@ package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.indices
 private[indices] object domain {
 
   sealed trait CanPass[+T]
+
   object CanPass {
     final case class Yes[T](value: T) extends CanPass[T]
     final case class No(reason: Option[No.Reason] = None) extends CanPass[Nothing]
+
     object No {
       def apply(reason: Reason): No = new No(Some(reason))
 
       sealed trait Reason
+
       object Reason {
         case object IndexNotExist extends Reason
       }
+
     }
+
   }
 
   type CheckContinuation[T] = Either[CanPass[T], Unit]
+
   object IndicesCheckContinuation {
     def stop[T](result: CanPass[T]): CheckContinuation[T] = Left(result)
 
     def continue[T]: CheckContinuation[T] = Right(())
   }
+
 }

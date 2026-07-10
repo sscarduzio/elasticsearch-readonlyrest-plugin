@@ -21,7 +21,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.DataStreamName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
@@ -29,12 +28,12 @@ import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequest
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-private[datastreams] class DeleteDataStreamEsRequestContext private(actionRequest: ActionRequest,
-                                                                    dataStreams: Set[DataStreamName],
-                                                                    esContext: EsContext,
-                                                                    clusterService: RorClusterService,
-                                                                    override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+private[datastreams] class DeleteDataStreamEsRequestContext private (
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -44,7 +43,9 @@ private[datastreams] class DeleteDataStreamEsRequestContext private(actionReques
     if (modifyActionRequest(blockContext)) {
       ModificationResult.Modified
     } else {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue.")
+      logger.error(
+        s"Cannot update ${actionRequest.getClass.getCanonicalName.show} request. We're using reflection to modify the request data streams and it fails. Please, report the issue."
+      )
       ModificationResult.ShouldBeInterrupted
     }
   }
@@ -56,6 +57,7 @@ private[datastreams] class DeleteDataStreamEsRequestContext private(actionReques
       dataStreams = blockContext.dataStreams
     )
   }
+
 }
 
 object DeleteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
@@ -69,9 +71,12 @@ object DeleteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsCont
       getDataStreamsMethodName = "getNames"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
+        Some(
+          new DeleteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool)
+        )
       case MatchResult.NotMatched() =>
         None
     }
   }
+
 }

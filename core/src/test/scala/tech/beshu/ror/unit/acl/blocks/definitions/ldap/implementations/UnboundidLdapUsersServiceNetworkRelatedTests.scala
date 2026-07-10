@@ -31,11 +31,12 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute.CustomAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapAuthenticationService, LdapService}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
-import tech.beshu.ror.utils.containers.{OpenLdapContainer, LdapContainer, ToxiproxyContainer}
+import tech.beshu.ror.utils.ScalaOps.{repeat, retry}
+import tech.beshu.ror.utils.TestsUtils.*
+import tech.beshu.ror.utils.containers.{LdapContainer, OpenLdapContainer, ToxiproxyContainer}
 import tech.beshu.ror.utils.misc.OsUtils.ignoreOnWindows
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
@@ -46,7 +47,7 @@ import scala.reflect.{ClassTag, classTag}
 import scala.util.{Failure, Success, Try}
 
 class UnboundidLdapUsersServiceNetworkRelatedTests
-  extends AnyFreeSpec
+    extends AnyFreeSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
@@ -57,6 +58,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     SingletonLdapContainers.ldap1,
     OpenLdapContainer.port
   )
+
   private lazy val ldapContainerToStop = LdapContainer.create("LDAP3", "test_example.ldif")
   private lazy val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
@@ -89,18 +91,23 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
           val authenticationService = createSimpleAuthenticationService()
           authenticationService.assertSuccessfulAuthentication
           ldap1ContainerWithToxiproxy.disableNetwork()
-          authenticationService.assertFailedAuthentication[LDAPSearchException, LDAPSearchException]
+          // When the network is cut, the SDK can fail two ways depending on timing:
+          // - connection detected dead at pool checkout → retried → throws LDAPSearchException
+          // - connection dies mid async-request → listener receives SearchResult(code=81) → fetchLdapUser converts it to LdapUnexpectedResult
+          authenticationService.assertFailedAuthentication[LdapUnexpectedResult, LDAPSearchException]
           ldap1ContainerWithToxiproxy.enableNetwork()
-          authenticationService.assertSuccessfulAuthentication
+          // Pool connections are dead after the outage; retry to allow reconnection time
+          retry(Task(authenticationService.assertSuccessfulAuthentication)).runSyncUnsafe()
         }
       }
       "be able to work when" - {
         "Round robin HA method is configured when" - {
           "one of servers goes down" in {
             def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
+              val userId = User.Id("morgan")
               service
-                .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-                .runSyncUnsafe() should be(true)
+                .authenticate(userId, PlainTextSecret("user1"))
+                .runSyncUnsafe() should be(Right(DirectlyLoggedUser(userId)))
             }
 
             val service = createHaAuthenticationService()
@@ -120,10 +127,12 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
   }
 
   implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
+
     def assertSuccessfulAuthentication: Assertion = {
+      val userId = User.Id("morgan")
       authenticationService
-        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-        .runSyncUnsafe() should be(true)
+        .authenticate(userId, PlainTextSecret("user1"))
+        .runSyncUnsafe() should be(Right(DirectlyLoggedUser(userId)))
     }
 
     def assertFailedAuthentication[T: ClassTag, S: ClassTag]: Assertion = {
@@ -138,6 +147,7 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
           fail(s"Expected either ${classTag[T].runtimeClass} or ${classTag[S].runtimeClass} to be thrown")
       }
     }
+
   }
 
   private def createSimpleAuthenticationService() = {
@@ -146,23 +156,31 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
     val ldapConnectionConfig = createLdapConnectionConfig(
       poolName = ldapId,
       connectionMethod = ConnectionMethod.SingleServer(
-        LdapHost.from(s"ldap://${ldap1ContainerWithToxiproxy.containerHost}:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get
+        LdapHost
+          .from(
+            s"ldap://${ldap1ContainerWithToxiproxy.containerHost}:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}"
+          )
+          .get
       )
     )
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
-      ))
-      authenticationService <- EitherT(UnboundidLdapAuthenticationService
-        .create(
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
           id = ldapId,
-          ldapUsersService = usersService,
           poolProvider = ldapConnectionPoolProvider,
-          connectionConfig = ldapConnectionConfig
-        ))
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+        )
+      )
+      authenticationService <- EitherT(
+        UnboundidLdapAuthenticationService
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig
+          )
+      )
     } yield authenticationService
     result.valueOrThrowIllegalState()
   }
@@ -174,32 +192,37 @@ class UnboundidLdapUsersServiceNetworkRelatedTests
       poolName = ldapId,
       connectionMethod = ConnectionMethod.SeveralServers(
         NonEmptyList.of(
-          LdapHost.from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}").get,
+          LdapHost
+            .from(s"ldap://${SingletonLdapContainers.ldap1.ldapHost}:${SingletonLdapContainers.ldap1.ldapPort}")
+            .get,
           LdapHost.from(s"ldap://${ldapContainerToStop.ldapHost}:${ldapContainerToStop.ldapPort}").get,
         ),
         HaMethod.RoundRobin
       )
     )
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
-      ))
-      authenticationService <- EitherT(UnboundidLdapAuthenticationService
-        .create(
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
           id = ldapId,
-          ldapUsersService = usersService,
           poolProvider = ldapConnectionPoolProvider,
-          connectionConfig = ldapConnectionConfig
-        ))
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), CustomAttribute("uid"))
+        )
+      )
+      authenticationService <- EitherT(
+        UnboundidLdapAuthenticationService
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig
+          )
+      )
     } yield authenticationService
     result.valueOrThrowIllegalState()
   }
 
-  private def createLdapConnectionConfig(poolName: LdapService.Name,
-                                         connectionMethod: ConnectionMethod) = {
+  private def createLdapConnectionConfig(poolName: LdapService.Name, connectionMethod: ConnectionMethod) = {
     LdapConnectionConfig(
       poolName = poolName,
       connectionMethod = connectionMethod,

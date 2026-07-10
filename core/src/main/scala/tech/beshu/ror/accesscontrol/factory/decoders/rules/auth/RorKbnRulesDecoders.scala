@@ -16,34 +16,48 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
-import tech.beshu.ror.accesscontrol.blocks.rules.auth.{RorKbnAuthRule, RorKbnAuthenticationRule, RorKbnAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.auth.{
+  RorKbnAuthRule,
+  RorKbnAuthenticationRule,
+  RorKbnAuthorizationRule
+}
 import tech.beshu.ror.accesscontrol.domain.GroupsLogic
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 object RorKbnRulesDecoders
-  extends JwtLikeRulesDecoders[
-    RorKbnDef,
-    RorKbnDef,
-    RorKbnDef,
-    RorKbnDef,
-    RorKbnAuthenticationRule,
-    RorKbnAuthorizationRule,
-    RorKbnAuthRule,
-  ] with Logging {
+    extends JwtLikeRulesDecoders[
+      RorKbnDef,
+      RorKbnDef,
+      RorKbnDef,
+      RorKbnDef,
+      RorKbnAuthenticationRule,
+      RorKbnAuthorizationRule,
+      RorKbnAuthRule,
+    ]
+    with RequestIdAwareLogging {
 
   override protected def ruleTypePrefix: String = "ror_kbn"
 
   override protected def docsUrl: String = "https://docs.readonlyrest.com/elasticsearch?q=ror#ror_kbn_auth"
 
-  override protected def createAuthenticationRule(definition: RorKbnDef, globalSettings: GlobalSettings): RorKbnAuthenticationRule =
+  override protected def createAuthenticationRule(
+      definition: RorKbnDef,
+      globalSettings: GlobalSettings
+  ): RorKbnAuthenticationRule =
     new RorKbnAuthenticationRule(RorKbnAuthenticationRule.Settings(definition), globalSettings.userIdCaseSensitivity)
 
-  override protected def createAuthorizationRule(definition: RorKbnDef, groupsLogic: GroupsLogic): RorKbnAuthorizationRule =
+  override protected def createAuthorizationRule(
+      definition: RorKbnDef,
+      groupsLogic: GroupsLogic
+  ): RorKbnAuthorizationRule =
     new RorKbnAuthorizationRule(RorKbnAuthorizationRule.Settings(definition, groupsLogic))
 
-  override protected def createAuthRule(authnRule: RorKbnAuthenticationRule, authzRule: RorKbnAuthorizationRule): RorKbnAuthRule =
+  override protected def createAuthRule(
+      authnRule: RorKbnAuthenticationRule,
+      authzRule: RorKbnAuthorizationRule
+  ): RorKbnAuthRule =
     new RorKbnAuthRule(authnRule, authzRule)
 
   override protected def serializeDefinitionId(definition: RorKbnDef): String =

@@ -33,7 +33,7 @@ import tech.beshu.ror.utils.misc.{OsUtils, Version}
 import java.util.UUID
 
 class RemoteClusterAuditingToolsSuite
-  extends BaseAuditingToolsSuite
+    extends BaseAuditingToolsSuite
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport {
 
@@ -87,11 +87,13 @@ class RemoteClusterAuditingToolsSuite
     }
   }
 
-  override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] = NonEmptyList.fromListUnsafe(auditEsContainers)
+  override lazy val destNodesClientProviders: NonEmptyList[ClientProvider] =
+    NonEmptyList.fromListUnsafe(auditEsContainers)
 
   override protected def baseRorSettingsYaml: String = resolvedRorSettingsFile.contentAsString
 
-  override protected def baseAuditDataStreamName: Option[String] = Option.when(isDataStreamSupported)("audit_data_stream")
+  override protected def baseAuditDataStreamName: Option[String] =
+    Option.when(isDataStreamSupported)("audit_data_stream")
 
   // Adding the ES cluster fields is enabled in the /cluster_auditing_tools/readonlyrest.yml settings file (`DefaultAuditLogSerializerV2` is used)
   override def assertForEveryAuditEntry(entry: JSON): Unit = {
@@ -123,7 +125,7 @@ class RemoteClusterAuditingToolsSuite
         }
       }
 
-      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate())}
+      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate()) }
 
       forEachAuditManager { adminAuditManager =>
         eventually {
@@ -184,32 +186,30 @@ class RemoteClusterAuditingToolsSuite
 
   private def queryTweeterIndexWithRandomTraceId(times: Int): List[String] = {
     (1 to times).map { _ =>
-        val traceId = UUID.randomUUID().toString
-        val indexManager = new IndexManager(
-          basicAuthClient("username", "dev"),
-          esVersionUsed,
-          // header names are left in audit entry - used as 'test' correlation id
-          additionalHeaders = Map(traceIdHeaderName(traceId) -> "any")
-        )
-        val response = indexManager.getIndex("twitter")
-        response should have statusCode 200
-        traceId
-      }
-      .toList
+      val traceId = UUID.randomUUID().toString
+      val indexManager = new IndexManager(
+        basicAuthClient("username", "dev"),
+        esVersionUsed,
+        // header names are left in audit entry - used as 'test' correlation id
+        additionalHeaders = Map(traceIdHeaderName(traceId) -> "any")
+      )
+      val response = indexManager.getIndex("twitter")
+      response should have statusCode 200
+      traceId
+    }.toList
   }
-
 
   private def findAuditEntryWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String) = {
     val foundEntries = findAuditEntriesWithTraceId(auditEntries, traceId)
-    withClue(s"Didn't found expected audit entry with traceId [$traceId] in audit entries ${auditEntries}") {
-      foundEntries.size shouldBe 1
+    withClue(s"Didn't found expected audit entry with traceId [$traceId] in audit entries $auditEntries") {
+      foundEntries.size should be(1)
       foundEntries.head
     }
   }
 
   private def checkNoEntriesWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String): Unit = {
     val foundEntries = findAuditEntriesWithTraceId(auditEntries, traceId)
-    foundEntries.size shouldBe 0
+    foundEntries.size should be(0)
   }
 
   private def findAuditEntriesWithTraceId(auditEntries: Iterable[ujson.Value], traceId: String): List[ujson.Value] = {
@@ -218,6 +218,5 @@ class RemoteClusterAuditingToolsSuite
   }
 
   private def traceIdHeaderName(traceId: String) = s"test-trace-id-$traceId"
-
 
 }

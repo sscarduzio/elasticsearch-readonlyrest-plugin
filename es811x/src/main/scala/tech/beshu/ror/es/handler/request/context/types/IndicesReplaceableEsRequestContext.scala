@@ -23,29 +23,38 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class IndicesReplaceableEsRequestContext(actionRequest: ActionRequest with Replaceable,
-                                         esContext: EsContext,
-                                         aclContext: AccessControlStaticContext,
-                                         clusterService: RorClusterService,
-                                         override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest with Replaceable](actionRequest, esContext, aclContext, clusterService, threadPool) {
+class IndicesReplaceableEsRequestContext(
+    actionRequest: ActionRequest with Replaceable,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ActionRequest with Replaceable](
+      actionRequest,
+      esContext,
+      aclContext,
+      threadPool
+    ) {
 
-  override protected def requestedIndicesFrom(request: ActionRequest with Replaceable): Set[RequestedIndex[ClusterIndexName]] = {
+  override protected def requestedIndicesFrom(
+      request: ActionRequest with Replaceable
+  ): Set[RequestedIndex[ClusterIndexName]] = {
     request.asInstanceOf[IndicesRequest].indices.asSafeSet.flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: ActionRequest with Replaceable,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ActionRequest with Replaceable,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     Modified
   }
+
 }

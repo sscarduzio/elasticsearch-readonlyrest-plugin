@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 import tech.beshu.ror.utils.misc.OsUtils.{doNotCreateOnWindows, ignoreOnWindows}
 
 class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseYamlLoadedAccessControlTest
     with BeforeAndAfterAll
     with ForAllTestContainer
@@ -42,12 +42,14 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
 
   private lazy val dnsHost = container match {
     case ldap: LdapWithDnsContainer => ldap.dnsHost
-    case _ => "localhost" // Just some random value - this test suite is ignored on Windows and the container is not started.
+    case _                          =>
+      "localhost" // Just some random value - this test suite is ignored on Windows and the container is not started.
   }
-  
+
   private lazy val dnsPort = container match {
     case ldap: LdapWithDnsContainer => ldap.dnsPort
-    case _ => 1234 // Just some random value - this test suite is ignored on Windows and the container is not started. But we still have to define port - required by configuration below.
+    case _                          =>
+      1234 // Just some random value - this test suite is ignored on Windows and the container is not started. But we still have to define port - required by configuration below.
   }
 
   override protected def settingsYaml: String =
@@ -86,16 +88,17 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
       "allow core to start" when {
         "server discovery is used and DNS responds with proper address" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("cartman:user2"))
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 1
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("LDAP test"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
-              blockContext
-            }
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
+          history.blocks should have size 1
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("LDAP test"))
+            assertBlockContext(blockContext)(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))
+            )
           }
         }
       }
     }
   }
+
 }

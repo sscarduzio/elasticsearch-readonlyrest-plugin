@@ -15,14 +15,17 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.unit.acl.blocks.rules.http
+
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -30,16 +33,22 @@ import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Header, User}
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.syntax.*
-import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
-import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.unit.acl.blocks.rules.http.SessionMaxIdleRuleTest.{
+  fixedClock,
+  fixedUuidProvider,
+  rorSessionCookie,
+  someday
+}
+import tech.beshu.ror.utils.RefinedUtils.{PositiveFiniteDuration, positiveFiniteDuration}
 import tech.beshu.ror.utils.TestsUtils.*
 
 import java.time.*
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
-class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
+class SessionMaxIdleRuleTest extends AnyWordSpec with Inside with BlockContextAssertion {
 
   "A SessionMaxIdleRule" should {
     "match" when {
@@ -47,7 +56,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         implicit val _clock: Clock = fixedClock
         "ror cookie is not set" in {
           assertRule(
-            sessionMaxIdle = positive(10 minutes),
+            sessionMaxIdle = positiveFiniteDuration(10, TimeUnit.MINUTES),
             setRawCookie = rorSessionCookie.forUser1,
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             isMatched = true
@@ -56,7 +65,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
         "ror cookie is set, is valid and is not expired" when {
           "only this cookie is present" in {
             assertRule(
-              sessionMaxIdle = positive(5 minutes),
+              sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
               rawCookie = rorSessionCookie.forUser1,
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -65,7 +74,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           }
           "there are another cookies" in {
             assertRule(
-              sessionMaxIdle = positive(5 minutes),
+              sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
               rawCookie = s"cookie1=test;${rorSessionCookie.forUser1};last_cookie=123",
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -78,16 +87,18 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     "not match" when {
       "user is not logged" in {
         implicit val _clock: Clock = fixedClock
-        val rule = new SessionMaxIdleRule(Settings(positive(1 minute)), CaseSensitivity.Enabled)
+        val rule =
+          new SessionMaxIdleRule(Settings(positiveFiniteDuration(1, TimeUnit.MINUTES)), CaseSensitivity.Enabled)
         val requestContext = mock[RequestContext]
         (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
+        val blockContext =
+          UserMetadataRequestBlockContext(mock[Block], requestContext, BlockMetadata.empty, Set.empty, List.empty)
+        rule.check(blockContext).runSyncStep should be(Right(Denied(NotAuthorized)))
       }
       "ror cookie is expired" in {
         implicit val _clock: Clock = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -97,7 +108,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
       "ror cookie of different user" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
@@ -107,7 +118,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
       "ror cookie signature is wrong" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.wrongSignature,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -117,7 +128,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
       "ror cookie is malformed" in {
         implicit val _clock: Clock = fixedClock
         assertRule(
-          sessionMaxIdle = positive(5 minutes),
+          sessionMaxIdle = positiveFiniteDuration(5, TimeUnit.MINUTES),
           rawCookie = rorSessionCookie.malformed,
           setRawCookie = "",
           loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
@@ -127,49 +138,47 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertRule(sessionMaxIdle: PositiveFiniteDuration,
-                         rawCookie: String = "",
-                         setRawCookie: String,
-                         loggedUser: Option[DirectlyLoggedUser],
-                         isMatched: Boolean)
-                        (implicit clock: Clock) = {
+  private def assertRule(
+      sessionMaxIdle: PositiveFiniteDuration,
+      rawCookie: String = "",
+      setRawCookie: String,
+      loggedUser: Option[DirectlyLoggedUser],
+      isMatched: Boolean
+  )(
+      implicit clock: Clock
+  ) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle), CaseSensitivity.Enabled)
     val restRequest = mock[RestRequest]
     val headers = NonEmptyString.unapply(rawCookie) match {
       case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
-      case None => Set.empty[Header]
+      case None               => Set.empty[Header]
     }
     (() => restRequest.allHeaders).expects().returning(headers)
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)
     (() => requestContext.id).expects().returning(RequestContext.Id.fromString("dummy")).anyNumberOfTimes()
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = loggedUser match {
-        case Some(user) => UserMetadata.empty.withLoggedUser(user)
-        case None => UserMetadata.empty
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.empty.withLoggedUser(user)
+        case None       => BlockMetadata.empty
       },
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
-    rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) {
-        Fulfilled(CurrentUserMetadataRequestBlockContext(
-          requestContext,
-          loggedUser match {
-            case Some(user) => UserMetadata.empty.withLoggedUser(user)
-            case None => UserMetadata.empty
-          },
-          Set(headerFrom("Set-Cookie" -> setRawCookie)),
-          List.empty
-        ))
-      } else {
-        Rejected()
+    val result = rule.check(blockContext).runSyncUnsafe()
+    if (isMatched) {
+      inside(result) { case Permitted(blockContext: UserMetadataRequestBlockContext) =>
+        assertBlockContext(blockContext)(
+          loggedUser = loggedUser,
+          responseHeaders = Set(headerFrom("Set-Cookie" -> setRawCookie))
+        )
       }
+    } else {
+      result should be(Denied(NotAuthorized))
     }
   }
-
-  private def positive(duration: FiniteDuration) = duration.toRefinedPositiveUnsafe
 
 }
 
@@ -197,4 +206,5 @@ object SessionMaxIdleRuleTest {
     val wrongSignature =
       """ReadonlyREST_Session=[{"user":"user1","expire":1355271000000},"wrong!!!"]"""
   }
+
 }

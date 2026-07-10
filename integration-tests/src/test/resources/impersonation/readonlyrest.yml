@@ -14,6 +14,7 @@ readonlyrest:
 
     - name: "test2 (1)"
       indices: ["test2_index"]
+      users: ["user3"]
       auth_key_sha1: "9986e90bf8a4add7a56be873273e6e0997220b0f" # dev3:test
 
     - name: "test2 (2)"
@@ -51,6 +52,26 @@ readonlyrest:
       ldap_auth:
         name: ldap1
         groups: ["group1", "group3"]
+
+    - username: "named_ldap_user"
+      groups: ["local_group3"]
+      ldap_auth:
+        name: ldap1
+        groups: ["group1", "group3"]
+
+    - username: "second_named_ldap_user"
+      groups: ["local_group3"]
+      ldap_authentication:
+        name: ldap1
+        groups: ["group1", "group3"]
+
+    - username: "named_external_authentication_user"
+      groups: ["local_group3"]
+      external_authentication: "ext1"
+
+    - username: "jwt_with_external_service_user"
+      groups: ["local_group3"]
+      jwt_auth: jwt1
 
     - username: "*"
       groups: ["local_group2"]
@@ -99,6 +120,14 @@ readonlyrest:
         search_groups_base_DN: "ou=Groups,dc=example,dc=com"
         unique_member_attribute: "uniqueMember"                 # default "uniqueMember"
 
+  jwt:
+
+  - name: jwt1
+    user_claim: "user"
+    group_ids_claim: "groups"
+    signature_algo: "NONE"
+    external_validator:
+      authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
 
   external_authentication_service_configs:
 

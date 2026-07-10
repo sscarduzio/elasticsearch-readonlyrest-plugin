@@ -21,19 +21,18 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.datastreams.ReflectionBasedDataStreamsEsRequestContext.*
 import tech.beshu.ror.es.handler.request.context.types.{BaseDataStreamsEsRequestContext, ReflectionBasedActionRequest}
 import tech.beshu.ror.syntax.*
 
-private[datastreams] class PromoteDataStreamEsRequestContext private(actionRequest: ActionRequest,
-                                                                     dataStreams: Set[DataStreamName],
-                                                                     esContext: EsContext,
-                                                                     clusterService: RorClusterService,
-                                                                     override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+private[datastreams] class PromoteDataStreamEsRequestContext private (
+    actionRequest: ActionRequest,
+    dataStreams: Set[DataStreamName],
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def dataStreamsFrom(request: ActionRequest): Set[DataStreamName] = dataStreams
 
@@ -42,6 +41,7 @@ private[datastreams] class PromoteDataStreamEsRequestContext private(actionReque
   override protected def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
     ModificationResult.Modified // data stream already processed by ACL
   }
+
 }
 
 object PromoteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsContextCreator {
@@ -55,9 +55,12 @@ object PromoteDataStreamEsRequestContext extends ReflectionBasedDataStreamsEsCon
       getDataStreamsMethodName = "indices"
     ) match {
       case MatchResult.Matched(dataStreams) =>
-        Some(new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.clusterService, arg.threadPool))
+        Some(
+          new PromoteDataStreamEsRequestContext(arg.esContext.actionRequest, dataStreams, arg.esContext, arg.threadPool)
+        )
       case MatchResult.NotMatched() =>
         None
     }
   }
+
 }

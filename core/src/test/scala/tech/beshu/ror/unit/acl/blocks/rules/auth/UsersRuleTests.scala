@@ -20,15 +20,24 @@ import cats.Order
 import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, User}
@@ -36,7 +45,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.unsafeNes
 
-class UsersRuleTests extends AnyWordSpec {
+class UsersRuleTests extends AnyWordSpec with MockFactory {
 
   private implicit val defaultUserIdOrder: Order[Id] = Order.by(_.value.value)
 
@@ -77,27 +86,38 @@ class UsersRuleTests extends AnyWordSpec {
     }
   }
 
-  private def assertMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser]) =
+  private def assertMatchRule(
+      configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]],
+      loggedUser: Option[DirectlyLoggedUser]
+  ) =
     assertRule(configuredIds, loggedUser, isMatched = true)
 
-  private def assertNotMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser]) =
+  private def assertNotMatchRule(
+      configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]],
+      loggedUser: Option[DirectlyLoggedUser]
+  ) =
     assertRule(configuredIds, loggedUser, isMatched = false)
 
-  private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
+  private def assertRule(
+      configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]],
+      loggedUser: Option[DirectlyLoggedUser],
+      isMatched: Boolean
+  ) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds), CaseSensitivity.Enabled)
     val requestContext = MockRequestContext.metadata
-    val blockContext = CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      loggedUser match {
-        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
-        case None => UserMetadata.from(requestContext)
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
+      requestContext = requestContext,
+      blockMetadata = loggedUser match {
+        case Some(user) => BlockMetadata.from(requestContext).withLoggedUser(user)
+        case None       => BlockMetadata.from(requestContext)
       },
-      Set.empty,
-      List.empty
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(blockContext)
-      else Rejected()
+      if (isMatched) Permitted(blockContext)
+      else Denied(NotAuthorized)
     }
   }
 
@@ -108,5 +128,8 @@ class UsersRuleTests extends AnyWordSpec {
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
+
 }

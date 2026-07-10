@@ -23,44 +23,56 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAllowedApiPath.AllowedHttpMetho
 import tech.beshu.ror.utils.js.JsCompiler
 
 sealed trait KibanaApp
+
 object KibanaApp {
   final case class FullNameKibanaApp(name: NonEmptyString) extends KibanaApp
   final case class KibanaAppRegex(regex: JsRegex) extends KibanaApp
 
-  def from(str: NonEmptyString)
-          (implicit jsCompiler: JsCompiler): Either[String, KibanaApp] = {
+  def from(str: NonEmptyString)(
+      implicit jsCompiler: JsCompiler
+  ): Either[String, KibanaApp] = {
     JsRegex.compile(str) match {
-        case Right(jsRegex) => Right(KibanaApp.KibanaAppRegex(jsRegex))
-        case Left(CompilationResult.NotRegex) => Right(KibanaApp.FullNameKibanaApp(str))
-        case Left(CompilationResult.SyntaxError) => Left(s"Cannot compile [${str.value}] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)")
-      }
+      case Right(jsRegex)                      => Right(KibanaApp.KibanaAppRegex(jsRegex))
+      case Left(CompilationResult.NotRegex)    => Right(KibanaApp.FullNameKibanaApp(str))
+      case Left(CompilationResult.SyntaxError) =>
+        Left(
+          s"Cannot compile [${str.value}] as a JS regex (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions)"
+        )
+    }
   }
 
   implicit val eqKibanaApps: Eq[KibanaApp] = Eq.by {
     case FullNameKibanaApp(name) => name.value
-    case KibanaAppRegex(regex) => regex.value.value
+    case KibanaAppRegex(regex)   => regex.value.value
   }
+
 }
 
 final case class KibanaAllowedApiPath(httpMethod: AllowedHttpMethod, pathRegex: JavaRegex)
+
 object KibanaAllowedApiPath {
 
   sealed trait AllowedHttpMethod
+
   object AllowedHttpMethod {
     case object Any extends AllowedHttpMethod
     final case class Specific(httpMethod: HttpMethod) extends AllowedHttpMethod
 
     sealed trait HttpMethod
+
     object HttpMethod {
       case object Get extends HttpMethod
       case object Post extends HttpMethod
       case object Put extends HttpMethod
       case object Delete extends HttpMethod
     }
+
   }
+
 }
 
 sealed trait KibanaAccess
+
 object KibanaAccess {
   case object RO extends KibanaAccess
   case object RW extends KibanaAccess
@@ -70,4 +82,39 @@ object KibanaAccess {
   case object Unrestricted extends KibanaAccess
 
   implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
+}
+
+sealed trait RorKbnLicenseType
+
+object RorKbnLicenseType {
+  case object Free extends RorKbnLicenseType
+  case object Pro extends RorKbnLicenseType
+  final case class Enterprise(multiTenancyEnabled: Boolean) extends RorKbnLicenseType
+
+  type CreationError = Unit
+
+  def from(value: String): Either[CreationError, RorKbnLicenseType] = {
+    value.toLowerCase match {
+      case "free"                      => Right(RorKbnLicenseType.Free)
+      case "pro"                       => Right(RorKbnLicenseType.Pro)
+      case "ent"                       => Right(RorKbnLicenseType.Enterprise(multiTenancyEnabled = true))
+      case "ent-disabled-multitenancy" => Right(RorKbnLicenseType.Enterprise(multiTenancyEnabled = false))
+      case _                           => Left(())
+    }
+  }
+
+  extension (licenseType: RorKbnLicenseType) {
+
+    def isEnterprise: Boolean = licenseType match {
+      case RorKbnLicenseType.Enterprise(_) => true
+      case _                               => false
+    }
+
+    def isProOrEnterprise: Boolean = licenseType match {
+      case RorKbnLicenseType.Pro | RorKbnLicenseType.Enterprise(_) => true
+      case _                                                       => false
+    }
+
+  }
+
 }

@@ -23,15 +23,18 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserSearchFilterConfig.UserIdAttribute
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.RefinedUtils.*
-import tech.beshu.ror.utils.TestsUtils.{ValueOrIllegalState, unsafeNes}
+import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.{SingletonLdapContainers, WithDummyRequestIdSupport}
 
@@ -42,15 +45,21 @@ import scala.language.postfixOps
 class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsUidTests extends UnboundidLdapAuthenticationServiceTests {
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.CustomAttribute("uid")
   override protected val morganUserId: User.Id = User.Id("morgan")
+
+  override protected val noUserDeniedCause: Cause = AuthenticationFailed("User not found in LDAP")
+  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
 }
 
 class UnboundidLdapAuthenticationServiceWhenUserIdAttributeIsCnTests extends UnboundidLdapAuthenticationServiceTests {
   override protected val userIdAttribute: UserIdAttribute = UserIdAttribute.OptimizedCn
   override protected val morganUserId: User.Id = User.Id("Morgan Freeman")
+
+  override protected val noUserDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
+  override protected val invalidCredentialsDeniedCause: Cause = AuthenticationFailed("Invalid LDAP credentials")
 }
 
 abstract class UnboundidLdapAuthenticationServiceTests
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BeforeAndAfterAll
     with BeforeAndAfterEach
     with ForAllTestContainer
@@ -61,6 +70,9 @@ abstract class UnboundidLdapAuthenticationServiceTests
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override val container: Container = MultipleContainers(ldapContainer)
+
+  protected def noUserDeniedCause: Cause
+  protected def invalidCredentialsDeniedCause: Cause
 
   override protected def afterAll(): Unit = {
     super.afterAll()
@@ -73,19 +85,19 @@ abstract class UnboundidLdapAuthenticationServiceTests
         "user exists in LDAP and its credentials are correct" in {
           createSimpleAuthenticationService()
             .authenticate(morganUserId, PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(true)
+            .runSyncUnsafe() should be(Right(DirectlyLoggedUser(morganUserId)))
         }
       }
       "returns false" when {
         "user doesn't exist in LDAP" in {
           createSimpleAuthenticationService()
             .authenticate(User.Id("unknown"), PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(false)
+            .runSyncUnsafe() should be(Left(noUserDeniedCause))
         }
         "user has invalid credentials" in {
           createSimpleAuthenticationService()
             .authenticate(morganUserId, PlainTextSecret("invalid_secret"))
-            .runSyncUnsafe() should be(false)
+            .runSyncUnsafe() should be(Left(invalidCredentialsDeniedCause))
         }
       }
     }
@@ -96,19 +108,23 @@ abstract class UnboundidLdapAuthenticationServiceTests
     val ldapId = Name("ldap")
     val ldapConnectionConfig = createLdapConnectionConfig(ldapId)
     val result = for {
-      usersService <- EitherT(UnboundidLdapUsersService.create(
-        id = ldapId,
-        poolProvider = ldapConnectionPoolProvider,
-        connectionConfig = ldapConnectionConfig,
-        userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
-      ))
-      authenticationService <- EitherT(UnboundidLdapAuthenticationService
-        .create(
+      usersService <- EitherT(
+        UnboundidLdapUsersService.create(
           id = ldapId,
-          ldapUsersService = usersService,
           poolProvider = ldapConnectionPoolProvider,
-          connectionConfig = ldapConnectionConfig
-        ))
+          connectionConfig = ldapConnectionConfig,
+          userSearchFiler = UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), userIdAttribute)
+        )
+      )
+      authenticationService <- EitherT(
+        UnboundidLdapAuthenticationService
+          .create(
+            id = ldapId,
+            ldapUsersService = usersService,
+            poolProvider = ldapConnectionPoolProvider,
+            connectionConfig = ldapConnectionConfig
+          )
+      )
     } yield authenticationService
     result.valueOrThrowIllegalState()
   }

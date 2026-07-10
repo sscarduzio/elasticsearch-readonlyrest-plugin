@@ -25,13 +25,27 @@ import io.circe.parser.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.CreationError
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{
+  AlreadyResolved,
+  ToBeResolved
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator,
+  RuntimeSingleResolvableVariable
+}
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{Reason, ValueLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.{
+  MalformedValue,
+  Message
+}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  Reason,
+  ValueLevelCreationError
+}
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.*
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.CirceOps.*
@@ -52,13 +66,19 @@ object CirceOps {
         .withError(ValueLevelCreationError(Message("field cannot be empty")))
         .decoder
 
-    implicit def decodeUniqueNonEmptyList[T](implicit decodeT: Decoder[T]): Decoder[UniqueNonEmptyList[T]] =
+    implicit def decodeUniqueNonEmptyList[T](
+        implicit decodeT: Decoder[T]
+    ): Decoder[UniqueNonEmptyList[T]] =
       Decoder.decodeNonEmptyList(decodeT).map(nel => UniqueNonEmptyList.unsafeFrom(nel.toList))
 
-    implicit def decodeUniqueList[T](implicit decodeT: Decoder[T]): Decoder[UniqueList[T]] =
+    implicit def decodeUniqueList[T](
+        implicit decodeT: Decoder[T]
+    ): Decoder[UniqueList[T]] =
       Decoder.decodeList[T].map(UniqueList.from)
 
-    implicit def decodeCovariantSet[T](implicit decodeT: Decoder[T]): Decoder[Set[T]] =
+    implicit def decodeCovariantSet[T](
+        implicit decodeT: Decoder[T]
+    ): Decoder[Set[T]] =
       Decoder.decodeSet[T].map(_.toCovariantSet)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
@@ -67,19 +87,18 @@ object CirceOps {
         .or(Decoder.decodeNonEmptySet[String])
         .map(_.map(fromString))
 
-    def decodeStringLikeOrNonEmptySet[T: Order : Decoder]: Decoder[NonEmptySet[T]] =
+    def decodeStringLikeOrNonEmptySet[T: Order: Decoder]: Decoder[NonEmptySet[T]] =
       decodeStringLikeOrNonEmptySetE { str =>
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
 
     def decodeStringLikeOrNonEmptySetE[T: Order](fromString: String => Either[String, T]): Decoder[NonEmptySet[T]] =
       decodeStringLike.map(NonEmptySet.one(_)).or(Decoder.decodeNonEmptySet[String]).emap { set =>
-        val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) {
-          case ((errors, values), elem) =>
-            fromString(elem) match {
-              case Right(value) => (errors, values + value)
-              case Left(error) => (errors + error, values)
-            }
+        val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) { case ((errors, values), elem) =>
+          fromString(elem) match {
+            case Right(value) => (errors, values + value)
+            case Left(error)  => (errors + error, values)
+          }
         }
         if (errorsSet.nonEmpty) Left(errorsSet.mkString(","))
         else Right(NonEmptySet.fromSetUnsafe(SortedSet.empty[T] ++ valuesSet))
@@ -94,15 +113,17 @@ object CirceOps {
     def decodeStringLikeOrUniqueNonEmptyList[T](fromString: String => T): Decoder[UniqueNonEmptyList[T]] =
       decodeStringLikeOrUniqueNonEmptyListE(str => Right(fromString(str)))
 
-    def decodeStringLikeOrUniqueNonEmptyListE[T](fromString: String => Either[String, T]): Decoder[UniqueNonEmptyList[T]] =
+    def decodeStringLikeOrUniqueNonEmptyListE[T](
+        fromString: String => Either[String, T]
+    ): Decoder[UniqueNonEmptyList[T]] =
       decodeStringLike.map(str => UniqueNonEmptyList.of(str)).or(decodeUniqueNonEmptyList[String]).emap { uniqueList =>
-        val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
-          case ((errors, values), elem) =>
+        val (errorsUniqueList, valuesUniqueList) =
+          uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) { case ((errors, values), elem) =>
             fromString(elem) match {
               case Right(value) => (errors, values :+ value)
-              case Left(error) => (errors :+ error, values)
+              case Left(error)  => (errors :+ error, values)
             }
-        }
+          }
         if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))
         else Right(UniqueNonEmptyList.unsafeFrom(valuesUniqueList))
       }
@@ -112,20 +133,21 @@ object CirceOps {
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
 
-    def decodeNonEmptyStringLikeOrUniqueNonEmptyList[T](fromString: NonEmptyString => T): Decoder[UniqueNonEmptyList[T]] =
+    def decodeNonEmptyStringLikeOrUniqueNonEmptyList[T](
+        fromString: NonEmptyString => T
+    ): Decoder[UniqueNonEmptyList[T]] =
       decodeStringLikeNonEmpty
         .map(UniqueNonEmptyList.of(_))
         .or(DecoderHelpers.decodeUniqueNonEmptyList[NonEmptyString])
         .map(a => UniqueNonEmptyList.unsafeFrom(a.toList.map(fromString)))
 
-    def decodeStringLikeOrSet[T : Decoder]: Decoder[Set[T]] = {
+    def decodeStringLikeOrSet[T: Decoder]: Decoder[Set[T]] = {
       decodeStringLike.map(Set.apply(_)).or(decodeCovariantSet[String]).emap { set =>
-        val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) {
-          case ((errors, values), elem) =>
-            Decoder[T].decodeJson(Json.fromString(elem)) match {
-              case Right(value) => (errors, values + value)
-              case Left(error) => (errors + error.message, values)
-            }
+        val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) { case ((errors, values), elem) =>
+          Decoder[T].decodeJson(Json.fromString(elem)) match {
+            case Right(value) => (errors, values + value)
+            case Left(error)  => (errors + error.message, values)
+          }
         }
         if (errorsSet.nonEmpty) Left(errorsSet.mkString(","))
         else Right(valuesSet)
@@ -134,39 +156,45 @@ object CirceOps {
 
     def decodeStringLikeOrUniqueList[T: Decoder]: Decoder[UniqueList[T]] = {
       decodeStringLike.map(str => UniqueList.from(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
-        val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
-          case ((errors, values), elem) =>
+        val (errorsUniqueList, valuesUniqueList) =
+          uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) { case ((errors, values), elem) =>
             Decoder[T].decodeJson(Json.fromString(elem)) match {
               case Right(value) => (errors, values :+ value)
-              case Left(error) => (errors :+ error.message, values)
+              case Left(error)  => (errors :+ error.message, values)
             }
-        }
+          }
         if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))
         else Right(valuesUniqueList)
       }
     }
 
-    def decodeStringLikeWithSingleVarResolvedInPlace(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[String] = {
-      alwaysRightSingleVariableDecoder(variableCreator)(AlwaysRightConvertible.stringAlwaysRightConvertible)
-        .toSyncDecoder
-        .emapE {
-          case AlreadyResolved(resolved) => Right(resolved)
-          case _: ToBeResolved[String] => Left(ValueLevelCreationError(Message(s"Only statically resolved variables can be used")))
-        }
-        .decoder
+    def decodeStringLikeWithSingleVarResolvedInPlace(
+        implicit variableCreator: RuntimeResolvableVariableCreator
+    ): Decoder[String] = {
+      alwaysRightSingleVariableDecoder(variableCreator)(
+        AlwaysRightConvertible.stringAlwaysRightConvertible
+      ).toSyncDecoder.emapE {
+        case AlreadyResolved(resolved) => Right(resolved)
+        case _: ToBeResolved[String]   =>
+          Left(ValueLevelCreationError(Message(s"Only statically resolved variables can be used")))
+      }.decoder
     }
 
-    def singleVariableDecoder[T: Convertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
-      DecoderHelpers
-        .decodeStringLikeNonEmpty
+    def singleVariableDecoder[T: Convertible](
+        variableCreator: RuntimeResolvableVariableCreator
+    ): Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
+      DecoderHelpers.decodeStringLikeNonEmpty
         .map { str => variableCreator.createSingleResolvableVariableFrom(str) }
 
-    def multiVariableDecoder[T: Convertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[Either[CreationError, RuntimeMultiResolvableVariable[T]]] =
-      DecoderHelpers
-        .decodeStringLikeNonEmpty
+    def multiVariableDecoder[T: Convertible](
+        variableCreator: RuntimeResolvableVariableCreator
+    ): Decoder[Either[CreationError, RuntimeMultiResolvableVariable[T]]] =
+      DecoderHelpers.decodeStringLikeNonEmpty
         .map { str => variableCreator.createMultiResolvableVariableFrom(str) }
 
-    def alwaysRightSingleVariableDecoder[T: AlwaysRightConvertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeSingleResolvableVariable[T]] = {
+    def alwaysRightSingleVariableDecoder[T: AlwaysRightConvertible](
+        variableCreator: RuntimeResolvableVariableCreator
+    ): Decoder[RuntimeSingleResolvableVariable[T]] = {
       SyncDecoderCreator
         .from(singleVariableDecoder[T](variableCreator))
         .emapE {
@@ -175,7 +203,9 @@ object CirceOps {
         .decoder
     }
 
-    def alwaysRightMultiVariableDecoder[T: AlwaysRightConvertible](variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[T]] = {
+    def alwaysRightMultiVariableDecoder[T: AlwaysRightConvertible](
+        variableCreator: RuntimeResolvableVariableCreator
+    ): Decoder[RuntimeMultiResolvableVariable[T]] = {
       SyncDecoderCreator
         .from(multiVariableDecoder[T](variableCreator))
         .emapE {
@@ -185,64 +215,67 @@ object CirceOps {
     }
 
     def decodeStringOrJson[T](simpleDecoder: Decoder[T], expandedDecoder: Decoder[T]): Decoder[T] = {
-      Decoder
-        .decodeJson
+      Decoder.decodeJson
         .flatMap { json =>
           json.asString match {
             case Some(_) => simpleDecoder
-            case None => expandedDecoder
+            case None    => expandedDecoder
           }
         }
     }
 
-    def decodeFieldList[T, F[_] : Applicative](name: String,
-                                               errorCreator: Reason => CoreCreationError = ValueLevelCreationError.apply)
-                                              (implicit decoder: ADecoder[F, T]): decoder.DECODER[FieldListResult[T]] = {
-      decoder
-        .creator
+    def decodeFieldList[T, F[_]: Applicative](
+        name: String,
+        errorCreator: Reason => CoreCreationError = ValueLevelCreationError.apply
+    )(
+        implicit decoder: ADecoder[F, T]
+    ): decoder.DECODER[FieldListResult[T]] = {
+      decoder.creator
         .instance[FieldListResult[T]] { c =>
-        val fApplicative = implicitly[Applicative[F]]
-        c.downField(name) match {
-          case _: FailedCursor =>
-            fApplicative.pure(Right(NoField))
-          case hc =>
-            hc.values match {
-              case None =>
-                fApplicative.pure(Right(FieldListValue(Nil)))
-              case Some(_) =>
-                decoder.creator
-                  .list[T](decoder)
-                  .tryDecode(hc)
-                  .map {
-                    _.map(FieldListValue.apply)
-                      .left
-                      .map { df =>
-                        df.overrideDefaultErrorWith(errorCreator {
-                          hc.focus match {
-                            case Some(json) =>
-                              MalformedValue(json)
-                            case None =>
-                              val ruleName = df.history.headOption.collect { case df: DownField => df.k }.getOrElse("")
-                              Message(s"Malformed definition ${ruleName.show}")
-                          }
-                        })
-                      }
-                  }
-            }
+          val fApplicative = implicitly[Applicative[F]]
+          c.downField(name) match {
+            case _: FailedCursor =>
+              fApplicative.pure(Right(NoField))
+            case hc =>
+              hc.values match {
+                case None =>
+                  fApplicative.pure(Right(FieldListValue(Nil)))
+                case Some(_) =>
+                  decoder.creator
+                    .list[T](decoder)
+                    .tryDecode(hc)
+                    .map {
+                      _.map(FieldListValue.apply).left
+                        .map { df =>
+                          df.overrideDefaultErrorWith(errorCreator {
+                            hc.focus match {
+                              case Some(json) =>
+                                MalformedValue(json)
+                              case None =>
+                                val ruleName =
+                                  df.history.headOption.collect { case df: DownField => df.k }.getOrElse("")
+                                Message(s"Malformed definition ${ruleName.show}")
+                            }
+                          })
+                        }
+                    }
+              }
+          }
         }
-      }
     }
 
     def failed[T](error: CoreCreationError): Decoder[T] = {
-      Decoder.failed(DecodingFailureOps.fromError(error))
+      Decoder.failed(decodingFailureFrom(error))
     }
 
-    def optionalDecoder[T: Decoder](fieldsPath: List[String],
-                                    deprecatedFieldsPath: List[String]): Decoder[Option[T]] = {
+    def optionalDecoder[T: Decoder](
+        fieldsPath: List[String],
+        deprecatedFieldsPath: List[String]
+    ): Decoder[Option[T]] = {
       def downFields(cursor: HCursor, fieldsPath: List[String]): ACursor = {
         fieldsPath match {
           case head :: rest => rest.foldLeft(cursor.downField(head))(_.downField(_))
-          case Nil => cursor
+          case Nil          => cursor
         }
       }
 
@@ -253,11 +286,14 @@ object CirceOps {
           case (true, true) =>
             DecoderHelpers
               .failed[T](
-                CoreCreationError.GeneralReadonlyrestSettingsError(Message(
-                  s"Detected duplicated settings (usage of current and deprecated syntax). You cannot use '${fieldsCursor.pathString}' together with '${alternativeFieldsCursor.pathString}'. Pick one syntax."
-                ))
+                CoreCreationError.GeneralReadonlyrestSettingsError(
+                  Message(
+                    s"Detected duplicated settings (usage of current and deprecated syntax). You cannot use '${fieldsCursor.pathString}' together with '${alternativeFieldsCursor.pathString}'. Pick one syntax."
+                  )
+                )
               )
-              .tryDecode(c).map(Option(_))
+              .tryDecode(c)
+              .map(Option(_))
           case (true, false) =>
             Decoder[T].tryDecode(fieldsCursor).map(Option(_))
           case (false, true) =>
@@ -269,10 +305,19 @@ object CirceOps {
     }
 
     sealed trait FieldListResult[+T]
+
     object FieldListResult {
       case object NoField extends FieldListResult[Nothing]
       final case class FieldListValue[T](list: List[T]) extends FieldListResult[T]
+
+      extension [T](result: FieldListResult[T])
+
+        def toOption: Option[List[T]] = result match
+          case FieldListResult.NoField              => None
+          case FieldListResult.FieldListValue(list) => Some(list)
+
     }
+
   }
 
   implicit class DecoderOps[A](val decoder: Decoder[A]) extends AnyVal {
@@ -291,21 +336,20 @@ object CirceOps {
     def aclCreationError: Option[CoreCreationError] =
       parse(decodingFailure.message).flatMap(Decoder[CoreCreationError].decodeJson).toOption
 
-
     def modifyError(updateErrorMessage: String => String): DecodingFailure = {
       aclCreationError
         .map { error =>
           val updatedReason = error.reason match {
-            case Message(value) => Message(updateErrorMessage(value))
+            case Message(value)        => Message(updateErrorMessage(value))
             case MalformedValue(value) => MalformedValue.fromString(updateErrorMessage(value))
           }
           val updatedError = error match {
             case e: CoreCreationError.GeneralReadonlyrestSettingsError => e.copy(updatedReason)
-            case e: CoreCreationError.DefinitionsLevelCreationError => e.copy(updatedReason)
-            case e: CoreCreationError.BlocksLevelCreationError => e.copy(updatedReason)
-            case e: CoreCreationError.RulesLevelCreationError => e.copy(updatedReason)
-            case e: ValueLevelCreationError => e.copy(updatedReason)
-            case e: CoreCreationError.AuditingSettingsCreationError => e.copy(updatedReason)
+            case e: CoreCreationError.DefinitionsLevelCreationError    => e.copy(updatedReason)
+            case e: CoreCreationError.BlocksLevelCreationError         => e.copy(updatedReason)
+            case e: CoreCreationError.RulesLevelCreationError          => e.copy(updatedReason)
+            case e: ValueLevelCreationError                            => e.copy(updatedReason)
+            case e: CoreCreationError.AuditingSettingsCreationError    => e.copy(updatedReason)
           }
           decodingFailure.withMessage(stringify(updatedError))
         }
@@ -314,19 +358,16 @@ object CirceOps {
 
   }
 
-  object DecodingFailureOps {
-    def fromError(error: CoreCreationError): DecodingFailure =
-      DecodingFailureUtils.fromError(error)
-  }
-
   object DecodingFailureUtils {
     import AclCreationErrorCoders.*
 
-    def fromError(error: CoreCreationError): DecodingFailure =
+    def decodingFailureFrom(error: CoreCreationError): DecodingFailure =
       DecodingFailure(Encoder[CoreCreationError].apply(error).noSpaces, Nil)
+
   }
 
   object AclCreationErrorCoders {
+
     private implicit val reasonCodec: Codec[Reason] = codecWithTypeDiscriminator(
       encode = {
         case reason: Message =>
@@ -339,12 +380,17 @@ object CirceOps {
         "MalformedValue" -> derivedDecoderOfSubtype[Reason, MalformedValue],
       )
     )
+
     implicit val aclCreationErrorCodec: Codec[CoreCreationError] = codecWithTypeDiscriminator(
       encode = {
         case error: CoreCreationError.GeneralReadonlyrestSettingsError =>
-          derivedEncoderWithType[CoreCreationError.GeneralReadonlyrestSettingsError]("GeneralReadonlyrestSettingsError")(error)
+          derivedEncoderWithType[CoreCreationError.GeneralReadonlyrestSettingsError](
+            "GeneralReadonlyrestSettingsError"
+          )(error)
         case error: CoreCreationError.DefinitionsLevelCreationError =>
-          derivedEncoderWithType[CoreCreationError.DefinitionsLevelCreationError]("DefinitionsLevelCreationError")(error)
+          derivedEncoderWithType[CoreCreationError.DefinitionsLevelCreationError]("DefinitionsLevelCreationError")(
+            error
+          )
         case error: CoreCreationError.BlocksLevelCreationError =>
           derivedEncoderWithType[CoreCreationError.BlocksLevelCreationError]("BlocksLevelCreationError")(error)
         case error: CoreCreationError.RulesLevelCreationError =>
@@ -352,21 +398,43 @@ object CirceOps {
         case error: ValueLevelCreationError =>
           derivedEncoderWithType[CoreCreationError.ValueLevelCreationError]("ValueLevelCreationError")(error)
         case error: CoreCreationError.AuditingSettingsCreationError =>
-          derivedEncoderWithType[CoreCreationError.AuditingSettingsCreationError]("AuditingSettingsCreationError")(error)
+          derivedEncoderWithType[CoreCreationError.AuditingSettingsCreationError]("AuditingSettingsCreationError")(
+            error
+          )
       },
       decoders = Map(
-        "GeneralReadonlyrestSettingsError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.GeneralReadonlyrestSettingsError],
-        "DefinitionsLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.DefinitionsLevelCreationError],
-        "BlocksLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.BlocksLevelCreationError],
-        "RulesLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.RulesLevelCreationError],
-        "ValueLevelCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.ValueLevelCreationError],
-        "AuditingSettingsCreationError" -> derivedDecoderOfSubtype[CoreCreationError, CoreCreationError.AuditingSettingsCreationError],
+        "GeneralReadonlyrestSettingsError" -> derivedDecoderOfSubtype[
+          CoreCreationError,
+          CoreCreationError.GeneralReadonlyrestSettingsError
+        ],
+        "DefinitionsLevelCreationError" -> derivedDecoderOfSubtype[
+          CoreCreationError,
+          CoreCreationError.DefinitionsLevelCreationError
+        ],
+        "BlocksLevelCreationError" -> derivedDecoderOfSubtype[
+          CoreCreationError,
+          CoreCreationError.BlocksLevelCreationError
+        ],
+        "RulesLevelCreationError" -> derivedDecoderOfSubtype[
+          CoreCreationError,
+          CoreCreationError.RulesLevelCreationError
+        ],
+        "ValueLevelCreationError" -> derivedDecoderOfSubtype[
+          CoreCreationError,
+          CoreCreationError.ValueLevelCreationError
+        ],
+        "AuditingSettingsCreationError" -> derivedDecoderOfSubtype[
+          CoreCreationError,
+          CoreCreationError.AuditingSettingsCreationError
+        ],
       )
     )
+
     def stringify(error: CoreCreationError): String = Encoder[CoreCreationError].apply(error).noSpaces
   }
 
   implicit class ACursorOps[C <: ACursor](val value: C) extends AnyVal {
+
     /**
      * Tries to navigate to any of the given fields (alternatives), returning the first one that exists.
      * This is different from Circe's built-in `downFields` which navigates sequentially into nested fields.
@@ -382,7 +450,7 @@ object CirceOps {
       } else {
         fields.toList.foldLeft((firstAttempt, field)) {
           case ((acc, _), nextField) if !acc.succeeded => (value.downField(nextField), nextField)
-          case (acc, _) => acc
+          case (acc, _)                                => acc
         }
       }
     }
@@ -398,15 +466,15 @@ object CirceOps {
     }
 
     def downFieldAs[T: Decoder](name: String): Decoder.Result[T] = {
-      value.downField(name).as[T].adaptError {
-        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '${name.show}': ${errorMessage.show}")
+      value.downField(name).as[T].adaptError { case error: DecodingFailure =>
+        error.modifyError(errorMessage => s"Error for field '${name.show}': ${errorMessage.show}")
       }
     }
 
     def downFieldsAs[T: Decoder](field: String, fields: String*): Decoder.Result[T] = {
       val (cursor, key) = downFieldsAlternativesWithKey(field, fields*)
-      cursor.as[T].adaptError {
-        case error: DecodingFailure => error.modifyError(errorMessage => s"Error for field '${key.show}': ${errorMessage.show}")
+      cursor.as[T].adaptError { case error: DecodingFailure =>
+        error.modifyError(errorMessage => s"Error for field '${key.show}': ${errorMessage.show}")
       }
     }
 
@@ -423,5 +491,7 @@ object CirceOps {
         .as[T](implicitly[Decoder[T]])
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
+
   }
+
 }

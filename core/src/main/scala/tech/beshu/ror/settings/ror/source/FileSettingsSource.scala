@@ -20,15 +20,18 @@ import better.files.File
 import cats.data.EitherT
 import io.circe.{Decoder, Json}
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.settings.ror.source.FileSettingsSource.FileSettingsLoadingError
 import tech.beshu.ror.settings.ror.source.FileSettingsSource.LoadingError.FileNotExist
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
 
 class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
-  extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
+    extends ReadOnlySettingsSource[SETTINGS, FileSettingsSource.LoadingError] {
 
-  override def load(): Task[Either[FileSettingsLoadingError, SETTINGS]] = {
+  override def load()(
+      implicit requestId: RequestId
+  ): Task[Either[FileSettingsLoadingError, SETTINGS]] = {
     (for {
       _ <- checkIfFileExist(settingsFile)
       settings <- loadSettingsFromFile(settingsFile)
@@ -43,17 +46,23 @@ class FileSettingsSource[SETTINGS: Decoder](val settingsFile: File)
       .pure[Task, FileSettingsLoadingError](file.contentAsString)
       .subflatMap { raw =>
         Json
-          .fromString(raw).as[SETTINGS]
-          .left.map { failure => SettingsLoadingError.SettingsMalformed(failure.message) }
+          .fromString(raw)
+          .as[SETTINGS]
+          .left
+          .map { failure => SettingsLoadingError.SettingsMalformed(failure.message) }
       }
   }
+
 }
+
 object FileSettingsSource {
 
   type FileSettingsLoadingError = SettingsLoadingError[LoadingError]
 
   sealed trait LoadingError
+
   object LoadingError {
     final case class FileNotExist(file: File) extends LoadingError
   }
+
 }

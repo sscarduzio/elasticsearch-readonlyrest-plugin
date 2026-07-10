@@ -36,21 +36,25 @@ import scala.util.Random
 sealed trait Action {
   def value: String
 }
+
 object Action {
   final case class EsAction(override val value: String) extends Action
+
   object EsAction {
     val fieldCapsAction: Action = EsAction("indices:data/read/field_caps")
     val getSettingsAction: Action = EsAction("indices:monitor/settings/get")
     val monitorStateAction: Action = EsAction("cluster:monitor/state")
     val restoreSnapshotAction: Action = EsAction("cluster:admin/snapshot/restore")
+    val globalCheckpointSyncAction: Action = EsAction("indices:admin/seq_no/global_checkpoint_sync")
   }
 
-  abstract sealed class RorAction(override val value: String) extends Action with EnumEntry
+  sealed abstract class RorAction(override val value: String) extends Action with EnumEntry
+
   object RorAction extends Enum[RorAction] {
 
-    abstract sealed class RoRorAction(override val value: String) extends RorAction(value)
-    abstract sealed class RwRorAction(override val value: String) extends RorAction(value)
-    abstract sealed class AdminRorAction(override val value: String) extends RorAction(value)
+    sealed abstract class RoRorAction(override val value: String) extends RorAction(value)
+    sealed abstract class RwRorAction(override val value: String) extends RorAction(value)
+    sealed abstract class AdminRorAction(override val value: String) extends RorAction(value)
 
     case object RorUserMetadataAction extends RoRorAction("cluster:internal_ror/user_metadata/get")
     case object RorMainSettingsAction extends AdminRorAction("cluster:internal_ror/config/manage")
@@ -72,13 +76,13 @@ object Action {
     val adminActions: Set[AdminRorAction] = values.collect { case action: AdminRorAction => action }.toCovariantSet
 
     private def rorActionFrom(value: String): Option[RorAction] = value match {
-      case RorUserMetadataAction.`value` => RorUserMetadataAction.some
-      case RorMainSettingsAction.`value` => RorMainSettingsAction.some
-      case RorTestSettingsAction.`value` => RorTestSettingsAction.some
-      case RorAuthMockAction.`value` => RorAuthMockAction.some
-      case RorAuditEventAction.`value` => RorAuditEventAction.some
+      case RorUserMetadataAction.`value`    => RorUserMetadataAction.some
+      case RorMainSettingsAction.`value`    => RorMainSettingsAction.some
+      case RorTestSettingsAction.`value`    => RorTestSettingsAction.some
+      case RorAuthMockAction.`value`        => RorAuthMockAction.some
+      case RorAuditEventAction.`value`      => RorAuditEventAction.some
       case RorRefreshSettingsAction.`value` => RorRefreshSettingsAction.some
-      case _ => None
+      case _                                => None
     }
 
     private val rorActionByOutdatedName: Map[String, RorAction] = Map(
@@ -102,21 +106,36 @@ object Action {
           EsAction(value.stripPrefix("cluster:").prependedAll("cluster:internal_"))
         }
     }
+
   }
 
   def apply(value: String): Action = {
-    RorAction.fromString(value)
+    RorAction
+      .fromString(value)
       .getOrElse(EsAction(value))
   }
 
-  def isInternal(actionString: String): Boolean = actionString.startsWith("internal:")
+  def isInternal(actionString: String): Boolean =
+    actionString.startsWith("internal:") ||
+      // This operation is called by the TransportReplicationAction (optionally, controlled by syncGlobalCheckpointAfterOperation toggle).
+      // When called, it is executed directly in the calling thread's context, which means that it would go through ACL.
+      // It would have to be explicitly added to the list of allowed actions in order to work.
+      // It is treated as an internal action instead, so it does not have to be manually added to ACL rules.
+      //
+      // It can be considered as a bug, or at least a discrepancy, in ES logic:
+      //   - in a similar situation, the 'retention_lease_background_sync' action is explicitly wrapped in empty system context
+      //   - which means that action is treated correctly by default
+      //   - 'indices:admin/seq_no/global_checkpoint_sync' should be likely treated the same, but it is not, so we have to handle it here
+      actionString == EsAction.globalCheckpointSyncAction.value
+
   def isMonitorState(actionString: String): Boolean = actionString == EsAction.monitorStateAction.value
   def isXpackSecurity(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/security/")
   def isRollupAction(actionString: String): Boolean = actionString.startsWith("cluster:admin/xpack/rollup/")
 
   implicit class ActionOps(val action: Action) extends AnyVal {
+
     def isRorAction: Boolean = action match {
-      case _: EsAction => false
+      case _: EsAction  => false
       case _: RorAction => true
     }
 
@@ -145,15 +164,20 @@ final case class DocumentId(value: String) extends AnyVal
 final case class DocumentWithIndex(index: ClusterIndexName, documentId: DocumentId)
 
 sealed trait RepositoryName
+
 object RepositoryName {
-  final case class Full private(value: NonEmptyString) extends RepositoryName
+  final case class Full private (value: NonEmptyString) extends RepositoryName
+
   object Full {
     def fromNes(value: NonEmptyString): Full = Full(value)
   }
-  final case class Pattern private(value: NonEmptyString) extends RepositoryName
+
+  final case class Pattern private (value: NonEmptyString) extends RepositoryName
+
   object Pattern {
     def fromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
+
   case object All extends RepositoryName
   case object Wildcard extends RepositoryName
 
@@ -163,46 +187,54 @@ object RepositoryName {
 
   def from(value: String): Option[RepositoryName] = {
     NonEmptyString.unapply(value).map {
-      case Refined("_all") => All
-      case Refined("*") => Wildcard
+      case Refined("_all")      => All
+      case Refined("*")         => Wildcard
       case v if v.contains("*") => Pattern.fromNes(NonEmptyString.unsafeFrom(v))
-      case v => Full.fromNes(NonEmptyString.unsafeFrom(v))
+      case v                    => Full.fromNes(NonEmptyString.unsafeFrom(v))
     }
   }
 
   def toString(snapshotName: RepositoryName): String = snapshotName match {
-    case Full(name) => name.value
+    case Full(name)           => name.value
     case Pattern(namePattern) => namePattern.value
-    case All => "_all"
-    case Wildcard => "*"
+    case All                  => "_all"
+    case Wildcard             => "*"
   }
 
   implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
+
   implicit val matchableRepositoryName: Matchable[RepositoryName] = Matchable.matchable {
-    case Full(name) => name.value
+    case Full(name)           => name.value
     case Pattern(namePattern) => namePattern.value
-    case All => "*"
-    case Wildcard => "*"
+    case All                  => "*"
+    case Wildcard             => "*"
   }
 
   implicit class OrWildcardWhenEmpty(val repositories: Set[RepositoryName]) extends AnyVal {
+
     def orWildcardWhenEmpty: Set[RepositoryName] =
       if (repositories.nonEmpty) repositories
       else Set(RepositoryName.all)
+
   }
 
 }
 
 sealed trait SnapshotName
+
 object SnapshotName {
-  final case class Full private(value: NonEmptyString) extends SnapshotName
+  final case class Full private (value: NonEmptyString) extends SnapshotName
+
   object Full {
     def fromNes(value: NonEmptyString): Full = Full(value)
   }
-  final case class Pattern private(value: NonEmptyString) extends SnapshotName
+
+  final case class Pattern private (value: NonEmptyString) extends SnapshotName
+
   object Pattern {
     def fromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
+
   case object All extends SnapshotName
   case object Wildcard extends SnapshotName
 
@@ -212,39 +244,46 @@ object SnapshotName {
 
   def from(value: String): Option[SnapshotName] = {
     NonEmptyString.unapply(value).map {
-      case Refined("_all") => All
-      case Refined("*") => Wildcard
+      case Refined("_all")      => All
+      case Refined("*")         => Wildcard
       case v if v.contains("*") => Pattern.fromNes(NonEmptyString.unsafeFrom(v))
-      case v => Full.fromNes(NonEmptyString.unsafeFrom(v))
+      case v                    => Full.fromNes(NonEmptyString.unsafeFrom(v))
     }
   }
 
   def toString(snapshotName: SnapshotName): String = snapshotName match {
-    case Full(name) => name.value
+    case Full(name)           => name.value
     case Pattern(namePattern) => namePattern.value
-    case All => "_all"
-    case Wildcard => "*"
+    case All                  => "_all"
+    case Wildcard             => "*"
   }
 
   implicit val eqSnapshotName: Eq[SnapshotName] = Eq.fromUniversalEquals
+
   implicit val matchableSnapshotName: Matchable[SnapshotName] = Matchable.matchable {
-    case Full(name) => name.value
+    case Full(name)           => name.value
     case Pattern(namePattern) => namePattern.value
-    case All => "*"
-    case Wildcard => "*"
+    case All                  => "*"
+    case Wildcard             => "*"
   }
 
   implicit class OrWildcardWhenEmpty(val snapshots: Set[SnapshotName]) extends AnyVal {
+
     def orWildcardWhenEmpty: Set[SnapshotName] =
       if (snapshots.nonEmpty) snapshots
       else Set(SnapshotName.all)
+
   }
+
 }
 
 sealed trait DataStreamName
+
 object DataStreamName {
-  final case class Full private(value: NonEmptyString) extends DataStreamName
+  final case class Full private (value: NonEmptyString) extends DataStreamName
+
   object Full {
+
     def fromString(value: String): Option[DataStreamName.Full] = {
       NonEmptyString.unapply(value).map(fromNes)
     }
@@ -252,9 +291,11 @@ object DataStreamName {
     def fromNes(value: NonEmptyString): DataStreamName.Full = {
       DataStreamName.Full(value)
     }
+
   }
 
-  final case class Pattern private(value: NonEmptyString) extends DataStreamName
+  final case class Pattern private (value: NonEmptyString) extends DataStreamName
+
   object Pattern {
     def fromNes(value: NonEmptyString): Pattern = Pattern(value)
   }
@@ -268,101 +309,132 @@ object DataStreamName {
 
   def fromString(value: String): Option[DataStreamName] = {
     NonEmptyString.unapply(value).map {
-      case Refined("_all") => All
-      case Refined("*") => Wildcard
+      case Refined("_all")      => All
+      case Refined("*")         => Wildcard
       case v if v.contains("*") => Pattern.fromNes(NonEmptyString.unsafeFrom(v))
-      case v => Full.fromNes(NonEmptyString.unsafeFrom(v))
+      case v                    => Full.fromNes(NonEmptyString.unsafeFrom(v))
     }
   }
 
-  def toString(dataStreamName: DataStreamName): String = dataStreamName match {
-    case Full(name) => name.value
+  implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
+
+  implicit val matchableDataStreamName: Matchable[DataStreamName] = Matchable.matchable {
+    case Full(name)           => name.value
     case Pattern(namePattern) => namePattern.value
-    case All => "_all"
-    case Wildcard => "*"
+    case All                  => "*"
+    case Wildcard             => "*"
   }
 
-  implicit val eqDataStreamName: Eq[DataStreamName] = Eq.fromUniversalEquals
-  implicit val matchableDataStreamName: Matchable[DataStreamName] = Matchable.matchable {
-    case Full(name) => name.value
-    case Pattern(namePattern) => namePattern.value
-    case All => "*"
-    case Wildcard => "*"
+  implicit class Stringify(val dataStreamName: DataStreamName) extends AnyVal {
+
+    def stringify: String = dataStreamName match {
+      case Full(name)           => name.value
+      case Pattern(namePattern) => namePattern.value
+      case All                  => "_all"
+      case Wildcard             => "*"
+    }
+
   }
 
   implicit class OrWildcardWhenEmpty(val dataSteams: Set[DataStreamName]) extends AnyVal {
+
     def orWildcardWhenEmpty: Set[DataStreamName] =
       if (dataSteams.nonEmpty) dataSteams
       else Set(DataStreamName.all)
+
   }
 
-  final case class FullLocalDataStreamWithAliases(dataStreamName: DataStreamName.Full,
-                                                  aliasesNames: Set[DataStreamName.Full],
-                                                  backingIndices: Set[IndexName.Full]) {
-    lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
-    lazy val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
-    lazy val aliases: Set[ClusterIndexName.Local] = aliasesNames.map(toLocalIndex)
-    lazy val indices: Set[ClusterIndexName.Local] = backingIndices.map(ClusterIndexName.Local.apply)
-    lazy val all: Set[ClusterIndexName.Local] = aliases ++ indices + dataStream
+  final case class FullLocalDataStreamWithAliases(
+      dataStreamName: DataStreamName.Full,
+      aliasesNames: Set[DataStreamName.Full],
+      backingIndices: Set[IndexName.Full]
+  ) {
+    val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+    val dataStream: ClusterIndexName.Local = toLocalIndex(dataStreamName)
+    val aliases: Set[ClusterIndexName.Local] = Set.mapFrom(aliasesNames)(toLocalIndex)
+    val indices: Set[ClusterIndexName.Local] = Set.mapFrom(backingIndices)(ClusterIndexName.Local.apply)
+
+    val all: Set[ClusterIndexName.Local] = Set.sized[ClusterIndexName.Local](aliases.size + indices.size + 1) { b =>
+      b += dataStream
+      aliases.foreach(b += _)
+      indices.foreach(b += _)
+    }
 
     private def toLocalIndex(ds: DataStreamName.Full): ClusterIndexName.Local =
       ClusterIndexName.Local(IndexName.Full(ds.value))
   }
 
-  final case class FullRemoteDataStreamWithAliases(clusterName: ClusterName.Full,
-                                                   dataStreamName: DataStreamName.Full,
-                                                   aliasesNames: Set[DataStreamName.Full],
-                                                   backingIndices: Set[IndexName.Full]) {
-    lazy val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
-    lazy val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
-    lazy val aliases: Set[ClusterIndexName.Remote] = aliasesNames.map(toRemoteIndex)
-    lazy val indices: Set[ClusterIndexName.Remote] = backingIndices.map(ClusterIndexName.Remote(_, clusterName))
-    lazy val all: Set[ClusterIndexName.Remote] = aliases ++ indices + dataStream
+  final case class FullRemoteDataStreamWithAliases(
+      clusterName: ClusterName.Full,
+      dataStreamName: DataStreamName.Full,
+      aliasesNames: Set[DataStreamName.Full],
+      backingIndices: Set[IndexName.Full]
+  ) {
+    val attribute: IndexAttribute = IndexAttribute.Opened // data streams cannot be closed
+    val dataStream: ClusterIndexName.Remote = toRemoteIndex(dataStreamName)
+    val aliases: Set[ClusterIndexName.Remote] = Set.mapFrom(aliasesNames)(toRemoteIndex)
+    val indices: Set[ClusterIndexName.Remote] = Set.mapFrom(backingIndices)(ClusterIndexName.Remote(_, clusterName))
+
+    val all: Set[ClusterIndexName.Remote] = Set.sized[ClusterIndexName.Remote](aliases.size + indices.size + 1) { b =>
+      b += dataStream
+      aliases.foreach(b += _)
+      indices.foreach(b += _)
+    }
 
     private def toRemoteIndex(ds: DataStreamName.Full): ClusterIndexName.Remote =
       ClusterIndexName.Remote(IndexName.Full(ds.value), clusterName)
   }
+
 }
 
 object ResponseFieldsFiltering {
 
-  final case class ResponseFieldsRestrictions(responseFields: UniqueNonEmptyList[ResponseField],
-                                              mode: AccessMode)
+  final case class ResponseFieldsRestrictions(responseFields: UniqueNonEmptyList[ResponseField], mode: AccessMode)
 
   final case class ResponseField(value: NonEmptyString)
 
   sealed trait AccessMode
+
   object AccessMode {
     case object Whitelist extends AccessMode
     case object Blacklist extends AccessMode
   }
+
 }
 
 sealed trait DocumentAccessibility
+
 object DocumentAccessibility {
   case object Accessible extends DocumentAccessibility
   case object Inaccessible extends DocumentAccessibility
 }
 
-final case class FieldLevelSecurity(restrictions: FieldLevelSecurity.FieldsRestrictions,
-                                    strategy: FieldLevelSecurity.Strategy)
+final case class FieldLevelSecurity(
+    restrictions: FieldLevelSecurity.FieldsRestrictions,
+    strategy: FieldLevelSecurity.Strategy
+)
 
 object FieldLevelSecurity {
 
-  final case class FieldsRestrictions(documentFields: UniqueNonEmptyList[DocumentField],
-                                      mode: FieldsRestrictions.AccessMode)
+  final case class FieldsRestrictions(
+      documentFields: UniqueNonEmptyList[DocumentField],
+      mode: FieldsRestrictions.AccessMode
+  )
 
   object FieldsRestrictions {
     final case class DocumentField(value: NonEmptyString)
 
     sealed trait AccessMode
+
     object AccessMode {
       case object Whitelist extends AccessMode
       case object Blacklist extends AccessMode
     }
+
   }
 
   sealed trait Strategy
+
   object Strategy {
     case object FlsAtLuceneLevelApproach extends Strategy
     sealed trait BasedOnBlockContextOnly extends Strategy
@@ -371,9 +443,11 @@ object FieldLevelSecurity {
       case object EverythingAllowed extends BasedOnBlockContextOnly
       final case class NotAllowedFieldsUsed(fields: NonEmptyList[SpecificField]) extends BasedOnBlockContextOnly
     }
+
   }
 
   sealed trait RequestFieldsUsage
+
   object RequestFieldsUsage {
 
     case object CannotExtractFields extends RequestFieldsUsage
@@ -386,16 +460,19 @@ object FieldLevelSecurity {
 
     object UsedField {
 
-      final case class SpecificField private(value: String) extends UsedField
+      final case class SpecificField private (value: String) extends UsedField
 
       object SpecificField {
         def fromString(value: String): SpecificField = SpecificField(value)
+
         implicit class Ops(val specificField: SpecificField) extends AnyVal {
           def obfuscate: ObfuscatedRandomField = ObfuscatedRandomField(specificField)
         }
+
       }
 
-      final case class FieldWithWildcard private(value: String) extends UsedField
+      final case class FieldWithWildcard private (value: String) extends UsedField
+
       object FieldWithWildcard {
         def fromString(value: String): FieldWithWildcard = FieldWithWildcard(value)
       }
@@ -411,19 +488,26 @@ object FieldLevelSecurity {
     }
 
     final case class ObfuscatedRandomField(value: String) extends AnyVal
+
     object ObfuscatedRandomField {
+
       def apply(from: SpecificField): ObfuscatedRandomField = {
         new ObfuscatedRandomField(s"${from.value}_ROR_${Random.alphanumeric.take(10).mkString("")}")
       }
+
     }
 
-    implicit val monoidInstance: Monoid[RequestFieldsUsage] = Monoid.instance(NotUsingFields, {
-      case (CannotExtractFields, _) => CannotExtractFields
-      case (_, CannotExtractFields) => CannotExtractFields
-      case (other, NotUsingFields) => other
-      case (NotUsingFields, other) => other
-      case (UsingFields(firstFields), UsingFields(secondFields)) => UsingFields(firstFields ::: secondFields)
-    })
+    implicit val monoidInstance: Monoid[RequestFieldsUsage] = Monoid.instance(
+      NotUsingFields,
+      {
+        case (CannotExtractFields, _)                              => CannotExtractFields
+        case (_, CannotExtractFields)                              => CannotExtractFields
+        case (other, NotUsingFields)                               => other
+        case (NotUsingFields, other)                               => other
+        case (UsingFields(firstFields), UsingFields(secondFields)) => UsingFields(firstFields ::: secondFields)
+      }
+    )
+
   }
 
 }

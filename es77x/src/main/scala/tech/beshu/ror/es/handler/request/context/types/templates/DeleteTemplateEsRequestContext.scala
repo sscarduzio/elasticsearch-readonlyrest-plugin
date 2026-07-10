@@ -23,7 +23,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.DeletingLegacyTemplates
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -31,18 +30,20 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
-                                     esContext: EsContext,
-                                     clusterService: RorClusterService,
-                                     override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[DeleteIndexTemplateRequest, DeletingLegacyTemplates](
-    actionRequest, esContext, clusterService, threadPool
-  ) {
+class DeleteTemplateEsRequestContext(
+    actionRequest: DeleteIndexTemplateRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[DeleteIndexTemplateRequest, DeletingLegacyTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
   override protected def templateOperationFrom(request: DeleteIndexTemplateRequest): DeletingLegacyTemplates = {
     TemplateNamePattern.fromString(request.name()) match {
       case Some(pattern) => DeletingLegacyTemplates(NonEmptyList.one(pattern))
-      case None => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
+      case None          => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
     }
   }
 
@@ -51,9 +52,8 @@ class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
       case DeletingLegacyTemplates(namePatterns) =>
         namePatterns.tail match {
           case Nil =>
-          case _ =>
-            logger.warn(
-              s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
+          case _   =>
+            logger.warn(s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
                  | The whole set of patterns [${namePatterns.show}]""".oneLiner)
         }
         actionRequest.name(namePatterns.head.value.value)
@@ -61,8 +61,10 @@ class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
+
 }

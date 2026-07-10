@@ -18,20 +18,24 @@ package tech.beshu.ror.settings.ror.loader
 
 import cats.data.EitherT
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.source.*
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
-import tech.beshu.ror.utils.ScalaOps.LoggerOps
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
-class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIndexSource: MainSettingsIndexSource,
-                                                                  mainSettingsIndexLoadingRetryStrategy: RetryStrategy,
-                                                                  mainSettingsFileSource: MainSettingsFileSource,
-                                                                  testSettingsIndexSource: TestSettingsIndexSource)
-  extends StartingRorSettingsLoader with Logging {
+class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
+    mainSettingsIndexSource: MainSettingsIndexSource,
+    mainSettingsIndexLoadingRetryStrategy: RetryStrategy,
+    mainSettingsFileSource: MainSettingsFileSource,
+    testSettingsIndexSource: TestSettingsIndexSource
+) extends StartingRorSettingsLoader
+    with RequestIdAwareLogging {
 
-  override def load(): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
+  override def load()(
+      implicit requestId: RequestId
+  ): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = for {
       mainSettings <- loadMainSettings()
       testSettings <- loadTestSettings()
@@ -39,11 +43,14 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
     result.value
   }
 
-  private def loadMainSettings(): EitherT[Task, LoadingError, MainRorSettings] = {
+  private def loadMainSettings()(
+      implicit requestId: RequestId
+  ): EitherT[Task, LoadingError, MainRorSettings] = {
     mainSettingsIndexLoadingRetryStrategy
       .withRetryT(
         operation = loadMainSettingsFromIndex(),
-        operationDescription = s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
+        operationDescription =
+          s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
       )
       .leftFlatMap {
         case SettingsLoadingError.SourceSpecificError(IndexSettingsSource.LoadingError.DocumentUnreachable) =>
@@ -53,7 +60,9 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
       }
   }
 
-  private def cannotReadExistingIndexSettings[T] = {
+  private def cannotReadExistingIndexSettings[T](
+      implicit requestId: RequestId
+  ) = {
     val error = s"Cannot read ReadonlyREST settings from index '${mainSettingsIndexSource.settingsIndex.show}'. " +
       s"Settings from file '${mainSettingsFileSource.settingsFile.show}' will NOT be used as a fallback, " +
       s"because they could differ from the settings used by the rest of the cluster."
@@ -62,28 +71,36 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(mainSettingsIn
       .flatMap(_ => EitherT.leftT[Task, T](error))
   }
 
-  private def loadTestSettings(): EitherT[Task, LoadingError, Option[TestRorSettings]] = {
+  private def loadTestSettings()(
+      implicit requestId: RequestId
+  ): EitherT[Task, LoadingError, Option[TestRorSettings]] = {
     loadTestSettingsFromIndex()
       .map(Option.apply)
       .recover { case _ => Option.empty[TestRorSettings] }
       .leftMap(_.show)
   }
 
-  private def loadMainSettingsFromIndex() = {
+  private def loadMainSettingsFromIndex()(
+      implicit requestId: RequestId
+  ) = {
     loadSettingsFromSource(
       source = mainSettingsIndexSource,
       settingsDescription = s"main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
     )
   }
 
-  private def loadMainSettingsFromFile() = {
+  private def loadMainSettingsFromFile()(
+      implicit requestId: RequestId
+  ) = {
     loadSettingsFromSource(
       source = mainSettingsFileSource,
       settingsDescription = s"main settings from file '${mainSettingsFileSource.settingsFile.show}''"
     )
   }
 
-  private def loadTestSettingsFromIndex() = {
+  private def loadTestSettingsFromIndex()(
+      implicit requestId: RequestId
+  ) = {
     loadSettingsFromSource(
       source = testSettingsIndexSource,
       settingsDescription = s"test settings from index '${testSettingsIndexSource.settingsIndex.show}'"

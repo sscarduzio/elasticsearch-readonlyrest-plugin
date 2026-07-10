@@ -25,8 +25,9 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest,
-                        esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
+class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest, esRestRequest: RestRequest)
+    extends ActionRequest
+    with RorActionRequest {
 
   val getAuthMockRequest: AuthMockApi.AuthMockRequest = authMockApiRequest
   lazy val requestContextId: RequestId = RequestId(s"${esRestRequest.hashCode()}-${this.hashCode()}")
@@ -37,7 +38,7 @@ class RRAuthMockRequest(authMockApiRequest: AuthMockApi.AuthMockRequest,
 object RRAuthMockRequest {
 
   def createFrom(request: RestRequest): RRAuthMockRequest = {
-    val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+    val requestType = (request.uri().removeTrailingSlashIfPresent(), request.method()) match {
       case (constants.PROVIDE_AUTH_MOCK_PATH, GET) =>
         AuthMockApi.AuthMockRequest.Type.ProvideAuthMock
       case (constants.CONFIGURE_AUTH_MOCK_PATH, POST) =>
@@ -50,4 +51,5 @@ object RRAuthMockRequest {
       request
     )
   }
+
 }

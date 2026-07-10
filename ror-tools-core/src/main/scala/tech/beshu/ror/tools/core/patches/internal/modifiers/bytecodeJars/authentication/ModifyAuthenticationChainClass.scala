@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.*
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /*
   Replace AuthenticatorChain#doAuthenticate with a short-circuit. We add the X-elastic-product: Elasticsearch header,
   build an internal X-Pack Authentication, call maybeLookupRunAsUser(...), and return. This bypasses the realm chain
   so ROR works even without configured realms/credentials.
-*/
-private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
-  extends BytecodeJarModifier {
+ */
+private[patches] class ModifyAuthenticationChainClass private (esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -46,27 +46,38 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "doAuthenticate" =>
           esVersion match {
             case v if v >= es8120 =>
-              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual8120(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual8120(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case v if v >= es890 =>
-              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual890x(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual890x(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case v if v >= es870 =>
-              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual870(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual870(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case v if v >= es820 =>
-              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual820(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual820(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case v if v >= es7160 =>
-              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual7160(super.visitMethod(access, name, descriptor, signature, exceptions))
+              new SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual7160(
+                super.visitMethod(access, name, descriptor, signature, exceptions)
+              )
             case _ =>
               super.visitMethod(access, name, descriptor, signature, exceptions)
           }
@@ -76,7 +87,7 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
     }
 
     private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual8120(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+        extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -106,30 +117,39 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         val label1 = new Label()
         underlying.visitLabel(label1)
 
-        // final Authentication auth = Authentication.newInternalAuthentication(InternalUsers.XPACK_USER, TransportVersion.current(), "any");
-        underlying.visitFieldInsn(
-          Opcodes.GETSTATIC,
-          "org/elasticsearch/xpack/core/security/user/InternalUsers",
-          "XPACK_USER",
-          "Lorg/elasticsearch/xpack/core/security/user/InternalUser;"
+        // final Authentication auth =
+        //   Authentication.newRealmAuthentication(new User("_xpack", new String[0]), Authentication.RealmRef.newAnonymousRealmRef("any"))
+        underlying.visitTypeInsn(Opcodes.NEW, "org/elasticsearch/xpack/core/security/user/User")
+        underlying.visitInsn(Opcodes.DUP)
+        underlying.visitLdcInsn("_xpack")
+        underlying.visitInsn(Opcodes.ICONST_0)
+        underlying.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/String")
+        underlying.visitMethodInsn(
+          Opcodes.INVOKESPECIAL,
+          "org/elasticsearch/xpack/core/security/user/User",
+          "<init>",
+          "(Ljava/lang/String;[Ljava/lang/String;)V",
+          false
         )
+        underlying.visitLdcInsn("any")
+
         val label2 = new Label()
         underlying.visitLabel(label2)
         underlying.visitMethodInsn(
           Opcodes.INVOKESTATIC,
-          "org/elasticsearch/TransportVersion",
-          "current",
-          "()Lorg/elasticsearch/TransportVersion;",
+          "org/elasticsearch/xpack/core/security/authc/Authentication$RealmRef",
+          "newAnonymousRealmRef",
+          "(Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;",
           false
         )
-        underlying.visitLdcInsn("any")
+
         val label3 = new Label()
         underlying.visitLabel(label3)
         underlying.visitMethodInsn(
           Opcodes.INVOKESTATIC,
           "org/elasticsearch/xpack/core/security/authc/Authentication",
-          "newInternalAuthentication",
-          "(Lorg/elasticsearch/xpack/core/security/user/InternalUser;Lorg/elasticsearch/TransportVersion;Ljava/lang/String;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          "newRealmAuthentication",
+          "(Lorg/elasticsearch/xpack/core/security/user/User;Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;)Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
           false
         )
         underlying.visitVarInsn(Opcodes.ASTORE, 3)
@@ -160,18 +180,47 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         underlying.visitLabel(label6)
 
         // locals
-        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;", null, label0, label6, 0)
-        underlying.visitLocalVariable("context", "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;", null, label0, label6, 1)
-        underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;", label0, label6, 2)
-        underlying.visitLocalVariable("auth", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label4, label6, 3)
+        underlying.visitLocalVariable(
+          "this",
+          "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;",
+          null,
+          label0,
+          label6,
+          0
+        )
+        underlying.visitLocalVariable(
+          "context",
+          "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;",
+          null,
+          label0,
+          label6,
+          1
+        )
+        underlying.visitLocalVariable(
+          "listener",
+          "Lorg/elasticsearch/action/ActionListener;",
+          "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;",
+          label0,
+          label6,
+          2
+        )
+        underlying.visitLocalVariable(
+          "auth",
+          "Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          null,
+          label4,
+          label6,
+          3
+        )
 
         underlying.visitMaxs(4, 4)
         underlying.visitEnd()
       }
+
     }
 
     private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual890x(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+        extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -252,19 +301,48 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         underlying.visitLabel(label4)
 
         // locals
-        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;", null, label0, label4, 0)
-        underlying.visitLocalVariable("context", "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;", null, label0, label4, 1)
+        underlying.visitLocalVariable(
+          "this",
+          "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;",
+          null,
+          label0,
+          label4,
+          0
+        )
+        underlying.visitLocalVariable(
+          "context",
+          "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;",
+          null,
+          label0,
+          label4,
+          1
+        )
         underlying.visitLocalVariable("shouldExtractCredentials", "Z", null, label0, label4, 2)
-        underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;", label0, label4, 3)
-        underlying.visitLocalVariable("auth", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label2, label4, 4)
+        underlying.visitLocalVariable(
+          "listener",
+          "Lorg/elasticsearch/action/ActionListener;",
+          "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;",
+          label0,
+          label4,
+          3
+        )
+        underlying.visitLocalVariable(
+          "auth",
+          "Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          null,
+          label2,
+          label4,
+          4
+        )
 
         underlying.visitMaxs(4, 5)
         underlying.visitEnd()
       }
+
     }
 
     private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual870(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+        extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -344,19 +422,48 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         underlying.visitLabel(label4)
 
         // locals
-        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;", null, label0, label4, 0)
-        underlying.visitLocalVariable("context", "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;", null, label0, label4, 1)
+        underlying.visitLocalVariable(
+          "this",
+          "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;",
+          null,
+          label0,
+          label4,
+          0
+        )
+        underlying.visitLocalVariable(
+          "context",
+          "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;",
+          null,
+          label0,
+          label4,
+          1
+        )
         underlying.visitLocalVariable("shouldExtractCredentials", "Z", null, label0, label4, 2)
-        underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;", label0, label4, 3)
-        underlying.visitLocalVariable("auth", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label2, label4, 4)
+        underlying.visitLocalVariable(
+          "listener",
+          "Lorg/elasticsearch/action/ActionListener;",
+          "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;",
+          label0,
+          label4,
+          3
+        )
+        underlying.visitLocalVariable(
+          "auth",
+          "Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          null,
+          label2,
+          label4,
+          4
+        )
 
         underlying.visitMaxs(4, 5)
         underlying.visitEnd()
       }
+
     }
 
     private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual820(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+        extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -436,19 +543,48 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         underlying.visitLabel(label4)
 
         // locals
-        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;", null, label0, label4, 0)
-        underlying.visitLocalVariable("context", "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;", null, label0, label4, 1)
+        underlying.visitLocalVariable(
+          "this",
+          "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;",
+          null,
+          label0,
+          label4,
+          0
+        )
+        underlying.visitLocalVariable(
+          "context",
+          "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;",
+          null,
+          label0,
+          label4,
+          1
+        )
         underlying.visitLocalVariable("shouldExtractCredentials", "Z", null, label0, label4, 2)
-        underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;", label0, label4, 3)
-        underlying.visitLocalVariable("auth", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label2, label4, 4)
+        underlying.visitLocalVariable(
+          "listener",
+          "Lorg/elasticsearch/action/ActionListener;",
+          "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;",
+          label0,
+          label4,
+          3
+        )
+        underlying.visitLocalVariable(
+          "auth",
+          "Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          null,
+          label2,
+          label4,
+          4
+        )
 
         underlying.visitMaxs(4, 5)
         underlying.visitEnd()
       }
+
     }
 
     private class SetXpackUserAsAuthenticatedUserForEsGreaterOrEqual7160(underlying: MethodVisitor)
-      extends MethodVisitor(Opcodes.ASM9) {
+        extends MethodVisitor(Opcodes.ASM9) {
 
       override def visitCode(): Unit = {
         underlying.visitCode()
@@ -555,18 +691,56 @@ private[patches] class ModifyAuthenticationChainClass private(esVersion: SemVer)
         underlying.visitLabel(label5)
 
         // locals
-        underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;", null, label0, label5, 0)
-        underlying.visitLocalVariable("context", "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;", null, label0, label5, 1)
+        underlying.visitLocalVariable(
+          "this",
+          "Lorg/elasticsearch/xpack/security/authc/AuthenticatorChain;",
+          null,
+          label0,
+          label5,
+          0
+        )
+        underlying.visitLocalVariable(
+          "context",
+          "Lorg/elasticsearch/xpack/security/authc/Authenticator$Context;",
+          null,
+          label0,
+          label5,
+          1
+        )
         underlying.visitLocalVariable("shouldExtractCredentials", "Z", null, label0, label5, 2)
-        underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;", label0, label5, 3)
-        underlying.visitLocalVariable("authenticatedBy", "Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;", null, label2, label5, 4)
-        underlying.visitLocalVariable("auth", "Lorg/elasticsearch/xpack/core/security/authc/Authentication;", null, label3, label5, 5)
+        underlying.visitLocalVariable(
+          "listener",
+          "Lorg/elasticsearch/action/ActionListener;",
+          "Lorg/elasticsearch/action/ActionListener<Lorg/elasticsearch/xpack/core/security/authc/Authentication;>;",
+          label0,
+          label5,
+          3
+        )
+        underlying.visitLocalVariable(
+          "authenticatedBy",
+          "Lorg/elasticsearch/xpack/core/security/authc/Authentication$RealmRef;",
+          null,
+          label2,
+          label5,
+          4
+        )
+        underlying.visitLocalVariable(
+          "auth",
+          "Lorg/elasticsearch/xpack/core/security/authc/Authentication;",
+          null,
+          label3,
+          label5,
+          5
+        )
 
         underlying.visitMaxs(6, 6)
         underlying.visitEnd()
       }
+
     }
+
   }
+
 }
 
 object ModifyAuthenticationChainClass {

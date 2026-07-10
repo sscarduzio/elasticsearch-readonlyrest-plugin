@@ -24,7 +24,6 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.utils.FilterableAliasesMap.*
@@ -33,29 +32,34 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
-                               esContext: EsContext,
-                               aclContext: AccessControlStaticContext,
-                               clusterService: RorClusterService,
-                               override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[GetIndexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+class GetIndexEsRequestContext(
+    actionRequest: GetIndexRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[GetIndexRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: GetIndexRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
-      .indices().asSafeSet
+      .indices()
+      .asSafeSet
       .flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: GetIndexRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: GetIndexRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     request.indices(filteredIndices.stringify: _*)
     ModificationResult.UpdateResponse.sync(filterAliases(_, allAllowedIndices))
   }
 
-  private def filterAliases(response: ActionResponse,
-                            allAllowedAliases: NonEmptyList[ClusterIndexName]): ActionResponse = {
+  private def filterAliases(
+      response: ActionResponse,
+      allAllowedAliases: NonEmptyList[ClusterIndexName]
+  ): ActionResponse = {
     response match {
       case getIndexResponse: GetIndexResponse =>
         new GetIndexResponse(
@@ -67,7 +71,9 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
           getIndexResponse.dataStreams()
         )
       case other =>
-        logger.error(s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].show}], was: [${other.getClass.show}]")
+        logger.error(
+          s"${id.show} Unexpected response type - expected: [${classOf[GetIndexResponse].show}], was: [${other.getClass.show}]"
+        )
         new GetIndexResponse(
           Array.empty,
           ImmutableOpenMapOps.empty,
@@ -78,4 +84,5 @@ class GetIndexEsRequestContext(actionRequest: GetIndexRequest,
         )
     }
   }
+
 }

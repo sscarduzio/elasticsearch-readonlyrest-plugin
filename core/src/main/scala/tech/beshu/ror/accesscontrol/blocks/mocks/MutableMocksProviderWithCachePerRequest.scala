@@ -16,29 +16,37 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.mocks
 
-import scala.annotation.nowarn
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
-import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{ExternalAuthenticationServiceMock, ExternalAuthorizationServiceMock, LdapServiceMock}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
+import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider.{
+  ExternalAuthenticationServiceMock,
+  ExternalGroupsProviderServiceMock,
+  LdapServiceMock
+}
 import tech.beshu.ror.accesscontrol.domain.RequestId
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import java.time.Duration as JavaDuration
+import scala.annotation.nowarn
 import scala.language.postfixOps
 
-class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
-                                             (implicit scheduler: Scheduler)
-  extends MocksProvider {
+class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)(
+    implicit scheduler: Scheduler
+) extends MocksProvider {
 
   private val currentMockProvider = Atomic(CurrentMocksProviderConfiguration(SimpleMocksProvider(initial)))
 
   private lazy val cache: Cache[RequestId, MocksProvider] =
-    Caffeine.newBuilder()
-      .expireAfterWrite(JavaDuration.ofMinutes(1))
-      .executor(scheduler)
-      .build()
+    doPrivileged {
+      Caffeine
+        .newBuilder()
+        .expireAfterWrite(JavaDuration.ofMinutes(1))
+        .executor(scheduler)
+        .build()
+    }
 
   @nowarn("msg=unused explicit parameter")
   def update(mocks: AuthServicesMocks): Unit = {
@@ -53,19 +61,22 @@ class MutableMocksProviderWithCachePerRequest(initial: AuthServicesMocks)
 
   def currentMocks: AuthServicesMocks = currentMockProvider.get().mocksProvider.mocks
 
-  override def ldapServiceWith(id: LdapService.Name)
-                              (implicit context: RequestId): Option[LdapServiceMock] = {
+  override def ldapServiceWith(id: LdapService.Name)(
+      implicit context: RequestId
+  ): Option[LdapServiceMock] = {
     getMockProviderByContext(context).ldapServiceWith(id)
   }
 
-  override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)
-                                                (implicit context: RequestId): Option[ExternalAuthenticationServiceMock] = {
+  override def externalAuthenticationServiceWith(id: ExternalAuthenticationService.Name)(
+      implicit context: RequestId
+  ): Option[ExternalAuthenticationServiceMock] = {
     getMockProviderByContext(context).externalAuthenticationServiceWith(id)
   }
 
-  override def externalAuthorizationServiceWith(id: ExternalAuthorizationService.Name)
-                                               (implicit context: RequestId): Option[ExternalAuthorizationServiceMock] = {
-    getMockProviderByContext(context).externalAuthorizationServiceWith(id)
+  override def externalGroupsProviderServiceWith(id: ExternalGroupsProviderService.Name)(
+      implicit context: RequestId
+  ): Option[ExternalGroupsProviderServiceMock] = {
+    getMockProviderByContext(context).externalGroupsProviderServiceWith(id)
   }
 
   private def getMockProviderByContext(context: RequestId) =

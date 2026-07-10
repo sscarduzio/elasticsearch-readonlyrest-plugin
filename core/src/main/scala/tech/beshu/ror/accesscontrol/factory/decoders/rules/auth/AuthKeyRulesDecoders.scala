@@ -36,14 +36,14 @@ import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.StringWiseSplitter
 import tech.beshu.ror.utils.StringWiseSplitter.*
 
-class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                         mocksProvider: MocksProvider,
-                         globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyRule] {
+class AuthKeyRuleDecoder(
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyRule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeyRule]] = {
-    AuthKeyDecodersHelper
-      .plainTextCredentialsDecoder
+    AuthKeyDecodersHelper.plainTextCredentialsDecoder
       .map(settings =>
         RuleDefinition.create(
           new AuthKeyRule(
@@ -54,16 +54,17 @@ class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
         )
       )
   }
+
 }
 
-class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                             mocksProvider: MocksProvider,
-                             globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha1Rule] {
+class AuthKeySha1RuleDecoder(
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha1Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeySha1Rule]] = {
-    AuthKeyDecodersHelper
-      .hashedCredentialsDecoder
+    AuthKeyDecodersHelper.hashedCredentialsDecoder
       .map(settings =>
         RuleDefinition.create(
           new AuthKeySha1Rule(
@@ -74,16 +75,17 @@ class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
         )
       )
   }
+
 }
 
-class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                               mocksProvider: MocksProvider,
-                               globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha256Rule] {
+class AuthKeySha256RuleDecoder(
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha256Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeySha256Rule]] = {
-    AuthKeyDecodersHelper
-      .hashedCredentialsDecoder
+    AuthKeyDecodersHelper.hashedCredentialsDecoder
       .map(settings =>
         RuleDefinition.create(
           new AuthKeySha256Rule(
@@ -94,16 +96,17 @@ class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
         )
       )
   }
+
 }
 
-class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                               mocksProvider: MocksProvider,
-                               globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha512Rule] {
+class AuthKeySha512RuleDecoder(
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha512Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeySha512Rule]] = {
-    AuthKeyDecodersHelper
-      .hashedCredentialsDecoder
+    AuthKeyDecodersHelper.hashedCredentialsDecoder
       .map(settings =>
         RuleDefinition.create(
           new AuthKeySha512Rule(
@@ -114,16 +117,17 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
         )
       )
   }
+
 }
 
-class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                                             mocksProvider: MocksProvider,
-                                             globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyPBKDF2WithHmacSHA512Rule] {
+class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyPBKDF2WithHmacSHA512Rule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeyPBKDF2WithHmacSHA512Rule]] = {
-    AuthKeyDecodersHelper
-      .hashedCredentialsDecoder
+    AuthKeyDecodersHelper.hashedCredentialsDecoder
       .map(settings =>
         RuleDefinition.create(
           new AuthKeyPBKDF2WithHmacSHA512Rule(
@@ -134,16 +138,17 @@ class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definition
         )
       )
   }
+
 }
 
-class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                             mocksProvider: MocksProvider,
-                             globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyUnixRule] {
+class AuthKeyUnixRuleDecoder(
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyUnixRule] {
 
   override protected def decoder: Decoder[RuleDefinition[AuthKeyUnixRule]] = {
-    AuthKeyDecodersHelper
-      .unixHashedCredentialsDecoder
+    AuthKeyDecodersHelper.unixHashedCredentialsDecoder
       .map(settings =>
         RuleDefinition.create(
           new AuthKeyUnixRule(
@@ -154,13 +159,13 @@ class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
         )
       )
   }
+
 }
 
 private object AuthKeyDecodersHelper {
+
   val hashedCredentialsDecoder: Decoder[BasicAuthenticationRule.Settings[AuthKeyHashingRule.HashedCredentials]] =
-    DecoderHelpers
-      .decodeStringLikeNonEmpty
-      .toSyncDecoder
+    DecoderHelpers.decodeStringLikeNonEmpty.toSyncDecoder
       .emapE { str =>
         str.value.toNonEmptyStringsTuple match {
           case Right((first, second)) =>
@@ -168,7 +173,11 @@ private object AuthKeyDecodersHelper {
           case Left(StringWiseSplitter.Error.CannotSplitUsingColon) =>
             Right(AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword(str))
           case Left(StringWiseSplitter.Error.TupleMemberCannotBeEmpty) =>
-            Left(RulesLevelCreationError(Message(s"Auth key rule credentials malformed (expected two non-empty values separated with colon)")))
+            Left(
+              RulesLevelCreationError(
+                Message(s"Auth key rule credentials malformed (expected two non-empty values separated with colon)")
+              )
+            )
         }
       }
       .map(identity[AuthKeyHashingRule.HashedCredentials])
@@ -187,15 +196,15 @@ private object AuthKeyDecodersHelper {
         BasicAuthenticationRule.Settings(UnixHashedCredentials(User.Id(first), second))
       }
 
-  private def twoColonSeparatedNonEmptyStringsDecoder(fieldNameForMessage: String): Decoder[(NonEmptyString, NonEmptyString)] =
-    DecoderHelpers
-      .decodeStringLike
-      .toSyncDecoder
-      .emapE {
-        _.value
-          .toNonEmptyStringsTuple
-          .left.map(_ => RulesLevelCreationError(Message(s"${fieldNameForMessage.show} malformed (expected two non-empty values separated with colon)")))
-      }
-      .decoder
+  private def twoColonSeparatedNonEmptyStringsDecoder(
+      fieldNameForMessage: String
+  ): Decoder[(NonEmptyString, NonEmptyString)] =
+    DecoderHelpers.decodeStringLike.toSyncDecoder.emapE {
+      _.value.toNonEmptyStringsTuple.left.map(_ =>
+        RulesLevelCreationError(
+          Message(s"${fieldNameForMessage.show} malformed (expected two non-empty values separated with colon)")
+        )
+      )
+    }.decoder
 
 }

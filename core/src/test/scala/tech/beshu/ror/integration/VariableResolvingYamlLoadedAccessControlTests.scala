@@ -25,17 +25,18 @@ import tech.beshu.ror.accesscontrol.AccessControlList.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.{JsonTree, JsonValue}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Jwt as _, *}
-import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.mocks.MockEsServices.MockEsClusterService
+import tech.beshu.ror.mocks.{MockEsServices, MockRequestContext}
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.SingletonLdapContainers
+import tech.beshu.ror.utils.TestsEnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.misc.JwtUtils.*
@@ -44,14 +45,16 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import java.util.Base64
 
-class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
-  with BaseYamlLoadedAccessControlTest
-  with ForAllTestContainer
-  with Inside {
+class VariableResolvingYamlLoadedAccessControlTests
+    extends AnyWordSpec
+    with BaseYamlLoadedAccessControlTest
+    with ForAllTestContainer
+    with Inside {
 
   override val container: LdapContainer = SingletonLdapContainers.ldap1
 
-  override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+  override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider =
+    new UnboundidLdapConnectionPoolProvider
 
   private lazy val (pub, secret) = Random.generateRsaRandomKeys
 
@@ -198,88 +201,86 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
       "allow to proceed" when {
         "old style header variable is used" in {
           val request = MockRequestContext.indices.withHeaders(
-            basicAuthHeader("user1:passwd"), header("X-my-group-id-1", "g3")
+            basicAuthHeader("user1:passwd"),
+            header("X-my-group-id-1", "g3")
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from header variable"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from header variable"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("g3")),
               availableGroups = UniqueList.of(group("g3"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "new style header variable is used" in {
           val request = MockRequestContext.indices.withHeaders(
-            basicAuthHeader("user1:passwd"), header("X-my-group-id-2", "g3")
+            basicAuthHeader("user1:passwd"),
+            header("X-my-group-id-2", "g3")
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from header variable"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from header variable"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("g3")),
               availableGroups = UniqueList.of(group("g3"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "old style of env variable is used" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user2:passwd"))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from env variable (old syntax)"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from env variable (old syntax)"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
               currentGroup = Some(GroupId("gs2")),
               availableGroups = UniqueList.of(group("gs2"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "new style of env variable is used" in {
           val request = MockRequestContext.indices.withHeaders(basicAuthHeader("user1:passwd"))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group id from env variable"))
-            assertBlockContext(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from env variable"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(GroupId("gs1")),
               availableGroups = UniqueList.of(group("gs1"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "JWT variable is used (array)" in {
-          val jwt = Jwt(secret, claims = List(
-            "userId" := "user3",
-            "tech" :-> "beshu" :-> "mainGroup" := List("j1", "j2")
-          ))
-          val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt)).copy(
-            filteredIndices = Set(requestedIndex("gjj1"))
+          val jwt = Jwt(
+            secret,
+            claims = List(
+              "userId" := "user3",
+              "tech" :-> "beshu" :-> "mainGroup" := List("j1", "j2")
+            )
           )
+          val request = MockRequestContext.indices
+            .withHeaders(bearerHeader(jwt))
+            .copy(
+              filteredIndices = Set(requestedIndex("gjj1"))
+            )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
-            block.name should be(Block.Name("Group id from jwt variable (array)"))
-            blockContext.userMetadata should be(
-              UserMetadata
-                .empty
+          inside(result) { case RegularRequestResult.Allowed(blockContext: GeneralIndexRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from jwt variable (array)"))
+            blockContext.blockMetadata should be(
+              BlockMetadata.empty
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
                 .withCurrentGroupId(GroupId("j1"))
@@ -290,24 +291,31 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "JWT variable is used (CSV string)" in {
-          val jwt = Jwt(secret, claims = List(
-            "userId" := "user4",
-            "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
-          ))
+          val jwt = Jwt(
+            secret,
+            claims = List(
+              "userId" := "user4",
+              "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
+            )
+          )
 
           val request = MockRequestContext.indices
             .withHeaders(bearerHeader(jwt))
             .copy(
               filteredIndices = Set(requestedIndex("gj0")),
-              allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set(fullLocalIndexWithAliases(fullIndexName("gj0")))
+                )
+              )
             )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
-            block.name should be(Block.Name("Group id from jwt variable"))
-            blockContext.userMetadata should be(
-              UserMetadata
+          inside(result) { case RegularRequestResult.Allowed(blockContext: GeneralIndexRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("Group id from jwt variable"))
+            blockContext.blockMetadata should be(
+              BlockMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
@@ -319,25 +327,32 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "JWT variable in filter query is used" in {
-          val jwt = Jwt(secret, claims = List(
-            "userId" := "user5",
-            "user_id_list" := List("alice", "bob"),
-            "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
-          ))
+          val jwt = Jwt(
+            secret,
+            claims = List(
+              "userId" := "user5",
+              "user_id_list" := List("alice", "bob"),
+              "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
+            )
+          )
 
-          val request = MockRequestContext.search
+          val request = MockRequestContext.filterable
             .withHeaders(bearerHeader(jwt))
             .copy(
               indices = Set.empty,
-              allIndicesAndAliases = Set.empty
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set.empty
+                )
+              )
             )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
-            block.name should be(Block.Name("Variables usage in filter"))
-            blockContext.userMetadata should be(
-              UserMetadata
+          inside(result) { case RegularRequestResult.Allowed(blockContext: FilterableRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("Variables usage in filter"))
+            blockContext.blockMetadata should be(
+              BlockMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user5")))
                 .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
@@ -346,27 +361,33 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             )
             blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
-            blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}""")))
+            blockContext.filter should be(
+              Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}"""))
+            )
           }
         }
         "Available groups env is used" in {
-          val request = MockRequestContext.search
+          val request = MockRequestContext.filterable
             .withHeaders(basicAuthHeader("cartman:user2"))
             .copy(
               indices = Set(requestedIndex("*")),
-              allIndicesAndAliases = Set(
-                fullLocalIndexWithAliases(fullIndexName("test-g1")),
-                fullLocalIndexWithAliases(fullIndexName("test-g2")),
-                fullLocalIndexWithAliases(fullIndexName("test-g3"))
+              esServices = MockEsServices.`with`(
+                MockEsClusterService(
+                  allIndicesAndAliases = Set(
+                    fullLocalIndexWithAliases(fullIndexName("test-g1")),
+                    fullLocalIndexWithAliases(fullIndexName("test-g2")),
+                    fullLocalIndexWithAliases(fullIndexName("test-g3"))
+                  )
+                )
               )
-          )
+            )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
-            block.name should be(Block.Name("LDAP groups explode"))
-            blockContext.userMetadata should be(
-              UserMetadata
+          inside(result) { case RegularRequestResult.Allowed(blockContext: FilterableRequestBlockContext) =>
+            blockContext.block.name should be(Block.Name("LDAP groups explode"))
+            blockContext.blockMetadata should be(
+              BlockMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("cartman")))
                 .withCurrentGroupId(GroupId("g1"))
@@ -374,83 +395,96 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             )
             blockContext.filteredIndices should be(Set(requestedIndex("test-g1"), requestedIndex("test-g3")))
             blockContext.responseHeaders should be(Set.empty)
-            blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "group_id": ["g1","g3"] }}}}""")))
+            blockContext.filter should be(
+              Some(Filter("""{"bool": { "must": { "terms": { "group_id": ["g1","g3"] }}}}"""))
+            )
           }
         }
         "kibana.metadata has variables used - without groups in token" in {
-          val jwt = Jwt(secret, claims = List(
-            "userId" := "user9",
-            "user_id_list" := List("alice", "bob"),
-          ))
+          val jwt = Jwt(
+            secret,
+            claims = List(
+              "userId" := "user9",
+              "user_id_list" := List("alice", "bob"),
+            )
+          )
 
-          val request = MockRequestContext.search.withHeaders(bearerHeader(jwt))
+          val request = MockRequestContext.filterable.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) {
-            case RegularRequestResult.Allow(blockContext, block) =>
-              block.name should be(Block.Name("Kibana metadata resolving test (with jwt_authentication)"))
-              blockContext.userMetadata should be(
-                UserMetadata
-                  .from(request)
-                  .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
-                  .withKibanaAccess(KibanaAccess.RO)
-                  .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
-                  .withKibanaMetadata(
-                    JsonTree.Object(Map(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Kibana metadata resolving test (with jwt_authentication)"))
+            blockContext.blockMetadata should be(
+              BlockMetadata
+                .from(request)
+                .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
+                .withKibanaAccess(KibanaAccess.RO)
+                .withKibanaIndex(ClusterIndexName.Local.kibanaDefault)
+                .withKibanaGenericMetadata(
+                  JsonTree.Object(
+                    Map(
                       "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
-                    ))
+                    )
                   )
-                  .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
-              )
-              blockContext.responseHeaders should be(Set.empty)
+                )
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
+            )
+            blockContext.responseHeaders should be(Set.empty)
           }
         }
         "kibana.metadata has variables used - with groups in token" in {
-          val jwt = Jwt(secret, claims = List(
-            "userId" := "user9",
-            "user_id_list" := List("alice", "bob"),
-            "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
-          ))
+          val jwt = Jwt(
+            secret,
+            claims = List(
+              "userId" := "user9",
+              "user_id_list" := List("alice", "bob"),
+              "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
+            )
+          )
 
-          val request = MockRequestContext.search.withHeaders(bearerHeader(jwt))
+          val request = MockRequestContext.filterable.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, _) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          inside(result.result) {
-            case RegularRequestResult.Allow(blockContext, block) =>
-              block.name should be(Block.Name("Kibana metadata resolving test (with jwt_auth)"))
-              blockContext.userMetadata should be(
-                UserMetadata
-                  .from(request)
-                  .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
-                  .withKibanaAccess(KibanaAccess.RO)
-                  .withKibanaIndex(KibanaIndexName.default)
-                  .withKibanaMetadata(
-                    JsonTree.Object(Map(
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Kibana metadata resolving test (with jwt_auth)"))
+            blockContext.blockMetadata should be(
+              BlockMetadata
+                .from(request)
+                .withLoggedUser(DirectlyLoggedUser(User.Id("user9")))
+                .withKibanaAccess(KibanaAccess.RO)
+                .withKibanaIndex(KibanaIndexName.default)
+                .withKibanaGenericMetadata(
+                  JsonTree.Object(
+                    Map(
                       "a" -> JsonTree.Value(JsonValue.StringValue("jwt_value_j0,j3")),
                       "b" -> JsonTree.Value(JsonValue.StringValue("\"alice\",\"bob\"")),
                       "c" -> JsonTree.Value(JsonValue.StringValue("jwt_value_transformed_G0,J3"))
-                    ))
+                    )
                   )
-                  .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
-                  .withCurrentGroupId(GroupId("j0,j3"))
-                  .withAvailableGroups(UniqueList.of(group("j0,j3")))
-              )
-              blockContext.responseHeaders should be(Set.empty)
+                )
+                .withJwtToken(domain.Jwt.Payload(jwt.defaultClaims()))
+                .withCurrentGroupId(GroupId("j0,j3"))
+                .withAvailableGroups(UniqueList.of(group("j0,j3")))
+            )
+            blockContext.responseHeaders should be(Set.empty)
           }
         }
       }
     }
   }
 
-  override implicit protected def envVarsProvider: EnvVarsProvider = {
-    case EnvVarName(n) if n.value == "sys_group_1" => Some("S1")
-    case EnvVarName(n) if n.value == "sys_group_2" => Some("ss2")
-    case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
-    case EnvVarName(n) if n.value == "USER1_PASS" => Some("user1:passwd")
-    case EnvVarName(n) if n.value == "LDAP_HOST" => Some(SingletonLdapContainers.ldap1.ldapHost)
-    case EnvVarName(n) if n.value == "LDAP_PORT" => Some(s"${SingletonLdapContainers.ldap1.ldapPort}")
-    case _ => None
-  }
+  override protected implicit def envVarsProvider: EnvVarsProvider =
+    TestsEnvVarsProvider.usingMap(
+      Map(
+        nes("sys_group_1") -> "S1",
+        nes("sys_group_2") -> "ss2",
+        nes("READONLYREST_ENABLE") -> "true",
+        nes("USER1_PASS") -> "user1:passwd",
+        nes("LDAP_HOST") -> SingletonLdapContainers.ldap1.ldapHost,
+        nes("LDAP_PORT") -> s"${SingletonLdapContainers.ldap1.ldapPort}"
+      )
+    )
+
 }

@@ -18,16 +18,19 @@ package tech.beshu.ror.accesscontrol.factory
 
 import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, RorSettingsIndex}
 
-final case class GlobalSettings(showBasicAuthPrompt: Boolean,
-                                forbiddenRequestMessage: String,
-                                flsEngine: GlobalSettings.FlsEngine,
-                                settingsIndex: RorSettingsIndex,
-                                userIdCaseSensitivity: CaseSensitivity,
-                                usersDefinitionDuplicateUsernamesValidationEnabled: Boolean)
+final case class GlobalSettings(
+    showBasicAuthPrompt: Boolean,
+    forbiddenRequestMessage: String,
+    flsEngine: GlobalSettings.FlsEngine,
+    settingsIndex: RorSettingsIndex,
+    userIdCaseSensitivity: CaseSensitivity,
+    usersDefinitionDuplicateUsernamesValidationEnabled: Boolean
+)
 
 object GlobalSettings {
 
   sealed trait FlsEngine
+
   object FlsEngine {
     case object Lucene extends FlsEngine
     case object ESWithLucene extends FlsEngine

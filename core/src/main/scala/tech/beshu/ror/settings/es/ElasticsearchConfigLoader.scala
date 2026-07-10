@@ -1,0 +1,113 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package tech.beshu.ror.settings.es
+
+import better.files.File
+import io.circe.Json
+import monix.eval.Task
+import tech.beshu.ror.SystemContext
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.TransformationCompiler
+import tech.beshu.ror.accesscontrol.factory.JsonStaticVariablesResolver
+import tech.beshu.ror.es.EsEnv
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.es.ElasticsearchConfigLoader.LoadingError
+import tech.beshu.ror.utils.yaml.YamlLeafOrPropertyOrEnvDecoder
+import tech.beshu.ror.utils.yaml.YamlOps.jsonWithOneLinerKeysToRegularJson
+import tech.beshu.ror.utils.yaml.YamlParser
+
+final class ElasticsearchConfigLoader(file: File)(
+    implicit systemContext: SystemContext
+) {
+
+  private val yamlParser: YamlParser = new YamlParser()
+
+  private val jsonStaticVariableResolver = new JsonStaticVariablesResolver(
+    systemContext.envVarsProvider,
+    TransformationCompiler.withoutAliases(systemContext.variablesFunctions)
+  )
+
+  def loadSettings[SETTINGS: YamlLeafOrPropertyOrEnvDecoder](
+      settingsName: String
+  ): Task[Either[LoadingError, SETTINGS]] = Task.delay {
+    for {
+      _ <- Either.cond(file.exists, (), LoadingError.FileNotFound(file): LoadingError)
+      settings <- loadedSettingsJson
+        .flatMap { json =>
+          implicitly[YamlLeafOrPropertyOrEnvDecoder[SETTINGS]]
+            .decode(json)
+            .left
+            .map(e =>
+              createError(
+                s"Cannot load ${settingsName.show} from file ${file.pathAsString.show}. Cause: ${prettyCause(e).show}"
+              )
+            )
+        }
+    } yield settings
+  }
+
+  private lazy val loadedSettingsJson: Either[LoadingError, Json] = {
+    file.fileReader { reader =>
+      yamlParser
+        .parse(reader)
+        .map(jsonWithOneLinerKeysToRegularJson)
+        .left
+        .map(e => createError(s"Cannot parse file ${file.pathAsString.show} content. Cause: ${e.message.show}"))
+        .flatMap { json =>
+          jsonStaticVariableResolver
+            .resolve(json)
+            .left
+            .map(e => createError(s"Unable to resolve environment variables for file ${file.pathAsString.show}. $e."))
+        }
+    }
+  }
+
+  private def prettyCause(error: String) = {
+    error match {
+      case message if message.startsWith("DecodingFailure at") => "yaml is malformed"
+      case other                                               => other
+    }
+  }
+
+  private def createError(message: String) = LoadingError.MalformedSettings(file, message)
+}
+
+object ElasticsearchConfigLoader {
+  sealed trait LoadingError
+
+  object LoadingError {
+    final case class FileNotFound(file: File) extends LoadingError
+    final case class MalformedSettings(file: File, message: String) extends LoadingError
+  }
+
+}
+
+private[es] trait ElasticsearchConfigLoaderSupport {
+
+  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](esEnv: EsEnv, settingsName: String)(
+      implicit systemContext: SystemContext
+  ): Task[Either[LoadingError, T]] = {
+    loadSetting(esEnv.elasticsearchConfig.file, settingsName)
+  }
+
+  protected def loadSetting[T: YamlLeafOrPropertyOrEnvDecoder](file: File, settingsName: String)(
+      implicit systemContext: SystemContext
+  ): Task[Either[LoadingError, T]] = {
+    val loader = new ElasticsearchConfigLoader(file)
+    loader.loadSettings[T](settingsName)
+  }
+
+}

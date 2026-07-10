@@ -25,18 +25,17 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.KibanaIndexName
 
 @deprecated("[ROR] This rule is deprecated. Users should use KibanaUserDataRule instead.", "1.48.0")
-class KibanaTemplateIndexRule(val settings: Settings)
-  extends MatchingAlwaysRule with KibanaRelatedRule {
+class KibanaTemplateIndexRule(val settings: Settings) extends MatchingAlwaysRule with KibanaRelatedRule {
 
   override val name: Rule.Name = KibanaTemplateIndexRule.Name.name
 
-  override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
-    settings
-      .kibanaTemplateIndex
+  override def process[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[B] = Task {
+    settings.kibanaTemplateIndex
       .resolve(blockContext)
-      .map(index => blockContext.withUserMetadata(_.withKibanaTemplateIndex(index)))
+      .map(index => blockContext.withBlockMetadata(_.withKibanaTemplateIndex(index)))
       .getOrElse(blockContext)
   }
+
 }
 
 object KibanaTemplateIndexRule {

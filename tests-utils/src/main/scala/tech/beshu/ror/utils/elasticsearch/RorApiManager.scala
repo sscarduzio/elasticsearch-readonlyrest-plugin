@@ -28,16 +28,20 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.concurrent.duration.FiniteDuration
 
-class RorApiManager(client: RestClient,
-                    esVersion: String,
-                    override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client, esVersion, esNativeApi = false) {
+class RorApiManager(
+    client: RestClient,
+    esVersion: String,
+    override val additionalHeaders: Map[String, String] = Map.empty
+) extends BaseManager(client, esVersion, esNativeApi = false) {
 
   final lazy val documentManager = new DocumentManager(client, esVersion)
 
-  def fetchMetadata(preferredGroupId: Option[String] = None,
-                    correlationId: Option[String] = None): RorApiJsonResponse = {
-    call(createUserMetadataRequest(preferredGroupId, correlationId), new RorApiJsonResponse(_))
+  def fetchUserMetadata(licenseType: String, correlationId: Option[String] = None): RorApiJsonResponse = {
+    call(createUserMetadataRequest(Some(licenseType), correlationId), new RorApiJsonResponse(_))
+  }
+
+  def fetchUserMetadata(): RorApiJsonResponse = {
+    call(createUserMetadataRequest(None, None), new RorApiJsonResponse(_))
   }
 
   def sendAuditEvent(payload: JSON): RorApiJsonResponse = {
@@ -50,6 +54,10 @@ class RorApiManager(client: RestClient,
 
   def getRorInIndexSettings: RorApiJsonResponse = {
     call(createGetRorInIndexSettingsRequest(), new RorApiJsonResponse(_))
+  }
+
+  def fetchCurrentAuditConfiguration: RorApiJsonResponse = {
+    call(createFetchCurrentAuditConfigurationRequest(), new RorApiJsonResponse(_))
   }
 
   def updateRorInIndexSettings(settings: String): RorApiResponseWithBusinessStatus = {
@@ -110,20 +118,21 @@ class RorApiManager(client: RestClient,
     )
   }
 
-  private def createUserMetadataRequest(preferredGroupId: Option[String],
-                                        correlationId: Option[String]) = {
-    val request = new HttpGet(client.from("/_readonlyrest/metadata/current_user"))
-    preferredGroupId.foreach(request.addHeader("x-ror-current-group", _))
+  private def createUserMetadataRequest(licenseType: Option[String], correlationId: Option[String]) = {
+    val request = new HttpGet(client.from("/_readonlyrest/metadata/user"))
     correlationId.foreach(request.addHeader("x-ror-correlation-id", _))
+    licenseType.foreach(request.addHeader("x-ror-kbn-license-type", _))
     request
   }
 
   private def createSendAuditEventRequest(payload: JSON) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/audit/event"))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      payload.toString()
-    ))
+    request.setEntity(
+      new StringEntity(
+        payload.toString()
+      )
+    )
     request
   }
 
@@ -145,8 +154,7 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config/test"))
   }
 
-  private def createUpdateRorTestSettingsRequest(settings: String,
-                                                 ttl: FiniteDuration) = {
+  private def createUpdateRorTestSettingsRequest(settings: String, ttl: FiniteDuration) = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/config/test"))
 
     request.addHeader("Content-Type", "application/json")
@@ -186,6 +194,10 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config"))
   }
 
+  private def createFetchCurrentAuditConfigurationRequest() = {
+    new HttpGet(client.from("/_readonlyrest/admin/config/audit"))
+  }
+
   private def createReloadRorSettingsRequest() = {
     val request = new HttpPost(client.from("/_readonlyrest/admin/refreshconfig"))
     request.addHeader("Content-Type", "application/json")
@@ -203,11 +215,9 @@ class RorApiManager(client: RestClient,
     new HttpGet(client.from("/_readonlyrest/admin/config/test/authmock"))
   }
 
-  final class RorApiJsonResponse(override val response: HttpResponse)
-    extends JsonResponse(response)
+  final class RorApiJsonResponse(override val response: HttpResponse) extends JsonResponse(response)
 
-  final class RorApiResponseWithBusinessStatus(override val response: HttpResponse)
-    extends JsonResponse(response) {
+  final class RorApiResponseWithBusinessStatus(override val response: HttpResponse) extends JsonResponse(response) {
 
     def forceOkStatus(): this.type = {
       force()
@@ -248,4 +258,5 @@ class RorApiManager(client: RestClient,
 
     private def message = responseJson.obj.get("message").map(_.str).getOrElse("[none]")
   }
+
 }

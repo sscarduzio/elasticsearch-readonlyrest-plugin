@@ -16,60 +16,124 @@
  */
 package tech.beshu.ror.accesscontrol.matchers
 
-import com.hrakaroo.glob.GlobPattern
+import com.hrakaroo.glob.{GlobPattern, MatchingEngine}
 import tech.beshu.ror.accesscontrol.domain.CaseSensitivity
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher.Matchable
 import tech.beshu.ror.syntax.*
 
-private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A])
-  extends PatternsMatcher[A] {
+private[matchers] class GlobPatternsMatcher[A: Matchable](val values: Iterable[A]) extends PatternsMatcher[A] {
 
-  override val patterns: Iterable[String] = values.map(implicitly[Matchable[A]].show)
-  override val caseSensitivity: CaseSensitivity = implicitly[Matchable[A]].caseSensitivity
+  import GlobPatternsMatcher.*
 
-  private val globs = values.map { v =>
-    val matchable = implicitly[Matchable[A]]
-    GlobPattern.compile(matchable.show(v), '*', '?', globPatternFlags(matchable.caseSensitivity))
-  }
+  private val matchable: Matchable[A] = implicitly[Matchable[A]]
+
+  override val caseSensitivity: CaseSensitivity = matchable.caseSensitivity
+  override val patterns: Iterable[String] = values.map(matchable.show)
+
+  private val ignoreCase: Boolean = caseSensitivity == CaseSensitivity.Disabled
+  private val compiled: Compiled = Compiled.from(patterns, ignoreCase, globPatternFlags(caseSensitivity))
 
   override def `match`[B <: A](value: B): Boolean = {
-    globs.exists(_.matches(Matchable[A].show(value)))
+    if (compiled.matchAll) true
+    else {
+      val raw = matchable.show(value)
+      val norm = if (ignoreCase) raw.toLowerCase else raw
+      compiled.exact.contains(norm) ||
+      compiled.prefixes.exists(norm.startsWith) ||
+      compiled.suffixes.exists(norm.endsWith) ||
+      compiled.infixes.exists(norm.contains) ||
+      compiled.complex.exists(
+        _.matches(raw)
+      ) // raw (not norm): the glob engine handles case-insensitivity via globFlags
+    }
   }
 
   override def `match`[B: Conversion](value: B): Boolean = {
-    val bAoAConversion = implicitly[Conversion[B]]
-    `match`(bAoAConversion(value))
+    val conv = implicitly[Conversion[B]]
+    `match`(conv(value))
   }
 
-  override def filter[B <: A](items: IterableOnce[B]): Set[B] = {
-    filterWithConversion(items, identity)
+  override def filter[B <: A](items: IterableOnce[B]): Set[B] =
+    filterWith(items, identity)
+
+  override def filter[B: Conversion](items: IterableOnce[B]): Set[B] =
+    filterWith(items, implicitly[Conversion[B]])
+
+  override def contains(str: String): Boolean = patterns.exists(_ == str)
+
+  private def filterWith[B](items: IterableOnce[B], conversion: Conversion[B]): Set[B] = {
+    if (compiled.matchAll) items.toCovariantSet
+    else items.iterator.filter(b => `match`(conversion(b))).toCovariantSet
   }
 
-  override def filter[B: Conversion](items: IterableOnce[B]): Set[B] = {
-    filterWithConversion(items, implicitly[Conversion[B]])
+  private def globPatternFlags(cs: CaseSensitivity): Int = cs match {
+    case CaseSensitivity.Enabled  => 0
+    case CaseSensitivity.Disabled => GlobPattern.CASE_INSENSITIVE
   }
 
-  override def contains(str: String): Boolean = {
-    values
-      .map(implicitly[Matchable[A]].show)
-      .exists(_ == str)
-  }
+}
 
-  private def filterWithConversion[B](items: IterableOnce[B], conversion: Conversion[B]): Set[B] = {
-    items.iterator
-      .flatMap {
-        case b if `match`(conversion(b)) => Some(b)
-        case _ => None
-      }
-      .toCovariantSet
-  }
+private[matchers] object GlobPatternsMatcher {
 
-  private def globPatternFlags(caseSensitivity: CaseSensitivity) = {
-    // todo: in the future we can handle escapes too
-    caseSensitivity match {
-      case CaseSensitivity.Enabled => 0
-      case CaseSensitivity.Disabled => GlobPattern.CASE_INSENSITIVE
+  private final case class Compiled(
+      matchAll: Boolean,
+      exact: Set[String],
+      prefixes: Vector[String],
+      suffixes: Vector[String],
+      infixes: Vector[String],
+      complex: Vector[MatchingEngine]
+  )
+
+  private object Compiled {
+
+    def from(patterns: Iterable[String], ignoreCase: Boolean, globFlags: Int): Compiled = {
+      def norm(s: String) = if (ignoreCase) s.toLowerCase else s
+      val kinds = patterns.iterator.map(Kind.of).toVector
+      Compiled(
+        matchAll = kinds.contains(Kind.All),
+        exact = kinds.collect { case Kind.Exact(p) => norm(p) }.toCovariantSet,
+        prefixes = kinds.collect { case Kind.Prefix(p) => norm(p) },
+        suffixes = kinds.collect { case Kind.Suffix(p) => norm(p) },
+        infixes = kinds.collect { case Kind.Infix(p) => norm(p) },
+        complex = kinds.collect { case Kind.Complex(p) => GlobPattern.compile(p, '*', '?', globFlags) }
+      )
     }
+
+  }
+
+  // Structural classification of a glob pattern. Pure prefix/suffix/infix shapes
+  // can be matched with String.startsWith / endsWith / contains; only Complex
+  // patterns need the glob engine.
+  private enum Kind {
+    case All
+    case Exact(pattern: String)
+    case Prefix(pattern: String)
+    case Suffix(pattern: String)
+    case Infix(pattern: String)
+    case Complex(pattern: String)
+  }
+
+  private object Kind {
+
+    def of(p: String): Kind = p match {
+      case "*" =>
+        All
+      case s if !hasWildcard(s) =>
+        Exact(s)
+      case s if s.length > 1 && !s.contains('?') && s.indexOf('*') == s.length - 1 =>
+        Prefix(s.dropRight(1))
+      case s if s.length > 1 && !s.contains('?') && s.charAt(0) == '*' && s.indexOf('*', 1) < 0 =>
+        Suffix(s.tail)
+      case s
+          if s.length > 2 && !s.contains('?')
+            && s.charAt(0) == '*' && s.charAt(s.length - 1) == '*'
+            && s.indexOf('*', 1) == s.length - 1 =>
+        Infix(s.substring(1, s.length - 1))
+      case s =>
+        Complex(s)
+    }
+
+    private def hasWildcard(s: String): Boolean = s.contains('*') || s.contains('?')
   }
 
 }

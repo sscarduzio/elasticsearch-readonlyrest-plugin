@@ -17,16 +17,14 @@
 package tech.beshu.ror.es.handler.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits.*
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.handler.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -36,20 +34,25 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
-class BulkEsRequestContext(actionRequest: BulkRequest,
-                           esContext: EsContext,
-                           clusterService: RorClusterService,
-                           override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)
+class BulkEsRequestContext(actionRequest: BulkRequest, esContext: EsContext, override val threadPool: ThreadPool)
+    extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext)
     with EsRequest[MultiIndexRequestBlockContext] {
 
-  override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+  override def initialBlockContext(block: Block): MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+    block = block,
     requestContext = this,
-    userMetadata = UserMetadata.from(this),
+    blockMetadata = BlockMetadata.from(this),
     responseHeaders = Set.empty,
     responseTransformations = List.empty,
-    indexPacks = indexPacksFrom(actionRequest)
+    indexPacks = discoveredIndexPacks
   )
+
+  override def requestedIndices: Option[Set[RequestedIndex[ClusterIndexName]]] = Some {
+    discoveredIndexPacks.flatMap {
+      case Indices.Found(indices) => indices
+      case Indices.NotFound       => Set.empty
+    }.toCovariantSet
+  }
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
@@ -59,25 +62,29 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
         .zip(modifiedPacksOfIndices)
         .foldLeft(Modified: ModificationResult) {
           case (Modified, (request, pack)) => updateRequest(request, pack)
-          case (_, _) => ShouldBeInterrupted
+          case (_, _)                      => ShouldBeInterrupted
         }
     } else {
-      logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different " +
-        s"number of requests, than altered one. This can be security issue. So, it's better for forbid the request")
+      logger.error(
+        s"Cannot alter MultiGetRequest request, because origin request contained different " +
+          s"number of requests, than altered one. This can be security issue. So, it's better for forbid the request"
+      )
       ShouldBeInterrupted
     }
   }
 
+  private lazy val discoveredIndexPacks = indexPacksFrom(actionRequest)
+
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {
     request
-      .requests().asScala
+      .requests()
+      .asScala
       .map { r => Indices.Found(requestedIndicesFrom(r)) }
       .toList
   }
 
   private def requestedIndicesFrom(request: DocWriteRequest[_]): Set[RequestedIndex[ClusterIndexName]] = {
-    request
-      .indices.asSafeSet
+    request.indices.asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
@@ -90,18 +97,23 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
             updateRequestWithIndices(request, nel)
             Modified
           case None =>
-            logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because empty list of indices was found")
+            logger.error(s"Cannot alter MultiGetRequest request, because empty list of indices was found")
             ShouldBeInterrupted
         }
       case Indices.NotFound =>
-        logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because no allowed indices were found")
+        logger.error(s"Cannot alter MultiGetRequest request, because no allowed indices were found")
         ShouldBeInterrupted
     }
   }
 
-  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[RequestedIndex[ClusterIndexName]]) = {
+  private def updateRequestWithIndices(
+      request: DocWriteRequest[_],
+      indices: NonEmptyList[RequestedIndex[ClusterIndexName]]
+  ) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]")
+      logger.warn(
+        s"Filtered result contains more than one index. First was taken. The whole set of indices [${indices.show}]"
+      )
     }
     request.index(indices.head.stringify)
   }

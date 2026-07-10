@@ -21,18 +21,17 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.DataStreamRequestBlockContext.BackingIndices
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseDataStreamsEsRequestContext
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Request,
-                                       esContext: EsContext,
-                                       clusterService: RorClusterService,
-                                       override val threadPool: ThreadPool)
-  extends BaseDataStreamsEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+class DataStreamsStatsEsRequestContext(
+    actionRequest: DataStreamsStatsAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseDataStreamsEsRequestContext(actionRequest, esContext, threadPool) {
 
   override def backingIndicesFrom(request: DataStreamsStatsAction.Request): BackingIndices =
     BackingIndices.IndicesNotInvolved
@@ -41,7 +40,8 @@ class DataStreamsStatsEsRequestContext(actionRequest: DataStreamsStatsAction.Req
     actionRequest.indices().asSafeSet.flatMap(DataStreamName.fromString)
 
   override def modifyRequest(blockContext: BlockContext.DataStreamRequestBlockContext): ModificationResult = {
-    actionRequest.indices(blockContext.dataStreams.map(DataStreamName.toString).toList: _*)
+    actionRequest.indices(blockContext.dataStreams.map(_.stringify).toList: _*)
     ModificationResult.Modified
   }
+
 }

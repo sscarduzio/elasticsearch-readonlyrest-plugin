@@ -19,19 +19,19 @@ package tech.beshu.ror.es.dlsfls
 import cats.data.StateT
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.DirectoryReader
 import org.elasticsearch.common.CheckedFunction
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.index.IndexService
-import tech.beshu.ror.constants
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
+import tech.beshu.ror.constants
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.io.IOException
 import java.util.function.{Function => JavaFunction}
 import scala.util.{Failure, Success, Try}
 
-object RoleIndexSearcherWrapper extends Logging {
+object RoleIndexSearcherWrapper extends RequestIdAwareLogging {
 
   val instance: JavaFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]] =
     new JavaFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]] {
@@ -40,17 +40,23 @@ object RoleIndexSearcherWrapper extends Logging {
         val threadContext: ThreadContext = indexService.getThreadPool.getThreadContext
         (reader: DirectoryReader) =>
           prepareDocumentFieldReader(threadContext)
-            .run(reader).get._2
+            .run(reader)
+            .get
+            ._2
       }
 
-      private def prepareDocumentFieldReader(threadContext: ThreadContext): StateT[Try, DirectoryReader, DirectoryReader] = {
+      private def prepareDocumentFieldReader(
+          threadContext: ThreadContext
+      ): StateT[Try, DirectoryReader, DirectoryReader] = {
         StateT { reader =>
           Option(threadContext.getHeader(constants.FIELDS_TRANSIENT)) match {
             case Some(fieldsHeader) =>
               fieldsFromHeaderValue(fieldsHeader)
                 .flatMap { fields =>
                   Try(RorDocumentFieldReader.wrap(reader, fields))
-                    .recover { case e => throw new IllegalStateException("FLS: Couldn't extract FLS fields from threadContext", e) }
+                    .recover { case e =>
+                      throw new IllegalStateException("FLS: Couldn't extract FLS fields from threadContext", e)
+                    }
                 }
                 .map(r => (r, r))
             case None =>
@@ -64,17 +70,18 @@ object RoleIndexSearcherWrapper extends Logging {
         for {
           nel <- NonEmptyString.from(value) match {
             case Right(nel) => Success(nel)
-            case Left(_) =>
-              logger.debug("FLS: empty header value")
+            case Left(_)    =>
+              noRequestIdLogger.debug("FLS: empty header value")
               failure
           }
           fields <- transientFieldsFromHeaderValue.fromRawValue(nel) match {
-            case result@Success(_) => result
-            case Failure(ex) =>
-              logger.debug(s"FLS: Cannot decode fields from ${constants.FIELDS_TRANSIENT} header value", ex)
+            case result @ Success(_) => result
+            case Failure(ex)         =>
+              noRequestIdLogger.debug(s"FLS: Cannot decode fields from ${constants.FIELDS_TRANSIENT} header value", ex)
               failure
           }
         } yield fields
       }
     }
+
 }

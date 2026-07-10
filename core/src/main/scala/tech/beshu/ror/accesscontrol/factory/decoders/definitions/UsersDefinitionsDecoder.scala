@@ -36,13 +36,21 @@ import tech.beshu.ror.accesscontrol.domain.{Group, GroupIdLike, GroupName, UserI
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  DefinitionsLevelCreationError,
+  ValueLevelCreationError
+}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
-import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{usersDefinitionsAllowedRulesDecoderBy, withUserIdParamsCheck}
+import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{
+  usersDefinitionsAllowedRulesDecoderBy,
+  withUserIdParamsCheck
+}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.failed
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.es.EsEnv
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -51,15 +59,20 @@ object UsersDefinitionsDecoder {
 
   import tech.beshu.ror.accesscontrol.factory.decoders.definitions.UsersDefinitionsDecoder.GroupsDecoder.*
 
-  def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-               authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
-               authProxyDefinitions: Definitions[ProxyAuth],
-               jwtDefinitions: Definitions[JwtDef],
-               rorKbnDefinitions: Definitions[RorKbnDef],
-               ldapServiceDefinitions: Definitions[LdapService],
-               impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-               mocksProvider: MocksProvider,
-               globalSettings: GlobalSettings): ADecoder[Id, Definitions[UserDef]] = {
+  val usersKey = "users"
+
+  def instance(
+      authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+      externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
+      authProxyDefinitions: Definitions[ProxyAuth],
+      jwtDefinitions: Definitions[JwtDef],
+      rorKbnDefinitions: Definitions[RorKbnDef],
+      ldapServiceDefinitions: Definitions[LdapService],
+      impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+      mocksProvider: MocksProvider,
+      globalSettings: GlobalSettings,
+      esEnv: EsEnv
+  ): ADecoder[Id, Definitions[UserDef]] = {
     implicit val userDefDecoder: SyncDecoder[UserDef] =
       SyncDecoderCreator
         .instance { c =>
@@ -71,14 +84,15 @@ object UsersDefinitionsDecoder {
               val rulesDecoder = userDefRulesDecoder(
                 usernamePatterns,
                 authenticationServiceDefinitions,
-                authorizationServiceDefinitions,
+                externalGroupsProviderServiceDefinitions,
                 authProxyDefinitions,
                 jwtDefinitions,
                 rorKbnDefinitions,
                 ldapServiceDefinitions,
                 impersonatorsDefinitions,
                 mocksProvider,
-                globalSettings
+                globalSettings,
+                esEnv
               )
               rulesDecoder.tryDecode(c.withoutKeys(Set(usernameKey, groupsKey)))
             }
@@ -90,46 +104,50 @@ object UsersDefinitionsDecoder {
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
     DefinitionsBaseDecoder
-      .instance[Id, UserDef]("users")
+      .instance[Id, UserDef](usersKey)
       .emapE(validate(globalSettings, _))
   }
 
   private implicit val userIdPatternsDecoder: Decoder[UserIdPatterns] =
     Decoder[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
 
-  private def userDefRulesDecoder(usernamePatterns: UserIdPatterns,
-                                  authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                  authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
-                                  authProxyDefinitions: Definitions[ProxyAuth],
-                                  jwtDefinitions: Definitions[JwtDef],
-                                  rorKbnDefinitions: Definitions[RorKbnDef],
-                                  ldapServiceDefinitions: Definitions[LdapService],
-                                  impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                                  mocksProvider: MocksProvider,
-                                  globalSettings: GlobalSettings): Decoder[List[Rule]] = Decoder.instance { c =>
+  private def userDefRulesDecoder(
+      usernamePatterns: UserIdPatterns,
+      authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+      externalGroupsProviderServiceDefinitions: Definitions[ExternalGroupsProviderService],
+      authProxyDefinitions: Definitions[ProxyAuth],
+      jwtDefinitions: Definitions[JwtDef],
+      rorKbnDefinitions: Definitions[RorKbnDef],
+      ldapServiceDefinitions: Definitions[LdapService],
+      impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+      mocksProvider: MocksProvider,
+      globalSettings: GlobalSettings,
+      esEnv: EsEnv
+  ): Decoder[List[Rule]] = Decoder.instance { c =>
     type RuleDecoders = List[RuleDecoder[Rule]]
     val ruleNames = c.keys.toList.flatten.map(Rule.Name.apply)
     val ruleDecoders = ruleNames.foldLeft(Either.right[Message, RuleDecoders](List.empty)) {
-      case (failure@Left(_), _) => failure
+      case (failure @ Left(_), _)      => failure
       case (Right(decoders), ruleName) =>
         usersDefinitionsAllowedRulesDecoderBy(
           ruleName,
           authenticationServiceDefinitions,
-          authorizationServiceDefinitions,
+          externalGroupsProviderServiceDefinitions,
           authProxyDefinitions,
           jwtDefinitions,
           rorKbnDefinitions,
           ldapServiceDefinitions,
           impersonatorsDefinitions,
           mocksProvider,
-          globalSettings
+          globalSettings,
+          esEnv
         ) match {
           case Some(ruleDecoder) => Right(ruleDecoder :: decoders)
-          case None => Left(Message(s"Unknown rule '${ruleName.show}' in users definitions section"))
+          case None              => Left(Message(s"Unknown rule '${ruleName.show}' in users definitions section"))
         }
     }
-    ruleDecoders
-      .left.map(error => DecodingFailureOps.fromError(DefinitionsLevelCreationError(error)))
+    ruleDecoders.left
+      .map(error => decodingFailureFrom(DefinitionsLevelCreationError(error)))
       .map { decoders =>
         decoders.map(withUserIdParamsCheck(_, usernamePatterns, globalSettings, decodingFailure))
       }
@@ -137,7 +155,7 @@ object UsersDefinitionsDecoder {
         val emptyAcc: (ACursor, Decoder.Result[List[Rule]]) = (c, Right(List.empty))
         decoders
           .foldLeft(emptyAcc) {
-            case ((modifiedCursor, left@Left(_)), _) =>
+            case ((modifiedCursor, left @ Left(_)), _) =>
               (modifiedCursor, left)
             case ((modifiedCursor, Right(rules)), decoder) =>
               decoder.apply(c) match {
@@ -152,18 +170,27 @@ object UsersDefinitionsDecoder {
       .map { case (_, rules) => rules }
   }
 
-  private def modeDecoderFrom(rules: List[Rule],
-                              usernamePatterns: UserIdPatterns) = {
+  private def modeDecoderFrom(rules: List[Rule], usernamePatterns: UserIdPatterns) = {
     rules match {
       case Nil =>
-        failed[Mode](DefinitionsLevelCreationError(Message(s"No authentication method defined for [${usernamePatterns.show}] in users definition section")))
+        failed[Mode](
+          DefinitionsLevelCreationError(
+            Message(s"No authentication method defined for [${usernamePatterns.show}] in users definition section")
+          )
+        )
       case first :: Nil =>
         oneRuleModeFrom(first)
       case first :: second :: Nil =>
         twoRulesModeFrom(first, second)
       case moreThanTwoRules =>
         val ruleNamesStr = moreThanTwoRules.map(_.name).show
-        failed[Mode](DefinitionsLevelCreationError(Message(s"Too many rules defined for [${usernamePatterns.show}] in users definition section: ${ruleNamesStr.show}")))
+        failed[Mode](
+          DefinitionsLevelCreationError(
+            Message(
+              s"Too many rules defined for [${usernamePatterns.show}] in users definition section: ${ruleNamesStr.show}"
+            )
+          )
+        )
     }
   }
 
@@ -173,11 +200,12 @@ object UsersDefinitionsDecoder {
     case r: AuthRule =>
       Decoder[GroupMappings].map(UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r), _))
     case r: AuthenticationRule =>
-      GroupsDecoder
-        .groupsDecoder
+      GroupsDecoder.groupsDecoder
         .map(UserDef.Mode.WithoutGroupsMapping(r, _))
     case other =>
-      failed(DefinitionsLevelCreationError(Message(s"Cannot use '${other.name.show}' rule in users definition section")))
+      failed(
+        DefinitionsLevelCreationError(Message(s"Cannot use '${other.name.show}' rule in users definition section"))
+      )
   }
 
   private def twoRulesModeFrom(rule1: Rule, rule2: Rule): Decoder[Mode] =
@@ -191,54 +219,64 @@ object UsersDefinitionsDecoder {
       case (r1: AuthorizationRule, r2: AuthRule) =>
         errorFor(r2, r1)
       case (r1: AuthenticationRule, r2: AuthorizationRule) =>
-        Decoder[GroupMappings].map(mappings =>
-          UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r1, r2), mappings)
-        )
+        Decoder[GroupMappings].map(mappings => UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r1, r2), mappings))
       case (r1: AuthorizationRule, r2: AuthenticationRule) =>
-        Decoder[GroupMappings].map(mappings =>
-          UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r2, r1), mappings)
-        )
+        Decoder[GroupMappings].map(mappings => UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r2, r1), mappings))
       case (r1, r2) =>
         errorFor(r1, r2)
     }
 
   private def errorFor[T](authRule: Rule, authenticationRule: AuthenticationRule) = {
-    failed[T](DefinitionsLevelCreationError(Message(
-      s"""Users definition section external groups mapping feature allows for single rule with authentication
-         | and authorization or two rules which handle authentication and authorization separately. '${authRule.name.show}'
-         | is an authentication with authorization rule and '${authenticationRule.name.show}' is and authentication only rule.
-         | Cannot use them both in this context.""".stripMargin
-    )))
+    failed[T](
+      DefinitionsLevelCreationError(
+        Message(
+          s"""Users definition section external groups mapping feature allows for single rule with authentication
+             | and authorization or two rules which handle authentication and authorization separately. '${authRule.name.show}'
+             | is an authentication with authorization rule and '${authenticationRule.name.show}' is and authentication only rule.
+             | Cannot use them both in this context.""".stripMargin
+        )
+      )
+    )
   }
 
   private def errorFor[T](authRule: Rule, authorizationRule: AuthorizationRule) = {
-    failed[T](DefinitionsLevelCreationError(Message(
-      s"""Users definition section external groups mapping feature allows for single rule with authentication
-         | and authorization or two rules which handle authentication and authorization separately. '${authRule.name.show}'
-         | is an authentication with authorization rule and '${authorizationRule.name.show}' is and authorization only rule.
-         | Cannot use them both in this context.""".stripMargin
-    )))
+    failed[T](
+      DefinitionsLevelCreationError(
+        Message(
+          s"""Users definition section external groups mapping feature allows for single rule with authentication
+             | and authorization or two rules which handle authentication and authorization separately. '${authRule.name.show}'
+             | is an authentication with authorization rule and '${authorizationRule.name.show}' is and authorization only rule.
+             | Cannot use them both in this context.""".stripMargin
+        )
+      )
+    )
   }
 
   private def errorFor[T](rule1: Rule, rule2: Rule) = {
-    failed[T](DefinitionsLevelCreationError(Message(
-      s"""Users definition section external groups mapping feature allows for single rule with authentication
-         | and authorization or two rules which handle authentication and authorization separately. '${rule1.name.show}'
-         | and '${rule2.name.show}' should be authentication and authorization rules""".stripMargin
-    )))
+    failed[T](
+      DefinitionsLevelCreationError(
+        Message(
+          s"""Users definition section external groups mapping feature allows for single rule with authentication
+             | and authorization or two rules which handle authentication and authorization separately. '${rule1.name.show}'
+             | and '${rule2.name.show}' should be authentication and authorization rules""".stripMargin
+        )
+      )
+    )
   }
 
   private def failure(msg: Message) = Left(decodingFailure(msg))
 
-  private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
+  private def decodingFailure(msg: Message) = decodingFailureFrom(DefinitionsLevelCreationError(msg))
 
-  private def validate(globalSettings: GlobalSettings,
-                       definitions: Definitions[UserDef]): Either[CoreCreationError, Definitions[UserDef]] = {
+  private def validate(
+      globalSettings: GlobalSettings,
+      definitions: Definitions[UserDef]
+  ): Either[CoreCreationError, Definitions[UserDef]] = {
     new UserDefinitionsValidator(globalSettings)
       .validate(definitions)
       .leftMap { validationErrors =>
         val cause = validationErrors.map(toErrorMessage).toList.mkString(",")
-        DefinitionsLevelCreationError(Message(s"The `users` definition is malformed: $cause"))
+        DefinitionsLevelCreationError(Message(s"The `$usersKey` definition is malformed: $cause"))
       }
       .as(definitions)
   }
@@ -274,7 +312,8 @@ object UsersDefinitionsDecoder {
         mappingsJsons <- NonEmptyList
           .fromList(c.values.getOrElse(c.value :: Nil).toList)
           .toRight("Non empty list of groups is required")
-          .left.map(msg => decodingFailure(Message(msg)))
+          .left
+          .map(msg => decodingFailure(Message(msg)))
         mappingsDecoder = mappingsJsons match {
           case groupMappings if haveSimpleFormatWithGroupIds(groupMappings) =>
             groupsSimpleDecoder
@@ -315,16 +354,15 @@ object UsersDefinitionsDecoder {
       json.isObject && json.hcursor.keys.forall(objectKeys => keys.subsetOf(objectKeys.toCovariantSet))
     }
 
-    private def advancedGroupMappingsDecoder(implicit mappingDecoder: Decoder[GroupMappings.Advanced.Mapping]): Decoder[GroupMappings.Advanced] =
-      Decoder[List[GroupMappings.Advanced.Mapping]]
-        .toSyncDecoder
-        .emapE { list =>
-          UniqueNonEmptyList.from(list) match {
-            case Some(mappings) => Right(GroupMappings.Advanced(mappings))
-            case None => Left(ValueLevelCreationError(Message("Non empty list of groups mappings is required")))
-          }
+    private def advancedGroupMappingsDecoder(
+        implicit mappingDecoder: Decoder[GroupMappings.Advanced.Mapping]
+    ): Decoder[GroupMappings.Advanced] =
+      Decoder[List[GroupMappings.Advanced.Mapping]].toSyncDecoder.emapE { list =>
+        UniqueNonEmptyList.from(list) match {
+          case Some(mappings) => Right(GroupMappings.Advanced(mappings))
+          case None           => Left(ValueLevelCreationError(Message("Non empty list of groups mappings is required")))
         }
-        .decoder
+      }.decoder
 
     private val structuredLocalGroupToExternalGroupsMappingDecoder: Decoder[GroupMappings.Advanced.Mapping] =
       Decoder
@@ -353,7 +391,9 @@ object UsersDefinitionsDecoder {
             case Some(Nil) | None =>
               failure(Message(s"Groups mapping should have exactly one YAML key"))
             case Some(keys) =>
-              failure(Message(s"Groups mapping should have exactly one YAML key, but several were defined: [${keys.show}]"))
+              failure(
+                Message(s"Groups mapping should have exactly one YAML key, but several were defined: [${keys.show}]")
+              )
           }
         }
 
@@ -375,5 +415,7 @@ object UsersDefinitionsDecoder {
       Decoder[UniqueNonEmptyList[GroupId]]
         .map(groupIds => UniqueNonEmptyList.unsafeFrom(groupIds.map(Group.from)))
     }
+
   }
+
 }

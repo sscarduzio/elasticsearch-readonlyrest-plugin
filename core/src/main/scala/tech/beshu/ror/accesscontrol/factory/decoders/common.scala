@@ -22,25 +22,32 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import io.lemonlabs.uri.Uri
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.ResolvableJsonRepresentationOps.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator,
+  RuntimeSingleResolvableVariable
+}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.Json.ResolvableJsonRepresentation
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
+import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.{
+  DefinitionsLevelCreationError,
+  ValueLevelCreationError
+}
+import tech.beshu.ror.accesscontrol.factory.SimpleHttpClient
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.LoggerOps.*
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 import tech.beshu.ror.utils.js.JsCompiler
 import tech.beshu.ror.utils.json.JsonPath
@@ -50,31 +57,26 @@ import java.net.URI
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-object common extends Logging {
+object common extends RequestIdAwareLogging {
 
   implicit val nonEmptyStringDecoder: Decoder[NonEmptyString] =
-    Decoder
-      .decodeString
-      .toSyncDecoder
-      .emap { str =>
-        NonEmptyString.unapply(str) match {
-          case Some(res) => Right(res)
-          case None => Left("Cannot decode empty string")
-        }
+    Decoder.decodeString.toSyncDecoder.emap { str =>
+      NonEmptyString.unapply(str) match {
+        case Some(res) => Right(res)
+        case None      => Left("Cannot decode empty string")
       }
-      .decoder
+    }.decoder
 
   implicit val decoderTupleListDecoder: Decoder[List[(NonEmptyString, NonEmptyString)]] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { str =>
         import tech.beshu.ror.utils.StringWiseSplitter.*
-        val (errors, list) = str.split(";")
+        val (errors, list) = str
+          .split(";")
           .map(_.trim)
           .map { pairString =>
-            pairString
-              .toNonEmptyStringsTuple
-              .left.map(_ => pairString)
+            pairString.toNonEmptyStringsTuple.left.map(_ => pairString)
           }
           .toList
           .partitionEither
@@ -84,7 +86,8 @@ object common extends Logging {
       .decoder
 
   implicit val positiveFiniteDurationDecoder: Decoder[PositiveFiniteDuration] = {
-    implicit val finiteDurationDecoder: Decoder[FiniteDuration] = finiteDurationStringDecoder.or(finiteDurationInSecondsDecoder)
+    implicit val finiteDurationDecoder: Decoder[FiniteDuration] =
+      finiteDurationStringDecoder.or(finiteDurationInSecondsDecoder)
     positiveDecoder[FiniteDuration](_.length)
   }
 
@@ -94,7 +97,7 @@ object common extends Logging {
       .emapE { value =>
         Try(Uri.parse(value)) match {
           case Success(uri) => Right(uri)
-          case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to url")))
+          case Failure(_)   => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to url")))
         }
       }
       .decoder
@@ -105,7 +108,7 @@ object common extends Logging {
       .emapE { value =>
         Try(new URI(value)).flatMap(uri => io.lemonlabs.uri.Url.parseTry(uri.toString)) match {
           case Success(url) => Right(url)
-          case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to url")))
+          case Failure(_)   => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to url")))
         }
       }
       .decoder
@@ -164,22 +167,18 @@ object common extends Logging {
   }
 
   implicit val headerName: Decoder[Header.Name] =
-    Decoder
-      .decodeString
-      .toSyncDecoder
-      .emapE { str =>
-        NonEmptyString.unapply(str) match {
-          case Some(value) => Right(Header.Name(value))
-          case None => Left(ValueLevelCreationError(Message(s"Header name cannot be empty string")))
-        }
+    Decoder.decodeString.toSyncDecoder.emapE { str =>
+      NonEmptyString.unapply(str) match {
+        case Some(value) => Right(Header.Name(value))
+        case None        => Left(ValueLevelCreationError(Message(s"Header name cannot be empty string")))
       }
-      .decoder
+    }.decoder
 
   implicit val groupIdConvertible: Convertible[GroupIdLike] = new Convertible[GroupIdLike] {
     override def convert: String => Either[ConvertError, GroupIdLike] = str => {
       NonEmptyString.from(str) match {
         case Right(nonEmptyResolvedValue) => Right(GroupIdLike.from(nonEmptyResolvedValue))
-        case Left(_) => Left(ConvertError("Group ID cannot be empty"))
+        case Left(_)                      => Left(ConvertError("Group ID cannot be empty"))
       }
     }
   }
@@ -188,7 +187,7 @@ object common extends Logging {
     override def convert: String => Either[ConvertError, Address] = str => {
       Address.from(str) match {
         case Some(address) => Right(address)
-        case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '${str.show}'"))
+        case None          => Left(ConvertError(s"Cannot create address (IP or hostname) from '${str.show}'"))
       }
     }
   }
@@ -202,80 +201,76 @@ object common extends Logging {
     }
   }
 
-  implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T : Convertible](implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeSingleResolvableVariable[T]] = {
+  implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T: Convertible](
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[RuntimeSingleResolvableVariable[T]] = {
     DecoderHelpers
       .singleVariableDecoder[T](variableCreator)
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
-        case Left(error) => Left(ValueLevelCreationError(Message(error.show)))
+        case Left(error)  => Left(ValueLevelCreationError(Message(error.show)))
       }
       .decoder
   }
 
-  implicit def valueLevelRuntimeMultiResolvableVariableDecoder[T : Convertible](implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[RuntimeMultiResolvableVariable[T]] = {
+  implicit def valueLevelRuntimeMultiResolvableVariableDecoder[T: Convertible](
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[RuntimeMultiResolvableVariable[T]] = {
     DecoderHelpers
       .multiVariableDecoder[T](variableCreator)
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
-        case Left(error) => Left(ValueLevelCreationError(Message(error.show)))
+        case Left(error)  => Left(ValueLevelCreationError(Message(error.show)))
       }
       .decoder
   }
 
   implicit val ipAddressDecoder: Decoder[IpAddress] =
-    Decoder
-      .decodeString
-      .toSyncDecoder
-      .emapE { str =>
-        IpAddress.fromString(str) match {
-          case Some(ip) => Right(ip)
-          case None => Left(ValueLevelCreationError(Message(s"Cannot create IP address from ${str.show}")))
-        }
+    Decoder.decodeString.toSyncDecoder.emapE { str =>
+      IpAddress.fromString(str) match {
+        case Some(ip) => Right(ip)
+        case None     => Left(ValueLevelCreationError(Message(s"Cannot create IP address from ${str.show}")))
       }
-      .decoder
+    }.decoder
 
   implicit val portDecoder: Decoder[Port] =
-    Decoder
-      .decodeInt
-      .toSyncDecoder
-      .emapE { int =>
-        Port.fromInt(int) match {
-          case Some(ip) => Right(ip)
-          case None => Left(ValueLevelCreationError(Message(s"Cannot create port from ${int.show}")))
-        }
+    Decoder.decodeInt.toSyncDecoder.emapE { int =>
+      Port.fromInt(int) match {
+        case Some(ip) => Right(ip)
+        case None     => Left(ValueLevelCreationError(Message(s"Cannot create port from ${int.show}")))
       }
-      .decoder
+    }.decoder
 
   implicit val socketAddressDecoder: Decoder[SocketAddress[IpAddress]] =
-    Decoder
-      .decodeString
-      .toSyncDecoder
-      .emapE { str =>
-        SocketAddress.fromStringIp(str) match {
-          case Some(socketAddress) => Right(socketAddress)
-          case None => Left(ValueLevelCreationError(Message(s"Cannot create socket address from ${str.show}")))
-        }
+    Decoder.decodeString.toSyncDecoder.emapE { str =>
+      SocketAddress.fromStringIp(str) match {
+        case Some(socketAddress) => Right(socketAddress)
+        case None => Left(ValueLevelCreationError(Message(s"Cannot create socket address from ${str.show}")))
       }
-      .decoder
+    }.decoder
 
   implicit val positiveIntDecoder: Decoder[Int Refined Positive] = {
     positiveDecoder[Int](_.toLong)
   }
 
-  implicit val httpClientConfigDecoder: Decoder[HttpClientsFactory.Config] =
+  implicit val httpClientConfigDecoder: Decoder[SimpleHttpClient.Config] =
     Decoder.instance { c =>
       for {
-        connectionTimeout <- c.downFieldAlternatives("connection_timeout_in_sec", "connection_timeout").as[Option[PositiveFiniteDuration]]
-        requestTimeout <- c.downFieldAlternatives("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout").as[Option[PositiveFiniteDuration]]
+        connectionTimeout <- c
+          .downFieldAlternatives("connection_timeout_in_sec", "connection_timeout")
+          .as[Option[PositiveFiniteDuration]]
+        requestTimeout <- c
+          .downFieldAlternatives("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout")
+          .as[Option[PositiveFiniteDuration]]
         connectionPoolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
         validate <- c.downField("validate").as[Option[Boolean]]
-      } yield HttpClientsFactory.Config(
-        connectionTimeout.getOrElse(HttpClientsFactory.Config.default.connectionTimeout),
-        requestTimeout.getOrElse(HttpClientsFactory.Config.default.requestTimeout),
-        connectionPoolSize.getOrElse(HttpClientsFactory.Config.default.connectionPoolSize),
-        validate.getOrElse(HttpClientsFactory.Config.default.validate)
+      } yield SimpleHttpClient.Config(
+        connectionTimeout.getOrElse(SimpleHttpClient.Config.default.connectionTimeout),
+        requestTimeout.getOrElse(SimpleHttpClient.Config.default.requestTimeout),
+        connectionPoolSize.getOrElse(SimpleHttpClient.Config.default.connectionPoolSize),
+        validate.getOrElse(SimpleHttpClient.Config.default.validate)
       )
     }
 
@@ -283,37 +278,40 @@ object common extends Logging {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE[JsonPath] { jsonPathStr =>
-        JsonPath(jsonPathStr)
-          .toEither
-          .left
+        JsonPath(jsonPathStr).toEither.left
           .map { ex =>
-            logger.errorEx("JSON path compilation failed", ex)
+            noRequestIdLogger.errorEx("JSON path compilation failed", ex)
             DefinitionsLevelCreationError(Message(s"Cannot compile '${jsonPathStr.show}' to JSON path"))
           }
       }
       .decoder
 
   implicit val kibanaAccessDecoder: Decoder[KibanaAccess] =
-    DecoderHelpers
-      .decodeStringLike
+    DecoderHelpers.decodeStringLike
       .map(_.toLowerCase)
       .toSyncDecoder
       .emapE[KibanaAccess] {
-        case "ro" => Right(KibanaAccess.RO)
-        case "ro_strict" => Right(KibanaAccess.ROStrict)
-        case "rw" => Right(KibanaAccess.RW)
-        case "api_only" =>  Right(KibanaAccess.ApiOnly)
-        case "admin" => Right(KibanaAccess.Admin)
+        case "ro"           => Right(KibanaAccess.RO)
+        case "ro_strict"    => Right(KibanaAccess.ROStrict)
+        case "rw"           => Right(KibanaAccess.RW)
+        case "api_only"     => Right(KibanaAccess.ApiOnly)
+        case "admin"        => Right(KibanaAccess.Admin)
         case "unrestricted" => Right(KibanaAccess.Unrestricted)
-        case unknown => Left(CoreCreationError.ValueLevelCreationError(Message(
-          s"Unknown kibana access '${unknown.show}'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
-        )))
+        case unknown        =>
+          Left(
+            CoreCreationError.ValueLevelCreationError(
+              Message(
+                s"Unknown kibana access '${unknown.show}'. Available options: 'ro', 'ro_strict', 'rw', 'api_only', 'admin', 'unrestricted'"
+              )
+            )
+          )
       }
       .decoder
 
-  implicit def kibanaAppDecoder(implicit jsCompiler: JsCompiler): Decoder[KibanaApp] =
-    nonEmptyStringDecoder
-      .toSyncDecoder
+  implicit def kibanaAppDecoder(
+      implicit jsCompiler: JsCompiler
+  ): Decoder[KibanaApp] =
+    nonEmptyStringDecoder.toSyncDecoder
       .emapE[KibanaApp](str =>
         KibanaApp.from(str).left.map(error => CoreCreationError.ValueLevelCreationError(Message(error)))
       )
@@ -331,34 +329,24 @@ object common extends Logging {
   implicit val groupsLogicNotAnyOfDecoder: Decoder[GroupsLogic.NotAnyOf] =
     groupIdsDecoder.map(GroupsLogic.NotAnyOf.apply)
 
-  implicit def resolvableJsonRepresentationDecoder(implicit variableCreator: RuntimeResolvableVariableCreator): Decoder[ResolvableJsonRepresentation] =
-    Decoder
-      .decodeJson
-      .toSyncDecoder
-      .emapE { json =>
-        json
-          .toJsonRepresentation
-          .toResolvable
-          .left.map { error => ValueLevelCreationError(Message(error.show)) }
-      }
-      .decoder
+  implicit def resolvableJsonRepresentationDecoder(
+      implicit variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[ResolvableJsonRepresentation] =
+    Decoder.decodeJson.toSyncDecoder.emapE { json =>
+      json.toJsonRepresentation.toResolvable.left.map { error => ValueLevelCreationError(Message(error.show)) }
+    }.decoder
 
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
-    DecoderHelpers
-      .decodeStringLike
-      .toSyncDecoder
-      .emapE { value =>
-        Try(Duration(value)) match {
-          case Success(v: FiniteDuration) => Right(v)
-          case Success(_) | Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to duration")))
-        }
+    DecoderHelpers.decodeStringLike.toSyncDecoder.emapE { value =>
+      Try(Duration(value)) match {
+        case Success(v: FiniteDuration) => Right(v)
+        case Success(_) | Failure(_)    =>
+          Left(ValueLevelCreationError(Message(s"Cannot convert value '${value.show}' to duration")))
       }
-      .decoder
+    }.decoder
 
   private lazy val finiteDurationInSecondsDecoder: Decoder[FiniteDuration] =
-    Decoder
-      .decodeLong
-      .toSyncDecoder
+    Decoder.decodeLong.toSyncDecoder
       .map(_.seconds)
       .withErrorFromCursor { case (element, _) =>
         ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces.show}' to duration"))

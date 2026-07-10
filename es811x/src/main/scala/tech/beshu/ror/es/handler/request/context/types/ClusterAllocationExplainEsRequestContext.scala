@@ -23,47 +23,57 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationExplainRequest,
-                                               esContext: EsContext,
-                                               aclContext: AccessControlStaticContext,
-                                               clusterService: RorClusterService,
-                                               override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
+class ClusterAllocationExplainEsRequestContext(
+    actionRequest: ClusterAllocationExplainRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, threadPool) {
 
-  override protected def requestedIndicesFrom(request: ClusterAllocationExplainRequest): Set[RequestedIndex[ClusterIndexName]] =
+  override protected def requestedIndicesFrom(
+      request: ClusterAllocationExplainRequest
+  ): Set[RequestedIndex[ClusterIndexName]] =
     getRequestedIndexFrom(request).toCovariantSet
 
-  override protected def update(request: ClusterAllocationExplainRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: ClusterAllocationExplainRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     getRequestedIndexFrom(request) match {
       case Some(_) =>
         if (filteredIndices.tail.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
+          logger.warn(
+            s"Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]"
+          )
         }
         updateIndexIn(request, filteredIndices.head)
         Modified
       case None if filteredIndices.exists(_.name === ClusterIndexName.Local.wildcard) =>
         Modified
       case None =>
-        logger.error(s"[${id.show}] Cluster allocation explain request without index name is unavailable when block contains `indices` rule")
+        logger.error(
+          s"Cluster allocation explain request without index name is unavailable when block contains `indices` rule"
+        )
         ShouldBeInterrupted
     }
   }
 
-  private def getRequestedIndexFrom(request: ClusterAllocationExplainRequest): Option[RequestedIndex[ClusterIndexName]] = {
+  private def getRequestedIndexFrom(
+      request: ClusterAllocationExplainRequest
+  ): Option[RequestedIndex[ClusterIndexName]] = {
     Option(request.getIndex).flatMap(RequestedIndex.fromString)
   }
 
   private def updateIndexIn(request: ClusterAllocationExplainRequest, indexName: RequestedIndex[ClusterIndexName]) = {
     request.setIndex(indexName.stringify)
   }
+
 }

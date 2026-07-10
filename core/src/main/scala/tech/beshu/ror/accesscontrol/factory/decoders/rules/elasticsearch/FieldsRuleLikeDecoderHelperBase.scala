@@ -30,9 +30,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object FieldsRuleLikeDecoderHelperBase {
-  final case class ConfiguredField(fieldName: NonEmptyString,
-                                   rawValue: String,
-                                   isNegated: Boolean)
+  final case class ConfiguredField(fieldName: NonEmptyString, rawValue: String, isNegated: Boolean)
 }
 
 trait FieldsRuleLikeDecoderHelperBase {
@@ -46,55 +44,75 @@ trait FieldsRuleLikeDecoderHelperBase {
     if (str.startsWith("~")) {
       NonEmptyString.from(str.substring(1)) match {
         case Right(nes) => Right(ConfiguredField(nes, str, isNegated = true))
-        case Left(_) => Left("There was no name passed for blacklist field (~ only is forbidden)")
+        case Left(_)    => Left("There was no name passed for blacklist field (~ only is forbidden)")
       }
     } else {
       NonEmptyString.from(str) match {
         case Right(nes) => Right(ConfiguredField(nes, str, isNegated = false))
-        case Left(_) => Left("Field cannot be empty string")
+        case Left(_)    => Left("Field cannot be empty string")
       }
     }
   }
 
-  protected def accessModeDecoder[MODE](configuredFields: UniqueNonEmptyList[ConfiguredField])
-                                       (implicit accessModeConverter: AccessModeConverter[MODE]): Decoder[MODE] =
+  protected def accessModeDecoder[MODE](configuredFields: UniqueNonEmptyList[ConfiguredField])(
+      implicit accessModeConverter: AccessModeConverter[MODE]
+  ): Decoder[MODE] =
     fromConfiguredFieldsDecoder(configuredFields, createAccessMode[MODE])
 
-  protected def documentFieldsDecoder[FIELD](configuredFields: UniqueNonEmptyList[ConfiguredField],
-                                             alwaysAllowedFields: Set[NonEmptyString])
-                                            (implicit itemConvertible: Convertible[FIELD],
-                                             variableCreator: RuntimeResolvableVariableCreator) =
+  protected def documentFieldsDecoder[FIELD](
+      configuredFields: UniqueNonEmptyList[ConfiguredField],
+      alwaysAllowedFields: Set[NonEmptyString]
+  )(
+      implicit itemConvertible: Convertible[FIELD],
+      variableCreator: RuntimeResolvableVariableCreator
+  ) =
     fromConfiguredFieldsDecoder(configuredFields, createDocumentFields[FIELD](alwaysAllowedFields))
 
-  protected def fromConfiguredFieldsDecoder[ITEM](configuredFields: UniqueNonEmptyList[ConfiguredField],
-                                                  creator: UniqueNonEmptyList[ConfiguredField] => Either[CoreCreationError, ITEM]) =
-    Decoder.const(configuredFields)
+  protected def fromConfiguredFieldsDecoder[ITEM](
+      configuredFields: UniqueNonEmptyList[ConfiguredField],
+      creator: UniqueNonEmptyList[ConfiguredField] => Either[CoreCreationError, ITEM]
+  ) =
+    Decoder
+      .const(configuredFields)
       .toSyncDecoder
       .emapE(creator)
       .decoder
 
-  protected def createAccessMode[MODE](fields: UniqueNonEmptyList[ConfiguredField])
-                                      (implicit accessModeConverter: AccessModeConverter[MODE]): Either[RulesLevelCreationError, MODE] = {
+  protected def createAccessMode[MODE](fields: UniqueNonEmptyList[ConfiguredField])(
+      implicit accessModeConverter: AccessModeConverter[MODE]
+  ): Either[RulesLevelCreationError, MODE] = {
     if (areDifferentAccessModesUsedSimultaneously(fields)) {
       val rawValues = fields.toList.map(field => s"'${field.rawValue}'").show
-      Left(RulesLevelCreationError(Message(s"fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: ${rawValues.show}")))
+      Left(
+        RulesLevelCreationError(
+          Message(
+            s"fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: ${rawValues.show}"
+          )
+        )
+      )
     } else {
-      val usedAccessModes: MODE = if (fields.head.isNegated) accessModeConverter.blacklist else accessModeConverter.whitelist
+      val usedAccessModes: MODE =
+        if (fields.head.isNegated) accessModeConverter.blacklist else accessModeConverter.whitelist
       Right(usedAccessModes)
     }
   }
 
-  private def createDocumentFields[FIELD](alwaysAllowedFields: Set[NonEmptyString])
-                                         (fields: UniqueNonEmptyList[ConfiguredField])
-                                         (implicit itemConvertible: Convertible[FIELD],
-                                          variableCreator: RuntimeResolvableVariableCreator) = {
+  private def createDocumentFields[FIELD](
+      alwaysAllowedFields: Set[NonEmptyString]
+  )(fields: UniqueNonEmptyList[ConfiguredField])(
+      implicit itemConvertible: Convertible[FIELD],
+      variableCreator: RuntimeResolvableVariableCreator
+  ) = {
     val fieldsFromAlwaysAllowedList = checkForAlwaysAllowedFields(fields, alwaysAllowedFields)
 
     if (fieldsFromAlwaysAllowedList.nonEmpty) {
-      Left(RulesLevelCreationError(Message(s"These fields cannot be filtered using this rule: ${fieldsFromAlwaysAllowedList.show}")))
+      Left(
+        RulesLevelCreationError(
+          Message(s"These fields cannot be filtered using this rule: ${fieldsFromAlwaysAllowedList.show}")
+        )
+      )
     } else {
-      fields
-        .toNonEmptyList
+      fields.toNonEmptyList
         .traverse(createRuntimeVariable[FIELD])
         .map(UniqueNonEmptyList.fromNonEmptyList)
     }
@@ -105,7 +123,10 @@ trait FieldsRuleLikeDecoderHelperBase {
     negatedFields.nonEmpty && nonNegatedFields.nonEmpty
   }
 
-  private def checkForAlwaysAllowedFields(fields: UniqueNonEmptyList[ConfiguredField], alwaysAllowedFields: Set[NonEmptyString]) = {
+  private def checkForAlwaysAllowedFields(
+      fields: UniqueNonEmptyList[ConfiguredField],
+      alwaysAllowedFields: Set[NonEmptyString]
+  ) = {
     fields
       .map(_.fieldName)
       .toCovariantSet
@@ -113,20 +134,24 @@ trait FieldsRuleLikeDecoderHelperBase {
       .toSet
   }
 
-  private def createRuntimeVariable[FIELD](field: ConfiguredField)
-                                          (implicit itemConvertible: Convertible[FIELD],
-                                           variableCreator: RuntimeResolvableVariableCreator) = {
+  private def createRuntimeVariable[FIELD](field: ConfiguredField)(
+      implicit itemConvertible: Convertible[FIELD],
+      variableCreator: RuntimeResolvableVariableCreator
+  ) = {
     variableCreator
       .createMultiResolvableVariableFrom[FIELD](field.fieldName)
-      .left.map(error => RulesLevelCreationError(Message(error.show)))
+      .left
+      .map(error => RulesLevelCreationError(Message(error.show)))
   }
 
   object AccessModeConverter {
+
     def create[A](whitelistElement: A, blacklistElement: A): AccessModeConverter[A] = new AccessModeConverter[A] {
       override def whitelist: A = whitelistElement
 
       override def blacklist: A = blacklistElement
     }
+
   }
 
   trait AccessModeConverter[A] {
@@ -134,4 +159,5 @@ trait FieldsRuleLikeDecoderHelperBase {
 
     def blacklist: A
   }
+
 }

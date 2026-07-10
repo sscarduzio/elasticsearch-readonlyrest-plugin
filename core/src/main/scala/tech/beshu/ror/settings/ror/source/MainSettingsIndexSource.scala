@@ -16,22 +16,23 @@
  */
 package tech.beshu.ror.settings.ror.source
 
+import MainSettingsIndexSource.Const
 import io.circe.Codec
 import tech.beshu.ror.accesscontrol.domain.RorSettingsIndex
+import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
-import tech.beshu.ror.es.IndexDocumentManager
-import MainSettingsIndexSource.Const
 
-class MainSettingsIndexSource private(indexDocumentManager: IndexDocumentManager,
-                                      settingsIndex: RorSettingsIndex)
-                                     (implicit codec: Codec[MainRorSettings])
-  extends IndexSettingsSource[MainRorSettings](indexDocumentManager, settingsIndex.index, documentId = Const.id)
+class MainSettingsIndexSource private (indexDocumentManager: IndexDocumentManager, settingsIndex: RorSettingsIndex)(
+    implicit codec: Codec[MainRorSettings]
+) extends IndexSettingsSource[MainRorSettings](indexDocumentManager, settingsIndex.index, documentId = Const.id)
 
 object MainSettingsIndexSource {
 
-  def create(indexJsonContentService: IndexDocumentManager,
-             settingsIndex: RorSettingsIndex,
-             settingsYamlParser: RawRorSettingsYamlParser): MainSettingsIndexSource = {
+  def create(
+      indexJsonContentService: IndexDocumentManager,
+      settingsIndex: RorSettingsIndex,
+      settingsYamlParser: RawRorSettingsYamlParser
+  ): MainSettingsIndexSource = {
     implicit val codec: Codec[MainRorSettings] = mainRorSettingsCodec(settingsYamlParser)
     new MainSettingsIndexSource(indexJsonContentService, settingsIndex)
   }
@@ -45,4 +46,5 @@ object MainSettingsIndexSource {
     implicit val codec: Codec[RawRorSettings] = new RawRorSettingsCodec(settingsYamlParser)
     Codec.forProduct1[MainRorSettings, RawRorSettings](Const.settingsKey)(MainRorSettings.apply)(_.rawSettings)
   }
+
 }

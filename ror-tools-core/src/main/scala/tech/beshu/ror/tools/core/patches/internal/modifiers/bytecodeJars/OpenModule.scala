@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars
 
+import better.files.File
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
-private [patches] object OpenModule extends BytecodeJarModifier {
+private[patches] object OpenModule extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -38,19 +39,20 @@ private [patches] object OpenModule extends BytecodeJarModifier {
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
     override def visitModule(name: String, access: Int, version: String): ModuleVisitor = {
       new EsModuleVisitor(super.visitModule(name, access | Opcodes.ACC_OPEN, version))
     }
+
   }
 
-  private class EsModuleVisitor(underlying: ModuleVisitor)
-    extends ModuleVisitor(Opcodes.ASM9, underlying) {
+  private class EsModuleVisitor(underlying: ModuleVisitor) extends ModuleVisitor(Opcodes.ASM9, underlying) {
 
     override def visitOpen(packaze: String, access: Int, modules: String*): Unit = {
       // skipping it to remove opening specific packages
     }
+
   }
+
 }

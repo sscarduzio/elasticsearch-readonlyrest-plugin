@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.elasticsearch.{CatManager, RorApiManager}
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 
 class RorDisabledSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with PluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -40,9 +40,11 @@ class RorDisabledSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings.create(
       clusterName = "ROR1",
-      securityType = RorWithXpackSecurity(ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
-        rorSettingsFileName = rorSettingsFileName,
-      )),
+      securityType = RorWithXpackSecurity(
+        ReadonlyRestWithEnabledXpackSecurityPlugin.Config.Attributes.default.copy(
+          rorSettingsFileName = rorSettingsFileName,
+        )
+      ),
     )
   )
 
@@ -58,7 +60,7 @@ class RorDisabledSuite
       "ROR API endpoint is being called" in {
         val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"), esVersionUsed)
 
-        val result = user1MetadataManager.fetchMetadata()
+        val result = user1MetadataManager.fetchUserMetadata("ent")
 
         result should have statusCode 403
         result.responseJson("error")("reason").str should be("Forbidden by ReadonlyREST")
@@ -66,4 +68,5 @@ class RorDisabledSuite
       }
     }
   }
+
 }

@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, Template, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestContext
@@ -39,14 +38,17 @@ import tech.beshu.ror.utils.ScalaOps.*
 
 import scala.jdk.CollectionConverters.*
 
-class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAction.Request,
-                                           esContext: EsContext,
-                                           clusterService: RorClusterService,
-                                           override val threadPool: ThreadPool)
-                                          (implicit generator: UniqueIdentifierGenerator)
-  extends BaseTemplatesEsRequestContext[GetComponentTemplateAction.Request, GettingComponentTemplates](
-    actionRequest, esContext, clusterService, threadPool
-  ) {
+class GetComponentTemplateEsRequestContext(
+    actionRequest: GetComponentTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+)(
+    implicit generator: UniqueIdentifierGenerator
+) extends BaseTemplatesEsRequestContext[GetComponentTemplateAction.Request, GettingComponentTemplates](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList
     .fromList {
@@ -57,12 +59,15 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
       NonEmptyList.one(TemplateNamePattern(nes("*")))
     }
 
-  override protected def templateOperationFrom(request: GetComponentTemplateAction.Request): GettingComponentTemplates = {
+  override protected def templateOperationFrom(
+      request: GetComponentTemplateAction.Request
+  ): GettingComponentTemplates = {
     GettingComponentTemplates(requestTemplateNamePatterns)
   }
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
-    val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
+    val nonExistentTemplateNamePattern =
+      TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
     actionRequest.name(nonExistentTemplateNamePattern.value.value)
     ModificationResult.Modified
   }
@@ -70,17 +75,19 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   override protected def modifyRequest(blockContext: BlockContext.TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
       case GettingComponentTemplates(namePatterns) =>
-        if(namePatterns.tail.nonEmpty) {
+        if (namePatterns.tail.nonEmpty) {
           logger.warn(
             s"""[${id.show}] Filtered result contains more than one template. First was taken. The whole set of
-               | component templates [${namePatterns.show}]""".stripMargin)
+               | component templates [${namePatterns.show}]""".stripMargin
+          )
         }
         actionRequest.name(namePatterns.head.value.value)
         updateResponse(`using` = blockContext)
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
@@ -99,8 +106,10 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
     }
   }
 
-  private def filter(templates: Map[String, MetadataComponentTemplate],
-                     usingTemplate: Set[Template] => Set[Template]) = {
+  private def filter(
+      templates: Map[String, MetadataComponentTemplate],
+      usingTemplate: Set[Template] => Set[Template]
+  ) = {
     val templatesMap = templates
       .flatMap { case (name, componentTemplate) =>
         toComponentTemplate(name, componentTemplate) match {
@@ -109,26 +118,25 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
           case Left(msg) =>
             logger.error(
               s"""[${id.show}] Component Template response filtering issue: ${msg.show}. For security reasons template
-                 | [${name.show}] will be skipped.""".oneLiner)
+                 | [${name.show}] will be skipped.""".oneLiner
+            )
             None
         }
       }
     val filteredTemplates = usingTemplate(templatesMap.keys.toCovariantSet)
-    templatesMap
-      .flatMap { case (template, (name, componentTemplate)) =>
-        filteredTemplates
-          .find(_.name.value.value == name)
-          .flatMap {
-            case t: ComponentTemplate if t == template =>
-              Some((name, componentTemplate))
-            case t: ComponentTemplate =>
-              Some((name, filterMetadataData(componentTemplate, t)))
-            case t =>
-              logger.error(s"""[${id.show}] Expected ComponentTemplate, but got: ${t.show}. Skipping""")
-              None
-          }
-      }
-      .asJava
+    templatesMap.flatMap { case (template, (name, componentTemplate)) =>
+      filteredTemplates
+        .find(_.name.value.value == name)
+        .flatMap {
+          case t: ComponentTemplate if t == template =>
+            Some((name, componentTemplate))
+          case t: ComponentTemplate =>
+            Some((name, filterMetadataData(componentTemplate, t)))
+          case t =>
+            logger.error(s"""[${id.show}] Expected ComponentTemplate, but got: ${t.show}. Skipping""")
+            None
+        }
+    }.asJava
   }
 
   private def filterMetadataData(componentTemplate: MetadataComponentTemplate, basedOn: ComponentTemplate) = {
@@ -146,7 +154,8 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   private def filterAliases(template: metadata.Template, basedOn: ComponentTemplate) = {
     val aliasesStrings = basedOn.aliases.stringify
     template
-      .aliases().asSafeMap
+      .aliases()
+      .asSafeMap
       .filter { case (name, _) => aliasesStrings.contains(name) }
       .asJava
   }
@@ -161,4 +170,5 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
         .getOrElse(Set.empty)
     } yield ComponentTemplate(name, aliases)
   }
+
 }

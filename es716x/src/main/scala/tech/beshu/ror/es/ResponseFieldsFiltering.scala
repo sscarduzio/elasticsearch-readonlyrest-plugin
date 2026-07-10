@@ -17,22 +17,24 @@
 package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler
 import org.elasticsearch.rest.{BytesRestResponse, RestResponse}
-import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentType}
 import org.elasticsearch.xcontent.cbor.CborXContent
 import org.elasticsearch.xcontent.json.JsonXContent
 import org.elasticsearch.xcontent.smile.SmileXContent
 import org.elasticsearch.xcontent.yaml.YamlXContent
+import org.elasticsearch.xcontent.{NamedXContentRegistry, XContentBuilder, XContentType}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import scala.jdk.CollectionConverters.*
 
 trait ResponseFieldsFiltering {
-  this: Logging =>
+  this: RequestIdAwareLogging =>
 
-  private val responseFieldsRestrictions: Atomic[Option[ResponseFieldsRestrictions]] = Atomic(None: Option[ResponseFieldsRestrictions])
+  private val responseFieldsRestrictions: Atomic[Option[ResponseFieldsRestrictions]] = Atomic(
+    None: Option[ResponseFieldsRestrictions]
+  )
 
   def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsRestrictions): Unit = {
     this.responseFieldsRestrictions.set(Some(responseFieldsRestrictions))
@@ -45,7 +47,7 @@ trait ResponseFieldsFiltering {
           case bytesRestResponse: BytesRestResponse =>
             filterBytesRestResponse(bytesRestResponse, fieldsRestrictions)
           case otherResponse =>
-            logger.warn("ResponseFields filtering is unavailable for this type of request")
+            noRequestIdLogger.warn("ResponseFields filtering is unavailable for this type of request")
             otherResponse
         }
       case None =>
@@ -53,7 +55,10 @@ trait ResponseFieldsFiltering {
     }
   }
 
-  private def filterBytesRestResponse(response: BytesRestResponse, fieldsRestrictions: ResponseFieldsRestrictions): BytesRestResponse = {
+  private def filterBytesRestResponse(
+      response: BytesRestResponse,
+      fieldsRestrictions: ResponseFieldsRestrictions
+  ): BytesRestResponse = {
     val (includes, excludes) = fieldsRestrictions.mode match {
       case AccessMode.Whitelist =>
         (fieldsRestrictions.responseFields.toSet.map(_.value.value), Set.empty[String])
@@ -61,16 +66,24 @@ trait ResponseFieldsFiltering {
         (Set.empty[String], fieldsRestrictions.responseFields.toSet.map(_.value.value))
     }
     val xContent =
-      if(response.contentType().contains(XContentType.JSON.mediaTypeWithoutParameters())) JsonXContent.jsonXContent
-      else if (response.contentType().contains(XContentType.YAML.mediaTypeWithoutParameters())) YamlXContent.yamlXContent
-      else if (response.contentType().contains(XContentType.CBOR.mediaTypeWithoutParameters())) CborXContent.cborXContent
-      else if (response.contentType().contains(XContentType.SMILE.mediaTypeWithoutParameters())) SmileXContent.smileXContent
+      if (response.contentType().contains(XContentType.JSON.mediaTypeWithoutParameters())) JsonXContent.jsonXContent
+      else if (response.contentType().contains(XContentType.YAML.mediaTypeWithoutParameters()))
+        YamlXContent.yamlXContent
+      else if (response.contentType().contains(XContentType.CBOR.mediaTypeWithoutParameters()))
+        CborXContent.cborXContent
+      else if (response.contentType().contains(XContentType.SMILE.mediaTypeWithoutParameters()))
+        SmileXContent.smileXContent
       else throw new IllegalStateException("Unknown response content type")
 
-    val parser = xContent.createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, response.content().streamInput())
+    val parser = xContent.createParser(
+      NamedXContentRegistry.EMPTY,
+      LoggingDeprecationHandler.INSTANCE,
+      response.content().streamInput()
+    )
     val contentBuilder = XContentBuilder.builder(xContent, includes.asJava, excludes.asJava)
     contentBuilder.copyCurrentStructure(parser)
     contentBuilder.flush()
     new BytesRestResponse(response.status(), contentBuilder)
   }
+
 }

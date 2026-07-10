@@ -1,5 +1,26 @@
 readonlyrest:
 
+  audit:
+    enabled: true
+    outputs:
+      - type: index
+        index_template: "'custom_template_'yyyyMMdd"
+        serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
+      - type: index
+        serializer:
+            type: ecs
+            verbosity_level_serialization_mode: [INFO]
+            include_full_request_content: true
+      - type: log
+        serializer:
+          type: configurable
+          verbosity_level_serialization_mode: [INFO]
+          fields:
+            node_name_with_static_suffix: "{ES_NODE_NAME} with suffix"
+            another_field: "{ES_CLUSTER_NAME} {HTTP_METHOD}"
+            tid: "{TASK_ID}"
+            bytes: "{CONTENT_LENGTH_IN_BYTES}"
+
   # comments should survive
   access_control_rules:
     - name: "CONTAINER ADMIN - updated"

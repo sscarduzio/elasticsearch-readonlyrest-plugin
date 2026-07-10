@@ -20,23 +20,25 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import tech.beshu.ror.utils.httpclient.{HttpDeleteWithEntity, HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
-class XpackApiManager(client: RestClient,
-                      esVersion: String)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+class XpackApiManager(client: RestClient, esVersion: String)
+    extends BaseManager(client, esVersion, esNativeApi = true) {
 
-  def rollup(jobId: String,
-             indexPattern: String,
-             rollupIndex: String,
-             timestampField: String = "timestamp",
-             aggregableField: String = "count"): JsonResponse = {
-    val response = call(createRollupRequest(jobId, indexPattern, rollupIndex, timestampField, aggregableField), new JsonResponse(_))
-    if(response.isSuccess) {
+  def rollup(
+      jobId: String,
+      indexPattern: String,
+      rollupIndex: String,
+      timestampField: String = "timestamp",
+      aggregableField: String = "count"
+  ): JsonResponse = {
+    val response =
+      call(createRollupRequest(jobId, indexPattern, rollupIndex, timestampField, aggregableField), new JsonResponse(_))
+    if (response.isSuccess) {
       waitForCondition(s"Job $jobId is indexed") {
-        getAllRollupJobs.jobs.exists(_ ("config")("id").str == jobId)
+        getAllRollupJobs.jobs.exists(_("config")("id").str == jobId)
       }
     }
     response
@@ -48,7 +50,7 @@ class XpackApiManager(client: RestClient,
 
   def deleteAllRollupJobs(): Unit = {
     getAllRollupJobs.jobs match {
-      case Nil =>
+      case Nil  =>
       case jobs =>
         jobs.foreach { jobJson =>
           val jobId = jobJson("config")("id").str
@@ -78,9 +80,11 @@ class XpackApiManager(client: RestClient,
     call(createRollupSearchRequest(rollupIndex), new JsonResponse(_))
   }
 
-  def hasPrivileges(clusterPrivileges: Iterable[String] = List.empty,
-                    indexPrivileges: Iterable[JSON] = List.empty,
-                    applicationPrivileges: Iterable[JSON] = List.empty): JsonResponse = {
+  def hasPrivileges(
+      clusterPrivileges: Iterable[String] = List.empty,
+      indexPrivileges: Iterable[JSON] = List.empty,
+      applicationPrivileges: Iterable[JSON] = List.empty
+  ): JsonResponse = {
     call(createHasPrivilegesRequest(clusterPrivileges, indexPrivileges, applicationPrivileges), new JsonResponse(_))
   }
 
@@ -92,15 +96,67 @@ class XpackApiManager(client: RestClient,
     call(createGrantApiKeyPrivilegeRequest(username, password), new JsonResponse(_))
   }
 
+  def getServiceAccounts(): JsonResponse = {
+    call(new HttpGet(client.from("/_security/service")), new JsonResponse(_))
+  }
+
+  def getServiceAccount(namespace: String, service: String): JsonResponse = {
+    call(new HttpGet(client.from(s"/_security/service/$namespace/$service")), new JsonResponse(_))
+  }
+
+  def getServiceAccountCredentials(namespace: String, service: String): JsonResponse = {
+    call(new HttpGet(client.from(s"/_security/service/$namespace/$service/credential")), new JsonResponse(_))
+  }
+
+  def createServiceAccountToken(namespace: String, service: String, tokenName: String): JsonResponse = {
+    call(
+      new HttpPost(client.from(s"/_security/service/$namespace/$service/credential/token/$tokenName")),
+      new JsonResponse(_)
+    )
+  }
+
+  def deleteServiceAccountToken(namespace: String, service: String, tokenName: String): JsonResponse = {
+    call(
+      new HttpDelete(client.from(s"/_security/service/$namespace/$service/credential/token/$tokenName")),
+      new JsonResponse(_)
+    )
+  }
+
+  def createApiKey(keyName: String): JsonResponse = {
+    call(createApiKeyRequest(keyName), new JsonResponse(_))
+  }
+
+  def getApiKey(keyId: String): JsonResponse = {
+    call(new HttpGet(client.from("/_security/api_key", Map("id" -> keyId))), new JsonResponse(_))
+  }
+
+  def invalidateApiKey(keyId: String): JsonResponse = {
+    call(createInvalidateApiKeyRequest(keyId), new JsonResponse(_))
+  }
+
+  def updateApiKey(keyId: String, roleDescriptors: Option[JSON] = None): JsonResponse = {
+    call(createUpdateApiKeyRequest(keyId, roleDescriptors), new JsonResponse(_))
+  }
+
+  def bulkUpdateApiKeys(keyIds: String*): JsonResponse = {
+    call(createBulkUpdateApiKeysRequest(keyIds), new JsonResponse(_))
+  }
+
+  def queryApiKeys(nameFilter: Option[String] = None): JsonResponse = {
+    call(createQueryApiKeysRequest(nameFilter), new JsonResponse(_))
+  }
+
   def getTerms(index: String, field: String): GetTermsResponse = {
     call(createGetTermsRequest(index, field), new GetTermsResponse(_))
   }
 
-  private def createRollupRequest(jobId: String,
-                                  indexPattern: String,
-                                  rollupIndex: String,
-                                  timestampField: String,
-                                  aggregableField: String) = {
+  private def createRollupRequest(
+      jobId: String,
+      indexPattern: String,
+      rollupIndex: String,
+      timestampField: String,
+      aggregableField: String
+  ) = {
     val endpoint =
       if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) s"/_rollup/job/$jobId"
       else s"/_xpack/rollup/job/$jobId"
@@ -110,66 +166,65 @@ class XpackApiManager(client: RestClient,
     request
   }
 
-  private def rollupRequestEntityString(esVersion:String,
-                                        indexPattern: String,
-                                        rollupIndex: String,
-                                        timestampField: String,
-                                        aggregableField: String) = {
+  private def rollupRequestEntityString(
+      esVersion: String,
+      indexPattern: String,
+      rollupIndex: String,
+      timestampField: String,
+      aggregableField: String
+  ) = {
     if (Version.greaterOrEqualThan(esVersion, 7, 2, 0)) {
-      new StringEntity(
-        s"""
-           |{
-           |  "index_pattern": "$indexPattern",
-           |  "rollup_index": "$rollupIndex",
-           |  "cron": "* * */2 * * ?",
-           |  "page_size": 1000,
-           |  "groups": {
-           |    "date_histogram": {
-           |      "field": "$timestampField",
-           |      "fixed_interval": "1h",
-           |      "delay": "7d"
-           |    },
-           |    "terms": {
-           |       "fields": [ "$aggregableField" ]
-           |     }
-           |  },
-           |  "metrics": [
-           |    {
-           |      "field": "$aggregableField",
-           |      "metrics": [ "min", "max", "sum" ]
-           |    }
-           |  ]
-           |}
+      new StringEntity(s"""
+                          |{
+                          |  "index_pattern": "$indexPattern",
+                          |  "rollup_index": "$rollupIndex",
+                          |  "cron": "* * */2 * * ?",
+                          |  "page_size": 1000,
+                          |  "groups": {
+                          |    "date_histogram": {
+                          |      "field": "$timestampField",
+                          |      "fixed_interval": "1h",
+                          |      "delay": "7d"
+                          |    },
+                          |    "terms": {
+                          |       "fields": [ "$aggregableField" ]
+                          |     }
+                          |  },
+                          |  "metrics": [
+                          |    {
+                          |      "field": "$aggregableField",
+                          |      "metrics": [ "min", "max", "sum" ]
+                          |    }
+                          |  ]
+                          |}
       """.stripMargin)
     } else {
-      new StringEntity(
-        s"""
-           |{
-           |  "index_pattern": "$indexPattern",
-           |  "rollup_index": "$rollupIndex",
-           |  "cron": "* * */2 * * ?",
-           |  "page_size": 1000,
-           |  "groups": {
-           |    "date_histogram": {
-           |      "field": "$timestampField",
-           |      "interval": "1h",
-           |      "delay": "7d"
-           |    },
-           |    "terms": {
-           |       "fields": [ "$aggregableField" ]
-           |     }
-           |  },
-           |  "metrics": [
-           |    {
-           |      "field": "$aggregableField",
-           |      "metrics": [ "min", "max", "sum" ]
-           |    }
-           |  ]
-           |}
+      new StringEntity(s"""
+                          |{
+                          |  "index_pattern": "$indexPattern",
+                          |  "rollup_index": "$rollupIndex",
+                          |  "cron": "* * */2 * * ?",
+                          |  "page_size": 1000,
+                          |  "groups": {
+                          |    "date_histogram": {
+                          |      "field": "$timestampField",
+                          |      "interval": "1h",
+                          |      "delay": "7d"
+                          |    },
+                          |    "terms": {
+                          |       "fields": [ "$aggregableField" ]
+                          |     }
+                          |  },
+                          |  "metrics": [
+                          |    {
+                          |      "field": "$aggregableField",
+                          |      "metrics": [ "min", "max", "sum" ]
+                          |    }
+                          |  ]
+                          |}
       """.stripMargin)
     }
   }
-
 
   private def createDeleteRollupJobRequest(jobId: String) = {
     val endpoint =
@@ -202,35 +257,37 @@ class XpackApiManager(client: RestClient,
   private def createRollupSearchRequest(rollupIndex: String) = {
     val request = new HttpGetWithEntity(client.from(s"/$rollupIndex/_rollup_search"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  "size": 0,
-         |  "aggregations": {
-         |    "max_count": {
-         |      "max": {
-         |        "field": "count"
-         |      }
-         |    }
-         |  }
-         |}
+    request.setEntity(new StringEntity(s"""
+                                          |{
+                                          |  "size": 0,
+                                          |  "aggregations": {
+                                          |    "max_count": {
+                                          |      "max": {
+                                          |        "field": "count"
+                                          |      }
+                                          |    }
+                                          |  }
+                                          |}
        """.stripMargin))
     request
   }
 
-  private def createHasPrivilegesRequest(clusterPrivileges: Iterable[String],
-                                         indexPrivileges: Iterable[JSON],
-                                         applicationPrivileges: Iterable[JSON]) = {
+  private def createHasPrivilegesRequest(
+      clusterPrivileges: Iterable[String],
+      indexPrivileges: Iterable[JSON],
+      applicationPrivileges: Iterable[JSON]
+  ) = {
     val request = new HttpGetWithEntity(client.from("/_security/user/_has_privileges"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
-         |  "index": [ ${indexPrivileges.map(ujson.write(_)).mkString(",")} ],
-         |  "application": [ ${applicationPrivileges.map(ujson.write(_)).mkString(",")} ]
-         |}
-       """.stripMargin))
+    request.setEntity(
+      new StringEntity(s"""
+                          |{
+                          |  "cluster": [ ${clusterPrivileges.map(p => s"\"$p\"").mkString(",")} ],
+                          |  "index": [ ${indexPrivileges.map(ujson.write(_)).mkString(",")} ],
+                          |  "application": [ ${applicationPrivileges.map(ujson.write(_)).mkString(",")} ]
+                          |}
+       """.stripMargin)
+    )
     request
   }
 
@@ -241,25 +298,84 @@ class XpackApiManager(client: RestClient,
   private def createGrantApiKeyPrivilegeRequest(username: String, password: String) = {
     val request = new HttpPost(client.from("/_security/api_key/grant"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{
-         |  "grant_type": "password",
-         |  "username": "$username",
-         |  "password": "$password",
-         |  "api_key": {"name": "granted-api-key","expiration": "1d"}
-         |}""".stripMargin
-    ))
+    request.setEntity(
+      new StringEntity(
+        s"""{
+           |  "grant_type": "password",
+           |  "username": "$username",
+           |  "password": "$password",
+           |  "api_key": {"name": "granted-api-key","expiration": "1d"}
+           |}""".stripMargin
+      )
+    )
+    request
+  }
+
+  private def createApiKeyRequest(keyName: String) = {
+    val request = new HttpPost(client.from("/_security/api_key"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(
+      new StringEntity(
+        s"""{"name": "$keyName", "expiration": "1d", "role_descriptors": {}}"""
+      )
+    )
+    request
+  }
+
+  private def createInvalidateApiKeyRequest(keyId: String) = {
+    val request = new HttpDeleteWithEntity(client.from("/_security/api_key"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(
+      new StringEntity(
+        s"""{"ids": ["$keyId"]}"""
+      )
+    )
+    request
+  }
+
+  private def createUpdateApiKeyRequest(keyId: String, roleDescriptors: Option[JSON]) = {
+    val request = new HttpPut(client.from(s"/_security/api_key/$keyId"))
+    request.setHeader("Content-Type", "application/json")
+    val body = roleDescriptors match {
+      case Some(rd) => s"""{"role_descriptors": ${ujson.write(rd)}}"""
+      case None     => "{}"
+    }
+    request.setEntity(new StringEntity(body))
+    request
+  }
+
+  private def createBulkUpdateApiKeysRequest(keyIds: Seq[String]) = {
+    val request = new HttpPost(client.from("/_security/api_key/_bulk_update"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(
+      new StringEntity(
+        s"""{"ids": [${keyIds.map(id => s""""$id"""").mkString(",")}]}"""
+      )
+    )
+    request
+  }
+
+  private def createQueryApiKeysRequest(nameFilter: Option[String]) = {
+    val request = new HttpPost(client.from("/_security/_query/api_key"))
+    request.setHeader("Content-Type", "application/json")
+    val body = nameFilter match {
+      case Some(name) => s"""{"query": {"term": {"name": "$name"}}}"""
+      case None       => "{}"
+    }
+    request.setEntity(new StringEntity(body))
     request
   }
 
   private def createGetTermsRequest(index: String, field: String) = {
     val request = new HttpPost(client.from(s"/$index/_terms_enum"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{
-         |  "field": "$field"
-         |}""".stripMargin
-    ))
+    request.setEntity(
+      new StringEntity(
+        s"""{
+           |  "field": "$field"
+           |}""".stripMargin
+      )
+    )
     request
   }
 
@@ -268,12 +384,15 @@ class XpackApiManager(client: RestClient,
   }
 
   class RollupCapabilitiesResult(response: HttpResponse) extends JsonResponse(response) {
+
     lazy val capabilities: Map[String, List[JSON]] = {
       responseJson.obj.toMap.view.mapValues(_("rollup_jobs").arr.toList).toMap
     }
+
   }
 
   class GetTermsResponse(response: HttpResponse) extends JsonResponse(response) {
     lazy val terms: Set[String] = responseJson.obj("terms").arr.map(_.str).toSet
   }
+
 }

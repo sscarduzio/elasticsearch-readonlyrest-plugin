@@ -16,30 +16,23 @@
  */
 package tech.beshu.ror.es.handler.request.context
 
-import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.support.IndicesOptions.WildcardStates
 import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.*
-import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
-import tech.beshu.ror.accesscontrol.domain.DataStreamName.FullLocalDataStreamWithAliases
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.es.{EsServices, RorRestRequest}
 
 import java.time.Instant
 import scala.jdk.CollectionConverters.*
 
-abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
-                                                       clusterService: RorClusterService)
-  extends RequestContext with Logging {
+abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext) extends RequestContext {
 
   override type BLOCK_CONTEXT = B
 
-  override val restRequest = esContext.channel.restRequest
+  override val restRequest: RorRestRequest = esContext.channel.restRequest
 
   override val rorKibanaSessionId: CorrelationId = esContext.correlationId.value
 
@@ -47,10 +40,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy implicit val id: RequestContext.Id = RequestContext.Id.from(
-    sessionCorrelationId = esContext.correlationId.value,
-    requestId = s"${restRequest.hashCode()}#$taskId"
-  )
+  override implicit lazy val id: RequestContext.Id = RequestContext.Id.from(esContext)
 
   override lazy val action: Action = esContext.action
 
@@ -59,53 +49,36 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     val simpleName = requestClazz.getSimpleName
     simpleName.toLowerCase match {
       case "request" => requestClazz.getName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
-      case _ => simpleName
+      case _         => simpleName
     }
   }
 
-  override lazy val indexAttributes: Set[IndexAttribute] = {
-    esContext.actionRequest match {
-      case req: IndicesRequest => indexAttributesFrom(req)
-      case _ => Set.empty
-    }
+  override lazy val indexAttributes: IndexAttributeFilter = esContext.actionRequest match {
+    case req: IndicesRequest => indexAttributesFrom(req)
+    case _                   => IndexAttributeFilter.All
   }
 
-  override lazy val allIndicesAndAliases: Set[FullLocalIndexWithAliases] =
-    clusterService.allIndicesAndAliases
-
-  override lazy val allRemoteIndicesAndAliases: Task[Set[FullRemoteIndexWithAliases]] =
-    clusterService.allRemoteIndicesAndAliases.memoize
-
-  override lazy val allDataStreamsAndAliases: Set[FullLocalDataStreamWithAliases] =
-    clusterService.allDataStreamsAndAliases
-
-  override lazy val allRemoteDataStreamsAndAliases: Task[Set[DataStreamName.FullRemoteDataStreamWithAliases]] =
-    clusterService.allRemoteDataStreamsAndAliases.memoize
-
-  override lazy val allTemplates: Set[Template] = clusterService.allTemplates
-
-  override lazy val allRemoteClusterNames: Set[ClusterName.Full] = clusterService.allClusterNames
+  override val esServices: EsServices = esContext.esServices
 
   override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
 
   override lazy val isAllowedForDLS: Boolean = {
     esContext.actionRequest match {
-      case _ if !isReadOnlyRequest => false
+      case _ if !isReadOnlyRequest                  => false
       case sr: SearchRequest if sr.source() == null => true
-      case sr: SearchRequest if sr.source.profile || (sr.source.suggest != null && !sr.source.suggest.getSuggestions.isEmpty) => false
+      case sr: SearchRequest
+          if sr.source.profile || (sr.source.suggest != null && !sr.source.suggest.getSuggestions.isEmpty) =>
+        false
       case _ => true
     }
   }
 
-  protected def indexAttributesFrom(request: IndicesRequest): Set[IndexAttribute] = {
-    request
-      .indicesOptions()
-      .getExpandWildcards.iterator().asScala
-      .flatMap {
-        case WildcardStates.OPEN => Some(IndexAttribute.Opened)
-        case WildcardStates.CLOSED => Some(IndexAttribute.Closed)
-        case _ => None
-      }
-      .toCovariantSet
+  protected def indexAttributesFrom(request: IndicesRequest): IndexAttributeFilter = {
+    val wildcards = request.indicesOptions().getExpandWildcards.iterator().asScala.toSet
+    IndexAttributeFilter.from(
+      wildcards.contains(WildcardStates.OPEN),
+      wildcards.contains(WildcardStates.CLOSED)
+    )
   }
+
 }

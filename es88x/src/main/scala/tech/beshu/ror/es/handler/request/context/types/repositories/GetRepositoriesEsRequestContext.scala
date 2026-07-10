@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
@@ -28,19 +27,22 @@ import tech.beshu.ror.es.handler.request.context.types.BaseRepositoriesEsRequest
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class GetRepositoriesEsRequestContext(actionRequest: GetRepositoriesRequest,
-                                      esContext: EsContext,
-                                      clusterService: RorClusterService,
-                                      override val threadPool: ThreadPool)
-  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+class GetRepositoriesEsRequestContext(
+    actionRequest: GetRepositoriesRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def repositoriesFrom(request: GetRepositoriesRequest): Set[RepositoryName] = {
     request.repositories().asSafeSet.flatMap(RepositoryName.from).orWildcardWhenEmpty
   }
 
-  override protected def update(request: GetRepositoriesRequest,
-                                repositories: NonEmptyList[RepositoryName]): ModificationResult = {
+  override protected def update(
+      request: GetRepositoriesRequest,
+      repositories: NonEmptyList[RepositoryName]
+  ): ModificationResult = {
     request.repositories(repositories.map(RepositoryName.toString).toList.toArray)
     Modified
   }
+
 }

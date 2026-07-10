@@ -19,9 +19,8 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import org.elasticsearch.action.admin.indices.template.put.PutComponentTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName}
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingComponentTemplate
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.domain.{RequestedIndex, TemplateName}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -30,25 +29,34 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.ScalaOps.*
 
-class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAction.Request,
-                                           esContext: EsContext,
-                                           clusterService: RorClusterService,
-                                           override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[PutComponentTemplateAction.Request, AddingComponentTemplate](
-    actionRequest, esContext, clusterService, threadPool
-  ) {
+class PutComponentTemplateEsRequestContext(
+    actionRequest: PutComponentTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[PutComponentTemplateAction.Request, AddingComponentTemplate](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
   override protected def templateOperationFrom(request: PutComponentTemplateAction.Request): AddingComponentTemplate = {
     val templateOperation = for {
       name <- TemplateName
         .fromString(request.name())
         .toRight("Template name should be non-empty")
-      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(RequestedIndex.fromString).toCovariantSet
+      aliases = request
+        .componentTemplate()
+        .template()
+        .aliases()
+        .asSafeMap
+        .keys
+        .flatMap(RequestedIndex.fromString)
+        .toCovariantSet
     } yield AddingComponentTemplate(name, aliases)
 
     templateOperation match {
       case Right(operation) => operation
-      case Left(msg) => throw RequestSeemsToBeInvalid[PutComponentTemplateAction.Request](msg)
+      case Left(msg)        => throw RequestSeemsToBeInvalid[PutComponentTemplateAction.Request](msg)
     }
   }
 
@@ -56,4 +64,5 @@ class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAc
     // nothing to modify - if it wasn't blocked, we are good
     Modified
   }
+
 }

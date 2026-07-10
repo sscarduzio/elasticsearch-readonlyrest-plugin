@@ -29,10 +29,11 @@ import ujson.Value
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
-class SearchManager(client: RestClient,
-                    esVersion: String,
-                    override val additionalHeaders: Map[String, String] = Map.empty)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+class SearchManager(
+    client: RestClient,
+    esVersion: String,
+    override val additionalHeaders: Map[String, String] = Map.empty
+) extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def search(): SearchResult = search(List.empty)
 
@@ -40,6 +41,9 @@ class SearchManager(client: RestClient,
 
   def search(indexNames: List[String]): SearchResult =
     call(createSearchRequest(indexNames), new SearchResult(_))
+
+  def search(indexName: String, expandWildcards: ExpandWildcards): SearchResult =
+    call(createSearchRequest(List(indexName), expandWildcards = Some(expandWildcards.value)), new SearchResult(_))
 
   def search(query: JSON): SearchResult =
     call(createSearchRequest(None, ujson.write(query)), new SearchResult(_))
@@ -82,7 +86,7 @@ class SearchManager(client: RestClient,
 
   def mSearchUnsafe(lines: String*): MSearchResult = {
     lines.toList match {
-      case Nil => throw new IllegalArgumentException("At least one line should be passed to mSearch query")
+      case Nil          => throw new IllegalArgumentException("At least one line should be passed to mSearch query")
       case head :: rest => mSearch(head, rest: _*)
     }
   }
@@ -109,29 +113,35 @@ class SearchManager(client: RestClient,
     call(createRenderTemplateRequest(query), new JsonResponse(_))
 
   private def createSearchRequest(indexName: Option[String], queryJsonString: String) = {
-    val request = new HttpPost(client.from(
-      indexName match {
-        case Some(name) => s"/$name/_search"
-        case None => "/_search"
-      },
-      Map("size" -> "100")
-    ))
+    val request = new HttpPost(
+      client.from(
+        indexName match {
+          case Some(name) => s"/$name/_search"
+          case None       => "/_search"
+        },
+        Map("size" -> "100")
+      )
+    )
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(queryJsonString))
     request
   }
 
-  private def createSearchRequest(indexNames: List[String],
-                                  customSize: Option[Int] = None,
-                                  scroll: Option[FiniteDuration] = None) = {
+  private def createSearchRequest(
+      indexNames: List[String],
+      customSize: Option[Int] = None,
+      scroll: Option[FiniteDuration] = None,
+      expandWildcards: Option[String] = None
+  ) = {
     val queryParams = Map(
       "size" -> (customSize match {
         case Some(value) => s"$value"
-        case None => "100"
+        case None        => "100"
       })
-    ) ++ scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap
+    ) ++ scroll.map { d => "scroll" -> s"${d.toMillis}ms" }.toMap ++
+      expandWildcards.map("expand_wildcards" -> _).toMap
     val path = indexNames match {
-      case Nil => "/_search"
+      case Nil   => "/_search"
       case names => s"/${names.mkString(",")}/_search"
     }
     val request = new HttpPost(client.from(path, queryParams))
@@ -139,12 +149,11 @@ class SearchManager(client: RestClient,
     scroll match {
       case Some(_) if Version.lowerThan(esVersion, 7, 0, 0) =>
         request.addHeader("Content-Type", "application/json")
-        request.setEntity(new StringEntity(
-          s"""
-             |{
-             |  "sort": ["_id"]
-             |}
-             |""".stripMargin))
+        request.setEntity(new StringEntity(s"""
+                                              |{
+                                              |  "sort": ["_id"]
+                                              |}
+                                              |""".stripMargin))
       case Some(_) | None =>
     }
 
@@ -155,15 +164,16 @@ class SearchManager(client: RestClient,
     new HttpPost(client.from(s"/_search/scroll/$scrollId"))
   }
 
-  private def createAsyncSearchRequest(indexNames: List[String],
-                                       body: Option[JSON]) = {
-    val request = new HttpPost(client.from(
-      indexNames match {
-        case Nil => "/_async_search"
-        case names => s"/${names.mkString(",")}/_async_search"
-      },
-      Map("size" -> "10")
-    ))
+  private def createAsyncSearchRequest(indexNames: List[String], body: Option[JSON]) = {
+    val request = new HttpPost(
+      client.from(
+        indexNames match {
+          case Nil   => "/_async_search"
+          case names => s"/${names.mkString(",")}/_async_search"
+        },
+        Map("size" -> "10")
+      )
+    )
     body match {
       case Some(b) =>
         request.addHeader("Content-Type", "application/json")
@@ -246,18 +256,29 @@ class SearchManager(client: RestClient,
     def totalHitsForResponse(responseIdx: Int): Int =
       Try(responses(responseIdx)("hits")("total")("value").num.toInt)
         .getOrElse(responses(responseIdx)("hits")("total").num.toInt)
+
   }
 
   class FieldCapsResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val indices: Vector[String] = responseJson("indices").arr.map(_.str).toVector
     lazy val fields: Map[String, Value] = responseJson("fields").obj.toMap
   }
+
 }
 
 object SearchManager {
 
   implicit class SearchResultOps(val hits: Iterable[Value]) extends AnyVal {
     def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
+  }
+
+  sealed abstract class ExpandWildcards(val value: String)
+
+  object ExpandWildcards {
+    case object Open extends ExpandWildcards("open")
+    case object Closed extends ExpandWildcards("closed")
+    case object All extends ExpandWildcards("all")
+    case object None extends ExpandWildcards("none")
   }
 
 }

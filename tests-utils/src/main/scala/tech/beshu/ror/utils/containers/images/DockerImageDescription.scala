@@ -20,12 +20,14 @@ import better.files.File
 import os.Path
 import tech.beshu.ror.utils.containers.images.DockerImageDescription.{Command, CopyFile, Env}
 
-final case class DockerImageDescription(baseImage: String,
-                                        runCommands: Seq[Command],
-                                        copyFiles: Set[CopyFile],
-                                        envs: Set[Env],
-                                        entrypoint: Option[Path],
-                                        command: Option[String]) {
+final case class DockerImageDescription(
+    baseImage: String,
+    runCommands: Seq[Command],
+    copyFiles: Set[CopyFile],
+    envs: Set[Env],
+    entrypoint: Option[Path],
+    command: Option[String]
+) {
 
   def run(command: String): DockerImageDescription = {
     this.copy(runCommands = this.runCommands :+ Command.Run(command))
@@ -73,14 +75,17 @@ final case class DockerImageDescription(baseImage: String,
   def setCommand(cmd: String): DockerImageDescription = {
     this.copy(command = Some(cmd))
   }
+
 }
 
 object DockerImageDescription {
   sealed trait Command
+
   object Command {
     final case class Run(command: String) extends Command
     final case class ChangeUser(user: String) extends Command
   }
+
   final case class CopyFile(destination: Path, file: File)
   final case class Env(name: String, value: String)
 
@@ -92,4 +97,5 @@ object DockerImageDescription {
     entrypoint = customEntrypoint,
     command = None,
   )
+
 }

@@ -27,29 +27,23 @@ sealed trait AuditResponseContext {
 
 object AuditResponseContext {
 
-  final case class Allowed(requestContext: AuditRequestContext,
-                           verbosity: Verbosity,
-                           reason: String)
-    extends AuditResponseContext
+  final case class Allowed(requestContext: AuditRequestContext, verbosity: Verbosity, reason: String)
+      extends AuditResponseContext
 
-  final case class ForbiddenBy(requestContext: AuditRequestContext,
-                               verbosity: Verbosity,
-                               reason: String)
-    extends AuditResponseContext
+  final case class ForbiddenBy(requestContext: AuditRequestContext, verbosity: Verbosity, reason: String)
+      extends AuditResponseContext
 
-  final case class Forbidden(requestContext: AuditRequestContext)
-    extends AuditResponseContext
+  final case class Forbidden(requestContext: AuditRequestContext) extends AuditResponseContext
 
-  final case class RequestedIndexNotExist(requestContext: AuditRequestContext)
-    extends AuditResponseContext
+  final case class RequestedIndexNotExist(requestContext: AuditRequestContext) extends AuditResponseContext
 
-  final case class Errored(requestContext: AuditRequestContext,
-                           cause: Throwable)
-    extends AuditResponseContext
+  final case class Errored(requestContext: AuditRequestContext, cause: Throwable) extends AuditResponseContext
 
   sealed trait Verbosity
+
   object Verbosity {
     case object Info extends Verbosity
     case object Error extends Verbosity
   }
+
 }

@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.factory
 
 import cats.data.*
 import cats.data.Validated.*
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -28,15 +27,24 @@ import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.{ActionsRule, Fie
 import tech.beshu.ror.accesscontrol.blocks.rules.kibana.*
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{
+  NotUsingVariable,
+  UsingVariable
+}
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess
-import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{KibanaRuleTogetherWith, KibanaUserDataRuleTogetherWith, RuleDoesNotMeetRequirement}
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.{
+  KibanaRuleTogetherWith,
+  KibanaUserDataRuleTogetherWith,
+  RuleDoesNotMeetRequirement
+}
 import tech.beshu.ror.implicits.*
 
-object BlockValidator extends Logging {
+object BlockValidator {
 
-  def validate(blockName: Block.Name,
-               rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  def validate(
+      blockName: Block.Name,
+      rules: NonEmptyList[RuleDefinition[Rule]]
+  ): ValidatedNel[BlockValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateOnlyOneAuthenticationRulePrinciple(rules),
@@ -45,9 +53,11 @@ object BlockValidator extends Logging {
     ).mapN { case (_, _, _, _) => () }
   }
 
-  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  private def validateAuthorizationWithAuthenticationPrinciple(
+      rules: NonEmptyList[RuleDefinition[Rule]]
+  ): ValidatedNel[BlockValidationError, Unit] = {
     rules.find(_.rule.isInstanceOf[AuthorizationRule]) match {
-      case None => Validated.Valid(())
+      case None                                                             => Validated.Valid(())
       case Some(_) if rules.exists(_.rule.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
       case Some(_) => Validated.Invalid(NonEmptyList.one(BlockValidationError.AuthorizationWithoutAuthentication))
     }
@@ -59,27 +69,33 @@ object BlockValidator extends Logging {
       .collect { case a: AuthenticationRule => a }
       .filter {
         case _: BaseGroupsRule[_] => false
-        case _ => true
+        case _                    => true
       } match {
       case Nil | _ :: Nil =>
         Validated.Valid(())
       case moreThanOne =>
-        Validated.Invalid(NonEmptyList.one(
-          BlockValidationError.OnlyOneAuthenticationRuleAllowed(NonEmptyList.fromListUnsafe(moreThanOne))
-        ))
+        Validated.Invalid(
+          NonEmptyList.one(
+            BlockValidationError.OnlyOneAuthenticationRuleAllowed(NonEmptyList.fromListUnsafe(moreThanOne))
+          )
+        )
     }
   }
 
-  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[RuleDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+  private def validateRequirementsForRulesUsingVariables(
+      allRules: NonEmptyList[RuleDefinition[Rule]]
+  ): ValidatedNel[BlockValidationError, Unit] = {
     allRules.toList
       .map(validateRequirementsForSingleRule(allRules.map(_.rule))) match {
-      case Nil => Validated.Valid(())
+      case Nil          => Validated.Valid(())
       case head :: tail => NonEmptyList(head, tail).sequence_
     }
   }
 
-  private def validateKibanaRuleInContextOfOtherRules(blockName: Block.Name,
-                                                      ruleDefs: NonEmptyList[RuleDefinition[Rule]]) = {
+  private def validateKibanaRuleInContextOfOtherRules(
+      blockName: Block.Name,
+      ruleDefs: NonEmptyList[RuleDefinition[Rule]]
+  ) = {
     val allRules = ruleDefs.map(_.rule)
     findKibanaRelatedRules(allRules) match {
       case Some(kibanaRules) =>
@@ -92,23 +108,27 @@ object BlockValidator extends Logging {
     }
   }
 
-  private def validateIfKibanaRelatedRulesCoexistenceWithOther(blockName: Block.Name,
-                                                               kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
-                                                               allRulesInBlock: NonEmptyList[Rule]) = {
+  private def validateIfKibanaRelatedRulesCoexistenceWithOther(
+      blockName: Block.Name,
+      kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
+      allRulesInBlock: NonEmptyList[Rule]
+  ) = {
     NonEmptyList.fromList {
       allRulesInBlock.toList.flatMap(validateRuleUsageInContextOf(blockName, kibanaRulesInBlock))
     } match {
       case Some(errors) => Validated.Invalid(errors)
-      case None => Validated.Valid(())
+      case None         => Validated.Valid(())
     }
   }
 
-  private def validateRuleUsageInContextOf(blockName: Block.Name,
-                                           kibanaRules: NonEmptyList[KibanaRelatedRule]): Rule => Option[KibanaRuleTogetherWith] = {
+  private def validateRuleUsageInContextOf(
+      blockName: Block.Name,
+      kibanaRules: NonEmptyList[KibanaRelatedRule]
+  ): Rule => Option[KibanaRuleTogetherWith] = {
     case _: ActionsRule =>
       determineKibanaAccessInBlock(blockName, kibanaRules) match {
         case KibanaAccess.Unrestricted => None
-        case _ => Some(KibanaRuleTogetherWith.ActionsRule)
+        case _                         => Some(KibanaRuleTogetherWith.ActionsRule)
       }
     case _: FilterRule =>
       Some(KibanaRuleTogetherWith.FilterRule)
@@ -122,16 +142,15 @@ object BlockValidator extends Logging {
 
   private def findKibanaRelatedRules(rules: NonEmptyList[Rule]): Option[NonEmptyList[KibanaRelatedRule]] = {
     NonEmptyList.fromList {
-      rules.collect {
-        case r: KibanaRelatedRule => r
+      rules.collect { case r: KibanaRelatedRule =>
+        r
       }
     }
   }
 
-  private def determineKibanaAccessInBlock(blockName: Block.Name,
-                                           kibanaRules: NonEmptyList[KibanaRelatedRule]) = {
+  private def determineKibanaAccessInBlock(blockName: Block.Name, kibanaRules: NonEmptyList[KibanaRelatedRule]) = {
     kibanaRules.collect {
-      case r: KibanaAccessRule => r.settings.access
+      case r: KibanaAccessRule   => r.settings.access
       case r: KibanaUserDataRule => r.settings.access
     } match {
       case Nil =>
@@ -139,24 +158,28 @@ object BlockValidator extends Logging {
       case head :: Nil =>
         head
       case head :: _ =>
-        throw new IllegalStateException(s"More than one kibana access rule found in the '${blockName.show}'! It may lead to unexpected behaviors. Please, report this problem as soon as possible.'")
+        throw new IllegalStateException(
+          s"More than one kibana access rule found in the '${blockName.show}'! It may lead to unexpected behaviors. Please, report this problem as soon as possible.'"
+        )
     }
   }
 
-  private def validateIfKibanaUserDataRuleIsNotUsedWithOldDeprecatedKibanaRules(kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
-                                                                                allRulesInBlock: NonEmptyList[Rule]) = {
+  private def validateIfKibanaUserDataRuleIsNotUsedWithOldDeprecatedKibanaRules(
+      kibanaRulesInBlock: NonEmptyList[KibanaRelatedRule],
+      allRulesInBlock: NonEmptyList[Rule]
+  ) = {
     if (containsKibanaUserDataRule(kibanaRulesInBlock)) {
       NonEmptyList
         .fromList {
           allRulesInBlock
             .collect[BlockValidationError] {
-              case _: KibanaAccessRule => KibanaUserDataRuleTogetherWith.KibanaAccessRule
-              case _: KibanaHideAppsRule => KibanaUserDataRuleTogetherWith.KibanaHideAppsRule
-              case _: KibanaIndexRule => KibanaUserDataRuleTogetherWith.KibanaIndexRule
+              case _: KibanaAccessRule        => KibanaUserDataRuleTogetherWith.KibanaAccessRule
+              case _: KibanaHideAppsRule      => KibanaUserDataRuleTogetherWith.KibanaHideAppsRule
+              case _: KibanaIndexRule         => KibanaUserDataRuleTogetherWith.KibanaIndexRule
               case _: KibanaTemplateIndexRule => KibanaUserDataRuleTogetherWith.KibanaTemplateIndexRule
             }
         } match {
-        case None => Validated.Valid(())
+        case None         => Validated.Valid(())
         case Some(errors) => Validated.Invalid(errors)
       }
     } else {
@@ -167,42 +190,52 @@ object BlockValidator extends Logging {
   private def containsKibanaUserDataRule(rules: NonEmptyList[KibanaRelatedRule]) = {
     rules.exists {
       case _: KibanaUserDataRule => true
-      case _ => false
+      case _                     => false
     }
   }
 
-  private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])
-                                               (ruleDefinition: RuleDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
+  private def validateRequirementsForSingleRule(
+      allRules: NonEmptyList[Rule]
+  )(ruleDefinition: RuleDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
     ruleDefinition match {
-      case RuleDefinition(_, NotUsingVariable(), _, _) => Validated.Valid(())
-      case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _, _) =>
-        val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
+      case RuleDefinition(_, NotUsingVariable(), _)                    => Validated.Valid(())
+      case RuleDefinition(rule, usingVariable: UsingVariable[Rule], _) =>
+        val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect {
+          case r: ComplianceResult.NonCompliantWith => r
+        }
         allNonCompliantResults match {
-          case Nil => Validated.Valid(())
+          case Nil          => Validated.Valid(())
           case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(RuleDoesNotMeetRequirement.apply))
         }
     }
   }
 
   sealed trait BlockValidationError
+
   object BlockValidationError {
     case object AuthorizationWithoutAuthentication extends BlockValidationError
-    final case class OnlyOneAuthenticationRuleAllowed(authRules: NonEmptyList[AuthenticationRule]) extends BlockValidationError
+    final case class OnlyOneAuthenticationRuleAllowed(authRules: NonEmptyList[AuthenticationRule])
+        extends BlockValidationError
     sealed trait KibanaRuleTogetherWith extends BlockValidationError
+
     object KibanaRuleTogetherWith {
       case object ActionsRule extends KibanaRuleTogetherWith
       case object FilterRule extends KibanaRuleTogetherWith
       case object FieldsRule extends KibanaRuleTogetherWith
       case object ResponseFieldsRule extends KibanaRuleTogetherWith
     }
-    final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends BlockValidationError
+
+    final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith)
+        extends BlockValidationError
     sealed trait KibanaUserDataRuleTogetherWith extends BlockValidationError
+
     object KibanaUserDataRuleTogetherWith {
       case object KibanaAccessRule extends KibanaUserDataRuleTogetherWith
       case object KibanaIndexRule extends KibanaUserDataRuleTogetherWith
       case object KibanaTemplateIndexRule extends KibanaUserDataRuleTogetherWith
       case object KibanaHideAppsRule extends KibanaUserDataRuleTogetherWith
     }
+
   }
 
 }

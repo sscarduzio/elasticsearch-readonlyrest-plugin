@@ -26,18 +26,28 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{BindingTestError, CannotConnectError, HostResolvingError, UnexpectedConnectionError}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{
+  BindingTestError,
+  CannotConnectError,
+  HostResolvingError,
+  UnexpectedConnectionError
+}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.LdapConnectionConfig.{
+  BindRequestUser,
+  ConnectionMethod,
+  HaMethod,
+  LdapHost
+}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{Dn, LdapService}
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.domain.{Address, PlainTextSecret}
 import tech.beshu.ror.accesscontrol.utils.ReleseablePool
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.LoggerOps.toLoggerOps
 import tech.beshu.ror.utils.RefinedUtils.*
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.ScalaOps.*
 
 import java.util.concurrent.TimeUnit
@@ -56,7 +66,7 @@ class UnboundidLdapConnectionPoolProvider {
   def connect(connectionConfig: LdapConnectionConfig): Task[UnboundidLdapConnectionPool] =
     poolOfPools.get(connectionConfig).flatMap {
       case Left(ReleseablePool.ClosedPool) => Task.raiseError(ClosedLdapPool)
-      case Right(pool) => Task.pure(pool)
+      case Right(pool)                     => Task.pure(pool)
     }
 
   def close(): Task[Unit] = poolOfPools.close
@@ -79,16 +89,18 @@ class UnboundidLdapConnectionPoolProvider {
     pool.setConnectionPoolName(s"ROR-unboundid-connection-pool-${connectionConfig.poolName}")
     pool.setRetryFailedOperationsDueToInvalidConnections(true)
     pool.setCreateIfNecessary(true)
-    pool.setHealthCheck(new GetEntryLDAPConnectionPoolHealthCheck(
-      /* entryDN */ null,
-      /* maxResponseTime in ms */ 3000,
-      /* invokeOnCreate */ false,
-      /* invokeAfterAuthentication */ false,
-      /* invokeOnCheckout */ false,
-      /* invokeOnRelease */ false,
-      /* invokeForBackgroundChecks */ true,
-      /* invokeOnException */ true
-    ))
+    pool.setHealthCheck(
+      new GetEntryLDAPConnectionPoolHealthCheck(
+        /* entryDN */ null,
+        /* maxResponseTime in ms */ 3000,
+        /* invokeOnCreate */ false,
+        /* invokeAfterAuthentication */ false,
+        /* invokeOnCheckout */ false,
+        /* invokeOnRelease */ false,
+        /* invokeForBackgroundChecks */ true,
+        /* invokeOnException */ true
+      )
+    )
     pool.setHealthCheckIntervalMillis(connectionConfig.connectionHealthCheckInterval.value.toMillis)
     pool.setMaxConnectionAgeMillis(connectionConfig.connectionMaxAge.value.toMillis)
     pool
@@ -96,18 +108,20 @@ class UnboundidLdapConnectionPoolProvider {
 
 }
 
-object UnboundidLdapConnectionPoolProvider extends Logging {
+object UnboundidLdapConnectionPoolProvider extends RequestIdAwareLogging {
 
-  final case class LdapConnectionConfig(poolName: LdapService.Name,
-                                        connectionMethod: ConnectionMethod,
-                                        poolSize: Int Refined Positive,
-                                        connectionHealthCheckInterval: PositiveFiniteDuration,
-                                        connectionMaxAge: PositiveFiniteDuration,
-                                        connectionTimeout: PositiveFiniteDuration,
-                                        requestTimeout: PositiveFiniteDuration,
-                                        trustAllCerts: Boolean,
-                                        bindRequestUser: BindRequestUser,
-                                        ignoreLdapConnectivityProblems: Boolean)
+  final case class LdapConnectionConfig(
+      poolName: LdapService.Name,
+      connectionMethod: ConnectionMethod,
+      poolSize: Int Refined Positive,
+      connectionHealthCheckInterval: PositiveFiniteDuration,
+      connectionMaxAge: PositiveFiniteDuration,
+      connectionTimeout: PositiveFiniteDuration,
+      requestTimeout: PositiveFiniteDuration,
+      trustAllCerts: Boolean,
+      bindRequestUser: BindRequestUser,
+      ignoreLdapConnectivityProblems: Boolean
+  )
 
   object LdapConnectionConfig {
 
@@ -116,13 +130,14 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
       resetDuration = positiveFiniteDuration(10, TimeUnit.SECONDS)
     )
 
-    final case class LdapHost private(url: UrlWithAuthority) {
+    final case class LdapHost private (url: UrlWithAuthority) {
       def isSecure: Boolean = url.schemeOption.contains(LdapHost.ldapsSchema)
 
       def host: String = url.host.value
 
       def port: Int = url.port.getOrElse(LdapHost.defaultPort)
     }
+
     object LdapHost {
       private val ldapsSchema = "ldaps"
       private val ldapSchema = "ldap"
@@ -143,26 +158,29 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
     }
 
     sealed trait ConnectionMethod
+
     object ConnectionMethod {
-      final case class SingleServer(host: LdapHost)
-        extends ConnectionMethod
-      final case class SeveralServers(hosts: NonEmptyList[LdapHost],
-                                      haMethod: HaMethod)
-        extends ConnectionMethod
-      final case class ServerDiscovery(recordName: Option[String],
-                                       providerUrl: Option[String],
-                                       ttl: Option[PositiveFiniteDuration],
-                                       useSSL: Boolean)
-        extends ConnectionMethod
+      final case class SingleServer(host: LdapHost) extends ConnectionMethod
+      final case class SeveralServers(hosts: NonEmptyList[LdapHost], haMethod: HaMethod) extends ConnectionMethod
+
+      final case class ServerDiscovery(
+          recordName: Option[String],
+          providerUrl: Option[String],
+          ttl: Option[PositiveFiniteDuration],
+          useSSL: Boolean
+      ) extends ConnectionMethod
+
     }
 
     sealed trait HaMethod
+
     object HaMethod {
       case object RoundRobin extends HaMethod
       case object Failover extends HaMethod
     }
 
     sealed trait BindRequestUser
+
     object BindRequestUser {
       case object Anonymous extends BindRequestUser
       final case class CustomUser(dn: Dn, password: PlainTextSecret) extends BindRequestUser
@@ -170,14 +188,15 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
 
   }
 
-  def connectWithOptionalBindingTest(poolProvider: UnboundidLdapConnectionPoolProvider,
-                                     connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, UnboundidLdapConnectionPool]] = {
+  def connectWithOptionalBindingTest(
+      poolProvider: UnboundidLdapConnectionPoolProvider,
+      connectionConfig: LdapConnectionConfig
+  ): Task[Either[ConnectionError, UnboundidLdapConnectionPool]] = {
     val result = for {
       _ <- optionalTestLdapBinding(connectionConfig)
       connectionPool <- EitherT.right[ConnectionError](poolProvider.connect(connectionConfig))
     } yield connectionPool
-    result
-      .value
+    result.value
       .recover { case NonFatal(ex) =>
         Left(UnexpectedConnectionError(connectionConfig.poolName, ex))
       }
@@ -185,9 +204,9 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
 
   private def resolveHostnames(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {
     val ldapHosts = connectionConfig.connectionMethod match {
-      case ConnectionMethod.SingleServer(host) => List(host)
+      case ConnectionMethod.SingleServer(host)       => List(host)
       case ConnectionMethod.SeveralServers(hosts, _) => hosts.toList
-      case _: ConnectionMethod.ServerDiscovery => List.empty
+      case _: ConnectionMethod.ServerDiscovery       => List.empty
     }
     val hostnameResolver = new Ip4sBasedHostnameResolver()
 
@@ -196,23 +215,26 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         .map { ldapHost =>
           resolveHostname(hostnameResolver, ldapHost)
             .map {
-              case HostnameResolutionResult.Resolved => Right(())
+              case HostnameResolutionResult.Resolved    => Right(())
               case HostnameResolutionResult.NotResolved => Left(ldapHost)
             }
         }
         .sequence
         .map(_.partitionMap(identity))
-        .map {
-          case (notResolvedLdapHosts, _) =>
-            NonEmptyList.fromList(notResolvedLdapHosts)
-              .map(HostResolvingError(connectionConfig.poolName, _))
-              .toRight(())
-              .swap
+        .map { case (notResolvedLdapHosts, _) =>
+          NonEmptyList
+            .fromList(notResolvedLdapHosts)
+            .map(HostResolvingError(connectionConfig.poolName, _))
+            .toRight(())
+            .swap
         }
     }
   }
 
-  private def resolveHostname(hostnameResolver: HostnameResolver, ldapHost: LdapHost): Task[HostnameResolutionResult] = {
+  private def resolveHostname(
+      hostnameResolver: HostnameResolver,
+      ldapHost: LdapHost
+  ): Task[HostnameResolutionResult] = {
     Address
       .from(ldapHost.host)
       .map {
@@ -226,7 +248,9 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
                 .getOrElse(HostnameResolutionResult.NotResolved)
             }
       }
-      .getOrElse(Task.pure(HostnameResolutionResult.Resolved)) // we cannot assume here that the LDAP host is invalid, so we pass it to the next validation step
+      .getOrElse(
+        Task.pure(HostnameResolutionResult.Resolved)
+      ) // we cannot assume here that the LDAP host is invalid, so we pass it to the next validation step
   }
 
   private def optionalTestLdapBinding(connectionConfig: LdapConnectionConfig): EitherT[Task, ConnectionError, Unit] = {
@@ -260,7 +284,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
           .map(conn => Resource.make(Task(conn))(c => Task.delay(c.close())))
           .left
           .map { ex =>
-            logger.warnEx("Problem during getting LDAP connection", ex)
+            noRequestIdLogger.warnEx("Problem during getting LDAP connection", ex)
             CannotConnectError(connectionConfig.poolName, connectionConfig.connectionMethod)
           }
       }.timeout(connectionTimeout)
@@ -279,7 +303,11 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
     options
   }
 
-  private def ldapServerSet(connectionMethod: ConnectionMethod, options: LDAPConnectionOptions, trustAllCerts: Boolean) = {
+  private def ldapServerSet(
+      connectionMethod: ConnectionMethod,
+      options: LDAPConnectionOptions,
+      trustAllCerts: Boolean
+  ) = {
     connectionMethod match {
       case ConnectionMethod.SingleServer(ldap) if ldap.isSecure =>
         new SingleServerSet(ldap.host, ldap.port, sslSocketFactory(trustAllCerts), options)
@@ -327,7 +355,10 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
     sslUtil.createSSLSocketFactory
   }
 
-  private def testBinding(connection: LDAPConnection, connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
+  private def testBinding(
+      connection: LDAPConnection,
+      connectionConfig: LdapConnectionConfig
+  ): Task[Either[ConnectionError, Unit]] = {
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
     Task(connection.bind(bindReq))
       .map { bindResult =>
@@ -340,23 +371,28 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   }
 
   private def bindRequest(bindRequestUser: BindRequestUser) = bindRequestUser match {
-    case BindRequestUser.Anonymous => new SimpleBindRequest()
+    case BindRequestUser.Anonymous                => new SimpleBindRequest()
     case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value.value)
   }
 
   sealed trait ConnectionError
+
   object ConnectionError {
-    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod) extends ConnectionError
+    final case class CannotConnectError(ldap: LdapService.Name, connectionMethod: ConnectionMethod)
+        extends ConnectionError
     final case class HostResolvingError(ldap: LdapService.Name, hosts: NonEmptyList[LdapHost]) extends ConnectionError
     final case class BindingTestError(ldap: LdapService.Name) extends ConnectionError
 
     final case class UnexpectedConnectionError(ldap: LdapService.Name, cause: Throwable) extends ConnectionError
   }
+
   case object ClosedLdapPool extends Exception
 
   private sealed trait HostnameResolutionResult
+
   private object HostnameResolutionResult {
     case object Resolved extends HostnameResolutionResult
     case object NotResolved extends HostnameResolutionResult
   }
+
 }

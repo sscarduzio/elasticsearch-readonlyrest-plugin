@@ -16,27 +16,30 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers
 
-import java.io.{File, PrintWriter}
+import better.files.File
+
+import java.io.{File => JFile, PrintWriter}
 import scala.io.Source
 import scala.util.Using
 
-private [patches] abstract class SecurityPolicyFileModifier extends FileModifier {
+private[patches] abstract class SecurityPolicyFileModifier extends FileModifier {
 
   protected def addPermission(policyFile: File, permission: String): Unit = {
-    val tmp = new File(policyFile.getPath + ".tmp") // Temporary File
+    val policyJFile = policyFile.toJava
+    val tmp = new JFile(policyJFile.getPath + ".tmp") // Temporary File
     Using(new PrintWriter(tmp)) { writer =>
-      Using(Source.fromFile(policyFile)) { source =>
-        source.getLines()
+      Using(Source.fromFile(policyJFile)) { source =>
+        source
+          .getLines()
           .zipWithIndex
           .flatMap {
             case (line, 1) => List(permission, line)
             case (line, _) => List(line)
           }
-          .foreach(line =>
-            writer.println(line)
-          )
+          .foreach(line => writer.println(line))
       }
     }
-    tmp.renameTo(policyFile)
+    tmp.renameTo(policyJFile)
   }
+
 }

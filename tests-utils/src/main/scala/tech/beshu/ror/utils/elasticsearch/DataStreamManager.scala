@@ -23,7 +23,7 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class DataStreamManager(client: RestClient, esVersion: String)
-  extends BaseManager(client, esVersion, esNativeApi = true) {
+    extends BaseManager(client, esVersion, esNativeApi = true) {
 
   def createDataStream(name: String): JsonResponse = {
     val request = new HttpPut(client.from(s"/_data_stream/$name"))
@@ -43,6 +43,11 @@ class DataStreamManager(client: RestClient, esVersion: String)
   def getDataStreamStats(name: String): DataStreamStatsResult = {
     val request = new HttpGet(client.from(s"/_data_stream/$name/_stats"))
     call(request, new DataStreamStatsResult(_))
+  }
+
+  def getDataStreamLifecycle(name: String): JsonResponse = {
+    val request = new HttpGet(client.from(s"/_data_stream/$name/_lifecycle"))
+    call(request, new JsonResponse(_))
   }
 
   def deleteDataStream(name: String): JsonResponse = {
@@ -85,34 +90,29 @@ class DataStreamManager(client: RestClient, esVersion: String)
     }
 
     private lazy val dataStreamWithBackingIndices: Map[String, List[String]] =
-      responseJson("data_streams").arr
-        .map { dataStream =>
-          (
-            dataStream("name").str,
-            dataStream("indices").arr.map(_("index_name").str).toList
-          )
-        }
-        .toMap
+      responseJson("data_streams").arr.map { dataStream =>
+        (
+          dataStream("name").str,
+          dataStream("indices").arr.map(_("index_name").str).toList
+        )
+      }.toMap
 
     private lazy val dataStreamWithTemplate: Map[String, String] =
-      responseJson("data_streams").arr
-        .map { dataStream =>
-          (
-            dataStream("name").str,
-            dataStream("template").str
-          )
-        }
-        .toMap
+      responseJson("data_streams").arr.map { dataStream =>
+        (
+          dataStream("name").str,
+          dataStream("template").str
+        )
+      }.toMap
 
     private lazy val dataStreamWithIlmPolicy: Map[String, String] =
-      responseJson("data_streams").arr
-        .map { dataStream =>
-          (
-            dataStream("name").str,
-            dataStream("ilm_policy").str
-          )
-        }
-        .toMap
+      responseJson("data_streams").arr.map { dataStream =>
+        (
+          dataStream("name").str,
+          dataStream("ilm_policy").str
+        )
+      }.toMap
+
   }
 
   class GetDataStreamResult(response: HttpResponse) extends GetAllDataStreamsResult(response) {
@@ -128,5 +128,5 @@ class DataStreamManager(client: RestClient, esVersion: String)
 
     def backingIndicesCount: Int = responseJson("backing_indices").num.toInt
   }
-}
 
+}

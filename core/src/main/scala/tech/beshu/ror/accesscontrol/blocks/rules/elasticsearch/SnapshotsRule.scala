@@ -17,61 +17,65 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch
 
 import cats.data.NonEmptySet
-import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.rules.elasticsearch.SnapshotsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.matchers.{PatternsMatcher, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.syntax.*
 
-class SnapshotsRule(val settings: Settings)
-  extends RegularRule {
+class SnapshotsRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = SnapshotsRule.Name.name
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] = Task {
     BlockContextUpdater[B] match {
-      case BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater =>
-        Fulfilled(blockContext)
+      case BlockContextUpdater.UserMetadataRequestBlockContextUpdater =>
+        Permitted(blockContext)
       case BlockContextUpdater.SnapshotRequestBlockContextUpdater =>
         checkAllowedSnapshots(
           resolveAll(settings.allowedSnapshots.toNonEmptyList, blockContext).toCovariantSet,
           blockContext
         )
       case _ =>
-        Fulfilled(blockContext)
+        Permitted(blockContext)
     }
   }
 
-  private def checkAllowedSnapshots[B <: BlockContext](allowedSnapshots: Set[SnapshotName],
-                                                       blockContext: SnapshotRequestBlockContext)
-                                                      (implicit ev: SnapshotRequestBlockContext <:< B): RuleResult[B] = {
+  private def checkAllowedSnapshots[B <: BlockContext](
+      allowedSnapshots: Set[SnapshotName],
+      blockContext: SnapshotRequestBlockContext
+  )(
+      implicit ev: SnapshotRequestBlockContext <:< B
+  ): Decision[B] = {
     if (allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)) {
-      Fulfilled(blockContext)
+      Permitted(blockContext)
     } else {
       zeroKnowledgeMatchFilter.alterSnapshotsIfNecessary(
         blockContext.snapshots,
         PatternsMatcher.create(allowedSnapshots)
       ) match {
         case NotAltered() =>
-          Fulfilled(blockContext)
-        case Altered(filteredSnapshots) if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
-          Fulfilled(blockContext.withSnapshots(filteredSnapshots))
+          Permitted(blockContext)
+        case Altered(filteredSnapshots)
+            if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
+          Permitted(blockContext.withSnapshots(filteredSnapshots))
         case Altered(_) =>
-          Rejected()
+          Denied(Cause.NotAuthorized)
       }
     }
   }
+
 }
 
 object SnapshotsRule {

@@ -17,23 +17,23 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.auth
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BaseComposedAuthenticationAndAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.*
 
-final class RorKbnAuthRule(val authentication: RorKbnAuthenticationRule,
-                           val authorization: RorKbnAuthorizationRule)
-  extends BaseComposedAuthenticationAndAuthorizationRule(authentication, authorization) {
+final class RorKbnAuthRule(val authentication: RorKbnAuthenticationRule, val authorization: RorKbnAuthorizationRule)
+    extends BaseComposedAuthenticationAndAuthorizationRule(authentication, authorization) {
 
   override val name: Rule.Name = RorKbnAuthRule.Name.name
 
-  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
+  override val localUsers: LocalUsers = LocalUsers.NotAvailable
   override val userIdCaseSensitivity: CaseSensitivity = authentication.userIdCaseSensitivity
 }
 
 object RorKbnAuthRule {
+
   implicit case object Name extends RuleName[RorKbnAuthRule] {
     override val name = Rule.Name("ror_kbn_auth")
   }
+
 }

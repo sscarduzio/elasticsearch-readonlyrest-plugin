@@ -17,21 +17,17 @@
 package tech.beshu.ror.utils
 
 import ujson as originalUjson
-import ujson.{Obj as ujsonObj, Value as ujsonValue}
 
 object TestUjson {
 
   object ujson {
-    type Value = ujsonValue
-
-    type Obj = ujsonObj
+    // Re-export core types so callers don't need to import from `_root_.ujson` separately.
+    export originalUjson.{Null, Num, Obj, Str, Value}
 
     def read(s: String, trace: Boolean = false): Value = originalUjson.read(s.replaceAll("\r\n", "\n"), trace)
 
-    def write(t: Value,
-              indent: Int = -1,
-              escapeUnicode: Boolean = false,
-              sortKeys: Boolean = false): String = originalUjson.write(t, indent, escapeUnicode, sortKeys)
+    def write(t: Value, indent: Int = -1, escapeUnicode: Boolean = false, sortKeys: Boolean = false): String =
+      originalUjson.write(t, indent, escapeUnicode, sortKeys)
   }
 
 }

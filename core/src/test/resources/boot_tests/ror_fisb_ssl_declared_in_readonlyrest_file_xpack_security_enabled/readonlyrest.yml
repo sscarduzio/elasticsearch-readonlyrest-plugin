@@ -1,12 +1,10 @@
 readonlyrest:
-
   fips_mode: SSL_ONLY
   ssl:
     enable: true
     keystore_file: "ror-keystore.jks"
-    keystore_pass: readonlyrest
-    key_pass: readonlyrest
-
+    keystore_pass: readonlyrest1
+    key_pass: readonlyrest2
   access_control_rules:
     - name: "ADMIN"
       auth_key: admin:admin

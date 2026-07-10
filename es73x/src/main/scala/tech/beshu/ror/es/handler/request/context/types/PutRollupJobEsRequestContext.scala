@@ -24,19 +24,18 @@ import org.joor.Reflect.*
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
-                                           esContext: EsContext,
-                                           aclContext: AccessControlStaticContext,
-                                           clusterService: RorClusterService,
-                                           override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+class PutRollupJobEsRequestContext private (
+    actionRequest: ActionRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, threadPool) {
 
   private lazy val originIndices = {
     val config = on(actionRequest).call("getConfig").get[AnyRef]()
@@ -45,28 +44,35 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
     (RequestedIndex.fromString(indexPattern) :: RequestedIndex.fromString(rollupIndex) :: Nil).flatten.toCovariantSet
   }
 
-  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] = originIndices
+  override protected def requestedIndicesFrom(request: ActionRequest): Set[RequestedIndex[ClusterIndexName]] =
+    originIndices
 
-  override protected def update(request: ActionRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
-    if (originIndices == filteredIndices.toList.toCovariantSet) {
+  override protected def update(
+      request: ActionRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
+    if (originIndices == filteredIndices.toCovariantSet) {
       Modified
     } else {
-      logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
+      logger.error(
+        s"Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue."
+      )
       ShouldBeInterrupted
     }
   }
+
 }
 
 object PutRollupJobEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[PutRollupJobEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getName.endsWith("PutRollupJobAction$Request")) {
-      Some(new PutRollupJobEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      Some(new PutRollupJobEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.threadPool))
     } else {
       None
     }
   }
+
 }

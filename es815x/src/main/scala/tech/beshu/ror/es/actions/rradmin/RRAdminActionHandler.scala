@@ -18,41 +18,41 @@ package tech.beshu.ror.es.actions.rradmin
 
 import cats.implicits.toShow
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.MainSettingsApi.MainSettingsResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.utils.{RequestIdAwareLogging, RorInstanceSupplier}
 
-class RRAdminActionHandler extends Logging {
+class RRAdminActionHandler extends RequestIdAwareLogging {
 
   private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
   def handle(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     getApi match {
-      case Some(api) => doPrivileged {
-        implicit val requestId: RequestId = request.requestContextId
-        api
-          .call(request.getAdminRequest)
-          .runAsync { response =>
-            handle(response, listener)
-          }
-      }
+      case Some(api) =>
+        doPrivileged {
+          implicit val requestId: RequestId = request.requestContextId
+          api
+            .call(request.getAdminRequest)
+            .runAsync { response =>
+              handle(response, listener)
+            }
+        }
       case None =>
         listener.onFailure(new Exception("ROR Settings API is not available"))
     }
   }
 
-  private def handle(result: Either[Throwable, MainSettingsResponse],
-                     listener: ActionListener[RRAdminResponse])
-                    (implicit requestId: RequestId): Unit = result match {
+  private def handle(result: Either[Throwable, MainSettingsResponse], listener: ActionListener[RRAdminResponse])(
+      implicit requestId: RequestId
+  ): Unit = result match {
     case Right(response) =>
       listener.onResponse(new RRAdminResponse(response))
     case Left(ex) =>
-      logger.error(s"[${requestId.show}] RRAdminAction internal error", ex)
+      logger.error("RRAdminAction internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 

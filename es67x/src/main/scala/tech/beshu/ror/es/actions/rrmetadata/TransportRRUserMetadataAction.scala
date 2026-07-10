@@ -26,25 +26,35 @@ import org.elasticsearch.transport.TransportService
 
 import scala.annotation.unused
 
-class TransportRRUserMetadataAction(settings: Settings,
-                                    threadPool: ThreadPool,
-                                    transportService: TransportService,
-                                    actionFilters: ActionFilters,
-                                    indexNameExpressionResolver: IndexNameExpressionResolver,
-                                    @unused constructorDiscriminator: Unit)
-  extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
-    settings, RRUserMetadataActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRUserMetadataRequest
-  ) {
+class TransportRRUserMetadataAction(
+    settings: Settings,
+    threadPool: ThreadPool,
+    transportService: TransportService,
+    actionFilters: ActionFilters,
+    indexNameExpressionResolver: IndexNameExpressionResolver,
+    @unused constructorDiscriminator: Unit
+) extends HandledTransportAction[RRUserMetadataRequest, RRUserMetadataResponse](
+      settings,
+      RRUserMetadataActionType.name,
+      threadPool,
+      transportService,
+      actionFilters,
+      indexNameExpressionResolver,
+      () => new RRUserMetadataRequest(None)
+    ) {
 
   @Inject
-  def this(settings: Settings,
-           threadPool: ThreadPool,
-           transportService: TransportService,
-           actionFilters: ActionFilters,
-           indexNameExpressionResolver: IndexNameExpressionResolver) =
+  def this(
+      settings: Settings,
+      threadPool: ThreadPool,
+      transportService: TransportService,
+      actionFilters: ActionFilters,
+      indexNameExpressionResolver: IndexNameExpressionResolver
+  ) =
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, ())
 
   override def doExecute(request: RRUserMetadataRequest, listener: ActionListener[RRUserMetadataResponse]): Unit = {
     // nothing to do here
   }
+
 }

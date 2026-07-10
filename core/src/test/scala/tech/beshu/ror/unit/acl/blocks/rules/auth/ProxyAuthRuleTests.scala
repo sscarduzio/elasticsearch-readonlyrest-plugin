@@ -17,19 +17,15 @@
 package tech.beshu.ror.unit.acl.blocks.rules.auth
 
 import cats.data.NonEmptyList
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Inside
-import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.{AuthenticationFailed, ImpersonationNotAllowed}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.mocks.NoOpMocksProvider
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.ImpersonationNotAllowed
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{Impersonation, ImpersonationSettings}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -37,17 +33,16 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.concurrent.duration.*
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 
-class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
+class ProxyAuthRuleTests extends AnyWordSpec with BlockContextAssertion {
 
   "A ProxyAuthRule" should {
     "match" when {
       "one user id is configured and the same id can be find in auth header" in {
         assertMatchRule(
-          settings = ProxyAuthRule.Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
+          settings =
+            ProxyAuthRule.Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
           headers = Set(headerFrom("custom-user-auth-header" -> "userA"))
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
@@ -72,16 +67,21 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
         "impersonation is enabled" when {
           "impersonated user is on allowed users list" in {
             assertMatchRule(
-              settings = ProxyAuthRule.Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
+              settings = ProxyAuthRule
+                .Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              )),
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userA")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
             )(
               blockContextAssertion = impersonatedUserOutputBlockContextAssertion(
                 user = User.Id("userA"),
@@ -99,7 +99,8 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
             UniqueNonEmptyList.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             headerNameFrom("custom-user-auth-header")
           ),
-          headers = Set(headerFrom("custom-user-auth-header" -> "userD"))
+          headers = Set(headerFrom("custom-user-auth-header" -> "userD")),
+          denialCause = AuthenticationFailed("User not found in allowed users list")
         )
       }
       "user id is passed in different header than the configured one" in {
@@ -108,53 +109,70 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
             UniqueNonEmptyList.of(User.Id("userA")),
             headerNameFrom("custom-user-auth-header")
           ),
-          headers = Set(headerFrom("X-Forwarded-User" -> "userD"))
+          headers = Set(headerFrom("X-Forwarded-User" -> "userD")),
+          denialCause = AuthenticationFailed("User header 'custom-user-auth-header' not found")
         )
       }
       "user is being impersonated" when {
         "impersonation is enabled" when {
           "admin cannot be authenticated" in {
             assertNotMatchRule(
-              settings = ProxyAuthRule.Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
+              settings = ProxyAuthRule
+                .Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
               headers = Set(basicAuthHeader("admin:wrong_pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              )),
-              rejectionCause = Some(ImpersonationNotAllowed)
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userA")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
+              denialCause = ImpersonationNotAllowed
             )
           }
           "admin cannot impersonate the given user" in {
             assertNotMatchRule(
-              settings = ProxyAuthRule.Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
+              settings = ProxyAuthRule
+                .Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userB")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              )),
-              rejectionCause = Some(ImpersonationNotAllowed)
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userB")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
+              denialCause = ImpersonationNotAllowed
             )
           }
           "rule doesn't accept given impersonated user" in {
             assertNotMatchRule(
-              settings = ProxyAuthRule.Settings(UniqueNonEmptyList.of(User.Id("userB")), headerNameFrom("custom-user-auth-header")),
+              settings = ProxyAuthRule
+                .Settings(UniqueNonEmptyList.of(User.Id("userB")), headerNameFrom("custom-user-auth-header")),
               headers = Set(basicAuthHeader("admin:pass"), impersonationHeader("userA")),
-              impersonation = Impersonation.Enabled(ImpersonationSettings(
-                impersonators = List(impersonatorDefFrom(
-                  userIdPattern = "*",
-                  impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
-                  impersonatedUsersIdPatterns = NonEmptyList.of("userA")
-                )),
-                mocksProvider = NoOpMocksProvider // not needed in this context
-              ))
+              impersonation = Impersonation.Enabled(
+                ImpersonationSettings(
+                  impersonators = List(
+                    impersonatorDefFrom(
+                      userIdPattern = "*",
+                      impersonatorCredentials = Credentials(User.Id("admin"), PlainTextSecret("pass")),
+                      impersonatedUsersIdPatterns = NonEmptyList.of("userA")
+                    )
+                  ),
+                  mocksProvider = NoOpMocksProvider // not needed in this context
+                )
+              ),
+              denialCause = AuthenticationFailed("Impersonated user does not exist")
             )
           }
         }
@@ -162,56 +180,51 @@ class ProxyAuthRuleTests extends AnyWordSpec with Inside with BlockContextAssert
     }
   }
 
-  private def assertMatchRule(settings: ProxyAuthRule.Settings,
-                              impersonation: Impersonation = Impersonation.Disabled,
-                              headers: Set[Header])
-                             (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleFulfilled(blockContextAssertion))
+  private def assertMatchRule(
+      settings: ProxyAuthRule.Settings,
+      impersonation: Impersonation = Impersonation.Disabled,
+      headers: Set[Header]
+  )(blockContextAssertion: BlockContext => Unit): Unit =
+    assertRule(settings, impersonation, headers, RuleCheckAssertion.RulePermitted(blockContextAssertion))
 
-  private def assertNotMatchRule(settings: ProxyAuthRule.Settings,
-                                 impersonation: Impersonation = Impersonation.Disabled,
-                                 headers: Set[Header],
-                                 rejectionCause: Option[Cause] = None): Unit =
-    assertRule(settings, impersonation, headers, AssertionType.RuleRejected(rejectionCause))
+  private def assertNotMatchRule(
+      settings: ProxyAuthRule.Settings,
+      impersonation: Impersonation = Impersonation.Disabled,
+      headers: Set[Header],
+      denialCause: Cause
+  ): Unit =
+    assertRule(settings, impersonation, headers, RuleCheckAssertion.RuleDenied(denialCause))
 
-  private def assertRule(settings: ProxyAuthRule.Settings,
-                         impersonation: Impersonation,
-                         headers: Set[Header],
-                         assertionType: AssertionType): Unit = {
+  private def assertRule(
+      settings: ProxyAuthRule.Settings,
+      impersonation: Impersonation,
+      headers: Set[Header],
+      assertionType: RuleCheckAssertion
+  ): Unit = {
     val rule = new ProxyAuthRule(settings, CaseSensitivity.Enabled, impersonation)
     val requestContext = MockRequestContext.indices.withHeaders(headers)
-    val blockContext = CurrentUserMetadataRequestBlockContext(
-      requestContext,
-      UserMetadata.from(requestContext),
-      Set.empty,
-      List.empty
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
+      requestContext = requestContext,
+      blockMetadata = BlockMetadata.from(requestContext),
+      responseHeaders = Set.empty,
+      responseTransformations = List.empty
     )
-    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
-    assertionType match {
-      case AssertionType.RuleFulfilled(blockContextAssertion) =>
-        inside(result) { case Success(Fulfilled(outBlockContext)) =>
-          blockContextAssertion(outBlockContext)
-        }
-      case AssertionType.RuleRejected(cause) =>
-        result should be(Success(Rejected(cause)))
-      case AssertionType.RuleThrownException(ex) =>
-        result should be(Failure(ex))
-    }
+    rule.checkAndAssert(blockContext, assertionType)
   }
 
   private def defaultOutputBlockContextAssertion(user: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(DirectlyLoggedUser(user))
-      )(blockContext)
+      )
     }
 
-  private def impersonatedUserOutputBlockContextAssertion(user: User.Id,
-                                                          impersonator: User.Id): BlockContext => Unit =
+  private def impersonatedUserOutputBlockContextAssertion(user: User.Id, impersonator: User.Id): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(
+      assertBlockContext(blockContext)(
         loggedUser = Some(ImpersonatedUser(user, impersonator))
-      )(blockContext)
+      )
     }
 
 }

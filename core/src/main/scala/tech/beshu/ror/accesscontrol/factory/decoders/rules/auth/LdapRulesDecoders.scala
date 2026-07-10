@@ -38,14 +38,15 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.LdapRulesDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLogicDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
 // ------ ldap_authentication
-class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
-                                    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                                    mocksProvider: MocksProvider,
-                                    globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
+class LdapAuthenticationRuleDecoder(
+    ldapDefinitions: Definitions[LdapService],
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
 
   import LdapRulesDecodersHelper.*
 
@@ -59,13 +60,15 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
           .map(CacheableLdapAuthenticationServiceDecorator.createWithCacheableLdapUsersService(_, ttl))
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
-      .map(service => RuleDefinition.create(
-        new LdapAuthenticationRule(
-          LdapAuthenticationRule.Settings(service),
-          globalSettings.userIdCaseSensitivity,
-          impersonatorsDef.toImpersonation(mocksProvider),
+      .map(service =>
+        RuleDefinition.create(
+          new LdapAuthenticationRule(
+            LdapAuthenticationRule.Settings(service),
+            globalSettings.userIdCaseSensitivity,
+            impersonatorsDef.toImpersonation(mocksProvider),
+          )
         )
-      ))
+      )
       .decoder
   }
 
@@ -73,7 +76,8 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
     LdapServicesDecoder.nameDecoder
       .map((_, None))
 
-  private def complexLdapAuthenticationServiceNameAndLocalConfig: Decoder[(LdapService.Name, Option[PositiveFiniteDuration])] = {
+  private def complexLdapAuthenticationServiceNameAndLocalConfig
+      : Decoder[(LdapService.Name, Option[PositiveFiniteDuration])] = {
     Decoder
       .instance { c =>
         for {
@@ -85,24 +89,28 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .mapError(RulesLevelCreationError.apply)
       .decoder
   }
+
 }
 
 // ------ ldap_authorization
-class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
-                                   impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                                   mocksProvider: MocksProvider,
-                                   globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
+class LdapAuthorizationRuleDecoder(
+    ldapDefinitions: Definitions[LdapService],
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
 
   override protected def decoder: Decoder[RuleDefinition[LdapAuthorizationRule]] = {
     settingsDecoder(ldapDefinitions)
-      .map(settings => RuleDefinition.create(
-        new LdapAuthorizationRule(
-          settings,
-          globalSettings.userIdCaseSensitivity,
-          impersonatorsDef.toImpersonation(mocksProvider)
+      .map(settings =>
+        RuleDefinition.create(
+          new LdapAuthorizationRule(
+            settings,
+            globalSettings.userIdCaseSensitivity,
+            impersonatorsDef.toImpersonation(mocksProvider)
+          )
         )
-      ))
+      )
   }
 
   private def settingsDecoder(ldapDefinitions: Definitions[LdapService]): Decoder[LdapAuthorizationRule.Settings] =
@@ -119,33 +127,39 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .emapE { case (name, ttl, groupsLogic) => createLdapAuthorizationRule(name, ttl, groupsLogic, ldapDefinitions) }
       .decoder
 
-  private def createLdapAuthorizationRule(name: LdapService.Name,
-                                          ttl: Option[PositiveFiniteDuration],
-                                          groupsLogic: GroupsLogic,
-                                          ldapDefinitions: Definitions[LdapService]): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
+  private def createLdapAuthorizationRule(
+      name: LdapService.Name,
+      ttl: Option[PositiveFiniteDuration],
+      groupsLogic: GroupsLogic,
+      ldapDefinitions: Definitions[LdapService]
+  ): Either[CoreCreationError, LdapAuthorizationRule.Settings] = {
     findLdapService[LdapAuthorizationRule](LdapServiceType.Authorization, name, ldapDefinitions.items)
       .map(CacheableLdapAuthorizationService.createWithCacheableLdapUsersService(_, ttl))
       .map(service => LoggableLdapAuthorizationService.create(service))
       .flatMap(ldapAuthorizationRuleSettings(_, groupsLogic))
   }
+
 }
 
 // ------ ldap_auth
-class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
-                          impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                          mocksProvider: MocksProvider,
-                          globalSettings: GlobalSettings)
-  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
+class LdapAuthRuleDecoder(
+    ldapDefinitions: Definitions[LdapService],
+    impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+    mocksProvider: MocksProvider,
+    globalSettings: GlobalSettings
+) extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
 
   override protected def decoder: Decoder[RuleDefinition[LdapAuthRule]] = {
     instance(ldapDefinitions, globalSettings.userIdCaseSensitivity, impersonatorsDef, mocksProvider)
       .map(RuleDefinition.create(_))
   }
 
-  private def instance(ldapDefinitions: Definitions[LdapService],
-                       userIdCaseSensitivity: CaseSensitivity,
-                       impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                       mocksProvider: MocksProvider): Decoder[LdapAuthRule] =
+  private def instance(
+      ldapDefinitions: Definitions[LdapService],
+      userIdCaseSensitivity: CaseSensitivity,
+      impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+      mocksProvider: MocksProvider
+  ): Decoder[LdapAuthRule] =
     Decoder
       .instance { c =>
         for {
@@ -156,15 +170,28 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
-      .emapE { case (name, ttl, groupsLogic) => createLdapAuthRule(name, ttl, groupsLogic, ldapDefinitions, impersonatorsDef, mocksProvider, userIdCaseSensitivity) }
+      .emapE { case (name, ttl, groupsLogic) =>
+        createLdapAuthRule(
+          name,
+          ttl,
+          groupsLogic,
+          ldapDefinitions,
+          impersonatorsDef,
+          mocksProvider,
+          userIdCaseSensitivity
+        )
+      }
       .decoder
 
-  private def createLdapAuthRule(name: LdapService.Name,
-                                 ttl: Option[PositiveFiniteDuration],
-                                 groupsLogic: GroupsLogic, ldapDefinitions: Definitions[LdapService],
-                                 impersonatorsDef: Option[Definitions[ImpersonatorDef]],
-                                 mocksProvider: MocksProvider,
-                                 userIdCaseSensitivity: CaseSensitivity) = {
+  private def createLdapAuthRule(
+      name: LdapService.Name,
+      ttl: Option[PositiveFiniteDuration],
+      groupsLogic: GroupsLogic,
+      ldapDefinitions: Definitions[LdapService],
+      impersonatorsDef: Option[Definitions[ImpersonatorDef]],
+      mocksProvider: MocksProvider,
+      userIdCaseSensitivity: CaseSensitivity
+  ) = {
     for
       ldapService <- findLdapService[LdapAuthRule](LdapServiceType.Composed, name, ldapDefinitions.items)
       ldapAuthorizationService = LoggableLdapAuthorizationService.create(
@@ -188,6 +215,7 @@ class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
       )
     )
   }
+
 }
 
 private object LdapRulesDecodersHelper {
@@ -196,9 +224,11 @@ private object LdapRulesDecodersHelper {
     s"It is not allowed to use groups_not_any_of and groups_not_all_of rule, when LDAP server-side groups filtering is enabled. Consider using a combined rule, which applies two rules at the same time: groups_or/groups_and together with groups_not_any_of/groups_not_all_of."
   }
 
-  private[rules] def findLdapService[R <: Rule : RuleName](toFind: LdapServiceType,
-                                                           searchedServiceName: LdapService.Name,
-                                                           ldapServices: List[LdapService]): Either[CoreCreationError, toFind.LDAP_SERVICE] = {
+  private[rules] def findLdapService[R <: Rule: RuleName](
+      toFind: LdapServiceType,
+      searchedServiceName: LdapService.Name,
+      ldapServices: List[LdapService]
+  ): Either[CoreCreationError, toFind.LDAP_SERVICE] = {
     ldapServices.find(_.id === searchedServiceName) match {
       case Some(service) =>
         (service, toFind) match {
@@ -213,15 +243,21 @@ private object LdapRulesDecodersHelper {
           case (service: ComposedLdapAuthService, LdapServiceType.Authorization) =>
             Right(service.ldapAuthorizationService.asInstanceOf[toFind.LDAP_SERVICE])
           case (_, _) =>
-            Left(RulesLevelCreationError(Message(s"Service: ${searchedServiceName.show} cannot be used in '${RuleName[R].show}' rule")))
+            Left(
+              RulesLevelCreationError(
+                Message(s"Service: ${searchedServiceName.show} cannot be used in '${RuleName[R].show}' rule")
+              )
+            )
         }
       case None =>
         Left(RulesLevelCreationError(Message(s"Cannot find LDAP service with name: ${searchedServiceName.show}")))
     }
   }
 
-  private[rules] def ldapAuthorizationRuleSettings(ldapService: LdapAuthorizationService,
-                                                   groupsLogic: GroupsLogic): Either[RulesLevelCreationError, LdapAuthorizationRule.Settings] =
+  private[rules] def ldapAuthorizationRuleSettings(
+      ldapService: LdapAuthorizationService,
+      groupsLogic: GroupsLogic
+  ): Either[RulesLevelCreationError, LdapAuthorizationRule.Settings] =
     groupsLogic match {
       case groupsLogic: GroupsLogic.Combined =>
         Right(LdapAuthorizationRule.Settings.CombinedGroupsLogicSettings(ldapService, groupsLogic))
@@ -241,6 +277,7 @@ private object LdapRulesDecodersHelper {
   }
 
   private[auth] object LdapServiceType {
+
     case object Authentication extends LdapServiceType {
       override type LDAP_SERVICE = LdapAuthenticationService
     }
@@ -252,5 +289,7 @@ private object LdapRulesDecodersHelper {
     case object Composed extends LdapServiceType {
       override type LDAP_SERVICE = ComposedLdapAuthService
     }
+
   }
+
 }

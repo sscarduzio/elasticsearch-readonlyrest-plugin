@@ -18,7 +18,6 @@ package org.elasticsearch.transport.netty4
 
 import io.netty.channel.Channel
 import io.netty.handler.ssl.NotSslRecordException
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.{ClusterSettings, Settings}
 import org.elasticsearch.common.util.BigArrays
@@ -29,19 +28,30 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.SharedGroupFactory
 import tech.beshu.ror.settings.es.SslSettings.ExternalSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.SSLCertHelper
 
-class SSLNetty4HttpServerTransport(settings: Settings,
-                                   networkService: NetworkService,
-                                   bigArrays: BigArrays,
-                                   threadPool: ThreadPool,
-                                   xContentRegistry: NamedXContentRegistry,
-                                   dispatcher: HttpServerTransport.Dispatcher,
-                                   ssl: ExternalSslSettings,
-                                   clusterSettings: ClusterSettings,
-                                   sharedGroupFactory: SharedGroupFactory)
-  extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, clusterSettings, sharedGroupFactory)
-    with Logging {
+class SSLNetty4HttpServerTransport(
+    settings: Settings,
+    networkService: NetworkService,
+    bigArrays: BigArrays,
+    threadPool: ThreadPool,
+    xContentRegistry: NamedXContentRegistry,
+    dispatcher: HttpServerTransport.Dispatcher,
+    ssl: ExternalSslSettings,
+    clusterSettings: ClusterSettings,
+    sharedGroupFactory: SharedGroupFactory
+) extends Netty4HttpServerTransport(
+      settings,
+      networkService,
+      bigArrays,
+      threadPool,
+      xContentRegistry,
+      dispatcher,
+      clusterSettings,
+      sharedGroupFactory
+    )
+    with RequestIdAwareLogging {
 
   private val serverSslContext = doPrivileged {
     SSLCertHelper.prepareServerSSLContext(ssl, ssl.clientAuthenticationEnabled)
@@ -51,17 +61,20 @@ class SSLNetty4HttpServerTransport(settings: Settings,
 
   override def onException(channel: HttpChannel, cause: Exception): Unit = {
     if (!this.lifecycle.started) return
-    else if (cause.getCause.isInstanceOf[NotSslRecordException]) logger.warn(cause.getMessage + " connecting from: " + channel.getRemoteAddress)
+    else if (cause.getCause.isInstanceOf[NotSslRecordException])
+      noRequestIdLogger.warn(cause.getMessage + " connecting from: " + channel.getRemoteAddress)
     else super.onException(channel, cause)
     channel.close()
   }
 
   final class SSLHandler(transport: Netty4HttpServerTransport)
-    extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
+      extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
 
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       ch.pipeline().addFirst("ssl_netty4_handler", serverSslContext.newHandler(ch.alloc()))
     }
+
   }
+
 }

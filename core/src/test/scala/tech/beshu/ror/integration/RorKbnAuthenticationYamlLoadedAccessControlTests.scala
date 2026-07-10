@@ -32,7 +32,9 @@ import tech.beshu.ror.utils.misc.JwtUtils
 import tech.beshu.ror.utils.misc.JwtUtils.ClaimKeyOps
 
 class RorKbnAuthenticationYamlLoadedAccessControlTests
-  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+    extends AnyWordSpec
+    with BaseYamlLoadedAccessControlTest
+    with Inside {
 
   override protected def settingsYaml: String =
     """
@@ -53,13 +55,6 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
       |      ror_kbn_authentication:
       |        name: "kbn2"
       |
-      |  users:
-      |  - username: "*"
-      |    groups: ["mapped_viewer_group"]
-      |    ror_kbn_auth:
-      |      name: "kbn2"
-      |      roles: ["viewer_group"]
-      |
       |  ror_kbn:
       |
       |    - name: kbn1
@@ -78,27 +73,29 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
       "allow to proceed" when {
         "JWT token is defined with empty groups" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := "")
           )
           val request = MockRequestContext.indices.withHeaders(bearerHeader(jwt))
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(
+          history.blocks should have size 2
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(Jwt.Payload(jwt.defaultClaims()))
-            ) {
-              blockContext
-            }
+            )
           }
         }
         "JWT token is defined with group that does not match the current group passed in header" in {
           val jwt = JwtUtils.Jwt(
-            secret = Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes),
+            secret = Keys.hmacShaKeyFor(
+              "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes
+            ),
             claims = List("sub" := "test", "user" := "user", "groups" := List("some_group_in_jwt"))
           )
           val request = MockRequestContext.indices.withHeaders(
@@ -106,21 +103,20 @@ class RorKbnAuthenticationYamlLoadedAccessControlTests
             currentGroupHeader("mapped_viewer_group")
           )
 
-          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          val (result, history) = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 2
-          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(
+          history.blocks should have size 2
+          inside(result) { case RegularRequestResult.Allowed(blockContext) =>
+            blockContext.block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(blockContext)(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(Jwt.Payload(jwt.defaultClaims())),
               currentGroup = Some(GroupId("mapped_viewer_group"))
-            ) {
-              blockContext
-            }
+            )
           }
         }
       }
     }
   }
+
 }

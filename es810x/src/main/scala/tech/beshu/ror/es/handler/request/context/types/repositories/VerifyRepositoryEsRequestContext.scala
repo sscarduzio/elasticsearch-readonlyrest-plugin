@@ -21,7 +21,6 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.repositories.verify.VerifyRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -30,11 +29,11 @@ import tech.beshu.ror.es.handler.request.context.types.BaseRepositoriesEsRequest
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.syntax.*
 
-class VerifyRepositoryEsRequestContext(actionRequest: VerifyRepositoryRequest,
-                                       esContext: EsContext,
-                                       clusterService: RorClusterService,
-                                       override val threadPool: ThreadPool)
-  extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+class VerifyRepositoryEsRequestContext(
+    actionRequest: VerifyRepositoryRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseRepositoriesEsRequestContext(actionRequest, esContext, threadPool) {
 
   override protected def repositoriesFrom(request: VerifyRepositoryRequest): Set[RepositoryName] = Set {
     RepositoryName
@@ -42,12 +41,17 @@ class VerifyRepositoryEsRequestContext(actionRequest: VerifyRepositoryRequest,
       .getOrElse(throw RequestSeemsToBeInvalid[VerifyRepositoryRequest]("Repository name is empty"))
   }
 
-  override protected def update(request: VerifyRepositoryRequest,
-                                repositories: NonEmptyList[RepositoryName]): ModificationResult = {
+  override protected def update(
+      request: VerifyRepositoryRequest,
+      repositories: NonEmptyList[RepositoryName]
+  ): ModificationResult = {
     if (repositories.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+      logger.warn(
+        s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]"
+      )
     }
     request.name(RepositoryName.toString(repositories.head))
     Modified
   }
+
 }

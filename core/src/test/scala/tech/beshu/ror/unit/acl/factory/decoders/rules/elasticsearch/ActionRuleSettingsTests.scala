@@ -31,16 +31,15 @@ class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
     "be able to be loaded from settings" when {
       "only one action is defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    actions: "example_action"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    actions: "example_action"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.actions should be(NonEmptySet.one(Action("example_action")))
           }
@@ -48,16 +47,15 @@ class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
       }
       "several actions are defined" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    actions: [one, two, three]
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    actions: [one, two, three]
+                   |
+                   |""".stripMargin,
           assertion = rule => {
             rule.settings.actions should be(NonEmptySet.of(Action("one"), Action("two"), Action("three")))
           }
@@ -67,25 +65,29 @@ class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
     "not be able to be loaded from settings" when {
       "no action is defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    actions:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    actions:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue.fromString(
-              """actions: null
-                |""".stripMargin
-            )))
+            errors.head should be(
+              RulesLevelCreationError(
+                MalformedValue.fromString(
+                  """actions: null
+                    |""".stripMargin
+                )
+              )
+            )
           }
         )
       }
     }
   }
+
 }

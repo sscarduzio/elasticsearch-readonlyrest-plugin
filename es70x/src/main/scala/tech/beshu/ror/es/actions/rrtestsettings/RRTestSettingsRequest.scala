@@ -25,8 +25,9 @@ import tech.beshu.ror.constants
 import tech.beshu.ror.es.actions.RorActionRequest
 import tech.beshu.ror.utils.ScalaOps.*
 
-class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest,
-                            esRestRequest: RestRequest) extends ActionRequest with RorActionRequest {
+class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest, esRestRequest: RestRequest)
+    extends ActionRequest
+    with RorActionRequest {
 
   def this() = {
     this(null, null)
@@ -43,7 +44,7 @@ class RRTestSettingsRequest(request: TestSettingsApi.TestSettingsRequest,
 object RRTestSettingsRequest {
 
   def createFrom(request: RestRequest): RRTestSettingsRequest = {
-    val requestType = (request.uri().addTrailingSlashIfNotPresent(), request.method()) match {
+    val requestType = (request.uri().removeTrailingSlashIfPresent(), request.method()) match {
       case (constants.PROVIDE_TEST_SETTINGS_PATH, GET) =>
         TestSettingsApi.TestSettingsRequest.Type.ProvideTestSettings
       case (constants.DELETE_TEST_SETTINGS_PATH, DELETE) =>
@@ -60,5 +61,5 @@ object RRTestSettingsRequest {
       request
     )
   }
-}
 
+}

@@ -29,17 +29,21 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.postfixOps
 
 object ReadonlyRestPlugin {
-  final case class Config(rorSettings: File,
-                          rorPlugin: File,
-                          attributes: Attributes)
+  final case class Config(rorSettings: File, rorPlugin: File, attributes: Attributes)
+
   object Config {
-    final case class Attributes(rorSettingsReloading: Enabled[FiniteDuration],
-                                rorInIndexSettingsLoadingDelay: FiniteDuration,
-                                rorCustomSettingsIndex: Option[String],
-                                restSsl: Enabled[RestSsl],
-                                internodeSsl: Enabled[InternodeSsl],
-                                rorSettingsFileName: String)
+
+    final case class Attributes(
+        rorSettingsReloading: Enabled[FiniteDuration],
+        rorInIndexSettingsLoadingDelay: FiniteDuration,
+        rorCustomSettingsIndex: Option[String],
+        restSsl: Enabled[RestSsl],
+        internodeSsl: Enabled[InternodeSsl],
+        rorSettingsFileName: String
+    )
+
     object Attributes {
+
       val default: Attributes = Attributes(
         rorSettingsReloading = Enabled.No,
         rorInIndexSettingsLoadingDelay = 0 seconds,
@@ -48,25 +52,28 @@ object ReadonlyRestPlugin {
         internodeSsl = Enabled.No,
         rorSettingsFileName = "/basic/readonlyrest.yml"
       )
+
     }
 
     sealed trait RestSsl
+
     object RestSsl {
       final case class Ror(sourceFile: SourceFile) extends RestSsl
       final case class RorFips(sourceFile: SourceFile) extends RestSsl
     }
 
     sealed trait InternodeSsl
+
     object InternodeSsl {
       final case class Ror(sourceFile: SourceFile) extends InternodeSsl
       final case class RorFips(sourceFile: SourceFile) extends InternodeSsl
     }
+
   }
+
 }
-class ReadonlyRestPlugin(esVersion: String,
-                         config: Config,
-                         performPatching: Boolean)
-  extends Elasticsearch.Plugin {
+
+class ReadonlyRestPlugin(esVersion: String, config: Config, performPatching: Boolean) extends Elasticsearch.Plugin {
 
   override def installationSteps(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
     emptyPluginInstallationSteps
@@ -74,8 +81,14 @@ class ReadonlyRestPlugin(esVersion: String,
       .copyFile(esConfig.esConfigDir / "ror-keystore.jks", fromResourceBy(name = "ror-keystore.jks"))
       .copyFile(esConfig.esConfigDir / "ror-truststore.jks", fromResourceBy(name = "ror-truststore.jks"))
       .copyFile(esConfig.esConfigDir / "elastic-certificates.p12", fromResourceBy(name = "elastic-certificates.p12"))
-      .copyFile(esConfig.esConfigDir / "elastic-certificates-cert.pem", fromResourceBy(name = "elastic-certificates-cert.pem"))
-      .copyFile(esConfig.esConfigDir / "elastic-certificates-pkey.pem", fromResourceBy(name = "elastic-certificates-pkey.pem"))
+      .copyFile(
+        esConfig.esConfigDir / "elastic-certificates-cert.pem",
+        fromResourceBy(name = "elastic-certificates-cert.pem")
+      )
+      .copyFile(
+        esConfig.esConfigDir / "elastic-certificates-pkey.pem",
+        fromResourceBy(name = "elastic-certificates-pkey.pem")
+      )
       .updateFipsDependencies(esConfig)
       .copyFile(esConfig.esConfigDir / "readonlyrest.yml", config.rorSettings)
       .installRorPlugin(esConfig)
@@ -103,7 +116,7 @@ class ReadonlyRestPlugin(esVersion: String,
 
   private def rorReloadingInterval() = {
     val interval = config.attributes.rorSettingsReloading match {
-      case Enabled.No => "0sec"
+      case Enabled.No                            => "0sec"
       case Enabled.Yes(interval: FiniteDuration) => s"${interval.toMillis.toInt}ms"
     }
     s"-Dcom.readonlyrest.settings.refresh.interval=$interval"
@@ -118,43 +131,62 @@ class ReadonlyRestPlugin(esVersion: String,
   }
 
   private implicit class InstallRorPlugin(val pluginInstallationSteps: PluginInstallationSteps) {
+
     def installRorPlugin(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
       pluginInstallationSteps
         .run(
-          linuxCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
-          windowsCommand = s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
+          linuxCommand =
+            s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
+          windowsCommand =
+            s"${esConfig.esDir.toString()}/bin/elasticsearch-plugin install --batch file:///${esConfig.tempFilePath}/${config.rorPlugin.name}",
         )
     }
 
     def patchES(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
       pluginInstallationSteps
         .user("root")
-        .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
-          linuxCommand = s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
-          windowsCommand = s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+        .runWhen(
+          Version.greaterOrEqualThan(esVersion, 7, 0, 0),
+          linuxCommand =
+            s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          windowsCommand =
+            s"${esConfig.esDir.toString()}/jdk/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
         )
-        .runWhen(Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
-          linuxCommand = s"$$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
-          windowsCommand =  s"""%JAVA_HOME%\\bin\\java -jar "${esConfig.esDir}\\plugins\\readonlyrest\\ror-tools.jar" patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes""",
+        .runWhen(
+          Version.greaterOrEqualThan(esVersion, 6, 5, 0) && Version.lowerThan(esVersion, 7, 0, 0),
+          linuxCommand =
+            s"$$JAVA_HOME/bin/java -jar ${esConfig.esDir.toString()}/plugins/readonlyrest/ror-tools.jar patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes",
+          windowsCommand =
+            s"""%JAVA_HOME%\\bin\\java -jar "${esConfig.esDir}\\plugins\\readonlyrest\\ror-tools.jar" patch --I_UNDERSTAND_AND_ACCEPT_ES_PATCHING=yes""",
         )
         .user("elasticsearch")
     }
+
   }
 
   private implicit class UpdateFipsDependencies(val pluginInstallationSteps: PluginInstallationSteps) {
+
     def updateFipsDependencies(esConfig: Elasticsearch.Config): PluginInstallationSteps = {
       if (isFibsEnabled) {
         pluginInstallationSteps
-          .copyFile(esConfig.esConfigDir / "additional-permissions.policy", fromResourceBy(name = "additional-permissions.policy"))
+          .copyFile(
+            esConfig.esConfigDir / "additional-permissions.policy",
+            fromResourceBy(name = "additional-permissions.policy")
+          )
           .copyFile(esConfig.esConfigDir / "ror-keystore.bcfks", fromResourceBy(name = "ror-keystore.bcfks"))
           .copyFile(esConfig.esConfigDir / "ror-truststore.bcfks", fromResourceBy(name = "ror-truststore.bcfks"))
-          .copyFile(esConfig.esConfigDir / "elastic-certificates.bcfks", fromResourceBy(name = "elastic-certificates.bcfks"))
-          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 10, 0),
-            linuxCommand = s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esConfig.esDir.toString()}/jdk/conf/security/java.policy",
-            windowsCommand = s"type \"${esConfig.esConfigDir.toString()}\\additional-permissions.policy\" >> \"${esConfig.esDir.toString()}\\jdk\\conf\\security\\java.policy\"",
+          .copyFile(
+            esConfig.esConfigDir / "elastic-certificates.bcfks",
+            fromResourceBy(name = "elastic-certificates.bcfks")
           )
-      }
-      else {
+          .runWhen(
+            Version.greaterOrEqualThan(esVersion, 7, 10, 0),
+            linuxCommand =
+              s"cat ${esConfig.esConfigDir.toString()}/additional-permissions.policy >> ${esConfig.esDir.toString()}/jdk/conf/security/java.policy",
+            windowsCommand =
+              s"type \"${esConfig.esConfigDir.toString()}\\additional-permissions.policy\" >> \"${esConfig.esDir.toString()}\\jdk\\conf\\security\\java.policy\"",
+          )
+      } else {
         pluginInstallationSteps
       }
     }
@@ -162,15 +194,16 @@ class ReadonlyRestPlugin(esVersion: String,
     private def isFibsEnabled = {
       (config.attributes.restSsl match {
         case Enabled.Yes(RestSsl.RorFips(_)) => true
-        case Enabled.Yes(RestSsl.Ror(_)) => false
-        case Enabled.No => false
+        case Enabled.Yes(RestSsl.Ror(_))     => false
+        case Enabled.No                      => false
       }) ||
-        (config.attributes.internodeSsl match {
-          case Enabled.Yes(InternodeSsl.RorFips(_)) => true
-          case Enabled.Yes(InternodeSsl.Ror(_)) => false
-          case Enabled.No => false
-        })
+      (config.attributes.internodeSsl match {
+        case Enabled.Yes(InternodeSsl.RorFips(_)) => true
+        case Enabled.Yes(InternodeSsl.Ror(_))     => false
+        case Enabled.No                           => false
+      })
     }
+
   }
 
   private implicit class ConfigureRorCustomIndexSettings(val builder: EsConfigBuilder) {
@@ -178,11 +211,12 @@ class ReadonlyRestPlugin(esVersion: String,
     def configureRorCustomIndexSettings(): EsConfigBuilder = {
       config.attributes.rorCustomSettingsIndex match {
         case Some(customRorIndex) =>
-          builder.add(s"readonlyrest.settings_index: $customRorIndex")
+          builder.add(s"readonlyrest.settings.index_name: $customRorIndex")
         case None =>
           builder
       }
     }
+
   }
 
   private implicit class ConfigureRorConfigReloading(val builder: EsConfigBuilder) {
@@ -195,6 +229,7 @@ class ReadonlyRestPlugin(esVersion: String,
           builder.add("readonlyrest.force_load_from_file: true")
       }
     }
+
   }
 
   private implicit class ConfigureRestSsl(val builder: EsConfigBuilder) {
@@ -227,6 +262,7 @@ class ReadonlyRestPlugin(esVersion: String,
           builder
       }
     }
+
   }
 
   private implicit class ConfigureTransportSsl(val builder: EsConfigBuilder) {
@@ -262,5 +298,7 @@ class ReadonlyRestPlugin(esVersion: String,
           builder
       }
     }
+
   }
+
 }

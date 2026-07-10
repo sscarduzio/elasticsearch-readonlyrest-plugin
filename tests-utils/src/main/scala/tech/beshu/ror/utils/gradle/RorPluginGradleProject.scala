@@ -25,6 +25,7 @@ import java.nio.file.Paths
 import scala.util.Try
 
 object RorPluginGradleProject {
+
   def fromSystemProperty: RorPluginGradleProject =
     Option(System.getProperty("esModule"))
       .map(new RorPluginGradleProject(_))
@@ -40,21 +41,22 @@ object RorPluginGradleProject {
   }
 
   def availableEsModules: List[String] =
-    RorPluginGradleProject
-      .getRootProject.toScala
-      .children
+    RorPluginGradleProject.getRootProject.toScala.children
       .filter { f => f.isDirectory }
       .map(_.name)
-      .filter(_.matches("^es\\d{2,3}x$"))
+      .filter(_.matches("^es\\d+x$"))
       .toList
+
 }
 
 class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
   private val project = esProject(moduleName)
+
   private val esProjectProperties =
     GradleProperties
       .create(project)
       .getOrElse(throw new IllegalStateException("cannot load '" + moduleName + "' project gradle.properties file"))
+
   private val rootProjectProperties =
     GradleProperties
       .create(RorPluginGradleProject.getRootProject)
@@ -62,14 +64,28 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   def assemble: Option[JFile] = {
     logger.info(s"Assembling ROR in module $moduleName")
-    runTask(moduleName + ":packageRorPlugin")
+    runTask(moduleName + ":buildRorPluginZip")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
     logger.info(s"Finished assembling ROR in module $moduleName")
     if (!plugin.exists) None
     else Some(plugin)
   }
 
-  def getModuleESVersion: String = esProjectProperties.getProperty("latestSupportedEsVersion")
+  def getModuleESVersion: String =
+    Option(System.getProperty("esVersion"))
+      .filter(_ => isExplicitlyTargetedModule)
+      .getOrElse(newestSupportedEsVersion)
+
+  private def newestSupportedEsVersion: String =
+    esProjectProperties
+      .getProperty("supportedEsVersions")
+      .split(",")
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .last
+
+  private def isExplicitlyTargetedModule: Boolean =
+    moduleName == System.getProperty("esModule")
 
   private def esProject(esProjectName: String) = new JFile(RorPluginGradleProject.getRootProject, esProjectName)
 
@@ -78,10 +94,27 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
+    // On CI the toolchains image bakes the Gradle distribution + dependency cache into GRADLE_USER_HOME
+    // and marks it with a `.ror-ci-baked` sentinel (written by ci/toolchains/JdkToolchains.Dockerfile only after the
+    // cache passed offline validation). Point this nested Tooling-API build at that home so it reuses
+    // the baked distribution/cache instead of downloading gradle-x-all.zip from services.gradle.org;
+    // anything missing from the cache (e.g. a dep bumped since the last image rebuild) falls back to
+    // the network naturally. The sentinel (not bare directory existence) is the contract: a developer
+    // with a relocated GRADLE_USER_HOME keeps the default behaviour.
+    val bakedGradleHome = Option(System.getenv("GRADLE_USER_HOME"))
+      .map(new JFile(_))
+      .filter(home => new JFile(home, ".ror-ci-baked").isFile)
+    bakedGradleHome.foreach(connector.useGradleUserHomeDir)
     val connect = Try(connector.connect())
-    val result = connect.map(_.newBuild().forTasks(task).run())
+    val result = connect.map { c =>
+      val args =
+        if (isExplicitlyTargetedModule) Option(System.getProperty("esVersion")).map(v => s"-PesVersion=$v").toList
+        else Nil
+      val build = c.newBuild().forTasks(task)
+      (if (args.nonEmpty) build.withArguments(args*) else build).run()
+    }
     connect.map(_.close())
     result.fold(throw _, _ => ())
   }
-}
 
+}

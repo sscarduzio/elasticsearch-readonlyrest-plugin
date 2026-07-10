@@ -18,7 +18,7 @@ package org.elasticsearch.transport.netty4
 
 import io.netty.channel.*
 import io.netty.handler.ssl.*
-import org.apache.logging.log4j.scala.Logging
+import javax.net.ssl.SNIHostName
 import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -31,52 +31,69 @@ import org.elasticsearch.transport.netty4.Netty4Transport
 import tech.beshu.ror.settings.es.RorSslSettings.IsSslFipsCompliant
 import tech.beshu.ror.settings.es.SslSettings.InternodeSslSettings
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.SSLCertHelper
 import tech.beshu.ror.utils.SSLCertHelper.HostAndPort
+import tech.beshu.ror.utils.{RequestIdAwareLogging, SSLCertHelper}
 
 import java.net.{InetSocketAddress, SocketAddress}
-import javax.net.ssl.SNIHostName
 
-class SSLNetty4InternodeServerTransport(settings: Settings,
-                                        threadPool: ThreadPool,
-                                        pageCacheRecycler: PageCacheRecycler,
-                                        circuitBreakerService: CircuitBreakerService,
-                                        namedWriteableRegistry: NamedWriteableRegistry,
-                                        networkService: NetworkService,
-                                        ssl: InternodeSslSettings)
-  extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService)
-    with Logging {
+class SSLNetty4InternodeServerTransport(
+    settings: Settings,
+    threadPool: ThreadPool,
+    pageCacheRecycler: PageCacheRecycler,
+    circuitBreakerService: CircuitBreakerService,
+    namedWriteableRegistry: NamedWriteableRegistry,
+    networkService: NetworkService,
+    ssl: InternodeSslSettings
+) extends Netty4Transport(
+      settings,
+      Version.CURRENT,
+      threadPool,
+      networkService,
+      pageCacheRecycler,
+      namedWriteableRegistry,
+      circuitBreakerService
+    )
+    with RequestIdAwareLogging {
 
   private val clientSslContext = doPrivileged { SSLCertHelper.prepareClientSSLContext(ssl) }
-  private val serverSslContext = doPrivileged { SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false) }
+
+  private val serverSslContext = doPrivileged {
+    SSLCertHelper.prepareServerSSLContext(ssl, clientAuthenticationEnabled = false)
+  }
 
   override def getClientChannelInitializer(node: DiscoveryNode): ChannelHandler = new ClientChannelInitializer {
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
 
-      ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
-        override def connect(ctx: ChannelHandlerContext,
-                             remoteAddress: SocketAddress,
-                             localAddress: SocketAddress,
-                             promise: ChannelPromise): Unit = {
-          val inet = remoteAddress.asInstanceOf[InetSocketAddress]
-          val sslEngine = SSLCertHelper.prepareSSLEngine(
-            sslContext = clientSslContext,
-            hostAndPort = HostAndPort(inet.getHostString, inet.getPort),
-            channelHandlerContext = ctx,
-            serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_)),
-            enableHostnameVerification = ssl.hostnameVerificationEnabled,
-            fipsCompliant = ssl.fipsMode.isSslFipsCompliant
-          )
-          ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
-          super.connect(ctx, remoteAddress, localAddress, promise)
-        }
-      })
+      ch.pipeline()
+        .addFirst(new ChannelOutboundHandlerAdapter {
+          override def connect(
+              ctx: ChannelHandlerContext,
+              remoteAddress: SocketAddress,
+              localAddress: SocketAddress,
+              promise: ChannelPromise
+          ): Unit = {
+            val inet = remoteAddress.asInstanceOf[InetSocketAddress]
+            val sslEngine = SSLCertHelper.prepareSSLEngine(
+              sslContext = clientSslContext,
+              hostAndPort = HostAndPort(inet.getHostString, inet.getPort),
+              channelHandlerContext = ctx,
+              serverName = Option(node.getAttributes.get("server_name")).map(new SNIHostName(_)),
+              enableHostnameVerification = ssl.hostnameVerificationEnabled,
+              fipsCompliant = ssl.fipsMode.isSslFipsCompliant
+            )
+            ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine))
+            super.connect(ctx, remoteAddress, localAddress, promise)
+          }
+        })
     }
 
     override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
-      if (cause.isInstanceOf[NotSslRecordException] || (cause.getCause != null && cause.getCause.isInstanceOf[NotSslRecordException])) {
-        logger.error("Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect")
+      if (cause.isInstanceOf[NotSslRecordException] || (cause.getCause != null && cause.getCause
+          .isInstanceOf[NotSslRecordException])) {
+        noRequestIdLogger.error(
+          "Receiving non-SSL connections from: (" + ctx.channel.remoteAddress + "). Will disconnect"
+        )
         ctx.channel.close
       } else {
         super.exceptionCaught(ctx, cause)
@@ -91,4 +108,5 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
       ch.pipeline().addFirst("ror_internode_ssl_handler", serverSslContext.newHandler(ch.alloc()))
     }
   }
+
 }

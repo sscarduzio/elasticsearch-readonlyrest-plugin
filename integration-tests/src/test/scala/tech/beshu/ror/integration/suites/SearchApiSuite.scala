@@ -24,6 +24,7 @@ import tech.beshu.ror.integration.utils.{ESVersionSupportForAnyWordSpecLike, Sin
 import tech.beshu.ror.utils.TestUjson.ujson
 import tech.beshu.ror.utils.containers.ElasticsearchNodeDataInitializer
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction
+import tech.beshu.ror.utils.elasticsearch.SearchManager.ExpandWildcards
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, EnhancedDataStreamManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, EsModule, Version}
@@ -31,7 +32,7 @@ import tech.beshu.ror.utils.misc.{CustomScalaTestMatchers, EsModule, Version}
 import java.time.Instant
 
 class SearchApiSuite
-  extends AnyWordSpec
+    extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with SingletonPluginTestSupport
     with ESVersionSupportForAnyWordSpecLike
@@ -47,10 +48,12 @@ class SearchApiSuite
   private lazy val user2SearchManager = new SearchManager(basicAuthClient("user2", "test"), esVersionUsed)
 
   private lazy val restrictedDevSearchManager = new SearchManager(basicAuthClient("restricted", "dev"), esVersionUsed)
-  private lazy val unrestrictedDevSearchManager = new SearchManager(basicAuthClient("unrestricted", "dev"), esVersionUsed)
+  private lazy val unrestrictedDevSearchManager =
+    new SearchManager(basicAuthClient("unrestricted", "dev"), esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(adminClient, esVersionUsed)
   private lazy val perfmonIndexManager = new IndexManager(basicAuthClient("perfmon", "dev"), esVersionUsed)
   private lazy val vietMyanSearchManager = new SearchManager(basicAuthClient("VIET_MYAN", "dev"), esVersionUsed)
+  private lazy val expandWcSearchManager = new SearchManager(basicAuthClient("expand-wc", "test"), esVersionUsed)
 
   "_search" should {
     "be allowed" when {
@@ -85,37 +88,38 @@ class SearchApiSuite
         }
       }
       "data stream is being searched" when {
-        "full name passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "full name passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("test_logs_ds")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "name with wildcard passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val result = user1SearchManager.search("test*")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "full alias name passed" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "full alias name passed" excludeES (allEs6x, allEs7xBelowEs714x) in {
           val result = user1SearchManager.search("alias_ds")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "alias name with wildcard passed" excludeES(allEs6x, allEs7xBelowEs714x) in {
+        "alias name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs714x) in {
           val result = user1SearchManager.search("alias*")
 
           result should have statusCode 200
           val searchResults = result.searchHits.map(_("_source").obj("message").str)
           searchResults.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "backing index name passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
-            adminIndexManager.resolveIndex("test_logs_ds")
+            adminIndexManager
+              .resolveIndex("test_logs_ds")
               .dataStreams
               .find(_.name == "test_logs_ds")
               .toList
@@ -130,9 +134,10 @@ class SearchApiSuite
             }
           results.sorted should be(List("message1", "message2", "message3", "message4", "message5"))
         }
-        "backing index name with wildcard passed" excludeES(allEs6x, allEs7xBelowEs79x) in {
+        "backing index name with wildcard passed" excludeES (allEs6x, allEs7xBelowEs79x) in {
           val backingIndices =
-            adminIndexManager.resolveIndex("test_logs_ds")
+            adminIndexManager
+              .resolveIndex("test_logs_ds")
               .dataStreams
               .find(_.name == "test_logs_ds")
               .toList
@@ -175,12 +180,11 @@ class SearchApiSuite
         "invalid JSON is passed in body" in {
           val result = user2SearchManager.search(
             indexName = "*logs*",
-            queryString =
-              """{
-                |  "query": { BAD_JSON
-                |    "match_all": {}
-                |  }
-                |}""".stripMargin
+            queryString = """{
+                            |  "query": { BAD_JSON
+                            |    "match_all": {}
+                            |  }
+                            |}""".stripMargin
           )
 
           result should have statusCode 500
@@ -191,17 +195,34 @@ class SearchApiSuite
         "invalid JSON is passed in body" in {
           val result = user2SearchManager.search(
             indexName = "*logs*",
-            queryString =
-              """{
-                |  "query": { BAD_JSON
-                |    "match_all": {}
-                |  }
-                |}""".stripMargin
+            queryString = """{
+                            |  "query": { BAD_JSON
+                            |    "match_all": {}
+                            |  }
+                            |}""".stripMargin
           )
 
           result should have statusCode 400
         }
       }
+    }
+  }
+
+  "expand_wildcards" should {
+    // Verifies that ROR respects expand_wildcards=open when resolving wildcard patterns against
+    // the cluster state. ROR rewrites the request with the resolved concrete names, so if the
+    // filter is wrong it would include closed indices/aliases and cause ES to fail.
+    "return only open-index results when searching index wildcard with expand_wildcards=open" in {
+      val result = expandWcSearchManager.search("idx-*", ExpandWildcards.Open)
+
+      result should have statusCode 200
+      result.searchHits.size should be(1)
+    }
+    "return only open-alias results when searching alias wildcard with expand_wildcards=open" in {
+      val result = expandWcSearchManager.search("alias-of-*", ExpandWildcards.Open)
+
+      result should have statusCode 200
+      result.searchHits.size should be(1)
     }
   }
 
@@ -276,31 +297,39 @@ class SearchApiSuite
         val firstResponse = perfmonIndexManager.getIndex("blabla")
 
         firstResponse should have statusCode 200
-        firstResponse.indicesAndAliases should be(Map(
-          "blabla" -> Set.empty
-        ))
+        firstResponse.indicesAndAliases should be(
+          Map(
+            "blabla" -> Set.empty
+          )
+        )
 
         val secondResponse = perfmonIndexManager.getIndex("perfmon_my_test_alias")
 
         secondResponse should have statusCode 200
-        secondResponse.indicesAndAliases should be(Map(
-          "blabla" -> Set("perfmon_my_test_alias")
-        ))
+        secondResponse.indicesAndAliases should be(
+          Map(
+            "blabla" -> Set("perfmon_my_test_alias")
+          )
+        )
       }
       "it's an index that can be accessed by user 'perfmon' using name or alias with wildcard" in {
         val firstResponse = perfmonIndexManager.getIndex("bla*")
 
         firstResponse should have statusCode 200
-        firstResponse.indicesAndAliases should be(Map(
-          "blabla" -> Set.empty
-        ))
+        firstResponse.indicesAndAliases should be(
+          Map(
+            "blabla" -> Set.empty
+          )
+        )
 
         val secondResponse = perfmonIndexManager.getIndex("perf*mon_my_test*")
 
         secondResponse should have statusCode 200
-        secondResponse.indicesAndAliases should be(Map(
-          "blabla" -> Set("perfmon_my_test_alias")
-        ))
+        secondResponse.indicesAndAliases should be(
+          Map(
+            "blabla" -> Set("perfmon_my_test_alias")
+          )
+        )
       }
       "it's a 'VIET_MYAN' user who should be able to access 'Vietnam' index" in {
         val response = vietMyanSearchManager.search("vuln-ass-all-vietnam")
@@ -321,9 +350,11 @@ class SearchApiSuite
       }
     }
   }
+
 }
 
 object SearchApiSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient, esVersion)
@@ -335,10 +366,13 @@ object SearchApiSuite {
 
     createSearchEndpointIndicesAndExampleDocs(indexManager, documentManager)
     createRealLifeTestsDocumentsAndAliases(indexManager, documentManager)
+    createExpandWildcardsTestData(indexManager, documentManager)
   }
 
-  private def createDataStreamAndDocuments(enhancedDataStreamManager: EnhancedDataStreamManager,
-                                           esVersion: String): Unit = {
+  private def createDataStreamAndDocuments(
+      enhancedDataStreamManager: EnhancedDataStreamManager,
+      esVersion: String
+  ): Unit = {
     enhancedDataStreamManager.createDataStream("test_logs_ds")
     enhancedDataStreamManager.createDocsInDataStream(
       name = "test_logs_ds",
@@ -352,25 +386,70 @@ object SearchApiSuite {
     }
   }
 
-  private def createSearchEndpointIndicesAndExampleDocs(indexManager: IndexManager,
-                                                        documentManager: DocumentManager) = {
-    documentManager.createDoc("logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+  private def createSearchEndpointIndicesAndExampleDocs(
+      indexManager: IndexManager,
+      documentManager: DocumentManager
+  ) = {
+    documentManager.createDoc(
+      "logs-0001",
+      1,
+      ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
+    documentManager.createDoc(
+      "logs-0001",
+      2,
+      ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
+    documentManager.createDoc(
+      "logs-0002",
+      1,
+      ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
 
     indexManager.createAliasOf("logs-0001", "all-logs")
     indexManager.createAliasOf("logs-0002", "all-logs")
 
-    documentManager.createDoc("sys_logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("sys_logs-0001", 2, ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("sys_logs-0002", 1, ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
-    documentManager.createDoc("sys_logs-old", 1, ujson.read(s"""{ "message":"test4", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc(
+      "sys_logs-0001",
+      1,
+      ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
+    documentManager.createDoc(
+      "sys_logs-0001",
+      2,
+      ujson.read(s"""{ "message":"test2", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
+    documentManager.createDoc(
+      "sys_logs-0002",
+      1,
+      ujson.read(s"""{ "message":"test3", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
+    documentManager.createDoc(
+      "sys_logs-old",
+      1,
+      ujson.read(s"""{ "message":"test4", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
 
-    documentManager.createDoc("business_logs-0001", 1, ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}"""))
+    documentManager.createDoc(
+      "business_logs-0001",
+      1,
+      ujson.read(s"""{ "message":"test1", "@timestamp": "@${Instant.now().toEpochMilli}"}""")
+    )
   }
 
-  private def createRealLifeTestsDocumentsAndAliases(indexManager: IndexManager,
-                                                     documentManager: DocumentManager): Unit = {
+  private def createExpandWildcardsTestData(indexManager: IndexManager, documentManager: DocumentManager): Unit = {
+    documentManager.createDoc("idx-open", 1, ujson.read("""{"msg":"open-doc"}""")).force()
+    indexManager.createAliasOf("idx-open", "alias-of-open")
+
+    documentManager.createDoc("idx-closed", 1, ujson.read("""{"msg":"closed-doc"}""")).force()
+    indexManager.createAliasOf("idx-closed", "alias-of-closed")
+    indexManager.closeIndex("idx-closed")
+  }
+
+  private def createRealLifeTestsDocumentsAndAliases(
+      indexManager: IndexManager,
+      documentManager: DocumentManager
+  ): Unit = {
     documentManager.createDoc("my_data", "test", 1, ujson.read("""{"hello":"world"}""")).force()
     documentManager.createDoc("my_data", "test", 2, ujson.read("""{"hello":"there", "public":1}""")).force()
 

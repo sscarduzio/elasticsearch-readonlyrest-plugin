@@ -22,28 +22,30 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RequestedIndex}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.ModificationResult.Modified
 import tech.beshu.ror.syntax.*
 
-class RolloverEsRequestContext(actionRequest: RolloverRequest,
-                               esContext: EsContext,
-                               aclContext: AccessControlStaticContext,
-                               clusterService: RorClusterService,
-                               override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+class RolloverEsRequestContext(
+    actionRequest: RolloverRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+) extends BaseIndicesEsRequestContext[RolloverRequest](actionRequest, esContext, aclContext, threadPool) {
 
   override protected def requestedIndicesFrom(request: RolloverRequest): Set[RequestedIndex[ClusterIndexName]] = {
     (Option(request.getNewIndexName).toCovariantSet ++ Set(request.getAlias))
       .flatMap(RequestedIndex.fromString)
   }
 
-  override protected def update(request: RolloverRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: RolloverRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     Modified
   }
+
 }

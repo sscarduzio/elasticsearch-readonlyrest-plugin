@@ -18,12 +18,10 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules.auth
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.Block.RuleDefinition
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, RuleName}
-import tech.beshu.ror.accesscontrol.blocks.users.LocalUsersContext.LocalUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupIdPattern
 import tech.beshu.ror.accesscontrol.domain.{GroupIds, GroupsLogic}
@@ -38,38 +36,36 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.auth.groups.GroupsLog
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RefinedUtils.nes
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 // Common decoder for JWT rules and ROR KBN rules. They are very similar, and their decoding logic is mostly the same.
 trait JwtLikeRulesDecoders[
-  DEF <: Definitions.Item,
-  AUTHN_DEF <: DEF,
-  AUTHZ_DEF <: DEF,
-  AUTH_DEF <: AUTHN_DEF & AUTHZ_DEF,
-  AUTHN_RULE <: AuthenticationRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
-  AUTHZ_RULE <: AuthorizationRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
-  AUTH_RULE <: AuthRule : RuleName : VariableUsage : LocalUsersSupport : ImpersonationWarningSupport,
+    DEF <: Definitions.Item,
+    AUTHN_DEF <: DEF,
+    AUTHZ_DEF <: DEF,
+    AUTH_DEF <: AUTHN_DEF & AUTHZ_DEF,
+    AUTHN_RULE <: AuthenticationRule: RuleName: VariableUsage: ImpersonationWarningSupport,
+    AUTHZ_RULE <: AuthorizationRule: RuleName: VariableUsage: ImpersonationWarningSupport,
+    AUTH_RULE <: AuthRule: RuleName: VariableUsage: ImpersonationWarningSupport,
 ] {
-  this: Logging =>
+  this: RequestIdAwareLogging =>
 
   protected def ruleTypePrefix: String
 
   protected def docsUrl: String
 
-  protected def createAuthenticationRule(definition: AUTHN_DEF,
-                                         globalSettings: GlobalSettings): AUTHN_RULE
+  protected def createAuthenticationRule(definition: AUTHN_DEF, globalSettings: GlobalSettings): AUTHN_RULE
 
-  protected def createAuthorizationRule(definition: AUTHZ_DEF,
-                                        groupsLogic: GroupsLogic): AUTHZ_RULE
+  protected def createAuthorizationRule(definition: AUTHZ_DEF, groupsLogic: GroupsLogic): AUTHZ_RULE
 
-  protected def createAuthRule(authnRule: AUTHN_RULE,
-                               authzRule: AUTHZ_RULE): AUTH_RULE
+  protected def createAuthRule(authnRule: AUTHN_RULE, authzRule: AUTHZ_RULE): AUTH_RULE
 
   protected def serializeDefinitionId(definition: DEF): String
 
-  class AuthenticationRuleDecoder(allDefs: List[DEF],
-                                  authnDefs: List[AUTHN_DEF],
-                                  globalSettings: GlobalSettings) extends RuleBaseDecoderWithoutAssociatedFields[AUTHN_RULE] {
+  class AuthenticationRuleDecoder(allDefs: List[DEF], authnDefs: List[AUTHN_DEF], globalSettings: GlobalSettings)
+      extends RuleBaseDecoderWithoutAssociatedFields[AUTHN_RULE] {
+
     override protected def decoder: Decoder[RuleDefinition[AUTHN_RULE]] =
       nameAndGroupsSimpleDecoder
         .or(nameAndGroupsExtendedDecoder[AUTHN_RULE])
@@ -78,7 +74,13 @@ trait JwtLikeRulesDecoders[
           val definitionE = findDefinition[AUTHN_RULE, AUTHN_DEF](authnDefs, allDefs.diff(authnDefs), name)
           (definitionE, groupsLogicOpt) match {
             case (Right(_), Some(_)) =>
-              Left(RulesLevelCreationError(Message(s"Cannot create ${RuleName[AUTHN_RULE].name.show}, because there are superfluous groups settings. Remove the groups settings, or use ${RuleName[AUTHZ_RULE].name.show} or ${RuleName[AUTH_RULE].name.show} rule, if group settings are required.")))
+              Left(
+                RulesLevelCreationError(
+                  Message(
+                    s"Cannot create ${RuleName[AUTHN_RULE].name.show}, because there are superfluous groups settings. Remove the groups settings, or use ${RuleName[AUTHZ_RULE].name.show} or ${RuleName[AUTH_RULE].name.show} rule, if group settings are required."
+                  )
+                )
+              )
             case (Right(definition), None) =>
               val rule = createAuthenticationRule(definition, globalSettings)
               Right(RuleDefinition.create(rule))
@@ -87,10 +89,12 @@ trait JwtLikeRulesDecoders[
           }
         }
         .decoder
+
   }
 
-  class AuthorizationRuleDecoder(allDefs: List[DEF],
-                                 authzDefs: List[AUTHZ_DEF]) extends RuleBaseDecoderWithoutAssociatedFields[AUTHZ_RULE] {
+  class AuthorizationRuleDecoder(allDefs: List[DEF], authzDefs: List[AUTHZ_DEF])
+      extends RuleBaseDecoderWithoutAssociatedFields[AUTHZ_RULE] {
+
     override protected def decoder: Decoder[RuleDefinition[AUTHZ_RULE]] =
       nameAndGroupsSimpleDecoder
         .or(nameAndGroupsExtendedDecoder[AUTHZ_RULE])
@@ -102,17 +106,24 @@ trait JwtLikeRulesDecoders[
               val rule = createAuthorizationRule(definition, groupsLogic)
               Right(RuleDefinition.create[AUTHZ_RULE](rule))
             case (Right(_), None) =>
-              Left(RulesLevelCreationError(Message(s"Cannot create ${RuleName[AUTHZ_RULE].name.show} - missing groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic)")))
+              Left(
+                RulesLevelCreationError(
+                  Message(
+                    s"Cannot create ${RuleName[AUTHZ_RULE].name.show} - missing groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic)"
+                  )
+                )
+              )
             case (Left(error), _) =>
               Left(error)
           }
         }
         .decoder
+
   }
 
-  class AuthRuleDecoder(allDefs: List[DEF],
-                        authDefs: List[AUTH_DEF],
-                        globalSettings: GlobalSettings) extends RuleBaseDecoderWithoutAssociatedFields[AUTH_RULE] {
+  class AuthRuleDecoder(allDefs: List[DEF], authDefs: List[AUTH_DEF], globalSettings: GlobalSettings)
+      extends RuleBaseDecoderWithoutAssociatedFields[AUTH_RULE] {
+
     override protected def decoder: Decoder[RuleDefinition[AUTH_RULE]] =
       nameAndGroupsSimpleDecoder
         .or(nameAndGroupsExtendedDecoder[AUTH_RULE])
@@ -126,7 +137,7 @@ trait JwtLikeRulesDecoders[
               val rule = createAuthRule(authentication, authorization)
               Right(RuleDefinition.create(rule))
             case (Right(definition), None) =>
-              logger.warn(
+              noRequestIdLogger.warn(
                 s"""Missing groups logic settings in ${RuleName[AUTH_RULE].name.show} rule.
                    |For old configs, ROR treats this as `groups_any_of: ["*"]`.
                    |This syntax is deprecated. Add groups logic (https://github.com/beshu-tech/readonlyrest-docs/blob/master/details/authorization-rules-details.md#checking-groups-logic),
@@ -143,12 +154,16 @@ trait JwtLikeRulesDecoders[
           }
         }
         .decoder
+
   }
 
-  private def findDefinition[T <: Rule, CURRENT_DEF <: DEF](definitionsOfCurrentType: List[CURRENT_DEF],
-                                                            definitionsOfOtherType: List[DEF],
-                                                            name: String)
-                                                           (implicit ruleName: RuleName[T]): Either[RulesLevelCreationError, CURRENT_DEF] = {
+  private def findDefinition[T <: Rule, CURRENT_DEF <: DEF](
+      definitionsOfCurrentType: List[CURRENT_DEF],
+      definitionsOfOtherType: List[DEF],
+      name: String
+  )(
+      implicit ruleName: RuleName[T]
+  ): Either[RulesLevelCreationError, CURRENT_DEF] = {
     val definitionOfCurrentTypeOpt = findByName(definitionsOfCurrentType, name)
     lazy val definitionOfOtherTypeOpt = findByName(definitionsOfOtherType, name)
     definitionOfCurrentTypeOpt match {
@@ -171,12 +186,11 @@ trait JwtLikeRulesDecoders[
   }
 
   private def nameAndGroupsSimpleDecoder: Decoder[(String, Option[GroupsLogic])] =
-    DecoderHelpers
-      .decodeStringLikeNonEmpty
+    DecoderHelpers.decodeStringLikeNonEmpty
       .map(_.value)
       .map((_, None))
 
-  private def nameAndGroupsExtendedDecoder[RULE <: Rule : RuleName]: Decoder[(String, Option[GroupsLogic])] =
+  private def nameAndGroupsExtendedDecoder[RULE <: Rule: RuleName]: Decoder[(String, Option[GroupsLogic])] =
     Decoder
       .instance { c =>
         for {
@@ -185,19 +199,22 @@ trait JwtLikeRulesDecoders[
         } yield (definitionName, groupsLogicDecodingResult)
       }
       .toSyncDecoder
-      .emapE {
-        case (name, groupsLogicDecodingResult) =>
-          groupsLogicDecodingResult match {
-            case GroupsLogicDecodingResult.Success(groupsLogic) =>
-              Right((name, Some(groupsLogic)))
-            case GroupsLogicDecodingResult.GroupsLogicNotDefined(_) =>
-              Right((name, None))
-            case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, fields) =>
-              val fieldsStr = fields.map(f => s"'$f'").mkString(" or ")
-              Left(RulesLevelCreationError(Message(
-                s"Please specify either $fieldsStr for `${RuleName[RULE].name.show}` rule '$name'"
-              )))
-          }
+      .emapE { case (name, groupsLogicDecodingResult) =>
+        groupsLogicDecodingResult match {
+          case GroupsLogicDecodingResult.Success(groupsLogic) =>
+            Right((name, Some(groupsLogic)))
+          case GroupsLogicDecodingResult.GroupsLogicNotDefined(_) =>
+            Right((name, None))
+          case GroupsLogicDecodingResult.MultipleGroupsLogicsDefined(_, fields) =>
+            val fieldsStr = fields.map(f => s"'$f'").mkString(" or ")
+            Left(
+              RulesLevelCreationError(
+                Message(
+                  s"Please specify either $fieldsStr for `${RuleName[RULE].name.show}` rule '$name'"
+                )
+              )
+            )
+        }
       }
       .decoder
 

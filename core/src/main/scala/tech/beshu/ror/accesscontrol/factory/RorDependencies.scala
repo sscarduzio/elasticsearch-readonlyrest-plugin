@@ -18,34 +18,46 @@ package tech.beshu.ror.accesscontrol.factory
 
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ExternalGroupsProviderService}
 import tech.beshu.ror.accesscontrol.domain.{LocalUsers, RequestId}
 import tech.beshu.ror.accesscontrol.factory.RorDependencies.ImpersonationWarningsReader
 
 import scala.annotation.unused
 
-final case class RorDependencies(services: RorDependencies.Services,
-                                 localUsers: LocalUsers,
-                                 impersonationWarningsReader: ImpersonationWarningsReader)
+final case class RorDependencies(
+    services: RorDependencies.Services,
+    localUsers: LocalUsers,
+    impersonationWarningsReader: ImpersonationWarningsReader
+)
 
 object RorDependencies {
-  def noOp: RorDependencies = RorDependencies(RorDependencies.Services.empty, LocalUsers.empty, NoOpImpersonationWarningsReader)
+  def noOp: RorDependencies =
+    RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader)
 
-  final case class Services(authenticationServices: Seq[ExternalAuthenticationService#Id],
-                            authorizationServices: Seq[ExternalAuthorizationService#Id],
-                            ldaps: Seq[LdapService#Id])
+  final case class Services(
+      authenticationServices: Seq[ExternalAuthenticationService#Id],
+      externalGroupsProviderServices: Seq[ExternalGroupsProviderService#Id],
+      ldaps: Seq[LdapService#Id]
+  )
+
   object Services {
     def empty: Services = Services(Seq.empty, Seq.empty, Seq.empty)
   }
 
   trait ImpersonationWarningsReader {
-    def read()
-            (implicit requestId: RequestId): List[ImpersonationWarning]
+
+    def read()(
+        implicit requestId: RequestId
+    ): List[ImpersonationWarning]
+
   }
 
   object NoOpImpersonationWarningsReader extends ImpersonationWarningsReader {
-    override def read()
-                     (implicit @unused requestId: RequestId): List[ImpersonationWarning] = List.empty
+
+    override def read()(
+        implicit @unused requestId: RequestId
+    ): List[ImpersonationWarning] = List.empty
+
   }
 
 }

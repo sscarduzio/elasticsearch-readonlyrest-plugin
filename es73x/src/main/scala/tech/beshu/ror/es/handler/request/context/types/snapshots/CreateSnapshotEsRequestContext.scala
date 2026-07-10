@@ -20,8 +20,7 @@ import cats.implicits.*
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, RepositoryName, RequestedIndex, SnapshotName}
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -33,11 +32,11 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.jdk.CollectionConverters.*
 
-class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
-                                     esContext: EsContext,
-                                     clusterService: RorClusterService,
-                                     override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[CreateSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
+class CreateSnapshotEsRequestContext(
+    actionRequest: CreateSnapshotRequest,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseSnapshotEsRequestContext[CreateSnapshotRequest](actionRequest, esContext, threadPool) {
 
   override def snapshotsFrom(request: CreateSnapshotRequest): Set[SnapshotName] = Set {
     SnapshotName
@@ -53,7 +52,8 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
 
   override protected def requestedIndicesFrom(request: CreateSnapshotRequest): Set[RequestedIndex[ClusterIndexName]] = {
     request
-      .indices().asSafeSet
+      .indices()
+      .asSafeSet
       .flatMap(RequestedIndex.fromString)
       .orWildcardWhenEmpty
   }
@@ -68,32 +68,44 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
       case Right(_) =>
         ModificationResult.Modified
       case Left(_) =>
-        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        logger.error(
+          s"Cannot update ${actionRequest.getClass.show} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible."
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
 
-  private def snapshotFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def snapshotFrom(
+      implicit blockContext: SnapshotRequestBlockContext
+  ) = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val snapshots = blockContext.snapshots.toList
     snapshots match {
       case Nil =>
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of snapshots [${snapshots.show}]")
+          logger.warn(
+            s"Filtered result contains more than one snapshot. First was taken. The whole set of snapshots [${snapshots.show}]"
+          )
         }
         Right(snapshot)
     }
   }
 
-  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
+  private def repositoryFrom(
+      implicit blockContext: SnapshotRequestBlockContext
+  ) = {
+    implicit val requestId: RequestId = blockContext.requestContext.id.toRequestId
     val repositories = blockContext.repositories.toList
     repositories match {
       case Nil =>
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]")
+          logger.warn(
+            s"Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.show}]"
+          )
         }
         Right(repository)
     }
@@ -102,16 +114,19 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   private def filteredIndicesFrom(blockContext: SnapshotRequestBlockContext) = {
     UniqueNonEmptyList.from(blockContext.filteredIndices) match {
       case Some(value) => Right(value)
-      case None => Left(())
+      case None        => Left(())
     }
   }
 
-  private def update(actionRequest: CreateSnapshotRequest,
-                     snapshot: SnapshotName,
-                     repository: RepositoryName,
-                     indices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName]]) = {
+  private def update(
+      actionRequest: CreateSnapshotRequest,
+      snapshot: SnapshotName,
+      repository: RepositoryName,
+      indices: UniqueNonEmptyList[RequestedIndex[ClusterIndexName]]
+  ) = {
     actionRequest.snapshot(SnapshotName.toString(snapshot))
     actionRequest.repository(RepositoryName.toString(repository))
     actionRequest.indices(indices.stringify.asJava)
   }
+
 }

@@ -21,48 +21,63 @@ import tech.beshu.ror.tools.core.patches.base.TransportNetty4AwareEsPatch
 import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.{
+  ModifyRestHasPrivilegesActionClass,
+  ModifyTransportHasPrivilegesActionClass
+}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationChainClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements.*
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifyAsyncSearchSecurityClass, ModifySecurityClass, ModifySecurityContextClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.ModifyRepositoriesServiceClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.*
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{
+  CreateApiKeyServiceBridgeClass,
+  CreateServiceAccountServiceBridgeClass,
+  ModifyRepositoriesServiceClass
+}
 import tech.beshu.ror.tools.core.utils.EsUtil.{es902, es903}
 
 import scala.language.postfixOps
 
 private[patches] class Es90xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
-  extends TransportNetty4AwareEsPatch(rorPluginDirectory, esVersion,
-    ElasticsearchJarPatchCreator(
-      OpenModule,
-      ModifyRepositoriesServiceClass(esVersion)
-    ),
-    EntitlementJarPatchCreator(
-      esVersion match {
-        case v if v >= es902 => ModifyFilesEntitlementsValidationClass(esVersion)
-        case _ => ModifyEntitlementInitializationClass(esVersion)
-      },
-      esVersion match {
-        case v if v >= es903 => ModifyPolicyCheckerImplClass(esVersion)
-        case _ => ModifyPolicyManagerClass(esVersion)
-      },
-      ModifyPolicyParserClass,
-    ),
-    XPackCoreJarPatchCreator(
-      OpenModule,
-      ModifyAsyncSearchSecurityClass,
-      ModifySecurityContextClass,
-    ),
-    XPackSecurityJarPatchCreator(
-      OpenModule,
-      CreateRorAuthorizationInfoProviderClass(esVersion),
-      ModifyAuthenticationChainClass(esVersion),
-      ModifyAuthorizationServiceClass(esVersion),
-      ModifyRBACEngineClass,
-      ModifyRestHasPrivilegesActionClass,
-      ModifySecurityClass,
-    ),
-    XPackIlmJarPatchCreator(
-      OpenModule
+    extends TransportNetty4AwareEsPatch(
+      rorPluginDirectory,
+      esVersion,
+      ElasticsearchJarPatchCreator(
+        OpenModule,
+        CreateApiKeyServiceBridgeClass,
+        CreateServiceAccountServiceBridgeClass,
+        ModifyRepositoriesServiceClass(esVersion)
+      ),
+      EntitlementJarPatchCreator(
+        esVersion match {
+          case v if v >= es902 => ModifyFilesEntitlementsValidationClass(esVersion)
+          case _               => ModifyEntitlementInitializationClass(esVersion)
+        },
+        esVersion match {
+          case v if v >= es903 => ModifyPolicyCheckerImplClass(esVersion)
+          case _               => ModifyPolicyManagerClass(esVersion)
+        },
+        ModifyPolicyParserClass,
+      ),
+      XPackCoreJarPatchCreator(
+        OpenModule,
+        ModifyApplicationPermissionClass,
+        ModifyAsyncSearchSecurityClass,
+        ModifySimpleRoleClass,
+        ModifySecurityContextClass,
+      ),
+      XPackSecurityJarPatchCreator(
+        OpenModule,
+        CreateRorAuthorizationInfoProviderClass(esVersion),
+        ModifyAuthenticationChainClass(esVersion),
+        ModifyAuthorizationServiceClass(esVersion),
+        ModifyCreateComponentsInSecurityClass,
+        ModifyRBACEngineClass,
+        ModifyRestHasPrivilegesActionClass,
+        ModifySecurityClass,
+        ModifyTransportHasPrivilegesActionClass,
+      ),
+      XPackIlmJarPatchCreator(
+        OpenModule
+      )
     )
-  )

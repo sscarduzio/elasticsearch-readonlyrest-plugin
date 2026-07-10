@@ -17,21 +17,18 @@
 package tech.beshu.ror.accesscontrol.audit.sink
 
 import tech.beshu.ror.accesscontrol.domain.AuditCluster
-import tech.beshu.ror.es.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
+import tech.beshu.ror.es.services.{DataStreamBasedAuditSinkService, IndexBasedAuditSinkService}
 
 sealed trait AuditSinkServiceCreator
 
-trait IndexBasedAuditSinkServiceCreator
-  extends AuditSinkServiceCreator {
+trait IndexBasedAuditSinkServiceCreator extends AuditSinkServiceCreator {
 
   def index(cluster: AuditCluster): IndexBasedAuditSinkService
 }
 
 trait DataStreamAndIndexBasedAuditSinkServiceCreator
-  extends AuditSinkServiceCreator
+    extends AuditSinkServiceCreator
     with IndexBasedAuditSinkServiceCreator {
 
   def dataStream(cluster: AuditCluster): DataStreamBasedAuditSinkService
 }
-
-

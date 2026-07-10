@@ -19,14 +19,16 @@ package tech.beshu.ror.es.handler.request.context.types.templates
 import cats.data.NonEmptyList
 import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateRequest, SimulateIndexTemplateResponse}
+import org.elasticsearch.action.admin.indices.template.post.{
+  SimulateIndexTemplateRequest,
+  SimulateIndexTemplateResponse
+}
 import org.elasticsearch.cluster.metadata.Template as EsMetadataTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.AccessControlList.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.ClusterIndexName.Remote.ClusterName
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, IndexPattern, RequestedIndex, TemplateNamePattern}
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.request.context.ModificationResult
 import tech.beshu.ror.es.handler.request.context.types.BaseIndicesEsRequestContext
@@ -37,32 +39,41 @@ import tech.beshu.ror.utils.ScalaOps.*
 import java.util.{List as JList, Map as JMap}
 import scala.jdk.CollectionConverters.*
 
-class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexTemplateRequest,
-                                                   esContext: EsContext,
-                                                   aclContext: AccessControlStaticContext,
-                                                   clusterService: RorClusterService,
-                                                   override val threadPool: ThreadPool)
-  // note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
-  extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
+class SimulateIndexTemplateRequestEsRequestContext(
+    actionRequest: SimulateIndexTemplateRequest,
+    esContext: EsContext,
+    aclContext: AccessControlStaticContext,
+    override val threadPool: ThreadPool
+)
+// note: it may seem that it's template request but it's not. It's rather related with index and that's why we treat it in this way
+    extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, threadPool) {
 
-  override protected def requestedIndicesFrom(request: SimulateIndexTemplateRequest): Set[RequestedIndex[ClusterIndexName]] =
+  override protected def requestedIndicesFrom(
+      request: SimulateIndexTemplateRequest
+  ): Set[RequestedIndex[ClusterIndexName]] =
     Option(request.getIndexName)
       .flatMap(RequestedIndex.fromString)
       .toCovariantSet
 
-  override protected def update(request: SimulateIndexTemplateRequest,
-                                filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
-                                allAllowedIndices: NonEmptyList[ClusterIndexName],
-                                allowedClusters: Set[ClusterName.Full]): ModificationResult = {
+  override protected def update(
+      request: SimulateIndexTemplateRequest,
+      filteredIndices: NonEmptyList[RequestedIndex[ClusterIndexName]],
+      allAllowedIndices: NonEmptyList[ClusterIndexName],
+      allowedClusters: Set[ClusterName.Full]
+  ): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]")
+      logger.warn(
+        s"Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.show}]"
+      )
     }
     updateRequest(request, filteredIndices.head, allAllowedIndices)
   }
 
-  private def updateRequest(request: SimulateIndexTemplateRequest,
-                            index: RequestedIndex[ClusterIndexName],
-                            allAllowedIndices: NonEmptyList[ClusterIndexName]): ModificationResult = {
+  private def updateRequest(
+      request: SimulateIndexTemplateRequest,
+      index: RequestedIndex[ClusterIndexName],
+      allAllowedIndices: NonEmptyList[ClusterIndexName]
+  ): ModificationResult = {
     request.indexName(index.stringify)
     ModificationResult.UpdateResponse.sync {
       case response: SimulateIndexTemplateResponse =>
@@ -71,44 +82,52 @@ class SimulateIndexTemplateRequestEsRequestContext(actionRequest: SimulateIndexT
         other
     }
   }
+
 }
 
 object SimulateIndexTemplateRequestEsRequestContext {
 
-  private[templates] def filterAliasesAndIndexPatternsIn(response: SimulateIndexTemplateResponse,
-                                                         allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
+  private[templates] def filterAliasesAndIndexPatternsIn(
+      response: SimulateIndexTemplateResponse,
+      allowedIndices: List[ClusterIndexName]
+  ): SimulateIndexTemplateResponse = {
     val tunedResponse = new TunedSimulateIndexTemplateResponse(response)
     val filterResponse = filterIndexTemplate(allowedIndices) andThen filterOverlappingTemplates(allowedIndices)
     filterResponse(tunedResponse).underlying
   }
 
-  private def filterIndexTemplate(allowedIndices: List[ClusterIndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
-    response
-      .indexTemplateRequest()
-      .map { template =>
-        val newTemplate = createMetadataTemplateWithFilteredAliases(
-          basedOn = template,
-          allowedIndices
-        )
-        response.indexTemplateRequest(newTemplate)
-      }
-      .getOrElse {
-        response
-      }
-  }
+  private def filterIndexTemplate(allowedIndices: List[ClusterIndexName]) =
+    (response: TunedSimulateIndexTemplateResponse) => {
+      response
+        .indexTemplateRequest()
+        .map { template =>
+          val newTemplate = createMetadataTemplateWithFilteredAliases(
+            basedOn = template,
+            allowedIndices
+          )
+          response.indexTemplateRequest(newTemplate)
+        }
+        .getOrElse {
+          response
+        }
+    }
 
-  private def filterOverlappingTemplates(allowedIndices: List[ClusterIndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
-    val filteredOverlappingTemplates = createOverlappingTemplatesWithFilteredIndexPatterns(
-      basedOn = response.overlappingTemplates(),
-      allowedIndices
-    )
-    response.overlappingTemplates(filteredOverlappingTemplates)
-  }
+  private def filterOverlappingTemplates(allowedIndices: List[ClusterIndexName]) =
+    (response: TunedSimulateIndexTemplateResponse) => {
+      val filteredOverlappingTemplates = createOverlappingTemplatesWithFilteredIndexPatterns(
+        basedOn = response.overlappingTemplates(),
+        allowedIndices
+      )
+      response.overlappingTemplates(filteredOverlappingTemplates)
+    }
 
-  private def createMetadataTemplateWithFilteredAliases(basedOn: EsMetadataTemplate,
-                                                        allowedIndices: List[ClusterIndexName]) = {
+  private def createMetadataTemplateWithFilteredAliases(
+      basedOn: EsMetadataTemplate,
+      allowedIndices: List[ClusterIndexName]
+  ) = {
     val filteredAliases = basedOn
-      .aliases().asSafeMap
+      .aliases()
+      .asSafeMap
       .flatMap { case (key, value) => ClusterIndexName.fromString(key).map((_, value)) }
       .view
       .filterKeys(_.isAllowedBy(allowedIndices))
@@ -122,13 +141,15 @@ object SimulateIndexTemplateRequestEsRequestContext {
     )
   }
 
-  private def createOverlappingTemplatesWithFilteredIndexPatterns(basedOn: Map[TemplateNamePattern, List[IndexPattern]],
-                                                                  allowedIndices: List[ClusterIndexName]) = {
+  private def createOverlappingTemplatesWithFilteredIndexPatterns(
+      basedOn: Map[TemplateNamePattern, List[IndexPattern]],
+      allowedIndices: List[ClusterIndexName]
+  ) = {
     basedOn.flatMap { case (templateName, patterns) =>
       val filteredPatterns = patterns.filter(_.isAllowedByAny(allowedIndices))
       filteredPatterns match {
         case Nil => None
-        case _ => Some((templateName, filteredPatterns))
+        case _   => Some((templateName, filteredPatterns))
       }
     }
   }
@@ -156,10 +177,16 @@ object SimulateIndexTemplateRequestEsRequestContext {
         }
     }
 
-    def overlappingTemplates(templates: Map[TemplateNamePattern, List[IndexPattern]]): TunedSimulateIndexTemplateResponse = {
-      val jTemplatesMap = templates.map { case (key, value) => (key.value.value, value.map(_.value.stringify).asJava) }.asJava
+    def overlappingTemplates(
+        templates: Map[TemplateNamePattern, List[IndexPattern]]
+    ): TunedSimulateIndexTemplateResponse = {
+      val jTemplatesMap = templates.map { case (key, value) =>
+        (key.value.value, value.map(_.value.stringify).asJava)
+      }.asJava
       reflect.set(overlappingTemplatesFieldName, jTemplatesMap)
       this
     }
+
   }
+
 }

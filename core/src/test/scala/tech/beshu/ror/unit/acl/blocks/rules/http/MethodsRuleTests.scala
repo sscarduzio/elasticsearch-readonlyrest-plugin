@@ -21,13 +21,15 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.MethodsRule
 import tech.beshu.ror.accesscontrol.orders.*
-import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.accesscontrol.request.RequestContext.Method
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RestRequest}
 import tech.beshu.ror.syntax.*
 
 class MethodsRuleTests extends AnyWordSpec with MockFactory {
@@ -69,15 +71,17 @@ class MethodsRuleTests extends AnyWordSpec with MockFactory {
     (() => restRequest.method).expects().returning(requestMethod)
     val requestContext = mock[RequestContext]
     (() => requestContext.restRequest).expects().returning(restRequest)
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(blockContext)
-      else Rejected()
+      if (isMatched) Permitted(blockContext)
+      else Denied(NotAuthorized)
     }
   }
+
 }

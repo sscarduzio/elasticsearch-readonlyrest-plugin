@@ -33,11 +33,13 @@ object JDK extends LazyLogging {
     val majorVersion = version.takeWhile(_ != '.')
     val arch = System.getProperty("os.arch") match {
       case a if a == "aarch64" || a == "arm64" => "aarch64"
-      case _ => "x64"
+      case _                                   => "x64"
     }
     val targetFile = File.newTemporaryFile(s"amazon-corretto-$majorVersion-jdk", ".tar.gz")
     logger.info(s"Downloading Amazon Corretto $majorVersion JDK (one-time, for replacing buggy bundled JDK)...")
-    val url = new java.net.URL(s"https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz")
+    val url = new java.net.URI(
+      s"https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz"
+    ).toURL
     val connection = url.openConnection()
     connection.setConnectTimeout(30_000)
     connection.setReadTimeout(120_000)
@@ -48,4 +50,5 @@ object JDK extends LazyLogging {
     logger.info(s"Downloaded Amazon Corretto $majorVersion JDK to ${targetFile.pathAsString}")
     targetFile
   }
+
 }

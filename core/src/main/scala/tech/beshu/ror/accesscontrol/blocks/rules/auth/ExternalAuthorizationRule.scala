@@ -19,7 +19,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.auth
 import cats.implicits.*
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.GroupsAuthorizationFailed
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalGroupsProviderService
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
@@ -30,10 +31,11 @@ import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.matchers.PatternsMatcher
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings,
-                                override implicit val userIdCaseSensitivity: CaseSensitivity,
-                                override val impersonation: Impersonation)
-  extends BaseAuthorizationRule {
+class ExternalAuthorizationRule(
+    val settings: ExternalAuthorizationRule.Settings,
+    override implicit val userIdCaseSensitivity: CaseSensitivity,
+    override val impersonation: Impersonation
+) extends BaseAuthorizationRule {
 
   override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
@@ -41,22 +43,26 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   private val userMatcher = PatternsMatcher.create[User.Id](settings.users.toSet)
 
-  override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[Unit, Unit] = {
-    Either.cond(userMatcher.`match`(user.id), (), ())
+  override protected def loggedUserPreconditionCheck(user: LoggedUser): Either[GroupsAuthorizationFailed, Unit] = {
+    Either.cond(
+      userMatcher.`match`(user.id),
+      (),
+      GroupsAuthorizationFailed(s"Logged user not found in allowed users list")
+    )
   }
 
-  override protected def userGroups[B <: BlockContext](blockContext: B,
-                                                       user: LoggedUser)
-                                                      (implicit requestId: RequestId): Task[UniqueList[Group]] =
-    settings.service.grantsFor(user.id)
+  override protected def userGroups[B <: BlockContext](blockContext: B, user: LoggedUser)(
+      implicit requestId: RequestId
+  ): Task[UniqueList[Group]] =
+    settings.service.groupsFor(user.id)
 
-  override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)
-                                       (implicit requestId: RequestId): Groups = {
+  override protected def mockedGroupsOf(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Groups = {
     mocksProvider
-      .externalAuthorizationServiceWith(settings.service.id)
+      .externalGroupsProviderServiceWith(settings.service.id)
       .map { mock =>
-        mock
-          .users
+        mock.users
           .find(_.id === user)
           .map(m => Groups.Present(UniqueList.of(m.groups.toSeq: _*)))
           .getOrElse(Groups.Present(UniqueList.empty))
@@ -65,6 +71,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
         Groups.CannotCheck
       }
   }
+
 }
 
 object ExternalAuthorizationRule {
@@ -73,8 +80,10 @@ object ExternalAuthorizationRule {
     override val name: Rule.Name = Rule.Name("groups_provider_authorization")
   }
 
-  final case class Settings(service: ExternalAuthorizationService,
-                            permittedGroupsLogic: GroupsLogic,
-                            users: UniqueNonEmptyList[User.Id])
+  final case class Settings(
+      service: ExternalGroupsProviderService,
+      permittedGroupsLogic: GroupsLogic,
+      users: UniqueNonEmptyList[User.Id]
+  )
 
 }

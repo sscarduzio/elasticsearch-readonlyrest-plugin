@@ -21,8 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth.Name
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
-final case class ProxyAuth(override val id: ProxyAuth#Id, userIdHeader: Header.Name)
-  extends Item {
+final case class ProxyAuth(override val id: ProxyAuth#Id, userIdHeader: Header.Name) extends Item {
 
   override type Id = Name
   override val idShow: Show[Name] = Show.show(_.value)

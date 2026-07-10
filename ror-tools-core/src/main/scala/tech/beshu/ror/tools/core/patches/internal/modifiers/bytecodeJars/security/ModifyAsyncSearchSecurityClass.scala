@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security
 
+import better.files.File
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /**
  * Modifies the AsyncSearchSecurity class to disable the security privilege check used by
@@ -33,7 +34,7 @@ import java.io.{File, InputStream}
  * X-Pack Async Search security checks from blocking operations that ReadonlyREST handles
  * through its own authorization logic.
  */
-private [patches] object ModifyAsyncSearchSecurityClass extends BytecodeJarModifier {
+private[patches] object ModifyAsyncSearchSecurityClass extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
@@ -50,14 +51,15 @@ private [patches] object ModifyAsyncSearchSecurityClass extends BytecodeJarModif
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "hasClusterPrivilege" =>
           new HasClusterPrivilegeAlwaysReturnsTrue(super.visitMethod(access, name, descriptor, signature, exceptions))
@@ -65,10 +67,10 @@ private [patches] object ModifyAsyncSearchSecurityClass extends BytecodeJarModif
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
-  private class HasClusterPrivilegeAlwaysReturnsTrue(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+  private class HasClusterPrivilegeAlwaysReturnsTrue(underlying: MethodVisitor) extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -77,17 +79,39 @@ private [patches] object ModifyAsyncSearchSecurityClass extends BytecodeJarModif
       underlying.visitVarInsn(Opcodes.ALOAD, 2)
       underlying.visitInsn(Opcodes.ICONST_1)
       underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false)
-      underlying.visitMethodInsn(Opcodes.INVOKEINTERFACE, "org/elasticsearch/action/ActionListener", "onResponse", "(Ljava/lang/Object;)V", true)
+      underlying.visitMethodInsn(
+        Opcodes.INVOKEINTERFACE,
+        "org/elasticsearch/action/ActionListener",
+        "onResponse",
+        "(Ljava/lang/Object;)V",
+        true
+      )
       val label1 = new Label()
       underlying.visitLabel(label1)
       underlying.visitInsn(Opcodes.RETURN)
       val label2 = new Label()
       underlying.visitLabel(label2)
-      underlying.visitLocalVariable("this", "Lorg/elasticsearch/xpack/core/async/AsyncSearchSecurity;", null, label0, label2, 0)
+      underlying.visitLocalVariable(
+        "this",
+        "Lorg/elasticsearch/xpack/core/async/AsyncSearchSecurity;",
+        null,
+        label0,
+        label2,
+        0
+      )
       underlying.visitLocalVariable("privilegeName", "Ljava/lang/String;", null, label0, label2, 1)
-      underlying.visitLocalVariable("listener", "Lorg/elasticsearch/action/ActionListener;", "Lorg/elasticsearch/action/ActionListener<Ljava/lang/Boolean;>;", label0, label2, 2)
+      underlying.visitLocalVariable(
+        "listener",
+        "Lorg/elasticsearch/action/ActionListener;",
+        "Lorg/elasticsearch/action/ActionListener<Ljava/lang/Boolean;>;",
+        label0,
+        label2,
+        2
+      )
       underlying.visitMaxs(2, 3)
       underlying.visitEnd()
     }
+
   }
+
 }

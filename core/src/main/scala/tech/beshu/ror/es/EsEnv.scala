@@ -21,12 +21,16 @@ import tech.beshu.ror.accesscontrol.domain.EsConfigFile
 
 import scala.util.Try
 
-final case class EsEnv(configDir: File,
-                       modulesDir: File,
-                       esVersion: EsVersion,
-                       esNodeSettings: EsNodeSettings) {
+final case class EsEnv(configDir: File, modulesDir: File, esVersion: EsVersion, esNodeSettings: EsNodeSettings) {
 
-  def isOssDistribution: Boolean = {
+  def isOssDistribution: Boolean = EsEnv.isOssDistribution(modulesDir)
+
+  def elasticsearchConfig: EsConfigFile = EsConfigFile.default(this)
+}
+
+object EsEnv {
+
+  def isOssDistribution(modulesDir: File): Boolean = {
     Try {
       !(modulesDir / "x-pack-security").exists
     } getOrElse {
@@ -34,5 +38,4 @@ final case class EsEnv(configDir: File,
     }
   }
 
-  def elasticsearchConfig: EsConfigFile = EsConfigFile.default(this)
 }

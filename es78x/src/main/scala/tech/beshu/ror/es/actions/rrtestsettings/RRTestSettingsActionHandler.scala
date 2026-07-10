@@ -18,41 +18,42 @@ package tech.beshu.ror.es.actions.rrtestsettings
 
 import cats.implicits.toShow
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.api.TestSettingsApi.TestSettingsResponse
 import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.RorInstanceSupplier
 
-class RRTestSettingsActionHandler extends Logging {
+class RRTestSettingsActionHandler extends RequestIdAwareLogging {
 
   private implicit val rorRestApiScheduler: Scheduler = RorSchedulers.restApiScheduler
 
   def handle(request: RRTestSettingsRequest, listener: ActionListener[RRTestSettingsResponse]): Unit = {
     getApi match {
-      case Some(api) => doPrivileged {
-        implicit val requestId: RequestId = request.requestContextId
-        api
-          .call(request.getTestSettingsRequest)
-          .runAsync { result =>
-            handle(result, listener)
-          }
-      }
+      case Some(api) =>
+        doPrivileged {
+          implicit val requestId: RequestId = request.requestContextId
+          api
+            .call(request.getTestSettingsRequest)
+            .runAsync { result =>
+              handle(result, listener)
+            }
+        }
       case None =>
         listener.onFailure(new Exception("ROR Test Settings API is not available"))
     }
   }
 
-  private def handle(result: Either[Throwable, TestSettingsResponse],
-                     listener: ActionListener[RRTestSettingsResponse])
-                    (implicit requestId: RequestId): Unit = result match {
+  private def handle(result: Either[Throwable, TestSettingsResponse], listener: ActionListener[RRTestSettingsResponse])(
+      implicit requestId: RequestId
+  ): Unit = result match {
     case Right(response) =>
       listener.onResponse(new RRTestSettingsResponse(response))
     case Left(ex) =>
-      logger.error(s"[${requestId.show}] Internal error", ex)
+      logger.error("Internal error", ex)
       listener.onFailure(new Exception(ex))
   }
 

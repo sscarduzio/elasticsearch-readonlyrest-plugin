@@ -19,14 +19,14 @@ package tech.beshu.ror.boot
 import cats.Show
 import cats.implicits.toShow
 import monix.eval.Task
-import monix.execution.{Cancelable, Scheduler}
-import org.apache.logging.log4j.scala.Logging
+import monix.execution.Cancelable
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.boot.RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
 import tech.beshu.ror.boot.RorInstance.{IndexSettingsReloadError, RawSettingsReloadError, ScheduledReloadError}
-import tech.beshu.ror.utils.DurationOps.PositiveFiniteDuration
 import tech.beshu.ror.implicits.*
+import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.util.concurrent.atomic.AtomicReference
 
@@ -35,16 +35,15 @@ trait RorSettingsAutoReloader {
   def stop(): Task[Unit]
 }
 
-class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
-                                     instance: RorInstance)
-                                    (implicit systemContext: SystemContext,
-                                     scheduler: Scheduler)
-  extends RorSettingsAutoReloader with Logging {
+class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration, instance: RorInstance)(
+    implicit systemContext: SystemContext
+) extends RorSettingsAutoReloader
+    with RequestIdAwareLogging {
 
   private val reloadTaskState: AtomicReference[ReloadTaskState] = new AtomicReference(ReloadTaskState.NotInitiated)
 
   override def start(): Unit = {
-    logger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings enabled")
+    noRequestIdLogger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings enabled")
     scheduleEnginesReload(reloadInterval)
   }
 
@@ -52,9 +51,9 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
     for {
       currentState <- Task.delay(reloadTaskState.getAndSet(ReloadTaskState.Stopped))
       _ <- Task.delay(currentState match {
-        case ReloadTaskState.NotInitiated => // do nothing
+        case ReloadTaskState.NotInitiated        => // do nothing
         case ReloadTaskState.Running(cancelable) => cancelable.cancel()
-        case ReloadTaskState.Stopped => // do nothing
+        case ReloadTaskState.Stopped             => // do nothing
       })
     } yield ()
   }
@@ -71,21 +70,29 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
     scheduleNextIfNotStopping(interval, reloadTask)
   }
 
-  private def scheduleNextIfNotStopping(interval: PositiveFiniteDuration,
-                                        reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]): Unit = {
+  private def scheduleNextIfNotStopping(
+      interval: PositiveFiniteDuration,
+      reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]
+  ): Unit = {
     implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
     val nextTask = scheduleIndexSettingsChecking(interval, reloadTask)
     trySetNextReloadTask(nextTask) match {
       case ReloadTaskState.NotInitiated => // nothing to do
-      case ReloadTaskState.Running(_) => // nothing to do
-      case ReloadTaskState.Stopped => nextTask.cancel()
+      case ReloadTaskState.Running(_)   => // nothing to do
+      case ReloadTaskState.Stopped      => nextTask.cancel()
     }
   }
 
-  private def scheduleIndexSettingsChecking(interval: PositiveFiniteDuration,
-                                            reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]])
-                                           (implicit requestId: RequestId): CancelableWithRequestId = {
-    logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check within ${interval.show}")
+  private def scheduleIndexSettingsChecking(
+      interval: PositiveFiniteDuration,
+      reloadTask: RequestId => Task[Seq[(SettingsType, Either[ScheduledReloadError, Unit])]]
+  )(
+      implicit requestId: RequestId
+  ): CancelableWithRequestId = {
+    import systemContext.scheduler
+    logger.debug(
+      s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check within ${interval.show}"
+    )
     val cancellable = scheduler.scheduleOnce(interval.value) {
       logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ReadonlyREST settings from index ...")
       reloadTask(requestId)
@@ -110,22 +117,47 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
     }
   }
 
-  private def logSettingsReloadResult(settingsReloadResult: (SettingsType, Either[ScheduledReloadError, Unit]))
-                                     (implicit requestId: RequestId): Unit = settingsReloadResult match {
-    case (_, Right(())) =>
+  private def logSettingsReloadResult(settingsReloadResult: (SettingsType, Either[ScheduledReloadError, Unit]))(
+      implicit requestId: RequestId
+  ): Unit = settingsReloadResult match {
+    case (_, Right(()))                    =>
     case (name, Left(ReloadingInProgress)) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Reloading of ${name.show} engine in progress ... skipping")
-    case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.SettingsUpToDate(_))))) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ${name.show} settings are up to date. Nothing to reload.")
-    case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.RorInstanceStopped)))) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Stopping periodic ${name.show} settings check - application is being stopped")
-    case (name, Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.ReloadingFailed(startingFailure))))) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST ${name.show} engine starting failed: ${startingFailure.message.show}")
+      logger.debug(
+        s"[CLUSTERWIDE SETTINGS][${requestId.show}] Reloading of ${name.show} engine in progress ... skipping"
+      )
+    case (
+          name,
+          Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.SettingsUpToDate(_))))
+        ) =>
+      logger.debug(
+        s"[CLUSTERWIDE SETTINGS][${requestId.show}] ${name.show} settings are up to date. Nothing to reload."
+      )
+    case (
+          name,
+          Left(EngineReloadError(IndexSettingsReloadError.ReloadError(RawSettingsReloadError.RorInstanceStopped)))
+        ) =>
+      logger.debug(
+        s"[CLUSTERWIDE SETTINGS][${requestId.show}] Stopping periodic ${name.show} settings check - application is being stopped"
+      )
+    case (
+          name,
+          Left(
+            EngineReloadError(
+              IndexSettingsReloadError.ReloadError(RawSettingsReloadError.ReloadingFailed(startingFailure))
+            )
+          )
+        ) =>
+      logger.debug(
+        s"[CLUSTERWIDE SETTINGS][${requestId.show}] ReadonlyREST ${name.show} engine starting failed: ${startingFailure.message.show}"
+      )
     case (name, Left(EngineReloadError(IndexSettingsReloadError.IndexLoadingSettingsError(error)))) =>
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed: ${error.show}")
+      logger.debug(
+        s"[CLUSTERWIDE SETTINGS][${requestId.show}] Loading ${name.show} settings from index failed: ${error.show}"
+      )
   }
 
   private sealed trait SettingsType
+
   private object SettingsType {
     case object Main extends SettingsType
     case object Test extends SettingsType
@@ -134,9 +166,11 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
       case Main => "main"
       case Test => "test"
     }
+
   }
 
   private sealed trait ReloadTaskState
+
   private object ReloadTaskState {
     case object NotInitiated extends ReloadTaskState
     final case class Running(cancelable: CancelableWithRequestId) extends ReloadTaskState
@@ -144,19 +178,21 @@ class EnabledRorSettingsAutoReloader(reloadInterval: PositiveFiniteDuration,
   }
 
   private final class CancelableWithRequestId(cancelable: Cancelable, requestId: RequestId)
-    extends Logging {
+      extends RequestIdAwareLogging {
 
     def cancel(): Unit = {
-      logger.debug(s"[CLUSTERWIDE SETTINGS][${requestId.show}] Scheduling next in-index settings check cancelled!")
+      logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check cancelled!")(requestId)
       cancelable.cancel()
     }
+
   }
+
 }
 
-object DisabledRorSettingsAutoReloader extends RorSettingsAutoReloader with Logging {
+object DisabledRorSettingsAutoReloader extends RorSettingsAutoReloader with RequestIdAwareLogging {
 
   override def start(): Unit = {
-    logger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings disabled")
+    noRequestIdLogger.info(s"[CLUSTERWIDE SETTINGS] Auto reloading of ReadonlyREST in-index settings disabled")
   }
 
   override def stop(): Task[Unit] = Task.unit

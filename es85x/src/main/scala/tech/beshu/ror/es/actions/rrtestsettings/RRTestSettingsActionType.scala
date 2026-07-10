@@ -20,10 +20,11 @@ import org.elasticsearch.action.ActionType
 import org.elasticsearch.common.io.stream.Writeable
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
 
-class RRTestSettingsActionType extends ActionType[RRTestSettingsResponse](
-  RRTestSettingsActionType.name,
-  RRTestSettingsActionType.exceptionReader
-)
+class RRTestSettingsActionType
+    extends ActionType[RRTestSettingsResponse](
+      RRTestSettingsActionType.name,
+      RRTestSettingsActionType.exceptionReader
+    )
 
 object RRTestSettingsActionType {
   val name: String = RorAction.RorTestSettingsAction.value

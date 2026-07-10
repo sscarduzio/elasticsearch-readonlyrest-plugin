@@ -18,12 +18,11 @@ package tech.beshu.ror.es.utils
 
 import org.elasticsearch.Version
 import org.elasticsearch.snapshots.SnapshotInfo
-import tech.beshu.ror.syntax.*
-import tech.beshu.ror.utils.set.CovariantSet.*
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import org.joor.Reflect.on
-import java.util.List as JList
+import tech.beshu.ror.syntax.*
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
+import java.util.List as JList
 import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
@@ -40,14 +39,14 @@ class EsVersionAwareReflectionBasedSnapshotInfoAdapter(val snapshotInfo: Snapsho
   private def featureStatesIndicesForEsGreaterOrEqual7120() = {
     doPrivileged {
       val featureStates = on(snapshotInfo).call("featureStates").get[JList[AnyRef]].asScala
-      featureStates
-        .flatMap { featureState =>
-          on(featureState).call("getIndices").get[JList[String]].asScala
-        }
-        .toCovariantSet
+      featureStates.flatMap { featureState =>
+        on(featureState).call("getIndices").get[JList[String]].asScala
+      }.toCovariantSet
     }
   }
+
 }
+
 object EsVersionAwareReflectionBasedSnapshotInfoAdapter {
   implicit def toAdapter(snapshotInfo: SnapshotInfo): EsVersionAwareReflectionBasedSnapshotInfoAdapter =
     new EsVersionAwareReflectionBasedSnapshotInfoAdapter(snapshotInfo)

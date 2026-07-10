@@ -1,23 +1,42 @@
+# Single source of truth for the CI toolchains image (bump the tag here on a JDK/Gradle change).
+# Declared as a container resource (NOT a variable) because the job-level `container:` property is
+# resolved at compile time and does not expand $(variables).
+resources:
+  containers:
+    - container: ror-toolchains
+      image: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+
 variables:
+  system.debug: 'true'
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
   isPullRequest: $[eq(variables['Build.Reason'], 'PullRequest')]
   isEpicBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'epic/'), contains(variables['System.PullRequest.SourceBranch'], 'epic/'))]
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
-  dependencyCheckCacheKey: $[format('dependency-check-v1-{0:yyyyMM}', pipeline.startTime)]
-  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v1'
-  GRADLE_USER_HOME: '$(Pipeline.Workspace)/.gradle'
+  dependencyCheckCacheKey: $[format('dependency-check-v2-{0:yyyyMM}', pipeline.startTime)]
+  dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v2'
+  # Use the Gradle home baked into the CI image (ci/toolchains/JdkToolchains.Dockerfile): it already contains the
+  # Gradle distribution + resolved plugins/dependencies, so in the common (warm-cache) case builds make
+  # no network calls to flaky external CDNs. Cache misses (e.g. a dep bumped since the last image
+  # rebuild) fall back to the network naturally; the scheduled BUILD_TOOLCHAINS_IMAGE run keeps that
+  # stale window short.
+  GRADLE_USER_HOME: '/opt/gradle-home'
+  # Disable toolchain auto-download (fail fast instead of hitting the adoptium CDN). The CI-image
+  # JDK locations are NOT set here — they live in the image's baked GRADLE_USER_HOME/gradle.properties
+  # (reliably honoured, unlike installations.paths via GRADLE_OPTS), so they apply only to the Linux
+  # container jobs and never leak to the bare Windows jobs (which use a workspace-local GRADLE_USER_HOME).
+  GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
 
 trigger:
-  batch: false
+  # Coalesce rapid pushes into one run (Azure has no auto-cancel for branch runs).
+  batch: true
   branches:
     include:
       - master
       - develop
+      - 'epic/*'
       - '*/epic/*'
-      - RORDEV*
-      - '*/pull/*'
   tags:
     exclude:
       - '*'
@@ -29,117 +48,198 @@ trigger:
       - '*.md'
       - '*/*/*.md'
 
+pr:
+  # A new commit cancels the prior in-progress PR run instead of stacking another
+  # full run on the queue (GitHub default; set explicitly so it is version-controlled).
+  autoCancel: true
+  branches:
+    include:
+      - master
+      - develop
+      - 'epic/*'
+      - '*/epic/*'
+  paths:
+    include:
+      - '*'
+    exclude:
+      - 'docs/*'
+      - '*.md'
+      - '*/*/*.md'
+
+# Scheduled rebuild of the CI toolchains image (BUILD_TOOLCHAINS_IMAGE only; every other stage is
+# gated on Build.Reason != 'Schedule'). Keeps the baked Gradle cache fresh without manual action:
+# a dep bumped during the week falls back to the network until the next rebuild closes the gap.
+schedules:
+  - cron: '0 3 * * 1'
+    displayName: 'Weekly CI toolchains image rebuild'
+    branches:
+      include:
+        - develop
+    always: true
+
 parameters:
   - name: actionToPerform
     type: string
     displayName: '(Manual) action to perform'
-    default: 'publish_docker_image_pre_builds'
+    default: 'run_all_tests_on_linux'
     values:
-      - 'publish_docker_image_pre_builds'
       - 'run_all_tests_on_linux'
       - 'run_all_tests_on_windows'
-  - name: preBuildVersionsForPublishingToDockerHub
-    type: string
-    displayName: 'Space or comma-separated list of ES version numbers (e.g., "7.17.20 8.15.0")'
-    default: ' '
+      - 'build_toolchains_image'
+      - 'release_without_testing'
 
 pool:
   vmImage: 'ubuntu-24.04'
 
 stages:
 
+  # Cancels stale Azure Pipelines runs for the same PR: closes Azure's at-queue-time autoCancel race
+  # by cancelling older in-progress runs of the same PR (and self-cancelling if a newer run already
+  # exists). Runs FIRST so no agent time / container pull is wasted on a stale run. Only affects
+  # PullRequest runs; branch runs rely on `trigger.batch` and are skipped by the script.
+  - stage: SUPERSEDE_GUARD
+    displayName: 'Cancel stale PR runs'
+    dependsOn: [ ]
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job:
+        displayName: 'Cancel stale PR runs'
+        timeoutInMinutes: 5   # belt-and-suspenders: never let this step itself stall the pipeline
+        steps:
+          - checkout: self
+            fetchDepth: 1
+          - script: ci/stale-azure-pipeline-runs-canceler.sh
+            displayName: 'Cancel older runs for this PR'
+            env:
+              AZURE_BUILDS_API_TOKEN: $(System.AccessToken)
+
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
-    dependsOn: [ ]
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'Manual'), eq(variables.isNewEsBranchOrPr, true))
+    dependsOn: [ SUPERSEDE_GUARD ]
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
     jobs:
       - job:
         steps:
           - script: |
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_ENDPOINT_URL=$VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL
+              export ROR_ARTIFACTS_STORE_REGION=$VAR_ROR_ARTIFACTS_STORE_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+              export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
+              export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               ci/upload-es-artifacts.sh
             continueOnError: true
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL: $(ROR_ARTIFACTS_STORE_ENDPOINT_URL)
+              VAR_ROR_ARTIFACTS_STORE_REGION: $(ROR_ARTIFACTS_STORE_REGION)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
+              VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
 
-  - stage: GRADLE_WARMUP
-    displayName: 'Warm up Gradle cache'
+  # Builds & pushes the CI toolchains image (ci/toolchains/JdkToolchains.Dockerfile). Runs on the
+  # weekly schedule (cache refresh) or manually with actionToPerform=build_toolchains_image after a
+  # JDK/Gradle change (then bump the image tag in the `resources.containers` block above).
+  - stage: BUILD_TOOLCHAINS_IMAGE
+    displayName: 'Build & push CI toolchains image'
+    # Deliberately NOT gated on SUPERSEDE_GUARD: this stage only fires on Schedule/Manual (never a
+    # PR run, per the condition below), so it can never race a PR supersede — by design.
     dependsOn: [ ]
     condition:
-      and(
-        succeeded(),
-        or(
-          ne(variables['Build.Reason'], 'Manual'),
-          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
-        )
+      or(
+        eq(variables['Build.Reason'], 'Schedule'),
+        and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'build_toolchains_image'))
       )
     jobs:
-      - job: WARMUP
-        displayName: 'Download Gradle and toolchains'
-        container: eclipse-temurin:17-jdk
-        timeoutInMinutes: 30
+      - job: BUILD_AND_PUSH
+        timeoutInMinutes: 240
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - bash: |
-              set +e
-              apt-get update && apt-get install -y git curl
-              echo "Warming up Gradle and toolchains..."
+              sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache
+              docker system prune -af
+              df -h /
+            displayName: 'Free up disk space'
+          - script: |
+              set -e
+              # The image tag lives in the resources.containers block of this file (single source of truth)
+              IMAGE=$(grep -oE 'beshultd/ror-ci-toolchains:[^ ]+' azure-pipelines.yml | head -1)
+              echo ">>> Building $IMAGE"
+              docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$IMAGE" .
+              echo "$var_docker_registry_password" | docker login -u "$var_docker_registry_user" --password-stdin
+              docker push "$IMAGE"
+            displayName: 'docker build & push'
+            env:
+              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
+              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+
+  - stage: TOOLCHAINS_VERIFY
+    displayName: 'Verify toolchains image'
+    dependsOn: [ SUPERSEDE_GUARD ]
+    condition:
+      and(
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
+        or(
+          notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
+          and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')),
+          and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'release_without_testing'))
+        )
+      )
+    jobs:
+      - job: TOOLCHAINS_VERIFY
+        displayName: 'Verify baked Gradle home and toolchains'
+        container: ror-toolchains
+        timeoutInMinutes: 10
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: false
+          # Verify the baked Gradle home is present/usable (failure => rebuild the image). No --offline:
+          # a stale cache must fall back to the network in the test jobs, not block the whole pipeline here.
+          - bash: |
+              set -e
+              echo "Baked GRADLE_USER_HOME=$GRADLE_USER_HOME"
+              ls "$GRADLE_USER_HOME/wrapper/dists" || { echo "No baked Gradle dist in image"; exit 1; }
               ./gradlew --no-daemon -q help
-              exit 0
-            displayName: 'Download Gradle and toolchains (best effort)'
-            condition: ne(variables.GRADLE_CACHE_HIT, 'true')
+            displayName: 'Verify baked Gradle home'
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
 
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
-    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
-    condition: and(in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'), in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), ne(variables['Build.Reason'], 'Manual'))
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
+    # SUPERSEDE_GUARD gate: when this PR run is superseded the guard FAILS (exit 1), so the heavy
+    # stages must not run. Succeeded = newest PR run; Skipped = non-PR run (guard didn't apply).
+    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
           - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - task: Cache@2
             displayName: 'Restore CVE DB from cache'
             inputs:
               key: '$(dependencyCheckCacheKey)'
               # prefix fallback to any prior cache entry
-              restoreKeys: dependency-check-v1-
+              restoreKeys: dependency-check-v2-
               path: $(dependencyCheckDataDir)
           - script: |
               echo "[OPTIONAL_CHECKS] executing ROR_TASK=$ROR_TASK"
@@ -175,35 +275,40 @@ stages:
 
   - stage: REQUIRED_CHECKS
     displayName: 'Required checks'
-    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
-        ne(variables['Build.Reason'], 'Manual')
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
+
               echo "[REQUIRED_CHECKS] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
         strategy:
           maxParallel: 99
           matrix:
@@ -213,16 +318,19 @@ stages:
               ROR_TASK: compile_codebase_check
             AUDIT_BUILD_CHECK:
               ROR_TASK: audit_build_check
+            FORMAT_CODE_CHECK:
+              ROR_TASK: format_code_check
 
   - stage: TEST
     displayName: 'Run all tests'
-    dependsOn: [ ES_S3_UP, GRADLE_WARMUP ]
+    dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
-        in(dependencies.ES_S3_UP.result, 'Succeeded', 'Skipped'),
-        in(dependencies.GRADLE_WARMUP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
+        in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         or(
-          ne(variables['Build.Reason'], 'Manual'),
+          notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
           and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests'))
         )
       )
@@ -237,28 +345,23 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows')))
           )
         displayName: 'Unit tests'
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 30
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
+              # core_tests starts testcontainers too (LDAP/WireMock) — same Docker Hub rate limit as IT.
+              source ci/docker-hub-auth.sh
               echo "[TEST] executing ROR_TASK = $ROR_TASK"
               ci/run-pipeline.sh
             env:
               ROR_TASK: core_tests
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+              DOCKER_HUB_USER: $(DOCKER_HUB_USER)
+              DOCKER_HUB_RO_TOKEN: $(DOCKER_HUB_RO_TOKEN)
           - task: PublishTestResults@2
             condition: failed()
             inputs:
@@ -280,54 +383,15 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
+            IT_es94x:
+              ROR_TASK: integration_es94x
             IT_es92x:
               ROR_TASK: integration_es92x
             IT_es91x:
@@ -349,51 +413,10 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -446,51 +469,10 @@ stages:
               and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_linux'))
             )
           )
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -533,56 +515,15 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
-            IT_es92x:
-              ROR_TASK: integration_es92x
+            IT_es94x:
+              ROR_TASK: integration_es94x
             IT_es90x:
               ROR_TASK: integration_es90x
 
@@ -598,51 +539,10 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -667,51 +567,10 @@ stages:
             ne(variables.isMaster, true),
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 120
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - bash: |
-              sudo rm -rf /usr/share/dotnet
-              sudo rm -rf /usr/local/lib/android
-              sudo rm -rf /opt/ghc
-              sudo rm -rf /usr/local/.ghcup
-              sudo rm -rf /usr/share/swift
-              sudo rm -rf /usr/local/share/powershell
-              sudo rm -rf /opt/hostedtoolcache
-              sudo rm -rf /usr/share/rust
-              sudo rm -rf /usr/share/miniconda
-              sudo rm -rf /usr/local/share/chromium
-              sudo rm -rf /usr/local/share/chrome_driver
-              sudo rm -rf /opt/pipx
-              docker system prune -af
-              docker builder prune -af
-              df -h /
-            displayName: 'Free up disk space and clean Docker'
-            target: host
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              echo "[TEST] executing ROR_TASK = $ROR_TASK"
-              ci/run-pipeline.sh
-            env:
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(ROR_TASK) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
@@ -739,37 +598,21 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-              Write-Host ">>> $env:ES_MODULE"
-              .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-              if ($LASTEXITCODE -ne 0) {
-                Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                  Get-Content $_.FullName
-                }
-                exit 1
-              }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
+            WIN_IT_es94x:
+              ES_MODULE: es94x
             WIN_IT_es92x:
               ES_MODULE: es92x
             WIN_IT_es90x:
@@ -796,39 +639,21 @@ stages:
             not(and(eq(variables['Build.Reason'], 'Manual'), startsWith('${{ parameters.actionToPerform }}', 'run_all_tests')))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
-            WIN_IT_es92x:
-              ES_MODULE: es92x
+            WIN_IT_es94x:
+              ES_MODULE: es94x
             WIN_IT_es818x:
               ES_MODULE: es818x
             WIN_IT_es717x:
@@ -844,37 +669,21 @@ stages:
             and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            displayName: Switch to Java 21
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - powershell: |
-                    Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon ror-tools:test integration-tests:test "-PesModule=$env:ES_MODULE"
-                    if ($LASTEXITCODE -ne 0) {
-                      Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
-                        Get-Content $_.FullName
-                      }
-                      exit 1
-                    }
-          - task: PublishTestResults@2
-            condition: failed()
-            inputs:
-              testRunTitle: "$(Windows ES_MODULE) results"
-              testResultsFiles: "**/TEST*xml"
-              mergeTestResults: true
+          - template: ci/azure-templates/windows-integration-test-steps.yml
         strategy:
           maxParallel: 99
           matrix:
+            WIN_IT_es94x:
+              ES_MODULE: es94x
             WIN_IT_es92x:
               ES_MODULE: es92x
             WIN_IT_es91x:
@@ -951,6 +760,12 @@ stages:
             and(eq(variables['Build.Reason'], 'Manual'), eq('${{ parameters.actionToPerform }}', 'run_all_tests_on_windows'))
           )
         timeoutInMinutes: 150
+        # Windows: clear the Linux toolchains-image GRADLE_USER_HOME/GRADLE_OPTS at JOB scope.
+        # Step-level env: does not reliably override a pipeline variable for child processes on
+        # Windows (gradlew/nested builds inherit /opt/gradle-home -> 'relative path' abort).
+        variables:
+          GRADLE_USER_HOME: ''
+          GRADLE_OPTS: ''
         pool:
           vmImage: 'windows-2025'
         steps:
@@ -966,7 +781,11 @@ stages:
               jdkSourceOption: 'PreInstalled'
           - powershell: |
                     Write-Host ">>> $env:ES_MODULE"
-                    .\gradlew --no-daemon core:test
+                    # Override the Linux toolchains-image settings that are invalid on Windows
+                    # (installations.paths=/opt/java/... and GRADLE_USER_HOME=/opt/gradle-home).
+                    .\gradlew --no-daemon core:test `
+                      "-Dorg.gradle.java.installations.paths=" `
+                      "-Dorg.gradle.java.installations.auto-download=true"
                     if ($LASTEXITCODE -ne 0) {
                       Get-ChildItem -Recurse -Filter *hs_err* | ForEach-Object {
                         Get-Content $_.FullName
@@ -990,25 +809,16 @@ stages:
         succeeded('REQUIRED_CHECKS'),
         succeeded('TEST'),
         eq(variables.isPullRequest, true),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
-        container: eclipse-temurin:17-jdk
+        container: ror-toolchains
         timeoutInMinutes: 180
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
@@ -1034,12 +844,25 @@ stages:
     dependsOn:
       - REQUIRED_CHECKS
       - TEST
+    # Runs in two cases:
+    #  - auto release: a develop/master push where REQUIRED_CHECKS + TEST passed (the original gate);
+    #  - manual release-without-testing: REQUIRED_CHECKS/TEST are intentionally skipped, so we do NOT
+    #    require them — just the manual action on develop/master.
+    # In both cases EXTRACT_IS_RELEASE computes IsRelease, which the RELEASE_*/PUBLISH_MVN_* stages read.
     condition: |
       and(
-        succeeded('REQUIRED_CHECKS'),
-        succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
-        ne(variables['Build.Reason'], 'Manual')
+        or(
+          and(
+            notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
+            succeeded('REQUIRED_CHECKS'),
+            succeeded('TEST')
+          ),
+          and(
+            eq(variables['Build.Reason'], 'Manual'),
+            eq('${{ parameters.actionToPerform }}', 'release_without_testing')
+          )
+        )
       )
     jobs:
       - job: EXTRACT_IS_RELEASE
@@ -1065,55 +888,54 @@ stages:
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], false),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
+        container: ror-toolchains
         timeoutInMinutes: 600
         steps:
           - checkout: self
             fetchDepth: 1
             clean: false
             persistCredentials: true
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '17'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
           - script: |
               set -e
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
+              export ROR_ARTIFACTS_STORE_ENDPOINT_URL=$VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL
+              export ROR_ARTIFACTS_STORE_REGION=$VAR_ROR_ARTIFACTS_STORE_REGION
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
               export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
+              export ROR_ARTIFACTS_STORE_BUCKET=$VAR_ROR_ARTIFACTS_STORE_BUCKET
+              export ROR_ARTIFACTS_STORE_PATH_PREFIX=$VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX
+              export ROR_LIBS_STORE_ENDPOINT_URL=$VAR_ROR_LIBS_STORE_ENDPOINT_URL
+              export ROR_LIBS_STORE_REGION=$VAR_ROR_LIBS_STORE_REGION
+              export ROR_LIBS_STORE_ACCESS_KEY_ID=$VAR_ROR_LIBS_STORE_ACCESS_KEY_ID
+              export ROR_LIBS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET
+              export ROR_LIBS_STORE_BUCKET=$VAR_ROR_LIBS_STORE_BUCKET
+              export ROR_LIBS_STORE_PATH_PREFIX=$VAR_ROR_LIBS_STORE_PATH_PREFIX
 
               if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
                 echo "Error: Failed to login to Docker registry"
                 exit 1
               fi
-        
+
               echo "[UPLOAD_PRE_ROR] executing ROR_TASK = $ROR_TASK"
               echo ">>> ($ROR_TASK) Uploading pre-ROR" && ci/run-pipeline.sh
             timeoutInMinutes: 600
             env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
+              VAR_ROR_ARTIFACTS_STORE_ENDPOINT_URL: $(ROR_ARTIFACTS_STORE_ENDPOINT_URL)
+              VAR_ROR_ARTIFACTS_STORE_REGION: $(ROR_ARTIFACTS_STORE_REGION)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
               VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_ARTIFACTS_STORE_BUCKET: $(ROR_ARTIFACTS_STORE_BUCKET)
+              VAR_ROR_ARTIFACTS_STORE_PATH_PREFIX: $(ROR_ARTIFACTS_STORE_PATH_PREFIX)
+              VAR_ROR_LIBS_STORE_ENDPOINT_URL: $(ROR_LIBS_STORE_ENDPOINT_URL)
+              VAR_ROR_LIBS_STORE_REGION: $(ROR_LIBS_STORE_REGION)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_ID: $(ROR_LIBS_STORE_ACCESS_KEY_ID)
+              VAR_ROR_LIBS_STORE_ACCESS_KEY_SECRET: $(ROR_LIBS_STORE_ACCESS_KEY_SECRET)
+              VAR_ROR_LIBS_STORE_BUCKET: $(ROR_LIBS_STORE_BUCKET)
+              VAR_ROR_LIBS_STORE_PATH_PREFIX: $(ROR_LIBS_STORE_PATH_PREFIX)
               var_docker_registry_user: $(DOCKER_REGISTRY_USER)
               var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
               GRADLE_USER_HOME: $(GRADLE_USER_HOME)
@@ -1143,62 +965,53 @@ stages:
         succeeded('TEST'),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
       )
     jobs:
       - job:
+        container: ror-toolchains
         timeoutInMinutes: 180
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-            timeoutInMinutes: 180
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '17'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          - script: |
-              set -e
+          - template: ci/azure-templates/release-ror-steps.yml
 
-              echo ">>>> Installing dependencies with apt-get"
-              apt-get update && apt-get install -y git file
-              git status && echo ">>> Git installed correctly!"
+        strategy:
+          maxParallel: 99
+          matrix:
+            RELEASE_ES_9xx:
+              ROR_TASK: release_es9xx
+            RELEASE_ES_8xx:
+              ROR_TASK: release_es8xx
+            RELEASE_ES_7xx:
+              ROR_TASK: release_es7xx
+            RELEASE_ES_6xx:
+              ROR_TASK: release_es6xx
 
-              # Translate back env vars to avoid cyclical reference :/
-              export aws_access_key_id=$var_aws_access_key_id
-              export aws_secret_access_key=$var_aws_secret_access_key
-
-              export ROR_ARTIFACTS_STORE_URL=$VAR_ROR_ARTIFACTS_STORE_URL
-              export ROR_ARTIFACTS_STORE_ACCESS_KEY_ID=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID
-              export ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET=$VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET
-
-              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
-                echo "Error: Failed to login to Docker registry"
-                exit 1
-              fi
-
-              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Releasing ROR" && ci/run-pipeline.sh
-            env:
-              var_aws_access_key_id: $(aws_access_key_id)
-              var_aws_secret_access_key: $(aws_secret_access_key)
-              VAR_ROR_ARTIFACTS_STORE_URL: $(ROR_ARTIFACTS_STORE_URL)
-              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_ID: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_ID)
-              VAR_ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET: $(ROR_ARTIFACTS_STORE_ACCESS_KEY_SECRET)
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
+  # Runs the full release flow (build + S3 upload + Docker publish + git tag) identical to
+  # RELEASE_ROR but skips the test suite. Use when the code is already validated and you
+  # need to ship immediately (e.g. after a failed release that only needs a re-run, or when
+  # tests have already passed on a prior run). Triggered manually only.
+  - stage: RELEASE_ROR_WITHOUT_TESTING
+    displayName: 'Release ROR plugins (without testing)'
+    dependsOn:
+      - DETERMINE_CI_TYPE
+      - TOOLCHAINS_VERIFY
+    condition: |
+      and(
+        succeeded('DETERMINE_CI_TYPE'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues'),
+        eq(variables['Build.Reason'], 'Manual'),
+        eq('${{ parameters.actionToPerform }}', 'release_without_testing'),
+        or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
+      )
+    jobs:
+      - job:
+        container: ror-toolchains
+        timeoutInMinutes: 180
+        steps:
+          - template: ci/azure-templates/release-ror-steps.yml
+            parameters:
+              phase: RELEASE_ROR_WITHOUT_TESTING
 
         strategy:
           maxParallel: 99
@@ -1225,117 +1038,33 @@ stages:
         succeeded('TEST'),
         eq(variables.isMaster, true),
         eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true),
-        ne(variables['Build.Reason'], 'Manual')
+        notIn(variables['Build.Reason'], 'Manual', 'Schedule')
+      )
+
+    jobs:
+      - job:
+        container: ror-toolchains
+        steps:
+          - template: ci/azure-templates/publish-mvn-steps.yml
+
+  - stage: PUBLISH_MVN_ARTIFACTS_WITHOUT_TESTING
+    displayName: 'Publish Maven artifacts (without testing)'
+    dependsOn:
+      - DETERMINE_CI_TYPE
+      - TOOLCHAINS_VERIFY
+    condition: |
+      and(
+        succeeded('DETERMINE_CI_TYPE'),
+        in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues'),
+        eq(variables['Build.Reason'], 'Manual'),
+        eq('${{ parameters.actionToPerform }}', 'release_without_testing'),
+        eq(variables.isMaster, true),
+        eq(dependencies.DETERMINE_CI_TYPE.outputs['EXTRACT_IS_RELEASE.IsRelease.value'], true)
       )
     jobs:
       - job:
+        container: ror-toolchains
         steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '17'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-          - task: Cache@2
-            displayName: 'Restore Gradle cache'
-            inputs:
-              key: 'gradle | "$(Agent.OS)" | **/gradle/wrapper/gradle-wrapper.properties | **/settings.gradle* | **/build.gradle* | **/gradle.properties'
-              restoreKeys: |
-                gradle | "$(Agent.OS)"
-                gradle
-              path: $(GRADLE_USER_HOME)
-              cacheHitVar: GRADLE_CACHE_HIT
-          # Populate the global variable mvn_status for later
-          - script: |
-              PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
-              URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
-              echo "Maven artifact URL to check: $URL"
-              MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
-              echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
-
-          - script: |
-              echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
-            condition: eq(200, variables.mvn_status)
-
-          - script: |
-              echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
-            condition: eq(404, variables.mvn_status)
-
-          - task: DownloadSecureFile@1
-            name: pgp
-            displayName: 'Download secret.pgp secret file'
-            inputs:
-              secureFile: 'secret.pgp'
-
-          - script: |
-              echo Installing $(pgp.secureFilePath) to directory...
-              sudo chown root:root $(pgp.secureFilePath)
-              sudo chmod a+r $(pgp.secureFilePath)
-              mkdir .travis
-              sudo ln -s -t .travis/ $(pgp.secureFilePath)
-              echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
-            condition: eq(404, variables.mvn_status)
-
-          - script: |
-              echo "[MVN_PUBLISH] executing ROR_TASK=$ROR_TASK"
-              export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
-              export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
-              export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
-              export GPG_KEY_ID=$VAR_GPG_KEY_ID
-              export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
-              echo ">>> ($ROR_TASK) Publishing MVN artifacts" && ci/run-pipeline.sh
-            env:
-              ROR_TASK: publish_maven_artifacts
-              VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
-              VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
-              VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
-              VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
-              VAR_GPG_KEY_ID: $(GPG_KEY_ID)
-              GRADLE_USER_HOME: $(GRADLE_USER_HOME)
-            condition: eq(404, variables.mvn_status)
-
-  - stage: PRE_BUILDS_DOCKER_IMAGE_PUBLISHING
-    displayName: 'Publish docker images for specified pre-builds'
-    dependsOn: [ ]
-    condition:
-      and(
-        succeeded(),
-        eq(variables['Build.Reason'], 'Manual'),
-        eq('${{ parameters.actionToPerform }}', 'publish_docker_image_pre_builds')
-      )
-    jobs:
-      - job: PUBLISH
-        displayName: 'Publishing'
-        timeoutInMinutes: "600"
-        steps:
-          - checkout: self
-            fetchDepth: 1
-            clean: false
-            persistCredentials: true
-          - script: |
-              set -ex
-
-              docker login -u $var_docker_registry_user -p $var_docker_registry_password
-              if ! docker login -u $var_docker_registry_user -p $var_docker_registry_password; then
-                echo "Error: Failed to login to Docker registry"
-                exit 1
-              fi
-
-              export BUILD_ROR_ES_VERSIONS="${{ parameters.preBuildVersionsForPublishingToDockerHub }}"
-
-              if [ -z "$(echo "$BUILD_ROR_ES_VERSIONS" | tr -d '[:space:],')" ]; then
-                echo "Error: No ES versions specified for publishing ROR pre-builds"
-                exit 1
-              fi
-
-              echo "[RELEASE_ROR] executing ROR_TASK = $ROR_TASK"
-              echo ">>> ($ROR_TASK) Publish docker images for specified pre-builds" && ci/run-pipeline.sh
-            timeoutInMinutes: "600"
-            condition: succeeded()
-            env:
-              ROR_TASK: publish_pre_builds_docker_images
-              var_docker_registry_user: $(DOCKER_REGISTRY_USER)
-              var_docker_registry_password: $(DOCKER_REGISTRY_PASSWORD)
+          - template: ci/azure-templates/publish-mvn-steps.yml
+            parameters:
+              phase: MVN_PUBLISH_WITHOUT_TESTING

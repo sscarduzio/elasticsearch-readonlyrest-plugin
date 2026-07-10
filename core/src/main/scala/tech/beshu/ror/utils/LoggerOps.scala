@@ -16,21 +16,22 @@
  */
 package tech.beshu.ror.utils
 
-import org.apache.logging.log4j.scala.Logger
+import tech.beshu.ror.utils.slf4j.Logger
 
 import scala.language.implicitConversions
 
 class LoggerOps(logger: Logger) {
 
   def errorEx(message: String, throwable: Throwable): Unit = {
-    if(logger.delegate.isDebugEnabled) logger.error(message, throwable)
+    if (logger.delegate.isDebugEnabled) logger.error(message, throwable)
     else logger.error(s"$message; ${throwable.getMessage}")
   }
 
   def warnEx(message: String, throwable: Throwable): Unit = {
-    if(logger.delegate.isDebugEnabled) logger.warn(message, throwable)
+    if (logger.delegate.isDebugEnabled) logger.warn(message, throwable)
     else logger.warn(s"$message; ${throwable.getMessage}")
   }
+
 }
 
 object LoggerOps {

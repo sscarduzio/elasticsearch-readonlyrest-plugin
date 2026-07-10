@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers
 
-import java.io.File
+import better.files.File
 
-private [patches] trait FileModifier {
+private[patches] trait FileModifier {
 
   def apply(file: File): Unit
 }
 
-private [patches] object NoOpFileModifier extends FileModifier {
+private[patches] object NoOpFileModifier extends FileModifier {
   override def apply(file: File): Unit = ()
 }

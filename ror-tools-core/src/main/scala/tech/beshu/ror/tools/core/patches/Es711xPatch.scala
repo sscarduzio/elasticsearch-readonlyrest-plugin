@@ -23,39 +23,57 @@ import tech.beshu.ror.tools.core.patches.internal.RorPluginDirectory
 import tech.beshu.ror.tools.core.patches.internal.filePatchers.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.actions.ModifyRestHasPrivilegesActionClass
 import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authentication.ModifyAuthenticationServiceAuthenticatorClass
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{CreateRorAuthorizationInfoProviderClass, ModifyAuthorizationServiceClass, ModifyRBACEngineClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.{ModifyApplicationPermissionClass, ModifyPolicyUtilClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{ModifySecurityClass, ModifySecurityServerTransportInterceptorClass}
-import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{ModifyRepositoriesServiceClass, ModifySnapshotsServiceClass}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.ModifyApplicationPermissionClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.authorization.{
+  CreateRorAuthorizationInfoProviderClass,
+  ModifyAuthorizationServiceClass,
+  ModifyRBACEngineClass
+}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.permissions.ModifyPolicyUtilClass
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.security.{
+  ModifySecurityClass,
+  ModifySecurityServerTransportInterceptorClass
+}
+import tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.services.{
+  ModifyRepositoriesServiceClass,
+  ModifySnapshotsServiceClass
+}
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions
 import tech.beshu.ror.tools.core.patches.internal.modifiers.securityPolicyFiles.AddAdditionalPermissions.getPropertySecurityPermission
 
 import scala.language.postfixOps
 
 private[patches] class Es711xPatch(rorPluginDirectory: RorPluginDirectory, esVersion: SemVer)
-  extends SimpleEsPatch(rorPluginDirectory, esVersion,
-    ElasticsearchJarPatchCreator(
-      ModifyPolicyUtilClass(esVersion, NonEmptyList.of(
-        getPropertySecurityPermission
-      )),
-      ModifyRepositoriesServiceClass(esVersion),
-      ModifySnapshotsServiceClass(esVersion)
-    ),
-    RorSecurityPolicyPatchCreator(
-      AddAdditionalPermissions(NonEmptyList.of(
-        getPropertySecurityPermission
-      )),
-    ),
-    XPackCoreJarPatchCreator(
-      ModifyApplicationPermissionClass,
-    ),
-    XPackSecurityJarPatchCreator(
-      CreateRorAuthorizationInfoProviderClass(esVersion),
-      ModifyAuthenticationServiceAuthenticatorClass(esVersion),
-      ModifyAuthorizationServiceClass(esVersion),
-      ModifyRBACEngineClass,
-      ModifyRestHasPrivilegesActionClass,
-      ModifySecurityClass,
-      ModifySecurityServerTransportInterceptorClass,
+    extends SimpleEsPatch(
+      rorPluginDirectory,
+      esVersion,
+      ElasticsearchJarPatchCreator(
+        ModifyPolicyUtilClass(
+          esVersion,
+          NonEmptyList.of(
+            getPropertySecurityPermission
+          )
+        ),
+        ModifyRepositoriesServiceClass(esVersion),
+        ModifySnapshotsServiceClass(esVersion)
+      ),
+      RorSecurityPolicyPatchCreator(
+        AddAdditionalPermissions(
+          NonEmptyList.of(
+            getPropertySecurityPermission
+          )
+        ),
+      ),
+      XPackCoreJarPatchCreator(
+        ModifyApplicationPermissionClass,
+      ),
+      XPackSecurityJarPatchCreator(
+        CreateRorAuthorizationInfoProviderClass(esVersion),
+        ModifyAuthenticationServiceAuthenticatorClass(esVersion),
+        ModifyAuthorizationServiceClass(esVersion),
+        ModifyRBACEngineClass,
+        ModifyRestHasPrivilegesActionClass,
+        ModifySecurityClass,
+        ModifySecurityServerTransportInterceptorClass,
+      )
     )
-  )

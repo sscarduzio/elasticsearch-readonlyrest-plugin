@@ -20,40 +20,55 @@ import cats.implicits.*
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.AuthenticationFailed
 import tech.beshu.ror.accesscontrol.blocks.mocks.MocksProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.Impersonation
 import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.SimpleAuthenticationImpersonationSupport.UserExistence
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, RequestId, User}
+import tech.beshu.ror.accesscontrol.domain.AvailableLocalUsers.Known
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Credentials, LocalUsers, RequestId, User}
 import tech.beshu.ror.syntax.*
 
 import java.util.regex.Pattern
 
-final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
-                            override implicit val userIdCaseSensitivity: CaseSensitivity,
-                            override val impersonation: Impersonation)
-  extends BasicAuthenticationRule(settings) {
+final class AuthKeyUnixRule(
+    override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+    override implicit val userIdCaseSensitivity: CaseSensitivity,
+    override val impersonation: Impersonation
+) extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyUnixRule.Name.name
 
-  override protected def compare(configuredCredentials: UnixHashedCredentials,
-                                 credentials: Credentials): Task[Boolean] = Task {
-    configuredCredentials.userId === credentials.user &&
-      configuredCredentials.from(credentials).contains(configuredCredentials)
+  override protected def compare(
+      configuredCredentials: UnixHashedCredentials,
+      credentials: Credentials
+  ): Task[Either[AuthenticationFailed, DirectlyLoggedUser]] = Task {
+    for {
+      _ <- Either.cond(
+        configuredCredentials.userId == credentials.user,
+        (),
+        AuthenticationFailed("Username mismatch")
+      )
+      _ <- Either.cond(
+        configuredCredentials.from(credentials).contains(configuredCredentials),
+        (),
+        AuthenticationFailed("Invalid password")
+      )
+    } yield DirectlyLoggedUser(credentials.user)
   }
 
-  override def exists(user: User.Id, mocksProvider: MocksProvider)
-                     (implicit requestId: RequestId): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id, mocksProvider: MocksProvider)(
+      implicit requestId: RequestId
+  ): Task[UserExistence] = Task.now {
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }
 
-  override val eligibleUsers: EligibleUsersSupport =
-    EligibleUsersSupport.Available(Set(settings.credentials.userId))
+  override val localUsers: LocalUsers = LocalUsers.Available(Known(settings.credentials.userId))
 }
 
 object AuthKeyUnixRule {
@@ -65,6 +80,7 @@ object AuthKeyUnixRule {
   private val pattern = Pattern.compile("((?:[^$]*\\$){3}[^$]*).*")
 
   final case class UnixHashedCredentials(userId: User.Id, hash: NonEmptyString) {
+
     def from(credentials: Credentials): Option[UnixHashedCredentials] = {
       roundHash(credentials).map(UnixHashedCredentials(credentials.user, _))
     }
@@ -74,6 +90,7 @@ object AuthKeyUnixRule {
       if (m.find) NonEmptyString.unapply(crypt(credentials.secret.value.value, m.group(1)))
       else None
     }
+
   }
 
 }

@@ -21,13 +21,13 @@ import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.parser.*
 import io.circe.{Decoder, Encoder}
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.providers.UuidProvider
+import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.net.HttpCookie
 import java.nio.charset.StandardCharsets
@@ -37,40 +37,40 @@ import scala.util.Try
 
 final case class RorSessionCookie(userId: User.Id, expiryDate: Instant)
 
-object RorSessionCookie extends Logging {
+object RorSessionCookie extends RequestIdAwareLogging {
   private val rorCookieName = "ReadonlyREST_Session"
 
   sealed trait ExtractingError
+
   object ExtractingError {
     case object Absent extends ExtractingError
     case object Expired extends ExtractingError
     case object Invalid extends ExtractingError
   }
 
-  def extractFrom(context: RequestContext,
-                  user: LoggedUser)
-                 (implicit clock: Clock,
-                  uuidProvider: UuidProvider,
-                  userIdEq: Eq[User.Id]): Either[ExtractingError, RorSessionCookie] = {
+  def extractFrom(context: RequestContext, user: LoggedUser)(
+      implicit clock: Clock,
+      uuidProvider: UuidProvider,
+      userIdEq: Eq[User.Id]
+  ): Either[ExtractingError, RorSessionCookie] = {
     for {
       httpCookie <- extractRorHttpCookie(context).toRight(Absent)
       cookieAndSignature <- parseRorSessionCookieAndSignature(httpCookie).left.map(_ => Invalid: ExtractingError)
       (cookie, signature) = cookieAndSignature
-      _ <- checkCookie(cookie, signature, user)
+      _ <- checkCookie(context, cookie, signature, user)
     } yield cookie
   }
 
-  def toSessionHeader(cookie: RorSessionCookie)
-                     (implicit uuidProvider: UuidProvider): Header =
+  def toSessionHeader(cookie: RorSessionCookie)(
+      implicit uuidProvider: UuidProvider
+  ): Header =
     new Header(
       setCookie,
       NonEmptyString.unsafeFrom(s"$rorCookieName=${coders.encoder((cookie, Signature.sign(cookie))).noSpaces}")
     )
 
   private def extractRorHttpCookie(context: RequestContext) = {
-    context
-      .restRequest
-      .allHeaders
+    context.restRequest.allHeaders
       .find(_.name === Header.Name.cookie)
       .flatMap(h => parseCookie(h.value.value))
       .flatMap(_.find(_.getName === rorCookieName))
@@ -83,15 +83,22 @@ object RorSessionCookie extends Logging {
     } yield decoded
   }
 
-  private def checkCookie(cookie: RorSessionCookie,
-                          signature: Signature,
-                          loggedUser: LoggedUser)
-                         (implicit clock: Clock,
-                          uuidProvider: UuidProvider,
-                          userIdEq: Eq[User.Id]): Either[ExtractingError, Unit] = {
+  private def checkCookie(
+      requestContext: RequestContext,
+      cookie: RorSessionCookie,
+      signature: Signature,
+      loggedUser: LoggedUser
+  )(
+      implicit clock: Clock,
+      uuidProvider: UuidProvider,
+      userIdEq: Eq[User.Id]
+  ): Either[ExtractingError, Unit] = {
+    implicit val requestContextImpl: RequestContext = requestContext
     val now = Instant.now(clock)
     if (cookie.userId =!= loggedUser.id) {
-      logger.warn(s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}")
+      logger.warn(
+        s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}"
+      )
       Left(Invalid)
     } else if (!signature.check(cookie)) {
       logger.warn(s"'${signature.value}' is not valid signature for ${cookie.show}")
@@ -107,37 +114,52 @@ object RorSessionCookie extends Logging {
   private def parseCookie(value: String) = Try(HttpCookie.parse(value)).map(_.asScala.toList).toOption
 
   private object coders {
+
     implicit val encoder: Encoder[(RorSessionCookie, Signature)] = {
       implicit val userIdEncoder: Encoder[User.Id] = Encoder.encodeString.contramap(_.value.value)
       implicit val expiryDateEncoder: Encoder[Instant] = Encoder.encodeLong.contramap(_.toEpochMilli)
       implicit val signatureEncoder: Encoder[Signature] = Encoder.encodeString.contramap(_.value)
-      implicit val cookieEncoder: Encoder[RorSessionCookie] = Encoder.forProduct2("user", "expire")(c => (c.userId, c.expiryDate))
+      implicit val cookieEncoder: Encoder[RorSessionCookie] =
+        Encoder.forProduct2("user", "expire")(c => (c.userId, c.expiryDate))
       Encoder.encodeTuple2[RorSessionCookie, Signature]
     }
+
     implicit val decoder: Decoder[(RorSessionCookie, Signature)] = {
       implicit val userIdDecoder: Decoder[User.Id] = DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
       implicit val expiryDateDecoder: Decoder[Instant] = Decoder.decodeLong.map(Instant.ofEpochMilli)
       implicit val signatureDecoder: Decoder[Signature] = Decoder.decodeString.map(Signature.apply)
-      implicit val cookieDecoder: Decoder[RorSessionCookie] = Decoder.forProduct2("user", "expire")(RorSessionCookie.apply)
+      implicit val cookieDecoder: Decoder[RorSessionCookie] =
+        Decoder.forProduct2("user", "expire")(RorSessionCookie.apply)
       Decoder.decodeTuple2[RorSessionCookie, Signature]
     }
+
   }
 
   private final case class Signature(value: String) extends AnyVal {
-    def check(cookie: RorSessionCookie)
-             (implicit uuidProvider: UuidProvider): Boolean = Signature.sign(cookie) === this
+
+    def check(cookie: RorSessionCookie)(
+        implicit uuidProvider: UuidProvider
+    ): Boolean = Signature.sign(cookie) === this
+
   }
 
   private object Signature {
-    def sign(cookie: RorSessionCookie)
-            (implicit uuidProvider: UuidProvider): Signature = Signature {
-      Hashing.sha256().hashString(
-        s"${uuidProvider.instanceUuid.toString}${cookie.userId.value}${cookie.expiryDate.toEpochMilli}", StandardCharsets.UTF_8
-      ).toString
+
+    def sign(cookie: RorSessionCookie)(
+        implicit uuidProvider: UuidProvider
+    ): Signature = Signature {
+      Hashing
+        .sha256()
+        .hashString(
+          s"${uuidProvider.instanceUuid.toString}${cookie.userId.value}${cookie.expiryDate.toEpochMilli}",
+          StandardCharsets.UTF_8
+        )
+        .toString
     }
 
     implicit val eq: Eq[Signature] = Eq.fromUniversalEquals
   }
 
-  private implicit val rorCookieShow: Show[RorSessionCookie] = Show.show(c => s"user: ${c.userId.value}, expiry: ${c.expiryDate.toEpochMilli}")
+  private implicit val rorCookieShow: Show[RorSessionCookie] =
+    Show.show(c => s"user: ${c.userId.value}, expiry: ${c.expiryDate.toEpochMilli}")
 }

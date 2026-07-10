@@ -36,12 +36,9 @@ class ActionTests extends AnyWordSpec with Matchers {
         )
 
         val rorActionNamesByOutdatedName =
-          expectedRorActionNamesByOutdatedName
-            .view
-            .map {
-              case (oldName, _) => (oldName, Action(oldName).value)
-            }
-            .toMap
+          expectedRorActionNamesByOutdatedName.view.map { case (oldName, _) =>
+            (oldName, Action(oldName).value)
+          }.toMap
 
         rorActionNamesByOutdatedName should be(expectedRorActionNamesByOutdatedName)
       }
@@ -58,12 +55,9 @@ class ActionTests extends AnyWordSpec with Matchers {
         )
 
         val rorActionPatternsByOutdatedNamePatterns =
-          expectedRorActionPatternsByOutdatedNamePatterns
-            .view
-            .map {
-              case (oldName, _) => (oldName, Action(oldName).value)
-            }
-            .toMap
+          expectedRorActionPatternsByOutdatedNamePatterns.view.map { case (oldName, _) =>
+            (oldName, Action(oldName).value)
+          }.toMap
 
         rorActionPatternsByOutdatedNamePatterns should be(expectedRorActionPatternsByOutdatedNamePatterns)
       }
@@ -83,15 +77,38 @@ class ActionTests extends AnyWordSpec with Matchers {
         )
 
         val result =
-          expectedPatterns
-            .view
-            .map {
-              case (pattern, _) => (pattern, Action(pattern).value)
-            }
-            .toMap
+          expectedPatterns.view.map { case (pattern, _) =>
+            (pattern, Action(pattern).value)
+          }.toMap
 
         result should be(expectedPatterns)
       }
     }
   }
+
+  "Action.isInternal" when {
+    "action starts with 'internal:'" should {
+      "be treated as internal" in {
+        Action("internal:cluster/shard/search/rewrite/context").isInternal should be(true)
+      }
+    }
+    "action is global_checkpoint_sync" should {
+      "be treated as internal" in {
+        Action("indices:admin/seq_no/global_checkpoint_sync").isInternal should be(true)
+      }
+    }
+    "action is a regular user-facing action" should {
+      "not be treated as internal" in {
+        Action("indices:data/write/bulk").isInternal should be(false)
+      }
+    }
+    "action is another seq_no action" should {
+      "not be treated as internal" in {
+        Action("indices:admin/seq_no/add_retention_lease").isInternal should be(false)
+        Action("indices:admin/seq_no/renew_retention_lease").isInternal should be(false)
+        Action("indices:admin/seq_no/remove_retention_lease").isInternal should be(false)
+      }
+    }
+  }
+
 }

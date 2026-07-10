@@ -19,29 +19,40 @@ package tech.beshu.ror.settings.ror.source
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexDocumentManager
-import tech.beshu.ror.es.IndexDocumentManager.CannotWriteToIndex
-import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{DocumentNotFound, DocumentUnreachable, IndexNotFound}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
+import tech.beshu.ror.es.services.IndexDocumentManager
+import tech.beshu.ror.es.services.IndexDocumentManager.CannotWriteToIndex
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{
+  DocumentNotFound,
+  DocumentUnreachable,
+  IndexNotFound
+}
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
-import tech.beshu.ror.settings.ror.source.IndexSettingsSource.{IndexSettingsLoadingError, IndexSettingsSavingError, LoadingError, SavingError}
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.{
+  IndexSettingsLoadingError,
+  IndexSettingsSavingError,
+  LoadingError,
+  SavingError
+}
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.source.ReadWriteSettingsSource.SettingsSavingError
 
-class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: IndexDocumentManager,
-                                                       val settingsIndex: IndexName.Full,
-                                                       documentId: String)
-  extends ReadWriteSettingsSource[SETTINGS, LoadingError, SavingError] {
+class IndexSettingsSource[SETTINGS: Encoder: Decoder](
+    indexDocumentManager: IndexDocumentManager,
+    val settingsIndex: IndexName.Full,
+    documentId: String
+) extends ReadWriteSettingsSource[SETTINGS, LoadingError, SavingError] {
 
-  override def load(): Task[Either[IndexSettingsLoadingError, SETTINGS]] = {
+  override def load()(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsLoadingError, SETTINGS]] = {
     indexDocumentManager
       .documentAsJson(settingsIndex, documentId)
       .map {
         case Right(document) =>
-          document.as[SETTINGS]
-            .left.map { decodingFailure =>
-              SettingsLoadingError.SettingsMalformed(decodingFailure.message)
-            }
+          document.as[SETTINGS].left.map { decodingFailure =>
+            SettingsLoadingError.SettingsMalformed(decodingFailure.message)
+          }
         case Left(IndexDocumentManager.IndexNotFound) =>
           settingsLoaderError(IndexNotFound)
         case Left(IndexDocumentManager.DocumentNotFound) =>
@@ -51,7 +62,9 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: Ind
       }
   }
 
-  override def save(settings: SETTINGS): Task[Either[IndexSettingsSavingError, Unit]] = {
+  override def save(settings: SETTINGS)(
+      implicit requestId: RequestId
+  ): Task[Either[IndexSettingsSavingError, Unit]] = {
     indexDocumentManager
       .saveDocumentJson(settingsIndex, documentId, settings.asJson)
       .map {
@@ -63,11 +76,13 @@ class IndexSettingsSource[SETTINGS: Encoder : Decoder](indexDocumentManager: Ind
     Left(SettingsLoadingError.SourceSpecificError(error))
 
 }
+
 object IndexSettingsSource {
 
   type IndexSettingsLoadingError = SettingsLoadingError[LoadingError]
 
   sealed trait LoadingError
+
   object LoadingError {
     case object IndexNotFound extends LoadingError
     case object DocumentNotFound extends LoadingError
@@ -77,7 +92,9 @@ object IndexSettingsSource {
   type IndexSettingsSavingError = SettingsSavingError[SavingError]
 
   sealed trait SavingError
+
   object SavingError {
     case object CannotSaveSettings extends SavingError
   }
+
 }

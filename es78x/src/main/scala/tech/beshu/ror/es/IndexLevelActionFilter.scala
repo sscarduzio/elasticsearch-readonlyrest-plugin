@@ -17,7 +17,6 @@
 package tech.beshu.ror.es
 
 import monix.execution.atomic.Atomic
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -30,46 +29,45 @@ import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.sink.{AuditSinkServiceCreator, IndexBasedAuditSinkServiceCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, AuditCluster}
-import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.*
 import tech.beshu.ror.boot.ReadonlyRest.StartingFailure
-import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.engines.Engines
-import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
-import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext.CorrelationIdFrom
+import tech.beshu.ror.es.handler.AclAwareRequestFilter.{EsChain, EsContext}
 import tech.beshu.ror.es.handler.response.ForbiddenResponse.createTestSettingsNotConfiguredResponse
 import tech.beshu.ror.es.handler.{AclAwareRequestFilter, RorNotAvailableRequestHandler}
-import tech.beshu.ror.es.services.{EsIndexDocumentManager, EsServerBasedRorClusterService, NodeClientBasedAuditSinkService, RestClientAuditSinkService}
-import tech.beshu.ror.es.utils.ThreadContextOps.createThreadContextOps
+import tech.beshu.ror.es.services.*
+import tech.beshu.ror.es.utils.ThreadContextOps.*
 import tech.beshu.ror.es.utils.{EsEnvProvider, ThreadRepo}
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.syntax.*
+import tech.beshu.ror.settings.es.EsConfigBasedRorSettings
 import tech.beshu.ror.utils.AccessControllerHelper.*
-import tech.beshu.ror.utils.{JavaConverters, RorInstanceSupplier}
+import tech.beshu.ror.utils.{RequestIdAwareLogging, RorInstanceSupplier}
 
 import java.util.function.Supplier
 import scala.util.Try
 import scala.util.control.NonFatal
 
-class IndexLevelActionFilter(clusterService: ClusterService,
-                             client: NodeClient,
-                             threadPool: ThreadPool,
-                             env: Environment,
-                             remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
-                             repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
-                             esInitListener: EsInitListener,
-                             esConfigBasedRorSettings: EsConfigBasedRorSettings)
-                            (implicit systemContext: SystemContext)
-  extends ActionFilter with Logging {
+class IndexLevelActionFilter(
+    clusterService: ClusterService,
+    client: NodeClient,
+    threadPool: ThreadPool,
+    env: Environment,
+    remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+    repositoriesServiceSupplier: Supplier[Option[RepositoriesService]],
+    esInitListener: EsInitListener,
+    esConfigBasedRorSettings: EsConfigBasedRorSettings
+)(
+    implicit systemContext: SystemContext
+) extends ActionFilter
+    with RequestIdAwareLogging {
 
-  private implicit val generator: UniqueIdentifierGenerator = systemContext.uniqueIdentifierGenerator
+  import systemContext.scheduler
 
   private val rorNotAvailableRequestHandler: RorNotAvailableRequestHandler =
     new RorNotAvailableRequestHandler(esConfigBasedRorSettings.boot)
 
   private val esEnv = EsEnvProvider.create(env)
-  private val nodeName = esEnv.esNodeSettings.nodeName
 
   private val ror = ReadonlyRest.create(
     new EsIndexDocumentManager(client),
@@ -80,15 +78,20 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
-  private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(
-      nodeName,
+  private val esServices = EsServices(
+    clusterService = new EsNodeClusterService(
+      esEnv.esNodeSettings.nodeName,
       clusterService,
       remoteClusterServiceSupplier,
       repositoriesServiceSupplier,
       client,
       threadPool
     ),
+    serviceAccountTokenService = NotAvailableServiceAccountTokenService,
+    apiKeyService = NotAvailableApiKeyService
+  )
+
+  private val aclAwareRequestFilter = new AclAwareRequestFilter(
     clusterService.getSettings,
     threadPool
   )
@@ -111,17 +114,19 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   def stop(): Unit = {
     startingTaskCancellable.cancel()
     rorInstanceState.get() match {
-      case RorInstanceStartingState.Starting =>
+      case RorInstanceStartingState.Starting          =>
       case RorInstanceStartingState.Started(instance) => instance.stop().runSyncUnsafe()
-      case RorInstanceStartingState.NotStarted(_) =>
+      case RorInstanceStartingState.NotStarted(_)     =>
     }
   }
 
-  override def apply[Request <: ActionRequest, Response <: ActionResponse](task: Task,
-                                                                           action: String,
-                                                                           request: Request,
-                                                                           listener: ActionListener[Response],
-                                                                           chain: ActionFilterChain[Request, Response]): Unit = {
+  override def apply[Request <: ActionRequest, Response <: ActionResponse](
+      task: Task,
+      action: String,
+      request: Request,
+      listener: ActionListener[Response],
+      chain: ActionFilterChain[Request, Response]
+  ): Unit = {
     doPrivileged {
       proceed(
         task,
@@ -133,17 +138,19 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     }
   }
 
-  private def proceed(task: Task,
-                      action: Action,
-                      request: ActionRequest,
-                      listener: ActionListener[ActionResponse],
-                      chain: EsChain): Unit = {
+  private def proceed(
+      task: Task,
+      action: Action,
+      request: ActionRequest,
+      listener: ActionListener[ActionResponse],
+      chain: EsChain
+  ): Unit = {
     ThreadRepo.getRorRestChannel match {
       case None =>
-        threadPool.getThreadContext.addXpackUserAuthenticationHeader(nodeName)
+        threadPool.getThreadContext.addXpackUserAuthenticationHeader(esEnv.esNodeSettings.nodeName)
         chain.continue(task, action, request, listener)
       case Some(_) if action.isInternal =>
-        threadPool.getThreadContext.addSystemAuthenticationHeader(nodeName)
+        threadPool.getThreadContext.addSystemAuthenticationHeader(esEnv.esNodeSettings.nodeName)
         chain.continue(task, action, request, listener)
       case Some(channel) =>
         val correlationId = channel.correlationId
@@ -153,18 +160,18 @@ class IndexLevelActionFilter(clusterService: ClusterService,
             new EsContext(
               channel,
               correlationId,
-              nodeName,
+              esEnv.esNodeSettings,
               task,
               action,
               request,
               rorActionListener,
               chain,
-              JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders).toCovariantSet
+              EsServices.withCaching(esServices),
             )
           )
         } recover {
           case e: Exception if NonFatal(e) => rorActionListener.onFailure(e)
-          case NonFatal(t) => rorActionListener.onFailure(new Exception(t))
+          case NonFatal(t)                 => rorActionListener.onFailure(new Exception(t))
         }
     }
   }
@@ -186,27 +193,36 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def handleRequest(engines: Engines, esContext: EsContext): Unit = {
+    threadPool.getThreadContext.setupContextPropagation()
     aclAwareRequestFilter
       .handle(engines, esContext)
       .runAsync {
-        case Right(result) => handleResult(esContext, result)
-        case Left(ex) => esContext.listener.onFailure(new Exception(ex))
+        case Right(Right(()))                                                          =>
+        case Right(Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured)) =>
+          handleImpersonatorsEngineNotConfigured(esContext)
+        case Left(ex) =>
+          esContext.listener.onFailure(new Exception(ex))
       }
   }
 
-  private def handleResult(esContext: EsContext, result: Either[AclAwareRequestFilter.Error, Unit]): Unit = result match {
-    case Right(_) =>
-    case Left(AclAwareRequestFilter.Error.ImpersonatorsEngineNotConfigured) =>
-      esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
+  private def handleImpersonatorsEngineNotConfigured(esContext: EsContext): Unit = {
+    noRequestIdLogger.info(
+      s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.request().path().show} (impersonated) request because no Test Settings are configured"
+    )
+    esContext.listener.onFailure(createTestSettingsNotConfiguredResponse())
   }
 
   private def handleRorNotReadyYet(esContext: EsContext): Unit = {
-    logger.warn(s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet")
+    noRequestIdLogger.warn(
+      s"[${esContext.correlationId.value.show}] Cannot handle the request ${esContext.channel.restRequest.path.show} because ReadonlyREST hasn't started yet"
+    )
     rorNotAvailableRequestHandler.handleRorNotReadyYet(esContext)
   }
 
   private def handleRorFailedToStart(esContext: EsContext): Unit = {
-    logger.error(s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start")
+    noRequestIdLogger.error(
+      s"[${esContext.correlationId.value.show}] Cannot handle the ${esContext.channel.restRequest.path.show} request because ReadonlyREST failed to start"
+    )
     rorNotAvailableRequestHandler.handleRorFailedToStart(esContext)
   }
 
@@ -226,12 +242,14 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   }
 
   private def logAndSetStartingFailureState(failure: StartingFailure): Unit = {
-    logger.error(s"ROR starting failure: ${failure.message}", failure.throwable.orNull)
+    noRequestIdLogger.error(s"ROR starting failure: ${failure.message}", failure.throwable.orNull)
     rorInstanceState.set(RorInstanceStartingState.NotStarted(failure))
   }
+
 }
 
 private sealed trait RorInstanceStartingState
+
 private object RorInstanceStartingState {
   case object Starting extends RorInstanceStartingState
   final case class Started(instance: RorInstance) extends RorInstanceStartingState

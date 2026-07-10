@@ -17,11 +17,13 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, HCursor, Json}
 import tech.beshu.ror.accesscontrol.blocks.definitions.*
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{GroupsConfig, Name, SignatureCheckMethod}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, Header, Jwt}
+import tech.beshu.ror.accesscontrol.domain.AuthorizationTokenDef.AllowedPrefix.StrictlyDefined
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, AuthorizationTokenPrefix, Header, Jwt}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.DefinitionsLevelCreationError
@@ -29,30 +31,38 @@ import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreC
 import tech.beshu.ror.accesscontrol.factory.decoders.common.*
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.*
-import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.fromError
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureUtils.decodingFailureFrom
 import tech.beshu.ror.accesscontrol.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.implicits.*
 
 object JwtDefinitionsDecoder {
 
-  def instance(httpClientFactory: HttpClientsFactory,
-               variableCreator: RuntimeResolvableVariableCreator): ADecoder[Id, Definitions[JwtDef]] = {
-    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, variableCreator))
+  def instance(
+      httpClientFactory: HttpClientsFactory,
+      variableCreator: RuntimeResolvableVariableCreator
+  ): ADecoder[Id, Definitions[JwtDef]] = {
+    implicit val decoder: SyncDecoder[JwtDef] =
+      SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, variableCreator))
     DefinitionsBaseDecoder.instance[Id, JwtDef]("jwt")
   }
 
   implicit val jwtDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
-                            variableCreator: RuntimeResolvableVariableCreator): Decoder[JwtDef] = {
+  private def jwtDefDecoder(
+      implicit httpClientFactory: HttpClientsFactory,
+      variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder[JwtDef] = {
     SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("name").as[Name]
           checkMethod <- signatureCheckMethod(c)
-          headerName <- c.downField("header_name").as[Option[Header.Name]]
-          authTokenPrefix <- c.downField("header_prefix").as[Option[String]]
+          headerNameOpt <- c.downField("header_name").as[Option[Header.Name]]
+          headerName = headerNameOpt.getOrElse(Header.Name.authorization)
+          authTokenPrefixOpt <- c.downField("header_prefix").as[Option[AuthorizationTokenPrefix]]
+          authTokenPrefix = authTokenPrefixOpt.getOrElse(AuthorizationTokenPrefix.bearer)
+          authorizationTokenDef = AuthorizationTokenDef(headerName, allowedPrefix = StrictlyDefined(authTokenPrefix))
           userClaimOpt <- c.downField("user_claim").as[Option[Jwt.ClaimName]]
           groupsConfigOpt <- c.as[Option[GroupsConfig]](groupsConfigOptDecoder)
           jwtDef <- (userClaimOpt, groupsConfigOpt) match {
@@ -60,10 +70,7 @@ object JwtDefinitionsDecoder {
               Right(
                 AuthJwtDef(
                   id = name,
-                  authorizationTokenDef = AuthorizationTokenDef(
-                    headerName.getOrElse(Header.Name.authorization),
-                    authTokenPrefix.getOrElse("Bearer ")
-                  ),
+                  authorizationTokenDef = authorizationTokenDef,
                   checkMethod = checkMethod,
                   userClaim = userClaim,
                   groupsConfig = groupsConfig,
@@ -73,10 +80,7 @@ object JwtDefinitionsDecoder {
               Right(
                 AuthenticationJwtDef(
                   id = name,
-                  authorizationTokenDef = AuthorizationTokenDef(
-                    headerName.getOrElse(Header.Name.authorization),
-                    authTokenPrefix.getOrElse("Bearer ")
-                  ),
+                  authorizationTokenDef = authorizationTokenDef,
                   checkMethod = checkMethod,
                   userClaim = userClaim,
                 ): JwtDef
@@ -85,17 +89,15 @@ object JwtDefinitionsDecoder {
               Right(
                 AuthorizationJwtDef(
                   id = name,
-                  authorizationTokenDef = AuthorizationTokenDef(
-                    headerName.getOrElse(Header.Name.authorization),
-                    authTokenPrefix.getOrElse("Bearer ")
-                  ),
+                  authorizationTokenDef = authorizationTokenDef,
                   checkMethod = checkMethod,
                   groupsConfig = groupsConfig,
                 ): JwtDef
               )
             case (None, None) =>
-              val message = s"JWT definition ${name.show} must contain 'user_claim' setting to be used with jwt_authentication rule, 'group_ids_claim' to be used with jwt_authorization rule, or both of them in order to be used with jwt_auth rule."
-              Left(fromError(CoreCreationError.DefinitionsLevelCreationError(Message(message))))
+              val message =
+                s"JWT definition ${name.show} must contain 'user_claim' setting to be used with jwt_authentication rule, 'group_ids_claim' to be used with jwt_authorization rule, or both of them in order to be used with jwt_auth rule."
+              Left(decodingFailureFrom(CoreCreationError.DefinitionsLevelCreationError(Message(message))))
           }
         } yield jwtDef
       }
@@ -122,13 +124,13 @@ object JwtDefinitionsDecoder {
       ES256       EC
       ES384       EC
       ES512       EC
-    */
-  private def signatureCheckMethod(c: HCursor)
-                                  (implicit httpClientFactory: HttpClientsFactory,
-                                   variableCreator: RuntimeResolvableVariableCreator): Decoder.Result[SignatureCheckMethod] = {
+   */
+  private def signatureCheckMethod(c: HCursor)(
+      implicit httpClientFactory: HttpClientsFactory,
+      variableCreator: RuntimeResolvableVariableCreator
+  ): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
-      DecoderHelpers
-        .decodeStringLikeWithSingleVarResolvedInPlace
+      DecoderHelpers.decodeStringLikeWithSingleVarResolvedInPlace
         .tryDecode(c.downField("signature_key"))
 
     for {
@@ -136,11 +138,19 @@ object JwtDefinitionsDecoder {
       checkMethod <- alg.map(_.toUpperCase) match {
         case Some("NONE") =>
           Decoder[ExternalAuthenticationService]
-            .tryDecode(c
-              .downField("external_validator")
-              .withFocus(_.mapObject(_.add("name", Json.fromString("jwt"))))
+            .tryDecode(
+              c
+                .downField("external_validator")
+                .withFocus(_.mapObject(_.add("name", Json.fromString("jwt"))))
             )
-            .left.map(_.overrideDefaultErrorWith(DefinitionsLevelCreationError(Message("External validator has to be defined when signature algorithm is None"))))
+            .left
+            .map(
+              _.overrideDefaultErrorWith(
+                DefinitionsLevelCreationError(
+                  Message("External validator has to be defined when signature algorithm is None")
+                )
+              )
+            )
             .map(SignatureCheckMethod.NoCheck.apply)
         case Some("HMAC") | None =>
           decodeSignatureKey
@@ -149,31 +159,53 @@ object JwtDefinitionsDecoder {
         case Some("RSA") =>
           decodeSignatureKey
             .flatMap { key =>
-              keyStringToPublicKey("RSA", key).toEither
-                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
+              keyStringToPublicKey("RSA", key).toEither.left.map(_ =>
+                decodingFailureFrom(
+                  CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))
+                )
+              )
             }
             .map(SignatureCheckMethod.Rsa.apply)
         case Some("EC") =>
           decodeSignatureKey
             .flatMap { key =>
-              keyStringToPublicKey("EC", key).toEither
-                .left.map(_ => fromError(CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))))
+              keyStringToPublicKey("EC", key).toEither.left.map(_ =>
+                decodingFailureFrom(
+                  CoreCreationError.DefinitionsLevelCreationError(Message(s"Key '${key.show}' seems to be invalid"))
+                )
+              )
             }
             .map(SignatureCheckMethod.Ec.apply)
         case Some(unknown) =>
-          Left(fromError(
-            DefinitionsLevelCreationError(Message(s"Unrecognised algorithm family '${unknown.show}'. Should be either of: HMAC, EC, RSA, NONE"))
-          ))
+          Left(
+            decodingFailureFrom(
+              DefinitionsLevelCreationError(
+                Message(s"Unrecognised algorithm family '${unknown.show}'. Should be either of: HMAC, EC, RSA, NONE")
+              )
+            )
+          )
       }
     } yield checkMethod
   }
 
   private implicit val claimDecoder: Decoder[Jwt.ClaimName] = jsonPathDecoder.map(Jwt.ClaimName.apply)
 
-  val groupsConfigOptDecoder: Decoder[Option[GroupsConfig]] = Decoder.instance { c =>
+  private val groupsConfigOptDecoder: Decoder[Option[GroupsConfig]] = Decoder.instance { c =>
     for {
-      groupIdsClaim <- c.downFieldAlternatives("roles_claim", "groups_claim", "group_ids_claim").as[Option[Jwt.ClaimName]]
+      groupIdsClaim <- c
+        .downFieldAlternatives("roles_claim", "groups_claim", "group_ids_claim")
+        .as[Option[Jwt.ClaimName]]
       groupNamesClaim <- c.downField("group_names_claim").as[Option[Jwt.ClaimName]]
     } yield groupIdsClaim.map(GroupsConfig(_, groupNamesClaim))
   }
+
+  private implicit val authorizationTokenPrefixDecoder: Decoder[AuthorizationTokenPrefix] = {
+    Decoder.decodeString.map { str =>
+      NonEmptyString.from(str.stripTrailing) match {
+        case Right(value) => AuthorizationTokenPrefix.Exact(value)
+        case Left(value)  => AuthorizationTokenPrefix.NoPrefix
+      }
+    }
+  }
+
 }

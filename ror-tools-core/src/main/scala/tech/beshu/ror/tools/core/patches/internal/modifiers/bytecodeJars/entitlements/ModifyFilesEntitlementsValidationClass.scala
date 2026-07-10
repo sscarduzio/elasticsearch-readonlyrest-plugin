@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.tools.core.patches.internal.modifiers.bytecodeJars.entitlements
 
+import better.files.File
 import just.semver.SemVer
 import org.objectweb.asm.*
 import tech.beshu.ror.tools.core.patches.internal.modifiers.BytecodeJarModifier
 import tech.beshu.ror.tools.core.utils.EsUtil.{es8182, es8190, es900, es910}
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 
 /**
  * Modifies the FilesEntitlementsValidation class to bypass forbidden file path validation
@@ -29,17 +30,16 @@ import java.io.{File, InputStream}
  * requires access to certain paths that would otherwise be blocked by Elasticsearch's
  * security entitlements system in versions 8.18.2+
  */
-private[patches] class ModifyFilesEntitlementsValidationClass private(esVersion: SemVer)
-  extends BytecodeJarModifier {
+private[patches] class ModifyFilesEntitlementsValidationClass private (esVersion: SemVer) extends BytecodeJarModifier {
 
   override def apply(jar: File): Unit = {
     modifyFileInJar(
       jar = jar,
       filePathString = esVersion match {
-        case v if v >= es910 => "org/elasticsearch/entitlement/bootstrap/FilesEntitlementsValidation.class"
-        case v if v >= es900 => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
+        case v if v >= es910  => "org/elasticsearch/entitlement/bootstrap/FilesEntitlementsValidation.class"
+        case v if v >= es900  => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
         case v if v >= es8190 => "org/elasticsearch/entitlement/bootstrap/FilesEntitlementsValidation.class"
-        case v => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
+        case v                => "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation.class"
       },
       processFileContent = dontValidateForbiddenPathsInCaseOfRorPlugin
     )
@@ -52,14 +52,15 @@ private[patches] class ModifyFilesEntitlementsValidationClass private(esVersion:
     writer.toByteArray
   }
 
-  private class EsClassVisitor(writer: ClassWriter)
-    extends ClassVisitor(Opcodes.ASM9, writer) {
+  private class EsClassVisitor(writer: ClassWriter) extends ClassVisitor(Opcodes.ASM9, writer) {
 
-    override def visitMethod(access: Int,
-                             name: String,
-                             descriptor: String,
-                             signature: String,
-                             exceptions: Array[String]): MethodVisitor = {
+    override def visitMethod(
+        access: Int,
+        name: String,
+        descriptor: String,
+        signature: String,
+        exceptions: Array[String]
+    ): MethodVisitor = {
       name match {
         case "validateReadFilesEntitlements" =>
           esVersion match {
@@ -74,10 +75,11 @@ private[patches] class ModifyFilesEntitlementsValidationClass private(esVersion:
           super.visitMethod(access, name, descriptor, signature, exceptions)
       }
     }
+
   }
 
   private class DontValidateForbiddenPathsInCaseOfRorPlugin(underlying: MethodVisitor)
-    extends MethodVisitor(Opcodes.ASM9) {
+      extends MethodVisitor(Opcodes.ASM9) {
 
     override def visitCode(): Unit = {
       underlying.visitCode()
@@ -106,15 +108,32 @@ private[patches] class ModifyFilesEntitlementsValidationClass private(esVersion:
       underlying.visitJumpInsn(Opcodes.IFNE, label4)
       underlying.visitVarInsn(Opcodes.ALOAD, 2)
       underlying.visitVarInsn(Opcodes.ALOAD, 5)
-      underlying.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "org/elasticsearch/entitlement/runtime/policy/FileAccessTree", "canRead", "(Ljava/nio/file/Path;)Z", false)
+      underlying.visitMethodInsn(
+        Opcodes.INVOKEVIRTUAL,
+        "org/elasticsearch/entitlement/runtime/policy/FileAccessTree",
+        "canRead",
+        "(Ljava/nio/file/Path;)Z",
+        false
+      )
       underlying.visitJumpInsn(Opcodes.IFEQ, label4)
       val label5 = new Label()
       underlying.visitLabel(label5)
       underlying.visitVarInsn(Opcodes.ALOAD, 0)
       underlying.visitVarInsn(Opcodes.ALOAD, 1)
       underlying.visitVarInsn(Opcodes.ALOAD, 5)
-      underlying.visitFieldInsn(Opcodes.GETSTATIC, "org/elasticsearch/entitlement/runtime/policy/entitlements/FilesEntitlement$Mode", "READ", "Lorg/elasticsearch/entitlement/runtime/policy/entitlements/FilesEntitlement$Mode;")
-      underlying.visitMethodInsn(Opcodes.INVOKESTATIC, "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation", "buildValidationException", "(Ljava/lang/String;Ljava/lang/String;Ljava/nio/file/Path;Lorg/elasticsearch/entitlement/runtime/policy/entitlements/FilesEntitlement$Mode;)Ljava/lang/IllegalArgumentException;", false)
+      underlying.visitFieldInsn(
+        Opcodes.GETSTATIC,
+        "org/elasticsearch/entitlement/runtime/policy/entitlements/FilesEntitlement$Mode",
+        "READ",
+        "Lorg/elasticsearch/entitlement/runtime/policy/entitlements/FilesEntitlement$Mode;"
+      )
+      underlying.visitMethodInsn(
+        Opcodes.INVOKESTATIC,
+        "org/elasticsearch/entitlement/initialization/FilesEntitlementsValidation",
+        "buildValidationException",
+        "(Ljava/lang/String;Ljava/lang/String;Ljava/nio/file/Path;Lorg/elasticsearch/entitlement/runtime/policy/entitlements/FilesEntitlement$Mode;)Ljava/lang/IllegalArgumentException;",
+        false
+      )
       underlying.visitInsn(Opcodes.ATHROW)
       underlying.visitLabel(label4)
       underlying.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
@@ -127,15 +146,34 @@ private[patches] class ModifyFilesEntitlementsValidationClass private(esVersion:
       underlying.visitLocalVariable("forbiddenPath", "Ljava/nio/file/Path;", null, label3, label4, 5)
       underlying.visitLocalVariable("componentName", "Ljava/lang/String;", null, label0, label6, 0)
       underlying.visitLocalVariable("moduleName", "Ljava/lang/String;", null, label0, label6, 1)
-      underlying.visitLocalVariable("fileAccessTree", "Lorg/elasticsearch/entitlement/runtime/policy/FileAccessTree;", null, label0, label6, 2)
-      underlying.visitLocalVariable("readForbiddenPaths", "Ljava/util/Set;", "Ljava/util/Set<Ljava/nio/file/Path;>;", label0, label6, 3)
+      underlying.visitLocalVariable(
+        "fileAccessTree",
+        "Lorg/elasticsearch/entitlement/runtime/policy/FileAccessTree;",
+        null,
+        label0,
+        label6,
+        2
+      )
+      underlying.visitLocalVariable(
+        "readForbiddenPaths",
+        "Ljava/util/Set;",
+        "Ljava/util/Set<Ljava/nio/file/Path;>;",
+        label0,
+        label6,
+        3
+      )
       underlying.visitMaxs(4, 6)
       underlying.visitEnd()
     }
+
   }
 
 }
 
 object ModifyFilesEntitlementsValidationClass {
-  def apply(esVersion: SemVer): ModifyFilesEntitlementsValidationClass = new ModifyFilesEntitlementsValidationClass(esVersion)
+
+  def apply(esVersion: SemVer): ModifyFilesEntitlementsValidationClass = new ModifyFilesEntitlementsValidationClass(
+    esVersion
+  )
+
 }

@@ -21,14 +21,22 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause.NotAuthorized
+import tech.beshu.ror.accesscontrol.blocks.Decision.{Denied, Permitted}
+import tech.beshu.ror.accesscontrol.blocks.metadata.BlockMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.http.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.rules.tranport.HostnameResolver
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{SupportedVariablesFunctions, TransformationCompiler}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{
+  RuntimeMultiResolvableVariable,
+  RuntimeResolvableVariableCreator
+}
+import tech.beshu.ror.accesscontrol.blocks.variables.transformation.{
+  SupportedVariablesFunctions,
+  TransformationCompiler
+}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.MockOnce
@@ -122,10 +130,12 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
         }
       }
       "hostname can be resolved when rule is created but not during request handling" in {
-        val mockedResolver = create(NonEmptyList.of(
-          MockOnce("es-pub7", Unresolvable),
-          MockOnce("google.com", ResolvedIps("192.168.0.1/24"))
-        ))
+        val mockedResolver = create(
+          NonEmptyList.of(
+            MockOnce("es-pub7", Unresolvable),
+            MockOnce("google.com", ResolvedIps("192.168.0.1/24"))
+          )
+        )
         assertNotMatchRule(
           settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("es-pub7"))),
           xForwardedForHeaderValue = Some("google.com"),
@@ -135,34 +145,41 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
     }
   }
 
-  private def assertMatchRule(settings: XForwardedForRule.Settings,
-                              xForwardedForHeaderValue: Option[String],
-                              hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver) =
+  private def assertMatchRule(
+      settings: XForwardedForRule.Settings,
+      xForwardedForHeaderValue: Option[String],
+      hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver
+  ) =
     assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = true)
 
-  private def assertNotMatchRule(settings: XForwardedForRule.Settings,
-                                 xForwardedForHeaderValue: Option[String],
-                                 hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver) =
+  private def assertNotMatchRule(
+      settings: XForwardedForRule.Settings,
+      xForwardedForHeaderValue: Option[String],
+      hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver
+  ) =
     assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = false)
 
-  private def assertRule(settings: XForwardedForRule.Settings,
-                         xForwardedForHeaderValue: Option[String],
-                         hostnameResolver: HostnameResolver,
-                         isMatched: Boolean) = {
+  private def assertRule(
+      settings: XForwardedForRule.Settings,
+      xForwardedForHeaderValue: Option[String],
+      hostnameResolver: HostnameResolver,
+      isMatched: Boolean
+  ) = {
     val rule = new XForwardedForRule(settings, hostnameResolver)
     val requestContext = xForwardedForHeaderValue match {
       case Some(value) => MockRequestContext.indices.withHeaders(headerFrom("X-Forwarded-For" -> value))
-      case None => MockRequestContext.indices
+      case None        => MockRequestContext.indices
     }
-    val blockContext = CurrentUserMetadataRequestBlockContext(
+    val blockContext = UserMetadataRequestBlockContext(
+      block = mock[Block],
       requestContext = requestContext,
-      userMetadata = UserMetadata.empty,
+      blockMetadata = BlockMetadata.empty,
       responseHeaders = Set.empty,
       responseTransformations = List.empty
     )
     rule.check(blockContext).runSyncUnsafe(10 seconds) shouldBe {
-      if (isMatched) Fulfilled(blockContext)
-      else Rejected()
+      if (isMatched) Permitted(blockContext)
+      else Denied(NotAuthorized)
     }
   }
 
@@ -175,5 +192,8 @@ class XForwardedForRuleTests extends AnyWordSpec with MockHostnameResolver {
   }
 
   private val variableCreator: RuntimeResolvableVariableCreator =
-    new RuntimeResolvableVariableCreator(TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty))
+    new RuntimeResolvableVariableCreator(
+      TransformationCompiler.withAliases(SupportedVariablesFunctions.default, Seq.empty)
+    )
+
 }

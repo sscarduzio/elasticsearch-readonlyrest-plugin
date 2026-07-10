@@ -16,119 +16,115 @@
  */
 package tech.beshu.ror.unit.utils
 
+import cats.implicits.*
 import io.circe.Json
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import squants.information.{Bytes, Kilobytes}
-import tech.beshu.ror.utils.TestsUtils.*
+import squants.information.{Bytes, Kilobytes, Megabytes}
+import tech.beshu.ror.implicits.*
+import tech.beshu.ror.settings.ror.RawRorSettingsYamlParser
 import tech.beshu.ror.utils.yaml.YamlParser
 
 class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
 
+  private val settingsYamlParser = new RawRorSettingsYamlParser(Megabytes(1))
+
   "Yaml parser" should {
     "return parsing failure error" when {
       "ROR settings has duplicated 'readonlyrest' section" in {
-        val result = rorSettingFrom(
-          """
-            |readonlyrest:
-            |
-            |    access_control_rules:
-            |
-            |    - name: "CONTAINER ADMIN1"
-            |      verbosity: "error"
-            |      type: "allow"
-            |      auth_key: "admin:container"
-            |
-            |readonlyrest:
-            |
-            |    access_control_rules:
-            |
-            |    - name: "CONTAINER ADMIN2"
-            |      verbosity: "error"
-            |      type: "allow"
-            |      auth_key: "admin:container"
-            |
-            |""".stripMargin)
+        val result = settingsYamlParser.fromString("""
+                                                     |readonlyrest:
+                                                     |
+                                                     |    access_control_rules:
+                                                     |
+                                                     |    - name: "CONTAINER ADMIN1"
+                                                     |      verbosity: "error"
+                                                     |      type: "allow"
+                                                     |      auth_key: "admin:container"
+                                                     |
+                                                     |readonlyrest:
+                                                     |
+                                                     |    access_control_rules:
+                                                     |
+                                                     |    - name: "CONTAINER ADMIN2"
+                                                     |      verbosity: "error"
+                                                     |      type: "allow"
+                                                     |      auth_key: "admin:container"
+                                                     |
+                                                     |""".stripMargin)
 
-        inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'readonlyrest'")
+        inside(result) { case Left(error) =>
+          error.show should be("Settings content is malformed. Details: Duplicated key: 'readonlyrest'")
         }
       }
       "ROR settings has duplicated 'access_control_rules' section" in {
-        val result = rorSettingFrom(
-          """
-            |readonlyrest:
-            |
-            |    access_control_rules:
-            |
-            |    - name: "CONTAINER ADMIN1"
-            |      verbosity: "error"
-            |      type: "allow"
-            |      auth_key: "admin:container"
-            |
-            |    access_control_rules:
-            |
-            |    - name: "CONTAINER ADMIN2"
-            |      verbosity: "error"
-            |      type: "allow"
-            |      auth_key: "admin:container"
-            |
-            |""".stripMargin)
+        val result = settingsYamlParser.fromString("""
+                                                     |readonlyrest:
+                                                     |
+                                                     |    access_control_rules:
+                                                     |
+                                                     |    - name: "CONTAINER ADMIN1"
+                                                     |      verbosity: "error"
+                                                     |      type: "allow"
+                                                     |      auth_key: "admin:container"
+                                                     |
+                                                     |    access_control_rules:
+                                                     |
+                                                     |    - name: "CONTAINER ADMIN2"
+                                                     |      verbosity: "error"
+                                                     |      type: "allow"
+                                                     |      auth_key: "admin:container"
+                                                     |
+                                                     |""".stripMargin)
 
-        inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'access_control_rules'")
+        inside(result) { case Left(error) =>
+          error.show should be("Settings content is malformed. Details: Duplicated key: 'access_control_rules'")
         }
       }
       "ROR settings has duplicated definition" in {
-        val result = rorSettingFrom(
-          """
-            |readonlyrest:
-            |
-            |    access_control_rules:
-            |
-            |    - name: "CONTAINER ADMIN1"
-            |      verbosity: "error"
-            |      type: "allow"
-            |      auth_key: "admin:container"
-            |
-            |    proxy_auth_configs:
-            |
-            |    - name: "proxy1"
-            |      user_id_header: "X-Auth-Token1"
-            |
-            |    proxy_auth_configs:
-            |
-            |    - name: "proxy2"
-            |      user_id_header: "X-Auth-Token2"
-            |
-            |""".stripMargin)
+        val result = settingsYamlParser.fromString("""
+                                                     |readonlyrest:
+                                                     |
+                                                     |    access_control_rules:
+                                                     |
+                                                     |    - name: "CONTAINER ADMIN1"
+                                                     |      verbosity: "error"
+                                                     |      type: "allow"
+                                                     |      auth_key: "admin:container"
+                                                     |
+                                                     |    proxy_auth_configs:
+                                                     |
+                                                     |    - name: "proxy1"
+                                                     |      user_id_header: "X-Auth-Token1"
+                                                     |
+                                                     |    proxy_auth_configs:
+                                                     |
+                                                     |    - name: "proxy2"
+                                                     |      user_id_header: "X-Auth-Token2"
+                                                     |
+                                                     |""".stripMargin)
 
-        inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'proxy_auth_configs'")
+        inside(result) { case Left(error) =>
+          error.show should be("Settings content is malformed. Details: Duplicated key: 'proxy_auth_configs'")
         }
       }
       "block has duplicated rule" in {
-        val result = rorSettingFrom(
-          """
-            |readonlyrest:
-            |
-            |    access_control_rules:
-            |
-            |    - name: "CONTAINER ADMIN - updated1"
-            |      verbosity: "error"
-            |      type: "allow"
-            |      auth_key: "admin:container"
-            |      auth_key: "admin2:container2"
-            |
-            |""".stripMargin)
+        val result = settingsYamlParser.fromString("""
+                                                     |readonlyrest:
+                                                     |
+                                                     |    access_control_rules:
+                                                     |
+                                                     |    - name: "CONTAINER ADMIN - updated1"
+                                                     |      verbosity: "error"
+                                                     |      type: "allow"
+                                                     |      auth_key: "admin:container"
+                                                     |      auth_key: "admin2:container2"
+                                                     |
+                                                     |""".stripMargin)
 
-        inside(result) {
-          case Left(failure) =>
-            failure.message should be("Duplicated key: 'auth_key'")
+        inside(result) { case Left(error) =>
+          error.show should be("Settings content is malformed. Details: Duplicated key: 'auth_key'")
         }
       }
     }
@@ -160,10 +156,10 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
             |
             |""".stripMargin
 
-        val result = rorSettingFrom(rawConfig)
+        val result = settingsYamlParser.fromString(rawConfig)
 
-        inside(result) {
-          case Right(settings) => settings.rawYaml shouldBe rawConfig
+        inside(result) { case Right(settings) =>
+          settings.rawYaml shouldBe rawConfig
         }
       }
     }
@@ -197,9 +193,8 @@ class RorYamlParserTests extends AnyWordSpec with Inside with Matchers {
           |""".stripMargin
 
       val result = new YamlParser(Some(Bytes(10))).parse(yamlContent)
-      inside(result) {
-        case Left(parsingFailure) =>
-          parsingFailure.message should be("The incoming YAML document exceeds the limit: 10 code points.")
+      inside(result) { case Left(error) =>
+        error.show should be("ParsingFailure: The incoming YAML document exceeds the limit: 10 code points.")
       }
     }
   }

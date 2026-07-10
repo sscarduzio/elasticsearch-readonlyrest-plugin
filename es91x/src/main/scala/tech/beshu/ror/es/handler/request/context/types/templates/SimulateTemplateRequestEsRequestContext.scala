@@ -20,11 +20,14 @@ import cats.data.NonEmptyList
 import cats.implicits.*
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateResponse, SimulateTemplateAction}
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{
+  AddingIndexTemplateAndGetAllowedOnes,
+  GettingIndexTemplates
+}
 import tech.beshu.ror.accesscontrol.domain.{ClusterIndexName, TemplateNamePattern, TemplateOperation}
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.handler.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.handler.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.handler.request.context.ModificationResult
@@ -32,38 +35,45 @@ import tech.beshu.ror.es.handler.request.context.types.BaseTemplatesEsRequestCon
 import tech.beshu.ror.es.handler.request.context.types.templates.SimulateIndexTemplateRequestEsRequestContext.TunedSimulateIndexTemplateResponse
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.ScalaOps.*
-import org.joor.Reflect.on
 
 object SimulateTemplateRequestEsRequestContext {
-  def from(actionRequest: SimulateTemplateAction.Request,
-           esContext: EsContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool)
-          (implicit generator: UniqueIdentifierGenerator): SimulateTemplateRequestEsRequestContext[_ <: TemplateOperation] = {
+
+  def from(actionRequest: SimulateTemplateAction.Request, esContext: EsContext, threadPool: ThreadPool)(
+      implicit generator: UniqueIdentifierGenerator
+  ): SimulateTemplateRequestEsRequestContext[_ <: TemplateOperation] = {
     Option(actionRequest.getTemplateName).flatMap(TemplateNamePattern.fromString) match {
       case Some(templateName) =>
-        new SimulateExistingTemplateRequestEsRequestContext(templateName, actionRequest, esContext, clusterService, threadPool)
+        new SimulateExistingTemplateRequestEsRequestContext(templateName, actionRequest, esContext, threadPool)
       case None =>
-        new SimulateNewTemplateRequestEsRequestContext(actionRequest, esContext, clusterService, threadPool)
+        new SimulateNewTemplateRequestEsRequestContext(actionRequest, esContext, threadPool)
     }
   }
+
 }
 
-class SimulateNewTemplateRequestEsRequestContext(actionRequest: SimulateTemplateAction.Request,
-                                                 esContext: EsContext,
-                                                 clusterService: RorClusterService,
-                                                 override val threadPool: ThreadPool)
-  extends SimulateTemplateRequestEsRequestContext[AddingIndexTemplateAndGetAllowedOnes](
-    actionRequest, esContext, clusterService, threadPool
-  ) {
+class SimulateNewTemplateRequestEsRequestContext(
+    actionRequest: SimulateTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends SimulateTemplateRequestEsRequestContext[AddingIndexTemplateAndGetAllowedOnes](
+      actionRequest,
+      esContext,
+      threadPool
+    ) {
 
-  override protected def templateOperationFrom(actionRequest: SimulateTemplateAction.Request): AddingIndexTemplateAndGetAllowedOnes = {
+  override protected def templateOperationFrom(
+      actionRequest: SimulateTemplateAction.Request
+  ): AddingIndexTemplateAndGetAllowedOnes = {
     Option(actionRequest.getIndexTemplateRequest)
       .map { newTemplateRequest =>
         PutComposableIndexTemplateEsRequestContext.templateOperationFrom(newTemplateRequest) match {
-          case Right(operation) => AddingIndexTemplateAndGetAllowedOnes(
-            operation.name, operation.patterns, operation.aliases, List(TemplateNamePattern.wildcard)
-          )
+          case Right(operation) =>
+            AddingIndexTemplateAndGetAllowedOnes(
+              operation.name,
+              operation.patterns,
+              operation.aliases,
+              List(TemplateNamePattern.wildcard)
+            )
           case Left(msg) =>
             throw RequestSeemsToBeInvalid[SimulateTemplateAction.Request](msg)
         }
@@ -80,19 +90,22 @@ class SimulateNewTemplateRequestEsRequestContext(actionRequest: SimulateTemplate
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
+
 }
 
-class SimulateExistingTemplateRequestEsRequestContext(existingTemplateName: TemplateNamePattern,
-                                                      actionRequest: SimulateTemplateAction.Request,
-                                                      esContext: EsContext,
-                                                      clusterService: RorClusterService,
-                                                      override val threadPool: ThreadPool)
-                                                     (implicit generator: UniqueIdentifierGenerator)
-  extends SimulateTemplateRequestEsRequestContext[GettingIndexTemplates](actionRequest, esContext, clusterService, threadPool) {
+class SimulateExistingTemplateRequestEsRequestContext(
+    existingTemplateName: TemplateNamePattern,
+    actionRequest: SimulateTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+)(
+    implicit generator: UniqueIdentifierGenerator
+) extends SimulateTemplateRequestEsRequestContext[GettingIndexTemplates](actionRequest, esContext, threadPool) {
 
   override protected def templateOperationFrom(actionRequest: SimulateTemplateAction.Request): GettingIndexTemplates =
     GettingIndexTemplates(NonEmptyList.of(existingTemplateName))
@@ -110,50 +123,63 @@ class SimulateExistingTemplateRequestEsRequestContext(existingTemplateName: Temp
           case Some(_) =>
             updateResponse(namePatterns.toList, blockContext.allAllowedIndices.toList)
           case None =>
-            logger.info(s"[${id.show}] User has no access to template ${existingTemplateName.show}")
+            logger.info(s"User has no access to template ${existingTemplateName.show}")
             ModificationResult.ShouldBeInterrupted
         }
       case other =>
         logger.error(
           s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
-             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner)
+             | type [${other.getClass.show}]]. Please report the issue!""".oneLiner
+        )
         ModificationResult.ShouldBeInterrupted
     }
   }
+
 }
 
-abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](actionRequest: SimulateTemplateAction.Request,
-                                                                               esContext: EsContext,
-                                                                               clusterService: RorClusterService,
-                                                                               override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[SimulateTemplateAction.Request, O](actionRequest, esContext, clusterService, threadPool) {
+abstract class SimulateTemplateRequestEsRequestContext[O <: TemplateOperation](
+    actionRequest: SimulateTemplateAction.Request,
+    esContext: EsContext,
+    override val threadPool: ThreadPool
+) extends BaseTemplatesEsRequestContext[SimulateTemplateAction.Request, O](actionRequest, esContext, threadPool) {
 
-  protected def updateResponse(allowedTemplates: List[TemplateNamePattern],
-                               allowedIndices: List[ClusterIndexName]): ModificationResult.UpdateResponse = {
+  protected def updateResponse(
+      allowedTemplates: List[TemplateNamePattern],
+      allowedIndices: List[ClusterIndexName]
+  ): ModificationResult.UpdateResponse = {
     ModificationResult.UpdateResponse.sync {
       case response: SimulateIndexTemplateResponse => filterTemplatesIn(response, allowedTemplates, allowedIndices)
-      case other => other
+      case other                                   => other
     }
   }
 
-  private def filterTemplatesIn(response: SimulateIndexTemplateResponse,
-                                allowedTemplates: List[TemplateNamePattern],
-                                allowedIndices: List[ClusterIndexName]): SimulateIndexTemplateResponse = {
+  private def filterTemplatesIn(
+      response: SimulateIndexTemplateResponse,
+      allowedTemplates: List[TemplateNamePattern],
+      allowedIndices: List[ClusterIndexName]
+  ): SimulateIndexTemplateResponse = {
     val tunedResponse = new TunedSimulateIndexTemplateResponse(response)
-    val filterResponse = filterOverlappingTemplates(allowedTemplates) andThen filterAliasesAndIndexPatternsIn(allowedIndices)
+    val filterResponse =
+      filterOverlappingTemplates(allowedTemplates) andThen filterAliasesAndIndexPatternsIn(allowedIndices)
     filterResponse(tunedResponse).underlying
   }
 
-  private def filterOverlappingTemplates(templates: List[TemplateNamePattern]) = (response: TunedSimulateIndexTemplateResponse) => {
-    val filteredOverlappingTemplates = response
-      .overlappingTemplates()
-      .filter { case (key, _) => templates.contains(key) }
-    response.overlappingTemplates(filteredOverlappingTemplates)
-  }
+  private def filterOverlappingTemplates(templates: List[TemplateNamePattern]) =
+    (response: TunedSimulateIndexTemplateResponse) => {
+      val filteredOverlappingTemplates = response
+        .overlappingTemplates()
+        .filter { case (key, _) => templates.contains(key) }
+      response.overlappingTemplates(filteredOverlappingTemplates)
+    }
 
-  private def filterAliasesAndIndexPatternsIn(allowedIndices: List[ClusterIndexName]) = (response: TunedSimulateIndexTemplateResponse) => {
-    new TunedSimulateIndexTemplateResponse(
-      SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(response.underlying, allowedIndices)
-    )
-  }
+  private def filterAliasesAndIndexPatternsIn(allowedIndices: List[ClusterIndexName]) =
+    (response: TunedSimulateIndexTemplateResponse) => {
+      new TunedSimulateIndexTemplateResponse(
+        SimulateIndexTemplateRequestEsRequestContext.filterAliasesAndIndexPatternsIn(
+          response.underlying,
+          allowedIndices
+        )
+      )
+    }
+
 }

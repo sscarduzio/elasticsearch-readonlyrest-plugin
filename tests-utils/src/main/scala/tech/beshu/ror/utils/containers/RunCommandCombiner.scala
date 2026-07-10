@@ -31,9 +31,7 @@ object RunCommandCombiner {
       else this
     }
 
-    def runWhen(condition: Boolean,
-                command: => String,
-                orElse: => String): RunCommands = {
+    def runWhen(condition: Boolean, command: => String, orElse: => String): RunCommands = {
       if (condition) run(command)
       else run(orElse)
     }
@@ -41,5 +39,7 @@ object RunCommandCombiner {
     def applyTo(builder: DockerfileBuilder): DockerfileBuilder = {
       builder.run(commands.mkString(" && "))
     }
+
   }
+
 }

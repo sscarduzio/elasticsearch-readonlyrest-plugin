@@ -18,10 +18,15 @@ package tech.beshu.ror.es.services
 
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ResourceNotFoundException
-import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction}
-import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, TransportPutComposableIndexTemplateAction}
+import org.elasticsearch.action.admin.indices.template.get.{
+  GetComponentTemplateAction,
+  GetComposableIndexTemplateAction
+}
+import org.elasticsearch.action.admin.indices.template.put.{
+  PutComponentTemplateAction,
+  TransportPutComposableIndexTemplateAction
+}
 import org.elasticsearch.action.datastreams.{CreateDataStreamAction, GetDataStreamAction}
 import org.elasticsearch.action.support.TransportAction
 import org.elasticsearch.action.support.master.AcknowledgedResponse
@@ -35,19 +40,20 @@ import org.elasticsearch.core.TimeValue
 import org.elasticsearch.index.IndexNotFoundException
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.accesscontrol.domain.{DataStreamName, TemplateName}
-import tech.beshu.ror.es.DataStreamService
-import tech.beshu.ror.es.DataStreamService.DataStreamSettings.*
-import tech.beshu.ror.es.DataStreamService.{CreationResult, DataStreamSettings}
+import tech.beshu.ror.es.services.DataStreamService.DataStreamSettings.*
+import tech.beshu.ror.es.services.DataStreamService.{CreationResult, DataStreamSettings}
 import tech.beshu.ror.es.services.DataStreamSettingsOps.*
 import tech.beshu.ror.es.utils.XContentJsonParserFactory
+import tech.beshu.ror.utils.RequestIdAwareLogging
 import tech.beshu.ror.utils.TaskOps.Measure
 
 import java.time.Clock
 import scala.jdk.CollectionConverters.*
 
-final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)(using Clock)
-  extends DataStreamService
-    with Logging {
+final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJsonParserFactory)(
+    using Clock
+) extends DataStreamService
+    with RequestIdAwareLogging {
 
   private val masterNodeTimeout: TimeValue = TimeValue(30000)
   private val ackTimeout: TimeValue = TimeValue(30000)
@@ -55,12 +61,13 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
   override def checkDataStreamExists(dataStreamName: DataStreamName.Full): Task[Boolean] = execute {
     val request = new GetDataStreamAction.Request(masterNodeTimeout, List(dataStreamName.value.value).toArray)
     val action = GetDataStreamAction.INSTANCE
-    client.executeT(action, request)
-      .map {
-        response => response.getDataStreams.asScala.exists(_.getDataStream.getName == dataStreamName.value.value)
+    client
+      .executeT(action, request)
+      .map { response =>
+        response.getDataStreams.asScala.exists(_.getDataStream.getName == dataStreamName.value.value)
       }
-      .onErrorRecoverWith {
-        case _: IndexNotFoundException => Task.pure(false)
+      .onErrorRecoverWith { case _: IndexNotFoundException =>
+        Task.pure(false)
       }
   }
 
@@ -77,7 +84,8 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
         .create(masterNodeTimeout, Array(policyId.value)) // varargs
         .get[ActionRequest]
 
-    client.executeT(enhancedActionType.action, request)
+    client
+      .executeT(enhancedActionType.action, request)
       .map { response =>
         on(response)
           .call("getPolicies")
@@ -89,55 +97,56 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
           .toList
           .contains(policyId.value)
       }
-      .onErrorRecoverWith {
-        case _: ResourceNotFoundException => Task.pure(false)
+      .onErrorRecoverWith { case _: ResourceNotFoundException =>
+        Task.pure(false)
       }
   }
 
-  override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] = execute {
-    val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("cluster:admin/ilm/put")
-    val parser = jsonParserFactory.create(policy.toJson)
-    val lifecyclePolicy =
-      onClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy", enhancedActionType.classLoader)
-        .call("parse", parser, policy.id.value)
-        .get[Object]
+  override protected def createIndexLifecyclePolicy(policy: DataStreamSettings.LifecyclePolicy): Task[CreationResult] =
+    execute {
+      val enhancedActionType = client.findActionUnsafe[AcknowledgedResponse]("cluster:admin/ilm/put")
+      val parser = jsonParserFactory.create(policy.toJson)
+      val lifecyclePolicy =
+        onClass("org.elasticsearch.xpack.core.ilm.LifecyclePolicy", enhancedActionType.classLoader)
+          .call("parse", parser, policy.id.value)
+          .get[Object]
 
-    val request =
-      onClass("org.elasticsearch.xpack.core.ilm.action.PutLifecycleRequest", enhancedActionType.classLoader)
-        .create(masterNodeTimeout, ackTimeout, lifecyclePolicy)
-        .get[ActionRequest]
+      val request =
+        onClass("org.elasticsearch.xpack.core.ilm.action.PutLifecycleRequest", enhancedActionType.classLoader)
+          .create(masterNodeTimeout, ackTimeout, lifecyclePolicy)
+          .get[ActionRequest]
 
-    client.executeAck(enhancedActionType.action, request).map(_.isAcknowledged).map(CreationResult.apply)
-  }
+      client.executeAck(enhancedActionType.action, request).map(_.isAcknowledged).map(CreationResult.apply)
+    }
 
   override protected def checkComponentTemplateExists(templateName: TemplateName): Task[Boolean] = execute {
     val request = GetComponentTemplateAction.Request(masterNodeTimeout, templateName.value.value)
     val action = GetComponentTemplateAction.INSTANCE
-    client.executeT(action, request)
+    client
+      .executeT(action, request)
       .map { response =>
-        response
-          .getComponentTemplates
-          .asScala
-          .keySet
+        response.getComponentTemplates.asScala.keySet
           .contains(templateName.value.value)
       }
-      .onErrorRecoverWith {
-        case _: ResourceNotFoundException => Task.pure(false)
+      .onErrorRecoverWith { case _: ResourceNotFoundException =>
+        Task.pure(false)
       }
   }
 
-  override protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult] = execute {
-    val request: PutComponentTemplateAction.Request = componentTemplateMappings(settings)
-    val action = PutComponentTemplateAction.INSTANCE
+  override protected def createComponentTemplateForMappings(settings: ComponentTemplateMappings): Task[CreationResult] =
+    execute {
+      val request: PutComponentTemplateAction.Request = componentTemplateMappings(settings)
+      val action = PutComponentTemplateAction.INSTANCE
 
-    client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
-  }
+      client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
+    }
 
-  override protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult] = execute {
-    val request = componentTemplateIndexSettingsRequest(settings)
-    val action = PutComponentTemplateAction.INSTANCE
-    client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
-  }
+  override protected def createComponentTemplateForIndex(settings: ComponentTemplateSettings): Task[CreationResult] =
+    execute {
+      val request = componentTemplateIndexSettingsRequest(settings)
+      val action = PutComponentTemplateAction.INSTANCE
+      client.executeAck(action, request).map(_.isAcknowledged).map(CreationResult.apply)
+    }
 
   override protected def checkIndexTemplateExists(templateName: TemplateName): Task[Boolean] = {
     val request = GetComposableIndexTemplateAction.Request(masterNodeTimeout, templateName.value.value)
@@ -145,8 +154,8 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     client
       .executeT(action, request)
       .map(_.indexTemplates.asScala.keySet.contains(templateName.value.value))
-      .onErrorRecoverWith {
-        case _: ResourceNotFoundException => Task.pure(false)
+      .onErrorRecoverWith { case _: ResourceNotFoundException =>
+        Task.pure(false)
       }
   }
 
@@ -159,16 +168,25 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
   private def componentTemplateMappings(settings: ComponentTemplateMappings) = {
     val template = new Template(null, CompressedXContent(ujson.write(settings.mappingsJson)), null)
     val version: java.lang.Long = null
-    val componentTemplate = new ComponentTemplate(template, version, settings.metadata.asInstanceOf[Map[String, Object]].asJava)
-    new PutComponentTemplateAction.Request(settings.templateName.value.value).componentTemplate(componentTemplate).create(true)
+    val componentTemplate =
+      new ComponentTemplate(template, version, settings.metadata.asInstanceOf[Map[String, Object]].asJava)
+    new PutComponentTemplateAction.Request(settings.templateName.value.value)
+      .componentTemplate(componentTemplate)
+      .create(true)
   }
 
-  private def componentTemplateIndexSettingsRequest(settings: ComponentTemplateSettings): PutComponentTemplateAction.Request = {
-    val componentSettings: Settings = Settings.builder().loadFromMap(Map("index.lifecycle.name" -> settings.lifecyclePolicyId.value).asJava).build()
+  private def componentTemplateIndexSettingsRequest(
+      settings: ComponentTemplateSettings
+  ): PutComponentTemplateAction.Request = {
+    val componentSettings: Settings =
+      Settings.builder().loadFromMap(Map("index.lifecycle.name" -> settings.lifecyclePolicyId.value).asJava).build()
     val template = new Template(componentSettings, null, null)
     val version: java.lang.Long = null
-    val componentTemplate = new ComponentTemplate(template, version, settings.metadata.asInstanceOf[Map[String, Object]].asJava)
-    new PutComponentTemplateAction.Request(settings.templateName.value.value).componentTemplate(componentTemplate).create(true)
+    val componentTemplate =
+      new ComponentTemplate(template, version, settings.metadata.asInstanceOf[Map[String, Object]].asJava)
+    new PutComponentTemplateAction.Request(settings.templateName.value.value)
+      .componentTemplate(componentTemplate)
+      .create(true)
   }
 
   private def createIndexTemplateRequest(settings: IndexTemplateSettings) = {
@@ -182,42 +200,58 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
         .dataStreamTemplate(new DataStreamTemplate())
         .build()
     }
-    new TransportPutComposableIndexTemplateAction.Request(settings.templateName.value.value).indexTemplate(indexTemplate).create(true)
+    new TransportPutComposableIndexTemplateAction.Request(settings.templateName.value.value)
+      .indexTemplate(indexTemplate)
+      .create(true)
   }
 
   private def execute[A](value: => Task[A]) = Task(value).flatten
 
-  private[EsDataStreamService] final class EnhancedActionType[T <: ActionResponse](val action: ActionType[T],
-                                                                                   val classLoader: ClassLoader)
+  private[EsDataStreamService] final class EnhancedActionType[T <: ActionResponse](
+      val action: ActionType[T],
+      val classLoader: ClassLoader
+  )
 
   extension (nodeClient: NodeClient) {
+
     def findActionUnsafe[T <: ActionResponse](actionName: String): EnhancedActionType[T] = {
-      val (actionType, transportActionType) = client.supportedActions.find {
-        case (actionType, _) => actionType.name() == actionName
-      }.getOrElse(throw new IllegalStateException(s"Unable to find action type with name $actionName"))
+      val (actionType, transportActionType) = client.supportedActions
+        .find { case (actionType, _) =>
+          actionType.name() == actionName
+        }
+        .getOrElse(throw new IllegalStateException(s"Unable to find action type with name $actionName"))
       val classLoader = transportActionType.getClass.getClassLoader
       EnhancedActionType(actionType.asInstanceOf[ActionType[T]], classLoader)
     }
 
-    def executeT[REQUEST <: ActionRequest, RESPONSE <: ActionResponse](action: ActionType[RESPONSE],
-                                                                       request: REQUEST): Task[RESPONSE] = {
+    def executeT[REQUEST <: ActionRequest, RESPONSE <: ActionResponse](
+        action: ActionType[RESPONSE],
+        request: REQUEST
+    ): Task[RESPONSE] = {
       for {
         response <- Task.measure(
           task = Task.delay(nodeClient.execute(action, request).actionGet()),
-          logTimeMeasurement = duration => Task.delay {
-            logger.debug(s"Action ${action.name()} request: ${request.toString}, taken ${duration.toMillis}ms")
-          }
+          logTimeMeasurement = duration =>
+            Task.delay {
+              noRequestIdLogger.debug(
+                s"Action ${action.name()} request: ${request.toString}, taken ${duration.toMillis}ms"
+              )
+            }
         )
         _ <- Task.delay {
-          logger.debug(s"Action ${action.name()} response: ${response.toString}")
+          noRequestIdLogger.debug(s"Action ${action.name()} response: ${response.toString}")
         }
       } yield response
     }
 
-    def executeAck[REQUEST <: ActionRequest, RESPONSE <: AcknowledgedResponse](action: ActionType[RESPONSE],
-                                                                               request: REQUEST): Task[RESPONSE] = {
+    def executeAck[REQUEST <: ActionRequest, RESPONSE <: AcknowledgedResponse](
+        action: ActionType[RESPONSE],
+        request: REQUEST
+    ): Task[RESPONSE] = {
       executeT(action, request)
-        .tapEval(response => Task.delay(logger.debug(s"Action ${action.name()} acknowledged: ${response.isAcknowledged}")))
+        .tapEval(response =>
+          Task.delay(noRequestIdLogger.debug(s"Action ${action.name()} acknowledged: ${response.isAcknowledged}"))
+        )
     }
 
     private def supportedActions: Map[ActionType[ActionResponse], TransportAction[ActionRequest, ActionResponse]] = {
@@ -228,4 +262,5 @@ final class EsDataStreamService(client: NodeClient, jsonParserFactory: XContentJ
     }
 
   }
+
 }

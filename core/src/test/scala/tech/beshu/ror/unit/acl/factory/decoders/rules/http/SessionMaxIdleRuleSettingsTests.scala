@@ -20,11 +20,10 @@ import org.scalatest.matchers.should.Matchers.*
 import tech.beshu.ror.accesscontrol.blocks.rules.http.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.RulesLevelCreationError
-import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.acl.factory.decoders.rules.BaseRuleSettingsDecoderTest
-import tech.beshu.ror.utils.DurationOps.*
+import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
 
-import scala.concurrent.duration.*
+import java.util.concurrent.TimeUnit
 import scala.language.postfixOps
 
 class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[SessionMaxIdleRule] {
@@ -33,35 +32,33 @@ class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[Sessio
     "be able to be loaded from settings" when {
       "max idle time of session is > 0s" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    session_max_idle: "10 s"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    session_max_idle: "10 s"
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            rule.settings.sessionMaxIdle should be((10 seconds).toRefinedPositiveUnsafe)
+            rule.settings.sessionMaxIdle should be(positiveFiniteDuration(10, TimeUnit.SECONDS))
           }
         )
       }
       "max idle time of session is > 0min" in {
         assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    session_max_idle: 10 min
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    session_max_idle: 10 min
+                   |
+                   |""".stripMargin,
           assertion = rule => {
-            rule.settings.sessionMaxIdle should be((10 minutes).toRefinedPositiveUnsafe)
+            rule.settings.sessionMaxIdle should be(positiveFiniteDuration(10, TimeUnit.MINUTES))
           }
         )
       }
@@ -69,58 +66,58 @@ class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[Sessio
     "not be able to be loaded from settings" when {
       "session max idle time is not defined" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    session_max_idle:
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    session_max_idle:
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Cannot convert value 'null' to duration")))
+            errors.head should be(RulesLevelCreationError(Message("Cannot convert value 'null' to duration")))
           }
         )
       }
       "session max idle time is not in proper format" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    session_max_idle: "unknown format"
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    session_max_idle: "unknown format"
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Cannot convert value '\"unknown format\"' to duration")))
+            errors.head should be(
+              RulesLevelCreationError(Message("Cannot convert value '\"unknown format\"' to duration"))
+            )
           }
         )
       }
       "session max idle time is < 0" in {
         assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    session_max_idle: -10h
-              |
-              |""".stripMargin,
+          yaml = """
+                   |readonlyrest:
+                   |
+                   |  access_control_rules:
+                   |
+                   |  - name: test_block1
+                   |    session_max_idle: -10h
+                   |
+                   |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Only positive values allowed. Found: -10 hours")))
+            errors.head should be(RulesLevelCreationError(Message("Only positive values allowed. Found: -10 hours")))
           }
         )
       }
     }
   }
+
 }
