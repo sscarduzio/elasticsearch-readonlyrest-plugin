@@ -22,7 +22,11 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RequestId}
 import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.es.services.IndexDocumentManager.CannotWriteToIndex
-import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{DocumentNotFound, IndexNotFound}
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{
+  DocumentNotFound,
+  DocumentUnreachable,
+  IndexNotFound
+}
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.SavingError.CannotSaveSettings
 import tech.beshu.ror.settings.ror.source.IndexSettingsSource.{
   IndexSettingsLoadingError,
@@ -51,8 +55,10 @@ class IndexSettingsSource[SETTINGS: Encoder: Decoder](
           }
         case Left(IndexDocumentManager.IndexNotFound) =>
           settingsLoaderError(IndexNotFound)
-        case Left(IndexDocumentManager.DocumentNotFound | IndexDocumentManager.DocumentUnreachable) =>
+        case Left(IndexDocumentManager.DocumentNotFound) =>
           settingsLoaderError(DocumentNotFound)
+        case Left(IndexDocumentManager.DocumentUnreachable) =>
+          settingsLoaderError(DocumentUnreachable)
       }
   }
 
@@ -80,6 +86,7 @@ object IndexSettingsSource {
   object LoadingError {
     case object IndexNotFound extends LoadingError
     case object DocumentNotFound extends LoadingError
+    case object DocumentUnreachable extends LoadingError
   }
 
   type IndexSettingsSavingError = SettingsSavingError[SavingError]

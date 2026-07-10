@@ -19,6 +19,7 @@ package tech.beshu.ror.es.actions.rrmetadata
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import tech.beshu.ror.accesscontrol.domain.Action.RorAction
+import tech.beshu.ror.accesscontrol.domain.UriPath
 
 class RRUserMetadataActionType
     extends Action[RRUserMetadataRequest, RRUserMetadataResponse, RRUserMetadataActionType.RequestBuilder](
