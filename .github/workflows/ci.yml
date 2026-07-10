@@ -117,8 +117,10 @@ jobs:
   # ── BUILD_TOOLCHAINS_IMAGE (schedule / manual) ────────────────────────────
   build_toolchains_image:
     needs: setup
+    # Schedule runs are pinned to develop (Azure pinned the weekly rebuild to develop; GH schedules
+    # fire on the default branch — the ref guard protects us if the default branch ever changes).
     if: >-
-      github.event_name == 'schedule' ||
+      (github.event_name == 'schedule' && github.ref == 'refs/heads/develop') ||
       (github.event_name == 'workflow_dispatch' && needs.setup.outputs.action == 'build_toolchains_image')
     runs-on: ubicloud-standard-4
     timeout-minutes: 240
@@ -131,6 +133,12 @@ jobs:
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
         run: |
           set -e
+          # Drift guard: every ror-ci-toolchains tag in this workflow (env + all container: lines)
+          # must be identical — a bump that misses some lines would build one tag while jobs run another.
+          if grep -ohE 'beshultd/ror-ci-toolchains:[a-zA-Z0-9._-]+' .github/workflows/ci.yml | grep -vF "$TOOLCHAINS_IMAGE" | grep -q .; then
+            echo "::error::ci.yml container tags do not all match TOOLCHAINS_IMAGE=$TOOLCHAINS_IMAGE — bump them together"
+            exit 1
+          fi
           echo ">>> Building $TOOLCHAINS_IMAGE"
           docker build -f ci/toolchains/JdkToolchains.Dockerfile -t "$TOOLCHAINS_IMAGE" .
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
@@ -210,11 +218,17 @@ jobs:
         env:
           ROR_TASK: cve_check
           DEPENDENCY_CHECK_DATA_DIR: .dependency-check-data
-          # Secrets are absent on fork PRs (GitHub withholds them) — the check degrades, not fails.
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
           OSS_INDEX_USERNAME: ${{ secrets.OSS_INDEX_USERNAME }}
           OSS_INDEX_PASSWORD: ${{ secrets.OSS_INDEX_PASSWORD }}
-        run: ci/run-pipeline.sh
+        run: |
+          # Fork PRs get EMPTY (not absent) secrets from GitHub. A set-but-empty key makes
+          # dependency-check/oss-index attempt authenticated calls (401) instead of anonymous mode
+          # — Azure only exported these when not a fork. Unset empties to restore that behavior.
+          [ -n "$NVD_API_KEY" ] || unset NVD_API_KEY
+          [ -n "$OSS_INDEX_USERNAME" ] || unset OSS_INDEX_USERNAME
+          [ -n "$OSS_INDEX_PASSWORD" ] || unset OSS_INDEX_PASSWORD
+          ci/run-pipeline.sh
 
   # ── REQUIRED_CHECKS ───────────────────────────────────────────────────────
   required_checks:
@@ -326,9 +340,12 @@ jobs:
   # Matrix from setup: 7-version subset on develop/master/epic, 3 on PRs, full 33 on manual
   # run_all_tests_on_windows — exactly Azure's three Windows IT jobs collapsed into one.
   it_windows:
-    needs: [ setup, es_s3_up ]
+    # toolchains_verify is in needs even though Windows doesn't use the image: Azure's TEST stage
+    # depended on TOOLCHAINS_VERIFY, so a broken image fails fast instead of running doomed legs.
+    needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
       !cancelled() &&
+      needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_windows')

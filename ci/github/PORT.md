@@ -82,9 +82,17 @@ Which jobs run per trigger (✓ run / − skip), matching the Azure stage condit
 | `free-host-disk.sh` (`target: host`) | runs normally; `AGENT_ISSELFHOSTED=1` makes it a no-op (Ubicloud VMs have no Azure bloat to reclaim) |
 | git tag push (persistCredentials) | `permissions: contents: write` on `release_ror` — **no SSH deploy key needed** |
 
+## Deliberate behavior differences vs Azure
+
+- **`paths-ignore: '**/*.md'` is broader than Azure**, which could only exclude root-level
+  `.md` files plus the `docs`/`.claude` trees (Azure glob limitation — its own comment says
+  deeper exclusion was wanted). Here any md-only change anywhere skips CI. Markdown can't
+  affect build outputs, so this is the intent Azure couldn't express.
+
 ## Deliberately dropped (and why)
 
-- **DISK_PROBE** — Azure host-disk recon; irrelevant on Ubicloud VMs.
+- **DISK_PROBE** (and the `run_disk_probe` manual action) — Azure host-disk recon; irrelevant
+  on Ubicloud VMs. `ci/probe-host-disk.sh` stays in the tree for the Azure manual fallback.
 - **SUPERSEDE_GUARD** + `ci/stale-azure-pipeline-runs-canceler.sh` — native `concurrency`.
 - **Docker pre-clean / always()-reap steps** from the Azure IT template — both Ubicloud and
   GH-hosted runners are ephemeral (fresh VM per job); there are no leftovers to reap and no
