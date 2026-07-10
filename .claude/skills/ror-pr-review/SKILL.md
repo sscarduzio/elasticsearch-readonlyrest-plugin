@@ -36,6 +36,7 @@ Hunt for these categories on **every** PR, not just security-flagged ones:
 - **Internal-Elasticsearch-API misuse.** Anything in `org.elasticsearch.*` outside the public APIs may break between minor versions. Particularly check usages added in `es{version}x/` modules.
 - **Shadow/shading boundaries.** Direct imports of un-shaded dependency packages (e.g. `com.google.gson`, `org.apache.logging`) should go through the relocated `tech.beshu.ror.*` prefix. The Shadow plugin should hide all third-party deps.
 - **Unrelated changes bundled.** A PR titled "fix LDAP timeout" should not also change FLS evaluation or settings parsing. Note bundled drift in the review.
+- **Domain-invariant violations.** For changes touching `kibana_access`, the fields/FLS rule, audit, or `/_readonlyrest` APIs, check the design invariants in the `ror-internals` skill (decision-tree ordering, hidden `lucene` FLS engine, 5KB audit-event cap, endpoint→action-name mapping).
 
 ## Project-convention checklist (apply mechanically)
 

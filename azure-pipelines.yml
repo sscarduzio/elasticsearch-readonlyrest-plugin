@@ -44,12 +44,22 @@ trigger:
     exclude:
       - '*'
   paths:
-    include:
-      - '*'
+    # Azure path filters DO support wildcards, but the old patterns were too shallow to cover deep
+    # paths: `*.md` matches a single segment (root-level .md only), `*/*/*.md` matches exactly two
+    # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
+    # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
+    # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
+    # NOTE: the root-level *.md entries are an explicit list (a `*.md` glob would only match root level
+    # anyway in Azure path filters) — keep it in sync if you add a new root-level markdown doc.
     exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
+      - docs
+      - .claude
+      - README.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - LICENSE.md
+      - CLAUDE.md
+      - development.md
 
 pr:
   # A new commit cancels the prior in-progress PR run instead of stacking another
@@ -62,12 +72,22 @@ pr:
       - 'epic/*'
       - '*/epic/*'
   paths:
-    include:
-      - '*'
+    # Azure path filters DO support wildcards, but the old patterns were too shallow to cover deep
+    # paths: `*.md` matches a single segment (root-level .md only), `*/*/*.md` matches exactly two
+    # dir levels — so `.claude/skills/<name>/SKILL.md` (three levels) fell through — and `.claude`
+    # had no exclusion at all, so markdown/skill-only changes still triggered CI. Exclude the whole
+    # docs/skills trees by prefix plus the root-level markdown docs. Code changes elsewhere still run.
+    # NOTE: the root-level *.md entries are an explicit list (a `*.md` glob would only match root level
+    # anyway in Azure path filters) — keep it in sync if you add a new root-level markdown doc.
     exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
+      - docs
+      - .claude
+      - README.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - LICENSE.md
+      - CLAUDE.md
+      - development.md
 
 # Scheduled rebuild of the CI toolchains image (BUILD_TOOLCHAINS_IMAGE only; every other stage is
 # gated on Build.Reason != 'Schedule'). Keeps the baked Gradle cache fresh without manual action:
