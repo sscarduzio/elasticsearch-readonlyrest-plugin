@@ -233,13 +233,17 @@ build_ror_plugins() {
 
   local es_major=$1
 
+  # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
+  local modules
+  modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+
   local module
   while IFS= read -r module; do
     [ -z "$module" ] && continue
     if ! ./gradlew ":${module}:verifyRepackageBytecodeNewest" </dev/null; then
       return 1
     fi
-  done < <(list_es_modules "$es_major")
+  done <<< "$modules"
 }
 
 if [[ $ROR_TASK == "build_es9xx" ]]; then
