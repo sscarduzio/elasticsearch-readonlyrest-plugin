@@ -24,7 +24,6 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.{Logger, Logging}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
@@ -37,7 +36,7 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
 
-object ScalaOps extends Logging {
+object ScalaOps extends RequestIdAwareLogging {
 
   implicit val nonEmptyStringOrdering: Ordering[NonEmptyString] = Ordering.by(_.value)
 
@@ -117,7 +116,7 @@ object ScalaOps extends Logging {
     def notifyAboutFailedAttempt(error: ERROR, failedAttempt: FailedAttempt): Task[Unit] = {
       Task
         .defer(onFailedAttempt(error, failedAttempt))
-        .onErrorHandle { ex => logger.warn("Could not report the failed attempt", ex) }
+        .onErrorHandle { ex => noRequestIdLogger.warn("Could not report the failed attempt", ex) }
     }
 
     def attemptWithRetry(attemptNumber: Int, delay: FiniteDuration, startedAt: Long): Task[RESULT] = {

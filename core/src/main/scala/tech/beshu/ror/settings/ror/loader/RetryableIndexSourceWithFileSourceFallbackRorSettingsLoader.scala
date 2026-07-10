@@ -68,7 +68,9 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
       }
   }
 
-  private def fallbackToFileSettings(): EitherT[Task, LoadingError, MainRorSettings] = {
+  private def fallbackToFileSettings()(
+      implicit requestId: RequestId
+  ): EitherT[Task, LoadingError, MainRorSettings] = {
     val message = s"No ReadonlyREST settings found in index '${mainSettingsIndexSource.settingsIndex.show}'. " +
       s"Falling back to the settings from file '${mainSettingsFileSource.settingsFile.show}'. " +
       s"The settings from the index will take precedence once they are created."

@@ -20,7 +20,6 @@ import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
