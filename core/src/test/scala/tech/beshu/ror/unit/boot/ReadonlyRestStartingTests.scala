@@ -170,23 +170,6 @@ class ReadonlyRestStartingTests
             message should include("will NOT be used as a fallback")
           }
         }
-        "the index settings document is malformed (eg. a truncated write corrupted the YAML)" in {
-          val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
-          val mockedIndexDocumentManager = mock[IndexDocumentManager]
-          mockGettingMalformedMainSettings(mockedIndexDocumentManager)
-
-          implicit val systemContext: SystemContext = createSystemContext()
-          // the core factory is never used, because the file settings must not be loaded
-          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
-          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcePath)
-
-          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
-
-          inside(result) { case Left(StartingFailure(message, _)) =>
-            message should include("ReadonlyREST settings found in index '.readonlyrest' are malformed")
-            message should include("will NOT be used as a fallback")
-          }
-        }
       }
       "be loaded from index" when {
         "index is available and file settings is provided" in withReadonlyRest({
@@ -434,24 +417,25 @@ class ReadonlyRestStartingTests
           }
         }
         "index settings are malformed" in {
+          // the settings are in the index, we just cannot parse them - the file settings must not be used as a
+          // fallback, because they could be different from the ones the rest of the cluster is using
           val resourcesPath = "/boot_tests/malformed_index_settings/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettings(mockedIndexDocumentManager, resourcesPath + indexSettingsFile)
-          mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
-
-          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + "readonlyrest.yml")
 
           implicit val systemContext: SystemContext = createSystemContext()
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
+          // the core factory is never used, because the file settings must not be loaded
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
           val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
-          inside(result) { case Left(failure) =>
-            failure.message shouldBe "Errors:\nfailed"
+          inside(result) { case Left(StartingFailure(message, _)) =>
+            message should include("ReadonlyREST settings found in index '.readonlyrest' are malformed")
+            message should include("will NOT be used as a fallback")
           }
         }
         "index settings cannot be loaded" in {
@@ -2021,24 +2005,6 @@ class ReadonlyRestStartingTests
       returnsResponse = Task.now(
         Right(
           circeJsonFrom(s"""{ "settings": "${escapeJava(getResourceContent(returnedMainSettingsResourceFileName))}"}""")
-        )
-      ),
-      attemptCount = attemptCount
-    )
-  }
-
-  private def mockGettingMalformedMainSettings(
-      mockedManager: IndexDocumentManager,
-      attemptCount: AttemptCount = AttemptCount.Exact(1)
-  ) = {
-    val truncatedYaml = "readonlyrest:\n  access_control_rules:\n  - name: [unterminated"
-    mockGettingSettings(
-      mockedManager = mockedManager,
-      expectedIndex = ".readonlyrest",
-      expectedDocument = "1",
-      returnsResponse = Task.now(
-        Right(
-          circeJsonFrom(s"""{ "settings": "${escapeJava(truncatedYaml)}"}""")
         )
       ),
       attemptCount = attemptCount
