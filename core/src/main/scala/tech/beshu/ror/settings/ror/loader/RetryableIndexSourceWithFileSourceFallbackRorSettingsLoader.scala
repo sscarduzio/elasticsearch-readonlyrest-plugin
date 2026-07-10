@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.settings.ror.loader
 
+import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.settings.ror.source.*
+import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError
 import tech.beshu.ror.settings.ror.{MainRorSettings, TestRorSettings}
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -35,18 +37,71 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
       implicit requestId: RequestId
   ): Task[Either[LoadingError, (MainRorSettings, Option[TestRorSettings])]] = {
     val result = for {
-      mainSettings <- mainSettingsIndexLoadingRetryStrategy
-        .withRetryT(
-          operation = loadMainSettingsFromIndex(),
-          operationDescription =
-            s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
-        )
-        .orElse(loadMainSettingsFromFile())
-      testSettings <- loadTestSettingsFromIndex()
-        .map(Option.apply)
-        .recover { case _ => Option.empty[TestRorSettings] }
+      mainSettings <- loadMainSettings()
+      testSettings <- loadTestSettings()
     } yield (mainSettings, testSettings)
     result.value
+  }
+
+  private def loadMainSettings()(
+      implicit requestId: RequestId
+  ): EitherT[Task, LoadingError, MainRorSettings] = {
+    mainSettingsIndexLoadingRetryStrategy
+      .withRetryT(
+        operation = loadMainSettingsFromIndex(),
+        operationDescription =
+          s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
+      )
+      .leftFlatMap {
+        case SettingsLoadingError.SourceSpecificError(
+              IndexSettingsSource.LoadingError.IndexNotFound | IndexSettingsSource.LoadingError.DocumentNotFound
+            ) =>
+          fallbackToFileSettings()
+        case SettingsLoadingError.SourceSpecificError(IndexSettingsSource.LoadingError.DocumentUnreachable) =>
+          noFallbackToFileSettings(
+            s"Cannot read ReadonlyREST settings from index '${mainSettingsIndexSource.settingsIndex.show}'."
+          )
+        case SettingsLoadingError.SettingsMalformed(cause) =>
+          noFallbackToFileSettings(
+            s"ReadonlyREST settings found in index '${mainSettingsIndexSource.settingsIndex.show}' are malformed: ${cause.show}."
+          )
+      }
+  }
+
+  private def fallbackToFileSettings()(
+      implicit requestId: RequestId
+  ): EitherT[Task, LoadingError, MainRorSettings] = {
+    val message = s"No ReadonlyREST settings found in index '${mainSettingsIndexSource.settingsIndex.show}'. " +
+      s"Falling back to the settings from file '${mainSettingsFileSource.settingsFile.show}'. " +
+      s"The settings from the index will take precedence once they are created."
+    EitherT
+      .liftF[Task, LoadingError, Unit](logger.dWarn(message))
+      .flatMap(_ => loadMainSettingsFromFile().leftMap(_.show))
+  }
+
+  private def noFallbackToFileSettings[T](reason: String): EitherT[Task, LoadingError, T] = {
+    val error = s"$reason Settings from file '${mainSettingsFileSource.settingsFile.show}' will NOT be used " +
+      s"as a fallback, because there is no way to tell whether they are the settings which the rest of the " +
+      s"cluster is using."
+    EitherT.leftT[Task, T](error)
+  }
+
+  private def loadTestSettings()(
+      implicit requestId: RequestId
+  ): EitherT[Task, LoadingError, Option[TestRorSettings]] = {
+    loadTestSettingsFromIndex()
+      .map(Option.apply)
+      .recoverWith { case error =>
+        EitherT.liftF[Task, IndexSettingsSource.IndexSettingsLoadingError, Option[TestRorSettings]] {
+          logger
+            .dWarn(
+              s"ReadonlyREST test settings could not be loaded from index '${testSettingsIndexSource.settingsIndex.show}': " +
+                s"${error.show}. ReadonlyREST will start without them."
+            )
+            .map(_ => Option.empty[TestRorSettings])
+        }
+      }
+      .leftMap(_.show)
   }
 
   private def loadMainSettingsFromIndex()(
