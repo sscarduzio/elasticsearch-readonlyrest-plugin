@@ -327,8 +327,8 @@ object ReadonlyRest {
 
     def release(): Task[Unit] = Task.defer {
       if (released.compareAndSet(expect = false, update = true)) {
-        Task
-          .delay(httpClientsFactory.shutdown())
+        httpClientsFactory
+          .shutdown()
           .flatMap(_ => ldapConnectionPoolProvider.close())
       } else {
         Task.unit
