@@ -31,7 +31,7 @@ import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.services.IndexDocumentManager
 import tech.beshu.ror.es.services.IndexDocumentManager.*
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.utils.RequestIdAwareLogging
+import tech.beshu.ror.utils.LoggerOps.*
 
 import scala.annotation.unused
 
@@ -82,7 +82,7 @@ class EsIndexDocumentManager(client: NodeClient, @unused constructorDiscriminato
         case _: IndexNotFoundException    => Left(IndexNotFound)
         case _: ResourceNotFoundException => Left(DocumentNotFound)
         case ex                           =>
-          logger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
+          logger.warnEx(s"Cannot get source of document [${index.show} ID=$id]", ex)
           Left(DocumentUnreachable)
       }
   }

@@ -19,6 +19,8 @@ package tech.beshu.ror.boot
 import cats.data.{EitherT, NonEmptyList}
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.atomic.AtomicBoolean
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.SystemContext
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings
 import tech.beshu.ror.accesscontrol.audit.sink.AuditSinkServiceCreator
@@ -87,10 +89,13 @@ class ReadonlyRest(
     implicit val requestId: RequestId = RequestId(systemContext.uuidProvider.random.toString)
     retryUntilSuccessful[StartingFailure, RorInstance](
       policy = retryPolicy,
-      onFailedAttempt = (failure, nextAttemptDelay) =>
+      onFailedAttempt = (failure, attempt) =>
         Task.delay {
           onFailedAttempt(failure)
-          logger.warn(s"ReadonlyREST will try to start again in $nextAttemptDelay ...")
+          logger.warn(
+            s"ReadonlyREST starting attempt ${attempt.number} failed (ReadonlyREST has not been able to start for " +
+              s"${attempt.elapsed.toCoarsest}). It will try to start again in ${attempt.nextAttemptDelay} ..."
+          )
         }
     ) {
       start(esConfigBasedRorSettings)
@@ -319,11 +324,16 @@ object ReadonlyRest {
       val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider
   ) {
 
-    def release(): Task[Unit] = {
-      for {
-        _ <- httpClientsFactory.shutdown()
-        _ <- ldapConnectionPoolProvider.close()
-      } yield ()
+    private val released = AtomicBoolean(false)
+
+    def release(): Task[Unit] = Task.defer {
+      if (released.compareAndSet(expect = false, update = true)) {
+        Task
+          .delay(httpClientsFactory.shutdown())
+          .flatMap(_ => ldapConnectionPoolProvider.close())
+      } else {
+        Task.unit
+      }
     }
 
   }

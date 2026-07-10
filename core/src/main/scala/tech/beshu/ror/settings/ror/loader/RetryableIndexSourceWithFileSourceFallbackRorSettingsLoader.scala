@@ -53,22 +53,35 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
           s"Loading ReadonlyREST main settings from index '${mainSettingsIndexSource.settingsIndex.show}'"
       )
       .leftFlatMap {
+        case SettingsLoadingError.SourceSpecificError(
+              IndexSettingsSource.LoadingError.IndexNotFound | IndexSettingsSource.LoadingError.DocumentNotFound
+            ) =>
+          fallbackToFileSettings()
         case SettingsLoadingError.SourceSpecificError(IndexSettingsSource.LoadingError.DocumentUnreachable) =>
-          cannotReadExistingIndexSettings
-        case _ =>
-          loadMainSettingsFromFile().leftMap(_.show)
+          noFallbackToFileSettings(
+            s"Cannot read ReadonlyREST settings from index '${mainSettingsIndexSource.settingsIndex.show}'."
+          )
+        case SettingsLoadingError.SettingsMalformed(cause) =>
+          noFallbackToFileSettings(
+            s"ReadonlyREST settings found in index '${mainSettingsIndexSource.settingsIndex.show}' are malformed: ${cause.show}."
+          )
       }
   }
 
-  private def cannotReadExistingIndexSettings[T](
-      implicit requestId: RequestId
-  ) = {
-    val error = s"Cannot read ReadonlyREST settings from index '${mainSettingsIndexSource.settingsIndex.show}'. " +
-      s"Settings from file '${mainSettingsFileSource.settingsFile.show}' will NOT be used as a fallback, " +
-      s"because they could differ from the settings used by the rest of the cluster."
+  private def fallbackToFileSettings(): EitherT[Task, LoadingError, MainRorSettings] = {
+    val message = s"No ReadonlyREST settings found in index '${mainSettingsIndexSource.settingsIndex.show}'. " +
+      s"Falling back to the settings from file '${mainSettingsFileSource.settingsFile.show}'. " +
+      s"The settings from the index will take precedence once they are created."
     EitherT
-      .liftF[Task, LoadingError, Unit](logger.dError(error))
-      .flatMap(_ => EitherT.leftT[Task, T](error))
+      .liftF[Task, LoadingError, Unit](logger.dWarn(message))
+      .flatMap(_ => loadMainSettingsFromFile().leftMap(_.show))
+  }
+
+  private def noFallbackToFileSettings[T](reason: String): EitherT[Task, LoadingError, T] = {
+    val error = s"$reason Settings from file '${mainSettingsFileSource.settingsFile.show}' will NOT be used " +
+      s"as a fallback, because there is no way to tell whether they are the settings which the rest of the " +
+      s"cluster is using."
+    EitherT.leftT[Task, T](error)
   }
 
   private def loadTestSettings()(
@@ -76,7 +89,16 @@ class RetryableIndexSourceWithFileSourceFallbackRorSettingsLoader(
   ): EitherT[Task, LoadingError, Option[TestRorSettings]] = {
     loadTestSettingsFromIndex()
       .map(Option.apply)
-      .recover { case _ => Option.empty[TestRorSettings] }
+      .recoverWith { case error =>
+        EitherT.liftF[Task, IndexSettingsSource.IndexSettingsLoadingError, Option[TestRorSettings]] {
+          logger
+            .dWarn(
+              s"ReadonlyREST test settings could not be loaded from index '${testSettingsIndexSource.settingsIndex.show}': " +
+                s"${error.show}. ReadonlyREST will start without them."
+            )
+            .map(_ => Option.empty[TestRorSettings])
+        }
+      }
       .leftMap(_.show)
   }
 

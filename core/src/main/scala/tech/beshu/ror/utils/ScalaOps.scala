@@ -24,6 +24,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.logging.log4j.scala.{Logger, Logging}
 import tech.beshu.ror.syntax.*
 import tech.beshu.ror.utils.RefinedUtils.PositiveFiniteDuration
 
@@ -36,7 +37,7 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
 
-object ScalaOps {
+object ScalaOps extends Logging {
 
   implicit val nonEmptyStringOrdering: Ordering[NonEmptyString] = Ordering.by(_.value)
 
@@ -92,39 +93,51 @@ object ScalaOps {
   }
 
   /**
+   * Describes the attempt which has just failed, so that the caller can report it without having to keep track of the
+   * retrying on its own. `elapsed` is measured from the beginning of the first attempt, and does not include the
+   * `nextAttemptDelay` which is still ahead.
+   */
+  final case class FailedAttempt(number: Int, nextAttemptDelay: FiniteDuration, elapsed: FiniteDuration)
+
+  /**
    * Runs the `operation` until it succeeds, waiting between the attempts according to the `policy`. Every failed
-   * attempt is reported to `onFailedAttempt`, together with the delay after which the next attempt will be made.
+   * attempt is reported to `onFailedAttempt`, together with the number of the attempt, the time spent retrying so far
+   * and the delay after which the next attempt will be made.
    *
    * Only the failures modelled as `Left` are retried - an exception raised by the `operation` is passed through. It is
    * up to the caller to decide which errors are worth another attempt, and to represent them in the error channel.
    *
    * A failure of `onFailedAttempt` never breaks the retrying, because a broken reporting is not a reason to give up on
-   * an operation which the caller asked to be run until it succeeds. It is up to `onFailedAttempt` to report its own
-   * problems.
+   * an operation which the caller asked to be run until it succeeds. Such a failure is logged, though - otherwise a
+   * reporter which never works could not be told apart from an operation which never fails.
    */
-  def retryUntilSuccessful[ERROR, RESULT](policy: RetryPolicy, onFailedAttempt: (ERROR, FiniteDuration) => Task[Unit])(
+  def retryUntilSuccessful[ERROR, RESULT](policy: RetryPolicy, onFailedAttempt: (ERROR, FailedAttempt) => Task[Unit])(
       operation: Task[Either[ERROR, RESULT]]
   ): Task[RESULT] = {
-    def notifyAboutFailedAttempt(error: ERROR, nextAttemptDelay: FiniteDuration): Task[Unit] = {
+    def notifyAboutFailedAttempt(error: ERROR, failedAttempt: FailedAttempt): Task[Unit] = {
       Task
-        .defer(onFailedAttempt(error, nextAttemptDelay))
-        .onErrorHandle(_ => ())
+        .defer(onFailedAttempt(error, failedAttempt))
+        .onErrorHandle { ex => logger.warn("Could not report the failed attempt", ex) }
     }
 
-    def attemptWithRetry(delay: FiniteDuration): Task[RESULT] = {
+    def attemptWithRetry(attemptNumber: Int, delay: FiniteDuration, startedAt: Long): Task[RESULT] = {
       operation
         .flatMap {
           case Right(result) =>
             Task.now(result)
           case Left(error) =>
             for {
-              _ <- notifyAboutFailedAttempt(error, delay)
-              result <- attemptWithRetry(policy.nextDelay(delay)).delayExecution(delay)
+              now <- Task.eval(System.nanoTime())
+              failedAttempt = FailedAttempt(attemptNumber, delay, (now - startedAt).nanos)
+              _ <- notifyAboutFailedAttempt(error, failedAttempt)
+              result <- attemptWithRetry(attemptNumber + 1, policy.nextDelay(delay), startedAt).delayExecution(delay)
             } yield result
         }
     }
 
-    attemptWithRetry(policy.initialDelay)
+    Task
+      .eval(System.nanoTime())
+      .flatMap(startedAt => attemptWithRetry(attemptNumber = 1, delay = policy.initialDelay, startedAt = startedAt))
   }
 
   def repeat[A](maxRetries: Int, delay: FiniteDuration)(source: Task[A]): Task[Unit] = {
