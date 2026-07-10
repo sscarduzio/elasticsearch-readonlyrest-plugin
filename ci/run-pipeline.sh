@@ -234,6 +234,9 @@ build_ror_plugins() {
 
   while IFS= read -r version || [[ -n "$version" ]]; do
     time build_ror_plugin "$version"
+    # Clean up after every version to prevent disk space exhaustion (same reasoning as release_ror_plugins).
+    log_disk_usage "after build of ES $version"
+    cleanup_docker_and_build
   done <"$ROR_VERSIONS_FILE"
 }
 
