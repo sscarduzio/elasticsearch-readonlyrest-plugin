@@ -81,7 +81,7 @@ class EsIndexDocumentManager(client: NodeClient, @unused constructorDiscriminato
         case _: IndexNotFoundException    => Left(IndexNotFound)
         case _: ResourceNotFoundException => Left(DocumentNotFound)
         case ex                           =>
-          logger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
+          logger.warnEx(s"Cannot get source of document [${index.show} ID=$id]", ex)
           Left(DocumentUnreachable)
       }
   }
