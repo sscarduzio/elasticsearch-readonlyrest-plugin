@@ -361,6 +361,8 @@ stages:
               ROR_TASK: compile_codebase_check
             AUDIT_BUILD_CHECK:
               ROR_TASK: audit_build_check
+            FORMAT_CODE_CHECK:
+              ROR_TASK: format_code_check
 
   - stage: TEST
     displayName: 'Run all tests'
