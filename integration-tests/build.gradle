@@ -87,6 +87,14 @@ test {
     // matched and the guard killed the parent build. No shardIndex → not a shard → full suite filter.
     def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
     def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
+    // Disjoint OUTPUT dirs per shard: sibling shards run concurrently in the SAME workspace, and
+    // the Test task's shared result dirs (binary results + junit XML + html) get cross-corrupted —
+    // "Could not write XML test results" / truncated TEST-*.xml — killing otherwise-green shards.
+    if (project.hasProperty('shardIndex')) {
+        reports.junitXml.outputLocation = layout.buildDirectory.dir("test-results/shard-${shardIndex}")
+        reports.html.outputLocation = layout.buildDirectory.dir("reports/tests/shard-${shardIndex}")
+        binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/shard-${shardIndex}-bin"))
+    }
     filter {
         if (shardCount > 1 && project.hasProperty('shardIndex')) {
             def matched = 0
