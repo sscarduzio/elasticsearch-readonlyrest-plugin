@@ -63,8 +63,8 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # Sweep: k=3 shards on a 32GB runner (10.7GB/shard). k=2 on 16GB was 1.4x faster but 6/10
-  # legs lost a shard to memory death; k=1 on 16GB is the stable baseline.
+  # Sweep: k=3 shards back on the 16GB runner (5.3GB/shard) — the k>1 failures were sharding
+  # races (fixed), not RAM, so the cheap box may hold 3 shards. k=3@32GB measured ~2.1x vs k=1.
   IT_PARALLELISM: '3'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
@@ -308,7 +308,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-8
+    runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 120
     strategy:

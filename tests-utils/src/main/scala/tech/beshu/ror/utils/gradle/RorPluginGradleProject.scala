@@ -93,6 +93,26 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getModuleESVersion.zip"
 
   private def runTask(task: String): Unit = {
+    // Cross-process mutex: K sharded test JVMs (IT_PARALLELISM > 1) share this workspace, and their
+    // nested Tooling-API builds (prebuild + runtime container assembles) race Gradle's own project
+    // locks to death. Serialize every nested build across processes; an up-to-date nested build holds
+    // the lock only briefly. ponytail: one global lock — per-module locks if contention ever matters.
+    val lockFile = new JFile(RorPluginGradleProject.getRootProject, ".ror-nested-gradle.lock")
+    val channel = java.nio.channels.FileChannel.open(
+      lockFile.toPath,
+      java.nio.file.StandardOpenOption.CREATE,
+      java.nio.file.StandardOpenOption.WRITE
+    )
+    val lock = channel.lock()
+    try {
+      doRunTask(task)
+    } finally {
+      lock.release()
+      channel.close()
+    }
+  }
+
+  private def doRunTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)
     // On CI the toolchains image bakes the Gradle distribution + dependency cache into GRADLE_USER_HOME
     // and marks it with a `.ror-ci-baked` sentinel (written by ci/toolchains/JdkToolchains.Dockerfile only after the
