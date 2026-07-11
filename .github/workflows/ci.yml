@@ -63,9 +63,10 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # Sweep: k=6 on the 16GB runner. Curve so far on this box: k=1 51.4, k=3 ~24, k=4 ~22 (flattening
-  # — Amdahl serial floor ~8-10min). k=6 probes the CPU wall (4 vCPU / 6 shards).
-  IT_PARALLELISM: '6'
+  # Sharding sweep result (ubicloud-standard-4, 16GB/4vCPU): k=1 51.4min, k=3 ~24, k=4 ~22 (best),
+  # k=6 kills the VM (host OOM, runner shutdown, exit 137). Amdahl serial floor ~10min means k=5+
+  # buys nothing and sits on the cliff. ponytail: bump box size before bumping k past 4.
+  IT_PARALLELISM: '4'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
