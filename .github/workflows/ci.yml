@@ -63,8 +63,9 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # Experiment: 2 sharded IT JVMs (each own ES container) per leg on the 16GB runner.
-  IT_PARALLELISM: '2'
+  # Sweep: k=3 shards on a 32GB runner (10.7GB/shard). k=2 on 16GB was 1.4x faster but 6/10
+  # legs lost a shard to memory death; k=1 on 16GB is the stable baseline.
+  IT_PARALLELISM: '3'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
@@ -307,7 +308,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-4
+    runs-on: ubicloud-standard-8
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 120
     strategy:
@@ -341,6 +342,15 @@ jobs:
         with:
           name: it-${{ matrix.ROR_TASK }}-results
           path: '**/TEST*.xml'
+          if-no-files-found: ignore
+      # Per-shard console logs (shard-<i>.log) — the only place shard stdout goes when
+      # IT_PARALLELISM > 1 (kept out of the job console to avoid interleaving).
+      - name: Publish per-shard logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharded-logs-${{ matrix.ROR_TASK }}
+          path: integration-tests/build/sharded-logs/
           if-no-files-found: ignore
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
