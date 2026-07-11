@@ -51,6 +51,12 @@ concurrency:
 permissions:
   contents: read
 
+# Container jobs default run: steps to `sh`, where `source` (docker-hub-auth.sh) fails with 127.
+# Windows jobs are unaffected — their steps declare `shell: pwsh` explicitly.
+defaults:
+  run:
+    shell: bash
+
 env:
   # The single source of truth for the toolchains image tag is the `container:` lines below —
   # bump them together with this env (used by build_toolchains_image) on a JDK/Gradle change.
