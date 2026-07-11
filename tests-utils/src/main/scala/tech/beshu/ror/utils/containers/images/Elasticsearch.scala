@@ -302,6 +302,11 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "action.destructive_requires_name: false")
       .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
+      // ML is never exercised by any suite; disabling it drops the ML native processes (~200-400MB
+      // RSS per container) and speeds startup. Unlike xpack.monitoring.enabled (removed in 8.0), the
+      // xpack.ml.enabled key is supported across the whole matrix (6.3 -> 9.x), so no version guard.
+      // XpackSecurityPlugin must NOT re-add it (duplicate elasticsearch.yml keys are fatal).
+      .add("xpack.ml.enabled: false")
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }
       )

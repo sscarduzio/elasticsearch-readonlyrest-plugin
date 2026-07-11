@@ -63,9 +63,10 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # Sweep: k=5 probe (3.2GB + 0.8 vCPU per shard) — the untested gap between k=4 (stable, 25.0min
-  # full matrix) and k=6 (host OOM). Model predicts 23.2min if it survives; stability is the question.
-  IT_PARALLELISM: '5'
+  # Sharding sweep result (ubicloud-standard-4, 16GB/4vCPU): k=1 51.4min, k=3 ~24, k=4 25.0 full-matrix
+  # (best stable), k=5 host-OOM on 5/6 heavier modules, k=6 host-OOM on all. The cliff is at k=5;
+  # k=4 is the optimum with one notch of margin. ponytail: bump box size before bumping k past 4.
+  IT_PARALLELISM: '4'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 

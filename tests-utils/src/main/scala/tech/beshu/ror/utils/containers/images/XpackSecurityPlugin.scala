@@ -62,7 +62,8 @@ class XpackSecurityPlugin(esVersion: String, config: Config) extends Elasticsear
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
       .add("xpack.security.enabled: true")
-      .add("xpack.ml.enabled: true")
+      // xpack.ml.enabled: false comes from the base config (Elasticsearch.baseEsConfigBuilder) —
+      // no suite uses ML, and re-adding the key here would duplicate it in elasticsearch.yml (fatal).
       .configureRestSsl()
       .configureTransportSsl()
   }
