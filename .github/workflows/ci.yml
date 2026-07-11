@@ -63,9 +63,9 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # Sweep: k=4 on the 16GB runner (4GB + 1 vCPU per shard). k=3@16GB measured ~24min avg
-  # (2x over k=1's 51.4) and stable; if k=4 regresses, the inflection on this box is k=3.
-  IT_PARALLELISM: '4'
+  # Sweep: k=6 on the 16GB runner. Curve so far on this box: k=1 51.4, k=3 ~24, k=4 ~22 (flattening
+  # — Amdahl serial floor ~8-10min). k=6 probes the CPU wall (4 vCPU / 6 shards).
+  IT_PARALLELISM: '6'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
