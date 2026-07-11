@@ -81,10 +81,14 @@ test {
 
     // SHARDING: shardCount=1 runs everything; K>1 partitions suites by name-hash mod K (disjoint cover).
     // Forks can't split the scalatest engine (gradle#8632), so parallelism = K sharded invocations.
+    // Gate on an EXPLICIT -PshardIndex (ShardedGradlewTest always passes it to children): the parent
+    // `shardedTest -PshardCount=K` invocation also configures this task, and on a fresh workspace the
+    // class-tree walk below runs at configuration time BEFORE testClasses compiled anything — 0 files
+    // matched and the guard killed the parent build. No shardIndex → not a shard → full suite filter.
     def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
     def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
     filter {
-        if (shardCount > 1) {
+        if (shardCount > 1 && project.hasProperty('shardIndex')) {
             def matched = 0
             test.testClassesDirs.asFileTree.matching {
                 // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
