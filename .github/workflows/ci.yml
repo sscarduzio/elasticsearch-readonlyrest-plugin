@@ -63,7 +63,8 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  IT_PARALLELISM: '1'
+  # Experiment: 2 sharded IT JVMs (each own ES container) per leg on the 16GB runner.
+  IT_PARALLELISM: '2'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
