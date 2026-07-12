@@ -1957,7 +1957,7 @@ class ReadonlyRestStartingTests
 
   private def readonlyRestWithCoreFactoryFailing(
       failingAttemptsCount: Int,
-      failure: Task[Either[NonEmptyList[CoreCreationError], Core]]
+      failure: Task[Either[NonEmptyList[CoreCreationError], CoreCreationResult]]
   ) = {
     val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
     val mockedIndexDocumentManager = mock[IndexDocumentManager]
@@ -1968,11 +1968,16 @@ class ReadonlyRestStartingTests
     val startedAttempts = new AtomicInteger(0)
     val coreFactory = mock[CoreFactory]
     (coreFactory.createCoreFrom _)
-      .expects(*, *, *, *, *)
+      .expects(*, *, *, *, *, *)
       .anyNumberOfTimes()
-      .onCall { (_, _, _, _, _) =>
+      .onCall { (_, _, _, _, _, _) =>
         if (startedAttempts.getAndIncrement() < failingAttemptsCount) failure
-        else Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingSettings = None)))
+        else
+          Task.now(
+            Right(
+              CoreCreationResult(Core(accessControl, RorDependencies.noOp, auditingSettings = None), auditSetup = None)
+            )
+          )
       }
 
     implicit val systemContext: SystemContext = createSystemContext()
