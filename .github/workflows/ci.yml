@@ -63,7 +63,7 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # 4 shards per leg + HeavySuiteGate (max 3 concurrent multi-cluster suites, machine-wide).
+  # 4 shards per leg + HeavySuiteGate (max 2 concurrent multi-cluster suites, machine-wide).
   # k=5 was measured faster on es94x (20.6 vs ~21.3 min) but host-OOM'd 4 of 10 modules on the
   # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
   # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
@@ -417,10 +417,10 @@ jobs:
           ROR_HEAVY_SUITE_PERMITS: '2'
         run: |
           # Override the Linux gradle.properties installations.paths and let Windows auto-provision JDKs.
-          # PROBE: sharded (3 workers) — same trick that halved the Linux legs; ES runs as native
-          # processes on Windows, 3 fit in 16GB. ror-tools:test kept as the serial gate.
-          # ror-tools:test dropped from per-leg runs: it took ~10 min/leg and every node install
-          # already exercises the patcher end-to-end; the suite still runs via unit_tests_windows.
+          # Sharded (3 workers) — same trick as the Linux legs; ES runs as native processes on
+          # Windows (no docker), 3 fit the 16GB box. 4 workers measured no faster (CPU-bound).
+          # ror-tools:test is NOT run per-leg: it took ~10 min/leg and every node install already
+          # exercises the patcher end-to-end; the suite still runs via unit_tests_windows.
           $gradleArgs = "--no-daemon", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
             "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
           .\gradlew @gradleArgs

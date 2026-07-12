@@ -313,7 +313,7 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // Skip the built-in index/component templates + their ILM policies (logs-*, metrics-*,
       // synthetics-*, 7/30/90/180/365-days-default...). 8.x installs dozens of them on first boot
       // (the biggest chunk of the 8.x-vs-7.x startup bloat, cluster-state churn seen in test logs);
-      // suites always create the templates they need themselves. Key exists since 7.11, but the
+      // suites always create the templates they need themselves. Key exists since 7.8, but the
       // win is 8.x-only, so guard at 8.0 and stay clear of the 7.x boundary.
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "stack.templates.enabled: false")
       // The apm-data plugin (not covered by stack.templates.enabled) installs the logs-apm.*/

@@ -1,6 +1,6 @@
 # CI secrets to port: Azure Pipelines → GitHub Actions
 
-Pre-analysis for the Ubicloud/Blacksmith CI port. Every secret the current
+Pre-analysis for the Ubicloud CI port (Linux on Ubicloud, Windows GitHub-hosted). Every secret the current
 `azure-pipelines.yml` + `ci/azure-templates/*.yml` reference, where it's used,
 and how it maps to GitHub Actions. **No values are in this repo** — set them with
 `ci/github/set-secrets.sh` (placeholders) or the GitHub UI.

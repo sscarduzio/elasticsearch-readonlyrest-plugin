@@ -97,8 +97,25 @@ Which jobs run per trigger (✓ run / − skip), matching the Azure stage condit
 - **Docker pre-clean / always()-reap steps** from the Azure IT template — both Ubicloud and
   GH-hosted runners are ephemeral (fresh VM per job); there are no leftovers to reap and no
   sibling jobs sharing a daemon. `run-pipeline.sh`'s SIGTERM trap still reaps on cancel.
-- **Sharded-log artifact publishing** (`IT_PARALLELISM > 1`) — env var passes through; re-add
-  an upload-artifact step for `integration-tests/build/sharded-logs` if you raise parallelism.
+## IT parallelism (not in Azure — added during the port)
+
+Azure ran each IT leg's suites serially in one JVM (~85–100 min/leg incl. queue). Here every
+leg runs **4 sharded test JVMs** on its VM (`integration-tests:shardedTest`, `IT_PARALLELISM`),
+cutting a leg to ~18–24 min. Windows runs 3 shards (native ES processes, per-shard port/dir/
+WireMock windows). Two safety mechanisms make this fit 16 GB:
+
+- **Duration-balanced packing** (`ROR_BALANCED_SHARDS`): suites are LPT-packed into shards by
+  measured wall time (`integration-tests/suite-timings.json`) instead of name-hash, so no shard
+  becomes the long pole. Timings are advisory — suites without an entry default to 60s and still run.
+- **`HeavySuiteGate`** (`ROR_HEAVY_SUITE_PERMITS`, currently 2): a machine-wide file-lock
+  semaphore capping how many multi-node-cluster suites boot containers concurrently across all
+  shard JVMs. Without it, level packing host-OOMs 16 GB runners. Crash-safe: an OOM-killed
+  worker's lock dies with its process.
+
+Per-shard console logs upload as the `sharded-logs-*` artifact and per-shard JUnit XML as
+`*-results` (both always, pass or fail). Measured limits, for whoever tunes this next: 5 workers or 3 permits exceed
+either 16 GB (at 512m ES heaps) or the 4-vCPU boot-time budget — both were tried on isolated
+probe runs and reverted.
 
 ## Before first run — do these
 

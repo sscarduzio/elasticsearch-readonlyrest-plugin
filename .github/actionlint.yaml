@@ -2,8 +2,4 @@
 # Registering them here silences actionlint's "unknown label" false positives.
 self-hosted-runner:
   labels:
-    - ubicloud-standard-2       # 2 vCPU /  8 GB
-    - ubicloud-standard-4       # 4 vCPU / 16 GB  ← the "16GB runtime" target
-    - ubicloud-standard-8       # 8 vCPU / 32 GB  (IT sharding experiments)
-    - ubicloud-premium-4        # 4 vCPU / 16 GB premium (~2x CPU)
-    - blacksmith-4vcpu-windows-2025   # 4 vCPU / 14 GB, paid probe
+    - ubicloud-standard-4       # 4 vCPU / 16 GB — the only Ubicloud size CI uses

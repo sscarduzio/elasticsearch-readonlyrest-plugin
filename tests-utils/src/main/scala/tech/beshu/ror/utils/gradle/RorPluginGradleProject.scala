@@ -112,12 +112,14 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
       java.nio.file.StandardOpenOption.CREATE,
       java.nio.file.StandardOpenOption.WRITE
     )
-    val lock = channel.lock()
+    // lock() inside the try: if it throws, the finally still closes the channel (no fd leak)
+    var lock: java.nio.channels.FileLock = null
     try {
+      lock = channel.lock()
       doRunTask(task)
     } finally {
-      lock.release()
-      channel.close()
+      try if (lock != null) lock.release()
+      finally channel.close()
     }
   }
 

@@ -101,11 +101,12 @@ test {
     filter {
         if (shardCount > 1 && project.hasProperty('shardIndex')) {
             // Two packing modes:
-            //  - default: duration-blind hashCode-mod. Uneven (shards ranged 12-20.5 min at k=4)
-            //    but the idle gaps double as memory slack — the ONLY mode stable on 16GB runners.
+            //  - default: duration-blind hashCode-mod. Uneven (shards ranged 12-20.5 min at k=4);
+            //    the idle gaps double as memory slack, so it's safe even without the heavy gate.
             //  - -PbalancedShards=true: duration-balanced LPT from suite-timings.json. Levels all
-            //    shards at ~17 min BUT the sustained full load host-OOMed 16GB boxes 4/4 times
-            //    (even with staggered starts + zip reuse). Use only on 32GB+ machines.
+            //    shards, but the sustained full load needs ROR_HEAVY_SUITE_PERMITS (HeavySuiteGate)
+            //    alongside it on 16GB machines — ungated balanced packing host-OOMed them 4/4 times.
+            //    CI runs balanced + 2 permits (see ci.yml).
             def balanced = (project.findProperty('balancedShards') ?: System.getenv('ROR_BALANCED_SHARDS') ?: 'false').toBoolean()
             def timings = balanced ? new groovy.json.JsonSlurper().parse(file('suite-timings.json')).times : [:]
             def suites = []
