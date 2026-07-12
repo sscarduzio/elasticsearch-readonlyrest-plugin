@@ -325,6 +325,14 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0), entry = "cluster.deprecation_indexing.enabled: false")
       // SLM is never exercised; skips the .slm-history index machinery. Setting added with SLM in 7.5.
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 5, 0), entry = "slm.history_index_enabled: false")
+      // Each node sizes its ~20 thread pools by visible CPU count, but CI packs 4-5 nodes onto a
+      // 4-vCPU box — every node claiming all 4 cores costs ~1MB stack per surplus thread plus
+      // scheduler churn. Tell each node it has 2. (Key renamed processors -> node.processors in 7.4.)
+      .addWhen(
+        Version.greaterOrEqualThan(esVersion, 7, 4, 0),
+        entry = "node.processors: 2",
+        orElseEntry = "processors: 2"
+      )
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }
       )
@@ -371,6 +379,12 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
     EsJavaOptsBuilder.empty
       .add("-Xms512m")
       .add("-Xmx512m")
+      // Short-lived test nodes never fill the default 240m JIT code cache; 64m is plenty and
+      // returns the difference to a CI box running 4-5 nodes. Valid on every bundled JDK (8->21+).
+      .add("-XX:ReservedCodeCacheSize=64m")
+      // Netty pools direct memory per-arena scaled by CPU count; one arena suffices for test
+      // traffic. Plain -D property: last-one-wins where newer ES already sets its own value.
+      .add("-Dio.netty.allocator.numDirectArenas=1")
       .add("-Djava.security.egd=file:/dev/./urandoms")
       .add(
         "-Xdebug",
