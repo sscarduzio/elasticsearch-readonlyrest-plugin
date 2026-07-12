@@ -119,7 +119,9 @@ class IndexLevelActionFilter(
               using systemContext.clock
             )
           case remote: AuditCluster.RemoteAuditCluster =>
-            RestClientAuditSinkService.create(remote)
+            RestClientAuditSinkService.create(remote)(
+              using systemContext.clock
+            )
         }
       }
     }
