@@ -236,14 +236,12 @@ class IndexLevelActionFilter(
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- ror.start(esConfigBasedRorSettings)
-    } yield result
+      instance <- ror.startWithRetry(esConfigBasedRorSettings)(logAndSetStartingFailureState)
+    } yield instance
     startResult.runAsync {
-      case Right(Right(instance)) =>
+      case Right(instance) =>
         RorInstanceSupplier.update(instance)
         rorInstanceState.set(RorInstanceStartingState.Started(instance))
-      case Right(Left(staringFailure)) =>
-        logAndSetStartingFailureState(staringFailure)
       case Left(ex) =>
         val startingFailureFromException = StartingFailure("Cannot start ReadonlyREST", Some(ex))
         logAndSetStartingFailureState(startingFailureFromException)

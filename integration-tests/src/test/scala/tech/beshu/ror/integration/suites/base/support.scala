@@ -64,6 +64,14 @@ object support {
     def clusterContainers: NonEmptyList[EsClusterContainer]
   }
 
+  // Parallelism model (read before adding a suite): IT suites run SERIALLY within a Gradle worker
+  // JVM; parallelism is across separate SHARD invocations (-PshardCount, IT_PARALLELISM in CI), each
+  // its own worker JVM. Each worker JVM is a separate process with its own ES + Docker network, so
+  // cross-worker interference is impossible by construction. Single-node suites that mix in SingletonPluginTestSupport share
+  // ONE mutable ES per worker — safe only because the scalatest-junit engine runs suites one-at-a-time
+  // in a JVM; the singleton's acquire/release latch fails the build loudly if that ever stops holding.
+  // Do not add ScalaTest ParallelTestExecution or junit parallel config (the latter is guarded in
+  // integration-tests/build.gradle).
   trait BaseSingleNodeEsClusterTest
       extends RorSettingsFileNameProvider
       with SingleClientSupport

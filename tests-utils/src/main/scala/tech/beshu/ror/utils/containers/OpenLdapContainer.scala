@@ -22,7 +22,6 @@ import com.typesafe.scalalogging.LazyLogging
 import com.unboundid.ldap.sdk.{LDAPConnection, ResultCode}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.{AbstractWaitStrategy, HostPortWaitStrategy}
 import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults, initLdap}
 import tech.beshu.ror.utils.containers.LdapWaitStrategy.*
@@ -66,7 +65,7 @@ object OpenLdapContainer {
 
   def create(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldapContainer = new OpenLdapContainer(name, ldapInitScript)
-    ldapContainer.container.setNetwork(Network.SHARED)
+    ldapContainer.container.setNetwork(TestNetwork.perJvm)
     ldapContainer
   }
 
@@ -90,7 +89,7 @@ object NonStoppableOpenLdapContainer {
 
   def createAndStart(name: String, ldapInitScript: InitScriptSource): LdapContainer = {
     val ldap = new NonStoppableOpenLdapContainer(name, ldapInitScript)
-    ldap.container.setNetwork(Network.SHARED)
+    ldap.container.setNetwork(TestNetwork.perJvm)
     ldap.privateStart()
     ldap
   }
