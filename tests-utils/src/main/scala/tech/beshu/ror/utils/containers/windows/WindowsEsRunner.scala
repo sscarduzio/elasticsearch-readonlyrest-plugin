@@ -37,9 +37,7 @@ object WindowsEsRunner extends LazyLogging {
       .spawn(
         cwd = binDir,
         env = Map(
-          // Same JIT/Netty trims as the docker image (images.Elasticsearch.baseJavaOptsBuilder):
-          // test nodes never fill the default 240m code cache, one Netty arena is enough.
-          "ES_JAVA_OPTS" -> "-Xms400m -Xmx400m -XX:ReservedCodeCacheSize=64m -Dio.netty.allocator.numDirectArenas=1",
+          "ES_JAVA_OPTS" -> "-Xms400m -Xmx400m",
           "JAVA_HOME" -> (binDir / ".." / "jdk").toString
         ) ++ config.envs,
         stdout = os.ProcessOutput.Readlines { line =>
