@@ -369,8 +369,8 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
 
   private def baseJavaOptsBuilder = {
     EsJavaOptsBuilder.empty
-      .add("-Xms512m")
-      .add("-Xmx512m")
+      .add("-Xms384m")
+      .add("-Xmx384m")
       .add("-Djava.security.egd=file:/dev/./urandoms")
       .add(
         "-Xdebug",
