@@ -311,7 +311,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-premium-4   # PROBE: premium (~2x CPU, 1.6x price) — revert to ubicloud-standard-4 if gain < 20%
+    runs-on: ubicloud-standard-4  # premium probe measured only ~15% faster at 1.6x price — not worth it
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 120
     strategy:
