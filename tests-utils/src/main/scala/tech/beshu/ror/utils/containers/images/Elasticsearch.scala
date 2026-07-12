@@ -192,6 +192,9 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // set (exit 70 otherwise). rm -rf of a missing dir is a no-op, one list fits all layouts.
       // The disable-settings for ml/watcher are REMOVED in baseEsConfigBuilder on this branch:
       // a deleted module's settings are unregistered and would be boot-fatal unknown keys.
+      // user(root) first: without it the DSL coalesces this rm into the plugin's keystore RUN
+      // layer, which executes as the elasticsearch user and cannot delete root-owned module dirs.
+      .user("root")
       .run(
         "rm -rf /usr/share/elasticsearch/modules/x-pack-ml /usr/share/elasticsearch/modules/x-pack-watcher /usr/share/elasticsearch/modules/x-pack-ccr /usr/share/elasticsearch/modules/x-pack-graph"
       )
