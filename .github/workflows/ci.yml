@@ -63,10 +63,11 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # 5 shards per leg, made safe by the HeavySuiteGate (max 3 concurrent multi-cluster suites,
-  # machine-wide): the gate is what made k=5 survivable on 16GB — without it, uncapped concurrent
-  # heavy-suite boots host-OOM'd the runner. Measured es94x: 20.6 min (k=4 was ~21.3-25).
-  IT_PARALLELISM: '5'
+  # 4 shards per leg + HeavySuiteGate (max 3 concurrent multi-cluster suites, machine-wide).
+  # k=5 was measured faster on es94x (20.6 vs ~21.3 min) but host-OOM'd 4 of 10 modules on the
+  # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
+  # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
+  IT_PARALLELISM: '4'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 

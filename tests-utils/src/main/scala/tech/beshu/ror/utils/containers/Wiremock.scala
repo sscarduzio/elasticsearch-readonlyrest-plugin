@@ -27,11 +27,18 @@ object Wiremock {
   def create(mappings: List[String], portWhenRunningOnWindows: Int = 8080): WiremockContainer = {
     OsUtils.currentOs match {
       case CurrentOs.Windows =>
+        // Same per-shard port window as WindowsEsPortProvider: sharded Windows runs share one host,
+        // and two shards starting wiremock-backed suites concurrently raced for the same fixed port
+        // ("Failed to bind to /0.0.0.0:8080"). 8080/8081 + k*1000 never reaches 9200 + k*1000 (ES),
+        // so the windows stay disjoint. originalPort moves too — on Windows it is what gets
+        // substituted into readonlyrest.yml placeholders (RorSettingsAdjuster), and providePort is
+        // what test clients dial; all three must agree on the shifted port.
+        val shardedPort = portWhenRunningOnWindows + Integer.getInteger("ror.shard.index", 0) * 1000
         new WiremockContainer(
-          container = new WindowsPseudoWiremockContainer(portWhenRunningOnWindows, mappings),
+          container = new WindowsPseudoWiremockContainer(shardedPort, mappings),
           host = "localhost",
-          portProvider = () => portWhenRunningOnWindows,
-          originalPort = portWhenRunningOnWindows,
+          portProvider = () => shardedPort,
+          originalPort = shardedPort,
         )
       case CurrentOs.OtherThanWindows =>
         val container = new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))
