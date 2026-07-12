@@ -80,14 +80,7 @@ public final class ParallelProcessRunner {
     Runtime.getRuntime().addShutdownHook(shutdownHook);
 
     try {
-      boolean first = true;
       for (Command cmd : commands) {
-        // Stagger starts by 30s: with duration-balanced shards all workers boot their heaviest
-        // multi-container suites at once, and the synchronized memory spike OOM-killed 16GB VMs.
-        if (!first) {
-          Thread.sleep(30_000);
-        }
-        first = false;
         File parentDir = cmd.outputFile.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
           parentDir.mkdirs();

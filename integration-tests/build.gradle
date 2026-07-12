@@ -97,13 +97,14 @@ test {
     }
     filter {
         if (shardCount > 1 && project.hasProperty('shardIndex')) {
-            // Duration-balanced LPT packing (replaces duration-blind hashCode-mod, which left shards
-            // ranging 12-20.5 min at k=4 — two shards idled 6-8 min waiting for the heavy one).
-            // Weights: committed suite-timings.json = measured wall seconds per suite INCLUDING its
-            // container boots (junit-XML time= excludes boots and would mis-balance); regenerate from
-            // sharded-logs when suites change materially. Unknown/new suites default to 60s.
-            // Deterministic: every shard JVM computes the same packing from the same committed table.
-            def timings = new groovy.json.JsonSlurper().parse(file('suite-timings.json')).times
+            // Two packing modes:
+            //  - default: duration-blind hashCode-mod. Uneven (shards ranged 12-20.5 min at k=4)
+            //    but the idle gaps double as memory slack — the ONLY mode stable on 16GB runners.
+            //  - -PbalancedShards=true: duration-balanced LPT from suite-timings.json. Levels all
+            //    shards at ~17 min BUT the sustained full load host-OOMed 16GB boxes 4/4 times
+            //    (even with staggered starts + zip reuse). Use only on 32GB+ machines.
+            def balanced = (project.findProperty('balancedShards') ?: 'false').toBoolean()
+            def timings = balanced ? new groovy.json.JsonSlurper().parse(file('suite-timings.json')).times : [:]
             def suites = []
             test.testClassesDirs.asFileTree.matching {
                 // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
@@ -116,22 +117,31 @@ test {
                     suites << fd.path.replace('/', '.').replaceAll(/\.class$/, '')
                 }
             }
-            def weightOf = { fqcn -> ((timings[fqcn] ?: 60) as long) }
-            def bins = new long[shardCount]
             def matched = 0
-            suites.sort { a, b -> (weightOf(b) <=> weightOf(a)) ?: (a <=> b) }.each { fqcn ->
-                def lightest = 0
-                for (int i = 1; i < shardCount; i++) { if (bins[i] < bins[lightest]) lightest = i }
-                bins[lightest] += weightOf(fqcn)
-                if (lightest == shardIndex) {
-                    includeTestsMatching fqcn
-                    matched++
+            if (balanced) {
+                def weightOf = { fqcn -> ((timings[fqcn] ?: 60) as long) }
+                def bins = new long[shardCount]
+                suites.sort { a, b -> (weightOf(b) <=> weightOf(a)) ?: (a <=> b) }.each { fqcn ->
+                    def lightest = 0
+                    for (int i = 1; i < shardCount; i++) { if (bins[i] < bins[lightest]) lightest = i }
+                    bins[lightest] += weightOf(fqcn)
+                    if (lightest == shardIndex) {
+                        includeTestsMatching fqcn
+                        matched++
+                    }
+                }
+            } else {
+                suites.each { fqcn ->
+                    if (Math.floorMod(fqcn.hashCode(), shardCount) == shardIndex) {
+                        includeTestsMatching fqcn
+                        matched++
+                    }
                 }
             }
             if (matched == 0) {
                 throw new GradleException("Shard ${shardIndex}/${shardCount} matched 0 suites — check shardCount/shardIndex.")
             }
-            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${matched} suites, ~${(bins[shardIndex] / 60).toLong()} min planned")
+            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${matched} suites (${balanced ? 'balanced' : 'hash'} packing)")
         } else {
             includeTestsMatching 'tech.beshu.ror.integration.suites.*'
         }
