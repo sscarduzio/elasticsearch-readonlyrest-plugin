@@ -167,35 +167,74 @@ object WindowsEsDirectoryManager extends LazyLogging {
   }
 
   def unzipEs(esVersion: String, config: Config): Unit = {
-    logger.info(s"Unzipping ES")
-    val zipFile = zipFilePath(esVersion)
+    // Unzip ONCE per ES version into a shared template (file-lock guarded across shard JVMs),
+    // then per-node robocopy: single-threaded Java unzip of the ~600MB distribution PER NODE was
+    // one of the dominant Windows costs (every stream write also pays the antivirus filter).
     val targetDir = esPath(config.clusterName, config.nodeName)
     os.remove.all(targetDir)
-    os.makeDir.all(targetDir)
-    Using.resource(
-      new ZipInputStream(Files.newInputStream(zipFile.toNIO))
-    ) { zis =>
-      LazyList
-        .continually(zis.getNextEntry)
-        .takeWhile(_ != null)
-        .foreach { entry =>
-          val relPath = os.RelPath(entry.getName)
+    val template = templatePath(esVersion)
+    ensureTemplate(esVersion, template)
+    logger.info(s"Copying ES template $template -> $targetDir")
+    os.makeDir.all(targetDir / os.up)
+    // Native multithreaded copy; robocopy exit codes 0-7 mean success.
+    val rc = os
+      .proc("robocopy", template.toString, targetDir.toString, "/E", "/MT:16", "/NFL", "/NDL", "/NJH", "/NJS", "/NP")
+      .call(check = false, stdout = os.Pipe, stderr = os.Pipe)
+      .exitCode
+    if (rc >= 8) throw new IllegalStateException(s"robocopy of ES template failed with exit code $rc")
+    logger.info(s"ES ready at $targetDir")
+  }
 
-          // Drop the first path segment (without this step, the zip file name is part of the unzipped directory path)
-          val strippedPath =
-            if (relPath.segments.nonEmpty) os.RelPath.fromStringSegments(relPath.segments.tail.toArray)
-            else relPath
+  private def templatePath(esVersion: String): os.Path =
+    os.pwd / "windows-es" / "templates" / s"es-$esVersion"
 
-          val newPath = targetDir / strippedPath
-          if (entry.isDirectory) {
-            os.makeDir.all(newPath)
-          } else {
-            os.makeDir.all(newPath / os.up)
-            Files.copy(zis, newPath.toNIO, StandardCopyOption.REPLACE_EXISTING)
+  private def ensureTemplate(esVersion: String, template: os.Path): Unit = {
+    val marker = template / ".unzip-complete"
+    if (!os.exists(marker)) {
+      // Cross-shard-JVM lock: only one shard unzips; the rest wait then reuse.
+      val lockDir = template / os.up
+      os.makeDir.all(lockDir)
+      Using.resource(
+        java.nio.channels.FileChannel.open(
+          (lockDir / s"es-$esVersion.lock").toNIO,
+          java.nio.file.StandardOpenOption.CREATE,
+          java.nio.file.StandardOpenOption.WRITE
+        )
+      ) { channel =>
+        val lock = channel.lock()
+        try {
+          if (!os.exists(marker)) {
+            logger.info(s"Unzipping ES $esVersion into shared template")
+            os.remove.all(template)
+            os.makeDir.all(template)
+            val zipFile = zipFilePath(esVersion)
+            Using.resource(new ZipInputStream(Files.newInputStream(zipFile.toNIO))) { zis =>
+              LazyList
+                .continually(zis.getNextEntry)
+                .takeWhile(_ != null)
+                .foreach { entry =>
+                  val relPath = os.RelPath(entry.getName)
+                  // Drop the first path segment (without this step, the zip file name is part of the unzipped directory path)
+                  val strippedPath =
+                    if (relPath.segments.nonEmpty) os.RelPath.fromStringSegments(relPath.segments.tail.toArray)
+                    else relPath
+                  val newPath = template / strippedPath
+                  if (entry.isDirectory) {
+                    os.makeDir.all(newPath)
+                  } else {
+                    os.makeDir.all(newPath / os.up)
+                    Files.copy(zis, newPath.toNIO, StandardCopyOption.REPLACE_EXISTING)
+                  }
+                }
+            }
+            os.write(marker, "")
+            logger.info(s"ES $esVersion template ready")
           }
+        } finally {
+          lock.release()
         }
+      }
     }
-    logger.info(s"Unzipped ES")
   }
 
 }
