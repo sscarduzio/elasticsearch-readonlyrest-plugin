@@ -91,6 +91,9 @@ test {
     // the Test task's shared result dirs (binary results + junit XML + html) get cross-corrupted —
     // "Could not write XML test results" / truncated TEST-*.xml — killing otherwise-green shards.
     if (project.hasProperty('shardIndex')) {
+        // Windows native-ES runs key ports and install dirs off this (see WindowsEsPortProvider /
+        // WindowsEsDirectoryManager); harmless on Linux where docker isolates everything.
+        systemProperty 'ror.shard.index', shardIndex
         reports.junitXml.outputLocation = layout.buildDirectory.dir("test-results/shard-${shardIndex}")
         reports.html.outputLocation = layout.buildDirectory.dir("reports/tests/shard-${shardIndex}")
         binaryResultsDirectory.set(layout.buildDirectory.dir("test-results/shard-${shardIndex}-bin"))
@@ -103,7 +106,7 @@ test {
             //  - -PbalancedShards=true: duration-balanced LPT from suite-timings.json. Levels all
             //    shards at ~17 min BUT the sustained full load host-OOMed 16GB boxes 4/4 times
             //    (even with staggered starts + zip reuse). Use only on 32GB+ machines.
-            def balanced = (project.findProperty('balancedShards') ?: 'false').toBoolean()
+            def balanced = (project.findProperty('balancedShards') ?: System.getenv('ROR_BALANCED_SHARDS') ?: 'false').toBoolean()
             def timings = balanced ? new groovy.json.JsonSlurper().parse(file('suite-timings.json')).times : [:]
             def suites = []
             test.testClassesDirs.asFileTree.matching {

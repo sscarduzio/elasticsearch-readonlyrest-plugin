@@ -33,8 +33,12 @@ object WindowsEsDirectoryManager extends LazyLogging {
   def downloadUrl(esVersion: String): String =
     s"https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-$esVersion-windows-x86_64.zip"
 
-  def basePath: os.Path =
-    os.pwd / "windows-es"
+  def basePath: os.Path = {
+    // Sharded runs: separate install/data trees per shard JVM — the es_<cluster>_<node> dirs are
+    // name-keyed and would collide across concurrently-running shards on one host.
+    val shard = Integer.getInteger("ror.shard.index", -1)
+    if (shard >= 0) os.pwd / s"windows-es-shard-$shard" else os.pwd / "windows-es"
+  }
 
   def downloadsPath: os.Path =
     basePath / "downloads"

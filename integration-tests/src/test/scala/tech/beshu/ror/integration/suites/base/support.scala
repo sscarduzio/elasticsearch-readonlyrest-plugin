@@ -18,18 +18,44 @@ package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import org.scalatest.Suite
+import org.scalatest.{Args, Status, Suite, SuiteMixin}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers.*
-import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsRemoteClustersContainer}
+import tech.beshu.ror.utils.containers.{
+  DependencyDef,
+  EsClusterContainer,
+  EsClusterProvider,
+  EsRemoteClustersContainer,
+  HeavySuiteGate
+}
 
 object support {
+
+  // Brackets a heavy (multi-node / multi-cluster) suite with a machine-wide concurrency permit:
+  // acquired BEFORE its containers start, released AFTER they stop. Limits simultaneous heavy
+  // suites across all shard JVMs so their combined container-boot memory spike cannot OOM the
+  // runner (see HeavySuiteGate). No-op unless ROR_HEAVY_SUITE_PERMITS is set.
+  // Wraps run() (not beforeAll): ForAllTestContainer starts containers inside run(), before
+  // beforeAll fires. Mixed in AFTER ForAllTestContainer so this run() is the outermost layer.
+  trait HeavySuiteGated extends SuiteMixin { this: Suite =>
+
+    override abstract def run(testName: Option[String], args: Args): Status = {
+      HeavySuiteGate.acquire(suiteName) match {
+        case None       => super.run(testName, args)
+        case Some(slot) =>
+          try super.run(testName, args)
+          finally slot.release()
+      }
+    }
+
+  }
 
   trait BaseEsClusterIntegrationTest
       extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer {
+      with ForAllTestContainer
+      with HeavySuiteGated {
     this: Suite & EsClusterProvider & ESVersionSupport =>
 
     override lazy val container: EsClusterContainer = clusterContainer
@@ -41,7 +67,8 @@ object support {
       extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer {
+      with ForAllTestContainer
+      with HeavySuiteGated {
     this: Suite & EsClusterProvider & ESVersionSupport =>
 
     override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
@@ -53,7 +80,8 @@ object support {
       extends RorSettingsFileNameProvider
       with MultipleClientsSupport
       with TestSuiteWithClosedTaskAssertion
-      with ForAllTestContainer {
+      with ForAllTestContainer
+      with HeavySuiteGated {
     this: Suite & EsClusterProvider & ESVersionSupport =>
 
     import com.dimafeng.testcontainers.LazyContainer.*

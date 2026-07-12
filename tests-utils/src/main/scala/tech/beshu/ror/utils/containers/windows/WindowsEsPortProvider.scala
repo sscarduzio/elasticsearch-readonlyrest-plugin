@@ -21,7 +21,13 @@ import scala.collection.immutable.ListMap
 
 object WindowsEsPortProvider {
 
-  private val esPortProvider = new BoundedAtomicInt(start = 9200, max = 9299)
+  // Sharded runs on Windows: each shard JVM runs ES as native processes on the SAME host, so the
+  // per-node-name port table must not overlap between shards. Each shard gets its own 1000-port
+  // window (shard 0: 9200.., shard 1: 10200.., ...). ror.shard.index is set by the test task when
+  // -PshardIndex is present; plain unsharded runs keep the historical 9200 range.
+  private val shardPortOffset: Int = Integer.getInteger("ror.shard.index", 0) * 1000
+
+  private val esPortProvider = new BoundedAtomicInt(start = 9200 + shardPortOffset, max = 9299 + shardPortOffset)
 
   // Node ports need to be predefined, because each ES process must be aware on startup time of ports used by all other cluster nodes.
   // In testcontainers implementation all nodes are identifiable by host name in docker network, with all using the same port.
