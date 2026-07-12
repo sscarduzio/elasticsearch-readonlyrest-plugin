@@ -159,7 +159,7 @@ jobs:
   toolchains_verify:
     needs: setup
     if: github.event_name != 'schedule' && github.event.inputs.actionToPerform != 'build_toolchains_image'
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 10
     steps:
@@ -209,7 +209,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     continue-on-error: true
     steps:
@@ -249,7 +249,7 @@ jobs:
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     strategy:
       fail-fast: false
@@ -278,7 +278,7 @@ jobs:
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
       (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubicloud-standard-4
+    runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 30
     steps:
@@ -356,6 +356,44 @@ jobs:
           name: sharded-logs-${{ matrix.ROR_TASK }}
           path: integration-tests/build/sharded-logs/
           if-no-files-found: ignore
+
+
+  # PROBE (temporary, remove with dev mode): same test leg on the FREE GitHub runner,
+  # to measure free vs paid 16GB runner speed head-to-head. Does not gate anything.
+  it_linux_ghfree:
+    needs: [ setup, toolchains_verify, es_s3_up ]
+    if: >-
+      !cancelled() &&
+      needs.toolchains_verify.result == 'success' &&
+      needs.es_s3_up.result != 'cancelled' &&
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
+    runs-on: ubuntu-latest
+    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    timeout-minutes: 60
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        ROR_TASK: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - name: ${{ matrix.ROR_TASK }} (free runner probe)
+        env:
+          ROR_TASK: ${{ matrix.ROR_TASK }}
+          ROR_CI_JOB_ID: ${{ github.run_id }}-ghfree-${{ strategy.job-index }}
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
+        run: |
+          source ci/docker-hub-auth.sh
+          ci/run-pipeline.sh
 
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
   # Matrix from setup: 7-version subset on develop/master/epic, 3 on PRs, full 33 on manual
