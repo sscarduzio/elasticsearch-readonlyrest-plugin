@@ -184,6 +184,13 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
       .when(hasBuggyBundledJdk, replaceBundledJdk)
+      // EXPERIMENT: amputate feature modules no suite exercises (ml is the whopper: jars + native
+      // binaries). rm -rf of a missing dir is a no-op, so the same list works across layouts.
+      // The disable-settings for ml/watcher are REMOVED below: a deleted module's settings are
+      // unregistered and would be boot-fatal unknown keys.
+      .run(
+        "rm -rf /usr/share/elasticsearch/modules/x-pack-ml /usr/share/elasticsearch/modules/x-pack-watcher /usr/share/elasticsearch/modules/x-pack-ccr /usr/share/elasticsearch/modules/x-pack-graph"
+      )
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
@@ -306,10 +313,8 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // RSS per container) and speeds startup. Unlike xpack.monitoring.enabled (removed in 8.0), the
       // xpack.ml.enabled key is supported across the whole matrix (6.3 -> 9.x), so no version guard.
       // XpackSecurityPlugin must NOT re-add it (duplicate elasticsearch.yml keys are fatal).
-      .add("xpack.ml.enabled: false")
       // Watcher is never exercised by any suite; off it skips its thread pools, trigger engine and
       // watch-history templates. The key is valid across the whole matrix (6.3 -> 9.x).
-      .add("xpack.watcher.enabled: false")
       // Skip the built-in index/component templates + their ILM policies (logs-*, metrics-*,
       // synthetics-*, 7/30/90/180/365-days-default...). 8.x installs dozens of them on first boot
       // (the biggest chunk of the 8.x-vs-7.x startup bloat, cluster-state churn seen in test logs);
