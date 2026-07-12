@@ -51,7 +51,8 @@ public abstract class ShardedGradlewTest extends DefaultTask {
   public void runShards() {
     int shardCount = shardCountValue();
     File projectDir = getProject().getRootProject().getProjectDir();
-    File gradlew = new File(projectDir, "gradlew");
+    boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+    File gradlew = new File(projectDir, isWindows ? "gradlew.bat" : "gradlew");
     File logDir =
         new File(getProject().getLayout().getBuildDirectory().getAsFile().get(), "sharded-logs");
 
@@ -59,6 +60,13 @@ public abstract class ShardedGradlewTest extends DefaultTask {
 
     for (int i = 0; i < shardCount; i++) {
       List<String> cmd = new ArrayList<>();
+      if (isWindows) {
+        // Windows CreateProcess cannot launch batch files directly (error 193); wrap in cmd.exe.
+        // ProcessHandle.descendants().destroyForcibly() in ParallelProcessRunner is cross-platform,
+        // so cancellation reaping works the same as on Linux.
+        cmd.add("cmd.exe");
+        cmd.add("/c");
+      }
       cmd.add(gradlew.getAbsolutePath());
       cmd.add("--no-daemon"); // mandatory for descendant-tree integrity (see class javadoc)
       cmd.add("integration-tests:test");

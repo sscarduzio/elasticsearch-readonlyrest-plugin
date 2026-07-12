@@ -109,7 +109,9 @@ jobs:
           LINUX_PR='["integration_es94x"]'
           WIN_FULL='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
           WIN_BRANCH='["es94x","es92x","es90x","es818x","es80x","es717x","es70x"]'
-          WIN_PR='["es94x","es818x","es717x"]'
+          # DEV MODE: single windows leg for the sharding/blacksmith probes. RESTORE before merge:
+          # WIN_PR='["es94x","es818x","es717x"]'
+          WIN_PR='["es94x"]'
 
           if [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
             echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
@@ -358,43 +360,6 @@ jobs:
           if-no-files-found: ignore
 
 
-  # PROBE (temporary, remove with dev mode): same test leg on the FREE GitHub runner,
-  # to measure free vs paid 16GB runner speed head-to-head. Does not gate anything.
-  it_linux_ghfree:
-    needs: [ setup, toolchains_verify, es_s3_up ]
-    if: >-
-      !cancelled() &&
-      needs.toolchains_verify.result == 'success' &&
-      needs.es_s3_up.result != 'cancelled' &&
-      github.event_name != 'schedule' &&
-      (github.event_name != 'workflow_dispatch' || needs.setup.outputs.action == 'run_all_tests_on_linux')
-    runs-on: ubuntu-latest
-    container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
-    timeout-minutes: 60
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        ROR_TASK: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
-      - name: ${{ matrix.ROR_TASK }} (free runner probe)
-        env:
-          ROR_TASK: ${{ matrix.ROR_TASK }}
-          ROR_CI_JOB_ID: ${{ github.run_id }}-ghfree-${{ strategy.job-index }}
-          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
-          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
-          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
-          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
-          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
-          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
-          DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
-          DOCKER_HUB_RO_TOKEN: ${{ secrets.DOCKER_HUB_RO_TOKEN }}
-        run: |
-          source ci/docker-hub-auth.sh
-          ci/run-pipeline.sh
-
   # ── TEST: Windows integration tests (GitHub-hosted) ───────────────────────
   # Matrix from setup: 7-version subset on develop/master/epic, 3 on PRs, full 33 on manual
   # run_all_tests_on_windows — exactly Azure's three Windows IT jobs collapsed into one.
@@ -402,9 +367,7 @@ jobs:
     # toolchains_verify is in needs even though Windows doesn't use the image: Azure's TEST stage
     # depended on TOOLCHAINS_VERIFY, so a broken image fails fast instead of running doomed legs.
     needs: [ setup, toolchains_verify, es_s3_up ]
-    # DEV MODE: `false &&` skips Windows during optimization iterations. RESTORE before merge.
     if: >-
-      false &&
       !cancelled() &&
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
@@ -439,7 +402,9 @@ jobs:
           ES_MODULE: ${{ matrix.ES_MODULE }}
         run: |
           # Override the Linux gradle.properties installations.paths and let Windows auto-provision JDKs.
-          $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:test", "-PesModule=$env:ES_MODULE",
+          # PROBE: sharded (3 workers) — same trick that halved the Linux legs; ES runs as native
+          # processes on Windows, 3 fit in 16GB. ror-tools:test kept as the serial gate.
+          $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
             "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
           .\gradlew @gradleArgs
           if ($LASTEXITCODE -ne 0) {
@@ -452,6 +417,55 @@ jobs:
         with:
           name: win-it-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
+          if-no-files-found: ignore
+      - name: Publish per-shard logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharded-logs-win-${{ matrix.ES_MODULE }}
+          path: integration-tests/build/sharded-logs/
+          if-no-files-found: ignore
+
+
+  # PROBE (temporary): same sharded Windows leg on Blacksmith (paid, faster CPUs, beta) to price
+  # the speed gap vs the free GitHub Windows runner. Does not gate anything.
+  it_windows_blacksmith:
+    needs: [ setup ]
+    if: >-
+      !cancelled() &&
+      github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    runs-on: blacksmith-4vcpu-windows-2025
+    timeout-minutes: 90
+    continue-on-error: true
+    env:
+      GRADLE_USER_HOME: ''
+      GRADLE_OPTS: ''
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: es94x sharded on blacksmith (probe)
+        shell: pwsh
+        env:
+          ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
+          ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
+          ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
+          ROR_LIBS_STORE_ACCESS_KEY_SECRET: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_SECRET }}
+          ROR_LIBS_STORE_BUCKET: ${{ vars.ROR_LIBS_STORE_BUCKET }}
+          ROR_LIBS_STORE_PATH_PREFIX: ${{ vars.ROR_LIBS_STORE_PATH_PREFIX }}
+          ES_MODULE: es94x
+        run: |
+          $gradleArgs = "--no-daemon", "ror-tools:test", "integration-tests:shardedTest", "-PshardCount=3", "-PesModule=$env:ES_MODULE",
+            "-Dorg.gradle.java.installations.paths=", "-Dorg.gradle.java.installations.auto-download=true"
+          .\gradlew @gradleArgs
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Publish per-shard logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharded-logs-blacksmith-es94x
+          path: integration-tests/build/sharded-logs/
           if-no-files-found: ignore
 
   # ── TEST: unit tests on Windows (manual run_all_tests_on_windows only) ────
