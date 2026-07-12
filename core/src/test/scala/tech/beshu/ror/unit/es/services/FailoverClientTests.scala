@@ -218,6 +218,28 @@ class FailoverClientTests extends AnyWordSpec with Matchers {
       handler.successes.toList should be(List("node2-response"))
     }
 
+    "fail the request without trying other nodes when all circuits are open and the soonest-trial node fails" in {
+      val clock = new TestClock
+      val node1 = new RecordingExecutor(_ => Left(new IOException("node1 down")))
+      val node2 = new RecordingExecutor({
+        case 1 => Right("node2-response")
+        case _ => Left(new IOException("node2 down"))
+      })
+      val client = failoverClient(clock, node1, node2)
+
+      performRequest(client) // node1 fails (circuit open until 1s), node2 succeeds
+      clock.advance(1.second)
+      performRequest(client) // trial on node1 fails (circuit open until 2.5s), then node2 fails (circuit open until 2s)
+
+      clock.advance(100.millis)
+      val handler = performRequest(client) // all circuits open: only node2 (soonest trial) is tried
+
+      node1.receivedRequests should have size 2 // node1 not tried even though node2 failed
+      node2.receivedRequests should have size 3
+      handler.successes should have size 0
+      handler.failures should have size 1
+    }
+
     "close all node clients on close" in {
       val node1 = new RecordingExecutor(_ => Right("node1-response"))
       val node2 = new RecordingExecutor(_ => Right("node2-response"))

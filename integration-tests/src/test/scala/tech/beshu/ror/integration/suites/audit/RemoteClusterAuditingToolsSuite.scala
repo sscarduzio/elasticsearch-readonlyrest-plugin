@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites.audit
 
 import cats.data.NonEmptyList
-import org.scalatest.time.{Seconds, Span}
+import org.scalatest.time.{Millis, Seconds, Span}
 import tech.beshu.ror.integration.suites.base.BaseAuditingToolsSuite
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
@@ -33,6 +33,7 @@ import tech.beshu.ror.utils.misc.OsUtils.{CurrentOs, ignoreOnWindows}
 import tech.beshu.ror.utils.misc.{OsUtils, Version}
 
 import java.util.UUID
+import scala.concurrent.duration.*
 
 class RemoteClusterAuditingToolsSuite
     extends BaseAuditingToolsSuite
@@ -112,7 +113,7 @@ class RemoteClusterAuditingToolsSuite
   ignoreOnWindows {
     "ROR remote audit cluster mode" should {
       "report audit events in round-robin mode, even when some nodes are unreachable" in {
-        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOKStatusOrSettingsAlreadyLoaded()
+        forceReloadFreshEngine(baseRorSettingsYaml)
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
 
@@ -175,7 +176,7 @@ class RemoteClusterAuditingToolsSuite
         val configWithAuditFailover = baseRorSettingsYaml.replaceAll("round-robin", "failover")
         assert(configWithAuditFailover != baseRorSettingsYaml) // make sure changes applied
 
-        rorApiManager.updateRorInIndexSettings(configWithAuditFailover).forceOKStatusOrSettingsAlreadyLoaded()
+        forceReloadFreshEngine(configWithAuditFailover)
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
 
@@ -214,13 +215,17 @@ class RemoteClusterAuditingToolsSuite
 
         auditNode1.enableNetwork()
 
+        // the circuit of node1 stays open for at most ~3.4s after the all-nodes-down phase,
+        // so together with the probe interval and the audit index refresh, 15s is a safe bound
+        waitUntilAuditSinkIsBackOnline(atMost = 15.seconds)
+
         val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
 
-        // traceIds4 appearing in audit means the system is back online and retries for traceIds3 have exhausted.
-        // Longer timeout: node2 is still down, so failover may attempt it first (connection timeout ~14s).
+        // the sink recovery is already proven above, so traceIds4 go straight to node1 -
+        // the timeout covers only submitting and indexing of the events themselves
         val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
         forEachAuditManager { adminAuditManager =>
-          eventually(timeout(Span(60, Seconds))) {
+          eventually(timeout(Span(30, Seconds))) {
             val auditEntries = adminAuditManager.getEntries.force().jsons
 
             allExpectedTraceIds.foreach { traceId =>
@@ -234,11 +239,11 @@ class RemoteClusterAuditingToolsSuite
           }
         }
       }
-      "fail to reload audit settings when all nodes are unreachable and ignore_es_connectivity_problems is enabled" in {
+      "handle audit settings reload when all nodes are unreachable and ignore_es_connectivity_problems is enabled" in {
         val auditNode1 = proxiedContainers(0)
         val auditNode2 = proxiedContainers(1)
 
-        rorApiManager.updateRorInIndexSettings(baseRorSettingsYaml).forceOKStatusOrSettingsAlreadyLoaded()
+        forceReloadFreshEngine(baseRorSettingsYaml)
 
         auditNode1.disableNetwork()
         auditNode2.disableNetwork()
@@ -248,12 +253,18 @@ class RemoteClusterAuditingToolsSuite
           replacements = Map("ignore_es_connectivity_problems: false" -> "ignore_es_connectivity_problems: true")
         )
 
-        rorApiManager
-          .updateRorInIndexSettings(updatedConfig)
-          .forceOKWithFailure(
+        val response = rorApiManager.updateRorInIndexSettings(updatedConfig)
+        if (isDataStreamSupported) {
+          // the data stream output has to verify/create the data stream upfront,
+          // so the reload fails despite the ignored connectivity check
+          response.forceOKWithFailure(
             s"Unable to configure audit output using a data stream in remote cluster ${auditNodeAddressFromConfig(auditNode1)}, ${auditNodeAddressFromConfig(auditNode2)}. " +
               s"Details: [Unable to determine if data stream audit_data_stream exists., Unable to determine if data stream audit_data_stream exists.]"
           )
+        } else {
+          // the index output is created lazily, so with the connectivity check ignored the reload succeeds
+          response.forceOkStatus()
+        }
       }
       "reload audit settings when one node is unreachable and ignore_es_connectivity_problems is disabled" in {
         val auditNode1 = proxiedContainers(0)
@@ -261,9 +272,7 @@ class RemoteClusterAuditingToolsSuite
         auditNode1.enableNetwork()
         auditNode2.enableNetwork()
         // assert config is valid
-        rorApiManager
-          .updateRorInIndexSettings(baseRorSettingsYaml.prependedAll("#yaml-comment\n"))
-          .forceOKStatusOrSettingsAlreadyLoaded()
+        forceReloadFreshEngine(baseRorSettingsYaml)
 
         auditNode1.disableNetwork()
 
@@ -275,9 +284,7 @@ class RemoteClusterAuditingToolsSuite
         auditNode1.enableNetwork()
         auditNode2.enableNetwork()
         // assert config is valid
-        rorApiManager
-          .updateRorInIndexSettings(baseRorSettingsYaml.prependedAll("#yaml-comment\n"))
-          .forceOKStatusOrSettingsAlreadyLoaded()
+        forceReloadFreshEngine(baseRorSettingsYaml)
 
         auditNode1.disableNetwork()
         auditNode2.disableNetwork()
@@ -292,6 +299,29 @@ class RemoteClusterAuditingToolsSuite
           )
       }
     }
+  }
+
+  // Deterministic replacement for a fixed sleep: the circuit breaker state is not observable
+  // from the outside, so we send sacrificial probe events until one of them lands in the audit.
+  // A delivered event proves the sink has recovered - events sent afterwards cannot be lost.
+  private def waitUntilAuditSinkIsBackOnline(atMost: FiniteDuration): Unit = {
+    val probeTraceIds = scala.collection.mutable.ListBuffer.empty[String]
+    forEachAuditManager { adminAuditManager =>
+      eventually(timeout(Span(atMost.toMillis, Millis)), interval(Span(500, Millis))) {
+        probeTraceIds += queryTweeterIndexWithRandomTraceId(times = 1).head
+        val auditEntries = adminAuditManager.getEntries.force().jsons
+        probeTraceIds.exists(id => findAuditEntriesWithTraceId(auditEntries, id).nonEmpty) shouldBe true
+      }
+    }
+  }
+
+  private def forceReloadFreshEngine(config: String): Unit = {
+    // the unique comment makes the settings differ from the previously loaded ones, so the reload
+    // always creates a fresh engine (and fresh audit sink clients - no circuit breaker
+    // or dead-host state leaks between tests)
+    rorApiManager
+      .updateRorInIndexSettings(s"# test-engine-id: ${UUID.randomUUID()}\n$config")
+      .forceOkStatus()
   }
 
   private def queryTweeterIndexWithRandomTraceId(times: Int): List[String] = {
