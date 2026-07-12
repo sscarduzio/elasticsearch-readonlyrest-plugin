@@ -63,12 +63,21 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[JFile] = {
-    logger.info(s"Assembling ROR in module $moduleName")
-    runTask(moduleName + ":buildRorPluginZip")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
-    logger.info(s"Finished assembling ROR in module $moduleName")
-    if (!plugin.exists) None
-    else Some(plugin)
+    // Shard workers (ROR_REUSE_ASSEMBLED=1, set by ShardedGradlewTest) reuse the zip the parent's
+    // prebuild already built instead of re-running a nested gradle build (~90s per shard, and
+    // concurrent nested builds contend on gradle's project lock). Opt-in only: a plain local
+    // `gradlew integration-tests:test` still always rebuilds, so dev freshness is unchanged.
+    if (sys.env.get("ROR_REUSE_ASSEMBLED").contains("1") && plugin.exists) {
+      logger.info(s"Reusing already-assembled ROR for module $moduleName: ${plugin.getName}")
+      Some(plugin)
+    } else {
+      logger.info(s"Assembling ROR in module $moduleName")
+      runTask(moduleName + ":buildRorPluginZip")
+      logger.info(s"Finished assembling ROR in module $moduleName")
+      if (!plugin.exists) None
+      else Some(plugin)
+    }
   }
 
   def getModuleESVersion: String =

@@ -80,7 +80,14 @@ public final class ParallelProcessRunner {
     Runtime.getRuntime().addShutdownHook(shutdownHook);
 
     try {
+      boolean first = true;
       for (Command cmd : commands) {
+        // Stagger starts by 30s: with duration-balanced shards all workers boot their heaviest
+        // multi-container suites at once, and the synchronized memory spike OOM-killed 16GB VMs.
+        if (!first) {
+          Thread.sleep(30_000);
+        }
+        first = false;
         File parentDir = cmd.outputFile.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
           parentDir.mkdirs();
@@ -90,6 +97,9 @@ public final class ParallelProcessRunner {
                 .directory(workingDirectory)
                 .redirectErrorStream(true)
                 .redirectOutput(cmd.outputFile);
+        // Shard workers reuse the ROR plugin zip the parent's prebuild already assembled
+        // (see RorPluginGradleProject.assemble) instead of re-running a nested gradle build.
+        pb.environment().put("ROR_REUSE_ASSEMBLED", "1");
         Process process = pb.start();
         processes.add(process);
         futures.add(process.onExit());
