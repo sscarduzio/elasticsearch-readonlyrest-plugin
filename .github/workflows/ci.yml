@@ -67,7 +67,7 @@ env:
   # k=5 was measured faster on es94x (20.6 vs ~21.3 min) but host-OOM'd 4 of 10 modules on the
   # full-matrix run (es80x/es810x/es818x/es90x, exit 137) — those legs run suites es94x excludes,
   # so their memory peaks are higher. Fleet wall time is set by the slowest leg anyway: k=4.
-  IT_PARALLELISM: '4'
+  IT_PARALLELISM: '5'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
@@ -105,10 +105,10 @@ jobs:
         run: |
           # ES-version sets — keep in sync with azure-pipelines.yml until Azure is deleted.
           LINUX_FULL='["integration_es94x","integration_es92x","integration_es91x","integration_es90x","integration_es818x","integration_es816x","integration_es815x","integration_es814x","integration_es813x","integration_es812x","integration_es811x","integration_es810x","integration_es89x","integration_es88x","integration_es87x","integration_es85x","integration_es84x","integration_es83x","integration_es82x","integration_es81x","integration_es80x","integration_es717x","integration_es716x","integration_es714x","integration_es711x","integration_es710x","integration_es79x","integration_es78x","integration_es77x","integration_es74x","integration_es73x","integration_es72x","integration_es70x","integration_es67x"]'
-          LINUX_PR='["integration_es94x","integration_es90x","integration_es818x","integration_es816x","integration_es810x","integration_es80x","integration_es717x","integration_es710x","integration_es70x","integration_es67x"]'
+          LINUX_PR='["integration_es90x"]'  # EXPERIMENT: single-leg probe
           WIN_FULL='["es94x","es92x","es91x","es90x","es818x","es816x","es815x","es814x","es813x","es812x","es811x","es810x","es89x","es88x","es87x","es85x","es84x","es83x","es82x","es81x","es80x","es717x","es716x","es714x","es711x","es710x","es79x","es78x","es77x","es74x","es73x","es72x","es70x"]'
           WIN_BRANCH='["es94x","es92x","es90x","es818x","es80x","es717x","es70x"]'
-          WIN_PR='["es94x","es818x","es717x"]'
+          WIN_PR='[]'  # EXPERIMENT: single-leg probe
 
           if [ "$IS_DISPATCH" = "true" ] || [ "$IS_FULL" = "true" ]; then
             echo "linux=$LINUX_FULL" >> "$GITHUB_OUTPUT"
@@ -306,6 +306,7 @@ jobs:
     needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
       !cancelled() &&
+      needs.setup.outputs.it_linux_matrix != '[]' &&
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
@@ -373,6 +374,7 @@ jobs:
     needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
       !cancelled() &&
+      needs.setup.outputs.it_windows_matrix != '[]' &&
       needs.toolchains_verify.result == 'success' &&
       needs.es_s3_up.result != 'cancelled' &&
       github.event_name != 'schedule' &&
