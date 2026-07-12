@@ -307,6 +307,24 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // xpack.ml.enabled key is supported across the whole matrix (6.3 -> 9.x), so no version guard.
       // XpackSecurityPlugin must NOT re-add it (duplicate elasticsearch.yml keys are fatal).
       .add("xpack.ml.enabled: false")
+      // Watcher is never exercised by any suite; off it skips its thread pools, trigger engine and
+      // watch-history templates. The key is valid across the whole matrix (6.3 -> 9.x).
+      .add("xpack.watcher.enabled: false")
+      // Skip the built-in index/component templates + their ILM policies (logs-*, metrics-*,
+      // synthetics-*, 7/30/90/180/365-days-default...). 8.x installs dozens of them on first boot
+      // (the biggest chunk of the 8.x-vs-7.x startup bloat, cluster-state churn seen in test logs);
+      // suites always create the templates they need themselves. Key exists since 7.11, but the
+      // win is 8.x-only, so guard at 8.0 and stay clear of the 7.x boundary.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "stack.templates.enabled: false")
+      // The apm-data plugin (not covered by stack.templates.enabled) installs the logs-apm.*/
+      // metrics-apm.* template zoo seen in 8.18 boot logs. The plugin exists since 8.13 and is
+      // enabled by default since 8.15 (APM Server relies on it from there); no suite touches APM.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 15, 0), entry = "xpack.apm_data.enabled: false")
+      // No suite reads deprecation logs via the .logs-deprecation data stream (MiscSuite uses
+      // response headers); skips its templates + indexing pipeline. Setting added in 7.16.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0), entry = "cluster.deprecation_indexing.enabled: false")
+      // SLM is never exercised; skips the .slm-history index machinery. Setting added with SLM in 7.5.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 5, 0), entry = "slm.history_index_enabled: false")
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }
       )

@@ -327,11 +327,13 @@ jobs:
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
           ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
-          # Balanced (level) shard packing + the memory gate that makes it survivable on 16GB:
-          # PROBE: 3 heavy (multi-node cluster) suites may boot containers concurrently — the k=5
-          # experiment needs the extra lane; 3 concurrent heavies is below the ~4 that used to OOM.
+          # Balanced (level) shard packing + the memory gate that makes it survivable on 16GB.
+          # 2 permits, not 3: at k=4 with 3 permits the worst case (3 heavies x 3 nodes + a
+          # single-node suite + 4 gradle JVMs) grazes 16GB and host-OOM'd es90x — and balanced
+          # packing schedules the heaviest suites first, so that worst case happens at minute one.
+          # es94x tolerated 3 only because it excludes some of the heavy suites other modules run.
           ROR_BALANCED_SHARDS: 'true'
-          ROR_HEAVY_SUITE_PERMITS: '3'
+          ROR_HEAVY_SUITE_PERMITS: '2'
           ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
           ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
           ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}
