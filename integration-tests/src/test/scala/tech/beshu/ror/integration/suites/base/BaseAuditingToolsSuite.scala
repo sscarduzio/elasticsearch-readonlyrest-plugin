@@ -86,8 +86,11 @@ trait BaseAuditingToolsSuite
       }
     }
 
+  // 60s, not 15: audit entries flush to the audit sink asynchronously, and on sharded CI runners
+  // (4 test JVMs sharing 4 vCPUs) the flush can exceed 15s — RemoteClusterAuditingToolsSuite
+  // flaked twice on otherwise-green runs. Locally it still returns as soon as the entry lands.
   override implicit val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
+    PatienceConfig(timeout = scaled(Span(60, Seconds)), interval = scaled(Span(100, Millis)))
 
   "Regular ES request" should {
     "be audited" when {
