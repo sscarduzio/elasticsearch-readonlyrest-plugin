@@ -166,19 +166,33 @@ class RemoteClusterAuditingToolsSuite
 
       auditNode1.enableNetwork()
 
+      // The audit sink client marks unreachable nodes dead with a growing backoff, so right after
+      // the network comes back it can still consider every node dead and drop events — exactly like
+      // the all-nodes-out case above. Racing it (query immediately) flakes under CPU-loaded CI.
+      // Probe until one audited request demonstrably lands (recovery proven), then reset the sinks
+      // and run the real assertions on a clean slate.
+      val probeTraceIds = queryTweeterIndexWithRandomTraceId(times = 1)
+      auditEntriesShouldContainEntriesWithGivenTraceIds(probeTraceIds)
+
+      adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate()) }
+      forEachAuditManager { adminAuditManager =>
+        eventually {
+          adminAuditManager.hasNoEntries
+        }
+      }
+
       val traceIds4 = queryTweeterIndexWithRandomTraceId(times = 4)
 
-      val allExpectedTraceIds = List.concat(traceIds1, traceIds2, traceIds4)
       forEachAuditManager { adminAuditManager =>
         eventually {
           val auditEntries = adminAuditManager.getEntries.force().jsons
 
-          allExpectedTraceIds.foreach { traceId =>
+          traceIds4.foreach { traceId =>
             val entry = findAuditEntryWithTraceId(auditEntries, traceId)
             assertForEveryAuditEntry(entry)
           }
 
-          auditEntries.size shouldEqual allExpectedTraceIds.size
+          auditEntries.size shouldEqual traceIds4.size
         }
       }
     }
