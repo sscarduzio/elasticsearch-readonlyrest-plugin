@@ -184,16 +184,17 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
       .runWhen(Version.greaterOrEqualThan(esVersion, 9, 0, 0), "microdnf install -y tar")
       .when(hasBuggyBundledJdk, replaceBundledJdk)
-      // EXPERIMENT: amputate feature modules no suite exercises (ml is the whopper: jars + native
-      // binaries). rm -rf of a missing dir is a no-op, so the same list works across layouts.
-      // The disable-settings for ml/watcher are REMOVED below: a deleted module's settings are
-      // unregistered and would be boot-fatal unknown keys.
-      .run(
-        "rm -rf /usr/share/elasticsearch/modules/x-pack-ml /usr/share/elasticsearch/modules/x-pack-watcher /usr/share/elasticsearch/modules/x-pack-ccr /usr/share/elasticsearch/modules/x-pack-graph"
-      )
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
+      // EXPERIMENT: amputate feature modules no suite exercises (ml is the whopper: jars + native
+      // binaries). AFTER installPlugins: the elasticsearch-plugin CLI needs the pristine module
+      // set (exit 70 otherwise). rm -rf of a missing dir is a no-op, one list fits all layouts.
+      // The disable-settings for ml/watcher are REMOVED in baseEsConfigBuilder on this branch:
+      // a deleted module's settings are unregistered and would be boot-fatal unknown keys.
+      .run(
+        "rm -rf /usr/share/elasticsearch/modules/x-pack-ml /usr/share/elasticsearch/modules/x-pack-watcher /usr/share/elasticsearch/modules/x-pack-ccr /usr/share/elasticsearch/modules/x-pack-graph"
+      )
       // per-suite config files LAST (cheap layers) so install/patch above stay identical & shared
       .user("root")
       .copyFile(
