@@ -196,7 +196,7 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       // layer, which executes as the elasticsearch user and cannot delete root-owned module dirs.
       .user("root")
       .run(
-        "rm -rf /usr/share/elasticsearch/modules/x-pack-ml /usr/share/elasticsearch/modules/x-pack-watcher /usr/share/elasticsearch/modules/x-pack-ccr /usr/share/elasticsearch/modules/x-pack-graph"
+        "rm -rf /usr/share/elasticsearch/modules/x-pack-watcher /usr/share/elasticsearch/modules/x-pack-ccr /usr/share/elasticsearch/modules/x-pack-graph"
       )
       // per-suite config files LAST (cheap layers) so install/patch above stay identical & shared
       .user("root")
@@ -313,6 +313,7 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "action.destructive_requires_name: false")
       .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
+      .add("xpack.ml.enabled: false")
       // ML is never exercised by any suite; disabling it drops the ML native processes (~200-400MB
       // RSS per container) and speeds startup. Unlike xpack.monitoring.enabled (removed in 8.0), the
       // xpack.ml.enabled key is supported across the whole matrix (6.3 -> 9.x), so no version guard.
