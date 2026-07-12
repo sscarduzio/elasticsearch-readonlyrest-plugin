@@ -63,10 +63,9 @@ env:
   TOOLCHAINS_IMAGE: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
   GRADLE_USER_HOME: /opt/gradle-home
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
-  # Sharding sweep result (ubicloud-standard-4, 16GB/4vCPU): k=1 51.4min, k=3 ~24, k=4 25.0 full-matrix
-  # (best stable), k=5 host-OOM on 5/6 heavier modules, k=6 host-OOM on all. The cliff is at k=5;
-  # k=4 is the optimum with one notch of margin. ponytail: bump box size before bumping k past 4.
-  IT_PARALLELISM: '4'
+  # PROBE: k=5 unlocked by the HeavySuiteGate — the old k=5 OOM deaths were uncapped concurrent
+  # heavy suites, which the gate now bounds. If unstable or not faster than k=4, revert to '4'.
+  IT_PARALLELISM: '5'
   # Ubicloud runners are ephemeral VMs without Azure's preinstalled bloat: free-host-disk.sh no-ops.
   AGENT_ISSELFHOSTED: '1'
 
@@ -331,9 +330,10 @@ jobs:
           ROR_TASK: ${{ matrix.ROR_TASK }}
           ROR_CI_JOB_ID: ${{ github.run_id }}-${{ strategy.job-index }}
           # Balanced (level) shard packing + the memory gate that makes it survivable on 16GB:
-          # at most 2 heavy (multi-node cluster) suites boot containers concurrently machine-wide.
+          # PROBE: 3 heavy (multi-node cluster) suites may boot containers concurrently — the k=5
+          # experiment needs the extra lane; 3 concurrent heavies is below the ~4 that used to OOM.
           ROR_BALANCED_SHARDS: 'true'
-          ROR_HEAVY_SUITE_PERMITS: '2'
+          ROR_HEAVY_SUITE_PERMITS: '3'
           ROR_LIBS_STORE_ENDPOINT_URL: ${{ vars.ROR_LIBS_STORE_ENDPOINT_URL }}
           ROR_LIBS_STORE_REGION: ${{ vars.ROR_LIBS_STORE_REGION }}
           ROR_LIBS_STORE_ACCESS_KEY_ID: ${{ secrets.ROR_LIBS_STORE_ACCESS_KEY_ID }}

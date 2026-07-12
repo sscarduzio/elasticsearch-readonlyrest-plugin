@@ -40,8 +40,11 @@ object WindowsEsDirectoryManager extends LazyLogging {
     if (shard >= 0) os.pwd / s"windows-es-shard-$shard" else os.pwd / "windows-es"
   }
 
+  // The ES zip download cache is SHARED across shards (read-only after download) — only the
+  // unpacked per-node install/data trees need shard separation. Without this every shard
+  // re-downloaded the distribution (~minutes each on the first suite).
   def downloadsPath: os.Path =
-    basePath / "downloads"
+    os.pwd / "windows-es" / "downloads"
 
   def zipFilePath(esVersion: String): os.Path =
     downloadsPath / s"elasticsearch-$esVersion.zip"
