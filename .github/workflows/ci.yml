@@ -2,7 +2,7 @@
 # Linux jobs run on Ubicloud (16 GB = ubicloud-standard-4) inside the same toolchains image;
 # Windows jobs run on GitHub-hosted windows-2025 (free for public repos, same VM family Azure used).
 #
-# Design notes (see ci/github/PORT.md for the stage map and ci/github/SECRETS.md for secrets):
+# Design notes (see ci/github/PORT.md for the stage map, secrets and parallelism):
 #  - The build logic is unchanged: every Linux job calls ci/run-pipeline.sh with a ROR_TASK, exactly
 #    as Azure did. This file only ports the orchestration (stages -> jobs, matrix, conditions, secrets).
 #  - Azure's SUPERSEDE_GUARD stage is replaced by GitHub-native `concurrency` (auto-cancel stale PR
@@ -136,7 +136,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: docker build & push
         env:
           DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
@@ -163,7 +163,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: Verify baked Gradle home
         run: |
           set -e
@@ -183,7 +183,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: Upload missing ROR ES dependencies
         env:
           ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
@@ -213,7 +213,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: Compute monthly cache key
         id: month
         run: echo "ym=$(date +%Y%m)" >> "$GITHUB_OUTPUT"
@@ -256,7 +256,7 @@ jobs:
         ROR_TASK: [ license_check, compile_codebase_check, audit_build_check, format_code_check ]
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -282,7 +282,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: core_tests
         env:
           ROR_TASK: core_tests
@@ -320,7 +320,7 @@ jobs:
         ROR_TASK: ${{ fromJSON(needs.setup.outputs.it_linux_matrix) }}
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: Free host disk (no-op on self-hosted)
         run: ci/free-host-disk.sh
       - name: ${{ matrix.ROR_TASK }}
@@ -399,7 +399,7 @@ jobs:
           Add-MpPreference -ExclusionPath "$env:RUNNER_TEMP"
           Add-MpPreference -ExclusionProcess "java.exe"
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
       - name: ${{ matrix.ES_MODULE }}
@@ -457,7 +457,7 @@ jobs:
       GRADLE_OPTS: ''
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
       - name: core:test on Windows
@@ -497,7 +497,7 @@ jobs:
         ROR_TASK: [ build_es9xx, build_es8xx, build_es7xx, build_es6xx ]
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_TASK: ${{ matrix.ROR_TASK }}
@@ -529,7 +529,7 @@ jobs:
       is_release: ${{ steps.r.outputs.is_release }}
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - id: r
         run: |
           IS_RELEASE=true
@@ -556,7 +556,7 @@ jobs:
         ROR_TASK: [ upload_pre_es9xx, upload_pre_es8xx, upload_pre_es7xx, upload_pre_es6xx ]
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: ${{ matrix.ROR_TASK }}
         env:
           ROR_ARTIFACTS_STORE_ENDPOINT_URL: ${{ vars.ROR_ARTIFACTS_STORE_ENDPOINT_URL }}
@@ -663,7 +663,7 @@ jobs:
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 1 }
+        with: { fetch-depth: 1, persist-credentials: false }
       - name: Install PGP signing key
         env:
           PGP_SECRET_KEY_B64: ${{ secrets.PGP_SECRET_KEY_B64 }}

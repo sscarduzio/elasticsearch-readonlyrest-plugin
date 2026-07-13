@@ -86,9 +86,8 @@ trait BaseAuditingToolsSuite
       }
     }
 
-  // 60s, not 15: audit entries flush to the audit sink asynchronously, and on sharded CI runners
-  // (4 test JVMs sharing 4 vCPUs) the flush can exceed 15s — RemoteClusterAuditingToolsSuite
-  // flaked twice on otherwise-green runs. Locally it still returns as soon as the entry lands.
+  // Audit entries flush to the sink asynchronously; the window must be generous enough for a
+  // CPU-loaded machine (e.g. sharded CI runners). eventually returns as soon as the entry lands.
   override implicit val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(60, Seconds)), interval = scaled(Span(100, Millis)))
 

@@ -97,6 +97,7 @@ Which jobs run per trigger (✓ run / − skip), matching the Azure stage condit
 - **Docker pre-clean / always()-reap steps** from the Azure IT template — both Ubicloud and
   GH-hosted runners are ephemeral (fresh VM per job); there are no leftovers to reap and no
   sibling jobs sharing a daemon. `run-pipeline.sh`'s SIGTERM trap still reaps on cancel.
+
 ## IT parallelism (not in Azure — added during the port)
 
 Azure ran each IT leg's suites serially in one JVM (~85–100 min/leg incl. queue). Here every
@@ -107,21 +108,43 @@ WireMock windows). Two safety mechanisms make this fit 16 GB:
 - **Duration-balanced packing** (`ROR_BALANCED_SHARDS`): suites are LPT-packed into shards by
   measured wall time (`integration-tests/suite-timings.json`) instead of name-hash, so no shard
   becomes the long pole. Timings are advisory — suites without an entry default to 60s and still run.
-- **`HeavySuiteGate`** (`ROR_HEAVY_SUITE_PERMITS`, currently 2): a machine-wide file-lock
-  semaphore capping how many multi-node-cluster suites boot containers concurrently across all
-  shard JVMs. Without it, level packing host-OOMs 16 GB runners. Crash-safe: an OOM-killed
-  worker's lock dies with its process.
+- **Heavy-suite gate** (`ROR_HEAVY_SUITE_PERMITS`, currently 2): a machine-wide
+  `FileLockSemaphore` capping how many multi-node-cluster suites boot containers concurrently
+  across all shard JVMs (wired via the `HeavySuiteGated` trait in integration-tests). Without
+  it, level packing host-OOMs 16 GB runners. Crash-safe: an OOM-killed worker's lock dies
+  with its process.
 
 Per-shard console logs upload as the `sharded-logs-*` artifact and per-shard JUnit XML as
 `*-results` (both always, pass or fail). Measured limits, for whoever tunes this next: 5 workers or 3 permits exceed
 either 16 GB (at 512m ES heaps) or the 4-vCPU boot-time budget — both were tried on isolated
 probe runs and reverted.
 
+## Secrets & variables
+
+All values map 1:1 from the Azure variable group. **17 repository secrets + 8 variables**:
+
+| Secret | Purpose |
+|---|---|
+| `ROR_LIBS_STORE_ACCESS_KEY_ID` / `..._SECRET` | libs S3 bucket (shared ES jars; read in tests, written by `newes/*`) |
+| `ROR_ARTIFACTS_STORE_ACCESS_KEY_ID` / `..._SECRET` | artifacts S3 bucket (built plugin binaries) |
+| `DOCKER_REGISTRY_USER` / `DOCKER_REGISTRY_PASSWORD` | pushing ROR + toolchains images |
+| `DOCKER_HUB_USER` / `DOCKER_HUB_RO_TOKEN` | authenticated docker pulls (testcontainers rate limit); `ci/docker-hub-auth.sh` is a no-op when unset |
+| `NVD_API_KEY`, `OSS_INDEX_USERNAME`, `OSS_INDEX_PASSWORD` | `cve_check` feeds (job is `continue-on-error`, so missing keys never block) |
+| `MAVEN_REPO_USER`, `MAVEN_REPO_PASSWORD`, `MAVEN_STAGING_PROFILE_ID`, `GPG_KEY_ID`, `GPG_PASSPHRASE` | Maven Central publishing |
+| `PGP_SECRET_KEY_B64` | base64 of `secret.pgp` (Azure "secure file" equivalent); the publish step decodes it to `.travis/secret.pgp`. Create with `base64 -w0 secret.pgp \| gh secret set PGP_SECRET_KEY_B64` |
+
+Variables (`vars.NAME`, non-sensitive): `ROR_LIBS_STORE_{ENDPOINT_URL,REGION,BUCKET,PATH_PREFIX}`
+and `ROR_ARTIFACTS_STORE_{...}` — the S3 store config halves that are config, not credentials.
+
+No SSH deploy key: release tags push via the checkout token (`release_ror` has
+`permissions: contents: write`). Fork PRs get no secrets (GitHub default) — matching Azure's
+`IsFork == False` guard with zero workflow code.
+
 ## Before first run — do these
 
 1. **Install the Ubicloud GitHub App** on the repo (Linux jobs). Windows needs nothing —
    GitHub-hosted. Without Ubicloud, every Linux job queues forever.
-2. **Set secrets/variables**: `ci/github/set-secrets.sh` (17 secrets + 8 variables, see SECRETS.md).
+2. **Set secrets/variables**: `gh secret set` / `gh variable set` per the table above.
 3. **Smoke-run**: `workflow_dispatch` → `run_all_tests_on_linux` on a branch validates
    toolchains_verify + unit + full Linux IT without touching release paths. Watch the first IT
    leg: testcontainers inside the `container:` job must reach the host Docker daemon

@@ -100,19 +100,15 @@ test {
     }
     filter {
         if (shardCount > 1 && project.hasProperty('shardIndex')) {
-            // Two packing modes:
-            //  - default: duration-blind hashCode-mod. Uneven (shards ranged 12-20.5 min at k=4);
-            //    the idle gaps double as memory slack, so it's safe even without the heavy gate.
-            //  - -PbalancedShards=true: duration-balanced LPT from suite-timings.json. Levels all
-            //    shards, but the sustained full load needs ROR_HEAVY_SUITE_PERMITS (HeavySuiteGate)
-            //    alongside it on 16GB machines — ungated balanced packing host-OOMed them 4/4 times.
-            //    CI runs balanced + 2 permits (see ci.yml).
+            // Partitioning lives in build-base's SuiteSharder (pure, unit-tested); this block is
+            // only the Gradle I/O around it: walk the class tree, parse suite-timings.json (with
+            // -PbalancedShards=true / ROR_BALANCED_SHARDS), include the shard's suites.
             def balanced = (project.findProperty('balancedShards') ?: System.getenv('ROR_BALANCED_SHARDS') ?: 'false').toBoolean()
-            def timings = balanced ? new groovy.json.JsonSlurper().parse(file('suite-timings.json')).times : [:]
+            def timings = balanced ? new groovy.json.JsonSlurper().parse(file('suite-timings.json')).times.collectEntries { k, v -> [k, v as Long] } : [:]
             def suites = []
             test.testClassesDirs.asFileTree.matching {
                 // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
-                // excluded so the `matched` guard counts only real suites.
+                // excluded so the zero-match guard counts only real suites.
                 include 'tech/beshu/ror/integration/suites/**/*Suite*.class'
                 exclude '**/*$*.class'   // skip nested/companion classes
                 exclude 'tech/beshu/ror/integration/suites/base/**'
@@ -121,31 +117,12 @@ test {
                     suites << fd.path.replace('/', '.').replaceAll(/\.class$/, '')
                 }
             }
-            def matched = 0
-            if (balanced) {
-                def weightOf = { fqcn -> ((timings[fqcn] ?: 60) as long) }
-                def bins = new long[shardCount]
-                suites.sort { a, b -> (weightOf(b) <=> weightOf(a)) ?: (a <=> b) }.each { fqcn ->
-                    def lightest = 0
-                    for (int i = 1; i < shardCount; i++) { if (bins[i] < bins[lightest]) lightest = i }
-                    bins[lightest] += weightOf(fqcn)
-                    if (lightest == shardIndex) {
-                        includeTestsMatching fqcn
-                        matched++
-                    }
-                }
-            } else {
-                suites.each { fqcn ->
-                    if (Math.floorMod(fqcn.hashCode(), shardCount) == shardIndex) {
-                        includeTestsMatching fqcn
-                        matched++
-                    }
-                }
-            }
-            if (matched == 0) {
+            def shardSuites = tech.beshu.ror.buildbase.SuiteSharder.suitesFor(suites, shardCount, shardIndex, timings)
+            if (shardSuites.isEmpty()) {
                 throw new GradleException("Shard ${shardIndex}/${shardCount} matched 0 suites — check shardCount/shardIndex.")
             }
-            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${matched} suites (${balanced ? 'balanced' : 'hash'} packing)")
+            shardSuites.each { includeTestsMatching it }
+            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${shardSuites.size()} suites (${balanced ? 'balanced' : 'hash'} packing)")
         } else {
             includeTestsMatching 'tech.beshu.ror.integration.suites.*'
         }

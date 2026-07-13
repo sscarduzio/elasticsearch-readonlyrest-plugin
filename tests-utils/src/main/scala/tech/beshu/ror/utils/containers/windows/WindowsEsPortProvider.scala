@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.utils.containers.windows
 
+import tech.beshu.ror.utils.misc.RorShard
+
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.immutable.ListMap
 
@@ -23,9 +25,8 @@ object WindowsEsPortProvider {
 
   // Sharded runs on Windows: each shard JVM runs ES as native processes on the SAME host, so the
   // per-node-name port table must not overlap between shards. Each shard gets its own 1000-port
-  // window (shard 0: 9200.., shard 1: 10200.., ...). ror.shard.index is set by the test task when
-  // -PshardIndex is present; plain unsharded runs keep the historical 9200 range.
-  private val shardPortOffset: Int = Integer.getInteger("ror.shard.index", 0) * 1000
+  // window (shard 0: 9200.., shard 1: 10200.., ...); plain unsharded runs keep the 9200 range.
+  private val shardPortOffset: Int = RorShard.portOffset
 
   private val esPortProvider = new BoundedAtomicInt(start = 9200 + shardPortOffset, max = 9299 + shardPortOffset)
 

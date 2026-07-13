@@ -21,32 +21,45 @@ import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.{Args, Status, Suite, SuiteMixin}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers.*
-import tech.beshu.ror.utils.containers.{
-  DependencyDef,
-  EsClusterContainer,
-  EsClusterProvider,
-  EsRemoteClustersContainer,
-  HeavySuiteGate
-}
+import tech.beshu.ror.utils.containers.{DependencyDef, EsClusterContainer, EsClusterProvider, EsRemoteClustersContainer}
+import tech.beshu.ror.utils.misc.FileLockSemaphore
+
+import java.nio.file.Paths
 
 object support {
 
   // Brackets a heavy (multi-node / multi-cluster) suite with a machine-wide concurrency permit:
   // acquired BEFORE its containers start, released AFTER they stop. Limits simultaneous heavy
   // suites across all shard JVMs so their combined container-boot memory spike cannot OOM the
-  // runner (see HeavySuiteGate). No-op unless ROR_HEAVY_SUITE_PERMITS is set.
+  // runner. No-op unless ROR_HEAVY_SUITE_PERMITS is set (CI); local runs are unaffected.
+  // One permit per suite, held for its whole run — no hold-and-wait, so deadlock-free.
   // Wraps run() (not beforeAll): ForAllTestContainer starts containers inside run(), before
   // beforeAll fires. Mixed in AFTER ForAllTestContainer so this run() is the outermost layer.
   trait HeavySuiteGated extends SuiteMixin { this: Suite =>
 
     override abstract def run(testName: Option[String], args: Args): Status = {
-      HeavySuiteGate.acquire(suiteName) match {
-        case None       => super.run(testName, args)
-        case Some(slot) =>
+      HeavySuiteGated.semaphore match {
+        case None            => super.run(testName, args)
+        case Some(semaphore) =>
+          val slot = semaphore.acquire(label = suiteName)
           try super.run(testName, args)
           finally slot.release()
       }
     }
+
+  }
+
+  private object HeavySuiteGated {
+    // Slot files live under the shared root project dir so all shard JVMs see the same slots.
+    private lazy val slotDir =
+      Paths.get(Option(System.getProperty("project.dir")).getOrElse(System.getProperty("java.io.tmpdir")))
+
+    lazy val semaphore: Option[FileLockSemaphore] =
+      sys.env
+        .get("ROR_HEAVY_SUITE_PERMITS")
+        .flatMap(_.toIntOption)
+        .filter(_ > 0)
+        .map(new FileLockSemaphore(_, slotDir, slotFilePrefix = ".ror-heavy-suite-slot"))
 
   }
 

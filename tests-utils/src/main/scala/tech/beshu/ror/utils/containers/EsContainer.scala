@@ -154,27 +154,31 @@ abstract class EsContainer(
     try {
       super.start()
     } catch {
-      // Known docker classic-builder race: two sharded test JVMs concurrently building images that
-      // share parent layers can fail the export with "unknown parent image ID" (moby bug). It's
-      // transient — the parent exists once the sibling's build settles — and it cost a full-matrix
-      // run one red leg roughly every third run. One delayed retry re-resolves the image cleanly.
-      case ex: Throwable if isDockerParentImageRace(ex) =>
-        logger.warn("Docker parent-image build race detected - retrying container start once", ex)
-        Thread.sleep(5000)
-        try {
-          super.start()
-        } catch {
-          case retryEx: Throwable =>
-            logger.error("Container starting error (after parent-image-race retry)", retryEx)
-            throw retryEx
-        }
+      case ex: Throwable if isDockerParentImageBuildRace(ex) =>
+        retryStartAfterDockerParentImageBuildRace(ex)
       case ex: Throwable =>
         logger.error("Container starting error", ex)
         throw ex
     }
   }
 
-  private def isDockerParentImageRace(ex: Throwable): Boolean = {
+  // Known docker classic-builder race: two sharded test JVMs concurrently building images that
+  // share parent layers can fail the export with "unknown parent image ID" (moby bug). It's
+  // transient — the parent exists once the sibling's build settles — so one delayed retry
+  // re-resolves the image cleanly.
+  private def retryStartAfterDockerParentImageBuildRace(cause: Throwable): Unit = {
+    logger.warn("Docker parent-image build race detected - retrying container start once", cause)
+    Thread.sleep(5000)
+    try {
+      super.start()
+    } catch {
+      case retryEx: Throwable =>
+        logger.error("Container starting error (after parent-image-race retry)", retryEx)
+        throw retryEx
+    }
+  }
+
+  private def isDockerParentImageBuildRace(ex: Throwable): Boolean = {
     Iterator
       .iterate(ex)(_.getCause)
       .takeWhile(_ != null)

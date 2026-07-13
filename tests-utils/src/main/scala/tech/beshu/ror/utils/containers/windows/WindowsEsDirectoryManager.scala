@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers.windows
 
 import com.typesafe.scalalogging.LazyLogging
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Config
+import tech.beshu.ror.utils.misc.RorShard
 import tech.beshu.ror.utils.misc.ScalaUtils
 
 import java.io.{BufferedInputStream, FileOutputStream}
@@ -36,8 +37,7 @@ object WindowsEsDirectoryManager extends LazyLogging {
   def basePath: os.Path = {
     // Sharded runs: separate install/data trees per shard JVM — the es_<cluster>_<node> dirs are
     // name-keyed and would collide across concurrently-running shards on one host.
-    val shard = Integer.getInteger("ror.shard.index", -1)
-    if (shard >= 0) os.pwd / s"windows-es-shard-$shard" else os.pwd / "windows-es"
+    os.pwd / RorShard.shardedName("windows-es")
   }
 
   // The ES zip download cache is SHARED across shards (read-only after download) — only the
