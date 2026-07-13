@@ -252,7 +252,7 @@ class RorApiManager(
       }
     }
 
-    def forceOKWithFailure(failureMessage: String): this.type = {
+    def forceFailure(failureMessage: String): this.type = {
       force()
       if (businessStatus === "KO") {
         message should include(failureMessage)

@@ -39,11 +39,8 @@ final class AuditDataStreamCreator(services: NonEmptyList[DataStreamService]) ex
       .map(createIfNotExists(_, dataStreamName))
       .sequence
       .map { results =>
-        val (errors, successes) = results.map(_.toEither).separate
-        if (successes.nonEmpty) {
-          errors.foreach(e => noRequestIdLogger.warn(s"Data stream setup partially failed on one node: ${e.message}"))
-          Right(())
-        } else Left(NonEmptyList.fromListUnsafe(errors))
+        val (errors, _) = results.map(_.toEither).separate
+        NonEmptyList.fromList(errors).toLeft(())
       }
   }
 

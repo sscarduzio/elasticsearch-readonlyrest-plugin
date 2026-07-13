@@ -24,7 +24,6 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 
 import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.parallel.CollectionConverters.*
 import scala.jdk.CollectionConverters.*
 
 trait MultiNodeRestClient[Req, Resp] {
@@ -87,7 +86,7 @@ final class FailoverClient[Req, Resp] private (
     performWithFailover(nodes, request, responseHandler)
   }
 
-  override def close(): Unit = nodeClients.toList.par.foreach {
+  override def close(): Unit = nodeClients.toList.foreach {
     _.executor.close()
   }
 
