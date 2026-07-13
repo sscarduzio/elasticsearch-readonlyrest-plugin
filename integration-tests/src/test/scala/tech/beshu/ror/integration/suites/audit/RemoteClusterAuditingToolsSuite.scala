@@ -167,12 +167,11 @@ class RemoteClusterAuditingToolsSuite
       auditNode1.enableNetwork()
 
       // The audit sink client marks unreachable nodes dead with a growing backoff, so right after
-      // the network comes back it can still consider every node dead and drop events — exactly like
-      // the all-nodes-out case above. Racing it (query immediately) flakes under CPU-loaded CI.
-      // Probe until one audited request demonstrably lands (recovery proven), then reset the sinks
-      // and run the real assertions on a clean slate.
-      val probeTraceIds = queryTweeterIndexWithRandomTraceId(times = 1)
-      auditEntriesShouldContainEntriesWithGivenTraceIds(probeTraceIds)
+      // the network comes back it can still consider every node dead and DROP events — exactly
+      // like the all-nodes-out case above. A dropped event never appears, so a single probe is not
+      // enough: keep sending fresh probes until one demonstrably lands (recovery proven), then
+      // reset the sinks and run the real assertions on a clean slate.
+      waitUntilAuditSinkRecovers()
 
       adminAuditManagers.foreach { case (_, managers) => managers.toList.foreach(_.truncate()) }
       forEachAuditManager { adminAuditManager =>
@@ -196,6 +195,43 @@ class RemoteClusterAuditingToolsSuite
         }
       }
     }
+  }
+
+  // Proves the audit pipeline recovered after a network re-enable: a probe event sent while the
+  // sink client still holds every node in dead-host backoff is dropped outright, so each attempt
+  // sends a FRESH probe request and briefly polls for its entry. Probe entries are throwaway —
+  // the caller truncates the sinks right after.
+  private def waitUntilAuditSinkRecovers(): Unit = {
+    val deadline = System.currentTimeMillis() + 180 * 1000L
+    val perProbeWaitMillis = 10 * 1000L
+
+    @scala.annotation.tailrec
+    def probeLanded(traceId: String, probeDeadline: Long): Boolean = {
+      val landed = adminAuditManagers.values.forall { managers =>
+        managers.toList.forall { manager =>
+          findAuditEntriesWithTraceId(manager.getEntries.force().jsons, traceId).nonEmpty
+        }
+      }
+      if (landed) true
+      else if (System.currentTimeMillis() >= probeDeadline) false
+      else {
+        Thread.sleep(500)
+        probeLanded(traceId, probeDeadline)
+      }
+    }
+
+    @scala.annotation.tailrec
+    def loop(): Unit = {
+      val probeTraceId = queryTweeterIndexWithRandomTraceId(times = 1).head
+      if (!probeLanded(probeTraceId, System.currentTimeMillis() + perProbeWaitMillis)) {
+        if (System.currentTimeMillis() >= deadline) {
+          fail("Audit sink did not recover within 180s of re-enabling the network")
+        }
+        loop()
+      }
+    }
+
+    loop()
   }
 
   private def queryTweeterIndexWithRandomTraceId(times: Int): List[String] = {
