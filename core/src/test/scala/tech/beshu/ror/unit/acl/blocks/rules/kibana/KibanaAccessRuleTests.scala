@@ -43,7 +43,7 @@ class KibanaAccessRuleTests extends BaseKibanaAccessBasedTests[KibanaAccessRule,
         kibanaPolicy = Some(
           KibanaPolicy.default.copy(
             access = settings.access,
-            index = Some(kibanaIndexFrom(customKibanaIndex)),
+            index = kibanaIndexFrom(customKibanaIndex),
           )
         ),
       )

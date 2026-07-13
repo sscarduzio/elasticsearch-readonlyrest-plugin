@@ -20,9 +20,15 @@ cleanup_docker_and_build() {
 }
 
 # Emits one ES module name per line for the given generation (newest module first).
+# The task writes the list to build/es-modules/es<major>x.txt; read THAT, never gradle stdout
+# (configuration-time build-script logging can pollute it even under --quiet).
 list_es_modules() {
   local es_major=$1
-  ./gradlew printEsModules "-PesMajor=$es_major" --quiet </dev/null
+  local modules_file="build/es-modules/es${es_major}x.txt"
+  # rm first: a failed gradle run must yield an error, never a stale list from a previous run.
+  rm -f "$modules_file"
+  ./gradlew printEsModules "-PesMajor=$es_major" --quiet </dev/null >&2 || return 1
+  cat "$modules_file"
 }
 
 # Emits two lines: the base ES version on line 1, all supported versions space-separated on line 2.
@@ -171,6 +177,10 @@ publish_ror_plugins() {
 
   export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 1704067200)}"
 
+  # Capture first (process substitution would swallow a module-discovery failure into plain EOF).
+  local modules
+  modules=$(list_es_modules "$es_major") || { echo "ERROR: cannot list es${es_major}x modules"; return 1; }
+
   local module
   while IFS= read -r module; do
     [ -z "$module" ] && continue
@@ -190,5 +200,5 @@ publish_ror_plugins() {
         return 1
       fi
     done
-  done < <(list_es_modules "$es_major")
+  done <<< "$modules"
 }

@@ -55,7 +55,7 @@ class UserMetadataSuite
                                                       |        "name":"group1"
                                                       |        },
                                                       |      "username":"user1",
-                                                      |      "kibana":{"access":"unrestricted"}
+                                                      |      "kibana":{"access":"unrestricted","index":".kibana"}
                                                       |    }
                                                       |  ]
                                                       |}
@@ -352,7 +352,7 @@ class UserMetadataSuite
                                                       |        "name":"group1"
                                                       |        },
                                                       |      "username":"user1",
-                                                      |      "kibana":{"access":"unrestricted"}
+                                                      |      "kibana":{"access":"unrestricted","index":".kibana"}
                                                       |    }
                                                       |  ]
                                                       |}

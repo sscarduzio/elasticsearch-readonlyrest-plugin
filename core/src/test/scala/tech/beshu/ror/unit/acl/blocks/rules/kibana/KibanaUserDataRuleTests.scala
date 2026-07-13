@@ -262,7 +262,7 @@ class KibanaUserDataRuleTests extends BaseKibanaAccessBasedTests[KibanaUserDataR
         kibanaPolicy = Some(
           KibanaPolicy.default.copy(
             access = settings.access,
-            index = Some(kibanaIndexFrom(customKibanaIndex)),
+            index = kibanaIndexFrom(customKibanaIndex),
           )
         ),
       )

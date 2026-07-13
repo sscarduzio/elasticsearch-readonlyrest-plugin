@@ -54,7 +54,7 @@ final case class BlockMetadata private (
   )
 
   def withKibanaIndex(index: KibanaIndexName): BlockMetadata = {
-    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(index = Some(index))))
+    this.copy(kibanaPolicy = Some(currentKibanaPolicyOrDefault.copy(index = index)))
   }
 
   def withKibanaTemplateIndex(index: KibanaIndexName): BlockMetadata = {

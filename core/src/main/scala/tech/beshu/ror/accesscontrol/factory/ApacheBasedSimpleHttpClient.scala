@@ -29,8 +29,9 @@ import org.apache.hc.client5.http.ssl.{
   TrustAllStrategy
 }
 import org.apache.hc.core5.concurrent.FutureCallback
+import org.apache.hc.core5.reactor.IOReactorConfig
 import org.apache.hc.core5.ssl.SSLContextBuilder
-import org.apache.hc.core5.util.Timeout
+import org.apache.hc.core5.util.{TimeValue, Timeout}
 import tech.beshu.ror.accesscontrol.domain.RequestId
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient.Method
@@ -108,6 +109,10 @@ private class ApacheBasedSimpleHttpClientCreator[F[_]: Async: ContextShift]
         ConnectionConfig
           .custom()
           .setConnectTimeout(Timeout.ofMilliseconds(config.connectionTimeout.value.toMillis))
+          // Compensates for the TCP keep-alive tuning we can't use below (see ioReactorConfig comment):
+          // a pooled connection idle longer than this is checked (cheap liveness probe) before reuse,
+          // so a peer that died while idle gets evicted instead of failing the next real request.
+          .setValidateAfterInactivity(TimeValue.ofSeconds(2))
           .build()
 
       val connManagerBuilder = PoolingAsyncClientConnectionManagerBuilder
@@ -140,8 +145,27 @@ private class ApacheBasedSimpleHttpClientCreator[F[_]: Async: ContextShift]
         .setResponseTimeout(Timeout.ofMilliseconds(config.requestTimeout.value.toMillis))
         .build()
 
+      // httpcore5 only calls the permission-gated jdk.net.ExtendedSocketOptions.TCP_KEEPIDLE/
+      // TCP_KEEPINTERVAL/TCP_KEEPCOUNT setOption()s when the corresponding IOReactorConfig value is > 0.
+      // Elasticsearch's plugin installer rejects a "jdk.net.NetworkPermission" grant outright on ES 7.11+
+      // (PolicyUtil.validatePolicyPermissionsForJar treats it as illegal), so without a grant those calls
+      // throw an AccessControlException under the SecurityManager, breaking every outbound HTTP call
+      // (external_authentication, JWT remote validation, proxy auth). Setting all three to 0 means the
+      // conditions are never true, so those calls are never made and no permission is ever needed.
+      // SO_KEEPALIVE itself is a standard socket option (no special permission), so leaving it on still
+      // gets idle pooled connections the OS's own default keep-alive timing, just without httpcore5's
+      // faster custom tuning.
+      val ioReactorConfig = IOReactorConfig
+        .custom()
+        .setSoKeepAlive(true)
+        .setTcpKeepIdle(0)
+        .setTcpKeepInterval(0)
+        .setTcpKeepCount(0)
+        .build()
+
       val client = HttpAsyncClients
         .custom()
+        .setIOReactorConfig(ioReactorConfig)
         .setConnectionManager(connManager)
         .setDefaultRequestConfig(requestConfig)
         .build()

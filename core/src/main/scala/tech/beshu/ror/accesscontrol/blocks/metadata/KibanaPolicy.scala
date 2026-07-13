@@ -22,7 +22,7 @@ import tech.beshu.ror.syntax.Set
 
 final case class KibanaPolicy(
     access: KibanaAccess,
-    index: Option[KibanaIndexName],
+    index: KibanaIndexName,
     templateIndex: Option[KibanaIndexName],
     hiddenApps: Set[KibanaApp],
     allowedApiPaths: Set[KibanaAllowedApiPath],
@@ -33,7 +33,7 @@ object KibanaPolicy {
 
   def default: KibanaPolicy = KibanaPolicy(
     access = KibanaAccess.Unrestricted,
-    index = None,
+    index = KibanaIndexName.default,
     templateIndex = None,
     hiddenApps = Set.empty,
     allowedApiPaths = Set.empty,

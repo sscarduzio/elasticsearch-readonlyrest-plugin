@@ -300,7 +300,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val result = block.evaluateForMetadataRequest(MockRequestContext.metadata).runSyncUnsafe(1 second)
 
       val resolvedKibanaIndices = result.toList.collect { case (Decision.Permitted(blockContext), _) =>
-        blockContext.blockMetadata.kibanaPolicy.flatMap(_.index)
+        blockContext.blockMetadata.kibanaPolicy.map(_.index)
       }
       resolvedKibanaIndices should be(
         List(

@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlock
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.MetadataOrigin
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata.WithGroups.GroupMetadata
 import tech.beshu.ror.accesscontrol.blocks.metadata.{BlockMetadata, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.*
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
 import tech.beshu.ror.accesscontrol.domain.RorKbnLicenseType.Enterprise
@@ -140,9 +141,9 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
             inside(userMetadataRequestResult) { case Allowed(UserMetadata.WithGroups(groupsMetadata)) =>
               groupsMetadata.keys.toList should be(GroupId("g1") :: GroupId("g2") :: GroupId("g3") :: Nil)
 
-              groupsMetadata(GroupId("g1")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g1")))
-              groupsMetadata(GroupId("g2")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g2")))
-              groupsMetadata(GroupId("g3")).kibanaPolicy.flatMap(_.index) should be(Some(kibanaIndexName("kibana_g3")))
+              groupsMetadata(GroupId("g1")).kibanaPolicy.map(_.index) should be(Some(kibanaIndexName("kibana_g1")))
+              groupsMetadata(GroupId("g2")).kibanaPolicy.map(_.index) should be(Some(kibanaIndexName("kibana_g2")))
+              groupsMetadata(GroupId("g3")).kibanaPolicy.map(_.index) should be(Some(kibanaIndexName("kibana_g3")))
             }
           }
         }
@@ -360,6 +361,34 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
               blockContext.block.policy should be(Policy.Forbid(Some("forbidden msg 1")))
             }
           }
+          "prefer the first allowed block that established a kibana policy over an earlier block without one" in {
+            val acl = createAcl(
+              block("b1", Policy.Allow, result = Matched(userId("u1"), UniqueList.empty)),
+              blockWithKibanaRule("b2", Policy.Allow, userId("u1"), kibanaAccessRule("kibana_access", KibanaAccess.RO)),
+              blockWithKibanaRule(
+                "b3",
+                Policy.Allow,
+                userId("u1"),
+                kibanaIndexRule("kibana_index", kibanaIndexName("custom_kibana"))
+              ),
+            )
+
+            val (userMetadataRequestResult, _) = acl
+              .handleMetadataRequest(mockUserMetadataRequestContext(getLicenseType))
+              .runSyncUnsafe()
+
+            inside(userMetadataRequestResult) {
+              case Allowed(
+                    UserMetadata.WithoutGroups(loggedUser, None, Some(kibanaPolicy), MetadataOrigin(blockContext))
+                  ) =>
+                loggedUser.id should be(userId("u1"))
+                // b2 is the first allowed block with a kibana policy - it wins even though it has no
+                // explicit kibana index and a later block (b3) declares one. Selection prioritises
+                // "block established a kibana policy", not "block has an explicit kibana index".
+                blockContext.block.name should be(Block.Name("b2"))
+                kibanaPolicy.index should be(KibanaIndexName.default)
+            }
+          }
         }
         "some matched blocks have groups, some - don't" should {
           "return allow with the first block matched (case 1)" in {
@@ -501,6 +530,16 @@ class EnabledAccessControlListTests extends AnyWordSpec with MockFactory with In
         case MockedBlockResult.Matched(userId, groups) => passingAuthRule("auth", userId, groups)
         case MockedBlockResult.Mismatched              => notPassingAuthRule("auth")
       })
+    )
+  }
+
+  private def blockWithKibanaRule(name: String, policy: Block.Policy, userId: User.Id, kibanaRule: Rule) = {
+    new Block(
+      name = Block.Name(name),
+      policy = policy,
+      verbosity = Block.Verbosity.Info,
+      audit = Block.Audit.Enabled,
+      rules = NonEmptyList.of(passingAuthRule("auth", userId, UniqueList.empty), kibanaRule)
     )
   }
 

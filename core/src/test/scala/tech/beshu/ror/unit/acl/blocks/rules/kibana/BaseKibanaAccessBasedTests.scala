@@ -81,7 +81,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(kibanaIndexName(".kibana"))
+                index = kibanaIndexName(".kibana")
               )
             ),
             indices = Set(requestedIndex(".kibana"))
@@ -174,7 +174,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(customKibanaIndex)
+                index = customKibanaIndex
               )
             ),
             indices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false))
@@ -276,7 +276,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
           kibanaPolicy = Some(
             KibanaPolicy.default.copy(
               access = RW,
-              index = Some(kibanaIndexFrom(None))
+              index = kibanaIndexFrom(None)
             )
           ),
         )
@@ -294,7 +294,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = access,
-                index = Some(kibanaIndexFrom(None))
+                index = kibanaIndexFrom(None)
               )
             ),
           )
@@ -340,7 +340,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(kibanaIndexName(".kibana"))
+                index = kibanaIndexName(".kibana")
               )
             ),
             indices = Set(requestedIndex(".kibana_8.8.0"))
@@ -358,7 +358,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(kibanaIndexName(".kibana"))
+                index = kibanaIndexName(".kibana")
               )
             ),
             indices = Set(requestedIndex(".kibana_analytics_8.8.0"))
@@ -376,7 +376,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(kibanaIndexName(".kibana"))
+                index = kibanaIndexName(".kibana")
               )
             ),
             indices = Set(requestedIndex(".kibana"), requestedIndex(".kibana_analytics_8.8.0")),
@@ -396,7 +396,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(kibanaIndexName(".kibana-admin"))
+                index = kibanaIndexName(".kibana-admin")
               )
             ),
             indices = Set(requestedIndex(".ds-.kibana-reporting-.kibana-admin-2025.01.01-000001"))
@@ -416,7 +416,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(kibanaIndexName(".kibana-admin"))
+                index = kibanaIndexName(".kibana-admin")
               )
             ),
             indices = Set(requestedIndex(".kibana-reporting-.kibana-admin"))
@@ -436,7 +436,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = RW,
-                index = Some(kibanaIndexName(".kibana"))
+                index = kibanaIndexName(".kibana")
               )
             ),
             dataStreams = Set(fullDataStreamName("kibana_sample_data_logs"))
@@ -465,7 +465,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
         kibanaPolicy = Some(
           KibanaPolicy.default.copy(
             access = RO,
-            index = Some(customKibanaIndex)
+            index = customKibanaIndex
           )
         ),
         indices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false))
@@ -482,7 +482,7 @@ abstract class BaseKibanaAccessBasedTests[RULE <: Rule: RuleName, SETTINGS]
         kibanaPolicy = Some(
           KibanaPolicy.default.copy(
             access = RW,
-            index = Some(customKibanaIndex)
+            index = customKibanaIndex
           )
         ),
         indices = Set(RequestedIndex(customKibanaIndex.underlying, excluded = false))

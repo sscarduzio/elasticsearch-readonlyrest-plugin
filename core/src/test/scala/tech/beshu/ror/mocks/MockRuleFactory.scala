@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.auth.base.impersonation.{
 }
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, Decision}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, LocalUsers, User}
+import tech.beshu.ror.accesscontrol.domain.{CaseSensitivity, Group, KibanaAccess, KibanaIndexName, LocalUsers, User}
 import tech.beshu.ror.utils.TestsUtils.{*, given}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -109,6 +109,20 @@ trait MockRuleFactory {
           )
         )
     }
+
+  protected def kibanaAccessRule(ruleName: String, access: KibanaAccess): RegularRule = new RegularRule {
+    override val name: Rule.Name = Rule.Name(ruleName)
+
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      Task.now(Permitted(blockContext.withBlockMetadata(_.withKibanaAccess(access))))
+  }
+
+  protected def kibanaIndexRule(ruleName: String, index: KibanaIndexName): RegularRule = new RegularRule {
+    override val name: Rule.Name = Rule.Name(ruleName)
+
+    override protected def regularCheck[B <: BlockContext: BlockContextUpdater](blockContext: B): Task[Decision[B]] =
+      Task.now(Permitted(blockContext.withBlockMetadata(_.withKibanaIndex(index))))
+  }
 
   protected def perGroupKibanaIndexRule(ruleName: String): RegularRule = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)

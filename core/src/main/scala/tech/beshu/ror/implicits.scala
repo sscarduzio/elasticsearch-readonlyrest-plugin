@@ -366,7 +366,7 @@ trait LogsShowInstances extends cats.instances.AllInstances {
         showOption("group", bc.blockMetadata.currentGroupId) ::
         showNamedIterable("av_groups", bc.blockMetadata.availableGroups.toList.map(_.id)) ::
         showNamedIterable("indices", bc.indices) :: // todo: for sure it's ok?
-        showOption("kibana_idx", bc.blockMetadata.kibanaPolicy.flatMap(_.index)) ::
+        showOption("kibana_idx", bc.blockMetadata.kibanaPolicy.map(_.index)) ::
         showOption("fls", bc.fieldLevelSecurity) ::
         showNamedIterable("response_hdr", bc.responseHeaders) ::
         showNamedIterable("repositories", bc.repositories) ::
@@ -703,8 +703,9 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   }
 
   implicit val indexSettingsSourceLoadingErrorShow: Show[IndexSettingsSource.LoadingError] = Show.show {
-    case IndexSettingsSource.LoadingError.IndexNotFound    => "Cannot find ReadonlyREST settings index"
-    case IndexSettingsSource.LoadingError.DocumentNotFound => "Cannot found document with ReadonlyREST settings"
+    case IndexSettingsSource.LoadingError.IndexNotFound       => "Cannot find ReadonlyREST settings index"
+    case IndexSettingsSource.LoadingError.DocumentNotFound    => "Cannot found document with ReadonlyREST settings"
+    case IndexSettingsSource.LoadingError.DocumentUnreachable => "Cannot read document with ReadonlyREST settings"
   }
 
   implicit val indexSettingsSourceSavingErrorShow: Show[IndexSettingsSource.SavingError] = Show.show {

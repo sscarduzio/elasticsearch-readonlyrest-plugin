@@ -88,7 +88,8 @@ class QueryAuditLogSerializerSuite
                                                     |        "name": "group1"
                                                     |      },
                                                     |      "kibana": {
-                                                    |        "access":"unrestricted"
+                                                    |        "access":"unrestricted",
+                                                    |        "index":".kibana"
                                                     |      }
                                                     |    }
                                                     |  ]

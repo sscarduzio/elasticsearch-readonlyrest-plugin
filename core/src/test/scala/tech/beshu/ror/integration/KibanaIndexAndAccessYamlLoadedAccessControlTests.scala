@@ -114,7 +114,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
               kibanaPolicy = Some(
                 KibanaPolicy.default.copy(
                   access = KibanaAccess.Admin,
-                  index = Some(kibanaIndexName(".kibana_template")),
+                  index = kibanaIndexName(".kibana_template"),
                 )
               ),
             )
@@ -138,7 +138,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
               kibanaPolicy = Some(
                 KibanaPolicy.default.copy(
                   access = KibanaAccess.Admin,
-                  index = Some(kibanaIndexName(".kibana_template")),
+                  index = kibanaIndexName(".kibana_template"),
                 )
               ),
             )
@@ -164,7 +164,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
               kibanaPolicy = Some(
                 KibanaPolicy.default.copy(
                   access = KibanaAccess.RW,
-                  index = Some(kibanaIndexName(".kibana_ror_custom")),
+                  index = kibanaIndexName(".kibana_ror_custom"),
                 )
               ),
             )
@@ -188,7 +188,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
               kibanaPolicy = Some(
                 KibanaPolicy.default.copy(
                   access = KibanaAccess.Admin,
-                  index = Some(kibanaIndexName(".kibana_template")),
+                  index = kibanaIndexName(".kibana_template"),
                 )
               ),
             )
@@ -219,7 +219,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = KibanaAccess.RW,
-                index = Some(kibanaIndexName(".kibana_ror_custom")),
+                index = kibanaIndexName(".kibana_ror_custom"),
               )
             ),
           )
@@ -243,7 +243,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
             Some(
               KibanaPolicy(
                 access = KibanaAccess.Admin,
-                index = Some(kibanaIndexName(".kibana_admins")),
+                index = kibanaIndexName(".kibana_admins"),
                 templateIndex = None,
                 hiddenApps = Set(
                   FullNameKibanaApp("Enterprise Search|Overview"),
@@ -264,7 +264,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
             Some(
               KibanaPolicy(
                 access = KibanaAccess.RW,
-                index = Some(kibanaIndexName(".kibana_infosec")),
+                index = kibanaIndexName(".kibana_infosec"),
                 templateIndex = None,
                 hiddenApps = Set(
                   FullNameKibanaApp("Enterprise Search|Overview"),
@@ -299,7 +299,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests
             kibanaPolicy = Some(
               KibanaPolicy.default.copy(
                 access = KibanaAccess.Admin,
-                index = Some(kibanaIndexName(".kibana_admins")),
+                index = kibanaIndexName(".kibana_admins"),
                 hiddenApps = Set(
                   FullNameKibanaApp("Observability"),
                   FullNameKibanaApp("Enterprise Search|Overview"),
