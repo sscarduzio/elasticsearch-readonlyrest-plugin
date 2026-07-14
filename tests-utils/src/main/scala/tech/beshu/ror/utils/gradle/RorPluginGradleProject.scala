@@ -64,12 +64,6 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
 
   def assemble: Option[JFile] = {
     logger.info(s"Assembling ROR in module $moduleName")
-    // The deliverable for a non-baseline ES version is DERIVED from the base-compiled bytecode without
-    // recompiling (see readonlyrest.plugin-common-conventions `buildRorPluginZip`). That reuse is only sound
-    // when base-compiled and target-compiled bytecode are identical; when they diverge (e.g. an ES API that
-    // changed from a class to an interface across the module's version range) the repackaged zip fails at
-    // class-load time in the container. Prove the repackage is safe for the exact version we assemble BEFORE
-    // packaging, so a broken module fails here with the guard's diagnostic instead of a container crash.
     logger.info(s"Verifying repackage bytecode safety for module $moduleName (ES $getModuleESVersion)")
     runTask(moduleName + ":verifyRepackageBytecode", List(s"-PverifyEsVersion=$getModuleESVersion"))
     runTask(moduleName + ":buildRorPluginZip")

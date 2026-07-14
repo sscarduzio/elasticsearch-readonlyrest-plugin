@@ -19,9 +19,12 @@ import tech.beshu.ror.gradle.utils.EsVersions
 import tech.beshu.ror.gradle.utils.PluginArtifact
 
 // ---------------------------------------------------------------------------------------------------------
-// verifyRepackageBytecode: proves a requested ES version of this module is buildable by repackaging from
-// its base (oldest supported version), without producing any deliverable, by compiling at the base ES version;
-// if the requested version differs, recompiles at that version and diffs the bytecode.
+// verifyRepackageBytecode: proves a requested ES version of this module is buildable by repackaging from its
+// base, without producing any deliverable, by compiling at the base ES version; if the requested version
+// differs from its base, recompiles at that version and diffs the bytecode. The base is the head of the
+// sub-range the requested version falls into (EsVersions.baseFor; the single-base default is the oldest
+// supported version). The diff ignores Scala 3 TASTY (see BytecodeComparison), which is compile-classpath
+// metadata the JVM never runs.
 //
 // Usage: :es83x:verifyRepackageBytecode -PverifyEsVersion=8.3.3  (-PverifyEsVersion is required)
 // ---------------------------------------------------------------------------------------------------------
@@ -34,7 +37,6 @@ class FullVerification extends VerifyRequest { String baseVersion; String target
 
 def esVersions = EsVersions.of(project)
 def esTag = { String ver -> ver.replace('.', '_') } // ES version -> Gradle-task-name-safe tag (no dots)
-def moduleBaselineEsVersion = esVersions.oldest
 
 def verifyRequest = { ->
     def requested = project.hasProperty('verifyEsVersion')
@@ -42,9 +44,17 @@ def verifyRequest = { ->
             : null
     if (requested == null) return new MissingRequestedVersion()
     if (!esVersions.all.contains(requested)) return new UnsupportedRequestedVersion(version: requested)
-    if (requested == moduleBaselineEsVersion) return new CompileOnlyVerification(version: requested)
-    return new FullVerification(baseVersion: moduleBaselineEsVersion, targetVersion: requested)
+    // The base is the head of the sub-range `requested` falls into (baseEsVersions); default = oldest.
+    def base = EsVersions.baseFor(project, requested)
+    if (requested == base) return new CompileOnlyVerification(version: requested)
+    return new FullVerification(baseVersion: base, targetVersion: requested)
 }()
+
+// The base version to compile+stash for the current request (what the target bytecode is diffed against):
+// the request's base for a full check, or the requested version itself when it IS a base (compile-only).
+def baseForCompile = (verifyRequest instanceof FullVerification) ? verifyRequest.baseVersion
+        : (verifyRequest instanceof CompileOnlyVerification) ? verifyRequest.version
+        : null
 
 def gradlew = new File(rootDir, 'gradlew').path
 
@@ -66,16 +76,16 @@ def stashDir = project.rootProject.layout.buildDirectory.dir("repackage-bytecode
 def stashedJar = { String ver -> stashDir.get().file("${PluginArtifact.fullName(project, ver)}.jar").asFile }
 def buildLibsJar = { String ver -> layout.buildDirectory.file("libs/${PluginArtifact.fullName(project, ver)}.jar").get().asFile }
 
-def compileBaseTask = tasks.register("repackageCheckCompileBase_es${esTag(moduleBaselineEsVersion)}", Exec) {
+def compileBaseTask = baseForCompile == null ? null : tasks.register("repackageCheckCompileBase_es${esTag(baseForCompile)}", Exec) {
     group = 'verification'
-    description = "Compiles ${project.name} at its base ES ${moduleBaselineEsVersion} (for the repackage bytecode check)"
+    description = "Compiles ${project.name} at its base ES ${baseForCompile} (for the repackage bytecode check)"
     workingDir = rootDir
     commandLine gradlew, ":${project.name}:clean", ":${project.name}:toJar",
-            "--no-build-cache", "-PbaselineEsVersion=${moduleBaselineEsVersion}"
+            "--no-build-cache", "-PbaselineEsVersion=${baseForCompile}"
     doLast {
-        def produced = buildLibsJar(moduleBaselineEsVersion)
+        def produced = buildLibsJar(baseForCompile)
         if (!produced.exists()) throw new GradleException("expected jar not produced: ${produced}")
-        def dest = stashedJar(moduleBaselineEsVersion)
+        def dest = stashedJar(baseForCompile)
         dest.parentFile.mkdirs()
         java.nio.file.Files.copy(produced.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
@@ -146,9 +156,20 @@ tasks.register('verifyRepackageBytecode') {
     }
 }
 
-tasks.register('verifyRepackageBytecodeNewest', Exec) {
+// Verifies every base group by proving its NEWEST member repackages from its base (the farthest-from-base
+// case in each sub-range). For the single-base default this is exactly the module's newest version -- one
+// nested build, as before. With multiple baseEsVersions it's one nested build per group.
+def perGroupVerifyTasks = EsVersions.groupNewest(project).collect { ver ->
+    tasks.register("verifyRepackageBytecode_es${esTag(ver)}", Exec) {
+        group = 'verification'
+        description = "Verifies ES ${ver} of ${project.name} repackages from its base"
+        workingDir = rootDir
+        commandLine gradlew, ":${project.name}:verifyRepackageBytecode", "-PverifyEsVersion=${ver}"
+    }
+}
+
+tasks.register('verifyRepackageBytecodeNewest') {
     group = 'verification'
-    description = "Verifies the newest ES version of ${project.name} is buildable by repackaging from the base"
-    workingDir = rootDir
-    commandLine gradlew, ":${project.name}:verifyRepackageBytecode", "-PverifyEsVersion=${esVersions.newest}"
+    description = "Verifies every base group of ${project.name} is buildable by repackaging from its base"
+    dependsOn perGroupVerifyTasks
 }
