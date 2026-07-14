@@ -56,7 +56,8 @@ def baseForCompile = (verifyRequest instanceof FullVerification) ? verifyRequest
         : (verifyRequest instanceof CompileOnlyVerification) ? verifyRequest.version
         : null
 
-def gradlew = new File(rootDir, 'gradlew').path
+def gradlew = new File(rootDir,
+        org.gradle.internal.os.OperatingSystem.current().windows ? 'gradlew.bat' : 'gradlew').path
 
 // Each version is compiled in its OWN nested `./gradlew` invocation, with `clean` first and `--no-build-cache`,
 // then its jar is stashed OUTSIDE the module build dir. All of this is load-bearing because the Scala
