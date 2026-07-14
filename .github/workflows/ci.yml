@@ -2,7 +2,7 @@
 # Linux jobs run on Ubicloud (16 GB = ubicloud-standard-4) inside the same toolchains image;
 # Windows jobs run on GitHub-hosted windows-2025 (free for public repos, same VM family Azure used).
 #
-# Design notes (see ci/github/PORT.md for the stage map, secrets and parallelism):
+# Design notes (see ci/README.md for the architecture, secrets and parallelism):
 #  - The build logic is unchanged: every Linux job calls ci/run-pipeline.sh with a ROR_TASK, exactly
 #    as Azure did. This file only ports the orchestration (stages -> jobs, matrix, conditions, secrets).
 #  - Azure's SUPERSEDE_GUARD stage is replaced by GitHub-native `concurrency` (auto-cancel stale PR
@@ -41,6 +41,7 @@ on:
           - run_all_tests_on_windows
           - build_toolchains_image
           - release_without_testing
+          - run_disk_probe
 
 # Replaces SUPERSEDE_GUARD. cancel-in-progress ONLY for PRs (Azure pr.autoCancel); branch pushes
 # queue behind the running build (Azure trigger.batch) so an in-flight release is never cancelled.
@@ -154,6 +155,20 @@ jobs:
           echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USER" --password-stdin
           docker push "$TOOLCHAINS_IMAGE"
 
+  # ── DISK_PROBE (manual run_disk_probe) — host-disk recon, ported from Azure ──────
+  disk_probe:
+    needs: setup
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      needs.setup.outputs.action == 'run_disk_probe'
+    runs-on: ubicloud-standard-4
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1, persist-credentials: false }
+      - name: Probe host disk
+        run: ci/probe-host-disk.sh
+
   # ── TOOLCHAINS_VERIFY ─────────────────────────────────────────────────────
   toolchains_verify:
     needs: setup
@@ -235,6 +250,9 @@ jobs:
           # Fork PRs get EMPTY (not absent) secrets from GitHub. A set-but-empty key makes
           # dependency-check/oss-index attempt authenticated calls (401) instead of anonymous mode
           # — Azure only exported these when not a fork. Unset empties to restore that behavior.
+          if [ -z "$NVD_API_KEY" ]; then
+            echo "::warning::NVD_API_KEY secret is not set - dependency-check will likely fail (NVD throttles keyless clients). This job is continue-on-error, so the run is not blocked."
+          fi
           [ -n "$NVD_API_KEY" ] || unset NVD_API_KEY
           [ -n "$OSS_INDEX_USERNAME" ] || unset OSS_INDEX_USERNAME
           [ -n "$OSS_INDEX_PASSWORD" ] || unset OSS_INDEX_PASSWORD
@@ -250,6 +268,7 @@ jobs:
       github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
+    name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
       matrix:
@@ -313,6 +332,9 @@ jobs:
     runs-on: ubicloud-standard-4  # premium probe measured only ~15% faster at 1.6x price — not worth it
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 120
+    # Job name = the matrix value alone ("integration_es94x"), not "it_linux (integration_es94x)":
+    # the default composite gets truncated to an indistinguishable prefix in the graph view.
+    name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -353,8 +375,30 @@ jobs:
           name: it-${{ matrix.ROR_TASK }}-results
           path: '**/TEST*.xml'
           if-no-files-found: ignore
-      # Per-shard console logs (shard-<i>.log) — the only place shard stdout goes when
-      # IT_PARALLELISM > 1 (kept out of the job console to avoid interleaving).
+      # Shard stdout goes to shard-<i>.log files during the run (live interleaving would be
+      # unreadable); print them afterwards as collapsible groups so they are browsable in the UI.
+      - name: Shard logs (browsable)
+        if: always()
+        run: |
+          for f in integration-tests/build/sharded-logs/shard-*.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$(basename "$f")"
+            cat "$f"
+            echo "::endgroup::"
+          done
+      # Drift guard for duration-balanced sharding: warns when measured suite times diverge from
+      # the committed suite-timings.json and uploads a regenerated file (regeneration = download
+      # the artifact, commit it). One leg only — es94x is the module the timings are measured on.
+      - name: Suite-timings drift check
+        if: always() && matrix.ROR_TASK == 'integration_es94x'
+        run: ./gradlew integration-tests:regenerateSuiteTimings || true
+      - name: Publish regenerated suite timings
+        if: always() && matrix.ROR_TASK == 'integration_es94x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-timings-regenerated
+          path: integration-tests/build/suite-timings-regenerated.json
+          if-no-files-found: ignore
       - name: Publish per-shard logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -384,6 +428,8 @@ jobs:
     env:
       GRADLE_USER_HOME: ''
       GRADLE_OPTS: ''
+    # "win_es94x", not the truncated "it_windows (es94x)" composite, in the graph view.
+    name: win_${{ matrix.ES_MODULE }}
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -435,6 +481,15 @@ jobs:
           name: win-it-${{ matrix.ES_MODULE }}-results
           path: '**/TEST*.xml'
           if-no-files-found: ignore
+      - name: Shard logs (browsable)
+        if: always()
+        shell: pwsh
+        run: |
+          Get-ChildItem integration-tests/build/sharded-logs -Filter shard-*.log -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Output "::group::$($_.Name)"
+            Get-Content $_.FullName
+            Write-Output "::endgroup::"
+          }
       - name: Publish per-shard logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -491,6 +546,7 @@ jobs:
     runs-on: ubicloud-standard-4
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     timeout-minutes: 180
+    name: ${{ matrix.ROR_TASK }}
     strategy:
       fail-fast: false
       matrix:

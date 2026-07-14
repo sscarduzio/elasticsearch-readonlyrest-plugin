@@ -25,6 +25,7 @@ repositories {
 }
 
 dependencies {
+    implementation localGroovy() // groovy-json for SuiteSharder.timingsFrom
     implementation "com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.6.0"
     implementation "com.star-zero.gradle:githook:1.2.1"
     implementation "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1"

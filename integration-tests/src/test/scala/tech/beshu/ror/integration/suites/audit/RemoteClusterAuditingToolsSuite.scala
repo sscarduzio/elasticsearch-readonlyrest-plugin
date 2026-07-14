@@ -206,7 +206,7 @@ class RemoteClusterAuditingToolsSuite
     val perProbeWaitMillis = 10 * 1000L
 
     @scala.annotation.tailrec
-    def probeLanded(traceId: String, probeDeadline: Long): Boolean = {
+    def entryVisibleInAllSinks(traceId: String, probeDeadline: Long): Boolean = {
       val landed = adminAuditManagers.values.forall { managers =>
         managers.toList.forall { manager =>
           findAuditEntriesWithTraceId(manager.getEntries.force().jsons, traceId).nonEmpty
@@ -216,14 +216,14 @@ class RemoteClusterAuditingToolsSuite
       else if (System.currentTimeMillis() >= probeDeadline) false
       else {
         Thread.sleep(500)
-        probeLanded(traceId, probeDeadline)
+        entryVisibleInAllSinks(traceId, probeDeadline)
       }
     }
 
     @scala.annotation.tailrec
     def loop(): Unit = {
       val probeTraceId = queryTweeterIndexWithRandomTraceId(times = 1).head
-      if (!probeLanded(probeTraceId, System.currentTimeMillis() + perProbeWaitMillis)) {
+      if (!entryVisibleInAllSinks(probeTraceId, System.currentTimeMillis() + perProbeWaitMillis)) {
         if (System.currentTimeMillis() >= deadline) {
           fail("Audit sink did not recover within 180s of re-enabling the network")
         }

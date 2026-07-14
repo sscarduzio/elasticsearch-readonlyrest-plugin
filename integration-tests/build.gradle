@@ -104,7 +104,7 @@ test {
             // only the Gradle I/O around it: walk the class tree, parse suite-timings.json (with
             // -PbalancedShards=true / ROR_BALANCED_SHARDS), include the shard's suites.
             def balanced = (project.findProperty('balancedShards') ?: System.getenv('ROR_BALANCED_SHARDS') ?: 'false').toBoolean()
-            def timings = balanced ? new groovy.json.JsonSlurper().parse(file('suite-timings.json')).times.collectEntries { k, v -> [k, v as Long] } : [:]
+            def timings = balanced ? tech.beshu.ror.buildbase.SuiteSharder.timingsFrom(file('suite-timings.json')) : [:]
             def suites = []
             test.testClassesDirs.asFileTree.matching {
                 // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
@@ -193,6 +193,41 @@ tasks.register('prebuildEsImage', JavaExec) {
     if (explicitEsVersion != null) { systemProperty 'esVersion', explicitEsVersion }
     mainClass.set('tech.beshu.ror.utils.containers.PrebuildSingletonEsImage')
     classpath = sourceSets.test.runtimeClasspath
+}
+
+// Rebuilds suite-timings.json from the junit XMLs of the LAST test run and warns about drift
+// vs the committed file. CI runs it on the es94x leg (uploads the result as the
+// `suite-timings-regenerated` artifact and emits ::warning:: annotations on drift); locally:
+//   ./gradlew integration-tests:test -PesModule=es94x && ./gradlew integration-tests:regenerateSuiteTimings
+tasks.register('regenerateSuiteTimings') {
+    doLast {
+        def times = new TreeMap()
+        fileTree(dir: layout.buildDirectory, includes: ['test-results/**/TEST-*.xml']).each { f ->
+            def suite = new groovy.xml.XmlSlurper().parse(f)
+            def name = suite.@name.toString()
+            if (!name.startsWith('tech.beshu.ror.integration.suites')) return
+            def seconds = Math.round(Double.parseDouble(suite.@time.toString()))
+            times[name] = Math.max((long) times.getOrDefault(name, 0L), seconds)
+        }
+        if (times.isEmpty()) {
+            logger.quiet('No test-results found under build/ — run the integration tests first.')
+            return
+        }
+        def committedFile = new groovy.json.JsonSlurper().parse(file('suite-timings.json'))
+        def committed = committedFile.times
+        def drifts = []
+        times.each { name, seconds ->
+            def old = committed[name]
+            if (old == null) drifts << "NEW ${name}: ${seconds}s (missing from suite-timings.json)"
+            else if (Math.abs(seconds - old) > 60 && Math.abs(seconds - old) > 0.5 * old)
+                drifts << "DRIFT ${name}: ${old}s -> ${seconds}s"
+        }
+        drifts.each { logger.warn("::warning::suite-timings ${it}") }
+        def out = layout.buildDirectory.file('suite-timings-regenerated.json').get().asFile
+        out.text = groovy.json.JsonOutput.prettyPrint(
+            groovy.json.JsonOutput.toJson([_readme: committedFile._readme, times: times])) + '\n'
+        logger.quiet(">>> regenerated ${times.size()} suite timings -> ${out} (${drifts.size()} drift warning(s))")
+    }
 }
 
 // Sharded-IT orchestrator: runs K parallel `./gradlew integration-tests:test -PshardIndex=i`

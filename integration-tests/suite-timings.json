@@ -1,14 +1,14 @@
 {
   "_readme": [
     "Measured wall time (seconds) per integration suite. Used by build-base's SuiteSharder for",
-    "duration-balanced shard packing when ROR_BALANCED_SHARDS=true (wired in integration-tests/",
-    "build.gradle; CI sets it in .github/workflows/ci.yml).",
+    "duration-balanced shard packing when ROR_BALANCED_SHARDS=true (see integration-tests/build.gradle).",
     "ADVISORY ONLY: suites missing here default to 60s and still run; entries for deleted suites",
     "are ignored. Staleness affects shard balance, never correctness or coverage.",
-    "REGENERATE only when shard durations drift visibly apart in CI: download a green it_linux",
-    "leg's '*-results' artifact and copy the root <testsuite time=...> attribute of each",
-    "TEST-<suite>.xml into the 'times' map below (rounded to whole seconds).",
-    "Whoever changes test parallelism or adds slow suites owns keeping this roughly current."
+    "DRIFT IS AUTO-DETECTED: the es94x CI leg runs integration-tests:regenerateSuiteTimings after",
+    "the tests \u2014 it emits ::warning:: annotations on drift and uploads the regenerated file as the",
+    "'suite-timings-regenerated' artifact. To update: download that artifact and commit it here.",
+    "Locally: ./gradlew integration-tests:test -PesModule=es94x, then",
+    "./gradlew integration-tests:regenerateSuiteTimings (writes build/suite-timings-regenerated.json)."
   ],
   "times": {
     "tech.beshu.ror.integration.suites.ActionsSuite": 97,

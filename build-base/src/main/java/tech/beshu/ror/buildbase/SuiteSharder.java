@@ -16,8 +16,12 @@
  */
 package tech.beshu.ror.buildbase;
 
+import groovy.json.JsonSlurper;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,6 +71,20 @@ public final class SuiteSharder {
     return timings.isEmpty()
         ? hashPacked(allSuites, shardCount, shardIndex)
         : balancedPacked(allSuites, shardCount, shardIndex, timings);
+  }
+
+  /**
+   * Loads the {@code times} map from a suite-timings JSON file (see
+   * integration-tests/suite-timings.json). Part of this class rather than the build script so the
+   * whole packing pipeline — parse, weigh, pack — is exercised by the same unit tests.
+   */
+  @SuppressWarnings("unchecked")
+  public static Map<String, Long> timingsFrom(File timingsJson) {
+    Map<String, Object> root = (Map<String, Object>) new JsonSlurper().parse(timingsJson);
+    Map<String, Object> times = (Map<String, Object>) root.get("times");
+    Map<String, Long> result = new HashMap<>();
+    times.forEach((suite, seconds) -> result.put(suite, ((Number) seconds).longValue()));
+    return result;
   }
 
   private static List<String> hashPacked(List<String> allSuites, int shardCount, int shardIndex) {

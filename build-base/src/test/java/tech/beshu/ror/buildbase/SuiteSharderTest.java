@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -129,6 +130,16 @@ class SuiteSharderTest {
         IllegalArgumentException.class, () -> SuiteSharder.suitesFor(SUITES, 4, 4, Map.of()));
     assertThrows(
         IllegalArgumentException.class, () -> SuiteSharder.suitesFor(SUITES, 4, -1, Map.of()));
+  }
+
+  @Test
+  void timingsFileParsesIntoWeights() throws Exception {
+    File tmp = File.createTempFile("suite-timings", ".json");
+    tmp.deleteOnExit();
+    java.nio.file.Files.writeString(
+        tmp.toPath(), "{\"_readme\": [\"doc\"], \"times\": {\"a.B\": 42, \"a.C\": 7}}");
+    Map<String, Long> parsed = SuiteSharder.timingsFrom(tmp);
+    assertEquals(Map.of("a.B", 42L, "a.C", 7L), parsed);
   }
 
   private static void assertDisjointCover(Map<String, Long> timings, int shardCount) {
