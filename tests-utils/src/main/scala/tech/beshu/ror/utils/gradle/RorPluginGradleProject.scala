@@ -22,6 +22,7 @@ import org.gradle.tooling.GradleConnector
 
 import java.io.File as JFile
 import java.nio.file.Paths
+import scala.collection.mutable
 import scala.util.Try
 
 object RorPluginGradleProject {
@@ -47,6 +48,10 @@ object RorPluginGradleProject {
       .filter(_.matches("^es\\d+x$"))
       .toList
 
+  // Memoizes the assembled plugin so it is built+verified at most once per (module, ES version):
+  // the ZIP is identical for every node that needs it, but assembling it is expensive.
+  private val assembledByModuleAndVersion = mutable.Map.empty[String, Option[JFile]]
+
 }
 
 class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
@@ -62,7 +67,17 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  def assemble: Option[JFile] = {
+  def assemble: Option[JFile] = RorPluginGradleProject.synchronized {
+    RorPluginGradleProject.assembledByModuleAndVersion
+      .getOrElseUpdate(s"$moduleName:$getModuleESVersion", buildPlugin())
+  }
+
+  def getModuleESVersion: String =
+    Option(System.getProperty("esVersion"))
+      .filter(_ => isExplicitlyTargetedModule)
+      .getOrElse(newestSupportedEsVersion)
+
+  private def buildPlugin(): Option[JFile] = {
     logger.info(s"Assembling ROR in module $moduleName")
     logger.info(s"Verifying repackage bytecode safety for module $moduleName (ES $getModuleESVersion)")
     runTask(moduleName + ":verifyRepackageBytecode", List(s"-PverifyEsVersion=$getModuleESVersion"))
@@ -72,11 +87,6 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     if (!plugin.exists) None
     else Some(plugin)
   }
-
-  def getModuleESVersion: String =
-    Option(System.getProperty("esVersion"))
-      .filter(_ => isExplicitlyTargetedModule)
-      .getOrElse(newestSupportedEsVersion)
 
   private def newestSupportedEsVersion: String =
     esProjectProperties
