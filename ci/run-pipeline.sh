@@ -37,7 +37,15 @@ fi
 
 if [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
-  ./gradlew --no-daemon --stacktrace --info dependencyCheckAnalyze
+  # Convert DEPENDENCY_CHECK_DATA_DIR to an absolute path before invoking Gradle.
+  # H2 SHUTDOWN DEFRAG closes the DB during defrag; when dependency-check reopens
+  # it in read-only mode for analysis, a relative path fails the isFile() check
+  # because the CWD context is lost after H2 closes the connection.
+  if [[ -n "$DEPENDENCY_CHECK_DATA_DIR" ]]; then
+    export DEPENDENCY_CHECK_DATA_DIR="$(cd "$DEPENDENCY_CHECK_DATA_DIR" 2>/dev/null && pwd || echo "$(pwd)/$DEPENDENCY_CHECK_DATA_DIR")"
+    echo "    DEPENDENCY_CHECK_DATA_DIR resolved to: $DEPENDENCY_CHECK_DATA_DIR"
+  fi
+  ./gradlew --no-daemon --stacktrace dependencyCheckAnalyze
 fi
 
 if [[ $ROR_TASK == "compile_codebase_check" ]]; then
