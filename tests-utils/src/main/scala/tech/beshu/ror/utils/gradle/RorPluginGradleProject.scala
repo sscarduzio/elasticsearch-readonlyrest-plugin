@@ -50,7 +50,7 @@ object RorPluginGradleProject {
 
   // Memoizes the assembled plugin so it is built+verified at most once per (module, ES version):
   // the ZIP is identical for every node that needs it, but assembling it is expensive.
-  private val assembledByModuleAndVersion = mutable.Map.empty[String, Option[JFile]]
+  private val assembledByModuleAndVersion = mutable.Map.empty[String, JFile]
 
 }
 
@@ -68,8 +68,14 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[JFile] = RorPluginGradleProject.synchronized {
+    val key = s"$moduleName:$getModuleESVersion"
     RorPluginGradleProject.assembledByModuleAndVersion
-      .getOrElseUpdate(s"$moduleName:$getModuleESVersion", buildPlugin())
+      .get(key)
+      .orElse {
+        val plugin = buildPlugin()
+        plugin.foreach(RorPluginGradleProject.assembledByModuleAndVersion.put(key, _))
+        plugin
+      }
   }
 
   def getModuleESVersion: String =
