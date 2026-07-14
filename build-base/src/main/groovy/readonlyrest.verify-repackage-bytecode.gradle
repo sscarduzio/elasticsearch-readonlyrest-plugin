@@ -52,7 +52,10 @@ def compileBaseTask = tasks.register("repackageCheckCompileBase_es${esTag(module
     group = 'verification'
     description = "Compiles ${project.name} at its base ES ${moduleBaselineEsVersion} (for the repackage bytecode check)"
     workingDir = rootDir
-    commandLine gradlew, ":${project.name}:toJar", "-PbaselineEsVersion=${moduleBaselineEsVersion}"
+    // --no-build-cache: the diff below only proves anything if BOTH jars come from fresh compiles
+    // in this same session. A cache-restored jar (built by another daemon/invocation) is never
+    // byte-identical to a fresh compile, so a cache hit on either side false-alarms the guard.
+    commandLine gradlew, ":${project.name}:toJar", "-PbaselineEsVersion=${moduleBaselineEsVersion}", '--no-build-cache'
 }
 
 def verifyDiffTask = verifyRequest instanceof FullVerification ? { ->
@@ -60,7 +63,7 @@ def verifyDiffTask = verifyRequest instanceof FullVerification ? { ->
         group = 'verification'
         description = "Recompiles ${project.name} at ES ${verifyRequest.targetVersion} to compare its bytecode against the base"
         workingDir = rootDir
-        commandLine gradlew, ":${project.name}:toJar", "-PbaselineEsVersion=${verifyRequest.targetVersion}"
+        commandLine gradlew, ":${project.name}:toJar", "-PbaselineEsVersion=${verifyRequest.targetVersion}", '--no-build-cache'
         // Runs after the base: each compile overwrites build/classes, so they must run one at a time.
         dependsOn compileBaseTask
     }
