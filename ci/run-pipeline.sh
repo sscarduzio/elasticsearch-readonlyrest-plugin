@@ -37,7 +37,7 @@ fi
 
 if [[ $ROR_TASK == "cve_check" ]]; then
   echo ">>> Running CVE checks.."
-  ./gradlew --no-daemon dependencyCheckAnalyze
+  ./gradlew --no-daemon --stacktrace dependencyCheckAnalyze
 fi
 
 if [[ $ROR_TASK == "compile_codebase_check" ]]; then
