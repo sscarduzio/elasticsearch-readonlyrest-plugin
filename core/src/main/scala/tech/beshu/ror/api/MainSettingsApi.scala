@@ -39,7 +39,7 @@ import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.constants
 import tech.beshu.ror.es.interfaces.EsXContentBuilder
 import tech.beshu.ror.implicits.*
-import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.IndexNotFound
+import tech.beshu.ror.settings.ror.source.IndexSettingsSource.LoadingError.{DocumentNotFound, IndexNotFound}
 import tech.beshu.ror.settings.ror.source.ReadOnlySettingsSource.SettingsLoadingError.SourceSpecificError
 import tech.beshu.ror.settings.ror.source.{FileSettingsSource, IndexSettingsSource}
 import tech.beshu.ror.settings.ror.{MainRorSettings, RawRorSettings, RawRorSettingsYamlParser}
@@ -150,7 +150,7 @@ class MainSettingsApi(
       .map {
         case Right(settings) =>
           ProvideIndexMainSettings.MainSettings(settings.rawSettings.rawYaml)
-        case Left(SourceSpecificError(error @ IndexNotFound)) =>
+        case Left(SourceSpecificError(error @ (IndexNotFound | DocumentNotFound))) =>
           ProvideIndexMainSettings.MainSettingsNotFound(Show[IndexSettingsSource.LoadingError].show(error))
         case Left(error) =>
           ProvideIndexMainSettings.Failure(error.show)

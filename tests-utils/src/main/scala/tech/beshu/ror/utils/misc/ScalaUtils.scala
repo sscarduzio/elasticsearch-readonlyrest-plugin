@@ -16,11 +16,14 @@
  */
 package tech.beshu.ror.utils.misc
 
+import better.files.{File => BetterFile}
 import cats.Functor
 import cats.implicits.*
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
 
+import java.io.InputStream
+import java.security.MessageDigest
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
@@ -28,6 +31,7 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
+import scala.util.Using
 import scala.util.control.NonFatal
 
 object ScalaUtils extends LazyLogging {
@@ -90,7 +94,11 @@ object ScalaUtils extends LazyLogging {
   implicit def javaDurationToFiniteDuration(interval: Duration): FiniteDuration =
     FiniteDuration(interval.toMillis, TimeUnit.MILLISECONDS)
 
-  def retry(times: Int, cleanBeforeRetrying: => Unit = ())(action: => Unit): Unit = {
+  def retry(
+      times: Int,
+      cleanBeforeRetrying: => Unit = (),
+      delayBetweenRetries: FiniteDuration = 0.seconds
+  )(action: => Unit): Unit = {
     @tailrec
     def loop(attempt: Int): Unit = {
       try {
@@ -105,6 +113,10 @@ object ScalaUtils extends LazyLogging {
             logger.error(s"Attempt $attempt failed: ${e.getMessage}", e)
             logger.warn(s"Starting cleaning after failed attempt")
             cleanBeforeRetrying
+            if (delayBetweenRetries.toMillis > 0) {
+              logger.warn(s"Waiting ${delayBetweenRetries.toSeconds}s before retry...")
+              Thread.sleep(delayBetweenRetries.toMillis)
+            }
             logger.warn(s"Retrying...")
             loop(nextAttempt)
           }
@@ -112,6 +124,68 @@ object ScalaUtils extends LazyLogging {
     }
 
     loop(1)
+  }
+
+  // One shared io scheduler for all runWithTimeout calls (don't allocate a pool per call). Daemon
+  // threads, so it never blocks JVM exit; abandoned-on-timeout work dies with the short-lived leg JVM.
+  private lazy val timeoutScheduler: monix.execution.Scheduler =
+    monix.execution.Scheduler.io(name = "ror-it-timeout-guard")
+
+  /**
+   * Run a blocking `action`, abandoning it if it doesn't finish within `timeout`. Bounds blocking ES
+   * teardown so a WEDGED ES can't hang the worker JVM for hours. On timeout the Task is abandoned (the
+   * blocking call can't be interrupted, but dies with the leg JVM) and a TimeoutException is thrown.
+   */
+  def runWithTimeout[A](label: String, timeout: FiniteDuration)(action: => A): A = {
+    Task
+      .delay(action)
+      .timeoutWith(
+        timeout,
+        new java.util.concurrent.TimeoutException(
+          s"'$label' did not complete within $timeout — abandoning it (likely a wedged ES/container call)."
+        )
+      )
+      .runSyncUnsafe()(timeoutScheduler, implicitly)
+  }
+
+  /**
+   * Best-effort execution: runs `step` with a timeout, logs and swallows any failure so teardown
+   * continues. Use for cleanup steps where a failure must not abort the rest of the teardown sequence.
+   */
+  def bestEffort(name: String, timeout: FiniteDuration)(step: => Unit): Unit = {
+    try runWithTimeout(name, timeout)(step)
+    catch {
+      case NonFatal(e) =>
+        logger.error(s"'$name' failed/timed out — continuing cleanup", e)
+    }
+  }
+
+  /**
+   * SHA-256 hex digest of a file's content. Returns uppercase hex string (no prefix).
+   * Byte-identical to `better.files.File#sha256` — safe to replace it anywhere.
+   */
+  def sha256(file: BetterFile): String =
+    digestHex(file, "SHA-256", uppercase = true)
+
+  /**
+   * SHA-512 hex digest of a file's content. Returns lowercase hex string (no prefix).
+   * Used for download integrity verification against Elastic's published `.sha512` checksums.
+   */
+  def sha512(file: BetterFile): String =
+    digestHex(file, "SHA-512", uppercase = false)
+
+  private def digestHex(file: BetterFile, algorithm: String, uppercase: Boolean): String = {
+    val md = MessageDigest.getInstance(algorithm)
+    updateDigestFromFile(md, file.newInputStream)
+    val format = if (uppercase) "%02X" else "%02x"
+    md.digest().map(format.format(_)).mkString
+  }
+
+  private def updateDigestFromFile(md: MessageDigest, inputStream: => InputStream): Unit = {
+    Using.resource(inputStream) { in =>
+      val buffer = new Array[Byte](64 * 1024)
+      Iterator.continually(in.read(buffer)).takeWhile(_ != -1).foreach(md.update(buffer, 0, _))
+    }
   }
 
   def retryBackoff[A](source: Task[A], maxRetries: Int, firstDelay: FiniteDuration, backOffScaler: Int): Task[A] = {

@@ -1,7 +1,5 @@
 plugins {
     id "readonlyrest.base-common-conventions"
-
-    id "com.github.maiflai.scalatest"    version "0.33"
 }
 
 repositories {
@@ -58,24 +56,89 @@ sourceSets {
     }
 }
 
+// No -PesModule → newest supported module. Hardcoded until buildSrc's EsModuleResolver lands
+// and can derive it automatically.
+def defaultEsModule = 'es94x'
+
 test {
     systemProperty "project.dir", rootProject.projectDir
-    enabled = project.hasProperty('esModule')
-    if (enabled) {
-        def module = project.properties['esModule']
-        systemProperty "esModule", module
-        def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
-        if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
-
-        tags {
-            exclude 'tech.beshu.tags.ExcludeESModule.' + module
-            exclude 'tech.beshu.tags.IgnoreOnWindows'
+    def module = project.findProperty('esModule') ?: defaultEsModule
+    // Skips in bare aggregate builds (build/check); runs when the task is explicitly requested.
+    // The module always defaults to es94x — no need to detect if -PesModule was passed.
+    def explicitlyRequested = gradle.startParameter.taskNames.any { it.endsWith('integration-tests:test') || it == 'integration-tests:test' }
+    onlyIf { explicitlyRequested }
+    doFirst {
+        if (!project.hasProperty('esModule')) {
+            logger.quiet(">>> no -PesModule given — defaulting to ${defaultEsModule}")
         }
+    }
+    // Build the singleton ES image once up-front so parallel workers never build concurrently.
+    // Redundant K+1 boots are cache hits; kept so a bare local `:test` (no run-pipeline) still works.
+    dependsOn 'prebuildEsImage'
+    systemProperty "esModule", module
+    def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
+    if (explicitEsVersion != null) { systemProperty "esVersion", explicitEsVersion }
 
-        suite 'tech.beshu.ror.integration.suites.*'
+    // SHARDING: shardCount=1 runs everything; K>1 partitions suites by name-hash mod K (disjoint cover).
+    // Forks can't split the scalatest engine (gradle#8632), so parallelism = K sharded invocations.
+    def shardCount = (project.findProperty('shardCount') ?: '1').toInteger()
+    def shardIndex = (project.findProperty('shardIndex') ?: '0').toInteger()
+    filter {
+        if (shardCount > 1) {
+            def matched = 0
+            test.testClassesDirs.asFileTree.matching {
+                // `*Suite*` (not `*Suite`) so classes ending in `Suites` shard too; `base/` traits
+                // excluded so the `matched` guard counts only real suites.
+                include 'tech/beshu/ror/integration/suites/**/*Suite*.class'
+                exclude '**/*$*.class'   // skip nested/companion classes
+                exclude 'tech/beshu/ror/integration/suites/base/**'
+            }.visit { fd ->
+                if (!fd.directory) {
+                    def fqcn = fd.path.replace('/', '.').replaceAll(/\.class$/, '')
+                    if (Math.floorMod(fqcn.hashCode(), shardCount) == shardIndex) {
+                        includeTestsMatching fqcn
+                        matched++
+                    }
+                }
+            }
+            if (matched == 0) {
+                throw new GradleException("Shard ${shardIndex}/${shardCount} matched 0 suites — check shardCount/shardIndex.")
+            }
+            logger.quiet(">>> integration-tests shard ${shardIndex}/${shardCount}: ${matched} suites")
+        } else {
+            includeTestsMatching 'tech.beshu.ror.integration.suites.*'
+        }
+    }
+    // Gradle-native test machinery (replaces maiflai's one-JVM runner); ScalaTest tags map to JUnit tags.
+    useJUnitPlatform {
+        includeEngines 'scalatest'
+        excludeTags('tech.beshu.tags.ExcludeESModule.' + module, 'tech.beshu.tags.IgnoreOnWindows')
+    }
+    // Suites run serially within a JVM (shared singleton ES); junit.jupiter parallel is a NO-OP for
+    // the scalatest engine and would mask silent corruption — fail fast if anyone enables it.
+    def parallelProp = System.getProperty('junit.jupiter.execution.parallel.enabled')
+    if (parallelProp != null && parallelProp.toBoolean()) {
+        throw new GradleException(
+            "junit.jupiter.execution.parallel.enabled=true is unsupported for integration-tests: " +
+            "the scalatest engine ignores it and the singleton ES requires serial-within-JVM execution. " +
+            "Use -PshardCount/-PshardIndex to parallelise across separate worker JVMs instead.")
     }
     outputs.upToDateWhen { false }
+    // Live console output — native test execution is silent without this (same block as core's).
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
+    // maxParallelForks=1 always — forks can't split the scalatest engine (gradle#8632), so a 2nd fork
+    // gets no work. Parallelism = sharding (multiple -PshardCount invocations), not forks.
     maxParallelForks = 1
+    // lifecycle, NOT quiet(): this runs at configuration time, so quiet() pollutes the stdout that
+    // list_es_modules (publish-ror-plugins.sh) parses from `printEsModules --quiet`.
+    logger.lifecycle(">>> integration-tests maxParallelForks=${maxParallelForks} (1 ES/JVM; parallelism via -PshardCount)")
+    // Per worker JVM. The JVM only orchestrates (streams small HTTP to ES, no bulk data); measured peak
+    // live heap is ~50MB, so 512m is ~10x headroom. Overridable via -PitTestHeap for outlier suites.
+    maxHeapSize = project.findProperty('itTestHeap') ?: '512m'
 }
 
 dependencies {
@@ -84,7 +147,8 @@ dependencies {
     testImplementation  group: 'jakarta.xml.bind',              name: 'jakarta.xml.bind-api',       version: '2.3.2'
     testImplementation  group: 'org.glassfish.jaxb',            name: 'jaxb-runtime',               version: '2.3.2'
     testImplementation  group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.5.22'
-    testRuntimeOnly     group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
+    testRuntimeOnly     group: 'co.helmethair',                 name: 'scalatest-junit-runner',     version: '0.2.0'
+    testRuntimeOnly     group: 'org.junit.platform',            name: 'junit-platform-launcher',    version: '1.10.2'
     testImplementation  group: 'org.scala-lang',                name: 'scala3-library_3',           version: '3.3.7'
     testImplementation  group: 'org.scalatest',                 name: 'scalatest_3',                version: '3.2.19'
 }
@@ -94,3 +158,33 @@ tasks.register('ldapserver', JavaExec) {
     mainClass.set('tech.beshu.ror.integration.LDAPServer')
     classpath = sourceSets.test.runtimeClasspath
 }
+
+// Builds + stably tags the singleton ES image ONCE before parallel workers; without it concurrent
+// identical builds fail intermittently at shardCount>=3. Pre-building gives every worker a cache hit.
+tasks.register('prebuildEsImage', JavaExec) {
+    // Mirror test's gate: dependsOn targets run even when the dependent is onlyIf-skipped, so this
+    // must skip in bare aggregate builds too (else every `./gradlew build` boots a Docker ES image).
+    def explicitlyRequested = gradle.startParameter.taskNames.any {
+        it.endsWith('integration-tests:test') || it == 'integration-tests:test' ||
+            it.endsWith('prebuildEsImage') || it.endsWith('shardedTest')
+    }
+    onlyIf { explicitlyRequested }
+    systemProperty 'project.dir', rootProject.projectDir
+    systemProperty 'esModule', (project.findProperty('esModule') ?: defaultEsModule)
+    def explicitEsVersion = project.gradle.startParameter.projectProperties['esVersion']
+    if (explicitEsVersion != null) { systemProperty 'esVersion', explicitEsVersion }
+    mainClass.set('tech.beshu.ror.utils.containers.PrebuildSingletonEsImage')
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+// Sharded-IT orchestrator: runs K parallel `./gradlew integration-tests:test -PshardIndex=i`
+// JVMs (one ES container each). Usage: ./gradlew integration-tests:shardedTest -PshardCount=2 -PesModule=es94x
+tasks.register('shardedTest', tech.beshu.ror.buildbase.ShardedGradlewTest) {
+    dependsOn 'prebuildEsImage', 'testClasses'
+    // Always run — spawns external gradle processes whose state Gradle can't track.
+    outputs.upToDateWhen { false }
+    getShardCount().set((project.findProperty('shardCount') ?: '1') as int)
+    getEsModule().set(project.findProperty('esModule') ?: defaultEsModule)
+    getEsVersion().set(project.gradle.startParameter.projectProperties['esVersion'] as String)
+}
+

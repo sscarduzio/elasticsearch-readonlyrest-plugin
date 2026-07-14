@@ -35,9 +35,14 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2020-7021</cve>
         <cve>CVE-2021-22132</cve>
         <cve>CVE-2021-22134</cve>
+        <cve>CVE-2021-22135</cve>
+        <cve>CVE-2021-22137</cve>
         <cve>CVE-2021-22144</cve>
+        <cve>CVE-2021-22145</cve>
+        <cve>CVE-2021-22146</cve>
         <cve>CVE-2021-22147</cve>
         <cve>CVE-2021-37937</cve>
+        <cve>CVE-2022-23708</cve>
         <cve>CVE-2022-23712</cve>
         <cve>CVE-2023-31417</cve>
         <cve>CVE-2023-31418</cve>
@@ -45,6 +50,7 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2023-46673</cve>
         <cve>CVE-2023-46674</cve>
         <cve>CVE-2023-49921</cve>
+        <cve>CVE-2024-12539</cve>
         <cve>CVE-2024-23444</cve>
         <cve>CVE-2024-23445</cve>
         <cve>CVE-2024-23449</cve>
@@ -59,6 +65,9 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2025-37731</cve>
         <cve>CVE-2025-68384</cve>
         <cve>CVE-2025-68390</cve>
+        <cve>CVE-2026-49090</cve>
+        <cve>CVE-2026-56148</cve>
+        <cve>CVE-2026-56149</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
@@ -74,16 +83,21 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2020-7021</cve>
         <cve>CVE-2021-22132</cve>
         <cve>CVE-2021-22134</cve>
+        <cve>CVE-2021-22135</cve>
+        <cve>CVE-2021-22137</cve>
         <cve>CVE-2021-22144</cve>
         <cve>CVE-2021-22145</cve>
+        <cve>CVE-2021-22146</cve>
         <cve>CVE-2021-22147</cve>
         <cve>CVE-2021-37937</cve>
+        <cve>CVE-2022-23708</cve>
         <cve>CVE-2023-31417</cve>
         <cve>CVE-2023-31418</cve>
         <cve>CVE-2023-31419</cve>
         <cve>CVE-2023-46673</cve>
         <cve>CVE-2023-46674</cve>
         <cve>CVE-2023-49921</cve>
+        <cve>CVE-2024-12539</cve>
         <cve>CVE-2024-23444</cve>
         <cve>CVE-2024-23445</cve>
         <cve>CVE-2024-23450</cve>
@@ -96,6 +110,9 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
         <cve>CVE-2025-37731</cve>
         <cve>CVE-2025-68384</cve>
         <cve>CVE-2025-68390</cve>
+        <cve>CVE-2026-49090</cve>
+        <cve>CVE-2026-56148</cve>
+        <cve>CVE-2026-56149</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
@@ -122,6 +139,20 @@ False positive: CVE-2021-34364 is for "Refined GitHub" (browser extension), not 
    ]]></notes>
         <packageUrl regex="true">^pkg:maven/io\.netty/(netty-buffer|netty-codec|netty-codec-http|netty-codec-http2|netty-common|netty-handler|netty-resolver|netty-transport|netty-transport-native-unix-common)@.*$</packageUrl>
         <cve>CVE-2026-42582</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   False positive: CVE-2026-54399 and CVE-2026-54428 affect the HTTP/1.1 and HTTP/2 parsers in the
+   rewritten Apache HttpComponents Core 5.x line (org.apache.httpcomponents.core5:httpcore5 / httpcore5-h2,
+   package org.apache.hc.core5). The CVEs' CPE match criteria (cpe:2.3:a:apache:httpcomponents_core:*,
+   versionEndIncluding 5.4.2, no versionStartIncluding) has no lower bound, so it also matches the
+   unrelated legacy 4.x line (org.apache.httpcomponents:httpcore / httpcore-nio, package org.apache.http),
+   which is a completely different, unaffected codebase used by httpclient:4.5.14 and elasticsearch-rest-client
+   in the es*x modules.
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.httpcomponents/httpcore(-nio)?@.*$</packageUrl>
+        <cve>CVE-2026-54399</cve>
+        <cve>CVE-2026-54428</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[

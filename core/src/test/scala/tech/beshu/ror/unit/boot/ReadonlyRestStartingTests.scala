@@ -72,6 +72,7 @@ import tech.beshu.ror.syntax.*
 import tech.beshu.ror.unit.utils.WithReadonlyrestBootSupport
 import tech.beshu.ror.utils.DurationOps.*
 import tech.beshu.ror.utils.RefinedUtils.positiveFiniteDuration
+import tech.beshu.ror.utils.ScalaOps.RetryPolicy
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.*
 import tech.beshu.ror.utils.misc.ScalaUtils.StringOps
@@ -80,6 +81,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import java.time.Clock
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import scala.concurrent.duration.*
 import scala.language.postfixOps
 
@@ -131,6 +133,42 @@ class ReadonlyRestStartingTests
           val acl = rorInstance.engines.value.mainEngine.core.accessControl
           acl shouldBe a[AccessControlListLoggingDecorator]
           acl.asInstanceOf[AccessControlListLoggingDecorator].underlying shouldBe a[EnabledAcl]
+        }
+        "index settings document does not exist and file settings is provided" in withReadonlyRest({
+          val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
+          val mockedIndexDocumentManager = mock[IndexDocumentManager]
+          mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
+          mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
+          val coreFactory = mockCoreFactory(mock[CoreFactory], s"$resourcePath/readonlyrest.yml")
+
+          implicit val systemContext: SystemContext = createSystemContext()
+          (
+            readonlyRestBoot(coreFactory, mockedIndexDocumentManager),
+            forceCreateEsConfigBasedRorSettings(resourcePath)
+          )
+        }) { rorInstance =>
+          rorInstance.engines.value.mainEngine.core.accessControl shouldBe a[AccessControlListLoggingDecorator]
+        }
+      }
+      "not be loaded from file" when {
+        "the index settings cannot be read (eg. the cluster has no master node yet)" in {
+          // the settings may well be in the index - we just could not read them. Falling back to the file settings
+          // could make this node enforce an ACL different from the one used by the rest of the cluster.
+          val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
+          val mockedIndexDocumentManager = mock[IndexDocumentManager]
+          mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, error = DocumentUnreachable)
+
+          implicit val systemContext: SystemContext = createSystemContext()
+          // the core factory is never used, because the file settings must not be loaded
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
+          val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcePath)
+
+          val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
+
+          inside(result) { case Left(StartingFailure(message, _)) =>
+            message should include("Cannot read ReadonlyREST settings from index '.readonlyrest'")
+            message should include("will NOT be used as a fallback")
+          }
         }
       }
       "be loaded from index" when {
@@ -387,24 +425,25 @@ class ReadonlyRestStartingTests
           }
         }
         "index settings are malformed" in {
+          // the settings are in the index, we just cannot parse them - the file settings must not be used as a
+          // fallback, because they could be different from the ones the rest of the cluster is using
           val resourcesPath = "/boot_tests/malformed_index_settings/"
           val indexSettingsFile = "readonlyrest_index.yml"
 
           val mockedIndexDocumentManager = mock[IndexDocumentManager]
           mockGettingMainSettings(mockedIndexDocumentManager, resourcesPath + indexSettingsFile)
-          mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, error = DocumentNotFound)
-
-          val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + "readonlyrest.yml")
 
           implicit val systemContext: SystemContext = createSystemContext()
 
-          val readonlyRest = readonlyRestBoot(coreFactory, mockedIndexDocumentManager)
+          // the core factory is never used, because the file settings must not be loaded
+          val readonlyRest = readonlyRestBoot(mock[CoreFactory], mockedIndexDocumentManager)
           val esConfigBasedRorSettings = forceCreateEsConfigBasedRorSettings(resourcesPath)
 
           val result = readonlyRest.start(esConfigBasedRorSettings).runSyncUnsafe()
 
-          inside(result) { case Left(failure) =>
-            failure.message shouldBe "Errors:\nfailed"
+          inside(result) { case Left(StartingFailure(message, _)) =>
+            message should include("ReadonlyREST settings found in index '.readonlyrest' are malformed")
+            message should include("will NOT be used as a fallback")
           }
         }
         "index settings cannot be loaded" in {
@@ -1603,6 +1642,97 @@ class ReadonlyRestStartingTests
         }
       }
     }
+    "be started with a retry" when {
+      "the first starting attempts fail, but the core can be eventually created" in {
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 2,
+          failure =
+            Task.now(Left(NonEmptyList.one(CoreCreationError.GeneralReadonlyrestSettingsError(Message("failed")))))
+        )
+
+        val reportedFailures = startWithRetryCollectingFailures(readonlyRest, esConfigBasedRorSettings)
+
+        reportedFailures.map(_.message) should be(List("Errors:\nfailed", "Errors:\nfailed"))
+      }
+      "the first starting attempt fails with an unexpected exception (eg. no master node in the cluster)" in {
+        val noMasterNodeException = new Exception("MasterNotDiscoveredException")
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 1,
+          failure = Task.raiseError(noMasterNodeException)
+        )
+
+        val reportedFailures = startWithRetryCollectingFailures(readonlyRest, esConfigBasedRorSettings)
+
+        reportedFailures should be(List(StartingFailure("Cannot start ReadonlyREST", Some(noMasterNodeException))))
+      }
+      "the onFailedAttempt listener throws an exception" in {
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 1,
+          failure =
+            Task.now(Left(NonEmptyList.one(CoreCreationError.GeneralReadonlyrestSettingsError(Message("failed")))))
+        )
+
+        val instance = readonlyRest
+          .startWithRetry(esConfigBasedRorSettings, RetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)) { _ =>
+            throw new RuntimeException("the listener is broken")
+          }
+          .runSyncUnsafe()
+
+        instance should not be null
+        instance.stop().runSyncUnsafe()
+      }
+      "no starting attempt fails" in {
+        val (readonlyRest, esConfigBasedRorSettings) = readonlyRestWithCoreFactoryFailing(
+          failingAttemptsCount = 0,
+          failure = Task.raiseError(new Exception("should not be used"))
+        )
+
+        val reportedFailures = startWithRetryCollectingFailures(readonlyRest, esConfigBasedRorSettings)
+
+        reportedFailures should be(List.empty)
+      }
+    }
+  }
+
+  private def readonlyRestWithCoreFactoryFailing(
+      failingAttemptsCount: Int,
+      failure: Task[Either[NonEmptyList[CoreCreationError], Core]]
+  ) = {
+    val resourcePath = "/boot_tests/no_index_settings_file_settings_provided"
+    val mockedIndexDocumentManager = mock[IndexDocumentManager]
+    mockGettingMainSettingsReturnsError(mockedIndexDocumentManager, IndexNotFound, AttemptCount.AnyNumberOfTimes)
+    mockGettingTestSettingsReturnsError(mockedIndexDocumentManager, IndexNotFound, AttemptCount.AnyNumberOfTimes)
+
+    val accessControl = mockEnabledAccessControl
+    val startedAttempts = new AtomicInteger(0)
+    val coreFactory = mock[CoreFactory]
+    (coreFactory.createCoreFrom _)
+      .expects(*, *, *, *, *)
+      .anyNumberOfTimes()
+      .onCall { (_, _, _, _, _) =>
+        if (startedAttempts.getAndIncrement() < failingAttemptsCount) failure
+        else Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingSettings = None)))
+      }
+
+    implicit val systemContext: SystemContext = createSystemContext()
+    (readonlyRestBoot(coreFactory, mockedIndexDocumentManager), forceCreateEsConfigBasedRorSettings(resourcePath))
+  }
+
+  private def startWithRetryCollectingFailures(
+      readonlyRest: ReadonlyRest,
+      esConfigBasedRorSettings: EsConfigBasedRorSettings
+  ) = {
+    val reportedFailures = new AtomicReference[Vector[StartingFailure]](Vector.empty)
+    val instance = readonlyRest
+      .startWithRetry(
+        esConfigBasedRorSettings,
+        RetryPolicy(initialDelay = 10 millis, maxDelay = 20 millis)
+      ) { failure =>
+        reportedFailures.updateAndGet(_ :+ failure)
+      }
+      .runSyncUnsafe()
+    instance.stop().runSyncUnsafe()
+    reportedFailures.get().toList
   }
 
   private def forceCreateEsConfigBasedRorSettings(resourceEsConfigDir: String)(

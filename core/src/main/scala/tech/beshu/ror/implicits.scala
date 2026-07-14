@@ -703,8 +703,9 @@ trait LogsShowInstances extends cats.instances.AllInstances {
   }
 
   implicit val indexSettingsSourceLoadingErrorShow: Show[IndexSettingsSource.LoadingError] = Show.show {
-    case IndexSettingsSource.LoadingError.IndexNotFound    => "Cannot find ReadonlyREST settings index"
-    case IndexSettingsSource.LoadingError.DocumentNotFound => "Cannot found document with ReadonlyREST settings"
+    case IndexSettingsSource.LoadingError.IndexNotFound       => "Cannot find ReadonlyREST settings index"
+    case IndexSettingsSource.LoadingError.DocumentNotFound    => "Cannot found document with ReadonlyREST settings"
+    case IndexSettingsSource.LoadingError.DocumentUnreachable => "Cannot read document with ReadonlyREST settings"
   }
 
   implicit val indexSettingsSourceSavingErrorShow: Show[IndexSettingsSource.SavingError] = Show.show {

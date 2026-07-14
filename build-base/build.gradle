@@ -21,11 +21,22 @@ plugins {
 
 repositories {
     gradlePluginPortal()
+    mavenCentral()
 }
 
 dependencies {
-    implementation "com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.6.0"
-    implementation "com.star-zero.gradle:githook:1.2.1"
-    implementation "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1"
-    implementation "org.owasp.dependencycheck:org.owasp.dependencycheck.gradle.plugin:12.2.2"
+    implementation group: 'com.star-zero.gradle',                         name: 'githook',                                 version: '1.2.1'
+    implementation group: 'org.ow2.asm',                                  name: 'asm-tree',                                version: '9.7'
+    implementation group: 'org.ow2.asm',                                  name: 'asm-util',                                version: '9.7'
+    implementation group: 'com.diffplug.spotless',                        name: 'com.diffplug.spotless.gradle.plugin',     version: '8.6.0'
+    implementation group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin',                   version: '0.16.1'
+    implementation group: 'org.owasp.dependencycheck',                    name: 'org.owasp.dependencycheck.gradle.plugin', version: '12.2.2'
+
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
 }
