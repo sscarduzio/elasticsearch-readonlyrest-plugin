@@ -16,21 +16,42 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
-import tech.beshu.ror.audit.AuditLogSerializer
+import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.audit.configurable.ConfigurableAuditLogSerializer
+import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
+import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
 sealed trait AuditSerializer
 
+sealed trait JsonAuditSerializer extends AuditSerializer
+
+sealed trait TextAuditSerializer extends AuditSerializer
+
 object AuditSerializer {
-  final case class Delegating(serializer: AuditLogSerializer) extends AuditSerializer
+  final case class Delegating(serializer: AuditLogSerializer) extends JsonAuditSerializer
 
-  case object Acl extends AuditSerializer
+  case object Acl extends TextAuditSerializer
 
-  final case class EcsV1(allowedEventMode: AllowedEventMode, includeFullRequestContent: Boolean) extends AuditSerializer
+  final case class EcsV1(allowedEventMode: AllowedEventMode, includeFullRequestContent: Boolean)
+      extends JsonAuditSerializer
 
   final case class Configurable(
       allowedEventMode: AllowedEventMode,
       fields: Map[AuditFieldPath, AuditFieldValueDescriptor]
-  ) extends AuditSerializer
+  ) extends JsonAuditSerializer
+
+  extension (serializer: JsonAuditSerializer) {
+
+    def toJsonObject(context: AuditResponseContext): Option[JSONObject] = serializer match {
+      case Delegating(delegate) =>
+        delegate.onResponse(context)
+      case EcsV1(allowedEventMode, includeFullRequestContent) =>
+        EcsV1AuditLogSerializer.onResponse(context, allowedEventMode, includeFullRequestContent)
+      case Configurable(allowedEventMode, fields) =>
+        ConfigurableAuditLogSerializer.onResponse(context, allowedEventMode, fields)
+    }
+
+  }
 
 }

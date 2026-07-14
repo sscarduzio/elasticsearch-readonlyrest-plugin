@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
 import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.audit.AuditSerializer
+import tech.beshu.ror.accesscontrol.audit.JsonAuditSerializer
 import tech.beshu.ror.accesscontrol.domain.{RequestId, RorAuditIndexTemplate, SinkName}
 import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.es.services.IndexBasedAuditSinkService
@@ -27,12 +27,12 @@ import java.time.Clock
 
 private[audit] final class EsIndexBasedAuditSink private (
     sinkName: SinkName,
-    serializer: AuditSerializer,
+    serializer: JsonAuditSerializer,
     rorAuditIndexTemplate: RorAuditIndexTemplate,
     auditSinkService: IndexBasedAuditSinkService
 )(
     implicit clock: Clock
-) extends BaseAuditSink(sinkName, serializer) {
+) extends JsonBasedAuditSink(sinkName, serializer) {
 
   override protected def submit(event: AuditResponseContext, serializedEvent: JSONObject)(
       implicit requestId: RequestId
@@ -51,7 +51,7 @@ object EsIndexBasedAuditSink {
 
   def apply(
       sinkName: SinkName,
-      serializer: AuditSerializer,
+      serializer: JsonAuditSerializer,
       indexTemplate: RorAuditIndexTemplate,
       auditSinkService: IndexBasedAuditSinkService
   )(

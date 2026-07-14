@@ -255,41 +255,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
     implicit val policyDecoder: Decoder[Block.Policy] = this.policyDecoder
     implicit val sinkNameDecoder: Decoder[SinkName] =
       Decoder.decodeString.map(SinkName.apply)
-    implicit val blockAuditDecoder: Decoder[Block.Audit] =
-      Decoder.instance { c =>
-        for {
-          enabledOpt <- c.downField("enabled").as[Option[Boolean]]
-          enabled = enabledOpt.getOrElse(true)
-          logAllowedEventsOpt <- c.downField("log_allowed_events").as[Option[Boolean]]
-          logAllowedEvents = logAllowedEventsOpt.getOrElse(true)
-          enabledSinksRaw <- c.downField("enabled_audit_sinks").as[Option[List[SinkName]]]
-          disabledSinksRaw <- c.downField("disabled_audit_sinks").as[Option[List[SinkName]]]
-          enabledAuditSinks <- (enabledSinksRaw, disabledSinksRaw) match {
-            case (Some(_), Some(_)) =>
-              Left(
-                decodingFailureFrom(
-                  BlocksLevelCreationError(
-                    Message(
-                      "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
-                    )
-                  )
-                )
-              )
-            case (Some(enabledSinks), None) =>
-              Right(EnabledAuditSinks.Selected(enabledSinks.toSet))
-            case (None, Some(disabledSinks)) =>
-              Right(EnabledAuditSinks.AllExcept(disabledSinks.toSet))
-            case (None, None) =>
-              Right(EnabledAuditSinks.All)
-          }
-        } yield {
-          if (enabled) {
-            Block.Audit.Enabled(logAllowedEvents, enabledAuditSinks)
-          } else {
-            Block.Audit.Disabled
-          }
-        }
-      }
+    implicit val blockAuditDecoder: Decoder[Block.Audit] = this.blockAuditDecoder
 
     Decoder
       .instance { c =>
@@ -298,8 +264,7 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           legacyVerbosityAudit <- c.as[Option[Block.Audit]](legacyVerbosityAuditDecoder)
           auditFromConfig <- c.downField(Attributes.Block.audit).as[Option[Block.Audit]]
-          // explicit audit section takes precedence over the legacy verbosity key
-          audit = auditFromConfig.orElse(legacyVerbosityAudit)
+          audit <- resolveBlockAudit(auditFromConfig, legacyVerbosityAudit)
           rules <- rulesNelDecoder(definitions, globalSettings, mocksProvider, esEnv).toSyncDecoder.decoder
             .tryDecode(
               c.withFocus(
@@ -338,6 +303,73 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
         )
     }
   }
+
+  private def blockAuditDecoder(
+      implicit sinkNameDecoder: Decoder[SinkName]
+  ): Decoder[Block.Audit] =
+    Decoder.instance { c =>
+      for {
+        enabledOpt <- c.downField("enabled").as[Option[Boolean]]
+        enabled = enabledOpt.getOrElse(true)
+        logAllowedEventsOpt <- c.downField("log_allowed_events").as[Option[Boolean]]
+        logAllowedEvents = logAllowedEventsOpt.getOrElse(true)
+        enabledAuditSinks <- enabledAuditSinksDecoder(c)
+      } yield {
+        if (enabled) {
+          Block.Audit.Enabled(logAllowedEvents, enabledAuditSinks)
+        } else {
+          Block.Audit.Disabled
+        }
+      }
+    }
+
+  private def enabledAuditSinksDecoder(
+      c: HCursor
+  )(
+      implicit sinkNameDecoder: Decoder[SinkName]
+  ): Decoder.Result[EnabledAuditSinks] =
+    for {
+      enabledSinksRaw <- c.downField("enabled_audit_sinks").as[Option[List[SinkName]]]
+      disabledSinksRaw <- c.downField("disabled_audit_sinks").as[Option[List[SinkName]]]
+      enabledAuditSinks <- (enabledSinksRaw, disabledSinksRaw) match {
+        case (Some(_), Some(_)) =>
+          Left(
+            decodingFailureFrom(
+              BlocksLevelCreationError(
+                Message(
+                  "Cannot define both 'enabled_audit_sinks' and 'disabled_audit_sinks' in the same block audit config"
+                )
+              )
+            )
+          )
+        case (Some(enabledSinks), None) =>
+          Right(EnabledAuditSinks.Selected(enabledSinks.toSet))
+        case (None, Some(disabledSinks)) =>
+          Right(EnabledAuditSinks.AllExcept(disabledSinks.toSet))
+        case (None, None) =>
+          Right(EnabledAuditSinks.All)
+      }
+    } yield enabledAuditSinks
+
+  private def resolveBlockAudit(
+      auditFromConfig: Option[Block.Audit],
+      legacyVerbosityAudit: Option[Block.Audit]
+  ): Decoder.Result[Option[Block.Audit]] =
+    (auditFromConfig, legacyVerbosityAudit) match {
+      case (Some(_), Some(_)) =>
+        Left(
+          decodingFailureFrom(
+            BlocksLevelCreationError(
+              Message(
+                s"Cannot use both '${Attributes.Block.verbosity}' and '${Attributes.Block.audit}' in the same block. " +
+                  s"Please configure audit settings using '${Attributes.Block.audit}' only."
+              )
+            )
+          )
+        )
+      case (auditOpt, legacyOpt) =>
+        Right(auditOpt.orElse(legacyOpt))
+    }
 
   private def auditSinkNamesDecoder(
       blocksNel: NonEmptyList[BlockDecodingResult],
@@ -527,6 +559,13 @@ class RawRorSettingsBasedCoreFactory(esEnv: EsEnv)(
       } yield {
         val blocks = blocksNel.map(_.block)
         blocks.toList.foreach { block => noRequestIdLogger.info(s"ADDING BLOCK:\t ${block.show}") }
+
+        blocksNel.map(_.block).filter(_.audit == Block.Audit.Disabled).toNel.foreach { blocks =>
+          noRequestIdLogger.debug(
+            s"Blocks [${blocks.map(_.name.value).toList.mkString(", ")}] have 'audit: disabled', which suppresses ALL audit output including the default ACL log. " +
+              s"To keep ACL log visibility while silencing other sinks, use 'enabled_audit_sinks: [${SinkName.defaultAclLog.value}]' instead."
+          )
+        }
 
         val localUsers: LocalUsers = blocksNel.map(_.localUsers).toList.combineAll
 

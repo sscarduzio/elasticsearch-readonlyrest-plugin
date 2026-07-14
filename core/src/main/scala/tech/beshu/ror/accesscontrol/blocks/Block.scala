@@ -21,6 +21,7 @@ import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.audit.sink.AuditSink
 import tech.beshu.ror.accesscontrol.blocks.Block.*
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.PrecomputedAuditSinks.Available
 import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.{EnabledAuditSinks, PrecomputedAuditSinks}
@@ -29,14 +30,13 @@ import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
-import tech.beshu.ror.accesscontrol.domain.{RequestId, SinkName}
+import tech.beshu.ror.accesscontrol.domain.SinkName
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.orders.*
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
-import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.implicits.*
 import tech.beshu.ror.utils.RequestIdAwareLogging
 
@@ -53,13 +53,9 @@ class Block(
 
   import Lifter.*
 
-  def withResolvedAuditSinks(allSinks: List[Block.AuditSink]): Block = {
+  def withResolvedAuditSinks(allSinks: List[AuditSink]): Block = {
     val newAudit = audit match {
       case Audit.Disabled =>
-        noRequestIdLogger.warn(
-          s"Block '${name.value}' has 'audit: disabled', which suppresses ALL audit output including the default ACL log. " +
-            s"To keep ACL log visibility while silencing other sinks, use 'enabled_audit_sinks: [${SinkName.defaultAclLog.value}]' instead."
-        )
         Audit.Disabled
       case enabled @ Audit.Enabled(_, EnabledAuditSinks.All, _) =>
         enabled.copy(precomputedAuditSinks = Available(allSinks))
@@ -210,17 +206,6 @@ class Block(
 
 object Block {
 
-  trait AuditSink {
-    def name: SinkName
-
-    def submit(event: AuditResponseContext)(
-        implicit requestId: RequestId
-    ): Task[Unit]
-
-    def close(): Task[Unit] = Task.unit
-
-  }
-
   final case class Name(value: String) extends AnyVal
 
   final case class RuleDefinition[T <: Rule](
@@ -282,6 +267,12 @@ object Block {
     final case class Enabled(
         logAllowedEvents: Boolean = true,
         enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All,
+        // Blocks are decoded before the AuditingTool exists (which resolves sink names to actual AuditSink
+        // instances), so we cannot resolve enabledAuditSinks into concrete sinks at decoding time.
+        // Resolving them on every audit event would be too costly, so once the AuditingTool is available
+        // (at ROR startup), the resolved sinks are precomputed and injected back into the Block here.
+        // enabledAuditSinks remains the source of truth for the block's audit config; this field is just
+        // a non-normalized cache of its resolution, kept to avoid recomputing it on every request.
         precomputedAuditSinks: PrecomputedAuditSinks = PrecomputedAuditSinks.NotAvailable,
     ) extends Audit
 
@@ -301,7 +292,7 @@ object Block {
       object PrecomputedAuditSinks {
         case object NotAvailable extends PrecomputedAuditSinks
 
-        final case class Available(auditSinks: List[Block.AuditSink]) extends PrecomputedAuditSinks
+        final case class Available(auditSinks: List[AuditSink]) extends PrecomputedAuditSinks
       }
 
     }

@@ -17,31 +17,16 @@
 package tech.beshu.ror.accesscontrol.audit.sink
 
 import monix.eval.Task
-import org.apache.logging.log4j.Logger
-import org.json.JSONObject
-import tech.beshu.ror.accesscontrol.audit.acl.AclAuditLogSerializer
-import tech.beshu.ror.accesscontrol.audit.{AuditSerializer, JsonAuditSerializer}
 import tech.beshu.ror.accesscontrol.domain.{RequestId, SinkName}
 import tech.beshu.ror.audit.AuditResponseContext
 
-private[audit] abstract class TextBasedAuditSink(val name: SinkName, serializer: AuditSerializer) extends AuditSink {
+trait AuditSink {
+  def name: SinkName
 
-  protected val logger: Logger
-
-  final def submit(event: AuditResponseContext)(
+  def submit(event: AuditResponseContext)(
       implicit requestId: RequestId
-  ): Task[Unit] = Task {
-    serializer match {
-      case AuditSerializer.Acl =>
-        AclAuditLogSerializer
-          .format(event, logger.isDebugEnabled)
-          .foreach(msg => logger.info(s"[${requestId.value}] $msg"))
-      case other: JsonAuditSerializer =>
-        other.toJsonObject(event).foreach(log)
-    }
-  }
+  ): Task[Unit]
 
-  private def log(json: JSONObject): Unit = logger.info(json.toString(0))
+  def close(): Task[Unit] = Task.unit
 
-  def close(): Task[Unit]
 }

@@ -29,10 +29,13 @@ import squants.information.Megabytes
 import tech.beshu.ror.accesscontrol.History
 import tech.beshu.ror.accesscontrol.audit.AuditSerializer
 import tech.beshu.ror.accesscontrol.audit.AuditingTool
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink
 import tech.beshu.ror.accesscontrol.audit.AuditingTool.AuditSettings.AuditSink.Config
-import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditingConfig}
-import tech.beshu.ror.accesscontrol.audit.sink.{AuditDataStreamCreator, DataStreamAndIndexBasedAuditSinkServiceCreator}
+import tech.beshu.ror.accesscontrol.audit.AuditingTool.{AuditOutputsConfig, AuditSettings, AuditingConfig}
+import tech.beshu.ror.accesscontrol.audit.sink.{
+  AuditDataStreamCreator,
+  AuditSink,
+  DataStreamAndIndexBasedAuditSinkServiceCreator
+}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{
@@ -292,7 +295,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 outputsConfig = Some(
                   AuditOutputsConfig.WithOutputs(
                     NonEmptyList.of(
-                      AuditSink.Enabled(
+                      AuditSettings.AuditSink.Enabled(
                         SinkName.random(),
                         Config.LogBasedSink(
                           AuditSerializer.Delegating(new DefaultAuditLogSerializer),
@@ -342,7 +345,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 outputsConfig = Some(
                   AuditOutputsConfig.WithOutputs(
                     NonEmptyList.of(
-                      AuditSink.Enabled(
+                      AuditSettings.AuditSink.Enabled(
                         SinkName.random(),
                         Config.RollingFileBasedSink(
                           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
@@ -396,7 +399,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
                 outputsConfig = Some(
                   AuditOutputsConfig.WithOutputs(
                     NonEmptyList.of(
-                      AuditSink.Enabled(
+                      AuditSettings.AuditSink.Enabled(
                         SinkName.random(),
                         Config.RollingFileBasedSink(
                           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
@@ -581,7 +584,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
               Some(
                 AuditOutputsConfig.WithOutputs(
                   NonEmptyList.of(
-                    AuditSink.Enabled(
+                    AuditSettings.AuditSink.Enabled(
                       SinkName.random(),
                       Config.EsIndexBasedSink(
                         AuditSerializer.Delegating(new DefaultAuditLogSerializer),
@@ -653,7 +656,11 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
             config = AuditingConfig(
               Some(
                 AuditOutputsConfig.WithOutputs(
-                  NonEmptyList.of(AuditSink.Disabled, AuditSink.Disabled, AuditSink.Disabled)
+                  NonEmptyList.of(
+                    AuditSettings.AuditSink.Disabled,
+                    AuditSettings.AuditSink.Disabled,
+                    AuditSettings.AuditSink.Disabled
+                  )
                 )
               ),
               defaultAclLog = true,
@@ -674,7 +681,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private def auditSettings(serializer: AuditLogSerializer) = AuditOutputsConfig.WithOutputs(
     auditSinks = NonEmptyList.of(
-      AuditSink.Enabled(
+      AuditSettings.AuditSink.Enabled(
         SinkName.random(),
         Config.EsIndexBasedSink(
           AuditSerializer.Delegating(serializer),
@@ -682,7 +689,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
           AuditCluster.LocalAuditCluster
         )
       ),
-      AuditSink.Enabled(
+      AuditSettings.AuditSink.Enabled(
         SinkName.random(),
         Config.EsDataStreamBasedSink(
           AuditSerializer.Delegating(serializer),
@@ -697,7 +704,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
 
   private def createAllowedResponseContext(
       policy: Block.Policy,
-      allSinks: List[Block.AuditSink],
+      allSinks: List[AuditSink],
       logAllowedEvents: Boolean = true
   ) = {
     val requestContext =
@@ -728,7 +735,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory with BeforeAndAfter
   @nowarn("cat=deprecation")
   private def rollingFileSinkSettings(filePath: java.nio.file.Path) = AuditOutputsConfig.WithOutputs(
     NonEmptyList.of(
-      AuditSink.Enabled(
+      AuditSettings.AuditSink.Enabled(
         SinkName.random(),
         Config.RollingFileBasedSink(
           serializer = AuditSerializer.Delegating(new DefaultAuditLogSerializer),
