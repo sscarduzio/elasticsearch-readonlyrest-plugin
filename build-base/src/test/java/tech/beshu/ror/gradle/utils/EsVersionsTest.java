@@ -118,11 +118,85 @@ class EsVersionsTest {
     assertEquals("8.18.0", EsVersions.baseline(p));
   }
 
+  // --- baseEsVersions / baseFor / groupNewest ---
+
+  private static final String ES74X_SUPPORTED =
+      "7.4.0, 7.4.1, 7.4.2, 7.5.0, 7.5.1, 7.5.2, 7.6.0, 7.6.1, 7.6.2";
+
+  @Test
+  void baseVersionsDefaultsToOldestWhenUnset() {
+    assertEquals(List.of("7.4.0"), EsVersions.baseVersions(project(ES74X_SUPPORTED)));
+  }
+
+  @Test
+  void baseVersionsParsedWhenSet() {
+    assertEquals(
+        List.of("7.4.0", "7.5.0", "7.6.0"),
+        EsVersions.baseVersions(projectWithBases(ES74X_SUPPORTED, "7.4.0, 7.5.0, 7.6.0")));
+  }
+
+  @Test
+  void baseVersionsMustStartAtOldest() {
+    assertThrows(
+        GradleException.class,
+        () -> EsVersions.baseVersions(projectWithBases(ES74X_SUPPORTED, "7.5.0, 7.6.0")));
+  }
+
+  @Test
+  void baseVersionsMustAllBeSupported() {
+    assertThrows(
+        GradleException.class,
+        () -> EsVersions.baseVersions(projectWithBases(ES74X_SUPPORTED, "7.4.0, 7.5.5")));
+  }
+
+  @Test
+  void baseVersionsMustBeOrderedOldestFirst() {
+    assertThrows(
+        GradleException.class,
+        () -> EsVersions.baseVersions(projectWithBases(ES74X_SUPPORTED, "7.6.0, 7.4.0, 7.5.0")));
+  }
+
+  @Test
+  void baseForPicksClosestOldestBase() {
+    Project p = projectWithBases(ES74X_SUPPORTED, "7.4.0, 7.5.0, 7.6.0");
+    assertEquals("7.4.0", EsVersions.baseFor(p, "7.4.2"));
+    assertEquals("7.5.0", EsVersions.baseFor(p, "7.5.0"));
+    assertEquals("7.5.0", EsVersions.baseFor(p, "7.5.2"));
+    assertEquals("7.6.0", EsVersions.baseFor(p, "7.6.2"));
+  }
+
+  @Test
+  void baselineUsesTheGroupBaseOfTheDeliveredVersion() {
+    Project p = projectWithBases(ES74X_SUPPORTED, "7.4.0, 7.5.0, 7.6.0");
+    // delivered defaults to newest (7.6.2) -> its base is 7.6.0
+    assertEquals("7.6.0", EsVersions.baseline(p));
+    p.getExtensions().getExtraProperties().set("esVersion", "7.5.1");
+    assertEquals("7.5.0", EsVersions.baseline(p));
+  }
+
+  @Test
+  void groupNewestsDefaultsToJustNewest() {
+    assertEquals(List.of("7.6.2"), EsVersions.groupNewest(project(ES74X_SUPPORTED)));
+  }
+
+  @Test
+  void groupNewestsReturnsNewestOfEachGroup() {
+    assertEquals(
+        List.of("7.4.2", "7.5.2", "7.6.2"),
+        EsVersions.groupNewest(projectWithBases(ES74X_SUPPORTED, "7.4.0, 7.5.0, 7.6.0")));
+  }
+
   // ---
 
   private static Project project(String supportedEsVersions) {
     Project p = ProjectBuilder.builder().build();
     p.getExtensions().getExtraProperties().set("supportedEsVersions", supportedEsVersions);
+    return p;
+  }
+
+  private static Project projectWithBases(String supportedEsVersions, String baseEsVersions) {
+    Project p = project(supportedEsVersions);
+    p.getExtensions().getExtraProperties().set("baseEsVersions", baseEsVersions);
     return p;
   }
 }
