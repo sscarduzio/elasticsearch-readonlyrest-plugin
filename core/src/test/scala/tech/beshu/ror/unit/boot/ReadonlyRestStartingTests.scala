@@ -1710,8 +1710,12 @@ class ReadonlyRestStartingTests
       .expects(*, *, *, *, *)
       .anyNumberOfTimes()
       .onCall { (_, _, _, _, _) =>
-        if (startedAttempts.getAndIncrement() < failingAttemptsCount) failure
-        else Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingSettings = None)))
+        if (startedAttempts.getAndIncrement() < failingAttemptsCount) {
+          failure
+        } else {
+          val auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+          Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingConfig)))
+        }
       }
 
     implicit val systemContext: SystemContext = createSystemContext()

@@ -27,6 +27,6 @@ trait AuditSink {
       implicit requestId: RequestId
   ): Task[Unit]
 
-  def close(): Task[Unit] = Task.unit
+  def close(): Task[Unit]
 
 }
