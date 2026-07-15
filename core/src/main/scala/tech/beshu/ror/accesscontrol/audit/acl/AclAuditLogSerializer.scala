@@ -1,0 +1,64 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package tech.beshu.ror.accesscontrol.audit.acl
+
+import cats.Show
+import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.audit.AuditRequestContextBasedOnAclResult
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.{Header, RorAuditLoggerName}
+import tech.beshu.ror.accesscontrol.logging.{AccessControlListLoggingDecorator, ResponseContext}
+import tech.beshu.ror.audit.AuditResponseContext
+import tech.beshu.ror.audit.AuditResponseContext.Verbosity
+import tech.beshu.ror.implicits.{headerShow, obfuscatedHeaderShow, responseContextShow}
+
+object AclAuditLogSerializer {
+
+  private[accesscontrol] def format(responseContext: AuditResponseContext, debugEnabled: Boolean): Option[String] = {
+    val suppress = responseContext match {
+      case allowed: AuditResponseContext.Allowed => allowed.verbosity != Verbosity.Info
+      case _                                     => false
+    }
+    if (suppress) None else Some(formatMessage(responseContext, debugEnabled))
+  }
+
+  private def formatMessage(responseContext: AuditResponseContext, debugEnabled: Boolean): String = {
+    responseContext.requestContext match {
+      case ctx: AuditRequestContextBasedOnAclResult[?] =>
+        given Show[Header] =
+          if (debugEnabled) headerShow else obfuscatedHeaderShow(ctx.loggingContext.obfuscatedHeaders)
+
+        aclMessageShow(debugEnabled).show(ctx.responseContext)
+      case ctx =>
+        // AuditRequestContext is an open trait in the audit module, which is a public API.
+        // AuditRequestContextBasedOnAclResult is the only implementation of that trait in the production codebase.
+        // As a result, this case will never be executed, but it is not guaranteed on the type level.
+        s"[unknown-context:${ctx.getClass.getSimpleName}] id=${ctx.id} action=${ctx.action} uri=${ctx.uriPath}"
+    }
+  }
+
+  private def aclMessageShow[B <: BlockContext](debugEnabled: Boolean)(
+      using Show[Header]
+  ): Show[ResponseContext[B]] =
+    responseContextShow[B](debugEnabled)
+
+  // Preserved from the class that originally emitted ACL log entries, so existing
+  // log4j configurations targeting that logger name continue to work unchanged.
+  val defaultLoggerName: RorAuditLoggerName =
+    RorAuditLoggerName(NonEmptyString.unsafeFrom(classOf[AccessControlListLoggingDecorator].getName))
+
+}

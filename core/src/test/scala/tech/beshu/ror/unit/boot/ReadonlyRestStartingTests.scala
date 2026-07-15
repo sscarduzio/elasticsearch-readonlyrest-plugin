@@ -261,7 +261,15 @@ class ReadonlyRestStartingTests
             resourcesPath + secondNewIndexSettingsFile,
             createCoreResult = Task
               .sleep(100 millis)
-              .map(_ => Right(Core(mockEnabledAccessControl, RorDependencies.noOp, None))) // very long creation
+              .map(_ =>
+                Right(
+                  Core(
+                    mockEnabledAccessControl,
+                    RorDependencies.noOp,
+                    AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+                  )
+                )
+              ) // very long creation
           )
           mockSavingMainSettings(
             mockedIndexDocumentManager,
@@ -1594,12 +1602,11 @@ class ReadonlyRestStartingTests
           mockEnabledAccessControl,
           RorDependencies(RorDependencies.Services.empty, LocalUsers.NotAvailable, NoOpImpersonationWarningsReader),
           Some(
-            AuditingTool.AuditSettings(
+            AuditingTool.AuditOutputsConfig.WithOutputs(
               NonEmptyList.of(
-                AuditSink.Enabled(dataStreamSinkConfig1),
-                AuditSink.Enabled(dataStreamSinkConfig2)
-              ),
-              defaultTestEsNodeSettings
+                AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig1),
+                AuditSink.Enabled(SinkName.random(), dataStreamSinkConfig2)
+              )
             )
           )
         )
@@ -1703,8 +1710,12 @@ class ReadonlyRestStartingTests
       .expects(*, *, *, *, *)
       .anyNumberOfTimes()
       .onCall { (_, _, _, _, _) =>
-        if (startedAttempts.getAndIncrement() < failingAttemptsCount) failure
-        else Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingSettings = None)))
+        if (startedAttempts.getAndIncrement() < failingAttemptsCount) {
+          failure
+        } else {
+          val auditingConfig = AuditingTool.AuditingConfig(None, defaultAclLog = true, defaultTestEsNodeSettings)
+          Task.now(Right(Core(accessControl, RorDependencies.noOp, auditingConfig)))
+        }
       }
 
     implicit val systemContext: SystemContext = createSystemContext()
@@ -1787,7 +1798,7 @@ class ReadonlyRestStartingTests
       loadedMainSettingsResourceFileName: String,
       accessControlMock: AccessControlList = mockEnabledAccessControl,
       dependencies: RorDependencies = RorDependencies.noOp,
-      auditingSettings: Option[AuditingTool.AuditSettings] = None
+      auditingSettings: Option[AuditingTool.AuditOutputsConfig] = None
   ): CoreFactory = {
     mockCoreFactory(
       mockedCoreFactory,
@@ -1803,14 +1814,24 @@ class ReadonlyRestStartingTests
       loadedMainSettings: RawRorSettings,
       accessControlMock: AccessControlList,
       dependencies: RorDependencies,
-      auditingSettings: Option[AuditingTool.AuditSettings]
+      auditingSettings: Option[AuditingTool.AuditOutputsConfig]
   ): CoreFactory = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where { (settings: RawRorSettings, _, _, _, _) =>
         settings == loadedMainSettings
       })
       .once()
-      .returns(Task.now(Right(Core(accessControlMock, dependencies, auditingSettings))))
+      .returns(
+        Task.now(
+          Right(
+            Core(
+              accessControlMock,
+              dependencies,
+              AuditingTool.AuditingConfig(auditingSettings, defaultAclLog = true, defaultTestEsNodeSettings)
+            )
+          )
+        )
+      )
     mockedCoreFactory
   }
 
@@ -1852,6 +1873,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns("ENABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 
@@ -1865,6 +1890,10 @@ class ReadonlyRestStartingTests
       .expects()
       .anyNumberOfTimes()
       .returns("DISABLED")
+    (mockedAccessControl.withBlockTransformation _)
+      .expects(*)
+      .anyNumberOfTimes()
+      .returns(mockedAccessControl)
     mockedAccessControl
   }
 
