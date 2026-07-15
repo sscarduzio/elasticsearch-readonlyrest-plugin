@@ -100,10 +100,22 @@ class EsVersionsTest {
   }
 
   @Test
-  void deliveredReturnsOverrideWhenEsVersionSet() {
+  void deliveredReturnsOverrideWhenEsVersionSetAndSupported() {
     Project p = project("8.18.0, 8.19.0");
-    p.getExtensions().getExtraProperties().set("esVersion", "8.18.5");
-    assertEquals("8.18.5", EsVersions.delivered(p));
+    p.getExtensions().getExtraProperties().set("esVersion", "8.18.0");
+    assertEquals("8.18.0", EsVersions.delivered(p));
+  }
+
+  @Test
+  void deliveredIgnoresEsVersionOverrideThisModuleDoesNotSupport() {
+    // -PesVersion is global: building es818x @ 8.18.0 sets esVersion=8.18.0 for es90x too, which
+    // must
+    // fall back to its own newest instead of adopting the foreign version (regression: es90x threw
+    // "No base ES version <= 8.18.0" at plugin-apply time).
+    Project p = project("9.0.0, 9.0.1");
+    p.getExtensions().getExtraProperties().set("esVersion", "8.18.0");
+    assertEquals("9.0.1", EsVersions.delivered(p));
+    assertEquals("9.0.0", EsVersions.baseline(p)); // must not throw
   }
 
   @Test

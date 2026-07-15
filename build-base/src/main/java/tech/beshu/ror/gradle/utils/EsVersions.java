@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -60,23 +61,37 @@ public final class EsVersions {
     return new EsVersions(list);
   }
 
-  /** The ES version to DELIVER: the {@code -PesVersion} override if given, otherwise the newest supported. */
+  /**
+   * The ES version to DELIVER: the {@code -PesVersion} override when it names a version THIS module supports,
+   * otherwise the newest supported. {@code -PesVersion} is a GLOBAL property, so building one module (e.g.
+   * {@code :es818x:buildRorPluginZip -PesVersion=8.18.0}) sets it for every module as they configure; a
+   * sibling that does not support that version must ignore it rather than adopt a foreign version. Honoring it
+   * only for the owning module mirrors how {@link EsModuleFinder} routes a version to exactly the module whose
+   * {@code supportedEsVersions} lists it.
+   */
   public static String delivered(Project project) {
-    return project.hasProperty("esVersion")
-        ? String.valueOf(project.property("esVersion"))
-        : of(project).newest;
+    return supportedOverride(project, "esVersion").orElseGet(() -> of(project).newest);
   }
 
   /**
-   * The ES version to COMPILE against for the delivered version: the {@code -PbaselineEsVersion} override if
-   * given (used only by the CI bytecode guard to force a recompile at a boundary version), otherwise the base
-   * of the group the delivered version falls into (see {@link #baseFor}). With the single-base default this is
-   * the oldest supported version, so the whole module reuses one set of base bytecode.
+   * The ES version to COMPILE against for the delivered version: the {@code -PbaselineEsVersion} override when
+   * it names a version THIS module supports (used only by the CI bytecode guard to force a recompile at a
+   * boundary version; also global, so siblings ignore a foreign value), otherwise the base of the group the
+   * delivered version falls into (see {@link #baseFor}). With the single-base default this is the oldest
+   * supported version, so the whole module reuses one set of base bytecode.
    */
   public static String baseline(Project project) {
-    return project.hasProperty("baselineEsVersion")
-        ? String.valueOf(project.property("baselineEsVersion"))
-        : baseFor(project, delivered(project));
+    return supportedOverride(project, "baselineEsVersion")
+        .orElseGet(() -> baseFor(project, delivered(project)));
+  }
+
+  /** A global {@code -P<property>} version override, honored only when THIS module supports the version. */
+  private static Optional<String> supportedOverride(Project project, String property) {
+    if (!project.hasProperty(property)) {
+      return Optional.empty();
+    }
+    String version = String.valueOf(project.property(property));
+    return of(project).all.contains(version) ? Optional.of(version) : Optional.empty();
   }
 
   /**
