@@ -4,10 +4,10 @@
     "duration-balanced shard packing when ROR_BALANCED_SHARDS=true (see integration-tests/build.gradle).",
     "ADVISORY ONLY: suites missing here default to 60s and still run; entries for deleted suites",
     "are ignored. Staleness affects shard balance, never correctness or coverage.",
-    "DRIFT IS AUTO-DETECTED: the es94x CI leg runs integration-tests:regenerateSuiteTimings after",
+    "DRIFT IS AUTO-DETECTED: the es90x CI leg runs integration-tests:regenerateSuiteTimings after",
     "the tests \u2014 it emits ::warning:: annotations on drift and uploads the regenerated file as the",
     "'suite-timings-regenerated' artifact. To update: download that artifact and commit it here.",
-    "Locally: ./gradlew integration-tests:test -PesModule=es94x, then",
+    "Locally: ./gradlew integration-tests:test -PesModule=es90x, then",
     "./gradlew integration-tests:regenerateSuiteTimings (writes build/suite-timings-regenerated.json)."
   ],
   "times": {

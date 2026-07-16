@@ -196,9 +196,9 @@ tasks.register('prebuildEsImage', JavaExec) {
 }
 
 // Rebuilds suite-timings.json from the junit XMLs of the LAST test run and warns about drift
-// vs the committed file. CI runs it on the es94x leg (uploads the result as the
+// vs the committed file. CI runs it on the es90x leg (uploads the result as the
 // `suite-timings-regenerated` artifact and emits ::warning:: annotations on drift); locally:
-//   ./gradlew integration-tests:test -PesModule=es94x && ./gradlew integration-tests:regenerateSuiteTimings
+//   ./gradlew integration-tests:test -PesModule=es90x && ./gradlew integration-tests:regenerateSuiteTimings
 tasks.register('regenerateSuiteTimings') {
     doLast {
         def times = new TreeMap()

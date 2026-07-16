@@ -14,8 +14,8 @@ directory contain the build logic; the workflow only orchestrates.
 | `setup` | computes branch flags + the IT matrices | always |
 | `toolchains_verify` | sanity-checks the toolchains image | always (fail-fast gate for tests) |
 | `required_checks` | audit build, cross-Scala compile, format, license | pushes + PRs |
-| `unit_tests` | `core:test` and friends | pushes + PRs |
-| `cve_check` | OWASP dependency-check (`continue-on-error`; needs `NVD_API_KEY`) | pushes + PRs |
+| `unit_tests_linux` | `core:test` and friends | pushes + PRs |
+| `optional_checks` | non-blocking checks (matrix; today: `cve_check` OWASP dependency-check, needs `NVD_API_KEY`) — failures annotate the run but never block it | pushes + PRs |
 | `it_linux` | integration tests, one job per ES version | 10-version subset on PRs, full 34 on develop/master/epic and manual |
 | `it_windows` | integration tests on native-Windows ES | 3 on PRs, 7 on branches, full 33 on manual |
 | `unit_tests_windows` | `core:test` on Windows | manual `run_all_tests_on_windows` |
@@ -52,7 +52,7 @@ long pole. Two things make this fit a 16 GB box:
 - On Windows (native ES processes, no docker), every shard gets its own port window and
   install dirs (`RorShard`).
 
-Suite timing drift is auto-detected: the es94x leg runs
+Suite timing drift is auto-detected: the es90x leg (first ES 9 module — a stable reference) runs
 `integration-tests:regenerateSuiteTimings` after the tests, warns on drift, and uploads a
 regenerated `suite-timings.json` as the `suite-timings-regenerated` artifact — to update,
 download it and commit. Measured tuning limits (don't re-learn them the hard way): 5 shard
@@ -82,3 +82,27 @@ and `ROR_ARTIFACTS_STORE_{...}`.
 Release tags push via the checkout token (`release_ror` has `permissions: contents: write`)
 — no SSH deploy key. Fork PRs get no secrets (GitHub default); `cve_check` and docker auth
 degrade instead of failing.
+
+## Coverage: what happened to every Azure stage
+
+Everything the Azure pipeline did is ported — nothing was dropped. The mapping:
+
+| Azure stage | GitHub Actions equivalent |
+|---|---|
+| `SUPERSEDE_GUARD` | native `concurrency:` block (auto-cancel stale PR runs; branch pushes queue) |
+| `DETERMINE_CI_TYPE` | `setup` (branch flags, matrices) + `determine_ci_type` (release-type decision) |
+| `DISK_PROBE` | `disk_probe` (manual `run_disk_probe`) |
+| `BUILD_TOOLCHAINS_IMAGE` | `build_toolchains_image` (weekly cron + manual) |
+| `TOOLCHAINS_VERIFY` | `toolchains_verify` |
+| `ES_S3_UP` | `es_s3_up` |
+| `REQUIRED_CHECKS` | `required_checks` (same 4-task matrix) |
+| `OPTIONAL_CHECKS` | `optional_checks` (matrix; `continue-on-error` = "warn but pass") |
+| `TEST` (unit + IT + WIN legs) | `unit_tests_linux`, `it_linux`, `it_windows`, `unit_tests_windows` |
+| `BUILD_ROR` | `build_ror` |
+| `UPLOAD_PRE_ROR` | `upload_pre_ror` |
+| `RELEASE_ROR` / `RELEASE_ROR_WITHOUT_TESTING` | `release_ror` (the `release_without_testing` dispatch input selects the no-test path) |
+| `PUBLISH_MVN_ARTIFACTS` / `..._WITHOUT_TESTING` | `publish_mvn` (same dispatch input) |
+| Azure "secure file" `secret.pgp` | `PGP_SECRET_KEY_B64` repo secret, decoded in-step |
+
+`azure-pipelines.yml` is kept with `trigger: none` / `pr: none` as a manually-runnable
+fallback for one release cycle after the switch, then it gets deleted.

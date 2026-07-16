@@ -1,18 +1,3 @@
-# ReadonlyREST CI — ported from azure-pipelines.yml to GitHub Actions.
-# Linux jobs run on Ubicloud (16 GB = ubicloud-standard-4) inside the same toolchains image;
-# Windows jobs run on GitHub-hosted windows-2025 (free for public repos, same VM family Azure used).
-#
-# Design notes (see ci/README.md for the architecture, secrets and parallelism):
-#  - The build logic is unchanged: every Linux job calls ci/run-pipeline.sh with a ROR_TASK, exactly
-#    as Azure did. This file only ports the orchestration (stages -> jobs, matrix, conditions, secrets).
-#  - Azure's SUPERSEDE_GUARD stage is replaced by GitHub-native `concurrency` (auto-cancel stale PR
-#    runs; branch pushes are NEVER cancelled — a push during a release run must not kill the release).
-#  - IT matrices are computed in the `setup` job (PR subset vs full set) so skipped legs never boot a VM.
-#  - Release-path jobs use `!cancelled()` + explicit needs.<job>.result checks: GitHub skips a
-#    dependent job when a needed job was skipped (implicit success()), which would break the manual
-#    release_without_testing path where the test jobs are intentionally skipped.
-#  - Azure "secure files" (secret.pgp) become base64 repo secrets, decoded in-step.
-#  - Fork PRs: GitHub withholds secrets automatically; cve/docker-auth steps degrade rather than fail.
 name: CI
 
 on:
@@ -216,7 +201,10 @@ jobs:
         run: ci/upload-es-artifacts.sh
 
   # ── OPTIONAL_CHECKS: CVE (non-blocking) ───────────────────────────────────
-  cve_check:
+  # Azure's OPTIONAL_CHECKS stage: failures annotate the run but never block it
+  # (continue-on-error = Azure's "warning, stage passes"). Matrix for symmetry with
+  # required_checks; cve_check is currently its only member.
+  optional_checks:
     needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
       !cancelled() &&
@@ -226,6 +214,11 @@ jobs:
     runs-on: ubuntu-latest   # free for public repos (4cpu/16GB); light job, speed barely matters
     container: beshultd/ror-ci-toolchains:jdk-8-11-17-21-gradle-9.2.1
     continue-on-error: true
+    name: ${{ matrix.ROR_TASK }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ROR_TASK: [ cve_check ]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 1, persist-credentials: false }
@@ -239,9 +232,9 @@ jobs:
           # Immutable entries; a fresh key appears once a month (Azure Cache@2 semantics)
           key: dependency-check-v2-${{ steps.month.outputs.ym }}
           restore-keys: dependency-check-v2-
-      - name: cve_check
+      - name: ${{ matrix.ROR_TASK }}
         env:
-          ROR_TASK: cve_check
+          ROR_TASK: ${{ matrix.ROR_TASK }}
           DEPENDENCY_CHECK_DATA_DIR: .dependency-check-data
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
           OSS_INDEX_USERNAME: ${{ secrets.OSS_INDEX_USERNAME }}
@@ -288,7 +281,7 @@ jobs:
         run: ci/run-pipeline.sh
 
   # ── TEST: unit (Linux) ────────────────────────────────────────────────────
-  unit_tests:
+  unit_tests_linux:
     needs: [ setup, toolchains_verify, es_s3_up ]
     if: >-
       !cancelled() &&
@@ -388,12 +381,13 @@ jobs:
           done
       # Drift guard for duration-balanced sharding: warns when measured suite times diverge from
       # the committed suite-timings.json and uploads a regenerated file (regeneration = download
-      # the artifact, commit it). One leg only — es94x is the module the timings are measured on.
+      # the artifact, commit it). One leg only — es90x (the first ES 9 module: a stable reference
+      # that never moves when a newer es9Xx module is added).
       - name: Suite-timings drift check
-        if: always() && matrix.ROR_TASK == 'integration_es94x'
+        if: always() && matrix.ROR_TASK == 'integration_es90x'
         run: ./gradlew integration-tests:regenerateSuiteTimings || true
       - name: Publish regenerated suite timings
-        if: always() && matrix.ROR_TASK == 'integration_es94x'
+        if: always() && matrix.ROR_TASK == 'integration_es90x'
         uses: actions/upload-artifact@v4
         with:
           name: suite-timings-regenerated
@@ -535,12 +529,12 @@ jobs:
 
   # ── BUILD_ROR (PR only) ───────────────────────────────────────────────────
   build_ror:
-    needs: [ setup, required_checks, unit_tests, it_linux, it_windows ]
+    needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows ]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' &&
       needs.required_checks.result == 'success' &&
-      needs.unit_tests.result == 'success' &&
+      needs.unit_tests_linux.result == 'success' &&
       needs.it_linux.result == 'success' &&
       needs.it_windows.result == 'success'
     runs-on: ubicloud-standard-4
@@ -563,7 +557,7 @@ jobs:
   # Two arms, like Azure: auto (push with all tests green) OR manual release_without_testing
   # (tests intentionally skipped — hence the explicit result checks instead of implicit success()).
   determine_ci_type:
-    needs: [ setup, required_checks, unit_tests, it_linux, it_windows ]
+    needs: [ setup, required_checks, unit_tests_linux, it_linux, it_windows ]
     if: >-
       !cancelled() &&
       (needs.setup.outputs.is_develop == 'true' || needs.setup.outputs.is_master == 'true') &&
@@ -571,7 +565,7 @@ jobs:
         (
           github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
           needs.required_checks.result == 'success' &&
-          needs.unit_tests.result == 'success' &&
+          needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
           needs.it_windows.result == 'success'
         ) ||
@@ -637,7 +631,7 @@ jobs:
 
   # ── RELEASE_ROR (auto post-test, or manual release_without_testing) ───────
   release_ror:
-    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests, it_linux, it_windows ]
+    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows ]
     permissions:
       contents: write   # ci-lib.sh tags the release and pushes the tag via the checkout token
     if: >-
@@ -649,7 +643,7 @@ jobs:
         (
           github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
           needs.required_checks.result == 'success' &&
-          needs.unit_tests.result == 'success' &&
+          needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
           needs.it_windows.result == 'success'
         ) ||
@@ -695,7 +689,7 @@ jobs:
 
   # ── PUBLISH_MVN_ARTIFACTS (master release; auto or manual without-testing) ─
   publish_mvn:
-    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests, it_linux, it_windows ]
+    needs: [ setup, toolchains_verify, determine_ci_type, required_checks, unit_tests_linux, it_linux, it_windows ]
     if: >-
       !cancelled() &&
       needs.determine_ci_type.result == 'success' &&
@@ -705,7 +699,7 @@ jobs:
         (
           github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' &&
           needs.required_checks.result == 'success' &&
-          needs.unit_tests.result == 'success' &&
+          needs.unit_tests_linux.result == 'success' &&
           needs.it_linux.result == 'success' &&
           needs.it_windows.result == 'success'
         ) ||
