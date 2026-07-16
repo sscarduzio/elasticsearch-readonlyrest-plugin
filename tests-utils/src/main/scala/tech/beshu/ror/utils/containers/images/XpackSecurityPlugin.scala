@@ -62,7 +62,6 @@ class XpackSecurityPlugin(esVersion: String, config: Config) extends Elasticsear
   override def updateEsConfigBuilder(builder: EsConfigBuilder): EsConfigBuilder = {
     builder
       .add("xpack.security.enabled: true")
-      .add("xpack.ml.enabled: true")
       .configureRestSsl()
       .configureTransportSsl()
   }

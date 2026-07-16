@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.audit
 
-import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer
-import tech.beshu.ror.audit.AuditLogSerializer
-
 sealed trait AuditIndexSchema
 
 object AuditIndexSchema {
@@ -28,12 +25,14 @@ object AuditIndexSchema {
 
   case object Custom extends AuditIndexSchema
 
-  def from(serializer: AuditLogSerializer): AuditIndexSchema = serializer match {
-    case serializer: EcsV1AuditLogSerializer =>
+  def from(serializer: AuditSerializer): AuditIndexSchema = serializer match {
+    case AuditSerializer.EcsV1(_, _) =>
       AuditIndexSchema.EcsV1
-    case serializer if serializer.getClass.getName.startsWith("tech.beshu.ror.audit.instances") =>
+    case AuditSerializer.Delegating(serializer)
+        if serializer.getClass.getName.startsWith("tech.beshu.ror.audit.instances") =>
       AuditIndexSchema.RorDefault
-    case serializer if serializer.getClass.getName.startsWith("tech.beshu.ror.requestcontext") =>
+    case AuditSerializer.Delegating(serializer)
+        if serializer.getClass.getName.startsWith("tech.beshu.ror.requestcontext") =>
       AuditIndexSchema.RorDefault
     case other =>
       AuditIndexSchema.Custom

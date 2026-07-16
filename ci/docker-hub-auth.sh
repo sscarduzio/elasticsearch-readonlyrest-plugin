@@ -18,8 +18,13 @@
 if [ -n "${DOCKER_HUB_RO_TOKEN:-}" ] && [ "${DOCKER_HUB_RO_TOKEN}" != '$(DOCKER_HUB_RO_TOKEN)' ] \
    && [ -n "${DOCKER_HUB_USER:-}" ] && [ "${DOCKER_HUB_USER}" != '$(DOCKER_HUB_USER)' ]; then
   export DOCKER_AUTH_CONFIG="{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf '%s:%s' "$DOCKER_HUB_USER" "$DOCKER_HUB_RO_TOKEN" | base64 -w0)\"}}}"
-  # Redact from logs despite the global system.debug:true (the value is base64(user:token)).
-  echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]$DOCKER_AUTH_CONFIG"
+  # Redact from logs (the value is base64(user:token)). Each CI has its own log command; emitting
+  # the Azure ##vso line on GitHub Actions would PRINT the secret instead of masking it.
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    echo "::add-mask::$DOCKER_AUTH_CONFIG"
+  else
+    echo "##vso[task.setvariable variable=DOCKER_AUTH_CONFIG;isSecret=true]$DOCKER_AUTH_CONFIG"
+  fi
   echo "[TEST] Docker Hub authenticated pulls ENABLED (user '$DOCKER_HUB_USER')"
 else
   echo "[TEST] Docker Hub authenticated pulls DISABLED (anonymous, rate-limited) — DOCKER_HUB_USER/DOCKER_HUB_RO_TOKEN not both set"

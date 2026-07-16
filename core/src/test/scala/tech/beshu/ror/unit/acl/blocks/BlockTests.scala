@@ -57,14 +57,13 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val block = new Block(
           name = blockName,
           policy = Block.Policy.Allow,
-          verbosity = Block.Verbosity.Info,
-          audit = Block.Audit.Enabled,
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") ::
               passingRule("r2", withLoggedUser) ::
               notPassingRule("r3") ::
               passingRule("r4") :: Nil
-          )
+          ),
+          audit = Block.Audit.Enabled(),
         )
         val requestContext = MockRequestContext.indices
         val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -89,13 +88,12 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
         val block = new Block(
           name = blockName,
           policy = Block.Policy.Allow,
-          verbosity = Block.Verbosity.Info,
-          audit = Block.Audit.Enabled,
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule(
               "r5"
             ) :: Nil
-          )
+          ),
+          audit = Block.Audit.Enabled(),
         )
         val requestContext = MockRequestContext.indices
         val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -121,11 +119,10 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        verbosity = Block.Verbosity.Info,
-        audit = Block.Audit.Enabled,
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
-        )
+        ),
+        audit = Block.Audit.Enabled(),
       )
       val requestContext = MockRequestContext.indices
       val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -160,14 +157,13 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        verbosity = Block.Verbosity.Info,
-        audit = Block.Audit.Enabled,
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", withLoggedUser) ::
             passingRule("r2") ::
             passingRule("r3", withIndices) ::
             Nil
-        )
+        ),
+        audit = Block.Audit.Enabled(),
       )
       val requestContext = MockRequestContext.indices
       val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -200,13 +196,12 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
-        verbosity = Block.Verbosity.Info,
-        audit = Block.Audit.Enabled,
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))) ::
             passingRule("r2", _.withBlockMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))) ::
             Nil
-        )
+        ),
+        audit = Block.Audit.Enabled(),
       )
       val requestContext = MockRequestContext.indices
       val result = block.evaluateForRegularRequest(requestContext).runSyncUnsafe(1 second)
@@ -328,9 +323,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside with
     new Block(
       name = Block.Name("test_block"),
       policy = Block.Policy.Allow,
-      verbosity = Block.Verbosity.Info,
-      audit = Block.Audit.Enabled,
-      rules = NonEmptyList.fromListUnsafe(rules.toList)
+      rules = NonEmptyList.fromListUnsafe(rules.toList),
+      audit = Block.Audit.Enabled(),
     )
 
   private def assertPermitted[T <: BlockContext](ruleHistory: RuleHistory[T])(hasRuleName: Rule.Name): Unit = {

@@ -16,6 +16,9 @@ variables:
   isNewEsBranchOrPr: $[or(contains(variables['Build.SourceBranch'], 'newes/'), contains(variables['System.PullRequest.SourceBranch'], 'newes/'))]
   dependencyCheckCacheKey: $[format('dependency-check-v2-{0:yyyyMM}', pipeline.startTime)]
   dependencyCheckDataDir: '$(Pipeline.Workspace)/dependency-check-data/v2'
+  # Integration-test shards per agent (separate JVM + ES container each, disjoint suite subsets).
+  # 1 = no sharding (default). Raise (e.g. 2) ONLY for agents with RAM for K concurrent ES instances.
+  IT_PARALLELISM: 1
   # Use the Gradle home baked into the CI image (ci/toolchains/JdkToolchains.Dockerfile): it already contains the
   # Gradle distribution + resolved plugins/dependencies, so in the common (warm-cache) case builds make
   # no network calls to flaky external CDNs. Cache misses (e.g. a dep bumped since the last image
@@ -28,54 +31,13 @@ variables:
   # container jobs and never leak to the bare Windows jobs (which use a workspace-local GRADLE_USER_HOME).
   GRADLE_OPTS: '-Dorg.gradle.java.installations.auto-download=false'
 
-trigger:
-  # Coalesce rapid pushes into one run (Azure has no auto-cancel for branch runs).
-  batch: true
-  branches:
-    include:
-      - master
-      - develop
-      - 'epic/*'
-      - '*/epic/*'
-  tags:
-    exclude:
-      - '*'
-  paths:
-    include:
-      - '*'
-    exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
+# CI has moved to GitHub Actions (.github/workflows/ci.yml) on Ubicloud/GitHub-hosted runners.
+# Azure triggers are DISABLED; this pipeline remains manually runnable as a fallback until deletion.
+trigger: none
 
-pr:
-  # A new commit cancels the prior in-progress PR run instead of stacking another
-  # full run on the queue (GitHub default; set explicitly so it is version-controlled).
-  autoCancel: true
-  branches:
-    include:
-      - master
-      - develop
-      - 'epic/*'
-      - '*/epic/*'
-  paths:
-    include:
-      - '*'
-    exclude:
-      - 'docs/*'
-      - '*.md'
-      - '*/*/*.md'
+pr: none
 
-# Scheduled rebuild of the CI toolchains image (BUILD_TOOLCHAINS_IMAGE only; every other stage is
-# gated on Build.Reason != 'Schedule'). Keeps the baked Gradle cache fresh without manual action:
-# a dep bumped during the week falls back to the network until the next rebuild closes the gap.
-schedules:
-  - cron: '0 3 * * 1'
-    displayName: 'Weekly CI toolchains image rebuild'
-    branches:
-      include:
-        - develop
-    always: true
+# (weekly toolchains-image rebuild now lives in the GitHub Actions workflow's schedule)
 
 parameters:
   - name: actionToPerform
@@ -87,6 +49,7 @@ parameters:
       - 'run_all_tests_on_windows'
       - 'build_toolchains_image'
       - 'release_without_testing'
+      - 'run_disk_probe'
 
 pool:
   vmImage: 'ubuntu-24.04'
@@ -113,10 +76,25 @@ stages:
             env:
               AZURE_BUILDS_API_TOKEN: $(System.AccessToken)
 
+  # One-shot HOST-disk recon. INERT unless queued (Manual) with actionToPerform=run_disk_probe. BARE
+  # (no container:) so `du` sees the Azure VM host fs, not the ror-toolchains overlay; exits 1 on purpose.
+  - ${{ if eq(parameters.actionToPerform, 'run_disk_probe') }}:
+    - stage: DISK_PROBE
+      displayName: 'Host disk probe (recon, self-killing)'
+      dependsOn: [ ]
+      jobs:
+      - job: PROBE
+        timeoutInMinutes: 10
+        steps:
+          - checkout: self
+            fetchDepth: 1
+          - bash: bash ci/probe-host-disk.sh
+            displayName: 'Probe + rank fat dirs on docker device, then kill build'
+
   - stage: ES_S3_UP
     displayName: 'Upload missing ROR ES dependencies'
     dependsOn: [ SUPERSEDE_GUARD ]
-    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
+    condition: and(not(canceled()), in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'), eq(variables.isNewEsBranchOrPr, true))
     jobs:
       - job:
         steps:
@@ -193,6 +171,7 @@ stages:
     dependsOn: [ SUPERSEDE_GUARD ]
     condition:
       and(
+        not(canceled()),
         in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         or(
           notIn(variables['Build.Reason'], 'Manual', 'Schedule'),
@@ -223,9 +202,11 @@ stages:
   - stage: OPTIONAL_CHECKS
     displayName: 'Optional checks'
     dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
+    # not(canceled()) FIRST: a custom condition suppresses Azure's implicit cancellation check, so
+    # without it this stage starts/continues even after the run is canceled (the cancel-livelock).
     # SUPERSEDE_GUARD gate: when this PR run is superseded the guard FAILS (exit 1), so the heavy
     # stages must not run. Succeeded = newest PR run; Skipped = non-PR run (guard didn't apply).
-    condition: and(in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
+    condition: and(not(canceled()), in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'), in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'), notIn(variables['Build.Reason'], 'Manual', 'Schedule'))
     jobs:
       - job: CVE_CHECK
         container: ror-toolchains
@@ -278,6 +259,7 @@ stages:
     dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        not(canceled()),
         in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
@@ -326,6 +308,7 @@ stages:
     dependsOn: [ SUPERSEDE_GUARD, ES_S3_UP, TOOLCHAINS_VERIFY ]
     condition:
       and(
+        not(canceled()),
         in(dependencies.SUPERSEDE_GUARD.result, 'Succeeded', 'Skipped'),
         in(dependencies.ES_S3_UP.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
         in(dependencies.TOOLCHAINS_VERIFY.result, 'Succeeded', 'SucceededWithIssues', 'Skipped'),
@@ -385,6 +368,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -415,6 +402,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -471,6 +462,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -517,6 +512,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -541,6 +540,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -569,6 +572,10 @@ stages:
           )
         container: ror-toolchains
         timeoutInMinutes: 120
+        # Bounded cancel grace: on timeout/supersede Azure SIGTERMs the step; run-pipeline.sh's trap
+        # kills the gradle process tree + reaps this leg's containers within this window. Without a
+        # killable tree (the old bug) legs ran 300+ min; this makes the 120-min timeout enforceable.
+        cancelTimeoutInMinutes: 5
         steps:
           - template: ci/azure-templates/integration-test-steps.yml
         strategy:
@@ -851,6 +858,7 @@ stages:
     # In both cases EXTRACT_IS_RELEASE computes IsRelease, which the RELEASE_*/PUBLISH_MVN_* stages read.
     condition: |
       and(
+        not(canceled()),
         or(eq(variables.isDevelop, true), eq(variables.isMaster, true)),
         or(
           and(

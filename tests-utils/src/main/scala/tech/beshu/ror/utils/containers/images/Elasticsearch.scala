@@ -175,16 +175,10 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
   }
 
   private def toOfficialEsImageBasedDockerImageDescription: DockerImageDescription = {
+    // LAYER ORDER FOR CACHE SHARING: heavy config-independent work (tar, JDK swap, keystore, plugin
+    // install + ES patch, ~140MB) runs FIRST so layers are shared; per-suite config files COPY LAST.
     DockerImageDescription
       .create(s"docker.elastic.co/elasticsearch/elasticsearch:$esVersion", customEntrypoint)
-      .copyFile(
-        destination = config.esConfigDir / "elasticsearch.yml",
-        file = esConfigFile
-      )
-      .copyFile(
-        destination = config.esConfigDir / "ror" / "log4j2.properties",
-        file = rorLog4jDropInFromResources
-      )
       .user("root")
       // Package tar is required by the RorToolsAppSuite, and the ES >= 9.x is based on
       // Red Hat Universal Base Image 9 Minimal, which does not contain it.
@@ -193,6 +187,17 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .addEnvs(config.envs + ("ES_JAVA_OPTS" -> javaOptsBasedOn(withEsJavaOptsBuilderFromPlugins)))
       .installPlugins()
+      // per-suite config files LAST (cheap layers) so install/patch above stay identical & shared
+      .user("root")
+      .copyFile(
+        destination = config.esConfigDir / "elasticsearch.yml",
+        file = esConfigFile
+      )
+      .copyFile(
+        destination = config.esConfigDir / "ror" / "log4j2.properties",
+        file = rorLog4jDropInFromResources
+      )
+      .run(s"chown -R elasticsearch:elasticsearch ${config.esConfigDir.toString()}")
       .user("elasticsearch")
   }
 
@@ -297,24 +302,42 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
       .addWhen(Version.greaterOrEqualThan(esVersion, 7, 14, 0), entry = "ingest.geoip.downloader.enabled: false")
       .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "action.destructive_requires_name: false")
       .addWhen(Version.lowerThan(esVersion, 8, 0, 0), entry = "xpack.monitoring.enabled: false")
+      // ML is never exercised by any suite; disabling it drops the ML native processes (~200-400MB
+      // RSS per container) and speeds startup. Unlike xpack.monitoring.enabled (removed in 8.0), the
+      // xpack.ml.enabled key is supported across the whole matrix (6.3 -> 9.x), so no version guard.
+      // XpackSecurityPlugin must NOT re-add it (duplicate elasticsearch.yml keys are fatal).
+      .add("xpack.ml.enabled: false")
+      // Watcher is never exercised by any suite; off it skips its thread pools, trigger engine and
+      // watch-history templates. The key is valid across the whole matrix (6.3 -> 9.x).
+      .add("xpack.watcher.enabled: false")
+      // Skip the built-in index/component templates + their ILM policies (logs-*, metrics-*,
+      // synthetics-*, 7/30/90/180/365-days-default...). 8.x installs dozens of them on first boot
+      // (the biggest chunk of the 8.x-vs-7.x startup bloat, cluster-state churn seen in test logs);
+      // suites always create the templates they need themselves. Key exists since 7.8, but the
+      // win is 8.x-only, so guard at 8.0 and stay clear of the 7.x boundary.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 0, 0), entry = "stack.templates.enabled: false")
+      // The apm-data plugin (not covered by stack.templates.enabled) installs the logs-apm.*/
+      // metrics-apm.* template zoo seen in 8.18 boot logs. The plugin exists since 8.13 and is
+      // enabled by default since 8.15 (APM Server relies on it from there); no suite touches APM.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 8, 15, 0), entry = "xpack.apm_data.enabled: false")
+      // No suite reads deprecation logs via the .logs-deprecation data stream (MiscSuite uses
+      // response headers); skips its templates + indexing pipeline. Setting added in 7.16.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 16, 0), entry = "cluster.deprecation_indexing.enabled: false")
+      // SLM is never exercised; skips the .slm-history index machinery. Setting added with SLM in 7.5.
+      .addWhen(Version.greaterOrEqualThan(esVersion, 7, 5, 0), entry = "slm.history_index_enabled: false")
       .add(
         entries = config.additionalElasticsearchYamlEntries.map { case (key, value) => s"$key: $value" }
       )
   }
 
-  // ROR-specific logging only. It is dropped into a `ror` subdirectory of the ES config dir and
-  // merged with the stock ES `log4j2.properties` (ES recursively loads every file named
-  // `log4j2.properties` under the config dir). This keeps the stock logging config intact,
-  // including the per-component entitlement-logger suppression shipped by recent ES versions.
+  // ROR-specific logging dropped into a `ror` subdir; ES recursively loads every `log4j2.properties`
+  // under config, so it merges with the stock config rather than replacing it.
   private def rorLog4jDropInFromResources = {
     fromResourceBy(name = "ror-log4j2.properties")
   }
 
-  // ES 7.15.1–7.17.6 and 8.0.x–8.4.x bundle JDK 17.0.0/17.0.1/17.0.2 or JDK 18, which have cgroup v2
-  // bug JDK-8287073: CgroupV2Subsystem.getInstance() NPEs before UseContainerSupport is checked.
-  // Fixed in JDK 17.0.5+ (backport JDK-8288308) and JDK 19+.
-  // NOTE: the same version-range logic is maintained in the e2e-tests repo at
-  //   environments/common/images/es-jdk-patch/patch-es-jdk.sh
+  // ES 7.15.1–7.17.6 / 8.0.x–8.4.x bundle JDK 17.0.0–17.0.2 or 18 with cgroup v2 bug JDK-8287073 (NPE);
+  // fixed in JDK 17.0.5+/19+. Same version-range logic mirrored in e2e-tests es-jdk-patch/patch-es-jdk.sh.
   private def hasBuggyBundledJdk: Boolean =
     (Version.greaterOrEqualThan(esVersion, 7, 15, 1) && Version.lowerThan(esVersion, 7, 17, 7)) ||
       (Version.greaterOrEqualThan(esVersion, 8, 0, 0) && Version.lowerThan(esVersion, 8, 5, 0))
@@ -324,23 +347,19 @@ class Elasticsearch(val esVersion: String, val config: Config, val plugins: Seq[
     (Version.greaterOrEqualThan(esVersion, 7, 17, 3) && Version.lowerThan(esVersion, 7, 17, 7)) ||
       (Version.greaterOrEqualThan(esVersion, 8, 2, 0) && Version.lowerThan(esVersion, 8, 5, 0))
 
-  // Replace the bundled JDK in-place with the cached custom JDK tarball.
+  // Swap the buggy bundled JDK (JDK-8287073) for Corretto, download+extract+delete in ONE RUN: the
+  // ~180MB tarball never commits to a layer (old COPY layer persisted it; classic builder has no
+  // BuildKit --mount). Corrupt downloads fail loudly via curl -f + tar's gzip CRC.
   private def replaceBundledJdk(image: DockerImageDescription): DockerImageDescription = {
-    // JDK 17.0.0–17.0.4 and JDK 18 have cgroup v2 bug JDK-8287073 (NPE in CgroupV2Subsystem).
-    // JDK-17 builds (ES 7.15.1–7.15.2, 7.16.x, 7.17.0–7.17.2, 8.0.x–8.1.x) → Corretto 17.0.5 (backport JDK-8288308).
-    // JDK-18 builds (ES 7.17.3–7.17.6, 8.2.x–8.4.x) → Corretto 19.0.0 (first JDK 19 with the fix).
-    // Downloaded once per JVM process and reused across all container builds.
-    val tarball =
-      if (needsCorretto19) JDK.AmazonCorretto1900jdk.tarball
-      else JDK.AmazonCorretto1705jdk.tarball
-    image
-      .copyFile(destination = os.root / "tmp" / "custom-jdk.tar.gz", file = tarball)
-      .run(
-        "rm -rf /usr/share/elasticsearch/jdk",
-        "mkdir -p /usr/share/elasticsearch/jdk",
-        "tar xzf /tmp/custom-jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1",
-        "rm /tmp/custom-jdk.tar.gz"
-      )
+    val version = if (needsCorretto19) JDK.corretto19Version else JDK.corretto17Version
+    image.run(
+      """JDK_ARCH=$(case "$(uname -m)" in aarch64|arm64) echo aarch64 ;; *) echo x64 ;; esac)""" +
+        s""" && curl -fsSL --retry 5 -o /tmp/custom-jdk.tar.gz "${JDK.correttoDownloadUrlTemplate(version)}"""" +
+        " && rm -rf /usr/share/elasticsearch/jdk" +
+        " && mkdir -p /usr/share/elasticsearch/jdk" +
+        " && tar xzf /tmp/custom-jdk.tar.gz -C /usr/share/elasticsearch/jdk --strip-components=1" +
+        " && rm /tmp/custom-jdk.tar.gz"
+    )
   }
 
   private def javaOptsBasedOn(withEsJavaOptsBuilder: EsJavaOptsBuilder => EsJavaOptsBuilder) = {

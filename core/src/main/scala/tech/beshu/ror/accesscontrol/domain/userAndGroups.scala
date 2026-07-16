@@ -21,7 +21,6 @@ import cats.kernel.Semigroup
 import cats.{Eq, Monoid}
 import eu.timepit.refined.auto.*
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.GroupIdLike.GroupId
@@ -298,8 +297,6 @@ object LocalUsers {
   final case class Available(users: AvailableLocalUsers) extends LocalUsers
 
   case object NotAvailable extends LocalUsers
-
-  def from(block: Block): LocalUsers = block.rules.map(LocalUsers.from).combineAll
 
   def from(rule: Rule): LocalUsers = rule match {
     case authentication: AuthenticationRule => authentication.localUsers

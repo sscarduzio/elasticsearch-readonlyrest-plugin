@@ -17,16 +17,17 @@
 package tech.beshu.ror.accesscontrol.audit.configurable
 
 import org.json.JSONObject
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 
-class ConfigurableAuditLogSerializer(
-    val allowedEventMode: AllowedEventMode,
-    val fields: Map[AuditFieldPath, AuditFieldValueDescriptor]
-) extends AuditLogSerializer {
+object ConfigurableAuditLogSerializer {
 
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] =
+  def onResponse(
+      responseContext: AuditResponseContext,
+      allowedEventMode: AllowedEventMode,
+      fields: Map[AuditFieldPath, AuditFieldValueDescriptor]
+  ): Option[JSONObject] =
     AuditSerializationHelper.serialize(responseContext, fields, allowedEventMode)
 
 }

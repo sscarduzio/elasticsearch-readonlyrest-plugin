@@ -18,21 +18,19 @@ package tech.beshu.ror.accesscontrol.audit.ecs
 
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.audit.AuditFieldUtils.*
-import tech.beshu.ror.accesscontrol.audit.ecs.EcsV1AuditLogSerializer.*
+import tech.beshu.ror.audit.AuditResponseContext
 import tech.beshu.ror.audit.utils.AuditSerializationHelper
 import tech.beshu.ror.audit.utils.AuditSerializationHelper.{AllowedEventMode, AuditFieldPath, AuditFieldValueDescriptor}
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-
-class EcsV1AuditLogSerializer(val allowedEventMode: AllowedEventMode, includeFullRequestContent: Boolean)
-    extends AuditLogSerializer {
-
-  override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
-    AuditSerializationHelper.serialize(responseContext, auditFields(includeFullRequestContent), allowedEventMode)
-  }
-
-}
 
 object EcsV1AuditLogSerializer {
+
+  def onResponse(
+      responseContext: AuditResponseContext,
+      allowedEventMode: AllowedEventMode,
+      includeFullRequestContent: Boolean
+  ): Option[JSONObject] = {
+    AuditSerializationHelper.serialize(responseContext, auditFields(includeFullRequestContent), allowedEventMode)
+  }
 
   private def auditFields(includeFullRequestContent: Boolean): Map[AuditFieldPath, AuditFieldValueDescriptor] = fields(
     withPrefix("ecs")(
