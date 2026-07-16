@@ -18,8 +18,8 @@ package tech.beshu.ror.utils.containers.windows
 
 import com.typesafe.scalalogging.LazyLogging
 import tech.beshu.ror.utils.containers.images.Elasticsearch.Config
-import tech.beshu.ror.utils.misc.RorShard
 import tech.beshu.ror.utils.misc.ScalaUtils
+import tech.beshu.ror.utils.misc.{FileLocks, RorShard}
 
 import java.io.{BufferedInputStream, FileOutputStream}
 import java.nio.file.{Files, StandardCopyOption}
@@ -194,44 +194,33 @@ object WindowsEsDirectoryManager extends LazyLogging {
       // Cross-shard-JVM lock: only one shard unzips; the rest wait then reuse.
       val lockDir = template / os.up
       os.makeDir.all(lockDir)
-      Using.resource(
-        java.nio.channels.FileChannel.open(
-          (lockDir / s"es-$esVersion.lock").toNIO,
-          java.nio.file.StandardOpenOption.CREATE,
-          java.nio.file.StandardOpenOption.WRITE
-        )
-      ) { channel =>
-        val lock = channel.lock()
-        try {
-          if (!os.exists(marker)) {
-            logger.info(s"Unzipping ES $esVersion into shared template")
-            os.remove.all(template)
-            os.makeDir.all(template)
-            val zipFile = zipFilePath(esVersion)
-            Using.resource(new ZipInputStream(Files.newInputStream(zipFile.toNIO))) { zis =>
-              LazyList
-                .continually(zis.getNextEntry)
-                .takeWhile(_ != null)
-                .foreach { entry =>
-                  val relPath = os.RelPath(entry.getName)
-                  // Drop the first path segment (without this step, the zip file name is part of the unzipped directory path)
-                  val strippedPath =
-                    if (relPath.segments.nonEmpty) os.RelPath.fromStringSegments(relPath.segments.tail.toArray)
-                    else relPath
-                  val newPath = template / strippedPath
-                  if (entry.isDirectory) {
-                    os.makeDir.all(newPath)
-                  } else {
-                    os.makeDir.all(newPath / os.up)
-                    Files.copy(zis, newPath.toNIO, StandardCopyOption.REPLACE_EXISTING)
-                  }
+      FileLocks.withExclusiveLock((lockDir / s"es-$esVersion.lock").toNIO) {
+        if (!os.exists(marker)) {
+          logger.info(s"Unzipping ES $esVersion into shared template")
+          os.remove.all(template)
+          os.makeDir.all(template)
+          val zipFile = zipFilePath(esVersion)
+          Using.resource(new ZipInputStream(Files.newInputStream(zipFile.toNIO))) { zis =>
+            LazyList
+              .continually(zis.getNextEntry)
+              .takeWhile(_ != null)
+              .foreach { entry =>
+                val relPath = os.RelPath(entry.getName)
+                // Drop the first path segment (without this step, the zip file name is part of the unzipped directory path)
+                val strippedPath =
+                  if (relPath.segments.nonEmpty) os.RelPath.fromStringSegments(relPath.segments.tail.toArray)
+                  else relPath
+                val newPath = template / strippedPath
+                if (entry.isDirectory) {
+                  os.makeDir.all(newPath)
+                } else {
+                  os.makeDir.all(newPath / os.up)
+                  Files.copy(zis, newPath.toNIO, StandardCopyOption.REPLACE_EXISTING)
                 }
-            }
-            os.write(marker, "")
-            logger.info(s"ES $esVersion template ready")
+              }
           }
-        } finally {
-          lock.release()
+          os.write(marker, "")
+          logger.info(s"ES $esVersion template ready")
         }
       }
     }

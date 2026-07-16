@@ -32,7 +32,7 @@ object Wiremock {
         // bind to /0.0.0.0:8080"). originalPort moves too — on Windows it is what gets substituted
         // into readonlyrest.yml placeholders (RorSettingsAdjuster), and providePort is what test
         // clients dial; all three must agree on the shifted port.
-        val shardedPort = portWhenRunningOnWindows + RorShard.portOffset
+        val shardedPort = RorShard.shardedBasePort(portWhenRunningOnWindows)
         new WiremockContainer(
           container = new WindowsPseudoWiremockContainer(shardedPort, mappings),
           host = "localhost",

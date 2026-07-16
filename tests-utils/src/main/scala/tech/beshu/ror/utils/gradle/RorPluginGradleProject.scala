@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.gradle
 import better.files.*
 import com.typesafe.scalalogging.LazyLogging
 import org.gradle.tooling.GradleConnector
+import tech.beshu.ror.utils.misc.FileLocks
 
 import java.io.File as JFile
 import java.nio.file.Paths
@@ -130,19 +131,8 @@ class RorPluginGradleProject(val moduleName: String) extends LazyLogging {
     // locks to death. Serialize every nested build across processes; an up-to-date nested build holds
     // the lock only briefly. ponytail: one global lock — per-module locks if contention ever matters.
     val lockFile = new JFile(RorPluginGradleProject.getRootProject, ".ror-nested-gradle.lock")
-    val channel = java.nio.channels.FileChannel.open(
-      lockFile.toPath,
-      java.nio.file.StandardOpenOption.CREATE,
-      java.nio.file.StandardOpenOption.WRITE
-    )
-    // lock() inside the try: if it throws, the finally still closes the channel (no fd leak)
-    var lock: java.nio.channels.FileLock = null
-    try {
-      lock = channel.lock()
+    FileLocks.withExclusiveLock(lockFile.toPath) {
       doRunTask(task, extraArgs)
-    } finally {
-      try if (lock != null) lock.release()
-      finally channel.close()
     }
   }
 

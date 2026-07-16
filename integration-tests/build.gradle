@@ -214,14 +214,10 @@ tasks.register('regenerateSuiteTimings') {
             return
         }
         def committedFile = new groovy.json.JsonSlurper().parse(file('suite-timings.json'))
-        def committed = committedFile.times
-        def drifts = []
-        times.each { name, seconds ->
-            def old = committed[name]
-            if (old == null) drifts << "NEW ${name}: ${seconds}s (missing from suite-timings.json)"
-            else if (Math.abs(seconds - old) > 60 && Math.abs(seconds - old) > 0.5 * old)
-                drifts << "DRIFT ${name}: ${old}s -> ${seconds}s"
-        }
+        // Thresholds + comparison live in build-base's SuiteTimings (pure, unit-tested);
+        // this task only does the XML/JSON I/O around it (same split as SuiteSharder).
+        def committed = tech.beshu.ror.buildbase.SuiteSharder.timingsFrom(file('suite-timings.json'))
+        def drifts = tech.beshu.ror.buildbase.SuiteTimings.driftReport(committed, times)
         drifts.each { logger.warn("::warning::suite-timings ${it}") }
         def out = layout.buildDirectory.file('suite-timings-regenerated.json').get().asFile
         out.text = groovy.json.JsonOutput.prettyPrint(

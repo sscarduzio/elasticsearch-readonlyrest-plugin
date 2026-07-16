@@ -50,9 +50,20 @@ object support {
   }
 
   private object HeavySuiteGated {
+
     // Slot files live under the shared root project dir so all shard JVMs see the same slots.
+    // Fail loudly when the property is missing: a per-JVM fallback dir (e.g. tmpdir) would make
+    // every shard gate against its own slots and silently disable the machine-wide OOM cap.
     private lazy val slotDir =
-      Paths.get(Option(System.getProperty("project.dir")).getOrElse(System.getProperty("java.io.tmpdir")))
+      Paths.get(
+        Option(System.getProperty("project.dir"))
+          .getOrElse(
+            throw new IllegalStateException(
+              "ROR_HEAVY_SUITE_PERMITS is set but -Dproject.dir is missing - " +
+                "the cross-JVM heavy-suite gate needs a shared slot dir"
+            )
+          )
+      )
 
     lazy val semaphore: Option[FileLockSemaphore] =
       sys.env
