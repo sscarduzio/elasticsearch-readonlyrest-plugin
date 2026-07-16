@@ -21,12 +21,16 @@ import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.History.{BlockHistory, RuleHistory}
 import tech.beshu.ror.accesscontrol.audit.LoggingContext
+import tech.beshu.ror.accesscontrol.audit.sink.AuditSink
 import tech.beshu.ror.accesscontrol.blocks.Block.*
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.PrecomputedAuditSinks.Available
+import tech.beshu.ror.accesscontrol.blocks.Block.Audit.Enabled.{EnabledAuditSinks, PrecomputedAuditSinks}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.Decision.Denied.Cause
 import tech.beshu.ror.accesscontrol.blocks.ImpersonationWarning.ImpersonationWarningSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
+import tech.beshu.ror.accesscontrol.domain.SinkName
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorSettingsBasedCoreFactory.CoreCreationError.BlocksLevelCreationError
@@ -39,16 +43,29 @@ import tech.beshu.ror.utils.RequestIdAwareLogging
 import scala.language.implicitConversions
 
 class Block(
-    val name: Name,
-    val policy: Policy,
-    val verbosity: Verbosity,
-    val audit: Audit,
-    val rules: NonEmptyList[Rule]
+    val name: Block.Name,
+    val policy: Block.Policy,
+    val rules: NonEmptyList[Rule],
+    val audit: Block.Audit,
 )(
     implicit val loggingContext: LoggingContext
 ) extends RequestIdAwareLogging {
 
   import Lifter.*
+
+  def withResolvedAuditSinks(allSinks: List[AuditSink]): Block = {
+    val newAudit = audit match {
+      case Audit.Disabled =>
+        Audit.Disabled
+      case enabled @ Audit.Enabled(_, EnabledAuditSinks.All, _) =>
+        enabled.copy(precomputedAuditSinks = Available(allSinks))
+      case enabled @ Audit.Enabled(_, EnabledAuditSinks.Selected(on), _) =>
+        enabled.copy(precomputedAuditSinks = Available(allSinks.filter(s => on.contains(s.name))))
+      case enabled @ Audit.Enabled(_, EnabledAuditSinks.AllExcept(off), _) =>
+        enabled.copy(precomputedAuditSinks = Available(allSinks.filter(s => !off.contains(s.name))))
+    }
+    new Block(name, policy, rules, newAudit)(loggingContext)
+  }
 
   def evaluateForRegularRequest[B <: BlockContext: BlockContextUpdater](
       requestContext: RequestContext.Aux[B]
@@ -192,42 +209,6 @@ class Block(
 
 object Block {
 
-  def createFrom(
-      name: Name,
-      policy: Option[Policy],
-      verbosity: Option[Verbosity],
-      audit: Option[Audit],
-      rules: NonEmptyList[RuleDefinition[Rule]]
-  )(
-      implicit loggingContext: LoggingContext
-  ): Either[BlocksLevelCreationError, Block] = {
-    val sortedRules = rules.sorted
-    BlockValidator.validate(name, sortedRules) match {
-      case Validated.Valid(_) =>
-        Right(createBlockInstance(name, policy, verbosity, audit, sortedRules))
-      case Validated.Invalid(errors) =>
-        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
-        Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
-    }
-  }
-
-  private def createBlockInstance(
-      name: Name,
-      policy: Option[Policy],
-      verbosity: Option[Verbosity],
-      audit: Option[Audit],
-      rules: NonEmptyList[RuleDefinition[Rule]]
-  )(
-      implicit loggingContext: LoggingContext
-  ) =
-    new Block(
-      name = name,
-      policy = policy.getOrElse(Block.Policy.Allow),
-      verbosity = verbosity.getOrElse(Block.Verbosity.Info),
-      audit = audit.getOrElse(Block.Audit.Enabled),
-      rules = rules.map(_.rule)
-    )
-
   final case class Name(value: String) extends AnyVal
 
   final case class RuleDefinition[T <: Rule](
@@ -257,19 +238,67 @@ object Block {
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
   }
 
-  sealed trait Verbosity
-
-  object Verbosity {
-    case object Info extends Verbosity
-    case object Error extends Verbosity
-
-    implicit val eq: Eq[Verbosity] = Eq.fromUniversalEquals
+  def createFrom(
+      name: Block.Name,
+      policy: Option[Block.Policy],
+      audit: Option[Block.Audit],
+      rules: NonEmptyList[Block.RuleDefinition[Rule]]
+  )(
+      implicit loggingContext: LoggingContext
+  ): Either[BlocksLevelCreationError, Block] = {
+    val sortedRules = rules.sorted
+    BlockValidator.validate(name, sortedRules) match {
+      case Validated.Valid(_) =>
+        Right(
+          new Block(
+            name = name,
+            policy = policy.getOrElse(Block.Policy.Allow),
+            rules = sortedRules.map(_.rule),
+            audit = audit.getOrElse(Block.Audit.Enabled()),
+          )
+        )
+      case Validated.Invalid(errors) =>
+        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
+        Left(BlocksLevelCreationError(Message(errors.toList.map(_.show).mkString("\n"))))
+    }
   }
 
   sealed trait Audit
 
   object Audit {
-    case object Enabled extends Audit
+
+    final case class Enabled(
+        logAllowedEvents: Boolean = true,
+        enabledAuditSinks: EnabledAuditSinks = EnabledAuditSinks.All,
+        // Blocks are decoded before the AuditingTool exists (which resolves sink names to actual AuditSink
+        // instances), so we cannot resolve enabledAuditSinks into concrete sinks at decoding time.
+        // Resolving them on every audit event would be too costly, so once the AuditingTool is available
+        // (at ROR startup), the resolved sinks are precomputed and injected back into the Block here.
+        // enabledAuditSinks remains the source of truth for the block's audit config; this field is just
+        // a non-normalized cache of its resolution, kept to avoid recomputing it on every request.
+        precomputedAuditSinks: PrecomputedAuditSinks = PrecomputedAuditSinks.NotAvailable,
+    ) extends Audit
+
+    object Enabled {
+      sealed trait EnabledAuditSinks
+
+      object EnabledAuditSinks {
+        case object All extends EnabledAuditSinks
+
+        final case class Selected(enabledSinks: Set[SinkName]) extends EnabledAuditSinks
+
+        final case class AllExcept(disabledSinks: Set[SinkName]) extends EnabledAuditSinks
+      }
+
+      sealed trait PrecomputedAuditSinks
+
+      object PrecomputedAuditSinks {
+        case object NotAvailable extends PrecomputedAuditSinks
+
+        final case class Available(auditSinks: List[AuditSink]) extends PrecomputedAuditSinks
+      }
+
+    }
 
     case object Disabled extends Audit
 

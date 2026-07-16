@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.AccessControlList.{
   UserMetadataRequestResult
 }
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.UserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.request.{RequestContext, UserMetadataRequestContext}
@@ -49,5 +49,7 @@ object DisabledAccessControlList extends AccessControlList {
     override val forbiddenRequestMessage: String = ""
     override val obfuscatedHeaders: Set[Header.Name] = Set.empty
   }
+
+  override def withBlockTransformation(f: Block => Block): AccessControlList = DisabledAccessControlList
 
 }

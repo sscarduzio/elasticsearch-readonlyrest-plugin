@@ -36,7 +36,7 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.Try
 
-object ScalaOps {
+object ScalaOps extends RequestIdAwareLogging {
 
   implicit val nonEmptyStringOrdering: Ordering[NonEmptyString] = Ordering.by(_.value)
 
@@ -72,6 +72,71 @@ object ScalaOps {
         case _: Exception if maxRetries > 0 => doRetry()
         case ex                             => Task.raiseError(ex)
       }
+  }
+
+  /**
+   * Says how long to wait between the attempts, nothing else. The delay grows exponentially, but never exceeds
+   * `maxDelay`, so an operation which is retried indefinitely keeps being retried at a predictable pace.
+   */
+  final case class RetryPolicy(initialDelay: FiniteDuration, maxDelay: FiniteDuration, backOffScaler: Int = 2) {
+
+    require(initialDelay > Duration.Zero, "The initial delay has to be positive")
+    require(maxDelay >= initialDelay, "The max delay cannot be shorter than the initial delay")
+    require(backOffScaler >= 1, "The backoff scaler cannot shrink the delay")
+
+    def nextDelay(currentDelay: FiniteDuration): FiniteDuration = {
+      val scaledDelay = currentDelay * backOffScaler.toLong
+      if (scaledDelay >= maxDelay) maxDelay else scaledDelay
+    }
+
+  }
+
+  /**
+   * Describes the attempt which has just failed, so that the caller can report it without having to keep track of the
+   * retrying on its own. `elapsed` is measured from the beginning of the first attempt, and does not include the
+   * `nextAttemptDelay` which is still ahead.
+   */
+  final case class FailedAttempt(number: Int, nextAttemptDelay: FiniteDuration, elapsed: FiniteDuration)
+
+  /**
+   * Runs the `operation` until it succeeds, waiting between the attempts according to the `policy`. Every failed
+   * attempt is reported to `onFailedAttempt`, together with the number of the attempt, the time spent retrying so far
+   * and the delay after which the next attempt will be made.
+   *
+   * Only the failures modelled as `Left` are retried - an exception raised by the `operation` is passed through. It is
+   * up to the caller to decide which errors are worth another attempt, and to represent them in the error channel.
+   *
+   * A failure of `onFailedAttempt` never breaks the retrying, because a broken reporting is not a reason to give up on
+   * an operation which the caller asked to be run until it succeeds. Such a failure is logged, though - otherwise a
+   * reporter which never works could not be told apart from an operation which never fails.
+   */
+  def retryUntilSuccessful[ERROR, RESULT](policy: RetryPolicy, onFailedAttempt: (ERROR, FailedAttempt) => Task[Unit])(
+      operation: Task[Either[ERROR, RESULT]]
+  ): Task[RESULT] = {
+    def notifyAboutFailedAttempt(error: ERROR, failedAttempt: FailedAttempt): Task[Unit] = {
+      Task
+        .defer(onFailedAttempt(error, failedAttempt))
+        .onErrorHandle { ex => noRequestIdLogger.warn("Could not report the failed attempt", ex) }
+    }
+
+    def attemptWithRetry(attemptNumber: Int, delay: FiniteDuration, startedAt: Long): Task[RESULT] = {
+      operation
+        .flatMap {
+          case Right(result) =>
+            Task.now(result)
+          case Left(error) =>
+            for {
+              now <- Task.eval(System.nanoTime())
+              failedAttempt = FailedAttempt(attemptNumber, delay, (now - startedAt).nanos)
+              _ <- notifyAboutFailedAttempt(error, failedAttempt)
+              result <- attemptWithRetry(attemptNumber + 1, policy.nextDelay(delay), startedAt).delayExecution(delay)
+            } yield result
+        }
+    }
+
+    Task
+      .eval(System.nanoTime())
+      .flatMap(startedAt => attemptWithRetry(attemptNumber = 1, delay = policy.initialDelay, startedAt = startedAt))
   }
 
   def repeat[A](maxRetries: Int, delay: FiniteDuration)(source: Task[A]): Task[Unit] = {

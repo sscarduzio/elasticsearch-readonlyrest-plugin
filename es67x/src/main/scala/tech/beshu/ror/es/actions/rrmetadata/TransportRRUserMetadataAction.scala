@@ -23,7 +23,6 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.accesscontrol.domain.UriPath
 
 import scala.annotation.unused
 

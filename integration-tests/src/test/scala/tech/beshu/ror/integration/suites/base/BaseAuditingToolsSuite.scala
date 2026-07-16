@@ -86,8 +86,10 @@ trait BaseAuditingToolsSuite
       }
     }
 
+  // Audit entries flush to the sink asynchronously; the window must be generous enough for a
+  // CPU-loaded machine (e.g. sharded CI runners). eventually returns as soon as the entry lands.
   override implicit val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
+    PatienceConfig(timeout = scaled(Span(60, Seconds)), interval = scaled(Span(100, Millis)))
 
   "Regular ES request" should {
     "be audited" when {

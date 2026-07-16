@@ -1,0 +1,41 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+// Scala compiler policy for the ES plugin modules: feature warnings on, all warnings fatal, and the full
+// -Wunused family enabled. Kept in its own convention plugin because it's a self-contained concern with no
+// dependency on the plugin's version/packaging vocabulary. Relies on the `scala` plugin (applied by
+// readonlyrest.base-common-conventions) for the ScalaCompile tasks; ScalaCompile itself is a core Gradle type.
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.additionalParameters = [
+            "-feature",
+            "-Xfatal-warnings",
+            "-Wunused:implicits",
+            "-Wunused:imports",
+            "-Wunused:explicits",
+            "-Wunused:strict-no-implicit-warn",
+            "-Wunused:locals",
+            "-Wunused:params",
+            "-Wunused:privates",
+            "-Wconf:cat=deprecation&msg=\\[ROR\\].*:i"
+            // There are multiple reports of issues with `-Wunused:nowarn` flag when using Scala 3.3.X
+            // It seems that this problem occurs in es{version}x modules when using deprecated `org.elasticsearch.index.query.CommonTermsQueryBuilder`
+            // - https://github.com/scala/scala3/issues/19992
+            // - https://github.com/scala/scala3/issues/18341
+            // - https://users.scala-lang.org/t/wunused-on-scala-3-3-0/9401
+            // "-Wunused:nowarn",
+    ]
+}
